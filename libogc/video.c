@@ -768,9 +768,10 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	const u8 *curtiming;
 
 	_CPU_ISR_Disable(level);
-	if((rmode->viTVMode&0x0002)!=HorVer.nonInter) {
+	nonint = (rmode->viTVMode&0x0003)
+	if(nonint!=HorVer.nonInter) {
 		changeMode = 1;
-		HorVer.nonInter = (rmode->viTVMode&0x0003);
+		HorVer.nonInter = nonint;
 	}
 	HorVer.tv = _SHIFTR(rmode->viTVMode,2,3);
 	HorVer.dispPosX = rmode->viXOrigin;
