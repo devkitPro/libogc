@@ -20,7 +20,7 @@ static u8 audioBuf[2][SNDBUFFERSIZE] ATTRIBUTE_ALIGN(32);
 
 static lwpq_t player_queue;
 static lwp_t hplayer;
-static u32 player_stack[STACKSIZE/sizeof(u32)];
+static u8 player_stack[STACKSIZE];
 static void* player(void *);
 
 #ifdef _GCMOD_DEBUG
