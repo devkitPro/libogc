@@ -27,25 +27,27 @@ int _DEFUN (_open_r, (r, file, flags, mode),
 
 	i = 0;
 	dev = -1;
-	while(devoptab_list[i]) {
-		namelen = strlen(devoptab_list[i]->name);
-		if(strncmp(devoptab_list[i]->name,file,namelen)==0) {
-			switch(i) {
-				case STD_NET:
-					if(file[namelen]!=':') return -1;
-					sprintf(lfile,"%s",&file[namelen+1]);
-					break;
-				case STD_SDCARD:
-					if(!isdigit(file[namelen]) || file[namelen+1]!=':') return -1;
-					sprintf(lfile,"dev%d:%s",(file[namelen]-'0'),&file[namelen+2]);
-					break;
-				default:
-					break;
+	while(i<STD_MAX) {
+		if(devoptab_list[i]) {
+			namelen = strlen(devoptab_list[i]->name);
+			if(strncmp(devoptab_list[i]->name,file,namelen)==0) {
+				switch(i) {
+					case STD_NET:
+						if(file[namelen]!=':') return -1;
+						sprintf(lfile,"%s",&file[namelen+1]);
+						break;
+					case STD_SDCARD:
+						if(!isdigit(file[namelen]) || file[namelen+1]!=':') return -1;
+						sprintf(lfile,"dev%d:%s",(file[namelen]-'0'),&file[namelen+2]);
+						break;
+					default:
+						break;
 
+				}
+
+				dev = i;
+				break;
 			}
-
-			dev = i;
-			break;
 		}
 		i++;
 	}
@@ -71,28 +73,31 @@ int _DEFUN (open, (file, flags, mode),
 
 	i = 0;
 	dev = -1;
-	while(devoptab_list[i]) {
-		namelen = strlen(devoptab_list[i]->name);
-		if(strncmp(devoptab_list[i]->name,file,namelen)==0) {
-			switch(i) {
-				case STD_NET:
-					if(file[namelen]!=':') return -1;
-					sprintf(lfile,"%s",&file[namelen+1]);
-					break;
-				case STD_SDCARD:
-					if(!isdigit(file[namelen]) && file[namelen+1]!=':') return -1;
-					sprintf(lfile,"dev%d:%s",(file[namelen]-'0'),&file[namelen+2]);
-					break;
-				default:
-					break;
+	while(i<STD_MAX) {
+		if(devoptab_list[i]) {
+			namelen = strlen(devoptab_list[i]->name);
+			if(strncmp(devoptab_list[i]->name,file,namelen)==0) {
+				switch(i) {
+					case STD_NET:
+						if(file[namelen]!=':') return -1;
+						sprintf(lfile,"%s",&file[namelen+1]);
+						break;
+					case STD_SDCARD:
+						if(!isdigit(file[namelen]) && file[namelen+1]!=':') return -1;
+						sprintf(lfile,"dev%d:%s",(file[namelen]-'0'),&file[namelen+2]);
+						break;
+					default:
+						break;
 
+				}
+
+				dev = i;
+				break;
 			}
-
-			dev = i;
-			break;
 		}
 		i++;
 	}
+	if(i>=STD_MAX) return -1;
 
 	fd = -1;
 	handle = -1;

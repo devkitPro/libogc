@@ -3,6 +3,6 @@
 
 #include "iosupp.h"
 
-extern const devoptab_t dotab_con;
+extern const devoptab_t dotab_stdout;
 
 #endif

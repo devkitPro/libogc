@@ -5,9 +5,10 @@
 
 #define STD_IN			0
 #define STD_OUT			1
-#define STD_NET			2
-#define STD_SDCARD		3
-#define STD_MAX			4
+#define STD_ERR			2
+#define STD_NET			3
+#define STD_SDCARD		4
+#define STD_MAX			5
 
 #define _SHIFTL(v, s, w)	\
     ((unsigned int) (((unsigned int)(v) & ((0x01 << (w)) - 1)) << (s)))
