@@ -50,7 +50,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uipopt.h,v 1.2 2005-03-11 16:27:22 shagkur Exp $
+ * $Id: uipopt.h,v 1.3 2005-03-28 13:31:53 shagkur Exp $
  *
  */
 
@@ -138,10 +138,10 @@ typedef u16 uip_stats_t;
 #define UIP_IPADDR1     168 /**< The second octet of the IP address of
 			       this uIP node, if UIP_FIXEDADDR is
 			       1. \hideinitializer */
-#define UIP_IPADDR2     0   /**< The third octet of the IP address of
+#define UIP_IPADDR2     1   /**< The third octet of the IP address of
 			       this uIP node, if UIP_FIXEDADDR is
 			       1. \hideinitializer */
-#define UIP_IPADDR3     2   /**< The fourth octet of the IP address of
+#define UIP_IPADDR3     3   /**< The fourth octet of the IP address of
 			       this uIP node, if UIP_FIXEDADDR is
 			       1. \hideinitializer */
 
@@ -164,7 +164,7 @@ typedef u16 uip_stats_t;
 #define UIP_DRIPADDR1   168 /**< The second octet of the IP address of
 			       the default router, if UIP_FIXEDADDR is
 			       1. \hideinitializer */
-#define UIP_DRIPADDR2   0   /**< The third octet of the IP address of
+#define UIP_DRIPADDR2   1   /**< The third octet of the IP address of
 			       the default router, if UIP_FIXEDADDR is
 			       1. \hideinitializer */
 #define UIP_DRIPADDR3   1   /**< The fourth octet of the IP address of
@@ -425,7 +425,7 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_BUFSIZE     1500
+#define UIP_BUFSIZE     1530
 
 
 /**
@@ -435,7 +435,7 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_STATISTICS  1
+#define UIP_STATISTICS  0
 
 /**
  * Determines if logging of certain events should be compiled in.
@@ -553,9 +553,7 @@ struct httpd_state {
 /* Include the header file for the application program that should be
    used. If you don't use the example web server, you should change
    this. */
-#include "../bba_dbg.h"
 
-#define UIP_APPCALL	 bba_appcall
-#define UIP_APPSTATE_SIZE	0
+#include "../bba_dbg.h"
 
 #endif /* __UIPOPT_H__ */

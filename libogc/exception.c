@@ -79,7 +79,7 @@ void __exception_init()
 	mtmsr(mfmsr()|MSR_RI);
 }
 
-void __excpetion_close()
+void __excpetion_closeall()
 {
 	s32 i;
 	for(i=0;i<NUM_EXCEPTIONS;i++) {
@@ -88,6 +88,14 @@ void __excpetion_close()
 		DCFlushRangeNoSync(pAdd,0x100);
 		ICInvalidateRange(pAdd,0x100);
 	}
+}
+
+void __excpetion_close(u32 except)
+{
+	void *pAdd = (void*)(0x80000000|exception_location[except]);
+	*(u32*)pAdd = 0x4C000064;
+	DCFlushRangeNoSync(pAdd,0x100);
+	ICInvalidateRange(pAdd,0x100);
 }
 
 void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*))
@@ -125,8 +133,8 @@ static void _cpu_print_stack(void *pc,void *lr,void *r1)
 //just implement core for unrecoverable exceptions.
 void c_default_exceptionhandler(frame_context *pCtx)
 {
-	VIDEO_SetFramebuffer(exception_xfb);
-	__console_init(&exception_con,exception_xfb,20,20,640,574,1280);
+//	VIDEO_SetFramebuffer(exception_xfb);
+//	__console_init(&exception_con,exception_xfb,20,20,640,574,1280);
 
 	printf("Exception (%s) occured!\n", exception_name[pCtx->EXCPT_Number]);
 

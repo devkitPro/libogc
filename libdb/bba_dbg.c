@@ -1,7 +1,10 @@
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include "asm.h"
 #include "processor.h"
 #include "exi.h"
+#include "cache.h"
 #include "uIP/uip_arp.h"
 
 #define BBA_MINPKTSIZE			60
@@ -193,6 +196,10 @@ struct bba_descr {
 static struct bba_priv bba_device;
 static struct bba_descr cur_descr;
 
+static u32 rxd_size;
+static u8 rx_buffer[BBA_RX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
+static u8 tx_buffer[BBA_RX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
+
 static vu32* const _siReg = (u32*)0xCC006400;
 
 static void bba_cmd_ins(u32 reg,void *val,u32 len);
@@ -200,7 +207,12 @@ static void bba_cmd_outs(u32 reg,void *val,u32 len);
 static void bba_ins(u32 reg,void *val,u32 len);
 static void bba_outs(u32 reg,void *val,u32 len);
 
+static u32 bba_poll(u16 *pstatus);
+
 extern void udelay(int us);
+extern u32 diff_msec(long long start,long long end);
+extern u32 diff_usec(long long start,long long end);
+extern long long gettime();
 
 static __inline__ void bba_cmd_insnosel(u32 reg,void *val,u32 len)
 {
@@ -313,6 +325,7 @@ static inline void bba_insdata(void *val,u32 len)
 	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_READ);
 }
 
+
 static inline void bba_outsregister(u32 reg)
 {
 	u32 req;
@@ -392,7 +405,6 @@ static void __bba_recv_init()
 	bba_out8(BBA_GCA,BBA_GCA_ARXERRB);
 }
 
-static u8 rx_buffer[1500];
 static void bba_start_rx()
 {
 	u16 rwp,rrp;
@@ -422,15 +434,15 @@ static void bba_start_rx()
 			bba_ins(rrp<<8,rx_buffer+chunk,size-chunk);
 		}
 
+		rxd_size += size;
 		bba_out12(BBA_RRP,cur_descr.next_packet_ptr);
 		
 		rwp = bba_in12(BBA_RWP);
 		rrp = bba_in12(BBA_RRP);
 	}
-	
 }
 
-static inline void bba_interrupt(struct bba_priv *dev)
+static inline void bba_interrupt(u16 *pstatus)
 {
 	u8 ir,imr,status;
 	
@@ -447,21 +459,15 @@ static inline void bba_interrupt(struct bba_priv *dev)
 		bba_out8(BBA_IR,BBA_IR_RI);
 	}
 	if(status&BBA_IR_REI) {
-		//__bba_rx_err(bba_in8(BBA_LRPS));
 		bba_out8(BBA_IR,BBA_IR_REI);
 	}
 	if(status&BBA_IR_TI) {
-		//__bba_tx_wake(priv);
-		//__bba_tx_err(bba_in8(BBA_LTPS));
 		bba_out8(BBA_IR,BBA_IR_TI);
 	}
 	if(status&BBA_IR_TEI) {
-		//__bba_tx_wake(priv);
-		//__bba_tx_err(bba_in8(BBA_LTPS));
 		bba_out8(BBA_IR,BBA_IR_TEI);
 	}
 	if(status&BBA_IR_FIFOEI) {
-		//__bba_tx_wake(priv);
 		bba_out8(BBA_IR,BBA_IR_FIFOEI);
 	}
 	if(status&BBA_IR_BUSEI) {
@@ -469,11 +475,23 @@ static inline void bba_interrupt(struct bba_priv *dev)
 	}
 	if(status&BBA_IR_RBFI) {
 		bba_start_rx();
+		bba_out8(BBA_IR,BBA_IR_RBFI);
 	}
-	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
-	EXI_Unlock(EXI_CHANNEL_0);
+	*pstatus |= (status<<8);
 }
 
+static s32 bba_dochallengeresponse()
+{
+	u16 status;
+	
+	/* as we do not have interrupts we've to poll the irqs */
+	bba_poll(&status);
+	if(status&0x0010) bba_poll(&status);
+	else return -1;
+	if(!(status&0x0008)) return -1;
+
+	return 0;
+}
 
 static s32 __bba_init(struct bba_priv *dev)
 {
@@ -482,6 +500,7 @@ static s32 __bba_init(struct bba_priv *dev)
 	__bba_reset();
 
 	bba_ins(BBA_NAFR_PAR0,dev->ethaddr.addr, 6);
+	uip_setethaddr(dev->ethaddr);
 
 	dev->revid = bba_cmd_in8(0x01);
 	
@@ -491,8 +510,6 @@ static s32 __bba_init(struct bba_priv *dev)
 	bba_out8(0x5b, (bba_in8(0x5b)&~0x80));
 	bba_out8(0x5e, 0x01);
 	bba_out8(0x5c, (bba_in8(0x5c)|0x04));
-
-	bba_out8(BBA_NCRB, 0x00);
 
 	__bba_recv_init();
 	
@@ -524,10 +541,17 @@ static s32 bba_probe(struct bba_priv *dev)
 	s32 ret;
 	u32 cid;
 
+	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==0) return -1;
+
 	cid = __bba_read_cid();
-	if(cid!=BBA_CID) return -1;
-	
+	if(cid!=BBA_CID) {
+		EXI_Unlock(EXI_CHANNEL_0);
+		return -1;
+	}
+
 	ret = bba_init_one(dev);
+
+	EXI_Unlock(EXI_CHANNEL_0);
 	return ret;
 }
 
@@ -557,55 +581,51 @@ static u32 bba_calc_response(struct bba_priv *priv,u32 val)
 	return ((c0 << 24) | (c1 << 16) | (c2 << 8) | c3);
 }
 
-static u32 bba_event_handler(u32 nChn,u32 nDev)
+static u32 bba_poll(u16 *pstatus)
 {
-	u8 status;
+	u8 status = 0;
+	u32 ret;
+	s64 start,now;
 
-	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,bba_event_handler)==0) {
-		return 1;
+	ret = 0;
+	*pstatus = 0;
+	start = now = gettime();
+	while(!ret && diff_msec(start,now)<10) {
+		if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==1) {
+			status = bba_cmd_in8(0x03);
+			bba_cmd_out8(0x02,BBA_CMD_IRMASKALL);
+			if(status) {
+				if(status&0x80) {
+					bba_cmd_out8(0x03,0x80);
+					bba_interrupt(pstatus);
+				}
+				if(status&0x40) {
+					bba_cmd_out8(0x03, 0x40);
+					__bba_init(&bba_device);
+				}
+				if(status&0x20) {
+					bba_cmd_out8(0x03, 0x20);
+				}
+				if(status&0x10) {
+					u32 response,challange;
+					bba_cmd_out8(0x05,bba_device.acstart);
+					bba_cmd_ins(0x08,&challange,sizeof(challange));
+					response = bba_calc_response(&bba_device,challange);
+					bba_cmd_outs(0x09,&response,sizeof(response));
+					bba_cmd_out8(0x03, 0x10);
+				}
+				if(status&0x08) {
+					bba_cmd_out8(0x03, 0x08);
+				}
+				*pstatus |= status;
+				ret = 1;
+			}
+			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+			EXI_Unlock(EXI_CHANNEL_0);
+			now = gettime();
+		}
 	}
-
-	status = bba_cmd_in8(0x03);
-	bba_cmd_out8(0x02,BBA_CMD_IRMASKALL);
-
-	if(status&0x80) {
-		bba_cmd_out8(0x03,0x80);
-		bba_interrupt(&bba_device);
-		return 1;
-	}
-	if(status&0x40) {
-		bba_cmd_out8(0x03, 0x40);
-		__bba_init(&bba_device);
-		bba_cmd_out8(0x02, BBA_CMD_IRMASKNONE);
-		EXI_Unlock(EXI_CHANNEL_0);
-		return 1;
-	}
-	if(status&0x20) {
-		bba_cmd_out8(0x03, 0x20);
-		bba_cmd_out8(0x02, BBA_CMD_IRMASKNONE);
-		EXI_Unlock(EXI_CHANNEL_0);
-		return 1;
-	}
-	if(status&0x10) {
-		u32 response,challange;
-		bba_cmd_out8(0x05,bba_device.acstart);
-		bba_cmd_ins(0x08,&challange,sizeof(challange));
-		response = bba_calc_response(&bba_device,challange);
-		bba_cmd_outs(0x09,&response,sizeof(response));
-
-		bba_cmd_out8(0x03, 0x10);
-		bba_cmd_out8(0x02, BBA_CMD_IRMASKNONE);
-		EXI_Unlock(EXI_CHANNEL_0);
-		return 1;
-	}
-	if(status&0x08) {
-		bba_cmd_out8(0x03, 0x08);
-		bba_cmd_out8(0x02, BBA_CMD_IRMASKNONE);
-		EXI_Unlock(EXI_CHANNEL_0);
-		return 1;
-	}
-	bba_interrupt(&bba_device);
-	return 1;
+	return ret;
 }
 
 void bba_init()
@@ -614,22 +634,65 @@ void bba_init()
 
 	_siReg[15] = (_siReg[15]&~0x0001);
 
-	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)!=1) return;
-	
 	ret = bba_probe(&bba_device);
-	if(ret<0) {
-		EXI_Unlock(EXI_CHANNEL_0);
-		return;
-	}
-	EXI_RegisterEXICallback(EXI_CHANNEL_2,bba_event_handler);
-	EXI_Unlock(EXI_CHANNEL_0);
+	if(ret<0) return;
+
+	ret = bba_dochallengeresponse();
+	if(ret<0) return;
 
 	do {
 		udelay(20000);
 	} while(!__bba_getlink_state_async());
 }
 
-void bba_appcall()
+u32 bba_send()
 {
+	u32 i,len,level;
 
+	_CPU_ISR_Disable(level);
+	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==0) {
+		_CPU_ISR_Restore(level);
+		return 0;
+	}
+	if(!__linkstate()) {
+		EXI_Unlock(EXI_CHANNEL_0);
+		_CPU_ISR_Restore(level);
+		return 0;
+	}
+
+	memset(tx_buffer,0,UIP_BUFSIZE);
+
+	len = uip_len;
+	for(i=0;i<UIP_LLH_LEN+40;i++) tx_buffer[i] = uip_buf[i];
+	for(;i<len;i++) tx_buffer[i] = uip_appdata[i-(UIP_LLH_LEN+40)];
+	
+	while((bba_in8(BBA_NCRA)&(BBA_NCRA_ST0|BBA_NCRA_ST1)));
+
+	bba_out12(BBA_TXFIFOCNT,len);
+	if(len<BBA_MINPKTSIZE) len = BBA_MINPKTSIZE;
+	DCStoreRange(tx_buffer,len);
+
+	bba_select();
+	bba_outsregister(BBA_WRTXFIFOD);
+	bba_outsdata(tx_buffer,len);
+	bba_deselect();
+
+	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)));		//&~BBA_NCRA_ST0
+	EXI_Unlock(EXI_CHANNEL_0);
+
+	_CPU_ISR_Restore(level);
+	return len;
+}
+
+u32 bba_read()
+{
+	u16 status;
+	
+	rxd_size = 0;
+	bba_poll(&status);
+	if(status&0x0280) {
+		DCFlushRange(tx_buffer,rxd_size);
+		memcpy(uip_buf,rx_buffer,rxd_size);
+	}
+	return rxd_size;
 }

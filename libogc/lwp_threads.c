@@ -72,6 +72,36 @@ void __lwp_dumpcontext_fp(lwp_cntrl *thrA,lwp_cntrl *thrB)
 
 #endif
 
+void __lwp_getthreadlist(lwp_obj **thrs)
+{
+	*thrs = _lwp_objects;
+}
+
+s32 __lwp_getcurrentid()
+{
+	return _thr_executing->id;
+}
+
+
+frame_context* __lwp_getthrcontext(s32 thr_id)
+{
+	frame_context *ctx = NULL;
+
+	if(_lwp_objects[thr_id].lwp_id!=-1
+		&& _lwp_objects[thr_id].thethread)  {
+		ctx = &((lwp_cntrl*)_lwp_objects[thr_id].thethread)->context;
+	}
+	return ctx;
+}
+
+u32 __lwp_is_threadactive(s32 thr_id)
+{
+	if(_lwp_objects[thr_id].lwp_id!=-1
+		&& _lwp_objects[thr_id].thethread) return 1;
+
+	return 0;
+}
+
 u32 __lwp_isr_in_progress()
 {
 	register u32 isr_nest_level;
@@ -530,10 +560,10 @@ u32 __lwp_thread_init(lwp_cntrl *thethread,void *stack_area,u32 stack_size,u32 p
 	thethread->stack_size = act_stack_size;
 
 	i=0;
-	while(i<1024 && _lwp_objects[i].thethread) i++;
+	while(i<1024 && _lwp_objects[i].lwp_id!=-1) i++;
 	if(i<1024) {
 		thethread->own = &_lwp_objects[i];
-		_lwp_objects[i].lwp_id = thethread->id = i+1;
+		_lwp_objects[i].lwp_id = thethread->id = i;
 		_lwp_objects[i].thethread = thethread;
 		__lwp_threadqueue_init(&_lwp_objects[i].join_list,LWP_THREADQ_MODEFIFO,LWP_STATES_WAITING_FOR_JOINATEXIT,0);
 	} else 
@@ -570,14 +600,14 @@ void __lwp_thread_close(lwp_cntrl *thethread)
 	}
 	
 	_CPU_ISR_Disable(level);
-	idx = thethread->id-1;
+	idx = thethread->id;
 	thethread->id = -1;
 	value_ptr = (void**)thethread->wait.ret_arg;
 	if(thethread->own) {
 		while((p=__lwp_threadqueue_dequeue(&thethread->own->join_list))) {
 			*(void**)p->wait.ret_arg = value_ptr;
 		}
-		_lwp_objects[idx].lwp_id = 0;
+		_lwp_objects[idx].lwp_id = -1;
 		_lwp_objects[idx].thethread = NULL;
 		thethread->own = NULL;
 	}
@@ -665,7 +695,7 @@ u32 __lwp_sys_init()
 	_thr_allocated_fp = NULL;
 
 	for(index=0;index<1024;index++) {
-		_lwp_objects[index].lwp_id = 0;
+		_lwp_objects[index].lwp_id = -1;
 		_lwp_objects[index].thethread = NULL;
 	}
 	for(index=0;index<=LWP_PRIO_MAX;index++)
