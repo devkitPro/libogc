@@ -67,7 +67,7 @@ static const u32 VIDEO_Mode640X480YUV16[3][32] = {
 	}
 };
 
-static const u8 video_timing[5][38] = {
+static const u8 video_timing[6][38] = {
 	{
 		0x06,0x00,0x00,0xF0,0x00,0x18,0x00,0x19,
 		0x00,0x03,0x00,0x02,0x0C,0x0D,0x0C,0x0D,
@@ -102,7 +102,22 @@ static const u8 video_timing[5][38] = {
 		0x02,0x06,0x02,0x05,0x02,0x04,0x02,0x07,
 		0x02,0x0D,0x01,0xAD,0x40,0x4E,0x70,0xA2,
 		0x01,0x75,0x7A,0x00,0x01,0x9C
+	},
+	{
+		0x06,0x00,0x00,0xF0,0x00,0x18,0x00,0x18,
+		0x00,0x04,0x00,0x04,0x10,0x0E,0x10,0x0E,
+		0x02,0x06,0x02,0x08,0x02,0x06,0x02,0x08,
+		0x02,0x0E,0x01,0xAD,0x40,0x4E,0x70,0xA2,
+		0x01,0x75,0x7A,0x00,0x01,0x9C
 	}
+};
+
+static const u16 taps[26] = {
+	0x01F0,0x01DC,0x01AE,0x0174,0x0129,0x00DB,
+	0x008E,0x0046,0x000C,0x00E2,0x00CB,0x00C0,
+	0x00C4,0x00CF,0x00DE,0x00EC,0x00FC,0x0008,
+	0x000F,0x0013,0x0013,0x000F,0x000C,0x0008,
+	0x0001,0x0000                              
 };
 
 GXRModeObj TVPal524IntAa = 
@@ -264,32 +279,32 @@ static const u8* __gettiming(u32 vimode)
 
 	switch(vimode) {
 		case VI_TVMODE_NTSC_INT:
+			return video_timing[0];
 			break;
-		case VI_TVMODE_EURGB60_INT:
+		case VI_TVMODE_NTSC_DS:
+			return video_timing[1];
 			break;
 		case VI_TVMODE_PAL_INT:
+			return video_timing[2];
 			break;
-		case VI_TVMODE_NTSC_INT:
-			break;
-		case VI_TVMODE_NTSC_INT:
-			break;
-		case VI_TVMODE_NTSC_INT:
-			break;
-		case VI_TVMODE_NTSC_INT:
+		case VI_TVMODE_PAL_DS:
+			return video_timing[3];
 			break;
 	}
+	return NULL;
 }
 
 static void __VIInit(u32 vimode)
 {
 	u32 cnt;
-	u32 vi_mode,interlace;
+	u32 vi_mode,interlace,prog;
 	const u8 *cur_timing = NULL;
 
 	vi_mode = vimode>>2;
 	interlace = vimode&0x01;
-
-	cur_timing = video_timing[vi_mode];
+	prog = vimode&0x02;
+	
+	cur_timing = __gettiming(vimode);
 
 	//reset the interface
 	cnt = 0;
@@ -325,8 +340,13 @@ static void __VIInit(u32 vimode)
 	_viReg[27] = 0x0001;		//set DI1
 	_viReg[36] = 0x2828;		//set HSR
 	
-	_viReg[1] = ((vi_mode<<8)|0x0005);		//set MODE & INT & enable
-	_viReg[54] = 0x0001;
+	if(vimode==0x0002 || vimode==0x0003) {
+		_viReg[1] = ((vi_mode<<8)|0x0005);		//set MODE & INT & enable
+		_viReg[54] = 0x0001;
+	} else {
+		_viReg[1] = ((vi_mode<<8)|(prog<<2)|0x0001);
+		_viReg[54] = 0x0000;
+	}
 }
 
 static u32 __getCurrentHalfLine()
