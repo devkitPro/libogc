@@ -40,7 +40,6 @@ void MP3Player_Init()
 {
 	AUDIO_Init(NULL);
 	AUDIO_SetDSPSampleRate(AI_SAMPLERATE_48KHZ);
-	AUDIO_RegisterDMACallback(dma_callback);
 
 	LWP_InitQueue(&streamplay_queue);
 }
@@ -53,6 +52,7 @@ s32 MP3Player_Play(const void *mp3stream, u32 len)
 	mp3source.len = len;
 	
 	mp3_playing = TRUE;
+	AUDIO_RegisterDMACallback(dma_callback);
 	if(LWP_CreateThread(&hstreamplay,streamplay,NULL,streamplay_stack,STACKSIZE,80)!=-1) return 0;
 
 	return -1;
