@@ -1239,13 +1239,14 @@ s32 card_readBlock(s32 drv_no,u32 block_no,u32 offset,u8 *buf,u32 len)
 	ret = card_preIO(drv_no);
 	if(ret!=0) return ret;
 
+	read_len = (1<<READ_BL_LEN(drv_no));
 	sects_per_block = (1<<(C_SIZE_MULT(drv_no)+2));
+
 	sect_start = block_no*sects_per_block;
-	sect_start += (offset/SECTOR_SIZE);
+	sect_start += (offset/read_len);
 	
 	printf("sect_start = %d\n",sect_start);
 
-	read_len = (1<<READ_BL_LEN(drv_no));
 	if(len<=read_len)
 		return card_readSector(drv_no,sect_start,buf,len);
 	
@@ -1262,8 +1263,8 @@ s32 card_readBlock(s32 drv_no,u32 block_no,u32 offset,u8 *buf,u32 len)
 	if((ret=__card_sendcmd(drv_no,0x19,arg))!=0) return ret;
 	if((ret=__card_response1(drv_no))==0) {
 		ptr = buf;
-		for(blocks=0;blocks<(len/SECTOR_SIZE);++blocks) {
-			if((ret=__card_multidatawrite(drv_no,ptr,_cur_page_size[drv_no]))!=0) break;
+		for(blocks=0;blocks<(len/read_len);++blocks) {
+			if((ret=__card_dataread(drv_no,ptr,_cur_page_size[drv_no]))!=0) break;
 			ptr += _cur_page_size[drv_no];
 		}
 		if((ret = __card_datareadfinal(drv_no,ptr,_cur_page_size[drv_no]))!=0) return ret;

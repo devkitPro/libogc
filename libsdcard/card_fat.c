@@ -39,6 +39,7 @@ static u32 _fatRootStartSect[MAX_DRIVE];
 static u32 _fatRootSects[MAX_DRIVE];
 static u32 _fatClusterStartSect[MAX_DRIVE];
 static u32 _fatCacheSize[MAX_DRIVE] = {0,0};
+static u32 _fatFATId[MAX_DRIVE] = {FS_UNKNOWN,FS_UNKNOWN};
 static u8 _drvName[MAX_DRIVE][MAX_DRIVE_NAME_LEN+1];
 
 static u16 *_fat[MAX_DRIVE] = {NULL,NULL};
@@ -144,16 +145,13 @@ s32 card_initFAT(s32 drv_no)
     _sdInfo[drv_no].spbr.reserved = fat_buf[0x25];
     _sdInfo[drv_no].spbr.ext_boot_signature = fat_buf[0x26];
     _sdInfo[drv_no].spbr.vol_id = ((u32)fat_buf[0x2a]<<24)|((u32)fat_buf[0x29]<<16)|((u32)fat_buf[0x28]<<8)|fat_buf[0x27];
-	memcpy(_sdInfo[drv_no].spbr.vol_label,&fat_buf[0x2b],11);
 
+	memcpy(_sdInfo[drv_no].spbr.vol_label,&fat_buf[0x2b],11);
 	_sdInfo[drv_no].spbr.vol_label[11] = 0;
-	if(memcmp(&fat_buf[0x36],"FAT12   ",8)==0) _sdInfo[drv_no].spbr.file_sys_type = FS_FAT12;
-	else if(memcmp(&fat_buf[0x36],"FAT16   ",8)==0) _sdInfo[drv_no].spbr.file_sys_type = FS_FAT16;
-	else {
-		_sdInfo[drv_no].spbr.file_sys_type = FS_UNKNOWN;
-		card_freeBuffer(fat_buf);
-		return CARDIO_ERROR_INVALIDPBR;
-	}
+	
+	memcpy(_sdInfo[drv_no].spbr.file_sys_type,&fat_buf[0x36],8);
+	_sdInfo[drv_no].spbr.file_sys_type[8] = 0;
+
 	_sdInfo[drv_no].spbr.signature = ((u16)fat_buf[0x1fe]<<8)|fat_buf[0x1ff];
 	_sdInfo[drv_no].spbr.sbpb.bytes_per_sect = ((u32)fat_buf[0xc]<<8)|fat_buf[0xb];
 	_sdInfo[drv_no].spbr.sbpb.sects_per_cluster = fat_buf[0xd];
@@ -182,10 +180,8 @@ s32 card_initFAT(s32 drv_no)
 	
 	// spbr check recommended by SSFDC forum 
 	if((_sdInfo[drv_no].spbr.signature!=0x55aa)
-		|| (_sdInfo[drv_no].spbr.sbpb.bytes_per_sect!=512)
 		|| (_sdInfo[drv_no].spbr.sbpb.fat_num<1 || _sdInfo[drv_no].spbr.sbpb.fat_num>16)
-		|| (_sdInfo[drv_no].spbr.sbpb.root_entry==0)
-		|| (_sdInfo[drv_no].spbr.sbpb.fmt_type!=0xf8)) 
+		|| (_sdInfo[drv_no].spbr.sbpb.root_entry==0)) 
 	{
 		card_freeBuffer(fat_buf);
 		return CARDIO_ERROR_INVALIDPBR;
@@ -199,10 +195,16 @@ s32 card_initFAT(s32 drv_no)
 	if(_fat[drv_no]) free(_fat[drv_no]);
 	
 	tot_clusters = _sdInfo[drv_no].spbr.sbpb.total_sects/_sdInfo[drv_no].spbr.sbpb.sects_per_cluster;
-
 	printf("tot_clusters = %d\n",tot_clusters);
+
+	if(tot_clusters<0xff5) 
+		_fatFATId[drv_no] = FS_FAT12;
+	else if(tot_clusters<0xfff5) 
+		_fatFATId[drv_no] = FS_FAT16;
+	else 
+		_fatFATId[drv_no] = FS_FAT32;
 	
-	_fatTblIdxCnt[drv_no] = tot_clusters;
+	_fatTblIdxCnt[drv_no] = tot_clusters+2;
 	_fat[drv_no] = (u16*)malloc(_fatTblIdxCnt[drv_no]*sizeof(u16));
 	if(!_fat[drv_no]) {
 		card_freeBuffer(fat_buf);
@@ -211,7 +213,12 @@ s32 card_initFAT(s32 drv_no)
 
 	fat_bytes = tot_clusters*2;
 	_fat1StartSect[drv_no] = _sdInfo[drv_no].smbr.partition_entries[0].start_lba_sector+_sdInfo[drv_no].spbr.sbpb.reserved_sects;
-	_fat1Sectors[drv_no] = fat_bytes/_sdInfo[drv_no].spbr.sbpb.bytes_per_sect;		//holds the count of FAT sectors
+	_fat1Sectors[drv_no] = fat_bytes/_sdInfo[drv_no].spbr.sbpb.bytes_per_sect;		//holds the count of FAT sectors, is recalculated 
+																					//and should match the sects_in_fat entry of the bpb
+	if(_fat1Sectors[drv_no]!=_sdInfo[drv_no].spbr.sbpb.sects_in_fat) {
+		card_freeBuffer(fat_buf);
+		return CARDIO_ERROR_INCORRECTFAT;
+	}
 	
 	printf("_fat1StartSect[%d] = %d\n",drv_no,_fat1StartSect[drv_no]);
 	printf("_fat1Sectors[%d] = %d\n",drv_no,_fat1Sectors[drv_no]);
@@ -224,7 +231,7 @@ s32 card_initFAT(s32 drv_no)
 			return CARDIO_ERROR_INTERNAL;
 		}
 		if(fat_buf[0]!=0xf8 || fat_buf[1]!=0xff || fat_buf[2]!=0xff) {
-			sector_plus += _fat1Sectors[drv_no]*SECTOR_SIZE;
+			sector_plus += _fat1Sectors[drv_no];
 			continue;
 		} else
 			break;
@@ -233,7 +240,7 @@ s32 card_initFAT(s32 drv_no)
 		card_freeBuffer(fat_buf);
 		return CARDIO_ERROR_INVALIDFAT;
 	}
-	if(_sdInfo[drv_no].spbr.file_sys_type==FS_FAT12) {
+	if(_fatFATId[drv_no]==FS_FAT12) {
 		u32 remaind;
 		u32 unread_cnt;
 		
@@ -241,12 +248,17 @@ s32 card_initFAT(s32 drv_no)
 		remaind = 0;
 		unread_cnt = 0;
 		for(i=0;i<_fat1Sectors[drv_no];++i) {
-			if(unread_cnt>0) {
-				//ret = card_readSector()
+			ret = card_readSector(drv_no,_fat1StartSect[drv_no]+sector_plus+i,fat_buf,SECTOR_SIZE);
+			if(ret!=0) {
+				card_freeBuffer(fat_buf);
+				return CARDIO_ERROR_INTERNAL;
+			}
+
+			for(j=0;j<=SECTOR_SIZE-3;j+=3) {
 			}
 		}
 		
-	} else {
+	} else if(_fatFATId[drv_no]==FS_FAT16) {
 		offset = 0;
 		for(i=0;i<_fat1Sectors[drv_no];++i) {
 			ret = card_readSector(drv_no,_fat1StartSect[drv_no]+sector_plus+i,fat_buf,SECTOR_SIZE);
@@ -256,7 +268,7 @@ s32 card_initFAT(s32 drv_no)
 			}
 
 			for(j=0;j<=SECTOR_SIZE-2;j+=2) {
-				SET_FAT_TBL(drv_no,offset,(((u32)fat_buf[j+1]<<8)|fat_buf[j]));
+				SET_FAT_TBL(drv_no,offset,(((u16)fat_buf[j+1]<<8)|fat_buf[j]));
 				++offset;
 
 				if(offset>=3) {
@@ -274,7 +286,7 @@ s32 card_initFAT(s32 drv_no)
 	card_freeBuffer(fat_buf);
 
 	_fatRootStartSect[drv_no] = _fat1StartSect[drv_no]+_fat1Sectors[drv_no]*_sdInfo[drv_no].spbr.sbpb.fat_num;
-	_fatRootSects[drv_no] = (_sdInfo[drv_no].spbr.sbpb.root_entry*32+SECTOR_SIZE-1)/SECTOR_SIZE;
+	_fatRootSects[drv_no] = (_sdInfo[drv_no].spbr.sbpb.root_entry*32+_sdInfo[drv_no].spbr.sbpb.bytes_per_sect-1)/_sdInfo[drv_no].spbr.sbpb.bytes_per_sect;
 	_fatClusterStartSect[drv_no] = _fatRootStartSect[drv_no]+_fatRootSects[drv_no];
 
 	printf("root_start = %d\n",_fatRootStartSect[drv_no]);
@@ -707,7 +719,7 @@ s32 card_findEntryInDirectory(u32 drv_no,u32 find_mode,F_HANDLE h_parent,u32 var
                                 continue;
 
                         /***
-                        * sm_GetLongName() calls sm_FindEntryInDirectory() again. 
+                        * card_getLongName() calls card_findEntryInDirectory() again. 
                         * But its find_mod is FIND_PREVIOUS, and it is processed before this loop
                         ***/
                         card_getLongName(drv_no, h_parent, cluster, offset+j, p_unicode_read);

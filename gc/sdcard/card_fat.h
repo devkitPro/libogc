@@ -6,6 +6,7 @@
 #define FS_UNKNOWN                      0
 #define FS_FAT12                        1
 #define FS_FAT16                        2
+#define FS_FAT32                        3
 
 #define UNUSED_CLUSTER					0
 #define DEFECTIVE_CLUSTER				0xfff7
@@ -85,7 +86,7 @@ typedef struct _pbr {
 	u32 ext_boot_signature;
 	u32 vol_id;
 	u8 vol_label[12];
-	u32 file_sys_type;
+	u8 file_sys_type[8];
 	u32 signature;
 } pbr;
 
