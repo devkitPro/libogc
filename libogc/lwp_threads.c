@@ -104,7 +104,6 @@ void __thread_dispatch()
 			*__lwp_thr_libc_reent = heir->libc_reent;
 		}
 
-		_cpu_context_save_fp((void*)&exec->fp);
 		_cpu_context_switch((void*)&exec->context,(void*)&heir->context);
 
 		if(!__lwp_thread_isallocatedfp(exec)) {
