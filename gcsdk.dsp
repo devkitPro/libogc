@@ -554,6 +554,38 @@ SOURCE=.\libmad\version.c
 # Begin Group "libdb.c"
 
 # PROP Default_Filter ""
+# Begin Group "uIP.c"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip_arch.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip_arch.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip_arp.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip_arp.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uipopt.h
+# End Source File
+# End Group
 # Begin Source File
 
 SOURCE=.\libdb\debug.c
