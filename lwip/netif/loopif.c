@@ -46,7 +46,9 @@
 #include "lwip/tcp.h"
 #include "lwip/ip.h"
 
-static u32 loopif_ticks;
+#include "lwp_watchdog.h"
+
+static u64 loopif_ticks;
 static wd_cntrl loopif_tmr_cntrl;
 
 extern unsigned int timespec_to_interval(const struct timespec *);
@@ -119,8 +121,8 @@ loopif_init(struct netif *netif)
   netif->output = loopif_output;
 
  tb.tv_sec = 0;
- tb.tv_nsec = 10*1000*1000;
- loopif_ticks = timespec_to_interval(&tb);
+ tb.tv_nsec = 10*TB_NSPERMS;
+ loopif_ticks = __lwp_wd_calc_ticks(&tb);
 
  return ERR_OK;
 }

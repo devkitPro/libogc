@@ -180,7 +180,7 @@ struct bba_priv {
 	struct eth_addr *ethaddr;
 };
 
-static u32 net_arp_ticks = 0;
+static u64 net_arp_ticks = 0;
 static wd_cntrl arp_time_cntrl;
 
 static lwpq_t wait_exi_queue;
@@ -219,8 +219,6 @@ extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
 
 extern void udelay(int us);
-extern unsigned int timespec_to_interval(const struct timespec *);
-extern unsigned long long timespec_to_ticks(const struct timespec *);
 
 /* new functions */
 #define bba_select()		EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_2,EXI_SPEED32MHZ)
@@ -1144,7 +1142,7 @@ err_t bba_init(struct netif *dev)
 
 	tb.tv_sec = ARP_TMR_INTERVAL/TB_MSPERSEC;
 	tb.tv_nsec = 0;
-	net_arp_ticks = timespec_to_ticks(&tb);
+	net_arp_ticks = __lwp_wd_calc_ticks(&tb);
 	__lwp_wd_initialize(&arp_time_cntrl,__arp_timer,NULL);
 	__lwp_wd_insert_ticks(&arp_time_cntrl,net_arp_ticks);
 
