@@ -26,7 +26,7 @@
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
 static u32 __dsp_inited = FALSE;
-static u32 __dsp_rudetask_pend = 0;
+static u32 __dsp_rudetask_pend = FALSE;
 static dsptask_t *curr_task,*last_task,*first_task,*tmp_task,*rude_task;
 
 static vu16* const _dspReg = (u16*)0xCC005000;
@@ -104,7 +104,7 @@ static void __dsp_boottask(dsptask_t *task)
 	while(!DSP_CheckMailFrom());
 	mail = DSP_ReadMailFrom();
 #ifdef _DSP_DEBUG
-	if((mail+0x7f8f0000)!=0xfeed) {
+	if(mail!=0x8071FEED) {			//if the overflow calculation applies here too, this should be the value which the dsp should deliver on succesfull sync.
 		printf("__dsp_boottask(): failed to sync DSP on boot (%08x)\n",mail);
 	}
 #endif
@@ -182,7 +182,7 @@ static void __dsp_exectask(dsptask_t *exec,dsptask_t *hire)
 
 static void __dsp_handler(u32 nIrq,void *pCtx)
 {
-	u32 mail,val;
+	u32 mail;
 #ifdef _DSP_DEBUG
 	printf("__dsp_handler()\n");
 #endif
@@ -195,117 +195,98 @@ static void __dsp_handler(u32 nIrq,void *pCtx)
 	printf("__dsp_handler(mail = 0x%08x)\n",mail);
 #endif
 	if(curr_task->flags&DSPTASK_CANCEL) {
-		val = mail+0x232F0000;
-		if(val==0x0002) mail = 0xDCD10003;
+		if(mail==0xDCD10002) mail = 0xDCD10003;
 	}
 
-	val = 0xDCD10002;
-	if(mail<val && mail<0xDCD10000) return;
-	if(mail>val) {
-		val += 4;
-		if(mail>val) return;
-		if(mail==val) {
-			if(curr_task->req_cb) curr_task->req_cb(curr_task);
-			return;
-		}
-	} else if(mail>0xDCD10000) {
+	switch(mail) {
+		case 0xDCD10000:
+			curr_task->state = DSPTASK_RUN;
+			if(curr_task->init_cb) curr_task->init_cb(curr_task);
+			break;
+		case 0xDCD10001:
 			curr_task->state = DSPTASK_RUN;
 			if(curr_task->res_cb) curr_task->res_cb(curr_task);
-			return;
-	}else if(mail==val) {
-		if(__dsp_rudetask_pend) {
-			if(rude_task==curr_task) {
-				DSP_SendMailTo(0xCDD10003);
+			break;
+		case 0xDCD10002:
+			if(__dsp_rudetask_pend==TRUE) {
+				if(rude_task==curr_task) {
+					DSP_SendMailTo(0xCDD10003);
+					while(DSP_CheckMailTo());
+					
+					rude_task = NULL;
+					__dsp_rudetask_pend = FALSE;
+					if(curr_task->res_cb) curr_task->res_cb(curr_task);
+				} else {
+					DSP_SendMailTo(0xCDD10001);
+					while(DSP_CheckMailTo());
+					
+					__dsp_exectask(curr_task,rude_task);
+					curr_task->flags = DSPTASK_YIELD;
+					curr_task = rude_task;
+					rude_task = NULL;
+					__dsp_rudetask_pend = FALSE;
+				}
+			} else if(curr_task->next==NULL) {
+				if(first_task==curr_task) {
+					DSP_SendMailTo(0xCDD10003);
+					while(DSP_CheckMailTo());
+
+					if(curr_task->res_cb) curr_task->res_cb(curr_task);
+				} else {
+					DSP_SendMailTo(0xCDD10001);
+					while(DSP_CheckMailTo());
+
+					__dsp_exectask(curr_task,first_task);
+					curr_task->state = DSPTASK_YIELD;
+					curr_task = first_task;
+				}
+			} else {
+				DSP_SendMailTo(0xCDD10001);
 				while(DSP_CheckMailTo());
 				
-				rude_task = NULL;
-				__dsp_rudetask_pend = 0;
-				if(curr_task->res_cb) curr_task->res_cb(curr_task);
-				return;
+				__dsp_exectask(curr_task,curr_task->next);
+				curr_task->state = DSPTASK_YIELD;
+				curr_task = curr_task->next;
 			}
-			DSP_SendMailTo(0xCDD10001);
-			while(DSP_CheckMailTo());
-			
-			__dsp_exectask(curr_task,rude_task);
-			curr_task->flags = DSPTASK_YIELD;
-			curr_task = rude_task;
-			rude_task = NULL;
-			__dsp_rudetask_pend = 0;
-			return;
-		}
-		if(curr_task->next==NULL) {
-			if(first_task==curr_task) {
-				DSP_SendMailTo(0xCDD10003);
+			break;
+		case 0xDCD10003:
+			if(__dsp_rudetask_pend==TRUE) {
+				if(curr_task->done_cb) curr_task->done_cb(curr_task);
+				DSP_SendMailTo(0xCDD10001);
+				while(DSP_CheckMailTo());
+				
+				__dsp_exectask(NULL,rude_task);
+				__dsp_removetask(curr_task);
+				
+				curr_task = rude_task;
+				__dsp_rudetask_pend = FALSE;
+				rude_task = NULL;
+			} else if(curr_task->next==NULL) {
+				if(first_task==curr_task) {
+					if(curr_task->done_cb) curr_task->done_cb(curr_task);
+					DSP_SendMailTo(0xCDD10002);
+					while(DSP_CheckMailTo());
+
+					curr_task->state = DSPTASK_DONE;
+					__dsp_removetask(curr_task);
+				}
+			} else {
+				if(curr_task->done_cb) curr_task->done_cb(curr_task);
+				
+				DSP_SendMailTo(0xCDD10001);
 				while(DSP_CheckMailTo());
 
-				if(curr_task->res_cb) curr_task->res_cb(curr_task);
-				return;
+				curr_task->state = DSPTASK_DONE;
+				__dsp_exectask(NULL,first_task);
+				curr_task = first_task;
+				__dsp_removetask(last_task);
 			}
-			DSP_SendMailTo(0xCDD10001);
-			while(DSP_CheckMailTo());
-
-			__dsp_exectask(curr_task,first_task);
-			curr_task->state = DSPTASK_YIELD;
-			curr_task = first_task;
-			return;
-		}
-		
-		DSP_SendMailTo(0xCDD10001);
-		while(DSP_CheckMailTo());
-		
-		__dsp_exectask(curr_task,curr_task->next);
-		curr_task->state = DSPTASK_YIELD;
-		curr_task = curr_task->next;
-		return;
-	} else if(mail==0xDCD10000) {
-		curr_task->state = DSPTASK_RUN;
-		if(curr_task->init_cb) curr_task->init_cb(curr_task);
-		return;
-	}
-	
-	if(__dsp_rudetask_pend) {
-		if(curr_task->done_cb) curr_task->done_cb(curr_task);
-		DSP_SendMailTo(0xCDD10001);
-		while(DSP_CheckMailTo());
-		
-		__dsp_exectask(NULL,rude_task);
-		__dsp_removetask(curr_task);
-		
-		curr_task = rude_task;
-		__dsp_rudetask_pend = 0;
-		rude_task = NULL;
-		return;
-	}
-	if(!curr_task->next) {
-		if(first_task==curr_task) {
-			if(curr_task->done_cb) curr_task->done_cb(curr_task);
-			DSP_SendMailTo(0xCDD10002);
-			while(DSP_CheckMailTo());
-
-			curr_task->state = DSPTASK_DONE;
-			__dsp_removetask(curr_task);
-			return;
-		}
-		if(curr_task->done_cb) curr_task->done_cb(curr_task);
-		
-		DSP_SendMailTo(0xCDD10001);
-		while(DSP_CheckMailTo());
-
-		curr_task->state = DSPTASK_DONE;
-		__dsp_exectask(NULL,first_task);
-		curr_task = first_task;
-		__dsp_removetask(last_task);
-		return;
+			break;
+		case 0xDCD10004:
+			if(curr_task->req_cb) curr_task->req_cb(curr_task);
+			break;
 	}
 
-	if(curr_task->done_cb) curr_task->done_cb(curr_task);
-	DSP_SendMailTo(0xCDD10001);
-	while(DSP_CheckMailTo());
-	
-	curr_task->state = DSPTASK_DONE;
-	__dsp_exectask(NULL,curr_task->next);
-	curr_task = curr_task->next;
-	__dsp_removetask(curr_task->prev);
 }
 
 void DSP_Init()
