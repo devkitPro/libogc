@@ -416,7 +416,7 @@ u32 CARD_Init(u32 nChn)
 
 	LWP_InitQueue(&wait_exi_queue);
 
-	//__dounlock(nChn);
+	__dounlock(nChn);
 	
 	DCInvalidateRange(sysarea,CARD_SYSAREA*CARD_SECTORSIZE);
 	CARD_ReadArray(nChn,0,sysarea,CARD_SYSAREA*CARD_SECTORSIZE);
@@ -741,14 +741,14 @@ static u32 __CARD_TxHandler(u32 nChn,void *pCtx)
 	return 1;
 }
 
-static void __card_srand(u32 val)
+static __inline__ void __card_srand(u32 val)
 {
 	crand_next = val;	
 }
 
-static u32 __card_rand()
+static __inline__ u32 __card_rand()
 {
-	crand_next = crand_next*0x41C64E6D+12345;
+	crand_next = (crand_next*0x41C64E6D)+12345;
 	return _SHIFTR(crand_next,16,15);
 }
 
@@ -866,10 +866,10 @@ static void DoneCallback(void *task)
 
 static u32 __dounlock(u32 nChn)
 {
-	u32 array_addr,len;
+	u32 array_addr,len,val0 = 0x7FEC8000;
 	u8 buffer[64];
 
-	array_addr = __card_initval();
+	array_addr = (val0|__card_initval())&0xFFFFF000;
 	len = __card_dummylen();
 	
 	printf("array_addr = %08x, len = %d\n",array_addr,len);
