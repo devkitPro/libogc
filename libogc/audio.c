@@ -41,9 +41,6 @@ extern void __MaskIrq(u32);
 
 static void __AICallbackStackSwitch(AIDCallback handler)
 {
-//	__OldStack = 0; // davem - use it or lose it
-					// mikew - it's just a stupid compiler warning. inline asm doesn't get optimized away.
-					// looks like 3.4 isn't picking up the use from the asm below
 	__asm__ __volatile__("mflr	%r0\n\
 						  stw	%r0,4(%r1)\n\
 						  stwu  %r1,-24(%r1)\n\
@@ -151,6 +148,8 @@ void AUDIO_Init(u8 *stack)
 		__AIS_Callback = NULL;
 		__AID_Callback = NULL;
 
+		__OldStack = NULL;	// davem - use it or lose it
+							// looks like 3.4 isn't picking up the use from the asm below
 		__CallbackStack = stack;
 
 		IRQ_Request(IRQ_AI_AI,__AISHandler,NULL);
