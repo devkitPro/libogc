@@ -85,6 +85,8 @@ s32 CARD_Delete(u32 chn,const char *filename);
 s32 CARD_DeleteAsync(u32 chn,const char *filename,cardcallback callback);
 s32 CARD_Write(card_file *file,void *buffer,u32 len,u32 offset);
 s32 CARD_WriteAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback callback);
+s32 CARD_Format(u32 chn);
+s32 CARD_FormatAsync(u32 chn,cardcallback callback);
 s32 CARD_GetErrorCode(u32 chn);
 
 #ifdef __cplusplus
