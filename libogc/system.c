@@ -44,7 +44,7 @@ struct _sramcntrl {
 	s32 enabled;
 	s32 locked;
 	s32 sync;
-} sramcntrl ATTRIBUTE_ALIGN(32);
+} __attribute__((packed)) sramcntrl;
 
 typedef struct _yay0header {
 	unsigned int id;
