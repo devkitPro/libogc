@@ -108,7 +108,7 @@ s32 card_initFAT(s32 drv_no)
 	s32 ret;
 	u8 *fat_buf;
 	u32 offset;
-	u32 fat_s8s,sector_plus,i,j;
+	u32 fat_bytes,sector_plus,i,j;
 	u32 pbr_offset,tot_clusters;
 
 	_fatFlag[drv_no] = NOT_INITIALIZED;
@@ -214,16 +214,16 @@ s32 card_initFAT(s32 drv_no)
 	else 
 		_fatFATId[drv_no] = FS_FAT32;
 	
-	_fatTblIdxCnt[drv_no] = tot_clusters+2;
+	_fatTblIdxCnt[drv_no] = tot_clusters;
 	_fat[drv_no] = (u16*)__lwp_wkspace_allocate(_fatTblIdxCnt[drv_no]*sizeof(u16));
 	if(!_fat[drv_no]) {
 		card_freeBuffer(fat_buf);
 		return CARDIO_ERROR_INTERNAL;
 	}
 
-	fat_s8s = tot_clusters*2;
+	fat_bytes = tot_clusters*2;
 	_fat1StartSect[drv_no] = _sdInfo[drv_no].smbr.partition_entries[0].start_lba_sector+_sdInfo[drv_no].spbr.sbpb.reserved_sects;
-	_fat1Sectors[drv_no] = fat_s8s/_sdInfo[drv_no].spbr.sbpb.bytes_per_sect;		//holds the count of FAT sectors, is recalculated 
+	_fat1Sectors[drv_no] = fat_bytes/_sdInfo[drv_no].spbr.sbpb.bytes_per_sect;		//holds the count of FAT sectors, is recalculated 
 																					//and should match the sects_in_fat entry of the bpb
 	if(_fat1Sectors[drv_no]!=_sdInfo[drv_no].spbr.sbpb.sects_in_fat) {
 		card_freeBuffer(fat_buf);
@@ -277,7 +277,7 @@ s32 card_initFAT(s32 drv_no)
 				return CARDIO_ERROR_INTERNAL;
 			}
 
-			for(j=0;j<=SECTOR_SIZE-2;j+=2) {
+			for(j=0;j<SECTOR_SIZE;j+=2) {
 				SET_FAT_TBL(drv_no,offset,(((u16)fat_buf[j+1]<<8)|fat_buf[j]));
 				++offset;
 
@@ -288,7 +288,7 @@ s32 card_initFAT(s32 drv_no)
 						else if(GET_FAT_TBL(drv_no,offset-1)==0xfff7)
 							SET_FAT_TBL(drv_no,offset-1,DEFECTIVE_CLUSTER);
 					}
-					if(offset>=tot_clusters+2) break;
+					if(offset>=tot_clusters) break;
 				}
 			}
 		}
