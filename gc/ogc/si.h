@@ -7,7 +7,7 @@
    extern "C" {
 #endif /* __cplusplus */
 
-void SIRefreshSamplingRate();
+void SI_RefreshSamplingRate();
 
 #ifdef __cplusplus
    }
