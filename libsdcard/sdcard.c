@@ -136,6 +136,7 @@ s32 SDCARD_Init()
 file* SDCARD_OpenFile(const char *filename,const char *mode)
 {
 	s32 err;
+	u32 size;
 	u8 buffer[8];
 	file *rfile = NULL;
 	
@@ -146,9 +147,11 @@ file* SDCARD_OpenFile(const char *filename,const char *mode)
 	if(mode[0]=='r') {
 		err = __sdcard_read(filename,buffer,0,1);
 		if(err==1) {
+			card_getFileSize(filename,&size);
 			strncpy(rfile->path,filename,SDCARD_MAX_PATH_LEN);
 			rfile->pos = 0;
 			rfile->mode = 'r';
+			rfile->size = size;	
 			return rfile;
 		}
 	}

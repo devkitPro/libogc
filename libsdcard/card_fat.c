@@ -337,6 +337,22 @@ u32 card_getDriveNo(const char *psz_name)
 	return MAX_DRIVE;
 }
 
+s32 card_allocCluster(s32 drv_no,u32 *p_cluster)
+{
+	u16 tot_cluster;
+	u16 i;
+	bpb *sbpb = &_sdInfo[drv_no].spbr.sbpb;
+
+	tot_cluster = (u16)(sbpb->total_sects/sbpb->sects_per_cluster);
+	for(i=0;i<tot_cluster;++i) {
+		if(GET_FAT_TBL(drv_no,i)==UNUSED_CLUSTER) {
+			*p_cluster = i;
+			return CARDIO_ERROR_READY;
+		}
+	}
+	return CARDIO_ERROR_NOEMPTYCLUSTER;
+}
+
 s32 card_readCluster(s32 drv_no,u32 cluster_no,u32 offset,void *buf,u32 len)
 {
 	s32 ret;
@@ -926,6 +942,37 @@ s32 card_addToOpenedFileList(s32 drv_no,opendfile_list* p_list)
     }
 
     return CARDIO_ERROR_READY;
+}
+
+s32 card_getFileSize(const char *filename,u32 *p_size)
+{
+	s32 ret;
+	s32 drv_no;
+	u32 cluster,offset;
+	u8 file_info[32];
+	u8 long_name[MAX_FILE_NAME_LEN+1];
+	F_HANDLE h_dir;
+	u8 *p_filename = (u8*)filename;
+
+	drv_no = card_getDriveNo(p_filename);
+	if(drv_no>=MAX_DRIVE)
+		return CARDIO_ERROR_INVALIDPARAM;
+
+	ret = card_preFAT(drv_no);
+	if(ret!=CARDIO_ERROR_READY)
+		FAT_RETURN(drv_no,ret);
+
+	*p_size = 0;
+	ret = card_checkPath(drv_no,p_filename,PATH_EXCEPT_LAST,&h_dir);
+	if(ret!=CARDIO_ERROR_READY)
+		FAT_RETURN(drv_no,ret);
+
+	ret = card_findEntryInDirectory(drv_no,FIND_FILE_NAME,h_dir,(u32)long_name,file_info,&cluster,&offset);
+	if(ret!=CARDIO_ERROR_READY)
+		FAT_RETURN(drv_no,ret);
+
+	*p_size = (u32)file_info[28]|((u32)file_info[29]<<8)|((u32)file_info[30]<<16)|((u32)file_info[31]<<24);
+	FAT_RETURN(drv_no,ret);
 }
 
 s32 card_readFromDisk(s32 drv_no,opendfile_list *p_list,void *buf,u32 cnt,u32 *p_cnt)

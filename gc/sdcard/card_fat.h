@@ -134,6 +134,8 @@ s32 card_openFile(const char *filename,u32 open_mode,F_HANDLE *p_handle);
 s32 card_closeFile(F_HANDLE h_file);
 s32 card_seekFile(F_HANDLE h_file,u32 seek_mode,s32 offset,s32 *p_oldoffset);
 
+s32 card_getFileSize(const char *filename,u32 *p_size);
+
 s32 card_readFile(F_HANDLE h_file,void *buf,u32 cnt,u32 *p_cnt);
 
 s32 card_readFromDisk(s32 drv_no,opendfile_list *p_list,void *buf,u32 cnt,u32 *p_cnt);
