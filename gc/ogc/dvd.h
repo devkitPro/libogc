@@ -27,8 +27,8 @@ struct _dvdcmdblk {
 	dvdcmdblk *next;
 	dvdcmdblk *prev;
 	u32 cmd;
-	u32 state;
-	u32 offset;
+	s32 state;
+	s32 offset;
 	u32 len;
 	void *buf;
 	u32 currtxsize;
@@ -60,6 +60,7 @@ struct _dvdfileinfo {
 void DVD_Init();
 void DVD_Reset();
 void DVD_Pause();
+void DVD_UnlockDrive();
 s32 DVD_Inquiry(dvdcmdblk *block,dvddrvinfo *info);
 s32 DVD_InquiryAsync(dvdcmdblk *block,dvddrvinfo *info,dvdcbcallback cb);
 s32 DVD_ReadId(dvdcmdblk *block,dvddiskid *id);
@@ -67,6 +68,7 @@ s32 DVD_ReadIDAsync(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb);
 s32 DVD_ReadPrio(dvdfileinfo *info,void *buf,u32 len,u32 offset,s32 prio);
 s32 DVD_SeekPrio(dvdfileinfo *info,u32 offset,s32 prio);
 s32 DVD_CancelAllAsync(dvdcbcallback cb);
+dvdcallback DVD_SetSwapDiskCallback(dvdcallback cb);
 
 #ifdef __cplusplus
    }

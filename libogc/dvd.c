@@ -98,10 +98,10 @@ static dvddrvinfo __dvd_driveinfo ATTRIBUTE_ALIGN(32);
 static dvdapploader __dvd_apploader ATTRIBUTE_ALIGN(32);
 static dvdcallbacklow __dvd_callback = NULL;
 static dvdcallbacklow __dvd_resetcovercb = NULL;
-static dvdcallbacklow __dvd_swapdiskcallback = NULL;
 static dvdcallbacklow __dvd_finalunlockcb = NULL;
-static dvdstatecb __dvd_laststate = NULL;
 static dvdcbcallback __dvd_cancelcallback = NULL;
+static dvdcallback __dvd_swapdiskcallback = NULL;
+static dvdstatecb __dvd_laststate = NULL;
 static dvdcmdblk *__dvd_executing = NULL;
 
 static dvdcmdblk __dvd_buffer$15;
@@ -626,10 +626,47 @@ static void __DVDInterruptHandler(u32 nIrq,void *pCtx)
 }
 
 static u32 idfin;
+static u8 fw_buffer[0x20000] ATTRIBUTE_ALIGN(32);
 static void __dvd_unlockdone(s32 result)
 {
 	idfin = 1;
 	LWP_WakeThread(__dvd_wait_queue);
+}
+
+static void __DVDDumpDriveCode(s32 result)
+{
+	static u32 drv_address = 0x000a0000;
+	static u32 stage = 0;
+	static u32 read_cnt = 0;
+#ifdef _DVD_DEBUG
+	printf("__DVDDumpDriveCode(%d 0x%08x)\n",read_cnt,drv_address);
+#endif
+	while(read_cnt<0x20000) {
+		if(stage==0x0000) {
+#ifdef _DVD_DEBUG
+			printf("__DVDDumpDriveCode(%d)\n",stage);
+#endif
+			stage = 0x0001;
+			__dvd_callback = __DVDDumpDriveCode;
+			_diReg[2] = 0xfe010000;
+			_diReg[3] = drv_address;
+			_diReg[4] = 0x00010000;
+			_diReg[7] = DVD_DI_START;
+
+			return;
+		}
+		if(stage==0x0001) {
+#ifdef _DVD_DEBUG
+			printf("__DVDDumpDriveCode(%d)\n",stage);
+#endif
+			stage = 0x0000;
+			((u32*)fw_buffer)[read_cnt/4] = _diReg[8];
+			drv_address += 4;
+			read_cnt += 4;
+			__DVDDumpDriveCode(result);
+		}
+	}
+	__dvd_unlockdone(result);
 }
 
 static void __DVDPatchDriveCode(s32 result)
@@ -640,7 +677,7 @@ static void __DVDPatchDriveCode(s32 result)
 	static u32 stage = 0;
 	static u32 nPos = 0;
 	static u32 drv_address = 0;
-	dvdcallbacklow cb = NULL;
+	dvdcallback cb = NULL;
 #ifdef _DVD_DEBUG
 	printf("__DVDPatchDriveCode()\n");
 #endif
@@ -685,7 +722,7 @@ static void __DVDPatchDriveCode(s32 result)
 			_diReg[3] = cmd_buf[1];
 			_diReg[4] = cmd_buf[2];
 			_diReg[7] = DVD_DI_START;
-			if(cb) cb(result);
+			if(cb) cb(result,NULL);
 			
 			return;
 		}
@@ -1213,26 +1250,12 @@ static void alarmcb(sysalarm *alarm)
 }
 
 static u8 buf[2048] ATTRIBUTE_ALIGN(32);
-
-void DVD_Init()
+void DVD_UnlockDrive()
 {
 	u32 level;
 	struct timespec tb;
 	dvdcmdblk cmd;
 	dvdfileinfo info;
-
-	if(__dvd_initflag) return;
-	__dvd_initflag = 1;
-#ifdef _DVD_DEBUG
-	printf("DVD_Init()\n");
-#endif
-	__dvd_clearwaitingqueue();
-	__DVDInitWA();
-
-	IRQ_Request(IRQ_PI_DI,__DVDInterruptHandler,NULL);
-	__UnmaskIrq(IRQMASK(IRQ_PI_DI));
-
-	LWP_InitQueue(&__dvd_wait_queue);
 
 	idfin = 0;
 	DVD_Reset();
@@ -1251,4 +1274,64 @@ void DVD_Init()
 
 	DVD_ReadPrio(&info,&__dvd_apploader,32,9280,2);
 	printf("%s\n%p\n%d\n",__dvd_apploader.revision,__dvd_apploader.init,__dvd_apploader.len);
+}
+
+static void __dvd_dumpcb(s32 result)
+{
+	__DVDUnlockDriveLow(0,__DVDDumpDriveCode);
+}
+
+static void dumpalarmcb(sysalarm *alarm)
+{
+	DCInvalidateRange(&__dvd_driveinfo,DVD_DRVINFSIZE);
+	DVD_LowInquiry(&__dvd_driveinfo,__dvd_dumpcb);
+}
+
+void DVD_DumpFirmware(void *buf)
+{
+	u32 level;
+	struct timespec tb;
+
+	idfin = 0;	
+	DVD_Reset();
+	SYS_CreateAlarm(&__dvd_resetalarm);
+
+	tb.tv_sec = 1;
+	tb.tv_nsec = 150*TB_NSPERMS;
+	SYS_SetAlarm(&__dvd_resetalarm,&tb,dumpalarmcb);
+	_CPU_ISR_Disable(level);
+	while(!idfin)
+		LWP_SleepThread(__dvd_wait_queue);
+	_CPU_ISR_Restore(level);
+
+	memcpy(buf,fw_buffer,0x20000);
+}
+
+void DVD_Init()
+{
+#ifdef _DVD_DEBUG
+		printf("DVD_Init()\n");
+#endif
+	if(!__dvd_initflag) {
+		__dvd_initflag = 1;
+		__dvd_clearwaitingqueue();
+		__DVDInitWA();
+
+		IRQ_Request(IRQ_PI_DI,__DVDInterruptHandler,NULL);
+		__UnmaskIrq(IRQMASK(IRQ_PI_DI));
+
+		LWP_InitQueue(&__dvd_wait_queue);
+	}
+}
+
+dvdcallback DVD_SetSwapDiskCallback(dvdcallback cb)
+{
+	u32 level;
+	dvdcallback retcb;
+
+	_CPU_ISR_Disable(level);
+	retcb = __dvd_swapdiskcallback;
+	__dvd_swapdiskcallback = cb;
+	_CPU_ISR_Restore(level);
+	return retcb;
 }
