@@ -240,6 +240,9 @@ u32 viMode,viFmt;
 
 static s16 displayOffsetH;
 static s16 displayOffsetV;
+static u32 currTvMode;
+static u64 changed;
+static const u8 *curr_Timing;
 static vu16* const _viReg = (u16*)0xCC002000;
 
 extern void __UnmaskIrq(u32);
@@ -452,6 +455,7 @@ void VI_Init()
 		__VIInit(VI_TVMODE_NTSC_INT);
 
 	retraceCount = 0;
+	changed = 0;
 	
 	_viReg[38] = ((taps[1]>>6)|(taps[2]<<4));
 	_viReg[39] = (taps[0]|_SHIFTL(taps[1],10,6));
@@ -480,6 +484,7 @@ void VI_Init()
 	vimode = viMode;
 	if(viFmt!=VI_DEBUG) vimode += (viFmt<<2);
 	curr_timing = (u8*)__gettiming(vimode);
+	currTvMode = viFmt;
 
 	viWidth = 640;
 	viXOrigin = (VI_MAX_WIDTH_NTSC - fbWidth)/2;
