@@ -144,10 +144,6 @@ SOURCE=.\libogc\exi.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\libogc\exi_asm.S
-# End Source File
-# Begin Source File
-
 SOURCE=.\libogc\gu.c
 # End Source File
 # Begin Source File

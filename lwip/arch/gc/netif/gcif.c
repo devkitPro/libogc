@@ -391,13 +391,13 @@ static u32 __bba_tx_wake(struct bba_priv *priv)
 {
 	u32 level;
 
+	_CPU_ISR_Disable(level);
 	if(priv->state==ERR_TXPENDING) {
-		_CPU_ISR_Disable(level);
 		priv->state = ERR_OK;
 		LWP_WakeThread(wait_tx_queue);
-		_CPU_ISR_Restore(level);
 		LWIP_DEBUGF(NETIF_DEBUG,("__bba_tx_wake(%p,%p)\n",priv,LWP_GetSelf()));
 	}
+	_CPU_ISR_Restore(level);
 	return 1;
 }
 
@@ -405,9 +405,10 @@ static u32 __bba_tx_stop(struct bba_priv *priv)
 {
 	u32 level;
 	err_t state;
+	static u32 c = 0;
 
-	state = priv->state;
 	_CPU_ISR_Disable(level);
+	state = priv->state;
 	while(priv->state==ERR_TXPENDING) {
 		LWP_SleepThread(wait_tx_queue);
 	}
