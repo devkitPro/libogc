@@ -13,7 +13,7 @@ extern int errno;
 #include "libogcsys/iosupp.h"
 #include "sdcard.h"
 
-#define _SDCARDIO_DEBUG
+//#define _SDCARDIO_DEBUG
 
 #define MAX_SDCARD_FD		64
 
@@ -157,7 +157,7 @@ int sdcardio_read(struct _reent *r,int fd,char *ptr,int len)
 	sdfile = __sdcardio_getfd(fd);
 	if(sdfile) ret = SDCARD_ReadFile(sdfile,ptr,len);
 #ifdef _SDCARDIO_DEBUG
-//	printf("sdcardio_read(%d,%d,%p,%d)\n",fd,ret,ptr,len);
+	printf("sdcardio_read(%d,%d,%p,%d)\n",fd,ret,ptr,len);
 #endif
 	return ret;
 }
@@ -193,8 +193,6 @@ int sdcardio_stat(struct _reent *r,int fd,struct stat *st)
 			st->st_ino = stats.ino;
 			st->st_dev = stats.dev;
 			st->st_mtime = mktime(&stats.ftime);
-			
-			printf("S_IFREG = %08x\n",S_IFREG);
 			
 			attr = 0;
 			if(stats.attr&SDCARD_ATTR_ARCHIVE) attr |= S_IFREG;

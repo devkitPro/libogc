@@ -39,8 +39,6 @@ int _DEFUN(close,(fildes),
 	unsigned int dev = 0;
 	unsigned int fd = -1;
 
-	printf("close(%04x)\n",fildes);
-	
 	if(fildes!=-1) {
 		dev = fildes;
 		if(fildes&0xf000) {
@@ -51,7 +49,6 @@ int _DEFUN(close,(fildes),
 		if(devoptab_list[dev]->close_r)
 			ret = devoptab_list[dev]->close_r(0,fd);
 	}
-	printf("close(%d)\n",ret);
 	return ret;
 }
 #endif

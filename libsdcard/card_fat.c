@@ -654,7 +654,9 @@ s32 card_readCluster(s32 drv_no,u32 cluster_no,u32 offset,void *buf,u32 len)
 	top_size = bytes_per_block-((start-block_start_no*sects_per_block)*SECTOR_SIZE+start_offset);
 #ifdef _CARDFAT_DEBUG
 	printf("sb = %d, eb = %d\n",block_start_no,block_end_no);
+	printf("top_size = %d,bytes_per_block = %d\n",top_size,bytes_per_block);
 #endif
+	
 	if(block_start_no==block_end_no) {
 		ret = card_readBlock(drv_no,block_start_no,bytes_per_block-top_size,buf,len);
 	} else {

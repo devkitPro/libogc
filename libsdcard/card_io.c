@@ -1277,7 +1277,7 @@ s32 card_readBlock(s32 drv_no,u32 block_no,u32 offset,u8 *buf,u32 len)
 	if((ret=__card_sendcmd(drv_no,0x12,arg))!=0) return ret;
 	if((ret=__card_response1(drv_no))==0) {
 		ptr = buf;
-		for(blocks=0;blocks<(len/read_len);++blocks) {
+		for(blocks=0;blocks<(len/read_len)-1;blocks++) {
 			if((ret=__card_dataread(drv_no,ptr,_cur_page_size[drv_no]))!=0) break;
 			ptr += _cur_page_size[drv_no];
 		}

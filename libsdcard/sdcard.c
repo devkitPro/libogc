@@ -218,9 +218,9 @@ s32 SDCARD_GetStats(sd_file *file,SDSTAT *st)
 		st->blk_sz = SECTOR_SIZE;
 		st->blk_cnt = (st->size/SECTOR_SIZE);
 		if(st->size%SECTOR_SIZE) st->blk_cnt++;
-//#ifdef _SDCARD_DEBUG
+#ifdef _SDCARD_DEBUG
 		printf("st->dev = %d\nst->ino = %d\nst->size = %d\nst->attr = %02x\nst->blk_cnt = %d\n",st->dev,st->ino,st->size,st->attr,st->blk_cnt);
-//#endif
+#endif
 		ret = SDCARD_ERROR_READY;
 	}
 	return ret;

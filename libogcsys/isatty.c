@@ -8,6 +8,5 @@ extern int errno;
 int _DEFUN(isatty,(file),
            int file)
 {
-	printf("isatty(%d)\n",file);
 	return 0;
 }
