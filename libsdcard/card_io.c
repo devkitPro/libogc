@@ -162,9 +162,7 @@ static void __card_alarmcallback(sysalarm *alarm)
 	while(i<MAX_DRIVE && (alarm!=&_ioAlarm[i]))  i++;
 	if(i>=MAX_DRIVE) return;
 
-	_CPU_ISR_Disable(level);
 	LWP_WakeThread(_ioWaitIO[i]);
-	_CPU_ISR_Restore(level);
 }
 
 static __inline__ void __card_waitio(s32 drv_no,const struct timespec *tb)
@@ -196,7 +194,11 @@ static u32 __card_checktimeout(u32 startT,u32 timeout)
 
 static u32 __exi_unlock(u32 chn,u32 dev)
 {
+	u32 level;
+
+	_CPU_ISR_Disable(level);
 	LWP_WakeThread(_ioEXILock[chn]);
+	_CPU_ISR_Restore(level);
 	return 1;
 }
 

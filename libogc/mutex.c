@@ -26,7 +26,7 @@ u32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
 	__lwp_thread_dispatchdisable();
 	ret = (lwp_mutex*)__lwp_wkspace_allocate(sizeof(lwp_mutex));
 	if(!ret) {
-		__lwp_thread_dispatchenable();
+		__lwp_thread_dispatchunnest();
 		return -1;
 	}
 
@@ -38,7 +38,7 @@ u32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
 
 	mutex->id = ++_g_mutex_id;
 	mutex->mutex = (void*)ret;
-	__lwp_thread_dispatchenable();
+	__lwp_thread_dispatchunnest();
 	return 0;
 }
 

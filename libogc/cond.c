@@ -80,7 +80,7 @@ u32 LWP_CondInit(cond_t *cond)
 	__lwp_thread_dispatchdisable();
 	ret = (struct _cond*)__lwp_wkspace_allocate(sizeof(struct _cond));
 	if(!ret) {
-		__lwp_thread_dispatchenable();
+		__lwp_thread_dispatchunnest();
 		return ENOMEM;
 	}
 
@@ -89,7 +89,7 @@ u32 LWP_CondInit(cond_t *cond)
 
 	ret->id = ++sys_condvarids;
 	*cond = (void*)ret;
-	__lwp_thread_dispatchenable();
+	__lwp_thread_dispatchunnest();
 
 	return 0;
 }

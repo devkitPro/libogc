@@ -14,8 +14,8 @@ extern int errno;
 #include "system.h"
 
 /* time variables */
+static u32 exi_wait_inited = 0;
 static lwpq_t time_exi_wait;
-static lwp_thrqueue timedwait_queue;
 
 extern u32 __SYS_GetRTC(u32 *gctime);
 extern syssram* __SYS_LockSram();
@@ -91,10 +91,11 @@ u32 diff_nsec(long long start,long long end)
 
 void __timesystem_init()
 {
-	__lwp_threadqueue_init(&timedwait_queue,LWP_THREADQ_MODEPRIORITY,LWP_STATES_LOCALLY_BLOCKED,6);
-	LWP_InitQueue(&time_exi_wait);
+	if(!exi_wait_inited) {
+		exi_wait_inited = 1;
+		LWP_InitQueue(&time_exi_wait);
+	}
 }
-
 
 void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result)
 {
@@ -176,29 +177,14 @@ void _DEFUN(udelay,(us),
 unsigned int _DEFUN(nanosleep,(tb),
            struct timespec *tb)
 {
-	u32 level,timeout;
-	lwp_cntrl *exec;
+	u64 timeout;
 
 	__lwp_thread_dispatchdisable();
 
-	exec = _thr_executing;
-	exec->wait.ret_code = TB_SUCCESSFUL;
-
-	if(tb->tv_nsec<TB_NSPERUS) {
-		udelay(tb->tv_nsec);
-		return TB_SUCCESSFUL;
-	}
-
 	timeout = timespec_to_ticks(tb);
-
-	_CPU_ISR_Disable(level);
-	__lwp_threadqueue_csenter(&timedwait_queue);
-	exec->wait.queue = &timedwait_queue;
-	exec->id = TB_REQ;
-	exec->wait.ret_arg = NULL;
-	exec->wait.ret_arg_1 = NULL;
-	_CPU_ISR_Restore(level);
-	__lwp_threadqueue_enqueue(&timedwait_queue,timeout);
+	__lwp_thread_setstate(_thr_executing,LWP_STATES_DELAYING|LWP_STATES_INTERRUPTIBLE_BY_SIGNAL);
+	__lwp_wd_initialize(&_thr_executing->timer,__lwp_thread_delayended,_thr_executing->own);
+	__lwp_wd_insert_ticks(&_thr_executing->timer,timeout);
 
 	__lwp_thread_dispatchenable();
 	return TB_SUCCESSFUL;
@@ -206,7 +192,11 @@ unsigned int _DEFUN(nanosleep,(tb),
 
 static u32 __time_exi_unlock()
 {
+	u32 level;
+
+	_CPU_ISR_Disable(level);
 	LWP_WakeThread(time_exi_wait);
+	_CPU_ISR_Restore(level);
 	return 1;
 }
 

@@ -92,6 +92,17 @@ static inline u32 __lwp_msr_getlevel()
 	else return 1;
 }
 
+void __lwp_thread_delayended(void *arg)
+{
+	lwp_obj *obj = (lwp_obj*)arg;
+	if(!obj) return;
+	if(!obj->thethread) return;
+	
+	__lwp_thread_dispatchdisable();
+	__lwp_thread_unblock(obj->thethread);
+	__lwp_thread_dispatchunnest();
+}
+
 void __thread_dispatch_fp()
 {
 	u32 level;
@@ -107,7 +118,7 @@ void __thread_dispatch_fp()
 		_cpu_context_restore_fp(&exec->context);
 		_thr_allocated_fp = exec;
 	}
-	_CPU_ISR_Restore(level);
+	_CPU_ISR_Restore(level);		
 }
 void __thread_dispatch()
 {

@@ -42,7 +42,7 @@ int __libc_lock_init(int *lock,int recursive)
 	__lwp_thread_dispatchdisable();
 	retlck = (lock_t*)__lwp_wkspace_allocate(sizeof(lock_t));
 	if(!retlck) {
-		__lwp_thread_dispatchenable();
+		__lwp_thread_dispatchunnest();
 		return -1;
 	}
 
@@ -54,7 +54,7 @@ int __libc_lock_init(int *lock,int recursive)
 
 	retlck->id = ++_g_libc_lck_id;
 	*lock = (int)retlck;
-	__lwp_thread_dispatchenable();
+	__lwp_thread_dispatchunnest();
 
 	return 0;
 }

@@ -601,16 +601,16 @@ void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb)
 		}
 		else system_alarms = alarm;
 	}
-
+	_CPU_ISR_Restore(level);
+	
 	if(!found) {
 		alarm->handle = NULL;
 		alarm->handle = __lwp_wkspace_allocate(sizeof(wd_cntrl));
 	}
 	if(alarm->handle) {
-		if(!found) __lwp_wd_initialize(alarm->handle,__sys_alarmhandler,alarm);
+		__lwp_wd_initialize(alarm->handle,__sys_alarmhandler,alarm);
 		__lwp_wd_insert_ticks(alarm->handle,alarm->ticks);
 	}
-	_CPU_ISR_Restore(level);
 }
 
 void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb)
@@ -641,16 +641,16 @@ void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const 
 		}
 		else system_alarms = alarm;
 	}
+	_CPU_ISR_Restore(level);
 
 	if(!found) {
 		alarm->handle = NULL;
 		alarm->handle = __lwp_wkspace_allocate(sizeof(wd_cntrl));
 	}
 	if(alarm->handle) {
-		if(!found) __lwp_wd_initialize(alarm->handle,__sys_alarmhandler,alarm);
+		__lwp_wd_initialize(alarm->handle,__sys_alarmhandler,alarm);
 		__lwp_wd_insert_ticks(alarm->handle,alarm->start_per);
 	}
-	_CPU_ISR_Restore(level);
 }
 
 void SYS_RemoveAlarm(sysalarm *alarm)

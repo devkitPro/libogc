@@ -37,7 +37,7 @@ u32 LWP_SemInit(sem_t *sem,u32 start,u32 max)
 	__lwp_thread_dispatchdisable();
 	ret = (lwp_sema*)__lwp_wkspace_allocate(sizeof(lwp_sema));
 	if(!ret) {
-		__lwp_thread_dispatchenable();
+		__lwp_thread_dispatchunnest();
 		return -1;
 	}
 
@@ -46,7 +46,7 @@ u32 LWP_SemInit(sem_t *sem,u32 start,u32 max)
 	__lwp_sema_initialize(ret,&attr,start);
 
 	*sem = (void*)ret;
-	__lwp_thread_dispatchenable();
+	__lwp_thread_dispatchunnest();
 	return 0;
 }
 

@@ -88,6 +88,7 @@ boolean __lwp_evaluatemode();
 
 u32 __lwp_isr_in_progress();
 void __lwp_rotate_readyqueue(u32);
+void __lwp_thread_delayended(void *);
 
 #include <libogc/lwp_threads.inl>
 

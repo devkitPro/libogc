@@ -22,20 +22,20 @@ u32 MQ_Init(mq_box_t *mqbox,u32 count)
 
 	ret = (mq_box*)__lwp_wkspace_allocate(sizeof(mq_box));
 	if(!ret) {
-		__lwp_thread_dispatchenable();
+		__lwp_thread_dispatchunnest();
 		return MQ_ERROR_TOOMANY;
 	}
 
 	attr.mode = LWP_MQ_FIFO;
 	if(!__lwpmq_initialize(&ret->mqcntrl,&attr,count,sizeof(mqmsg))) {
 		__lwp_wkspace_free(ret);
-		__lwp_thread_dispatchenable();
+		__lwp_thread_dispatchunnest();
 		return MQ_ERROR_TOOMANY;
 	}
 
 	ret->id = ++mqbox_ids;
 	*mqbox = (mq_box_t)ret;
-	__lwp_thread_dispatchenable();
+	__lwp_thread_dispatchunnest();
 	return MQ_ERROR_SUCCESSFUL;
 }
 

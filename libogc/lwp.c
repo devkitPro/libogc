@@ -139,13 +139,13 @@ void LWP_InitQueue(lwpq_t *thequeue)
 	__lwp_thread_dispatchdisable();
 	tqueue = (lwp_thrqueue*)__lwp_wkspace_allocate(sizeof(lwp_thrqueue));
 	if(!tqueue) {
-		__lwp_thread_dispatchenable();
+		__lwp_thread_dispatchunnest();
 		return;
 	}
 	__lwp_threadqueue_init(tqueue,LWP_THREADQ_MODEFIFO,LWP_STATES_WAITING_ON_THREADQ,0);
 
 	*thequeue = tqueue;
-	__lwp_thread_dispatchenable();
+	__lwp_thread_dispatchunnest();
 }
 
 void LWP_CloseQueue(lwpq_t thequeue)

@@ -586,11 +586,14 @@ static u32 __card_unlockedhandler(u32 chn,u32 dev)
 
 static void __card_synccallback(s32 chn,s32 result)
 {
+	u32 level;
 	card_block *card = &cardmap[chn];
 #ifdef _CARD_DEBUG
 	printf("__card_synccallback(%d,%d,%d)\n",chn,result,card->result);
 #endif
+	_CPU_ISR_Disable(level);
 	LWP_WakeThread(card->wait_sync_queue);
+	_CPU_ISR_Restore(level);
 }
 
 static s32 __card_readstatus(s32 chn,u8 *pstatus)
