@@ -85,17 +85,13 @@ static inline u32 __lwp_msr_getlevel()
 
 void __thread_dispatch()
 {
-	u32 level,switchw = _context_switch_want;
+	u32 level;
 	lwp_cntrl *exec,*heir;
 
 	exec = _thr_executing;
 	_CPU_ISR_Disable(level);
-#ifdef _LWPTHREADS_DEBUG
-	printk("__thread_dispatch(%p,%08x,%p,%08x,%d) enter\n",_thr_executing,_thr_executing->context.GPR[1],_thr_heir,_thr_heir->context.GPR[1],switchw);
-#endif
 	while(_context_switch_want==TRUE) {
 		heir = _thr_heir;
-		--switchw;
 		_thread_dispatch_disable_level = 1;
 		_context_switch_want = FALSE;
 		_thr_executing = heir;
@@ -120,9 +116,6 @@ void __thread_dispatch()
 		_CPU_ISR_Disable(level);
 	}
 	_thread_dispatch_disable_level = 0;
-#ifdef _LWPTHREADS_DEBUG
-	printk("__thread_dispatch(%p,%08x,%p,%08x,%d) leave\n",_thr_executing,_thr_executing->context.GPR[1],_thr_heir,_thr_heir->context.GPR[1],switchw);
-#endif
 	_CPU_ISR_Restore(level);
 }
 
