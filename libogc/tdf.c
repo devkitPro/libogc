@@ -27,7 +27,7 @@ typedef struct _tdimgheader {
 	u8 minlod;
 	u8 maxlod;
 	u8 unpacked;
-} TDImgHeader;
+} __attribute__((packed)) TDImgHeader;
 
 // texture palette header
 typedef struct _tdpalheader {
@@ -36,13 +36,13 @@ typedef struct _tdpalheader {
 	u8 pad;
 	u32 fmt;
 	u32 data_offset;
-} TDPalHeader;
+} __attribute__((packed)) TDPalHeader;
 
 // texture descriptor
 typedef struct _tddesc {
 	TDImgHeader *imghead;
 	TDPalHeader *palhead;
-} TDDescHeader;
+} __attribute__((packed)) TDDescHeader;
 
 static u32 TDF_GetTextureSize(u32 width,u32 height,u32 fmt)
 {

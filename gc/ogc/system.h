@@ -45,7 +45,7 @@ typedef struct _syssram {
 	u8 ntd;
 	u8 lang;
 	u8 flags;
-} syssram;
+} __attribute__((packed)) syssram;
 
 typedef struct _syssramex {
 	u8 flash_id[2][12];
@@ -55,7 +55,7 @@ typedef struct _syssramex {
 	u8 __padding0;
 	u16 flashID_chksum[2];
 	u8 __padding1[4];
-} syssramex;
+} __attribute__((packed)) syssramex;
 
 typedef struct _sysalarm sysalarm;
 
@@ -96,7 +96,7 @@ typedef struct _sys_fontheader {
     u8  c1;
     u8  c2;
     u8  c3;
-} sys_fontheader;
+} __attribute__((packed)) sys_fontheader;
 
 typedef void (*resetcallback)(void);
 
