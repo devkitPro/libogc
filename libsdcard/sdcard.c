@@ -4,9 +4,43 @@
 #include "exi.h"
 #include "sdcard.h"
 
-static __inline__ u32 __make_crc7(void *buffer)
+typedef struct _sdcard_cntrl {
+	u8 cmd[9];
+	s16 err_status;
+	u32 sd_arg;
+} sdcard_block;
+
+static sdcard_block sdcard_map[EXI_CHANNEL_MAX];
+
+static __inline__ u32 __make_crc7(void *buffer,u32 len)
 {
-	return 0;
+	u32 mask,cnt,bcnt;
+	u16 res,tmp;
+	u8 val,*ptr = (u8*)buffer;
+
+	cnt = 0;
+	res = 0;
+	while(cnt<len) {
+		bcnt = 0;
+		mask = 0x80;
+		while(bcnt<8) {
+			res <<= 1;
+			val = *ptr^((res&0xff)>>bcnt);
+			if(val&mask) {
+				res |= 0x01;
+				if((res^0x0008)&0x0008) res |= 0x0008;
+				else res &= ~0x0008;
+				
+			} else if(res&0x0008) res |= 0x0008;
+			else res &= ~0x0008;
+			
+			mask >>= 1;
+			bcnt++;
+		}
+		ptr++;
+		cnt++;
+	}
+	return (res<<1)&0xff;
 }
 
 s32 SDCARD_SetModeSPI(s32 chn)

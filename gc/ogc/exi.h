@@ -10,10 +10,12 @@
 #define EXI_CHANNEL_0				0
 #define EXI_CHANNEL_1				1
 #define EXI_CHANNEL_2				2
+#define EXI_CHANNEL_MAX				3
 
 #define EXI_DEVICE_0				0
 #define EXI_DEVICE_1				1
 #define EXI_DEVICE_2				2
+#define EXI_DEVICE_MAX				3
 
 #define EXI_EVENT_EXI				0
 #define EXI_EVENT_EXT				1

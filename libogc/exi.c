@@ -621,7 +621,7 @@ void __exi_irq_handler(u32 nIrq,void *pCtx)
 	dev = _SHIFTR((_exiReg[chan*5]&0x380),8,2);
 
 	exi = &eximap[chan];
-	_exiReg[chan*5] = ((_exiReg[chan*5]&~(EXI_EXI_IRQ|EXI_TC_IRQ|EXI_EXT_IRQ))|EXI_EXI_IRQ);
+	__exi_clearirqs(chan,1,0,0);
 
 	if(!exi->CallbackEXI) return;
 #ifdef _EXI_DEBUG
@@ -678,10 +678,9 @@ void __ext_irq_handler(u32 nIrq,void *pCtx)
 	chan = ((fact*(nIrq-IRQ_EXI0_EXT))>>1)&0x0f;
 	dev = _SHIFTR((_exiReg[chan*5]&0x380),8,2);
 
-	__MaskIrq(IRQMASK(nIrq));
-
 	exi = &eximap[chan];
-	_exiReg[chan*5] = ((_exiReg[chan*5]&~(EXI_EXI_IRQ|EXI_TC_IRQ|EXI_EXT_IRQ))|EXI_EXT_IRQ);
+	__MaskIrq(IRQMASK(nIrq));
+	__exi_clearirqs(chan,0,0,1);
 	
 	exi->flags &= ~EXI_FLAG_ATTACH;
 	if(exi->CallbackEXT) exi->CallbackEXT(chan,dev);
