@@ -64,6 +64,7 @@ irqhandler_start:
 	mfsrr0	r3
 	stw		r3,SRR0_OFFSET(r4)
 	mfsrr1	r3
+	rlwinm	r3,r3,0,19,17
 	stw		r3,SRR1_OFFSET(r4)
 	mr		r5,r3
 	nop
@@ -138,7 +139,14 @@ nested:
 	beq		easy_exit
 
 switch:
+	mfmsr	r15
+	ori		r15,r15,MSR_EE;
+	mtmsr	r15
+
 	bl		__thread_dispatch
+
+	rlwinm	r15,r15,0,17,15
+	mtmsr	r15
 
 easy_exit:
 	lwz		r4,CR_OFFSET(sp)
