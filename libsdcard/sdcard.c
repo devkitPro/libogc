@@ -179,11 +179,11 @@ sd_file* SDCARD_OpenFile(const char *filename,const char *mode)
 	return NULL;
 }
 
-u32 SDCARD_ReadFile(sd_file *file,void *buf,u32 len)
+s32 SDCARD_ReadFile(sd_file *pfile,void *buf,u32 len)
 {
 	s32 ret = SDCARD_ERROR_READY; 
 	u8 *buffer = (u8*)buf;
-	struct _sd_file *ifile = (struct _sd_file*)file;
+	struct _sd_file *ifile = (struct _sd_file*)pfile;
 
 	if(ifile && ifile->mode=='r') {
 		ret = __sdcard_read(ifile->path,buffer,ifile->pos,len);
@@ -192,9 +192,9 @@ u32 SDCARD_ReadFile(sd_file *file,void *buf,u32 len)
 	return ret;
 }
 
-u32 SDCARD_SeekFile(sd_file *file,u32 offset,u32 whence)
+s32 SDCARD_SeekFile(sd_file *pfile,u32 offset,u32 whence)
 {
-	struct _sd_file *ifile = (struct _sd_file*)file;
+	struct _sd_file *ifile = (struct _sd_file*)pfile;
 
 	if(ifile) {
 		if(whence==SDCARD_SEEK_SET) ifile->pos = 0;
@@ -206,15 +206,15 @@ u32 SDCARD_SeekFile(sd_file *file,u32 offset,u32 whence)
 	return -1;
 }
 
-u32 SDCARD_GetFileSize(sd_file *file)
+s32 SDCARD_GetFileSize(sd_file *pfile)
 {
-	struct _sd_file *ifile = (struct _sd_file*)file;
+	struct _sd_file *ifile = (struct _sd_file*)pfile;
 
 	if(ifile) return ifile->size;
 	return 0;
 }
 
-u32 SDCARD_ReadDir(const char *dirname,DIR *pdir_list)
+s32 SDCARD_ReadDir(const char *dirname,DIR *pdir_list)
 {
 	s32 ret;
 	u32 size;
@@ -239,4 +239,25 @@ u32 SDCARD_ReadDir(const char *dirname,DIR *pdir_list)
 		cnt++;
 	}
 	return entries;
+}
+
+s32 SDCARD_CloseFile(sd_file *pfile)
+{
+	struct _sd_file *ifile = (struct _sd_file*)pfile;
+	if(ifile) {
+		if(ifile->mode=='w') {
+		}
+		__lwp_wkspace_free(ifile);
+	}
+	return SDCARD_ERROR_READY;
+}
+
+s32 SDCARD_Term(s32 drv_no)
+{
+	if(drv_no<0 || drv_no>=MAX_DRIVE) return SDCARD_ERROR_NOCARD;
+
+	printf("SDCARD_Term(%d)\n",drv_no);
+
+	card_doUnmount(drv_no);
+	return SDCARD_ERROR_READY;
 }

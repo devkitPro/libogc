@@ -1235,7 +1235,9 @@ s32 card_readBlock(s32 drv_no,u32 block_no,u32 offset,u8 *buf,u32 len)
 	u32 blocks,read_len;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
-
+#ifdef _CARDIO_DEBUG
+	printf("card_readBlock(%d,%d,%d,%p,%d)\n",drv_no,block_no,offset,buf,len);
+#endif
 	ret = card_preIO(drv_no);
 	if(ret!=0) return ret;
 
@@ -1244,9 +1246,9 @@ s32 card_readBlock(s32 drv_no,u32 block_no,u32 offset,u8 *buf,u32 len)
 
 	sect_start = block_no*sects_per_block;
 	sect_start += (offset/read_len);
-	
-	//printf("sect_start = %d\n",sect_start);
-
+#ifdef _CARDIO_DEBUG
+	printf("sect_start = %d\n",sect_start);
+#endif
 	if(len<=read_len)
 		return card_readSector(drv_no,sect_start,buf,len);
 	
@@ -1254,20 +1256,22 @@ s32 card_readBlock(s32 drv_no,u32 block_no,u32 offset,u8 *buf,u32 len)
 		_cur_page_size[drv_no] = read_len;
 		if((ret=__card_setblocklen(drv_no,_cur_page_size[drv_no]))!=0) return ret;
 	}
-
+#ifdef _CARDIO_DEBUG
+	printf("_cur_page_size[drv_no] = %d\n",_cur_page_size[drv_no]);
+#endif
 	arg[0] = (sect_start>>15)&0xff;
 	arg[1] = (sect_start>>7)&0xff;
 	arg[2] = (sect_start<<1)&0xff;
 	arg[3] = (sect_start<<9)&0xff;
 
-	if((ret=__card_sendcmd(drv_no,0x19,arg))!=0) return ret;
+	if((ret=__card_sendcmd(drv_no,0x12,arg))!=0) return ret;
 	if((ret=__card_response1(drv_no))==0) {
 		ptr = buf;
 		for(blocks=0;blocks<(len/read_len);++blocks) {
 			if((ret=__card_dataread(drv_no,ptr,_cur_page_size[drv_no]))!=0) break;
 			ptr += _cur_page_size[drv_no];
 		}
-		if((ret = __card_datareadfinal(drv_no,ptr,_cur_page_size[drv_no]))!=0) return ret;
+		if((ret=__card_datareadfinal(drv_no,ptr,_cur_page_size[drv_no]))!=0) return ret;
 		ret = __card_stopresponse(drv_no);
 	}
 	return ret;

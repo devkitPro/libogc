@@ -76,9 +76,9 @@ void card_initFATDefault()
 {
 	u8 name[10];
 	u32 drv_no;
-
+#ifdef _CARDFAT_DEBUG
 	printf("card_initFATDefault()\n");
-
+#endif	
 	strcpy((char*)name,"dev");
 	for(drv_no=0;drv_no<MAX_DRIVE;++drv_no) {
 		_fatFlag[drv_no] = NOT_INITIALIZED;
@@ -100,13 +100,13 @@ s32 card_initFAT(s32 drv_no)
 	s32 ret;
 	u8 *fat_buf;
 	u32 offset;
-	u32 fat_bytes,sector_plus,i,j;
+	u32 fat_s8s,sector_plus,i,j;
 	u32 pbr_offset,tot_clusters;
 
 	_fatFlag[drv_no] = NOT_INITIALIZED;
-
+#ifdef _CARDFAT_DEBUG
 	printf("card_initFAT(%d)\n",drv_no);
-	
+#endif	
 	fat_buf = card_allocBuffer();
 	ret = card_readSector(drv_no,0,fat_buf,SECTOR_SIZE);
 	if(ret!=0) {
@@ -128,10 +128,10 @@ s32 card_initFAT(s32 drv_no)
 																 |((u32)fat_buf[pbr_offset+9]<<8)|fat_buf[pbr_offset+8];
 	_sdInfo[drv_no].smbr.partition_entries[0].total_avail_sectors = ((u32)fat_buf[pbr_offset+15]<<24)|((u32)fat_buf[pbr_offset+14]<<16)
                                                                     |((u32)fat_buf[pbr_offset+13]<<8)|fat_buf[pbr_offset+12];
-
+#ifdef _CARDFAT_DEBUG
 	printf("mbr.signature = %04x\n",_sdInfo[drv_no].smbr.signature);
 	printf("mbr.start_lba = %08x\n",_sdInfo[drv_no].smbr.partition_entries[0].start_lba_sector);
-
+#endif	
 	if(_sdInfo[drv_no].smbr.signature!=0x55aa) return CARDIO_ERROR_INVALIDMBR;
 
 	ret = card_readSector(drv_no,_sdInfo[drv_no].smbr.partition_entries[0].start_lba_sector,fat_buf,SECTOR_SIZE);
@@ -168,7 +168,7 @@ s32 card_initFAT(s32 drv_no)
 	_sdInfo[drv_no].spbr.sbpb.huge_sects = ((u32)fat_buf[0x23]<<24)|((u32)fat_buf[0x22]<<16)|((u32)fat_buf[0x21]<<8)|fat_buf[0x20];
 
 	if(_sdInfo[drv_no].spbr.sbpb.total_sects==0) _sdInfo[drv_no].spbr.sbpb.total_sects = _sdInfo[drv_no].spbr.sbpb.huge_sects;
-
+#ifdef _CARDFAT_DEBUG
 	printf("pbr.oem_name = %s\n",_sdInfo[drv_no].spbr.oem_name);
 	printf("bpb.fmt_type = %02x\n",_sdInfo[drv_no].spbr.sbpb.fmt_type);
 	printf("bpb.reserved_sects = %d\n",_sdInfo[drv_no].spbr.sbpb.reserved_sects);
@@ -178,7 +178,7 @@ s32 card_initFAT(s32 drv_no)
 	printf("bpb.fat_num = %d\n",_sdInfo[drv_no].spbr.sbpb.fat_num);
 	printf("bpb.sects_per_cluster = %d\n",_sdInfo[drv_no].spbr.sbpb.sects_per_cluster);
 	printf("bpb.total_sects = %d\n",_sdInfo[drv_no].spbr.sbpb.total_sects);
-	
+#endif	
 	// spbr check recommended by SSFDC forum 
 	if((_sdInfo[drv_no].spbr.signature!=0x55aa)
 		|| (_sdInfo[drv_no].spbr.sbpb.fat_num<1 || _sdInfo[drv_no].spbr.sbpb.fat_num>16)
@@ -196,8 +196,9 @@ s32 card_initFAT(s32 drv_no)
 	if(_fat[drv_no]) __lwp_wkspace_free(_fat[drv_no]);
 	
 	tot_clusters = _sdInfo[drv_no].spbr.sbpb.total_sects/_sdInfo[drv_no].spbr.sbpb.sects_per_cluster;
+#ifdef _CARDFAT_DEBUG
 	printf("tot_clusters = %d\n",tot_clusters);
-
+#endif	
 	if(tot_clusters<0xff5) 
 		_fatFATId[drv_no] = FS_FAT12;
 	else if(tot_clusters<0xfff5) 
@@ -212,18 +213,18 @@ s32 card_initFAT(s32 drv_no)
 		return CARDIO_ERROR_INTERNAL;
 	}
 
-	fat_bytes = tot_clusters*2;
+	fat_s8s = tot_clusters*2;
 	_fat1StartSect[drv_no] = _sdInfo[drv_no].smbr.partition_entries[0].start_lba_sector+_sdInfo[drv_no].spbr.sbpb.reserved_sects;
-	_fat1Sectors[drv_no] = fat_bytes/_sdInfo[drv_no].spbr.sbpb.bytes_per_sect;		//holds the count of FAT sectors, is recalculated 
+	_fat1Sectors[drv_no] = fat_s8s/_sdInfo[drv_no].spbr.sbpb.bytes_per_sect;		//holds the count of FAT sectors, is recalculated 
 																					//and should match the sects_in_fat entry of the bpb
 	if(_fat1Sectors[drv_no]!=_sdInfo[drv_no].spbr.sbpb.sects_in_fat) {
 		card_freeBuffer(fat_buf);
 		return CARDIO_ERROR_INCORRECTFAT;
 	}
-	
+#ifdef _CARDFAT_DEBUG
 	printf("_fat1StartSect[%d] = %d\n",drv_no,_fat1StartSect[drv_no]);
 	printf("_fat1Sectors[%d] = %d\n",drv_no,_fat1Sectors[drv_no]);
-
+#endif	
 	sector_plus = 0;
 	for(i=0;i<_sdInfo[drv_no].spbr.sbpb.fat_num;++i) {
 		ret = card_readSector(drv_no,_fat1StartSect[drv_no],fat_buf,SECTOR_SIZE);
@@ -289,11 +290,11 @@ s32 card_initFAT(s32 drv_no)
 	_fatRootStartSect[drv_no] = _fat1StartSect[drv_no]+_fat1Sectors[drv_no]*_sdInfo[drv_no].spbr.sbpb.fat_num;
 	_fatRootSects[drv_no] = (_sdInfo[drv_no].spbr.sbpb.root_entry*32+_sdInfo[drv_no].spbr.sbpb.bytes_per_sect-1)/_sdInfo[drv_no].spbr.sbpb.bytes_per_sect;
 	_fatClusterStartSect[drv_no] = _fatRootStartSect[drv_no]+_fatRootSects[drv_no];
-
+#ifdef _CARDFAT_DEBUG
 	printf("root_start = %d\n",_fatRootStartSect[drv_no]);
 	printf("root_sects = %d\n",_fatRootSects[drv_no]);
 	printf("cluster_start = %d\n",_fatClusterStartSect[drv_no]);
-
+#endif	
 	_fatCacheSize[drv_no] = SECTOR_SIZE;
 
 	_fatFlag[drv_no] = INITIALIZED;
@@ -372,7 +373,7 @@ s32 card_searchCluster(s32 drv_no,u32 count, u32 *pmax_cnt)
     u16 i;
     u16 curCount;
     bpb *sbpb = &_sdInfo[drv_no].spbr.sbpb;
-    u32 rv;
+    u32 rv = 0;
     u32 maxNum = 0;
 
     curCount = 0;
@@ -411,7 +412,7 @@ s32 card_addClusters(s32 drv_no,u32 cluster,u32 addClusterCnt)
     }
 
     /* reserve count number of clusters */
-    SET_FAT_TBL(drv_no, cluster, (uword)nextCluster);
+    SET_FAT_TBL(drv_no, cluster, (u16)nextCluster);
     for(i=0;i<count-1;++i) SET_FAT_TBL(drv_no, nextCluster + i, (u16)(nextCluster + i + 1));
     SET_FAT_TBL(drv_no, nextCluster + i, LAST_CLUSTER);
 
@@ -432,10 +433,11 @@ s32 card_readCluster(s32 drv_no,u32 cluster_no,u32 offset,void *buf,u32 len)
 {
 	s32 ret;
 	u32 start,end,i;
+	u32 start_offset,end_offset;
 	u32 block_start_no;
 	u32 block_end_no;
 	u32 sects_per_block;
-	u32 bytes_per_block;
+	u32 s8s_per_block;
 	u32 top_size,bottom_size;
 	s32 signed_cluster_no;
 	u32 extra_sects;
@@ -451,38 +453,45 @@ s32 card_readCluster(s32 drv_no,u32 cluster_no,u32 offset,void *buf,u32 len)
 
 	start = _fatClusterStartSect[drv_no]+_sdInfo[drv_no].spbr.sbpb.sects_per_cluster*(signed_cluster_no-2);
 	start += (offset/SECTOR_SIZE);
-	
-	printf("sect_start = %d,offset = %d\n",start,offset);
-
+	start_offset = (offset%SECTOR_SIZE);
+#ifdef _CARDFAT_DEBUG
+	printf("sect_start = %d,offset = %d\n",start,start_offset);
+#endif
 	sects_per_block = (1<<(C_SIZE_MULT(drv_no)+2));
 	block_start_no = start/sects_per_block;
 	
 	end = start+(len/SECTOR_SIZE);
+	end_offset = ((start_offset+len)%SECTOR_SIZE);
+#ifdef _CARDFAT_DEBUG
+	printf("sect_end = %d,offset = %d\n",end,end_offset);
+#endif
 	block_end_no = end/sects_per_block;
 
-	bytes_per_block = sects_per_block*SECTOR_SIZE;
-	top_size = bytes_per_block-((start-block_start_no*sects_per_block)*SECTOR_SIZE);
-	
+	s8s_per_block = sects_per_block*SECTOR_SIZE;
+	top_size = s8s_per_block-((start-block_start_no*sects_per_block)*SECTOR_SIZE+start_offset);
+#ifdef _CARDFAT_DEBUG
 	printf("sb = %d, eb = %d\n",block_start_no,block_end_no);
-
+#endif
 	if(block_start_no==block_end_no) {
-		ret = card_readBlock(drv_no,block_start_no,bytes_per_block-top_size,buf,len);
+		ret = card_readBlock(drv_no,block_start_no,s8s_per_block-top_size,buf,len);
 	} else {
-		bottom_size = (end-block_end_no*sects_per_block)*SECTOR_SIZE;
-		if(top_size==bytes_per_block) top_size = 0;
-
+		bottom_size = (end-block_end_no*sects_per_block)*SECTOR_SIZE+end_offset;
+		if(top_size==s8s_per_block) top_size = 0;
+#ifdef _CARDFAT_DEBUG
+		printf("top_size = %d,bottom_size = %d\n",top_size,bottom_size);
+#endif
 		if(top_size) {
-			ret = card_readBlock(drv_no,block_start_no,bytes_per_block-top_size,read_buf,top_size);
+			ret = card_readBlock(drv_no,block_start_no,s8s_per_block-top_size,read_buf,top_size);
 			if(ret!=CARDIO_ERROR_READY) return ret;
 			
 			read_buf += top_size;
 			++block_start_no;
 		}
 		for(i=block_start_no;i<block_end_no;++i) {
-			ret = card_readBlock(drv_no,i,0,read_buf,bytes_per_block);
+			ret = card_readBlock(drv_no,i,0,read_buf,s8s_per_block);
 			if(ret!=CARDIO_ERROR_READY) return ret;
 
-			read_buf += bytes_per_block;
+			read_buf += s8s_per_block;
 		}
 		if(bottom_size) {
 			ret	= card_readBlock(drv_no,block_end_no,0,read_buf,bottom_size);
@@ -561,7 +570,7 @@ boolean card_convertToFATName(const u8* p_name, u8* p_short_name)
 
 		convertedBaseLen = (baseLen>6)?6:baseLen;
 
-		/* find multi-byte character boundary */
+		/* find multi-s8 character boundary */
 		for(i=convertedBaseLen-1;i>=0;i--) {
 			if(base[i]<0x80) break;
 		}
@@ -632,7 +641,7 @@ s32 card_getLongName(u32 drv_no, u32 h_parent, u32 short_cluster, u32 offset, u1
         }
     }
 
-    /* long name must be end with 0x40 flag at the first byte */
+    /* long name must be end with 0x40 flag at the first s8 */
     /* if not, it exceeds the MAX_FILE_NAME_LEN     */
     if(!(file_info[0]&0x40))
 		return CARDIO_ERROR_FILENAMETOOLONG;
@@ -659,13 +668,13 @@ s32 card_findEntryInDirectory(u32 drv_no,u32 find_mode,F_HANDLE h_parent,u32 var
     u32 index = 0;
 	u32 after_tilde_index = 0;
     u32 max_offset;
-
+#ifdef _CARDFAT_DEBUG
 	printf("card_findEntryInDirectory()\n");
-	
+#endif
     cluster_size = _sdInfo[drv_no].spbr.sbpb.sects_per_cluster*SECTOR_SIZE;
-
+#ifdef _CARDFAT_DEBUG
 	printf("cluster_size = %d\n",cluster_size);
-	
+#endif
     /* pre-processing before entering for-loop */
     if(find_mode==FIND_FILE_NAME) {
 		p_unicode = (u16*)__lwp_wkspace_allocate(MAX_FILE_NAME_LEN+2);
@@ -699,7 +708,7 @@ s32 card_findEntryInDirectory(u32 drv_no,u32 find_mode,F_HANDLE h_parent,u32 var
         cur_cluster = (u16)((var_par>>16)&0xffff);
         cur_offset = var_par&0xffff;
 
-        /* check if cur_offset is on the boundary of 32 bytes */
+        /* check if cur_offset is on the boundary of 32 s8s */
         if(cur_offset&0x1f) return CARDIO_ERROR_INTERNAL;
 
         if(find_mode==FIND_PREVIOUS) {
@@ -762,10 +771,10 @@ s32 card_findEntryInDirectory(u32 drv_no,u32 find_mode,F_HANDLE h_parent,u32 var
     cluster = h_parent&0xffff;
     if(h_parent==ROOT_HANDLE) max_offset = _fatRootSects[drv_no]*SECTOR_SIZE;
     else max_offset = cluster_size;
-          
-	printf("var_par = %s,short_name = %s\n",(u8*)var_par,short_name);
+#ifdef _CARDFAT_DEBUG
 	printf("cluster = %d,max_offset = %d\n",cluster,max_offset);
-    while(1) {
+#endif
+   while(1) {
         for(offset=0;offset<max_offset;offset+=SECTOR_SIZE) {
 			ret = card_readCluster(drv_no, cluster, offset, buf, SECTOR_SIZE);
             if(ret!=CARDIO_ERROR_READY) {
@@ -775,7 +784,6 @@ s32 card_findEntryInDirectory(u32 drv_no,u32 find_mode,F_HANDLE h_parent,u32 var
 
             for(j=0;j<SECTOR_SIZE;j+=32) {
                 if(find_mode == FIND_FILE_NAME) {
-					//printf("buf = %s\n",buf+j);
                     if(unicode_namelen) {
                         if((memcmp(short_name,buf+j,after_tilde_index)!=0) 
                            || (memcmp(short_name+8,buf+j+8,3)!= 0))
@@ -892,7 +900,9 @@ s32 card_checkPath(s32 drv_no,const u8 *p_filename,u32 check_mode,F_HANDLE *p_ha
 	p_found = strchr(p_str,':');
 	if(p_found) {
 		p_str = p_found+1;
+#ifdef _CARDFAT_DEBUG
 		printf("p_found = %s, p_str = %s\n",p_found,p_str);
+#endif
 		if(p_str[0]!='\\') return CARDIO_ERROR_INVALIDPARAM;
 
 		++p_str;
@@ -908,7 +918,9 @@ s32 card_checkPath(s32 drv_no,const u8 *p_filename,u32 check_mode,F_HANDLE *p_ha
 		for(;;) {
 			p_found = strchr(p_str,'\\');
 			if(!p_found) {
+#ifdef _CARDFAT_DEBUG
 				printf("p_str = %s\n",p_str);
+#endif
 				len = strlen((char*)p_str);
 				if(len>MAX_FILE_NAME_LEN) return CARDIO_ERROR_INVALIDPARAM;
 				
@@ -935,7 +947,9 @@ s32 card_checkPath(s32 drv_no,const u8 *p_filename,u32 check_mode,F_HANDLE *p_ha
 
 			memcpy(lname,p_str,len);
 			lname[len] = 0;
+#ifdef _CARDFAT_DEBUG
 			printf("lname = %s\n",lname);
+#endif
 			ret = card_findEntryInDirectory(drv_no,FIND_FILE_NAME,lhandle,(u32)lname,file_info,&dummy_cluster,&dummy_offset);
 			if(ret!=CARDIO_ERROR_READY) return ret;
 
@@ -1029,8 +1043,9 @@ s32 card_getFileSize(const char *filename,u32 *p_size)
 	F_HANDLE h_dir;
 	u8 *p_filename = (u8*)filename;
 
+#ifdef _CARDFAT_DEBUG
 	printf("p_filename = %s\n",p_filename);
-
+#endif
 	drv_no = card_getDriveNo(p_filename);
 	if(drv_no>=MAX_DRIVE)
 		return CARDIO_ERROR_INVALIDPARAM;
@@ -1081,9 +1096,9 @@ s32 card_readFromDisk(s32 drv_no,opendfile_list *p_list,void *buf,u32 cnt,u32 *p
     cluster_start_count = p_list->f_ptr/cluster_size;
     cluster_end_count = (p_list->f_ptr+read_count+cluster_size-1)/cluster_size;
     offset = p_list->f_ptr%cluster_size;
-
+#ifdef _CARDFAT_DEBUG
 	printf("cb = %d, ce = %d\n",cluster_start_count,cluster_end_count);
-	
+#endif
     cluster = p_list->cur_cluster;
     for(i=cluster_start_count;i<cluster_end_count;++i) {
         copy_count = (remaining_count>cluster_size - offset)?(cluster_size-offset):remaining_count;
@@ -1659,18 +1674,464 @@ s32 card_readDir(const char *dirname,u32 entry_start,u32 entry_cnt,dir_entry *di
     FAT_RETURN(drv_no, CARDIO_ERROR_READY);
 }
 
+s32 card_createFile(const char *filename,u32 create_mode,F_HANDLE *p_handle)
+{
+	s32 ret;
+    u32 drv_no;
+    F_HANDLE h_dir;
+    u32 cluster;
+    opendfile_list* p_list;
+    u8 long_name[MAX_FILE_NAME_LEN + 1];
+    u8 dummy_info[32];
+    u32 offset;
+    u8 *p_filename = (u8 *)filename;
+    file_stat sStat;
+    u16* p_unicode;
+    u8 fat_name[13];
+	time_t now;
+
+    drv_no = card_getDriveNo(p_filename);
+    if(drv_no>=MAX_DRIVE) 
+        return CARDIO_ERROR_INVALIDPARAM;
+
+    ret = card_preFAT(drv_no);
+    if(ret!=CARDIO_ERROR_READY) 
+        FAT_RETURN(drv_no, ret);
+
+    ret = card_checkPath(drv_no, p_filename, PATH_EXCEPT_LAST, &h_dir);
+    if (ret != CARDIO_ERROR_READY) 
+        FAT_RETURN(drv_no, ret);
+
+    card_extractLastName(p_filename, long_name);
+
+    /* check if the same name exists already */
+    ret = card_findEntryInDirectory(drv_no, FIND_FILE_NAME, h_dir, (u32)long_name, dummy_info, &cluster, &offset);
+    if(ret!=CARDIO_ERROR_NOTFOUND) {
+        if (ret == CARDIO_ERROR_READY) {
+            if(create_mode==ALWAYS_CREATE) 
+                card_removeFile(drv_no, h_dir, long_name);
+            else 
+                FAT_RETURN(drv_no, CARDIO_ERROR_FILEEXIST);
+        } else 
+            FAT_RETURN(drv_no, ret);
+    }
+
+    ret = card_allocCluster(drv_no, &cluster);
+    if(ret!=CARDIO_ERROR_READY) 
+        FAT_RETURN(drv_no, ret);
+
+    /* FAT table update */
+    /* This must be done before another smcAllocCluster() is called */
+    SET_FAT_TBL(drv_no, cluster, LAST_CLUSTER);
+
+    /* pOpenedList update */
+    p_list = (opendfile_list*)__lwp_wkspace_allocate(sizeof(opendfile_list));
+    if (p_list == NULL) {
+        SET_FAT_TBL(drv_no, cluster, UNUSED_CLUSTER);
+        FAT_RETURN(drv_no, CARDIO_ERROR_OUTOFMEMORY);
+    }
+
+    p_list->prev = NULL;
+    p_list->next = NULL;
+    p_list->cluster = cluster;
+    p_list->h_parent = h_dir;
+    p_list->f_ptr = 0;
+    p_list->cur_cluster = cluster;
+    p_list->old_cur_cluster = 0;
+    p_list->size = 0;
+    p_list->mode = OPEN_R | OPEN_W;
+    p_list->id = 0;
+    p_list->cache.f_ptr = 0;
+    p_list->cache.cnt = 0;
+    p_list->cache.buf = (u8*)__lwp_wkspace_allocate(_fatCacheSize[drv_no]);
+    if (p_list->cache.buf == NULL) {
+        __lwp_wkspace_free(p_list);
+        SET_FAT_TBL(drv_no, cluster, UNUSED_CLUSTER);
+        FAT_RETURN(drv_no, CARDIO_ERROR_OUTOFMEMORY);
+    }
+
+    ret = card_addToOpenedFileList(drv_no, p_list);
+    if(ret!=CARDIO_ERROR_READY) {
+            __lwp_wkspace_free(p_list->cache.buf);
+            __lwp_wkspace_free(p_list);
+            SET_FAT_TBL(drv_no, cluster, UNUSED_CLUSTER);
+            FAT_RETURN(drv_no, ret);
+    }
+
+    /* directory contents update */
+    p_unicode = (u16*)__lwp_wkspace_allocate(MAX_FILE_NAME_LEN+2);
+    if(p_unicode == NULL) {
+        card_deleteFromOpenedList(drv_no, cluster);
+        SET_FAT_TBL(drv_no, cluster, UNUSED_CLUSTER);
+        FAT_RETURN(drv_no, CARDIO_ERROR_OUTOFMEMORY);
+    }
+
+    sStat.attr = ATTRIB_FILE;
+    sStat.cluster = cluster;
+    sStat.size = 0;
+
+	now = time(NULL);
+	sStat.time = localtime(&now);
+    
+    if(card_convertToFATName(long_name, fat_name)) {
+        card_convertStrToUni(p_unicode, long_name, 0);     
+        ret = card_addDirEntry(drv_no, h_dir, long_name, p_unicode, &sStat, 0, 0, 0);
+    }
+    else
+        ret = card_addDirEntry(drv_no, h_dir, long_name, NULL, &sStat, 0, 0, 0);
+	__lwp_wkspace_free(p_unicode);
+
+	if(ret!=CARDIO_ERROR_READY) {
+        card_deleteFromOpenedList(drv_no, cluster);
+        SET_FAT_TBL(drv_no, cluster, UNUSED_CLUSTER);
+        FAT_RETURN(drv_no, ret);
+    }
+
+#ifndef FAT_UPDATE_WHEN_FILE_CLOSE
+    /* this can be moved to smCloseFile for speed */
+    sm_FATUpdate(drv_no);
+#endif
+    *p_handle = ((drv_no << 24) & 0xff000000) | ((p_list->id << 16) & 0xff0000) | (cluster & 0xffff);
+    FAT_RETURN(drv_no, CARDIO_ERROR_READY);
+}
+
+s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const u8* long_name,const u16* p_unicode_name,file_stat* p_stat,u32 b_insert,u32 cluster,u32 offset)
+{
+	s32 ret;
+	u8 file_info[32*((MAX_FILE_NAME_LEN-1)/13+2)];
+    u8 dummy_info[32];
+    u8 fat_name[13];
+    u32 new_cluster;
+    u32 new_offset;
+    u32 empty_cluster;
+    u32 len;
+    u32 entry_count;
+    u32 buf_size;
+    u32 offset_short_name;
+    u8 checksum;
+    u32 i, j, k;
+    u32 b_found_deleted_cluster;
+    u32 write_cluster;
+    u32 write_offset;
+    u32 first_copy_size;
+    u32 index_of_tilde;
+    u32 bConverted;
+    u32 empty_entry_count;
+    u32 prev_empty_entry_count;
+    u32 next_empty_entry_count;
+    u32 max_offset;
+    u16 year;
+
+    if(p_unicode_name==NULL) entry_count = 1;
+    else {
+        /* check if the file name should be processed */
+        for(len=0;len<MAX_FILE_NAME_LEN;++len) {
+            if(p_unicode_name[len]==0)
+                break;
+        }
+
+        if (len >= MAX_FILE_NAME_LEN)
+            return CARDIO_ERROR_INVALIDPARAM;
+
+        ++len;          /* space for NULL */
+        
+        /* 1 for name less than 13, and 1 for name of 8.3 type */
+        entry_count = (len-1)/13+2;
+    }
+
+    buf_size = entry_count * 32;
+    offset_short_name = buf_size - 32;
+    
+    bConverted = card_convertToFATName(long_name, fat_name);
+    if(bConverted == FALSE) {
+            ret = card_findEntryInDirectory(drv_no, FIND_FILE_FAT_NAME, h_dir, (u32)fat_name, dummy_info, &new_cluster, &new_offset);
+            if(ret==CARDIO_ERROR_READY)
+                return CARDIO_ERROR_FILEEXIST;
+            else if(ret!=CARDIO_ERROR_NOTFOUND)
+                return ret;
+    } else {
+        /* find "~1" in fat name */
+        for(i=0;i<8;i++) {
+            if(fat_name[i]==' ') break;
+        }
+
+        if((fat_name[i-1]=='1') && (fat_name[i-2]=='~'))
+			index_of_tilde = i-2;
+        else            /* same file name (without longfile_name) exist already */
+            return CARDIO_ERROR_FILEEXIST;
+        
+        /* find unused short name */
+        for(k=0;k<10;k++) {
+            if(k!=0) {
+                    /* this is the case that needs to check index_of_tilde */
+                if(k==1) {
+                    if(index_of_tilde==5) {         /* else, it is smaller => no need to change index_of_tilde */
+                        if(fat_name[index_of_tilde - 1]&0x80) {
+                            index_of_tilde -= 2;
+                            fat_name[index_of_tilde+2] = ' ';             /* clear last garbage character */
+                        } else
+                            index_of_tilde -= 1;
+
+                        fat_name[index_of_tilde] = '~';
+                    }
+                }
+                fat_name[index_of_tilde+1] = (u8)('0'+k);
+            }
+                
+            for(j=0;j<10;j++) {
+                if((j==0) && (k==0)) i = 1;
+                else {
+                    i = 0;
+
+                    /* this is the case that needs to check index_of_tilde */
+                    if((j==1) && (k==0)) {
+						if(index_of_tilde==6) {         /* else, it is smaller => no need to change index_of_tilde */
+                            if(fat_name[index_of_tilde-1]&0x80) {
+                                index_of_tilde -= 2;
+                                fat_name[index_of_tilde+2] = ' ';             /* clear last garbage character */
+                            } else
+                                index_of_tilde -= 1;
+
+                            fat_name[index_of_tilde] = '~';
+                        }
+                    }
+
+                    if(k!=0) fat_name[index_of_tilde+2] = (u8)('0'+j);
+                    else fat_name[index_of_tilde+1] = (u8)('0'+j);
+                }
+                        
+                for(;i<10;++i) {
+                    if(k!=0) fat_name[index_of_tilde+3] = (u8)('0'+i);
+                    else if(j != 0) fat_name[index_of_tilde+2] = (u8)('0'+i);
+                    else fat_name[index_of_tilde+1] = (u8)('0'+i);
+                            
+                    ret = card_findEntryInDirectory(drv_no, FIND_FILE_FAT_NAME, h_dir, (u32)fat_name, dummy_info, &new_cluster, &new_offset);
+                    if(ret==CARDIO_ERROR_NOTFOUND) break;
+                    else if(ret!=CARDIO_ERROR_READY) return ret;
+                }
+                if(i<10) break;
+            }
+            if(j<10) break;
+        }
+
+        /* if ~1 - ~999 are all used */
+        if(k>=10) return CARDIO_ERROR_FILEEXIST;
+    }
+
+
+    /* set long name */
+    if(p_unicode_name!=NULL) {
+        for (i=0,checksum=0;i<11;++i) checksum = (((checksum&1)<<7)|((checksum&0xfe)>>1))+fat_name[i];
+
+        memset(file_info, 0xff, buf_size - 32);
+
+        for(i=0,k=0;i<entry_count-1;i++) {
+            write_offset = buf_size-(i+2)*32;
+            for(j=0;j<13;j++) {
+                if(k<len) {
+                    if(j>=11) {
+                        file_info[write_offset+29+(j-11)*2] = (p_unicode_name[k]>>8)&0xff;
+                        file_info[write_offset+28+(j-11)*2] = p_unicode_name[k++]&0xff;
+                    } else if(j>=5) {
+                        file_info[write_offset+15+(j-5)*2] = (p_unicode_name[k]>>8)&0xff;
+                        file_info[write_offset+14+(j-5)*2] = p_unicode_name[k++]&0xff;
+                    } else {
+                        file_info[write_offset+2+j*2] = (p_unicode_name[k]>>8)&0xff;
+                        file_info[write_offset+1+j*2] = p_unicode_name[k++]&0xff;
+                    }
+                }
+            }
+
+            if (write_offset==0)          /* flag */
+                file_info[write_offset] = (u8)((i+1)|0x40);
+            else 
+                file_info[write_offset] = (u8)(i+1);
+
+            file_info[write_offset+11] = 0x0f;            /* attribute */
+            file_info[write_offset+12] = 0;
+            file_info[write_offset+13] = checksum;        /* checksum */
+            file_info[write_offset+26] = 0;                       /* first cluster */
+            file_info[write_offset+27] = 0;                       /*     "         */
+        }
+    }
+    
+    /* file_info[0 - 10] <= file_name.ext_name in capital */
+    memset(file_info + offset_short_name, 0, 32);
+    memcpy(file_info + offset_short_name, fat_name, 11);
+
+    /* file_info[11] <= attribute */
+    file_info[offset_short_name+11] = p_stat->attr;
+
+    year = p_stat->time->tm_year;
+    if (year > 1980) 
+        year -= 1980;
+    else 
+        year = 0;
+    
+
+    /* file_info[22-23] <= time */
+    /*      Hour | Min | Sec => 5bit | 6bit | 5bit(half value) */
+    file_info[offset_short_name+22] = ((p_stat->time->tm_sec>>1)&0x1f)|((p_stat->time->tm_min<<5)&0xe0);
+    file_info[offset_short_name+23] = ((p_stat->time->tm_min>>3)&0x07)|((p_stat->time->tm_hour<<3)&0xf8);
+
+    /* file_info[24-25] <= date */
+    /*      Year | Month | Day => 7bit | 4bit | 5bit */
+    file_info[offset_short_name+24] = ((p_stat->time->tm_mday)&0x1f)|((p_stat->time->tm_mon<<5)&0xe0);
+    file_info[offset_short_name+25] = ((p_stat->time->tm_mon>>3)&0x01)|((year<<1)&0xfe);
+
+    /* file_info[26-27] <= cluster number */
+    file_info[offset_short_name+26] = (s8)(p_stat->cluster&0xff);
+    file_info[offset_short_name+27] = (s8)(p_stat->cluster>>8);
+
+    /* file_info[28-31] <= file size */
+    file_info[offset_short_name+28] = (s8)(p_stat->size&0xff);
+    file_info[offset_short_name+29] = (s8)((p_stat->size>>8)&0xff);
+    file_info[offset_short_name+30] = (s8)((p_stat->size>>16)&0xff);
+    file_info[offset_short_name+31] = (s8)(p_stat->size>>24);
+
+    if(h_dir==ROOT_HANDLE) max_offset = _fatRootSects[drv_no]*SECTOR_SIZE;
+    else max_offset = _sdInfo[drv_no].spbr.sbpb.sects_per_cluster*SECTOR_SIZE;        /* cluster_size */
+
+    /* prepare for the space of new entry */
+    if(!b_insert) {          /* add to any place that is available */
+        ret = card_findEntryInDirectory(drv_no, FIND_DELETED, h_dir, entry_count, dummy_info, &new_cluster, &new_offset);
+        if(ret!=CARDIO_ERROR_READY) {
+            if(ret==CARDIO_ERROR_NOTFOUND) {
+                ret = card_findEntryInDirectory(drv_no, FIND_UNUSED, h_dir, 0, dummy_info, &new_cluster, &new_offset);
+                if(ret!=CARDIO_ERROR_READY) {
+                    if(ret==CARDIO_ERROR_NOTFOUND) {
+                        if(h_dir==ROOT_HANDLE) return CARDIO_ERROR_OUTOFROOTENTRY;
+                        else {
+                            new_cluster = h_dir;
+                            while(1) {
+                                if(GET_FAT_TBL(drv_no, new_cluster)==LAST_CLUSTER) break;
+                                new_cluster = GET_FAT_TBL(drv_no, new_cluster);
+                            }
+                            new_offset = max_offset;
+                        }
+                    } else
+                        return ret;
+                }
+            } else
+                return ret;
+        }
+
+        /* now, new_cluster & new_offset indicates the place that file_info should be written */
+
+        if(new_offset+entry_count*32>max_offset) {
+            /* file information cannot be written in 1 cluster */
+            if(h_dir==ROOT_HANDLE) return CARDIO_ERROR_OUTOFROOTENTRY;
+            else {
+                first_copy_size = max_offset - new_offset;
+
+                if(GET_FAT_TBL(drv_no, new_cluster)==LAST_CLUSTER) {
+                    /* prepare new cluster for the directory */
+                    ret = card_allocCluster(drv_no, &empty_cluster);
+                    if (ret != CARDIO_ERROR_READY) return ret;
+
+                    /* directory contents initialize */
+                    ret = smcSetCluster(drv_no, empty_cluster, 0);
+                    if (ret != CARDIO_ERROR_READY) return ret;
+
+                    /* fat table update */
+                    SET_FAT_TBL(drv_no, new_cluster, (u16)empty_cluster);
+                    SET_FAT_TBL(drv_no, empty_cluster, LAST_CLUSTER);
+
+                    sm_FATUpdate(drv_no);
+                }
+            }
+        } else
+			first_copy_size = entry_count*32;
+
+        ret = smcWriteCluster(drv_no, new_cluster, new_offset, file_info, first_copy_size);
+        if(ret!=CARDIO_ERROR_READY) return ret;
+                
+        if(first_copy_size!=entry_count*32) {
+            /* new_cluster is not ROOT_HANDLE here */
+            new_cluster = GET_FAT_TBL(drv_no, new_cluster);
+            new_offset = 0;
+
+            ret = smcWriteCluster(drv_no, new_cluster, new_offset, file_info + first_copy_size, entry_count * 32 - first_copy_size);
+            if(ret!=CARDIO_ERROR_READY) return ret;
+        }
+    } else {   /* add to the specified cluster & offset */
+        new_cluster = cluster;
+        new_offset = offset;
+        empty_entry_count = 0;
+        prev_empty_entry_count = 0;
+        next_empty_entry_count = 0;
+        
+        ret = card_readCluster(drv_no, cluster, offset, dummy_info, 32);
+        if (ret != CARDIO_ERROR_READY) return ret;
+
+        if(dummy_info[0]==0xe5) {
+            empty_entry_count++;
+
+            for(;;) {
+                ret = card_findEntryInDirectory(drv_no, FIND_NEXT, h_dir, (new_cluster<<16)|(new_offset&0xffff), dummy_info, &new_cluster, &new_offset);
+                if (ret!=CARDIO_ERROR_READY) {
+                    if (ret==CARDIO_ERROR_NOTFOUND) break;
+                    else return ret;
+                }
+
+                if ((file_info[0]==0xe5) || (file_info[0]==0)) {
+                    next_empty_entry_count++;
+                    continue;
+                } else 
+                    break;
+            }
+        }
+                
+        new_cluster = cluster;
+        new_offset = offset;
+        
+        for(;;) {
+            write_cluster = new_cluster;
+            write_offset = new_offset;
+            
+            ret = card_findEntryInDirectory(drv_no, FIND_PREVIOUS, h_dir, (new_cluster<<16)|(new_offset&0xffff), dummy_info, &new_cluster, &new_offset);
+            if(ret!=CARDIO_ERROR_READY) {
+                if(ret==CARDIO_ERROR_NOTFOUND) break;
+                else return ret;
+            }
+
+            if((file_info[0]==0xe5) || (file_info[0]==0)) {
+                prev_empty_entry_count++;
+                continue;
+            } else
+				break;
+        }
+
+        empty_entry_count = empty_entry_count+prev_empty_entry_count+next_empty_entry_count;
+        if(empty_entry_count<entry_count) {
+            ret = sm_ExpandClusterSpace(drv_no, h_dir, cluster, offset, (entry_count-empty_entry_count)*32);
+            if(ret != CARDIO_ERROR_READY) return ret;
+        }
+
+        if(write_offset+entry_count*32>max_offset) {
+            if(h_dir == ROOT_HANDLE) return CARDIO_ERROR_OUTOFROOTENTRY;
+            first_copy_size = max_offset - write_offset;
+        } else
+			first_copy_size = entry_count*32;
+                
+        ret = smcWriteCluster(drv_no, write_cluster, write_offset, file_info, first_copy_size);
+        if(ret!=CARDIO_ERROR_READY) return ret;
+
+        if(first_copy_size!=entry_count*32) {
+            /* write_cluster is not ROOT_HANDLE here */
+            write_cluster = GET_FAT_TBL(drv_no, write_cluster);
+            write_offset = 0;
+            
+            ret = smcWriteCluster(drv_no, write_cluster, write_offset, file_info+first_copy_size, entry_count*32-first_copy_size);
+            if(ret!=CARDIO_ERROR_READY) return ret;
+        }
+    }
+
+    return CARDIO_ERROR_READY;
+}
+
 void card_registerCallback(u32 drv_no,void (*pFuncIN)(s32),void (*pFuncOUT)(s32))
 {
 	pfCallbackIN[drv_no] = pFuncIN;
 	pfCallbackOUT[drv_no] = pFuncOUT;
-}
-
-s32 card_termFAT(s32 drv_no)
-{
-	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
-
-	printf("SDCARD_Unmount(%d)\n",drv_no);
-
-	card_doUnmount(drv_no);
-	return CARDIO_ERROR_READY;
 }

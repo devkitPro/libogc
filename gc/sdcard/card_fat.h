@@ -12,6 +12,9 @@
 #define DEFECTIVE_CLUSTER				0xfff7
 #define LAST_CLUSTER					0xffff
 
+#define ATTRIB_DIR                      0x10
+#define ATTRIB_FILE                     0x20
+
 #define OPEN_R                          1
 #define OPEN_W                          2
 
@@ -21,6 +24,9 @@
 
 #define PATH_FULL                       0
 #define PATH_EXCEPT_LAST				1
+
+#define NOT_IF_EXIST					0
+#define ALWAYS_CREATE					1
 
 #define FIND_FILE_NAME					0
 #define FIND_CLUSTER					1
@@ -99,7 +105,7 @@ typedef struct _filestat {
 	u32 attr;
 	u32 cluster;
 	u32 size;
-	time_t time;
+	struct tm *time;
 } file_stat;
 
 typedef struct _dir_entry {
@@ -146,8 +152,9 @@ void card_ejectedCB(s32 drv_no);
 s32 card_deleteFromOpenedList(s32 drv_no,u32 cluster);
 
 s32 card_allocCluster(s32 drv_no,u32 *p_cluster);
-u32 card_searchCluster(s32 drv_no,u32 count, u32 *pmax_cnt);
+s32 card_searchCluster(s32 drv_no,u32 count, u32 *pmax_cnt);
 
+s32 card_createFile(const char *filename,u32 create_mode,F_HANDLE *p_handle);
 s32 card_openFile(const char *filename,u32 open_mode,F_HANDLE *p_handle);
 s32 card_closeFile(F_HANDLE h_file);
 s32 card_seekFile(F_HANDLE h_file,u32 seek_mode,s32 offset,s32 *p_oldoffset);
@@ -160,6 +167,7 @@ s32 card_readFile(F_HANDLE h_file,void *buf,u32 cnt,u32 *p_cnt);
 
 s32 card_readFromDisk(s32 drv_no,opendfile_list *p_list,void *buf,u32 cnt,u32 *p_cnt);
 
+s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const u8* long_name,const u16* p_unicode_name,file_stat* p_stat,u32 b_insert,u32 cluster,u32 offset);
 void card_prepareFileClose(s32 drv_no, const opendfile_list* p_list) ;
 void card_registerCallback(u32 drv_no,void (*pFuncIN)(s32),void (*pFuncOUT)(s32));
 
