@@ -81,6 +81,7 @@ extern void __MaskIrq(u32);
 extern unsigned int gettick();
 extern int clock_gettime(struct timespec *tp);
 extern unsigned int timespec_to_interval(const struct timespec *time);
+extern long long timespec_to_ticks(const struct timespec *time);
 extern void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
 
 extern u8 __ArenaLo[],__ArenaHi[];
@@ -100,10 +101,13 @@ static u32 _dsp_initcode[] =
 static void __sys_alarmhandler(void *arg)
 {
 	sysalarm *alarm = (sysalarm*)arg;
+
+	__lwp_thread_dispatchdisable();
 	if(alarm) {
 		if(alarm->alarmhandler) alarm->alarmhandler(alarm);
 		if(alarm->periodic) __lwp_wd_insert_ticks(alarm->handle,alarm->periodic);
 	}
+	__lwp_thread_dispatchunnest();
 }
 
 static void __MEMInterruptHandler()
