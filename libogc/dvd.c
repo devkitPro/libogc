@@ -34,22 +34,21 @@
 #define _SHIFTR(v, s, w)	\
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
-typedef struct _dvdcmd {
-	u32 cmd;
-	void *buffer;
+typedef void (*dvdcallback)(s32);
+typedef struct _dvdcmdl {
+	s32 cmd;
+	void *buf;
 	u32 len;
 	u32 offset;
-	DVDCallback cb;
-} dvdcmd;
+	dvdcallback cb;
+} dvdcmdl;
 
-typedef struct _dvdcmd2 {
-	void *buffer;
+typedef struct _dvdcmds {
+	void *buf;
 	u32 len;
 	u32 offset;
-} dvdcmd2;
-
-static u32 *__dvd_idtmp = NULL;
-
+} dvdcmds;
+	
 static u32 __dvd_initflag = 0;
 static u32 __dvd_stopnextint = 0;
 static u32 __dvd_resetoccured = 0;	
@@ -62,11 +61,11 @@ static u32 __dvd_workaroundseek;
 static u32 __dvd_lastcmdwasread;
 static lwpq_t __dvd_wait_queue;
 static sysalarm __dvd_timeoutalarm;
-static DVDCallback __dvd_callback = NULL;
+static dvdcallback __dvd_callback = NULL;
 
-static u8 __dvd_buffer$15[48];
-static dvdcmd __dvd_cmdlist[3];
-static dvdcmd2 __dvd_prev,__dvd_curr;
+static dvdcmdblk __dvd_buffer$15;
+static dvdcmdl __dvd_cmdlist[3];
+static dvdcmds __dvd_cmd_curr,__dvd_cmd_prev;
 
 static u8 __dvd_patchcode[] = {
 	0x00,0x85,0x02,
@@ -128,7 +127,7 @@ extern void __UnmaskIrq(u32);
 
 static void __dvd_timeouthandler(sysalarm *alarm)
 {
-	DVDCallback cb;
+	dvdcallback cb;
 
 	__MaskIrq(IRQMASK(IRQ_PI_DI));
 	cb = __dvd_callback;
@@ -141,7 +140,7 @@ static void __SetupTimeoutAlarm(const struct timespec *tp)
 	SYS_SetAlarm(&__dvd_timeoutalarm,tp,__dvd_timeouthandler);
 }
 
-static void __Read(void *buffer,u32 len,u32 offset,DVDCallback cb)
+static void __Read(void *buffer,u32 len,u32 offset,dvdcallback cb)
 {
 	u32 val;
 	struct timespec tb;
@@ -171,7 +170,7 @@ static void __Read(void *buffer,u32 len,u32 offset,DVDCallback cb)
 	}
 }
 
-static void __DoRead(void *buffer,u32 len,u32 offset,DVDCallback cb)
+static void __DoRead(void *buffer,u32 len,u32 offset,dvdcallback cb)
 {
 	__dvd_nextcmdnum = 0;
 	__dvd_cmdlist[0].cmd = -1;
@@ -185,7 +184,7 @@ static u32 __ProcessNextCmd()
 	cmd_num = __dvd_nextcmdnum;
 	if(__dvd_cmdlist[cmd_num].cmd==0x0001) {
 		__dvd_nextcmdnum++;
-		__Read(__dvd_cmdlist[cmd_num].buffer,__dvd_cmdlist[cmd_num].len,__dvd_cmdlist[cmd_num].offset,__dvd_cmdlist[cmd_num].cb);
+		__Read(__dvd_cmdlist[cmd_num].buf,__dvd_cmdlist[cmd_num].len,__dvd_cmdlist[cmd_num].offset,__dvd_cmdlist[cmd_num].cb);
 		return 1;
 	}
 
@@ -215,15 +214,15 @@ static void __DVDInitWA()
 static void __DVDInterruptHandler(u32 nIrq,void *pCtx)
 {
 	u32 status,ir,irm,irmm;
-	DVDCallback cb;
+	dvdcallback cb;
 
 	SYS_CancelAlarm(&__dvd_timeoutalarm);
 
 	irmm = 0;
 	if(__dvd_lastcmdwasread) {
-		__dvd_prev.buffer = __dvd_curr.buffer;
-		__dvd_prev.len = __dvd_curr.len;
-		__dvd_prev.offset = __dvd_curr.offset;
+		__dvd_cmd_prev.buf = __dvd_cmd_curr.buf;
+		__dvd_cmd_prev.len = __dvd_cmd_curr.len;
+		__dvd_cmd_prev.offset = __dvd_cmd_curr.offset;
 		if(__dvd_stopnextint) irmm |= 0x0008;		
 	}
 	__dvd_lastcmdwasread = 0;
@@ -329,25 +328,35 @@ static void __DVDPatchDriveCode()
 	}
 }
 
-static void __fst_cb(u32 result)
+static void __fst_cb(s32 result,dvdcmdblk *block)
 {
 }
 
 static void __DVDInitFST()
 {
-	u32 idtmp;
+	dvddiskid idtmp;
 
-	__dvd_idtmp = &idtmp;
-	
 	DVD_Reset();
 
 	__DVDUnlockDrive();
 	__DVDPatchDriveCode();
 	
-	DVD_ReadId(__dvd_buffer$15,__dvd_idtmp,__fst_cb);
+	DVD_ReadId(&__dvd_buffer$15,&idtmp,__fst_cb);
 }
 
-s32 DVD_LowReadId(void *buffer,DVDCallback cb)
+s32 __issuecommand(s32 prio,dvdcmdblk *block)
+{
+	u32 level;
+
+	if(block->cmd==0x0001 || block->cmd==0x00004
+		|| block->cmd==0x0005 || block->cmd==0x000e) DCInvalidateRange(block->buf,block->len);
+
+	_CPU_ISR_Disable(level);
+	block->state = 0x0002;
+	_CPU_ISR_Restore(level);
+}
+
+s32 DVD_LowReadId(dvddiskid *diskID,dvdcallback cb)
 {
 	struct timespec tb;
 
@@ -357,7 +366,7 @@ s32 DVD_LowReadId(void *buffer,DVDCallback cb)
 	_diReg[2] = DVD_READDISKID;
 	_diReg[3] = 0;
 	_diReg[4] = DVD_DISKIDSIZE;
-	_diReg[5] = (u32)buffer;
+	_diReg[5] = (u32)diskID;
 	_diReg[6] = DVD_DISKIDSIZE;
 	_diReg[7] = (DVD_DI_DMA|DVD_DI_START);
 
@@ -385,11 +394,18 @@ void DVD_LowReset()
 }
 
 
-s32 DVD_ReadId(void *block,u32 *id,DVDCallback cb)
+s32 DVD_ReadId(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb)
 {
-	u32 *iblock = (u32*)block;
+	if(!block || !id) return 0;
 
-	iblock[2] = 5;
+	block->cmd = 5;
+	block->buf = id;
+	block->len = 32;
+	block->offset = 0;
+	block->txdsize = 0;
+	block->cb = cb;
+
+	__issuecommand(2,block);
 	
 	return 0;
 }
