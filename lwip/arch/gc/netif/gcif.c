@@ -154,7 +154,7 @@
 #define BBA_RX_MAX_PACKET_SIZE 1536	/* 6 pages * 256 bytes */
 
 #define BBA_INIT_TLBP	0x00
-#define BBA_INIT_BP	0x01
+#define BBA_INIT_BP		0x01
 #define BBA_INIT_RHBP	0x0f
 #define BBA_INIT_RWP	BBA_INIT_BP
 #define BBA_INIT_RRP	BBA_INIT_BP
