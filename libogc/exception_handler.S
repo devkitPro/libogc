@@ -67,7 +67,7 @@ default_exceptionhandler_start:
 	mr		r5,r3
 	nop
 	mfmsr	r3
-	ori		r3,r3,MSR_IR|MSR_DR
+	ori		r3,r3,MSR_IR|MSR_DR|MSR_RI
 	mtsrr1	r3
 	
 default_exceptionhandler_patch:
