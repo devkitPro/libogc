@@ -992,22 +992,29 @@ static inline u32 __VISetRegs()
 static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 {
 	u32 ret = 0;
+	u32 intr;
 
-
-	if(_viReg[24]&0x8000) {
-		_viReg[24] &= ~0x8000;
+	intr = _viReg[24];
+	if(intr&0x8000) {
+		_viReg[24] = intr&~0x8000;
 		ret |= 0x01;
 	}
-	if(_viReg[26]&0x8000) {
-		_viReg[26] &= ~0x8000;
+
+	intr = _viReg[26];
+	if(intr&0x8000) {
+		_viReg[26] = intr&~0x8000;
 		ret |= 0x02;
 	}
-	if(_viReg[28]&0x8000) {
-		_viReg[28] &= ~0x8000;
+
+	intr = _viReg[28];
+	if(intr&0x8000) {
+		_viReg[28] = intr&~0x8000;
 		ret |= 0x04;
 	}
-	if(_viReg[30]&0x8000) {
-		_viReg[30] &= ~0x8000;
+
+	intr = _viReg[30];
+	if(intr&0x8000) {
+		_viReg[30] = intr&~0x8000;
 		ret |= 0x08;
 	}
 	if(ret&0x0c) return;
@@ -1255,10 +1262,10 @@ void VIDEO_Flush()
 	u64 mask;
 
 	_CPU_ISR_Disable(level);
-	shdw_changeMode = changeMode;
+	shdw_changeMode |= changeMode;
 	changeMode = 0;
 
-	shdw_changed = changed;
+	shdw_changed |= changed;
 	while(changed) {
 		val = cntlzd(changed);
 		shdw_regs[val] = regs[val];
