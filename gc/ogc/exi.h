@@ -29,7 +29,7 @@
    extern "C" {
 #endif /* __cplusplus */
 
-typedef u32 (*EXICallback)(u32,void *);
+typedef u32 (*EXICallback)(u32,u32);
 
 u32 EXI_Probe(u32 nChn);
 u32 EXI_Lock(u32 nChn,u32 nDev,EXICallback unlockCB);
@@ -41,7 +41,7 @@ u32 EXI_Imm(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tccb);
 u32 EXI_ImmEx(u32 nChn,void *pData,u32 nLen,u32 nMode);
 u32 EXI_Dma(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tccb);
 u32 EXI_GetState(u32 nChn);
-u32 EXI_GetId(u32 nChn,u32 nDev,u32 *nId);
+u32 EXI_GetID(u32 nChn,u32 nDev,u32 *nId);
 EXICallback EXI_RegisterEXICallback(u32 nChn,EXICallback cb);
 
 #ifdef __cplusplus

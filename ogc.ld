@@ -15,10 +15,8 @@ OUTPUT_ARCH(powerpc:common);
 EXTERN(_start);
 ENTRY(_start);
 
-
 SECTIONS
 {
-
   /* DOL header (from TITANIK's GC docs)
    */
   file_start = 0x80003000;
@@ -334,7 +332,7 @@ __ArenaHi = (0x81700000);
 __gxregs = (__ArenaHi + 31) & (-32);
 
 /* for backward compatibility with old crt0 */
-__stack = (0x81700000);
+__stack = (__stack_addr);
 
 PROVIDE (text_mem_start = text_mem_start);
 PROVIDE (data_mem_start = data_mem_start);

@@ -1022,7 +1022,7 @@ static u32 bba_calc_response(struct bba_priv *priv,u32 val)
 	return ((c0 << 24) | (c1 << 16) | (c2 << 8) | c3);
 }
 
-static u32 bba_event_handler(u32 nChn,void *arg)
+static u32 bba_event_handler(u32 nChn,u32 nDev)
 {
 	u8 status;
 	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
