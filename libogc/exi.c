@@ -618,6 +618,13 @@ u32 EXI_Probe(u32 nChn)
 	return ret;
 }
 
+u32 EXI_ProbeEx(u32 nChn)
+{
+	if(EXI_Probe(nChn)==1) return 1;
+	if(last_exi_idtime[nChn]==0) return -1;
+	return 0;
+}
+
 u32 EXI_ProbeReset()
 {
 	exibus_priv *exi = NULL;
@@ -641,13 +648,12 @@ void __exi_init()
 #ifdef _EXI_DEBUG
 	printf("__exit_init(): init expansion system.\n");
 #endif
+	__MaskIrq(IM_EXI);
 
 	_exiReg[0] = 0;
 	_exiReg[5] = 0;
 	_exiReg[10] = 0;
 
-	__MaskIrq(IM_EXI);
-	
 	memset(eximap,0,EXI_MAX_CHANNELS*sizeof(exibus_priv));
 
 	IRQ_Request(IRQ_EXI0_EXI,__exi_irq_handler,NULL);

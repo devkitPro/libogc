@@ -18,6 +18,7 @@ typedef void (*SDCCallback)(s32 chn,s32 result);
 s32 SDCARD_Init();
 s32 SDCARD_Reset(s32 chn);
 s32 SDCARD_Mount(s32 chn,SDCCallback detach_cb);
+s32 SDCARD_Unmount(s32 chn);
 
 #ifdef __cplusplus
    }

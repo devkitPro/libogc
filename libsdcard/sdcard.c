@@ -65,6 +65,7 @@ typedef struct _sdcard_cntrl {
 	csd_register csd;
 	u32 statush[16];
 	u32 attached;
+	u32 mount_step;
 	s32 result;
 	u32 block_len;
 	u32 err_status;
@@ -81,11 +82,13 @@ static u8 wp_flag;
 static u32 sdcard_inited = 0;
 static sdcard_block sdcard_map[2];
 
+extern void __exi_init();
 extern unsigned long gettick();
 extern long long gettime();
 extern u32 diff_msec(long long start,long long end);
+extern u32 diff_usec(long long start,long long end);
 
-#ifdef _SDCARD_DEBUG
+//#ifdef _SDCARD_DEBUG
 static void __print_csdregister(s32 chn)
 {
 	sdcard_block *card = NULL;
@@ -139,7 +142,7 @@ static void __print_cidregister(s32 chn)
 	printf("psn: %08x\n",card->cid.psn);
 	printf("mdt: %04x\n",card->cid.mdt);
 }
-#endif
+//#endif
 
 static void __fill_csdregister(s32 chn)
 {
@@ -214,17 +217,19 @@ static void __timeout_handler(sysalarm *alarm)
 	LWP_WakeThread(card->alarm_queue);
 }
 
-static __inline__ u32 __check_response(u8 res)
+static __inline__ u32 __check_response(s32 chn,u8 *res)
 {
-	u32 ret;
+	sdcard_block *card = NULL;
 
-	ret = 0;
-	if(res&0x40) ret |= 0x1000;
-	if(res&0x20) ret |= 0x0100;
-	if(res&0x08) ret |= 0x0002;
-	if(res&0x04) ret |= 0x0001;
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
+	card = &sdcard_map[chn];
 
-	return ret;
+	if(*res&0x40) card->err_status |= 0x1000;
+	if(*res&0x20) card->err_status |= 0x0100;
+	if(*res&0x08) card->err_status |= 0x0002;
+	if(*res&0x04) card->err_status |= 0x0001;
+
+	return card->err_status;
 }
 
 static __inline__ u8 __make_crc7(void *buffer,u32 len)
@@ -318,8 +323,57 @@ static void __sdcard_defaultapicallback(s32 chn,s32 result)
 
 static u32 __sdcard_exthandler(u32 chn,u32 dev)
 {
-	printf("card was detached.\n");
+	SDCCallback cb;
+	sdcard_block *card = NULL;
+
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
+	card = &sdcard_map[chn];
+
+	if(card->attached) {
+		card->attached = 0;
+		EXI_RegisterEXICallback(chn,NULL);
+		SYS_CancelAlarm(&card->timeout_svc);
+		
+		cb = card->exi_cb;
+		if(cb) {
+			card->exi_cb = NULL;
+			cb(chn,SDCARD_ERROR_NOCARD);
+		}
+
+		cb = card->ext_cb;
+		if(cb) {
+			card->ext_cb = NULL;
+			cb(chn,SDCARD_ERROR_NOCARD);
+		}
+		printf("card was detached.\n");
+	}
 	return 1;
+}
+
+static s32 __sdcard_getcntrlblock(s32 chn,sdcard_block **card)
+{
+	s32 ret;
+	u32 level;
+	sdcard_block *rcard = NULL;
+	
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_FATALERROR;
+
+	_CPU_ISR_Disable(level);
+	rcard = &sdcard_map[chn];
+	if(!rcard->attached) {
+		_CPU_ISR_Restore(level);
+		return SDCARD_ERROR_NOCARD;
+	}
+
+	ret = SDCARD_ERROR_BUSY;
+	if(rcard->result!=SDCARD_ERROR_BUSY) {
+		rcard->result = SDCARD_ERROR_BUSY;
+		rcard->api_cb = NULL;
+		*card = rcard;
+		ret = SDCARD_ERROR_READY;
+	}
+	_CPU_ISR_Restore(level);
+	return ret;
 }
 
 static s32 __sdcard_writecmd0(s32 chn,void *buf,s32 len)
@@ -351,7 +405,7 @@ static s32 __sdcard_writecmd0(s32 chn,void *buf,s32 len)
 		return SDCARD_ERROR_NOCARD;
 	}
 
-
+	
 	cnt = 0;
 	while(cnt<20) {
 		if(EXI_ImmEx(chn,dummy,128,EXI_WRITE)==0) {
@@ -378,6 +432,7 @@ static s32 __sdcard_writecmd0(s32 chn,void *buf,s32 len)
 		EXI_Unlock(chn);
 		return SDCARD_ERROR_IOERROR;
 	}
+
 	if(EXI_ImmEx(chn,&crc,1,EXI_WRITE)==0) {
 		EXI_Deselect(chn);
 		EXI_Unlock(chn);
@@ -445,12 +500,13 @@ static s32 __sdcard_writecmd(s32 chn,void *buf,s32 len)
 static s32 __sdcard_readresponse(s32 chn,void *buf,s32 len)
 {
 	u8 *ptr;
-	s32 startT;
+	s32 startT,ret;
 	sdcard_block *card = NULL;
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
 	card = &sdcard_map[chn];
 
+	ret = SDCARD_ERROR_READY;
 	ptr = buf;
 	*ptr = clr_flag;
 	if(EXI_Lock(chn,EXI_DEVICE_0,NULL)==0) return SDCARD_ERROR_FATALERROR;
@@ -490,7 +546,7 @@ static s32 __sdcard_readresponse(s32 chn,void *buf,s32 len)
 #ifdef _SDCARD_DEBUG
 			printf("sd response: %02x\n",((u8*)buf)[0]);
 #endif
-			if(*ptr&0x80) card->err_status |= SDCARD_OP_TIMEDOUT;
+			if(*ptr&0x80) ret = SDCARD_OP_TIMEDOUT;
 			break;
 		}
 	}
@@ -502,16 +558,17 @@ static s32 __sdcard_readresponse(s32 chn,void *buf,s32 len)
 			return SDCARD_ERROR_IOERROR;
 		}
 	}
+	usleep(40);
 	
 	EXI_Deselect(chn);
 	EXI_Unlock(chn);
-	return SDCARD_ERROR_READY;
+	return ret;
 }
 
 static s32 __sdcard_stopreadresponse(s32 chn,void *buf,s32 len)
 {
 	u8 *ptr;
-	s32 startT;
+	s32 startT,ret;
 	sdcard_block *card = NULL;
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
@@ -524,6 +581,7 @@ static s32 __sdcard_stopreadresponse(s32 chn,void *buf,s32 len)
 		return SDCARD_ERROR_NOCARD;
 	}
 
+	ret = SDCARD_ERROR_READY;
 	*ptr = clr_flag;
 	if(EXI_ImmEx(chn,ptr,1,EXI_READWRITE)==0) {
 		EXI_Deselect(chn);
@@ -566,7 +624,7 @@ static s32 __sdcard_stopreadresponse(s32 chn,void *buf,s32 len)
 #ifdef _SDCARD_DEBUG
 			printf("sd response: %02x\n",((u8*)buf)[0]);
 #endif
-			if(*ptr&0x80) card->err_status |= SDCARD_OP_TIMEDOUT;
+			if(*ptr&0x80) ret = SDCARD_OP_TIMEDOUT;
 			break;
 		}
 	}
@@ -593,7 +651,7 @@ static s32 __sdcard_stopreadresponse(s32 chn,void *buf,s32 len)
 #ifdef _SDCARD_DEBUG
 			printf("sd response: %02x\n",((u8*)buf)[0]);
 #endif
-			if(*ptr!=0xff) card->err_status |= SDCARD_OP_TIMEDOUT;
+			if(*ptr!=0xff) ret = SDCARD_OP_TIMEDOUT;
 			break;
 		}
 	}
@@ -607,13 +665,10 @@ static s32 __sdcard_stopreadresponse(s32 chn,void *buf,s32 len)
 			return SDCARD_ERROR_IOERROR;
 		}
 	}
-#ifdef _SDCARD_DEBUG
-	printf("sd response: %02x\n",((u8*)buf)[0]);
-#endif
 	
 	EXI_Deselect(chn);
 	EXI_Unlock(chn);
-	return SDCARD_ERROR_READY;
+	return ret;
 }
 
 static s32 __sdcard_dataread(s32 chn,void *buf,u32 len)
@@ -622,7 +677,7 @@ static s32 __sdcard_dataread(s32 chn,void *buf,u32 len)
 	u32 cnt;
 	u8 res[2];
 	u16 crc,crc_org;
-	s32 startT;
+	s32 startT,ret;
 	struct timespec tb;
 	sdcard_block *card = NULL;
 
@@ -635,6 +690,7 @@ static s32 __sdcard_dataread(s32 chn,void *buf,u32 len)
 		return SDCARD_ERROR_NOCARD;
 	}
 
+	ret = SDCARD_ERROR_READY;
 	ptr = buf;
 	for(cnt=0;cnt<len;cnt++) ptr[cnt] = clr_flag;
 	if(EXI_ImmEx(chn,ptr,1,EXI_READWRITE)==0) {
@@ -668,7 +724,7 @@ static s32 __sdcard_dataread(s32 chn,void *buf,u32 len)
 #ifdef _SDCARD_DEBUG
 			printf("sd response: %02x\n",((u8*)buf)[0]);
 #endif
-			if(*ptr!=0xfe) card->err_status |= SDCARD_OP_TIMEDOUT;
+			if(*ptr!=0xfe) ret = SDCARD_OP_TIMEDOUT;
 			break;
 		}
 	}
@@ -702,9 +758,9 @@ static s32 __sdcard_dataread(s32 chn,void *buf,u32 len)
 
 	crc = __make_crc16(buf,len);
 	if(crc==crc_org) {
-//#ifdef _SDCARD_DEBUG
+#ifdef _SDCARD_DEBUG
 		printf("crc ok: %04x : %04x\n",crc_org,crc);
-//#endif
+#endif
 		return SDCARD_ERROR_READY;
 	}
 	
@@ -713,7 +769,7 @@ static s32 __sdcard_dataread(s32 chn,void *buf,u32 len)
 
 static s32 __sdcard_datareadfinal(s32 chn,void *buf,u32 len)
 {
-	s32 startT;
+	s32 startT,ret;
 	u32 cnt;
 	u8 *ptr,cmd[6];
 	u16 crc_org,crc;
@@ -729,6 +785,7 @@ static s32 __sdcard_datareadfinal(s32 chn,void *buf,u32 len)
 		return SDCARD_ERROR_NOCARD;
 	}
 
+	ret = SDCARD_ERROR_READY;
 	ptr = buf;
 	for(cnt=0;cnt<len;cnt++) ptr[cnt] = clr_flag;
 	
@@ -763,7 +820,7 @@ static s32 __sdcard_datareadfinal(s32 chn,void *buf,u32 len)
 #ifdef _SDCARD_DEBUG
 			printf("sd response: %02x\n",((u8*)buf)[0]);
 #endif
-			if(*ptr!=0xfe) card->err_status |= SDCARD_OP_TIMEDOUT;
+			if(*ptr!=0xfe) ret = SDCARD_OP_TIMEDOUT;
 			break;
 		}
 	}
@@ -804,13 +861,13 @@ static s32 __sdcard_datareadfinal(s32 chn,void *buf,u32 len)
 
 	crc = __make_crc16(buf,len);
 	if(crc==crc_org) {
-//#ifdef _SDCARD_DEBUG
+#ifdef _SDCARD_DEBUG
 		printf("crc ok: %04x : %04x\n",crc_org,crc);
-//#endif
-		return SDCARD_ERROR_READY;
+#endif
+		return ret;
 	}
 	
-	return SDCARD_ERROR_FATALERROR;
+	return ret;
 }
 
 static s32 __sdcard_response1(s32 chn)
@@ -822,7 +879,7 @@ static s32 __sdcard_response1(s32 chn)
 	card = &sdcard_map[chn];
 	
 	if((ret=__sdcard_readresponse(chn,&card->response,1))!=0) return ret;
-	return __check_response(((u8*)&card->response)[0]);
+	return __check_response(chn,(u8*)&card->response);
 }
 
 static s32 __sdcard_response2(s32 chn)
@@ -846,7 +903,9 @@ static s32 __sdcard_sendopcond(s32 chn)
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
 	card = &sdcard_map[chn];
-
+#ifdef _SDCARD_DEBUG
+	printf("__sdcard_sendopcond(%d)\n",chn);
+#endif
 	ret = 0;
 	startT = gettick();
 	do {
@@ -870,8 +929,8 @@ static s32 __sdcard_sendopcond(s32 chn)
 #endif
 			return ret;
 		}
-		if((ret=__sdcard_readresponse(chn,&card->response,1))<0) return ret;
-		ret = __check_response(((u8*)&card->response)[0]);
+		if((ret=__sdcard_readresponse(chn,&card->response,1))!=0) return ret;
+		ret = __check_response(chn,(u8*)&card->response);
 
 		if(ret!=0) return ret;
 		if(!(((u8*)&card->response)[0]&0x01)) return SDCARD_ERROR_READY;
@@ -899,7 +958,7 @@ static s32 __sdcard_sendopcond(s32 chn)
 		return ret;
 	}
 	if((ret=__sdcard_readresponse(chn,&card->response,1))!=0) return ret;
-	ret = __check_response(((u8*)&card->response)[0]);
+	ret = __check_response(chn,(u8*)&card->response);
 
 	if(ret!=0) return ret;
 	if((((u8*)&card->response)[0]&0x01)) ret |= SDCARD_OP_INITFAILED;
@@ -925,7 +984,7 @@ static s32 __sdcard_sendappcmd(s32 chn)
 		return ret;
 	}
 	if((ret=__sdcard_readresponse(chn,&card->response,1))!=0) return ret;
-	ret = __check_response(((u8*)&card->response)[0]);
+	ret = __check_response(chn,(u8*)&card->response);
 
 	return ret;
 }
@@ -954,7 +1013,9 @@ static s32 __sdcard_sendcsd(s32 chn)
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
 	card = &sdcard_map[chn];
-
+#ifdef _SDCARD_DEBUG
+	printf("__sdcard_sendcsd(%d)\n",chn);
+#endif
 	ret = 0;
 	
 	memset(card->cmd,0,5);
@@ -967,7 +1028,7 @@ static s32 __sdcard_sendcsd(s32 chn)
 		return ret;
 	}
 	if((ret=__sdcard_readresponse(chn,&card->response,1))!=0) return ret;
-	ret = __check_response(((u8*)&card->response)[0]);
+	ret = __check_response(chn,(u8*)&card->response);
 	if(ret==0) {
 		if((ret=__sdcard_dataread(chn,card->csdh,16))!=0) return ret;
 		__fill_csdregister(chn);
@@ -982,7 +1043,9 @@ static s32 __sdcard_sendcid(s32 chn)
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
 	card = &sdcard_map[chn];
-
+#ifdef _SDCARD_DEBUG
+	printf("__sdcard_sendcid(%d)\n",chn);
+#endif
 	ret = 0;
 	
 	memset(card->cmd,0,5);
@@ -990,12 +1053,12 @@ static s32 __sdcard_sendcid(s32 chn)
 	card->cmd_len = 5;
 	if((ret=__sdcard_writecmd(chn,card->cmd,card->cmd_len))!=0) {
 #ifdef _SDCARD_DEBUG
-		printf("__sdcard_sendcsd(%d): sd write cmd failed.\n",ret);
+		printf("__sdcard_sendcid(%d): sd write cmd failed.\n",ret);
 #endif
 		return ret;
 	}
 	if((ret=__sdcard_readresponse(chn,&card->response,1))!=0) return ret;
-	ret = __check_response(((u8*)&card->response)[0]);
+	ret = __check_response(chn,(u8*)&card->response);
 	if(ret==0) {
 		if((ret=__sdcard_dataread(chn,card->cidh,16))!=0) return ret;
 		__fill_cidregister(chn);
@@ -1010,7 +1073,9 @@ static s32 __sdcard_setblocklen(s32 chn,u32 block_len)
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
 	card = &sdcard_map[chn];
-
+#ifdef _SDCARD_DEBUG
+	printf("__sdcard_setblocklen(%d,%d)\n",chn,block_len);
+#endif
 	memset(card->cmd,0,5);
 	card->cmd[0] = 0x10;
 	card->cmd[1] = (block_len>>24)&0xff;
@@ -1020,61 +1085,61 @@ static s32 __sdcard_setblocklen(s32 chn,u32 block_len)
 	card->cmd_len = 5;
 	if((ret=__sdcard_writecmd(chn,card->cmd,card->cmd_len))!=0) {
 #ifdef _SDCARD_DEBUG
-		printf("__sdcard_sendcsd(%d): sd write cmd failed.\n",ret);
+		printf("__sdcard_setblocklen(%d): sd write cmd failed.\n",ret);
 #endif
 		return ret;
 	}
 	if((ret=__sdcard_readresponse(chn,&card->response,1))<0) return ret;
-	ret = __check_response(((u8*)&card->response)[0]);
+	ret = __check_response(chn,(u8*)&card->response);
 	
 	return ret;
 }
 
 static s32 __sdcard_softreset(s32 chn)
 {
-	s32 ret,err;
+	s32 ret;
 	sdcard_block *card = NULL;
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
 	card = &sdcard_map[chn];
-
+#ifdef _SDCARD_DEBUG
+	printf("__sdcard_softreset(%d)\n",chn);
+#endif
 	ret = 0;
-	err = 0;
 	memset(card->cmd,0,5);
 	card->cmd_len = 5;
 	if((ret=__sdcard_writecmd0(chn,card->cmd,card->cmd_len))!=0) {
 #ifdef _SDCARD_DEBUG
-		printf("SDCARD_Reset(%d): sd write cmd0 failed.\n",ret);
+		printf("__sdcard_softreset(%d): sd write cmd0 failed.\n",ret);
 #endif
 		return ret;
 	}
+	
 	if((ret=__sdcard_readresponse(chn,&card->response,1))!=0) return ret;
-	err |= __check_response(((u8*)&card->response)[0]);
+	ret = __check_response(chn,(u8*)&card->response);
 
 	memset(card->cmd,0,5);
 	card->cmd[0] = 0x0C;
 	card->cmd_len = 5;
-	if((ret=__sdcard_writecmd(chn,card->cmd,card->cmd_len))!=0) {
-#ifdef _SDCARD_DEBUG
-		printf("SDCARD_Reset(%d): sd write cmd failed.\n",ret);
-#endif
-		return ret;
-	}
-	if((ret!=__sdcard_stopreadresponse(chn,&card->response,1))!=0) return ret;
-	err |= __check_response(((u8*)&card->response)[0]);
+	if((ret=__sdcard_writecmd(chn,card->cmd,card->cmd_len))!=0) goto exit;
+	
+	if((ret=__sdcard_stopreadresponse(chn,&card->response,1))!=0) return ret;
+	ret = __check_response(chn,(u8*)&card->response);
 
+exit:
 	memset(card->cmd,0,5);
 	card->cmd_len = 5;
 	if((ret=__sdcard_writecmd(chn,card->cmd,card->cmd_len))!=0) {
 #ifdef _SDCARD_DEBUG
-		printf("SDCARD_Reset(%d): sd write cmd failed.\n",ret);
+		printf("__sdcard_softreset(%d): sd write cmd failed.\n",ret);
 #endif
 		return ret;
 	}
-	if((ret=__sdcard_readresponse(chn,&card->response,1))!=0) return ret;
-	err |= __check_response(((u8*)&card->response)[0]);
 
-	return err;
+	if((ret=__sdcard_readresponse(chn,&card->response,1))!=0) return ret;
+	ret = __check_response(chn,(u8*)&card->response);
+
+	return ret;
 }
 
 static s32 __sdcard_sd_status(s32 chn)
@@ -1122,6 +1187,24 @@ static s32 __sdcard_readD(s32 chn,void *buffer,u32 address,u32 blocks)
 	return SDCARD_ERROR_READY;
 }
 
+static void __sdcard_dounmount(s32 chn,s32 result)
+{
+	u32 level;
+	sdcard_block *card = NULL;
+
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return;
+	card = &sdcard_map[chn];
+	
+	_CPU_ISR_Disable(level);
+	if(card->attached) {
+		card->attached = 0;
+		EXI_RegisterEXICallback(chn,NULL);
+		EXI_Detach(chn);
+		SYS_CancelAlarm(&card->timeout_svc);
+	}
+	_CPU_ISR_Restore(level);
+}
+
 s32 SDCARD_Reset(s32 chn)
 {
 	u32 ret;
@@ -1129,21 +1212,22 @@ s32 SDCARD_Reset(s32 chn)
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
 	card = &sdcard_map[chn];
-
-	if(EXI_Attach(chn,__sdcard_exthandler)==0) return -1;
-
+#ifdef _SDCARD_DEBUG
+	printf("SDCARD_Reset(%d)\n",chn);
+#endif
 	wp_flag = 0;
 	if(__sdcard_softreset(chn)!=0) {
 		wp_flag = 1;
 		if(__sdcard_softreset(chn)!=0) return -1;
 	}
-	__sdcard_sendopcond(chn);
-	__sdcard_sendcsd(chn);
-	__sdcard_sendcid(chn);
-#ifdef _SDCARD_DEBUG
+
+	if(__sdcard_sendopcond(chn)!=0) return -1;
+	if(__sdcard_sendcsd(chn)!=0) return -1;
+	if(__sdcard_sendcid(chn)!=0) return -1;
+//#ifdef _SDCARD_DEBUG
 	__print_csdregister(chn);
 	__print_cidregister(chn);
-#endif
+//#endif
 
 	card->block_len = 512;
 	ret = __sdcard_setblocklen(chn,card->block_len);
@@ -1154,18 +1238,21 @@ s32 SDCARD_Reset(s32 chn)
 
 s32 SDCARD_Mount(s32 chn,SDCCallback detach_cb)
 {
-	u32 level;
+	s32 ret;
 	sdcard_block *card = NULL;
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_FATALERROR;
 	card = &sdcard_map[chn];
+#ifdef _SDCARD_DEBUG
+	printf("SDCARD_Mount(): mounting card.\n");
+#endif
+	if(card->result==SDCARD_ERROR_BUSY) return SDCARD_ERROR_BUSY;
 
-	_CPU_ISR_Disable(level);
-	if(card->result==SDCARD_ERROR_BUSY) {
-		_CPU_ISR_Restore(level);
-		return SDCARD_ERROR_BUSY;
-	}
+	while((ret=EXI_ProbeEx(chn))==0);
+	if(ret!=1) return SDCARD_ERROR_NOCARD;
+	
 
+	ret = SDCARD_ERROR_BUSY;
 	if(card->attached || !(EXI_GetState(chn)&EXI_FLAG_ATTACH)) {
 		card->result = SDCARD_ERROR_BUSY;
 		card->ext_cb = detach_cb;
@@ -1175,13 +1262,31 @@ s32 SDCARD_Mount(s32 chn,SDCCallback detach_cb)
 		if(!card->attached) {
 			if(EXI_Attach(chn,__sdcard_exthandler)==0) {
 				card->result = SDCARD_ERROR_NOCARD;
-				_CPU_ISR_Restore(level);
 				return SDCARD_ERROR_NOCARD;
 			}
 		}
 		card->attached = 1;
+		card->mount_step = 0;
+		ret = SDCARD_Reset(chn);
 	}
-	return -1;
+	
+	if(ret) ret = SDCARD_ERROR_NOCARD;
+	return ret;
+}
+
+s32 SDCARD_Unmount(s32 chn)
+{
+	s32 ret;
+	sdcard_block *card;
+
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_FATALERROR;
+#ifdef _SDCARD_DEBUG
+	printf("SDCARD_Unmount(%d)\n",chn);
+#endif
+	if((ret=__sdcard_getcntrlblock(chn,&card))<0) ret = SDCARD_ERROR_NOCARD;
+	__sdcard_dounmount(chn,SDCARD_ERROR_READY);
+	
+	return SDCARD_ERROR_READY;
 }
 
 s32 SDCARD_Init()
@@ -1189,11 +1294,9 @@ s32 SDCARD_Init()
 	u32 i,level;
 	
 	if(sdcard_inited) return SDCARD_ERROR_BUSY;
-
 #ifdef _SDCARD_DEBUG
 	printf("SDCARD_Init()\n");
 #endif
-	
 	_CPU_ISR_Disable(level);
 	memset(sdcard_map,0,sizeof(sdcard_block)*2);
 	for(i=0;i<2;i++) {
