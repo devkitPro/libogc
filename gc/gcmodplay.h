@@ -29,7 +29,7 @@ typedef struct _modplay {
 void MODPlay_Init(MODPlay *mod);
 u32 MODPlay_SetFrequency(MODPlay *mod,u32 freq);
 void MODPlay_SetStereo(MODPlay *mod,BOOL stereo);
-u32 MODPlay_SetMOD(MODPlay *mod,u8 *mem);
+u32 MODPlay_SetMOD(MODPlay *mod,const u8 *mem);
 void MODPlay_Unload(MODPlay *mod);
 u32 MODPlay_AllocSFXChannels(MODPlay *mod,u32 sfxchans);
 u32 MODPlay_Start(MODPlay *mod);

@@ -243,11 +243,11 @@ void MODPlay_Unload(MODPlay *mod)
 	MOD_Free(&mod->mod);
 }
 
-u32 MODPlay_SetMOD(MODPlay *mod,u8 *mem)
+u32 MODPlay_SetMOD(MODPlay *mod,const u8 *mem)
 {
 	MODPlay_Unload(mod);
 
-	if(MOD_SetMOD(&mod->mod,mem)==0) {
+	if(MOD_SetMOD(&mod->mod,(u8*)mem)==0) {
 		MODPlay_AllocSFXChannels(mod,mod->numSFXChans);
 		return 0;
 	}

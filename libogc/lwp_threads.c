@@ -19,8 +19,6 @@ lwp_cntrl *_thr_executing = NULL;
 lwp_cntrl *_thr_heir = NULL;
 lwp_cntrl *_thr_allocated_fp = NULL;
 
-frame_context *_thr_allocated_fpctx = NULL;
-
 lwp_queue _lwp_thr_ready[256];
 
 volatile boolean _context_switch_want;
@@ -657,7 +655,6 @@ u32 __lwp_sys_init()
 	_thr_executing = NULL;
 	_thr_heir = NULL;
 	_thr_allocated_fp = NULL;
-	_thr_allocated_fpctx = NULL;
 
 	for(index=0;index<1024;index++) {
 		_lwp_objects[index].lwp_id = 0;
