@@ -59,9 +59,9 @@ static void __lwp_dumpcontext(frame_context *ctx)
 }
 #endif
 
-void _cpu_contextfp_dump()
+void _cpu_contextfp_dump(frame_context *r3,frame_context *r4,frame_context *r5)
 {
-	printf("_cpu_contextfp_dump()\n");
+	printf("_cpu_contextfp_dump(%p,%p)\n",r3,r5);
 }
 
 u32 __lwp_isr_in_progress()

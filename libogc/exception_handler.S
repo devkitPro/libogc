@@ -118,31 +118,31 @@ fpu_exception_handler:
 	ori		r5,r5,MSR_FP
 	mtmsr	r5
 	isync
-	lwz		r5,SRR1_OFFSET-8(r3)
+	lwz		r5,SRR1_OFFSET(sp)
 	ori		r5,r5,MSR_FP
 	mtsrr1	r5
 	lwz		r5,_thr_allocated_fpctx@sda21(0)
 	stw		r3,_thr_allocated_fpctx@sda21(0)
 	cmpw	r5,r3
 	beq		2f
+	bl		_cpu_contextfp_dump
 	cmpwi	r5,0x0000
 	beq		1f
-	bl		_cpu_contextfp_dump
 	bl		_cpu_context_save_fp
 1:	bl		_cpu_context_restore_fp
-2:	lwz		r5,CR_OFFSET-8(r3)
+2:	lwz		r5,CR_OFFSET(sp)
 	mtcr	r5
-	lwz		r5,LR_OFFSET-8(r3)
+	lwz		r5,LR_OFFSET(sp)
 	mtlr	r5
-	lwz		r5,SRR0_OFFSET-8(r3)
+	lwz		r5,SRR0_OFFSET(sp)
 	mtsrr0	r5
-	lwz		r5,CTR_OFFSET-8(r3)
+	lwz		r5,CTR_OFFSET(sp)
 	mtctr	r5
-	lwz		r5,XER_OFFSET-8(r3)
+	lwz		r5,XER_OFFSET(sp)
 	mtxer	r5
-	lwz		r5,GPR5_OFFSET-8(r3)
-	lwz		r4,GPR4_OFFSET-8(r3)
-	lwz		r3,GPR3_OFFSET-8(r3)
+	lwz		r5,GPR5_OFFSET(sp)
+	lwz		r4,GPR4_OFFSET(sp)
+	lwz		r3,GPR3_OFFSET(sp)
 	addi	sp,sp,EXCEPTION_FRAME_END
 	rfi
 
