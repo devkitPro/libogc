@@ -41,7 +41,6 @@ extern u8 __intrstack_addr[],__intrstack_end[];
 
 #ifdef _IRQ_DEBUG
 #include <lwp_threads.h>
-extern int printk(const char *fmt,...);
 #endif
 
 static void __irqhandler_init()
@@ -168,7 +167,7 @@ void c_irqdispatcher()
 
 
 #ifdef _IRQ_DEBUG
-	printk("c_irqdispatcher(%08x,%d,%d,%d)\n",intmask,irq,__lwp_isr_in_progress(),_thread_dispatch_disable_level);
+	printf("c_irqdispatcher(%08x,%d,%d,%d)\n",intmask,irq,__lwp_isr_in_progress(),_thread_dispatch_disable_level);
 #endif
 
 	if(g_IRQHandler[irq].pHndl)

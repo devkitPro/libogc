@@ -4,6 +4,8 @@
 #include "card_cmn.h"
 #include "card_buf.h"
 
+//#define _POOLBUFFER_DEBUG
+
 #define BUF_POOL_CNT			3
 
 typedef struct _buf_node {
@@ -18,9 +20,9 @@ static BufNode *s_freepool;
 void card_initBufferPool()
 {
 	u32 i;
-
+#ifdef _POOLBUFFER_DEBUG
 	printf("card_initBufferPool()\n");
-
+#endif
 	for(i=0;i<BUF_POOL_CNT-1;++i) {
 		s_buf[i].next = s_buf+i+1;
 	}

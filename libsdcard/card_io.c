@@ -1110,15 +1110,17 @@ static boolean __card_check(s32 drv_no)
 	s32 ret;
 	
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return FALSE;
-
+#ifdef _CARDIO_DEBUG	
 	printf("__card_check(%d)\n",drv_no);
-	
+#endif
 	while((ret=EXI_ProbeEx(drv_no))==0);
 	if(ret!=1) return FALSE;
 
 	if(!(EXI_GetState(drv_no)&EXI_FLAG_ATTACH)) {
 		if(EXI_Attach(drv_no,__card_exthandler)==0) return FALSE;
+#ifdef _CARDIO_DEBUG	
 		printf("__card_check(%d, attached)\n",drv_no);
+#endif
 		card_insertedCB(drv_no);
 	}
 	return TRUE;
@@ -1127,9 +1129,9 @@ static boolean __card_check(s32 drv_no)
 void card_initIODefault()
 {
 	u32 i;
-	
+#ifdef _CARDIO_DEBUG	
 	printf("card_initIODefault()\n");
-
+#endif
 	for(i=0;i<MAX_DRIVE;++i) {
 		_card_inserted[i] = FALSE;
 		_ioFlag[i] = NOT_INITIALIZED;

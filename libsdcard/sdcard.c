@@ -132,7 +132,9 @@ s32 SDCARD_Init()
 	time_t now;
 
 	if(!sdcard_inited) {
+#ifdef _SDCARD_DEBUG
 		printf("card_init()\n");
+#endif
 		sdcard_inited = 1;
 		now = time(NULL);
 		srand(now);

@@ -8,6 +8,7 @@
 #include "irq.h"
 #include "exi.h"
 #include "gx.h"
+#include "si.h"
 #include "lwp.h"
 #include "system.h"
 #include "video.h"
@@ -21,6 +22,7 @@
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
 #define _SHIFTR(v, s, w)	\
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
+
 #define VI_REGCHANGE(_reg)	\
 	((u64)0x01<<(63-_reg))
 
@@ -536,19 +538,71 @@ extern u32 __SYS_LockSram();
 extern u32 __SYS_UnlockSram(u32 write);
 
 #ifdef _VIDEO_DEBUG
+static u32 messages$128 = 0;
+static u32 printregs = 1;
+
 static void printRegs()
 {
-	printf("%08x%08x\n",(u32)(shdw_changed>>32),(u32)shdw_changed);
+	if(!printregs) {
+		printf("displayOffsetH = %d\ndisplayOffsetV = %d\n",displayOffsetH,displayOffsetV);
+		printf("%08x%08x\n",(u32)(shdw_changed>>32),(u32)shdw_changed);
 
-	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[0],regs[1],regs[2],regs[3],regs[4],regs[5],regs[6],regs[7]);
-	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[8],regs[9],regs[10],regs[11],regs[12],regs[13],regs[14],regs[15]);
-	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[16],regs[17],regs[18],regs[19],regs[20],regs[21],regs[22],regs[23]);
-	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[24],regs[25],regs[26],regs[27],regs[28],regs[29],regs[30],regs[31]);
-	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[32],regs[33],regs[34],regs[35],regs[36],regs[37],regs[38],regs[39]);
-	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[40],regs[41],regs[42],regs[43],regs[44],regs[45],regs[46],regs[47]);
-	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[48],regs[49],regs[50],regs[51],regs[52],regs[53],regs[54],regs[55]);
-	printf("%04x %04x %04x %04x\n",regs[56],regs[57],regs[58],regs[59]);
+		printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",shdw_regs[0],shdw_regs[1],shdw_regs[2],shdw_regs[3],shdw_regs[4],shdw_regs[5],shdw_regs[6],shdw_regs[7]);
+		printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",shdw_regs[8],shdw_regs[9],shdw_regs[10],shdw_regs[11],shdw_regs[12],shdw_regs[13],shdw_regs[14],shdw_regs[15]);
+		printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",shdw_regs[16],shdw_regs[17],shdw_regs[18],shdw_regs[19],shdw_regs[20],shdw_regs[21],shdw_regs[22],shdw_regs[23]);
+		printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",shdw_regs[24],shdw_regs[25],shdw_regs[26],shdw_regs[27],shdw_regs[28],shdw_regs[29],shdw_regs[30],shdw_regs[31]);
+		printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",shdw_regs[32],shdw_regs[33],shdw_regs[34],shdw_regs[35],shdw_regs[36],shdw_regs[37],shdw_regs[38],shdw_regs[39]);
+		printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",shdw_regs[40],shdw_regs[41],shdw_regs[42],shdw_regs[43],shdw_regs[44],shdw_regs[45],shdw_regs[46],shdw_regs[47]);
+		printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",shdw_regs[48],shdw_regs[49],shdw_regs[50],shdw_regs[51],shdw_regs[52],shdw_regs[53],shdw_regs[54],shdw_regs[55]);
+		printf("%04x %04x %04x %04x\n\n",shdw_regs[56],shdw_regs[57],shdw_regs[58],shdw_regs[59]);
 
+		printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",_viReg[0],_viReg[1],_viReg[2],_viReg[3],_viReg[4],_viReg[5],_viReg[6],_viReg[7]);
+		printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",_viReg[8],_viReg[9],_viReg[10],_viReg[11],_viReg[12],_viReg[13],_viReg[14],_viReg[15]);
+		printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",_viReg[16],_viReg[17],_viReg[18],_viReg[19],_viReg[20],_viReg[21],_viReg[22],_viReg[23]);
+		printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",_viReg[24],_viReg[25],_viReg[26],_viReg[27],_viReg[28],_viReg[29],_viReg[30],_viReg[31]);
+		printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",_viReg[32],_viReg[33],_viReg[34],_viReg[35],_viReg[36],_viReg[37],_viReg[38],_viReg[39]);
+		printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",_viReg[40],_viReg[41],_viReg[42],_viReg[43],_viReg[44],_viReg[45],_viReg[46],_viReg[47]);
+		printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",_viReg[48],_viReg[49],_viReg[50],_viReg[51],_viReg[52],_viReg[53],_viReg[54],_viReg[55]);
+		printf("%04x %04x %04x %04x\n",_viReg[56],_viReg[57],_viReg[58],_viReg[59]);
+		printregs = 1;
+	}
+}
+
+static void printDebugCalculations()
+{
+	if(!messages$128) {
+		messages$128 = 1;
+		printf("HorVer.dispPosX = %d\n",HorVer.dispPosX);
+		printf("HorVer.dispPosY = %d\n",HorVer.dispPosY);
+		printf("HorVer.dispSizeX = %d\n",HorVer.dispSizeX);
+		printf("HorVer.dispSizeY = %d\n",HorVer.dispSizeY);
+		printf("HorVer.adjustedDispPosX = %d\n",HorVer.adjustedDispPosX);
+		printf("HorVer.adjustedDispPosY = %d\n",HorVer.adjustedDispPosY);
+		printf("HorVer.adjustedDispSizeY = %d\n",HorVer.adjustedDispSizeY);
+		printf("HorVer.adjustedPanPosY = %d\n",HorVer.adjustedPanPosY);
+		printf("HorVer.adjustedPanSizeY = %d\n",HorVer.adjustedPanSizeY);
+		printf("HorVer.fbSizeX = %d\n",HorVer.fbSizeX);
+		printf("HorVer.fbSizeY = %d\n",HorVer.fbSizeY);
+		printf("HorVer.panPosX = %d\n",HorVer.panPosX);
+		printf("HorVer.panPosY = %d\n",HorVer.panPosY);
+		printf("HorVer.panSizeX = %d\n",HorVer.panSizeX);
+		printf("HorVer.panSizeY = %d\n",HorVer.panSizeY);
+		printf("HorVer.fbMode = %d\n",HorVer.fbMode);
+		printf("HorVer.nonInter = %d\n",HorVer.nonInter);
+		printf("HorVer.tv = %d\n",HorVer.tv);
+		printf("HorVer.wordPerLine = %d\n",HorVer.wordPerLine);
+		printf("HorVer.wpl = %d\n",HorVer.wpl);
+		printf("HorVer.std = %d\n",HorVer.std);
+		printf("HorVer.xof = %d\n",HorVer.xof);
+		printf("HorVer.bufAddr = %p\n",HorVer.bufAddr);
+		printf("HorVer.tfbb = 0x%08x\n",HorVer.tfbb);
+		printf("HorVer.bfbb = 0x%08x\n",HorVer.bfbb);
+		printf("HorVer.rbufAddr = %p\n",HorVer.rbufAddr);
+		printf("HorVer.rtfbb = 0x%08x\n",HorVer.rtfbb);
+		printf("HorVer.rbfbb = 0x%08x\n",HorVer.rbfbb);
+		printf("HorVer.black = %d\n",HorVer.black);
+		printf("HorVer.threeD = %d\n",HorVer.threeD);
+	}
 }
 #endif
 
@@ -592,7 +646,7 @@ static const struct _timing* __gettiming(u32 vimode)
 	return NULL;
 }
 
-static void __setInterruptRegs(const struct _timing *tm)
+static inline void __setInterruptRegs(const struct _timing *tm)
 {
 	u16 hlw;
 
@@ -604,7 +658,7 @@ static void __setInterruptRegs(const struct _timing *tm)
 	changed |= VI_REGCHANGE(25);
 }
 
-static void __setPicConfig(u16 fbSizeX,u32 xfbMode,u16 panPosX,u16 panSizeX,u8 *wordPerLine,u8 *std,u8 *wpl,u8 *xof)
+static inline void __setPicConfig(u16 fbSizeX,u32 xfbMode,u16 panPosX,u16 panSizeX,u8 *wordPerLine,u8 *std,u8 *wpl,u8 *xof)
 {
 	*wordPerLine = (fbSizeX+15)/16;
 	*std = *wordPerLine;
@@ -616,24 +670,24 @@ static void __setPicConfig(u16 fbSizeX,u32 xfbMode,u16 panPosX,u16 panSizeX,u8 *
 	changed |= VI_REGCHANGE(36);
 }
 
-static void __setBBIntervalRegs(const struct _timing *tm)
+static inline void __setBBIntervalRegs(const struct _timing *tm)
 {
-	regs[10] = tm->bs3|(tm->be3<<5);
-	regs[11] = tm->bs1|(tm->be1<<5);
+	regs[10] = (tm->be3<<5)|tm->bs3;
+	regs[11] = (tm->be1<<5)|tm->bs1;
 	changed |= VI_REGCHANGE(10);
 	changed |= VI_REGCHANGE(11);
 
-	regs[12] = tm->bs4|(tm->be4<<5);
-	regs[13] = tm->bs2|(tm->be2<<5);
+	regs[12] = (tm->be4<<5)|tm->bs4;
+	regs[13] = (tm->be2<<5)|tm->bs2;
 	changed |= VI_REGCHANGE(12);
 	changed |= VI_REGCHANGE(13);
 }
 
 static void __setScalingRegs(u16 panSizeX,u16 dispSizeX,s32 threeD)
 {
-	if(threeD) panSizeX = (panSizeX<<1)&0x1fffe;
+	if(threeD) panSizeX = _SHIFTL(panSizeX,1,16);
 	if(panSizeX<dispSizeX) {
-		regs[37] = 0x1000|((dispSizeX+((panSizeX<<8)-1))/dispSizeX);
+		regs[37] = 0x1000|((dispSizeX+(_SHIFTL(panSizeX,8,16)-1))/dispSizeX);
 		regs[56] = panSizeX;
 		changed |= VI_REGCHANGE(37);
 		changed |= VI_REGCHANGE(56);
@@ -643,12 +697,13 @@ static void __setScalingRegs(u16 panSizeX,u16 dispSizeX,s32 threeD)
 	}
 }
 
-static void __calcFbbs(u32 bufAddr,u16 panPosX,u16 panPosY,u8 wordperline,u32 xfbMode,u16 dispPosY,u32 *tfbb,u32 *bfbb)
+static inline void __calcFbbs(u32 bufAddr,u16 panPosX,u16 panPosY,u8 wordperline,u32 xfbMode,u16 dispPosY,u32 *tfbb,u32 *bfbb)
 {
 	u32 bytesPerLine,tmp;
 
+	panPosX &= 0xfff0;
 	bytesPerLine = (wordperline<<5)&0x1fe0;
-	*tfbb = bufAddr+(((panPosX<<1)&0x1ffe0)+(panPosY*bytesPerLine));
+	*tfbb = bufAddr+((panPosX<<5)+(panPosY*bytesPerLine));
 	*bfbb = *tfbb;
 	if(xfbMode==VI_XFBMODE_DF) *bfbb = *tfbb+bytesPerLine;
 
@@ -662,7 +717,7 @@ static void __calcFbbs(u32 bufAddr,u16 panPosX,u16 panPosY,u8 wordperline,u32 xf
 	*bfbb = MEM_VIRTUAL_TO_PHYSICAL(*bfbb);
 }
 
-static void __setFbbRegs(struct _horVer *horVer,u32 *tfbb,u32 *bfbb,u32 *rtfbb,u32 *rbfbb)
+static inline void __setFbbRegs(struct _horVer *horVer,u32 *tfbb,u32 *bfbb,u32 *rtfbb,u32 *rbfbb)
 {
 	u32 flag;
 	__calcFbbs((u32)horVer->bufAddr,horVer->panPosX,horVer->adjustedPanPosY,horVer->wordPerLine,horVer->fbMode,horVer->adjustedDispPosY,tfbb,bfbb);
@@ -702,7 +757,7 @@ static void __setFbbRegs(struct _horVer *horVer,u32 *tfbb,u32 *bfbb,u32 *rtfbb,u
 	}
 }
 
-static void __setHorizontalRegs(const struct _timing *tm,u16 dispPosX,u16 dispSizeX)
+static inline void __setHorizontalRegs(const struct _timing *tm,u16 dispPosX,u16 dispSizeX)
 {
 	u32 val1,val2;
 
@@ -719,9 +774,9 @@ static void __setHorizontalRegs(const struct _timing *tm,u16 dispPosX,u16 dispSi
 	changed |= VI_REGCHANGE(5);
 }
 
-static void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u16 prbOdd,u16 prbEven,u16 psbOdd,u16 psbEven,s32 black)
+static inline void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u16 prbOdd,u16 prbEven,u16 psbOdd,u16 psbEven,s32 black)
 {
-	u32 tmp;
+	u16 tmp;
 	u32 div1,div2;
 	u32 psb,prb;
 	u32 psbodd,prbodd;
@@ -771,11 +826,11 @@ static void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u16 prbO
 	changed |= VI_REGCHANGE(9);
 }
 
-static void __adjustPosition(u16 acv)
+static inline void __adjustPosition(u16 acv)
 {
 	u32 fact,field;
 	s16 dispPosX,dispPosY;
-	s16 dispSizeY;
+	s16 dispSizeY,maxDispSizeY;
 	
 	dispPosX = (HorVer.dispPosX+displayOffsetH);
 	if(dispPosX<=(720-HorVer.dispSizeX)) {
@@ -783,8 +838,8 @@ static void __adjustPosition(u16 acv)
 		else HorVer.adjustedDispPosX = 0;
 	} else HorVer.adjustedDispPosX = (720-HorVer.dispSizeX);
 
+	fact = 1;
 	if(HorVer.fbMode==VI_XFBMODE_SF) fact = 2;
-	else fact = 1;
 
 	field = HorVer.dispPosY&0x0001;
 	dispPosY = HorVer.dispPosY+displayOffsetV;
@@ -792,7 +847,8 @@ static void __adjustPosition(u16 acv)
 	else HorVer.adjustedDispPosY = field;
 
 	dispSizeY = HorVer.dispPosY+HorVer.dispSizeY+displayOffsetV;
-	if(dispSizeY>((acv<<1)-field)) dispSizeY -= (acv<<1)-field;
+	maxDispSizeY = ((acv<<1)-field);
+	if(dispSizeY>maxDispSizeY) dispSizeY -= (acv<<1)-field;
 	else dispSizeY = 0;
 	
 	dispPosY = HorVer.dispPosY+displayOffsetV;
@@ -806,7 +862,7 @@ static void __adjustPosition(u16 acv)
 	HorVer.adjustedPanPosY = HorVer.panPosY-(dispPosY/fact);
 
 	dispSizeY = HorVer.dispPosY+HorVer.dispSizeY+displayOffsetV;
-	if(dispSizeY>((acv<<1)-field)) dispSizeY -= (acv<<1)-field;
+	if(dispSizeY>maxDispSizeY) dispSizeY -= maxDispSizeY;
 	else dispSizeY = 0;
 	
 	dispPosY = HorVer.dispPosY+displayOffsetV;
@@ -815,7 +871,7 @@ static void __adjustPosition(u16 acv)
 	HorVer.adjustedPanSizeY = HorVer.panSizeY+(dispPosY/fact)-(dispSizeY/fact);
 }
 
-static void __importAdjustingValues()
+static inline void __importAdjustingValues()
 {
 	syssram *sram;
 
@@ -880,7 +936,7 @@ static void __VIInit(u32 vimode)
 	}
 }
 
-static u32 __getCurrentHalfLine()
+static inline u32 __getCurrentHalfLine()
 {
 	u32 vpos_old;
 	u32 vpos = 0;
@@ -900,7 +956,7 @@ static u32 __getCurrentHalfLine()
 	return vpos+(hpos/currTiming->hlw);	
 }
 
-static u32 __getCurrFieldEvenOdd()
+static inline u32 __getCurrFieldEvenOdd()
 {
 	u32 hline;
 
@@ -910,7 +966,7 @@ static u32 __getCurrFieldEvenOdd()
 	return 0;
 }
 
-static u32 __VISetRegs()
+static inline u32 __VISetRegs()
 {
 	u32 val;
 	u64 mask;
@@ -935,7 +991,8 @@ static u32 __VISetRegs()
 static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 {
 	u32 ret = 0;
-	
+
+
 	if(_viReg[24]&0x8000) {
 		_viReg[24] &= ~0x8000;
 		ret |= 0x01;
@@ -952,7 +1009,7 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 		_viReg[30] &= ~0x8000;
 		ret |= 0x08;
 	}
-	if(ret&0xc) return;
+	if(ret&0x0c) return;
 
 	retraceCount++;
 	if(preRetraceCB)
@@ -961,6 +1018,7 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 	if(flushFlag) {
 		if(__VISetRegs()) {
 			flushFlag = 0;
+			SI_RefreshSamplingRate();
 		}
 	}
 
@@ -1032,6 +1090,10 @@ void VIDEO_Init()
 	HorVer.xof = 0;
 	HorVer.black = 1;
 	HorVer.threeD = 0;
+	HorVer.bfbb = 0;
+	HorVer.tfbb = 0;
+	HorVer.rbfbb = 0;
+	HorVer.rtfbb = 0;
 	
 	_viReg[24] &= ~0x8000;
 	_viReg[26] &= ~0x8000;
@@ -1050,7 +1112,13 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	u16 dcr;
 	u32 nonint,vimode,level;
 	const struct _timing *curtiming;
-
+#ifdef _VIDEO_DEBUG
+	if(rmode->viHeight&0x0001) printf("VIDEO_Configure(): Odd number(%d) is specified to viHeight\n",rmode->viHeight);
+	if((rmode->xfbMode==VI_XFBMODE_DF || rmode->viTVMode==VI_TVMODE_NTSC_PROG || rmode->viTVMode==VI_TVMODE_NTSC_PROG_DS) 
+		&& rmode->xfbHeight!=rmode->viHeight) printf("VIDEO_Configure(): xfbHeight(%d) is not equal to viHeight(%d) when DF XFB mode or progressive mode is specified\n",rmode->xfbHeight,rmode->viHeight);
+	if(rmode->xfbMode==VI_XFBMODE_SF && !(rmode->viTVMode==VI_TVMODE_NTSC_PROG || rmode->viTVMode==VI_TVMODE_NTSC_PROG_DS) 
+		&& (rmode->xfbHeight<<1)!=rmode->viHeight) printf("VIDEO_Configure(): xfbHeight(%d) is not as twice as viHeight(%d) when SF XFB mode is specified\n",rmode->xfbHeight,rmode->viHeight);
+#endif
 	_CPU_ISR_Disable(level);
 	nonint = (rmode->viTVMode&0x0003);
 	if(nonint!=HorVer.nonInter) {
@@ -1083,7 +1151,10 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	HorVer.timing = curtiming;
 
 	__adjustPosition(curtiming->acv);
-	
+#ifdef _VIDEO_DEBUG
+	if(rmode->viXOrigin>((curtiming->hlw+40)-curtiming->hbe640)) printf("VIDEO_Configure(): viXOrigin(%d) cannot be greater than %d in this TV mode\n",rmode->viXOrigin,((curtiming->hlw+40)-curtiming->hbe640));
+	if((rmode->viXOrigin+rmode->viWidth)<(680-curtiming->hbs640)) printf("VIDEO_Configure(): viXOrigin + viWidth(%d) cannot be less than %d in this TV mode\n",(rmode->viXOrigin+rmode->viWidth),(680-curtiming->hbs640));
+#endif
 	if(!encoderType) HorVer.tv = VI_DEBUG;
 	
 	__setInterruptRegs(curtiming);
@@ -1108,6 +1179,9 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	if(fbSet) __setFbbRegs(&HorVer,&HorVer.tfbb,&HorVer.bfbb,&HorVer.rtfbb,&HorVer.rbfbb);
 
 	__setVerticalRegs(HorVer.adjustedDispPosY,HorVer.adjustedDispSizeY,curtiming->equ,curtiming->acv,curtiming->prbOdd,curtiming->prbEven,curtiming->psbOdd,curtiming->psbEven,HorVer.black);
+#ifdef _VIDEO_DEBUG
+	printDebugCalculations();
+#endif
 	_CPU_ISR_Restore(level);
 }
 
@@ -1152,7 +1226,9 @@ void VIDEO_SetFramebuffer(void *fb)
 void VIDEO_SetNextFramebuffer(void *fb)
 {
 	u32 level;
-
+#ifdef _VIDEO_DEBUG
+	if((u32)fb&0x1f) printf("VIDEO_SetNextFramebuffer(): Frame buffer address (%p) is not 32byte aligned\n",fb);
+#endif
 	_CPU_ISR_Disable(level);
 	fbSet = 1;
 	HorVer.bufAddr = fb;
@@ -1181,7 +1257,7 @@ void VIDEO_Flush()
 	shdw_changeMode = changeMode;
 	changeMode = 0;
 
-	shdw_changed |= changed;
+	shdw_changed = changed;
 	while(changed) {
 		val = cntlzd(changed);
 		shdw_regs[val] = regs[val];
@@ -1209,13 +1285,13 @@ void VIDEO_SetBlack(boolean black)
 
 u32 VIDEO_GetNextField()
 {
-	u32 level,field;
+	u32 level,nextfield;
 
 	_CPU_ISR_Disable(level);
-	field = __getCurrFieldEvenOdd()^1;
+	nextfield = __getCurrFieldEvenOdd()^1;		//we've to swap the result because it shows us only the current field,so we've the next field either even or odd
 	_CPU_ISR_Restore(level);
 	
-	return field^(HorVer.adjustedDispPosY&0x0001);
+	return nextfield^(HorVer.adjustedDispPosY&0x0001);	//if the YOrigin is at an odd position we've to swap it again, since the Fb registers are set swapped if this rule applies
 }
 
 u32 VIDEO_GetCurrentTvMode()
@@ -1234,6 +1310,20 @@ u32 VIDEO_GetCurrentTvMode()
 	_CPU_ISR_Restore(level);
 
 	return tv;
+}
+
+u32 VIDEO_GetCurrentLine()
+{
+	u32 level,curr_hl = 0;
+
+	_CPU_ISR_Disable(level);
+	curr_hl = __getCurrentHalfLine();
+	_CPU_ISR_Restore(level);
+
+	if(curr_hl>=currTiming->nhlines) curr_hl -=currTiming->nhlines;
+	curr_hl >>= 1;
+
+	return curr_hl;
 }
 
 VIRetraceCallback VIDEO_SetPreRetraceCallback(VIRetraceCallback callback)
