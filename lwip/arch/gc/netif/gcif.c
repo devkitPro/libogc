@@ -567,9 +567,6 @@ static err_t __bba_post_send()
 	struct eth_hdr *ethhdr = NULL;
 	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
 	
-	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
-	EXI_Unlock(EXI_CHANNEL_0);
-
 	while(cur_rcv_buf && priv->state!=ERR_TXPENDING) {
 		p = cur_rcv_buf;
 		cur_rcv_buf = pbuf_dechain(cur_rcv_buf);
@@ -862,7 +859,9 @@ static u32 __bba_link_rx()
 
 	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_rx(rx interrupt close)\n"));
 	bba_out8(BBA_IR,BBA_IR_RI);
-	
+	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+	EXI_Unlock(EXI_CHANNEL_0);
+
 	__bba_post_send();
 
 	return ERR_OK;
@@ -928,6 +927,9 @@ static inline void bba_interrupt(struct netif *dev)
 			return;
 		}
 	}
+	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+	EXI_Unlock(EXI_CHANNEL_0);
+
 	__bba_post_send();
 }
 
