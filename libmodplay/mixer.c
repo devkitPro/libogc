@@ -27,7 +27,6 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* mixer.c */
 
 #include "defines.h"
-#include "inctab.h"
 #include "modplay.h"
 
 #if defined(DREAMCAST)

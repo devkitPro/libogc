@@ -2692,6 +2692,21 @@ void GX_SetPointSize(u8 width,u8 fmt)
 	GX_LOAD_BP_REG(_gx[0xaa]);
 }
 
+void GX_SetTevColor(u32 tev_regid,GXColor color)
+{
+	u32 reg;
+
+	reg = (_SHIFTL((0xe0+(tev_regid<<1)),24,8)|(_SHIFTL(color.a,12,8))|(color.r&0xff));
+	GX_LOAD_BP_REG(reg);
+
+	reg = (_SHIFTL((0xe1+(tev_regid<<1)),24,8)|(_SHIFTL(color.g,12,8))|(color.b&0xff));
+	GX_LOAD_BP_REG(reg);
+	
+	//this two calls should obviously flush the Write Gather Pipe.
+	GX_LOAD_BP_REG(reg);
+	GX_LOAD_BP_REG(reg);
+}
+
 void GX_SetTevOp(u8 tevstage,u8 mode)
 {
 	u8 defcolor = GX_CC_RASC;

@@ -24,9 +24,7 @@ STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef GAMECUBE
 #include <stdio.h>
-#endif
 #include <stdlib.h>
 #include <string.h>
 #include "defines.h"
@@ -35,8 +33,9 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "bpmtab.h"
 #include "modplay.h"
 #include "mixer.h"
+#ifndef GEKKO
 #include "inctab.h"
-
+#endif
 
 #ifdef GP32
 #include "gpstdlib.h"
@@ -46,6 +45,12 @@ volatile long* lcdcon1 = (long*)0x14a00000;
 #define VLINE ((*lcdcon1 >> 18) & 0x1ff)
 extern int deltavline;
 */
+#endif
+
+#ifdef GEKKO
+#include "video.h"
+
+static u32 *inc_tabs[2] = {NULL,NULL};
 #endif
 
 #ifdef GP32
@@ -124,6 +129,37 @@ u16 wavetab[4][64] =
       (u16)219, (u16)117, (u16)-143,(u16)-226,(u16)-166,(u16)120, (u16)-47, (u16)29
     }
   };
+
+#if defined(GEKKO)
+static u32* modplay_getinctab(s32 freq)
+{
+	u32 tv;
+	u32 i,curr_tab,*inc_tab = NULL;
+	f32 rfreq,fval,fdivid;
+
+	if(freq==32000) curr_tab = 0;
+	else curr_tab = 1;
+
+	if(inc_tabs[curr_tab]) return inc_tabs[curr_tab];
+
+	tv = VIDEO_GetCurrentTvMode();
+	if(tv==VI_PAL) fdivid = 7093789.2/2.0F;
+	else fdivid = 7159090.5/2.0F;
+
+	inc_tab = (u32*)malloc(sizeof(u32)*4096);
+	if(inc_tab) {
+		inc_tabs[curr_tab] = inc_tab;
+		for(i=0;i<4096;i++) {
+			rfreq = (fdivid/(f32)i);
+			fval = (rfreq/(f32)freq)*262144.0F;
+			inc_tab[i] = (u32)fval;
+		}
+
+	}
+
+	return inc_tab;
+}
+#endif
 
 #if defined(GP32)
 static s32 fsize ( s8 * fname )
@@ -982,7 +1018,7 @@ void MOD_Start ( MOD * mod )
     mod->patterndelay = 0;
     mod->patternline_jumpto = 0;
     mod->patternline_jumpcount = 0;
-
+#ifndef GEKKO
 	switch(mod->freq) {
 		case 32000:
 			mod->bpmtab = bpmtab32KHz;
@@ -997,6 +1033,13 @@ void MOD_Start ( MOD * mod )
 			mod->inctab = inctab48KHz;
 			break;
 	}
+#else
+	if(mod->freq==32000 || mod->freq==48000) {
+		mod->inctab = modplay_getinctab(mod->freq);
+		if(mod->freq==32000) mod->bpmtab = bpmtab32KHz;
+		else mod->bpmtab = bpmtab48KHz;
+	}
+#endif
 
     mod->samplescounter = 0;
     mod->samplespertick = mod->bpmtab[125-32];
