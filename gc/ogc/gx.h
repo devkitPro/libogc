@@ -110,7 +110,7 @@
 #define GX_LINES				0xA8
 #define GX_LINESTRIP			0xB0
 #define GX_TRIANGLES			0x90
-#define GX_TRIANGLSTRIP			0x98
+#define GX_TRIANGLESTRIP		0x98
 #define GX_TRIANGLEFAN			0xA0
 #define GX_QUADS				0x80
 
