@@ -149,7 +149,7 @@ static s32 hexToInt(u8 **ptr, u32 *intValue)
 static u32 getDebugChar()
 {
 	u8 ch;
-	u32 ret;
+	s32 ret;
 	ret = net_recv(gdb_info.sock,&ch,1,0);
 #ifdef _DBG_DEBUG
 	printf("getDebugChar(%c,%d)\n",ch,ret);

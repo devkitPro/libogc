@@ -30,6 +30,9 @@
 #define DSPCR_PIINT         0x0002        // assert DSP PI interrupt
 #define DSPCR_RES           0x0001        // reset DSP
 
+#define FONT_SIZE_ANSI		(288 + 131072)
+#define FONT_SIZE_SJIS		(3840 + 1179648)
+
 #define _SHIFTL(v, s, w)	\
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
 #define _SHIFTR(v, s, w)	\
@@ -43,6 +46,20 @@ struct _sramcntrl {
 	s32 sync;
 } sramcntrl ATTRIBUTE_ALIGN(32);
 
+typedef struct _yay0header {
+	unsigned int id;
+	unsigned int dec_size;
+	unsigned int links_offset;
+	unsigned int chunks_offset;
+} yay0header;
+
+static u16 sys_fontenc = 0xffff;
+static u32 sys_fontcharsinsheet = 0;
+static u8 *sys_fontwidthtab = NULL;
+static u8 *sys_fontimage = NULL;
+static void *sys_fontarea = NULL;
+static sys_fontheader *sys_fontdata = NULL;
+
 static u32 system_initialized = 0;
 static sysalarm *system_alarm = NULL;
 
@@ -51,6 +68,7 @@ static void *__sysarenahi = NULL;
 
 static resetcallback __RSWCallback = NULL;
 
+static vu16* const _viReg = (u16*)0xCC002000;
 static vu32* const _piReg = (u32*)0xCC003000;
 static vu16* const _memReg = (u16*)0xCC004000;
 static vu16* const _dspReg = (u16*)0xCC005000;
@@ -59,6 +77,7 @@ void SYS_SetArenaLo(void *newLo);
 void* SYS_GetArenaLo();
 void SYS_SetArenaHi(void *newHi);
 void* SYS_GetArenaHi();
+void __SYS_ReadROM(void *buf,u32 len,u32 offset);
 
 static u32 __sram_writecallback();
 
@@ -193,6 +212,40 @@ static void __memprotect_init()
 	_CPU_ISR_Restore(level);
 }
 
+static __inline__ u32 __get_fontsize(void *buffer)
+{
+	u8 *ptr = (u8*)buffer;
+
+	if(ptr[0]=='Y' && ptr[1]=='a' && ptr[2]=='y') return (((u32*)ptr)[1]);
+	else return 0;
+}
+
+static __inline__ u32 __read_rom(void *buf,u32 len,u32 offset)
+{
+	u32 ret;
+	u32 loff;
+
+	DCInvalidateRange(buf,len);
+	
+	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_1,NULL)==0) return 0;
+	if(EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED8MHZ)==0) {
+		EXI_Unlock(EXI_CHANNEL_0);
+		return 0;
+	}
+
+	ret = 0;
+	loff = offset<<6;
+	if(EXI_Imm(EXI_CHANNEL_0,&loff,4,EXI_WRITE,NULL)==0) ret |= 0x0001;
+	if(EXI_Sync(EXI_CHANNEL_0)==0) ret |= 0x0002;
+	if(EXI_Dma(EXI_CHANNEL_0,buf,len,EXI_READ,NULL)==0) ret |= 0x0004;
+	if(EXI_Sync(EXI_CHANNEL_0)==0) ret |= 0x0008;
+	if(EXI_Deselect(EXI_CHANNEL_0)==0) ret |= 0x0010;
+	if(EXI_Unlock(EXI_CHANNEL_0)==0) ret |= 0x00020;
+
+	if(ret) return 0;
+	return 1;
+}
+
 static __inline__ u32 __getrtc(u32 *gctime)
 {
 	u32 ret;
@@ -301,6 +354,7 @@ static __inline__ void __buildchecksum(u16 *buffer,u16 *c1,u16 *c2)
 		*c2 += buffer[6+i]^-1;
 	}
 }
+
 static __inline__ void* __locksram(u32 loc)
 {
 	u32 level;
@@ -332,6 +386,47 @@ static u32 __unlocksram(u32 write,u32 loc)
 	sramcntrl.locked = 0;
 	_CPU_ISR_Restore(sramcntrl.enabled);
 	return sramcntrl.sync;
+}
+
+//returns the size of font
+static u32 __read_font(void *buffer)
+{
+	if(SYS_GetFontEncoding()==1) __SYS_ReadROM(buffer,315392,1769216);
+	else __SYS_ReadROM(buffer,12288,2084608);
+	return __get_fontsize(buffer);	
+}
+
+static void __expand_font(const u8 *src,u8 *dest)
+{
+	s32 cnt;
+	u32 idx;
+	u8 val1,val2;
+	u8 *data = (u8*)sys_fontdata+44;
+
+	if(sys_fontdata->sheet_format==0x0000) {
+		cnt = (sys_fontdata->sheet_fullsize/2)-1;
+
+		while(cnt>=0) {
+			idx = _SHIFTR(src[cnt],6,2);
+			val1 = data[idx];
+
+			idx = _SHIFTR(src[cnt],4,2);
+			val2 = data[idx];
+
+			dest[(cnt<<1)+0] =((val1&0xf0)|(val2&0x0f));
+	
+			idx = _SHIFTR(src[cnt],2,2);
+			val1 = data[idx];
+
+			idx = _SHIFTR(src[cnt],0,2);
+			val2 = data[idx];
+
+			dest[(cnt<<1)+1] =((val1&0xf0)|(val2&0x0f));
+
+			cnt--;
+		}
+	}
+	DCStoreRange(dest,sys_fontdata->sheet_fullsize);
 }
 
 static void __dsp_bootstrap()
@@ -388,6 +483,58 @@ static void __dsp_bootstrap()
 #endif
 }
 
+static void decode_szp(void *src,void *dest)
+{
+	u32 i,k,link;
+	u8 *ptr8,*dest8,*tmp;
+	u16 *ptr16;
+	u32 *ptr32;
+	u32 loff,coff,roff;
+	u32 size,cnt,cmask;
+	yay0header *header;
+
+	dest8 = (u8*)dest;
+	ptr8 = (u8*)src;
+	ptr16 = (u16*)src;
+	ptr32 = (u32*)src;
+	header = (yay0header*)src;
+	size = header->dec_size;
+	loff = header->links_offset;
+	coff = header->chunks_offset;
+
+	roff = sizeof(yay0header);
+	cmask = 0;
+	cnt = 0;
+
+	loff /= sizeof(u16);
+	roff /= sizeof(u32);
+	do {
+		if(!cmask) {
+			cmask = ptr32[roff];
+			roff++;
+		}
+		
+		if(cmask&0x80000000) {
+			dest8[cnt++] = ptr8[coff++];
+		} else {
+			link = ptr16[loff];
+			loff++;
+			
+			tmp = dest8+cnt-((link&0x0fff)+1);
+			k = link>>12;
+			if(k==0) {
+				k = ptr8[coff]+18;
+				coff++;
+			} else k += 2;
+
+			for(i=0;i<k;i++) {
+				dest8[cnt++] = tmp[i];
+			}
+		}
+		cmask <<= 1;
+	} while(cnt<size);
+}
+
 syssram* __SYS_LockSram()
 {
 	return (syssram*)__locksram(0);
@@ -406,6 +553,19 @@ u32 __SYS_UnlockSram(u32 write)
 u32 __SYS_UnlockSramEx(u32 write)
 {
 	return __unlocksram(write,sizeof(syssram));
+}
+
+void __SYS_ReadROM(void *buf,u32 len,u32 offset)
+{
+	u32 cpy_cnt;
+
+	while(len>0) {
+		cpy_cnt = (len>256)?256:len;
+		while(__read_rom(buf,cpy_cnt,offset)==0);
+		offset += cpy_cnt;
+		buf += cpy_cnt;
+		len -= cpy_cnt;
+	}
 }
 
 u32 __SYS_GetRTC(u32 *gctime)
@@ -466,6 +626,20 @@ void __SYS_SetBootTime()
 	__SYS_GetRTC(&gctime);
 	__SYS_SetTime(secs_to_ticks(gctime));
 	__SYS_UnlockSram(0);
+}
+
+u32 __SYS_LoadFont(void *src,void *dest)
+{
+	if(__read_font(src)==0) return 0;
+	
+	decode_szp(src,dest);
+
+	sys_fontdata = (sys_fontheader*)dest;
+	sys_fontwidthtab = dest+sys_fontdata->width_table;
+	sys_fontcharsinsheet = sys_fontdata->sheet_column*sys_fontdata->sheet_row;
+
+	/* TODO: implement SJIS handling */
+	return 1;
 }
 
 void __sdloader_boot()
@@ -560,6 +734,115 @@ void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)
 void* SYS_AllocateFramebuffer(GXRModeObj *rmode)
 {
 	return memalign(32,VIDEO_PadFramebufferWidth(rmode->fbWidth)*rmode->xfbHeight*VI_DISPLAY_PIX_SZ);
+}
+
+u32 SYS_GetFontEncoding()
+{
+	u32 ret,tv_mode;
+
+	if(sys_fontenc<=0x0001) return sys_fontenc;
+	
+	ret = 0;
+	tv_mode = VIDEO_GetCurrentTvMode();
+	if(tv_mode==VI_NTSC && _viReg[55]&0x0002) ret = 1;
+	sys_fontenc = ret;
+	return ret;
+}
+
+u32 SYS_InitFont(sys_fontheader *font_header)
+{
+	void *packed_data = NULL;
+	void *unpacked_data = NULL;
+
+	if(!font_header) return 0;
+
+	memset(font_header,0,sizeof(sys_fontheader));
+	if(SYS_GetFontEncoding()==1) {
+		sys_fontarea = malloc(FONT_SIZE_SJIS);
+		memset(sys_fontarea,0,FONT_SIZE_SJIS);
+		packed_data = (void*)(((u32)sys_fontarea+868096)&~31);
+		unpacked_data = sys_fontarea+3840;
+	} else {
+		sys_fontarea = malloc(FONT_SIZE_ANSI);
+		memset(sys_fontarea,0,FONT_SIZE_ANSI);
+		packed_data = (void*)(((u32)sys_fontarea+119072)&~31);
+		unpacked_data = sys_fontarea+288;
+	}
+
+	if(__SYS_LoadFont(packed_data,unpacked_data)==1) {
+		sys_fontimage = (u8*)((((u32)unpacked_data+sys_fontdata->sheet_image)+31)&~31);
+		__expand_font(unpacked_data+sys_fontdata->sheet_image,sys_fontimage);
+		*font_header = *sys_fontdata;
+		return 1;
+	}
+
+	return 0;
+}
+
+void SYS_GetFontTexture(s32 c,void **image,s32 *xpos,s32 *ypos,s32 *width)
+{
+	u32 sheets,rem;
+
+	*xpos = 0;
+	*ypos = 0;
+	*image = NULL;
+	if(!sys_fontwidthtab || ! sys_fontimage) return;
+
+	if(c>0x20 && c<0xff) c -= 0x20;
+	else c = 0;
+
+	sheets = c/sys_fontcharsinsheet;
+	rem = c%sys_fontcharsinsheet;
+	*image = sys_fontimage+(sys_fontdata->sheet_size*sheets);
+	*xpos = (rem%sys_fontdata->sheet_column)*sys_fontdata->cell_width;
+	*ypos = (rem/sys_fontdata->sheet_column)*sys_fontdata->cell_height;
+	*width = sys_fontwidthtab[c];
+}
+
+void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width)
+{
+	u32 sheets,rem;
+	u32 xoff,yoff;
+	u32 xpos,ypos;
+	u32 idx,val,mask;
+	u8 *img_start;
+	u8 *ptr1,*ptr2;
+	u8 *data = (u8*)sys_fontdata+44;
+	
+	if(!sys_fontwidthtab || ! sys_fontimage) return;
+
+	if(c>0x20 && c<0xff) c -= 0x20;
+	else c = 0;
+
+	sheets = c/sys_fontcharsinsheet;
+	rem = c%sys_fontcharsinsheet;
+	xoff = (rem%sys_fontdata->sheet_column)*sys_fontdata->cell_width;
+	yoff = (rem/sys_fontdata->sheet_column)*sys_fontdata->cell_height;
+	img_start = (u8*)sys_fontdata+sys_fontdata->sheet_image+(sys_fontdata->sheet_size*sheets);
+
+	xpos = 0; ypos = 0;
+	while(ypos<sys_fontdata->cell_height) {
+		while(xpos<sys_fontdata->cell_width) {
+			ptr1 = img_start+((((sys_fontdata->sheet_width/8)<<5)/2)*((ypos+yoff)/8));
+			ptr1 = ptr1+(((xpos+xoff)/8)<<4);
+			ptr1 = ptr1+(((ypos+yoff)%8)<<1);
+			ptr1 = ptr1+(((xpos+xoff)%8)/4);
+
+			ptr2 = image+((ypos/8)*(((stride<<2)/8)<<5));
+			ptr2 = ptr2+(((xpos+pos)/8)<<5);
+			ptr2 = ptr2+(((xpos+pos)%8)/2);
+
+			idx = (*ptr1>>(6-(((xpos+pos)%4)<<1)))&0x03;
+			val = data[idx];
+			if(((xpos+pos)%2)) mask = 0x0f;
+			else mask = 0xf0;
+			
+			*ptr2 = *ptr2|(val&mask);
+			xpos++;
+		}
+		ypos++;
+	}
+	*width = sys_fontwidthtab[c];
 }
 
 void SYS_CreateAlarm(sysalarm *alarm)

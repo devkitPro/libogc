@@ -1100,6 +1100,10 @@ SOURCE=.\gc\modplay\mixer.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\gc\modplay\modplay.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\gc\modplay\semitonetab.h
 # End Source File
 # End Group
@@ -1202,10 +1206,6 @@ SOURCE=.\gc\gctypes.h
 # Begin Source File
 
 SOURCE=.\gc\madplayer.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\gc\modplay.h
 # End Source File
 # Begin Source File
 

@@ -580,6 +580,7 @@ u32 SI_GetCommand(s32 chan)
 {
 	return (_siReg[chan*3]);
 }
+
 u32 SI_Transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb,u32 us_delay)
 {
 	u32 ret = 0;

@@ -22,7 +22,7 @@ u32 LCLoadData(void *dstAddr,void *srcAddr,u32 nCount)
 {
 	u32 cnt,blocks;
 
-	if(nCount<=0) return 0;
+	if((s32)nCount<=0) return 0;
 
 	cnt = (nCount+31)>>5;
 	blocks = (cnt+127)>>7;
@@ -44,7 +44,7 @@ u32 LCStoreData(void *dstAddr,void *srcAddr,u32 nCount)
 {
 	u32 cnt,blocks;
 
-	if(nCount<=0) return 0;
+	if((s32)nCount<=0) return 0;
 
 	cnt = (nCount+31)>>5;
 	blocks = (cnt+127)>>7;

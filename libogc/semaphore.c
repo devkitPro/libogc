@@ -4,7 +4,7 @@
 #include "lwp_wkspace.h"
 #include "semaphore.h"
 
-static u32 __lwp_semwaitsupp(lwp_sema *sem,u32 id,u32 timeout,u8 blocking)
+static s32 __lwp_semwaitsupp(lwp_sema *sem,u32 id,u32 timeout,u8 blocking)
 {
 	if(!sem) return -1;
 	
@@ -26,7 +26,7 @@ static u32 __lwp_semwaitsupp(lwp_sema *sem,u32 id,u32 timeout,u8 blocking)
 	return 0;
 }
 
-u32 LWP_SemInit(sem_t *sem,u32 start,u32 max)
+s32 LWP_SemInit(sem_t *sem,u32 start,u32 max)
 {
 	lwp_semattr attr;
 	lwp_sema *ret;
@@ -50,12 +50,12 @@ u32 LWP_SemInit(sem_t *sem,u32 start,u32 max)
 	return 0;
 }
 
-u32 LWP_SemWait(sem_t sem)
+s32 LWP_SemWait(sem_t sem)
 {
 	return __lwp_semwaitsupp((lwp_sema*)sem,(u32)sem,LWP_THREADQ_NOTIMEOUT,TRUE);
 }
 
-u32 LWP_SemPost(sem_t sem)
+s32 LWP_SemPost(sem_t sem)
 {
 	if(!sem) return -1;
 
@@ -65,7 +65,7 @@ u32 LWP_SemPost(sem_t sem)
 	return 0;
 }
 
-u32 LWP_SemDestroy(sem_t sem)
+s32 LWP_SemDestroy(sem_t sem)
 {
 	lwp_sema *p = (lwp_sema*)sem;
 	if(!p) return -1;

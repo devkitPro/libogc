@@ -45,7 +45,7 @@ void ARQM_Init(u32 arambase,u32 len)
 {
 	u32 i;
 	
-	if(len<=0) return;
+	if((s32)len<=0) return;
 
 	__ARQMStackLocation = 0;
 	__ARQMStackPointer[0] = arambase;
@@ -59,7 +59,7 @@ u32 ARQM_PushData(void *buff,u32 len,ARQMCallback tccb)
 	u32 rlen,level;
 	ARQM_Info *ptr;
 
-	if(!(((u32)buff)&0x1f) || len<=0) return -1;
+	if(!(((u32)buff)&0x1f) || (s32)len<=0) return -1;
 
 	rlen = (len+0x1f)&~0x1f;
 	if(__ARQMFreeBytes>=rlen && __ARQMStackLocation<=(ARQM_STACKENTRIES-1)) {

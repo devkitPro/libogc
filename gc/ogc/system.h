@@ -72,6 +72,32 @@ struct _sysalarm {
 	struct _sysalarm *next;
 };
 
+typedef struct _sys_fontheader {
+	u16 font_type;
+	u16 first_char;
+	u16 last_char;
+	u16 inval_char;
+	u16 asc;
+	u16 desc;
+	u16 width;
+	u16 leading;
+    u16 cell_width;
+    u16 cell_height;
+    u32 sheet_size;
+    u16 sheet_format;
+    u16 sheet_column;
+    u16 sheet_row;
+    u16 sheet_width;
+    u16 sheet_height;
+    u16 width_table;
+    u32 sheet_image;
+    u32 sheet_fullsize;
+    u8  c0;
+    u8  c1;
+    u8  c2;
+    u8  c3;
+} sys_fontheader;
+
 typedef void (*resetcallback)(void);
 
 void SYS_Init();
@@ -88,6 +114,10 @@ void SYS_RemoveAlarm(sysalarm *alarm);
 void SYS_CancelAlarm(sysalarm *alarm);
 void SYS_SetWirelessID(u32 chan,u32 id);
 u32 SYS_GetWirelessID(u32 chan);
+u32 SYS_GetFontEncoding();
+u32 SYS_InitFont(sys_fontheader *font_header);
+void SYS_GetFontTexture(s32 c,void **image,s32 *xpos,s32 *ypos,s32 *width);
+void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width);
 
 #ifdef __cplusplus
    }

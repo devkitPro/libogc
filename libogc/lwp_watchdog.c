@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <limits.h>
 #include "asm.h"
 #include "lwp_threads.h"
 #include "lwp_watchdog.h"
@@ -19,8 +20,7 @@ static void __lwp_wd_settimer(wd_cntrl *wd)
 {
 	s64 now;
 	u64 diff;
-	s64 max_ticks = (s64)0x80000000;
-	s64 min_ticks = (s64)0x0;
+	s64 int_max = INT_MAX;
 	s64 delta_interval = (s64)wd->delta_interval;
 #ifdef _LWPWD_DEBUG
 	printf("__lwp_wd_settimer(%lld)\n",delta_interval);
@@ -28,13 +28,13 @@ static void __lwp_wd_settimer(wd_cntrl *wd)
 	now = gettime();
 	diff = diff_ticks(now,wd->start_time);
 	delta_interval -= diff;
-	if(0<=(min_ticks-delta_interval)) {
+	if(0<=-(delta_interval)) {
 #ifdef _LWPWD_DEBUG
 		printf("0<(min_ticks-delta_interval): __lwp_wd_settimer(0)\n");
 #endif
 		wd->delta_interval = 0;
 		mtdec(0);
-	} else if(0<(max_ticks-delta_interval)) {
+	} else if(delta_interval<=int_max) {
 #ifdef _LWPWD_DEBUG
 		printf("0<(max_ticks-delta_interval): __lwp_wd_settimer(%d)\n",(u32)delta_interval);
 #endif
@@ -44,8 +44,8 @@ static void __lwp_wd_settimer(wd_cntrl *wd)
 #ifdef _LWPWD_DEBUG
 		printf("__lwp_wd_settimer(0x7fffffff)\n");
 #endif
-		wd->delta_interval -= max_ticks;
-		mtdec(0x7fffffff);
+		wd->delta_interval -= (int_max+1);
+		mtdec(INT_MAX);
 	}
 }
 

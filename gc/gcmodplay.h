@@ -2,7 +2,7 @@
 #define __GCMODPLAY_H__
 
 #include <gctypes.h>
-#include <modplay.h>
+#include "modplay/modplay.h"
 
 #ifdef __cplusplus
    extern "C" {
@@ -27,15 +27,15 @@ typedef struct _modplay {
 } MODPlay;
 
 void MODPlay_Init(MODPlay *mod);
-u32 MODPlay_SetFrequency(MODPlay *mod,u32 freq);
+s32 MODPlay_SetFrequency(MODPlay *mod,u32 freq);
 void MODPlay_SetStereo(MODPlay *mod,BOOL stereo);
-u32 MODPlay_SetMOD(MODPlay *mod,const u8 *mem);
+s32 MODPlay_SetMOD(MODPlay *mod,const void *mem);
 void MODPlay_Unload(MODPlay *mod);
-u32 MODPlay_AllocSFXChannels(MODPlay *mod,u32 sfxchans);
-u32 MODPlay_Start(MODPlay *mod);
-u32 MODPlay_Stop(MODPlay *mod);
-u32 MODPlay_TriggerNote(MODPlay *mod,u32 chan,u8 inst,u16 freq,u8 vol);
-u32 MODPlay_Pause(MODPlay *mod,BOOL);
+s32 MODPlay_AllocSFXChannels(MODPlay *mod,u32 sfxchans);
+s32 MODPlay_Start(MODPlay *mod);
+s32 MODPlay_Stop(MODPlay *mod);
+s32 MODPlay_TriggerNote(MODPlay *mod,u32 chan,u8 inst,u16 freq,u8 vol);
+s32 MODPlay_Pause(MODPlay *mod,BOOL);
 
 #ifdef __cplusplus
    }

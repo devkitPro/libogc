@@ -63,7 +63,8 @@ extern void card_uniToUpper(u16 *dest,u16 *src,u32 len);
 
 static boolean card_extractLastName(const u8 *p_name,u8 *p_last_name)
 {
-	u32 len,i;
+	u32 len;
+	s32 i;
 
 	len = strlen(p_name);
 	for(i=len-2;i>=0;--i) {
@@ -343,7 +344,9 @@ u32 card_getDriveNo(const char *psz_name)
 {
 	u32 i,j,len;
 	u8 drv_name[MAX_DRIVE_NAME_LEN+1];
-	
+#ifdef _CARDFAT_DEBUG
+	printf("card_getDriveNo(%s)\n",psz_name);
+#endif
 	len = strlen(psz_name);
 	for(i=0;i<len;++i) {
 		if(psz_name[i]==':') break;
@@ -2368,7 +2371,9 @@ s32 card_getListNumDir(const char *p_dirname,u32 *p_num)
     drv_no = card_getDriveNo(p_dir_name);
     if(drv_no>=MAX_DRIVE)
         return CARDIO_ERROR_INVALIDPARAM;
-
+#ifdef _CARDFAT_DEBUG
+	printf("card_getListNumDir(%d,%s,%p)\n",drv_no,p_dirname,p_num);
+#endif
     ret = card_preFAT(drv_no);
     if(ret!=CARDIO_ERROR_READY)
         FAT_RETURN(drv_no, ret);

@@ -104,7 +104,7 @@ static void mixCallback(void *usrdata,u8 *stream,u32 len)
 #endif
 }
 
-static u32 SndBufStart(MODSNDBUF *sndbuf)
+static s32 SndBufStart(MODSNDBUF *sndbuf)
 {
 	MODPlay *mp = (MODPlay*)sndbuf->usr_data;
 	MOD *mod = &mp->mod;
@@ -212,7 +212,7 @@ void MODPlay_Init(MODPlay *mod)
 	mod->manual_polling = FALSE;
 }
 
-u32 MODPlay_SetFrequency(MODPlay *mod,u32 freq)
+s32 MODPlay_SetFrequency(MODPlay *mod,u32 freq)
 {
 	if(freq==mod->playfreq) return 0;
 
@@ -243,7 +243,7 @@ void MODPlay_Unload(MODPlay *mod)
 	MOD_Free(&mod->mod);
 }
 
-u32 MODPlay_SetMOD(MODPlay *mod,const u8 *mem)
+s32 MODPlay_SetMOD(MODPlay *mod,const void *mem)
 {
 	MODPlay_Unload(mod);
 
@@ -254,7 +254,7 @@ u32 MODPlay_SetMOD(MODPlay *mod,const u8 *mem)
 	return -1;
 }
 
-u32 MODPlay_Start(MODPlay *mod)
+s32 MODPlay_Start(MODPlay *mod)
 {
 	if(mod->playing) return -1;
 	if(mod->mod.modraw==NULL) return -1;
@@ -266,7 +266,7 @@ u32 MODPlay_Start(MODPlay *mod)
 	return 0;
 }
 
-u32 MODPlay_Stop(MODPlay *mod)
+s32 MODPlay_Stop(MODPlay *mod)
 {
 	if(!mod->playing) return -1;
 
@@ -275,7 +275,7 @@ u32 MODPlay_Stop(MODPlay *mod)
 	return 0;
 }
 
-u32 MODPlay_AllocSFXChannels(MODPlay *mod,u32 sfxchans)
+s32 MODPlay_AllocSFXChannels(MODPlay *mod,u32 sfxchans)
 {
 	if(mod->mod.modraw==NULL) return -1;
 	
@@ -286,14 +286,14 @@ u32 MODPlay_AllocSFXChannels(MODPlay *mod,u32 sfxchans)
 	return -1;
 }
 
-u32 MODPlay_Pause(MODPlay *mod,BOOL pause)
+s32 MODPlay_Pause(MODPlay *mod,BOOL pause)
 {
 	if(!mod->playing) return -1;
 	mod->paused = TRUE;
 	return 0;
 }
 
-u32 MODPlay_TriggerNote(MODPlay *mod,u32 chan,u8 inst,u16 freq,u8 vol)
+s32 MODPlay_TriggerNote(MODPlay *mod,u32 chan,u8 inst,u16 freq,u8 vol)
 {
 	if(mod->mod.modraw==0) return -1;
 	return MOD_TriggerNote(&mod->mod,chan,inst,freq,vol);

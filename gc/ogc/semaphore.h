@@ -9,10 +9,10 @@ extern "C" {
 
 typedef void* sem_t;
 
-u32 LWP_SemInit(sem_t *sem,u32 start,u32 max);
-u32 LWP_SemDestroy(sem_t sem);
-u32 LWP_SemWait(sem_t sem);
-u32 LWP_SemPost(sem_t sem);
+s32 LWP_SemInit(sem_t *sem,u32 start,u32 max);
+s32 LWP_SemDestroy(sem_t sem);
+s32 LWP_SemWait(sem_t sem);
+s32 LWP_SemPost(sem_t sem);
 
 #ifdef __cplusplus
 	}

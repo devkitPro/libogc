@@ -15,6 +15,7 @@ extern int errno;
 
 extern void SYS_SetArenaLo(void *newLo);
 extern void* SYS_GetArenaLo();
+extern void* SYS_GetArenaHi();
 
 #ifdef REENTRANT_SYSCALLS_PROVIDED
 void* _DEFUN(_sbrk_r,(ptr,incr),

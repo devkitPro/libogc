@@ -14,7 +14,7 @@ static __inline__ u32 __lwp_priotocore(u32 prio)
 	return (254 - prio);
 }
 
-u32 LWP_CreateThread(lwp_t *thethread,void* (*entry)(void *),void *arg,void *stackbase,u32 stack_size,u8 prio)
+s32 LWP_CreateThread(lwp_t *thethread,void* (*entry)(void *),void *arg,void *stackbase,u32 stack_size,u8 prio)
 {
 	u32 status;
 	lwp_cntrl *lwp_thread;
@@ -47,7 +47,7 @@ u32 LWP_CreateThread(lwp_t *thethread,void* (*entry)(void *),void *arg,void *sta
 	return 0;
 }
 
-u32 LWP_SuspendThread(lwp_t thethread)
+s32 LWP_SuspendThread(lwp_t thethread)
 {
 	lwp_cntrl *lwp_thread = (lwp_cntrl*)thethread;
 
@@ -61,7 +61,7 @@ u32 LWP_SuspendThread(lwp_t thethread)
 	return LWP_ALLREADY_SUSPENDED;
 }
 
-u32 LWP_ResumeThread(lwp_t thethread)
+s32 LWP_ResumeThread(lwp_t thethread)
 {
 	lwp_cntrl *lwp_thread = (lwp_cntrl*)thethread;
 
@@ -96,7 +96,7 @@ void LWP_YieldThread()
 }
 
 
-u32 LWP_JoinThread(lwp_t thethread,void **value_ptr)
+s32 LWP_JoinThread(lwp_t thethread,void **value_ptr)
 {
 	u32 level;
 	void *return_ptr;
@@ -154,7 +154,7 @@ void LWP_CloseQueue(lwpq_t thequeue)
 	__lwp_wkspace_free(thequeue);
 }
 
-u32 LWP_SleepThread(lwpq_t thequeue)
+s32 LWP_SleepThread(lwpq_t thequeue)
 {
 	u32 level;
 	lwp_cntrl *exec = NULL;

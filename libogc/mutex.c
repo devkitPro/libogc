@@ -7,7 +7,7 @@
 
 static u32 _g_mutex_id = 0;
 
-static u32 __lwp_mutex_locksupp(mutex_t *mutex,u32 timeout,u8 block)
+static s32 __lwp_mutex_locksupp(mutex_t *mutex,u32 timeout,u8 block)
 {
 	u32 level;
 	_CPU_ISR_Disable(level);
@@ -15,7 +15,7 @@ static u32 __lwp_mutex_locksupp(mutex_t *mutex,u32 timeout,u8 block)
 	return _thr_executing->wait.ret_code;
 }
 
-u32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
+s32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
 {
 	lwp_mutex_attr attr;
 	lwp_mutex *ret;
@@ -42,7 +42,7 @@ u32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
 	return 0;
 }
 
-u32 LWP_MutexDestroy(mutex_t *mutex)
+s32 LWP_MutexDestroy(mutex_t *mutex)
 {
 	__lwp_thread_dispatchdisable();
 	if(__lwp_mutex_locked((lwp_mutex*)mutex->mutex)) {
@@ -57,17 +57,17 @@ u32 LWP_MutexDestroy(mutex_t *mutex)
 	return 0;
 }
 
-u32 LWP_MutexLock(mutex_t *mutex)
+s32 LWP_MutexLock(mutex_t *mutex)
 {
 	return __lwp_mutex_locksupp(mutex,LWP_THREADQ_NOTIMEOUT,TRUE);
 }
 
-u32 LWP_MutexTryLock(mutex_t *mutex)
+s32 LWP_MutexTryLock(mutex_t *mutex)
 {
 	return __lwp_mutex_locksupp(mutex,LWP_THREADQ_NOTIMEOUT,FALSE);
 }
 
-u32 LWP_MutexUnlock(mutex_t *mutex)
+s32 LWP_MutexUnlock(mutex_t *mutex)
 {
 	u32 ret;
 	__lwp_thread_dispatchdisable();

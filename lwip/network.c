@@ -103,7 +103,7 @@ struct netconn {
 	mq_box_t recvmbox;
 	mq_box_t acceptmbox;
 	u16 recvavail;
-	u32 socket;
+	s32 socket;
 	void (*callback)(struct netconn *,enum netconn_evt,u32);
 };
 
@@ -1415,9 +1415,9 @@ static void* net_thread(void *arg)
 }
 
 /* sockets part */
-static u32 alloc_socket(struct netconn *conn)
+static s32 alloc_socket(struct netconn *conn)
 {
-	u32 i;
+	s32 i;
 	
 	LWP_SemWait(netsocket_sem);
 	
@@ -1439,7 +1439,7 @@ static u32 alloc_socket(struct netconn *conn)
 	return -1;
 }
 
-static struct netsocket* get_socket(u32 s)
+static struct netsocket* get_socket(s32 s)
 {
 	struct netsocket *sock;
 	if(s<0 || s>NUM_SOCKETS)
@@ -1453,7 +1453,7 @@ static struct netsocket* get_socket(u32 s)
 
 static void evt_callback(struct netconn *conn,enum netconn_evt evt,u32 len)
 {
-	u32 s;
+	s32 s;
 	struct netsocket *sock;
 	struct netselect_cb *scb;
 	
@@ -1509,9 +1509,9 @@ static void evt_callback(struct netconn *conn,enum netconn_evt evt,u32 len)
 }
 
 extern const devoptab_t dotab_net;
-u32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean use_dhcp)
+s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean use_dhcp)
 {
-	u32 ret = 0;
+	s32 ret = 0;
 	struct ip_addr loc_ip, netmask, gw;
 	struct netif *pnet;
 	struct timespec tb;
@@ -1581,9 +1581,9 @@ u32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 	return ret;
 }
 
-u32 net_init()
+s32 net_init()
 {
-	u32 ret = -1;
+	s32 ret = -1;
 	sem_t sem;
 
 	if(tcpiplayer_inited) return 0;
@@ -1609,9 +1609,9 @@ u32 net_init()
 	return ret;
 }
 
-u32 net_socket(u32 domain,u32 type,u32 protocol)
+s32 net_socket(u32 domain,u32 type,u32 protocol)
 {
-	u32 i;
+	s32 i;
 	struct netconn *conn;
 	
 	switch(type) {
@@ -1639,13 +1639,13 @@ u32 net_socket(u32 domain,u32 type,u32 protocol)
 	return i;
 }
 
-u32 net_accept(u32 s,struct sockaddr *addr,socklen_t *addrlen)
+s32 net_accept(s32 s,struct sockaddr *addr,socklen_t *addrlen)
 {
 	struct netsocket *sock;
 	struct netconn *newconn;
 	struct ip_addr naddr;
 	u16 port;
-	u32 newsock;
+	s32 newsock;
 	struct sockaddr_in sin;
 	
 	sock = get_socket(s);
@@ -1687,7 +1687,7 @@ u32 net_accept(u32 s,struct sockaddr *addr,socklen_t *addrlen)
 	return newsock;
 }
 
-u32 net_bind(u32 s,struct sockaddr *name,socklen_t namelen)
+s32 net_bind(s32 s,struct sockaddr *name,socklen_t namelen)
 {
 	struct netsocket *sock;
 	struct ip_addr loc_addr;
@@ -1706,7 +1706,7 @@ u32 net_bind(u32 s,struct sockaddr *name,socklen_t namelen)
 	return 0;
 }
 
-u32 net_listen(u32 s,u32 backlog)
+s32 net_listen(s32 s,u32 backlog)
 {
 	struct netsocket *sock;
 	err_t err;
@@ -1723,7 +1723,7 @@ u32 net_listen(u32 s,u32 backlog)
 	return 0;
 }
 
-u32 net_recvfrom(u32 s,void *mem,u32 len,u32 flags,struct sockaddr *from,socklen_t *fromlen)
+s32 net_recvfrom(s32 s,void *mem,u32 len,u32 flags,struct sockaddr *from,socklen_t *fromlen)
 {
 	struct netsocket *sock;
 	struct netbuf *buf;
@@ -1791,22 +1791,22 @@ u32 net_recvfrom(u32 s,void *mem,u32 len,u32 flags,struct sockaddr *from,socklen
 	return copylen;
 }
 
-u32 net_read(u32 s,void *mem,u32 len)
+s32 net_read(s32 s,void *mem,u32 len)
 {
 	return net_recvfrom(s,mem,len,0,NULL,NULL);
 }
 
-u32 net_recv(u32 s,void *mem,u32 len,u32 flags)
+s32 net_recv(s32 s,void *mem,u32 len,u32 flags)
 {
 	return net_recvfrom(s,mem,len,flags,NULL,NULL);
 }
 
-u32 net_sendto(u32 s,void *data,u32 len,u32 flags,struct sockaddr *to,socklen_t tolen)
+s32 net_sendto(s32 s,void *data,u32 len,u32 flags,struct sockaddr *to,socklen_t tolen)
 {
 	struct netsocket *sock;
 	struct ip_addr remote_addr, addr;
 	u16_t remote_port, port;
-	int ret,connected;
+	s32 ret,connected;
 
 	sock = get_socket(s);
 	if (!sock) return -1;
@@ -1834,7 +1834,7 @@ u32 net_sendto(u32 s,void *data,u32 len,u32 flags,struct sockaddr *to,socklen_t 
 	return ret;
 }
 
-u32 net_send(u32 s,void *data,u32 len,u32 flags)
+s32 net_send(s32 s,void *data,u32 len,u32 flags)
 {
 	struct netsocket *sock;
 	struct netbuf *buf;
@@ -1875,12 +1875,12 @@ u32 net_send(u32 s,void *data,u32 len,u32 flags)
 	return len;
 }
 
-u32 net_write(u32 s,void *data,u32 size)
+s32 net_write(s32 s,void *data,u32 size)
 {
 	return net_send(s,data,size,0);
 }
 
-u32 net_connect(u32 s,struct sockaddr *name,socklen_t namelen)
+s32 net_connect(s32 s,struct sockaddr *name,socklen_t namelen)
 {
 	struct netsocket *sock;
 	err_t err;
@@ -1913,7 +1913,7 @@ u32 net_connect(u32 s,struct sockaddr *name,socklen_t namelen)
 	return 0;
 }
 
-u32 net_close(u32 s)
+s32 net_close(s32 s)
 {
 	struct netsocket *sock;
 
@@ -1936,9 +1936,9 @@ u32 net_close(u32 s)
 	return 0;
 }
 
-static u32 net_selscan(u32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset)
+static s32 net_selscan(s32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset)
 {
-	u32 i,nready = 0;
+	s32 i,nready = 0;
 	fd_set lreadset,lwriteset,lexceptset;
 	struct netsocket *sock;
 
@@ -1969,9 +1969,9 @@ static u32 net_selscan(u32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exce
 	return nready;
 }
 
-u32 net_select(u32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset,struct timeval *timeout)
+s32 net_select(s32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset,struct timeval *timeout)
 {
-	u32 i,nready;
+	s32 i,nready;
 	fd_set lreadset,lwriteset,lexceptset;
 	u32 msectimeout;
 	struct netselect_cb sel_cb;
@@ -2078,9 +2078,9 @@ u32 net_select(u32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset,st
 	return nready;
 }
 
-u32 net_setsockopt(u32 s,u32 level,u32 optname,const void *optval,socklen_t optlen)
+s32 net_setsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optlen)
 {
-	u32 err = 0;
+	s32 err = 0;
 	struct netsocket *sock;
 
 	sock = get_socket(s);
