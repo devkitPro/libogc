@@ -16,9 +16,9 @@ OBJCOPY	:=	$(PREFIX)-objcopy
 
 BUILD	:=	build
 
-GETPATH	:=	$(CC) -v 2>&1 | sed -n -e 's/Reading specs from //p' | sed -e 's/\/bin.*//'
-SPECSPATH:=$(shell $(GETPATH))
-
+GETPATH		:=	$(CC) -v 2>&1 | sed -n -e 's/Reading specs from //p' | sed -e 's/\/bin.*//'
+INSTALLPATH	:=	$(shell $(GETPATH))
+GCC_VERSION	:=	$(shell $(CC) -dumpversion)
 
 #---------------------------------------------------------------------------------
 ifneq ($(BUILD),$(notdir $(CURDIR)))
@@ -197,8 +197,10 @@ install:
 	@cp ./gc/modplay/*.h $(INCDIR)/modplay
 	@cp ./gc/mad/*.h $(INCDIR)/mad
 	@cp ./gc/sdcard/*.h $(INCDIR)/sdcard
-	@cp -frv include $(SPECSPATH)/$(PREFIX)
-	@cp -frv lib $(SPECSPATH)/$(PREFIX)
+	@cp -frv include $(INSTALLPATH)/$(PREFIX)
+	@cp -frv lib $(INSTALLPATH)/$(PREFIX)
+	@cp -fv ogc.ld $(INSTALLPATH)/$(PREFIX)/lib/ogc.ld
+	@cp -fv specs.ogc $(INSTALLPATH)/lib/gcc/$(PREFIX)/$(GCC_VERSION)/specs
 
 #---------------------------------------------------------------------------------
 dist:

@@ -15,7 +15,7 @@ OUTPUT_ARCH(powerpc:common);
 EXTERN(_start);
 ENTRY(_start);
 
-PROVIDE ( base_address = 0x80003100);
+base_address = 0x80003100;
 
 SECTIONS
 {
@@ -336,10 +336,6 @@ __gxregs = (__ArenaHi + 31) & (-32);
 
 /* for backward compatibility with old crt0 */
 PROVIDE (__stack = (0x81700000));
-
-#PROVIDE (text_mem_start = text_mem_start);
-#PROVIDE (data_mem_start = data_mem_start);
-#PROVIDE (bss_mem_start = bss_mem_start);
 
 PROVIDE(__stack_addr = __stack_addr);
 PROVIDE(__stack_end = __stack_end);

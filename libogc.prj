@@ -10,17 +10,17 @@ Project Tagfile=
 Create Tagfile=0
 Include Sub Directories=1
 [Open Files]
-Open File0=
-Active File Display Mode=-1
-Open File Pos0=8869
-Open File Line0=7875
-Open File Window Pos0=0,1,-1,-1,-4,-23,110,110,1008,475
-Open File1=C:\projects\devkitPro\libogc\specs.ogc
-Open File Pos1=0
-Open File Line1=7632
-Active File Index=6
-Open File Window Pos1=0,1,-1,-1,-4,-23,132,132,1032,501
-Open File2=C:\projects\devkitPro\buildscripts\dkp-crtls\specs
+Open File0=C:\projects\devkitPro\libogc\Makefile
+Active File Display Mode=3
+Open File Pos0=8199
+Open File Line0=7756
+Open File Window Pos0=0,1,-1,-1,-4,-23,0,0,770,365
+Open File1=C:\projects\devkitPro\libogc\ogc.ld
+Open File Pos1=10312
+Open File Line1=9477
+Active File Index=1
+Open File Window Pos1=2,3,-1,-1,-4,-23,22,22,796,391
+Open File2=
 Open File Pos2=7685
 Open File Line2=7358
 Open File Window Pos2=0,1,-1,-1,-4,-23,154,154,1054,523
@@ -46,7 +46,7 @@ Open File Line7=6584
 Open File Window Pos7=0,1,-1,-1,-4,-23,176,176,1078,545
 Open File8=
 [File View]
-Current Select=Project Files
+Current Select=Project Files\ogc.ld
 Scroll Position=0
 [Group]
 0=libogcsys
