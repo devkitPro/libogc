@@ -76,6 +76,7 @@ typedef void (*cardcallback)(u32 chan,s32 result);
 s32 CARD_Init(const char *gamecode,const char *company);
 s32 CARD_Mount(u32 chn,void *workarea,cardcallback detach_cb);
 s32 CARD_MountAsync(u32 chn,void *workarea,cardcallback detach_cb,cardcallback attach_cb);
+s32 CARD_Unmount(u32 chn);
 s32 CARD_Read(card_file *file,void *buffer,u32 len,u32 offset);
 s32 CARD_Open(u32 chn,const char *filename,card_file *file);
 s32 CARD_Close(card_file *file);

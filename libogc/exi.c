@@ -27,6 +27,11 @@
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
 
+struct _lck_dev {
+	u32 dev;
+	EXICallback unlockcb;
+};
+
 typedef struct _exibus_priv {
 	EXICallback CallbackEXI;
 	EXICallback CallbackTC;
@@ -39,15 +44,11 @@ typedef struct _exibus_priv {
 	u32 lck_cnt;
 	u32 exi_id;
 	u32 exi_buscode;
-	struct _lck_dev {
-		u32 dev;
-		EXICallback unlockcb;
-	} lck_dev[EXI_MAX_DEVICES];
-
+	struct _lck_dev lck_dev[EXI_MAX_DEVICES];
 } exibus_priv;
 
 static exibus_priv eximap[EXI_MAX_CHANNELS];
-static u32 exi_buscode[2];
+static u32 exi_buscode[EXI_MAX_CHANNELS];
 
 static void __exi_irq_handler(u32,void *);
 static void __tc_irq_handler(u32,void *);
@@ -378,6 +379,9 @@ u32 EXI_Dma(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 		__exi_clearirqs(nChn,0,1,0);
 		__UnmaskIrq(IRQMASK((IRQ_EXI0_TC+(nChn*3))));
 	}
+
+	exi->imm_buff = NULL;
+	exi->imm_len = 0;
 	exi->flags |= EXI_FLAG_DMA;
 
 	_exiReg[nChn*5+1] = (u32)pData&0x03FFFFE0;
@@ -574,7 +578,7 @@ void __exi_init()
 	__MaskIrq(IM_EXI);
 	
 	memset(eximap,0,EXI_MAX_CHANNELS*sizeof(exibus_priv));
-	memset(exi_buscode,0,2*sizeof(u32));
+	memset(exi_buscode,0,EXI_MAX_CHANNELS*sizeof(u32));
 
 	IRQ_Request(IRQ_EXI0_EXI,__exi_irq_handler,NULL);
 	IRQ_Request(IRQ_EXI0_TC,__tc_irq_handler,NULL);
@@ -628,12 +632,14 @@ void __tc_irq_handler(u32 nIrq,void *pCtx)
 
 	exi->CallbackTC = NULL;
 	if(exi->flags&(EXI_FLAG_DMA|EXI_FLAG_IMM)) {
-		len = exi->imm_len;
-		if(len) {
+		if(exi->flags&EXI_FLAG_IMM) {
+			len = exi->imm_len;
 			buf = exi->imm_buff;
-			d = _exiReg[chan*5+4]; 
-			if(d>0) {
-				for(cnt=0;cnt<len;cnt++) ((u8*)buf)[cnt] = (d>>((3-cnt)*8))&0xFF;
+			if(len>0 && buf) {
+				d = _exiReg[chan*5+4]; 
+				if(d>0) {
+					for(cnt=0;cnt<len;cnt++) ((u8*)buf)[cnt] = (d>>((3-cnt)*8))&0xFF;
+				}
 			}
 		}
 		exi->flags &= ~(EXI_FLAG_DMA|EXI_FLAG_IMM);

@@ -15,7 +15,11 @@
 
 //#define _CARD_DEBUG
 
-#define CARD_SYSAREA			  5
+#define CARD_SYSAREA				5
+#define CARD_SYSDIR					0x2000
+#define CARD_SYSDIR_BACK			0x4000
+#define CARD_SYSBAT					0x6000
+#define CARD_SYSBAT_BACK			0x8000
 
 #define _SHIFTL(v, s, w)	\
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
@@ -1052,6 +1056,32 @@ static void __delete_callback(u32 chn,s32 result)
 
 static void __format_callback(u32 chn,s32 result)
 {
+	s32 ret;
+	cardcallback cb = NULL;
+	card_block *card = &cardmap[chn];
+
+	ret = result;
+	if(ret>=0) {
+		if((++card->format_step)<CARD_SYSAREA) {
+			if((ret=__card_sectorerase(chn,(card->format_step*card->sector_size),__format_callback))>=0) return;
+			goto exit;
+		}
+		if(card->format_step<10) {
+			if((ret=__card_write(chn,((card->format_step-CARD_SYSAREA)*card->sector_size),8192,card->workarea+((card->format_step-CARD_SYSAREA)<<13),__format_callback))>=0) return;
+			goto exit;
+		}
+
+		card->curr_dir = card->workarea+CARD_SYSDIR;
+		memcpy(card->curr_dir,card->workarea+CARD_SYSDIR_BACK,8192);
+		
+		card->curr_fat = card->workarea+CARD_SYSBAT;
+		memcpy(card->curr_fat,card->workarea+CARD_SYSBAT_BACK,8192);
+	}
+exit:
+	cb = card->card_api_cb;
+	card->card_api_cb = NULL;
+	__card_putcntrlblock(card,ret);
+	if(cb) cb(chn,ret);
 }
 
 static void __blockwritecallback(u32 chn,s32 result)
@@ -1362,7 +1392,7 @@ static s32 __card_read(u32 chn,u32 address,u32 block_len,void *buffer,cardcallba
 static s32 __card_formatregion(u32 chn,u32 encode,cardcallback callback)
 {
 	s32 ret;
-	u32 srambase,cnt;
+	u32 srambase,cnt,thi,tlo;
 	u64 time;
 	void *workarea,*memblock;
 	cardcallback cb = NULL;
@@ -1386,6 +1416,9 @@ static s32 __card_formatregion(u32 chn,u32 encode,cardcallback callback)
 
 	cnt = 0;
 	time = gettime();
+	thi = time>>32;
+	tlo = time;
+	
 	srambase = __SYS_LockSramEx();
 	while(cnt<12) {
 		
@@ -1401,6 +1434,7 @@ static s32 __card_formatregion(u32 chn,u32 encode,cardcallback callback)
 	cnt = 0;
 	while(cnt<2) {
 		memblock = workarea+((cnt+1)<<13);
+		dircntrl = memblock+8128;
 		memset(memblock,255,8192);
 		__card_checksum(memblock,8188,&dircntrl->chksum1,&dircntrl->chksum2);
 		cnt++;
@@ -1638,7 +1672,7 @@ static s32 __card_domount(u32 chn)
 		card->cid = id;
 		card->card_size = (id&0xfc);
 #ifdef _CARD_DEBUG
-		printf("__card_domount(card_type = %08x,%08x,%08x)\n",card->card_type,card->exi_id,id);
+		printf("__card_domount(card_type = %08x,%08x,%08x)\n",card->card_size,card->cid,id);
 #endif
 		if(card->card_size) {
 			idx = _ROTL(id,23)&0x1c;
@@ -1653,10 +1687,10 @@ static s32 __card_domount(u32 chn)
 				if((ret=__card_readstatus(chn,&status))<0) goto exit;
 				
 				if(EXI_Probe(chn)==0) {
-					ret = -3;
+					ret = CARD_ERROR_NOCARD;
 					goto exit;
 				}
-				if(!(status&CARD_STATUS_UNLOCKED) && card->latency==4) {
+				if(!(status&CARD_STATUS_UNLOCKED) && card->latency<=4) {
 #ifdef _CARD_DEBUG
 					printf("__card_domount(card locked)\n");
 #endif
@@ -1689,7 +1723,7 @@ static s32 __card_domount(u32 chn)
 				cnt = ((u8*)sram_base)[0x26];
 				sum = (sum^-1)&0xff;
 				if(cnt!=sum) {
-					ret = -5;
+					ret = CARD_ERROR_IOERROR;
 					goto exit;
 				}
 			}
@@ -2206,7 +2240,7 @@ s32 CARD_MountAsync(u32 chn,void *workarea,cardcallback detach_cb,cardcallback a
 		card->mount_step = 0;
 		card->attached = 1;
 #ifdef _CARD_DEBUG
-		printf("card->mounted = %d,%08x\n",card->attached,EXI_GetState(chn));
+		printf("card->mount_step = %d,%08x\n",card->attached,EXI_GetState(chn));
 #endif
 		EXI_RegisterEXICallback(chn,NULL);
 		SYS_CancelAlarm(&card->timeout_svc);
@@ -2238,6 +2272,19 @@ s32 CARD_Mount(u32 chn,void *workarea,cardcallback detach_cb)
 	}
 
 	return ret;
+}
+
+s32 CARD_Unmount(u32 chn)
+{
+	s32 ret;
+	card_block *card = NULL;
+
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
+
+	if((ret=__card_getcntrlblock(chn,&card))<0) ret = CARD_ERROR_NOCARD;
+	__card_dounmount(chn,ret);
+
+	return CARD_ERROR_READY;
 }
 
 s32 CARD_ReadAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback callback)
@@ -2467,12 +2514,7 @@ s32 CARD_Delete(u32 chn,const char *filename)
 
 s32 CARD_FormatAsync(u32 chn,cardcallback callback)
 {
-	s32 ret;
-
-	if((ret=__card_formatregion(chn,1,callback))>=0) {
-		__card_sync(chn);
-	}
-	return ret;
+	return __card_formatregion(chn,1,callback);
 }
 
 s32 CARD_Format(u32 chn)
