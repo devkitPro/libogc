@@ -24,123 +24,6 @@
 #define VI_REGCHANGE(_reg)	\
 	((u64)0x01<<(63-_reg))
 
-static const struct _timing {
-	u8 equ;
-	u16 acv;
-	u16 prbOdd,prbEven;
-	u16 psbOdd,psbEven;
-	u8 bs1,bs2,bs3,bs4;
-	u16 be1,be2,be3,be4;
-	u16 nhlines,hlw;
-	u8 hsy,hcs,hce,hbe640;
-	u16 hbs640;
-	u8 hbeCCIR656;
-	u16 hbsCCIR656;
-} video_timing[6] = {
-	{
-		0x06,0x00F0,
-		0x0018,0x0019,0x0003,0x0002,
-		0x0C,0x0D,0x0C,0x0D,
-		0x0208,0x0207,0x0208,0x0207,
-		0x020D,0x01AD,
-		0x40,0x47,0x69,0xA2,
-		0x0175,
-		0x7A,0x019C
-	},
-	{
-		0x06,0x00F0,
-		0x0018,0x0018,0x0004,0x0004,
-		0x0C,0x0C,0x0C,0x0C,
-		0x0208,0x0208,0x0208,0x0208,
-		0x020E,0x01AD,
-		0x40,0x47,0x69,0xA2,
-		0x0175,
-		0x7A,0x019C
-	},
-	{
-		0x05,0x011F,
-		0x0023,0x0024,0x0001,0x0000,
-		0x0D,0x0C,0x0B,0x0A,
-		0x026B,0x026A,0x0269,0x026C,
-		0x0271,0x01B0,
-		0x40,0x4B,0x6A,0xAC,
-		0x017C,
-		0x85,0x01A4	
-	},
-	{
-		0x05,0x011F,
-		0x0021,0x0021,0x0002,0x0002,
-		0x0D,0x0B,0x0D,0x0B,
-		0x026B,0x026D,0x026B,0x026D,
-		0x0270,0x01B0,
-		0x40,0x4B,0x6A,0xAC,
-		0x017C,
-		0x85,0x01A4
-	},
-	{
-		0x06,0x00F0,
-		0x0018,0x0019,0x0003,0x0002,
-		0x10,0x0F,0x0E,0x0D,
-		0x0206,0x0205,0x0204,0x0207,
-		0x020D,0x01AD,
-		0x40,0x4E,0x70,0xA2,
-		0x0175,
-		0x7A,0x019C
-	},
-	{
-		0x06,0x00F0,
-		0x0018,0x0018,0x0004,0x0004,
-		0x10,0x0E,0x10,0x0E,
-		0x0206,0x0208,0x0206,0x0208,
-		0x020E,0x01AD,
-		0x40,0x4E,0x70,0xA2,
-		0x0175,
-		0x7A,0x019C
-	}
-};
-
-static const u16 taps[26] = {
-	0x01F0,0x01DC,0x01AE,0x0174,0x0129,0x00DB,
-	0x008E,0x0046,0x000C,0x00E2,0x00CB,0x00C0,
-	0x00C4,0x00CF,0x00DE,0x00EC,0x00FC,0x0008,
-	0x000F,0x0013,0x0013,0x000F,0x000C,0x0008,
-	0x0001,0x0000                              
-};
-
-struct _horVer {
-	u16 dispPosX;
-	u16 dispPosY;
-	u16 dispSizeX;
-	u16 dispSizeY;
-	u16 adjustedDispPosX;
-	u16 adjustedDispPosY;
-	u16 adjustedDispSizeY;
-	u16 adjustedPanPosY;
-	u16 adjustedPanSizeY;
-	u16 fbSizeX;
-	u16 fbSizeY;
-	u16 panPosX;
-	u16 panPosY;
-	u16 panSizeX;
-	u16 panSizeY;
-	u32 fbMode;	
-	u32 nonInter;	
-	u32 tv;
-	u8 wordPerLine;
-	u8 std;
-	u8 wpl;
-	void *bufAddr;
-	u32 tfbb;
-	u32 bfbb;
-	u8 xof;
-	s32 black;
-	s32 threeD;
-	void *rbufAddr;
-	u32 rtfbb;
-	u32 rbfbb;
-	const struct _timing *timing;
-} HorVer;
-
 GXRModeObj TVNtsc480IntDf = 
 {
     VI_TVMODE_NTSC_INT,     // viDisplayMode
@@ -513,15 +396,132 @@ GXRModeObj TVPal574IntDfScale =
 	}
 };
 
+static const struct _timing {
+	u8 equ;
+	u16 acv;
+	u16 prbOdd,prbEven;
+	u16 psbOdd,psbEven;
+	u8 bs1,bs2,bs3,bs4;
+	u16 be1,be2,be3,be4;
+	u16 nhlines,hlw;
+	u8 hsy,hcs,hce,hbe640;
+	u16 hbs640;
+	u8 hbeCCIR656;
+	u16 hbsCCIR656;
+} video_timing[6] = {
+	{
+		0x06,0x00F0,
+		0x0018,0x0019,0x0003,0x0002,
+		0x0C,0x0D,0x0C,0x0D,
+		0x0208,0x0207,0x0208,0x0207,
+		0x020D,0x01AD,
+		0x40,0x47,0x69,0xA2,
+		0x0175,
+		0x7A,0x019C
+	},
+	{
+		0x06,0x00F0,
+		0x0018,0x0018,0x0004,0x0004,
+		0x0C,0x0C,0x0C,0x0C,
+		0x0208,0x0208,0x0208,0x0208,
+		0x020E,0x01AD,
+		0x40,0x47,0x69,0xA2,
+		0x0175,
+		0x7A,0x019C
+	},
+	{
+		0x05,0x011F,
+		0x0023,0x0024,0x0001,0x0000,
+		0x0D,0x0C,0x0B,0x0A,
+		0x026B,0x026A,0x0269,0x026C,
+		0x0271,0x01B0,
+		0x40,0x4B,0x6A,0xAC,
+		0x017C,
+		0x85,0x01A4	
+	},
+	{
+		0x05,0x011F,
+		0x0021,0x0021,0x0002,0x0002,
+		0x0D,0x0B,0x0D,0x0B,
+		0x026B,0x026D,0x026B,0x026D,
+		0x0270,0x01B0,
+		0x40,0x4B,0x6A,0xAC,
+		0x017C,
+		0x85,0x01A4
+	},
+	{
+		0x06,0x00F0,
+		0x0018,0x0019,0x0003,0x0002,
+		0x10,0x0F,0x0E,0x0D,
+		0x0206,0x0205,0x0204,0x0207,
+		0x020D,0x01AD,
+		0x40,0x4E,0x70,0xA2,
+		0x0175,
+		0x7A,0x019C
+	},
+	{
+		0x06,0x00F0,
+		0x0018,0x0018,0x0004,0x0004,
+		0x10,0x0E,0x10,0x0E,
+		0x0206,0x0208,0x0206,0x0208,
+		0x020E,0x01AD,
+		0x40,0x4E,0x70,0xA2,
+		0x0175,
+		0x7A,0x019C
+	}
+};
+
+static const u16 taps[26] = {
+	0x01F0,0x01DC,0x01AE,0x0174,0x0129,0x00DB,
+	0x008E,0x0046,0x000C,0x00E2,0x00CB,0x00C0,
+	0x00C4,0x00CF,0x00DE,0x00EC,0x00FC,0x0008,
+	0x000F,0x0013,0x0013,0x000F,0x000C,0x0008,
+	0x0001,0x0000                              
+};
+
+static struct _horVer {
+	u16 dispPosX;
+	u16 dispPosY;
+	u16 dispSizeX;
+	u16 dispSizeY;
+	u16 adjustedDispPosX;
+	u16 adjustedDispPosY;
+	u16 adjustedDispSizeY;
+	u16 adjustedPanPosY;
+	u16 adjustedPanSizeY;
+	u16 fbSizeX;
+	u16 fbSizeY;
+	u16 panPosX;
+	u16 panPosY;
+	u16 panSizeX;
+	u16 panSizeY;
+	u32 fbMode;	
+	u32 nonInter;	
+	u32 tv;
+	u8 wordPerLine;
+	u8 std;
+	u8 wpl;
+	void *bufAddr;
+	u32 tfbb;
+	u32 bfbb;
+	u8 xof;
+	s32 black;
+	s32 threeD;
+	void *rbufAddr;
+	u32 rtfbb;
+	u32 rbfbb;
+	const struct _timing *timing;
+} HorVer;
+
 static u16 regs[60];
-static u16 shdwRegs[60];
-static u32 retraceCount,fbSet = 0;
-static u32 encoderType;
+static u16 shdw_regs[60];
+static u32 encoderType,fbSet = 0;
 static s16 displayOffsetH;
 static s16 displayOffsetV;
 static u32 currTvMode,changeMode;
-static u32 shdwChangeMode,flushFlag;
-static u64 changed,shdwChanged;
+static u32 shdw_changeMode,flushFlag;
+static u64 changed,shdw_changed;
+static vu32 retraceCount;
 static const struct _timing *currTiming;
 static lwpq_t video_queue;
 static VIRetraceCallback preRetraceCB = NULL;
@@ -534,6 +534,18 @@ extern void __MaskIrq(u32);
 
 extern u32 __SYS_LockSram();
 extern u32 __SYS_UnlockSram(u32 write);
+
+static void printRegs()
+{
+	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[0],regs[1],regs[2],regs[3],regs[4],regs[5],regs[6],regs[7]);
+	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[8],regs[9],regs[10],regs[11],regs[12],regs[13],regs[14],regs[15]);
+	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[16],regs[17],regs[18],regs[19],regs[20],regs[21],regs[22],regs[23]);
+	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[24],regs[25],regs[26],regs[27],regs[28],regs[29],regs[30],regs[31]);
+	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[32],regs[33],regs[34],regs[35],regs[36],regs[37],regs[38],regs[39]);
+	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[40],regs[41],regs[42],regs[43],regs[44],regs[45],regs[46],regs[47]);
+	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[48],regs[49],regs[50],regs[51],regs[52],regs[53],regs[54],regs[55]);
+	printf("%04x %04x %04x %04x\n",regs[56],regs[57],regs[58],regs[59]);
+}
 
 static __inline__ u32 cntlzd(u64 bit)
 {
@@ -548,14 +560,6 @@ static __inline__ u32 cntlzd(u64 bit)
 		value += 32;
 	}
 	return value;
-}
-
-static __inline__ void __clear_interrupt()
-{
-	_viReg[24] &= ~0x8000;
-	_viReg[26] &= ~0x8000;
-	_viReg[28] &= ~0x8000;
-	_viReg[30] &= ~0x8000;
 }
 
 static __inline__ u32 __checkclear_interrupt()
@@ -588,7 +592,7 @@ static __inline__ void __calcFbbs(u32 bufAddr,u16 panPosX,u16 panPosY,u8 wordper
 	bytesPerLine = (wordperline<<5)&~0x1f;
 	*tfbb = bufAddr+(((panPosX<<1)&~0x1f)+(panPosY*bytesPerLine));
 	*bfbb = *tfbb;
-	if(xfbMode!=VI_XFBMODE_SF) *bfbb = *tfbb+bytesPerLine;
+	if(xfbMode==VI_XFBMODE_DF) *bfbb = *tfbb+bytesPerLine;
 
 	if((dispPosY-((dispPosY/2)<<1))==1) {
 		tmp = *tfbb;
@@ -776,33 +780,30 @@ static void __VIInit(u32 vimode)
 
 static u32 __getCurrentHalfLine()
 {
-	u32 hlw;
+	u32 vpos_old;
 	u32 vpos = 0;
 	u32 hpos = 0;
 
 	vpos = _viReg[22]&0x07FF;
 	do {
-		hlw = vpos;
+		vpos_old = vpos;
 		hpos = _viReg[23]&0x07FF;
 		vpos = _viReg[22]&0x07FF;
-	} while(hlw!=vpos);
+	} while(vpos_old!=vpos);
 	
 	hpos--;
 	vpos--;
 	vpos <<= 1;
-	hlw = currTiming->hlw;
 
-	return vpos+(hpos/hlw);	
+	return vpos+(hpos/currTiming->hlw);	
 }
 
 static u32 __getCurrFieldEvenOdd()
 {
 	u32 hline;
-	u32 nhlines;
 
 	hline = __getCurrentHalfLine();
-	nhlines = currTiming->nhlines;
-	if(hline<nhlines) return 1;
+	if(hline<currTiming->nhlines) return 1;
 
 	return 0;
 }
@@ -812,17 +813,17 @@ static u32 __VISetRegs()
 	u32 val;
 	u64 mask;
 
-	if(shdwChangeMode==1){
+	if(shdw_changeMode==1){
 		if(!__getCurrFieldEvenOdd()) return 0;
 	}
 
-	while(shdwChanged) {
-		val = cntlzd(shdwChanged);
-		_viReg[val] = shdwRegs[val];
+	while(shdw_changed) {
+		val = cntlzd(shdw_changed);
+		_viReg[val] = shdw_regs[val];
 		mask = VI_REGCHANGE(val);
-		shdwChanged &= ~mask;
+		shdw_changed &= ~mask;
 	}
-	shdwChangeMode = 0;
+	shdw_changeMode = 0;
 	currTiming = HorVer.timing;
 	currTvMode = HorVer.tv;
 	
@@ -862,8 +863,8 @@ void VIDEO_Init()
 
 	retraceCount = 0;
 	changed = 0;
-	shdwChanged = 0;
-	shdwChangeMode = 0;
+	shdw_changed = 0;
+	shdw_changeMode = 0;
 	flushFlag = 0;
 	encoderType = 1;
 	
@@ -996,13 +997,12 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	}
 	if(HorVer.nonInter==VI_NON_INTERLACE) HorVer.dispPosY = (HorVer.dispPosY<<1)&0xfffe;
 	
-	if(nonint==VI_PROGRESSIVE || nonint==(VI_NON_INTERLACE|VI_PROGRESSIVE)) tmp = HorVer.panSizeY;
-	else if(HorVer.fbMode==VI_XFBMODE_SF) tmp = (HorVer.panSizeY<<1)&0xfffe;
-	else tmp = HorVer.panSizeY;
+	tmp = HorVer.panSizeY;
+	if(HorVer.fbMode==VI_XFBMODE_SF) tmp = (tmp<<1)&0xfffe;
 	HorVer.dispSizeY = tmp;
 
 	tmp = 0;
-	if(nonint==(VI_NON_INTERLACE|VI_PROGRESSIVE)) tmp = 1;
+	if(HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) tmp = 1;
 	HorVer.threeD = tmp;
 
 	vimode = VI_TVMODE(HorVer.tv,HorVer.nonInter);
@@ -1106,9 +1106,9 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	changed |= VI_REGCHANGE(13);
 
 	HorVer.wordPerLine = tmp = (HorVer.fbSizeX+15)/16;
-	if(HorVer.fbMode==VI_XFBMODE_DF) tmp = HorVer.wordPerLine;
+	if(HorVer.fbMode==VI_XFBMODE_DF) tmp = (HorVer.wordPerLine<<1)&0xfe;
 
-	HorVer.std = (tmp<<1)&0xfe;
+	HorVer.std = tmp;
 	HorVer.xof = HorVer.panPosX-((HorVer.panPosX/16)<<4);
 	HorVer.wpl = (HorVer.panSizeX+15)/16;
 
@@ -1130,7 +1130,7 @@ void VIDEO_WaitVSync(void)
 	retcnt = retraceCount;
 	do {
 		LWP_SleepThread(video_queue);
-	}while(retraceCount==retcnt);
+	} while(retraceCount==retcnt);
 	_CPU_ISR_Restore(level);
 }
 
@@ -1188,13 +1188,13 @@ void VIDEO_Flush()
 	u64 mask;
 
 	_CPU_ISR_Disable(level);
-	shdwChangeMode |= changeMode;
+	shdw_changeMode |= changeMode;
 	changeMode = 0;
 
-	shdwChanged |= changed;
+	shdw_changed |= changed;
 	while(changed) {
 		val = cntlzd(changed);
-		shdwRegs[val] = regs[val];
+		shdw_regs[val] = regs[val];
 		mask = VI_REGCHANGE(val);
 		changed &= ~mask;
 	}
@@ -1216,24 +1216,13 @@ void VIDEO_SetBlack(boolean black)
 
 u32 VIDEO_GetNextField()
 {
-	u32 level,val;
-	u16 tdpv,tdph;
-	u16 tmp,dpv,dph;
+	u32 level,field;
 
 	_CPU_ISR_Disable(level);
-	tmp = (_viReg[22]&0x7ff);
-	dph = (_viReg[23]&0x7ff);
-	while((dpv=(_viReg[22]&0x7ff))!=tmp);
-	
-	dpv--;	dph--;
-	tdph = currTiming->nhlines;
-	tdpv = (dpv<<1)+(dph/currTiming->hlw);
-
-	if(tdpv>=tdph) val = 0;
-	else val = 1;
+	field = __getCurrFieldEvenOdd();
 	_CPU_ISR_Restore(level);
 	
-	return ((val^1)^(HorVer.adjustedDispPosY&0x0001));
+	return ((field^1)^(HorVer.adjustedDispPosY&0x0001));
 }
 
 u32 VIDEO_GetCurrentTvMode()
