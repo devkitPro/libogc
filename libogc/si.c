@@ -4,6 +4,7 @@
 #include "asm.h"
 #include "processor.h"
 #include "video.h"
+#include "irq.h"
 #include "si.h"
 
 #define _SHIFTL(v, s, w)	\
@@ -54,9 +55,13 @@ static struct _xy {
 };
 
 static u32 sampling_rate = 0;
+static u32 si_type[4] = {8,8,8,8};
 
 static vu32* const _siReg = (u32*)0xCC006400;
 static vu16* const _viReg = (u16*)0xCC002000;
+
+extern void __UnmaskIrq(u32);
+extern void __MaskIrq(u32);
 
 static __inline__ struct _xy* __si_getxy()
 {
@@ -73,18 +78,37 @@ static __inline__ struct _xy* __si_getxy()
 	return NULL;
 }
 
-static __inline__ void si_cleartcinterrupt()
+static __inline__ void __si_cleartcinterrupt()
 {
 	_siReg[13] = (_siReg[13]&~1)|0x80000000;
 }
 
 static u32 __si_completetransfer()
 {
-	u32 tmp;
+	u32 val,sisr,cnt,i,ret = -1;
+	u32 *in;
 
-	tmp = _siReg[14];
+	sisr = _siReg[14];
+	__si_cleartcinterrupt();
+	
+	if(sicntrl.chan==-1) return sisr;
 
-	return 1;	
+	in = (u32*)sicntrl.in;
+	for(cnt=0;cnt<(sicntrl.in_bytes/4);cnt++) in[cnt] = _siReg[32+cnt];
+	if(sicntrl.in_bytes&0x03) {
+		val = _siReg[32+cnt];
+		for(i=0;i<(sicntrl.in_bytes&0x03);i++) ((u8*)in)[(cnt*4)+i] = (val>>((3-i)*8))&0xff;
+	}
+	if(_siReg[13]&0x40000000) {
+		val = (sisr>>((3-sicntrl.chan)*8))&0x0f;
+		if(val&0x0008 && !(si_type[sicntrl.chan]&0x80)) {
+			si_type[sicntrl.chan] = 8;
+		}
+		if(!sisr) ret = 4;
+	} else ret = 0;
+	
+	sicntrl.chan = -1;
+	return ret;	
 }
 
 static void __si_transfercommands()
@@ -92,10 +116,15 @@ static void __si_transfercommands()
 	_siReg[14] = 0x80000000;
 }
 
+static void __si_interrupthandler(u32 irq,void *ctx)
+{
+}
+
 u32 SIBusy()
 {
-	
+	return (sicntrl.chan==-1)?0:1;	
 }
+
 void SI_SetXY(u16 line,u8 cnt)
 {
 	u32 level;
@@ -146,4 +175,7 @@ void SI_Init()
 	SI_SetSamplingRate(0);
 	while(_siReg[13]);
 	_siReg[12] = 0x80000000;
+
+	IRQ_Request(IRQ_PI_SI,__si_interrupthandler,NULL);
+	__UnmaskIrq(IRQMASK(IRQ_PI_SI));
 }
