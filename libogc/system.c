@@ -36,6 +36,14 @@
 #define _SHIFTR(v, s, w)	\
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
+struct _sramcntrl {
+	u8 srambuf[64];
+	u32 offset;
+	s32 enabled;
+	s32 locked;
+	s32 sync;
+} sramcntrl ATTRIBUTE_ALIGN(32);
+
 static u32 system_initialized = 0;
 
 static void *__sysarenalo = NULL;
@@ -47,9 +55,6 @@ static sysalarm *system_alarms = NULL;
 static vu32* const _piReg = (u32*)0xCC003000;
 static vu16* const _memReg = (u16*)0xCC004000;
 static vu16* const _dspReg = (u16*)0xCC005000;
-
-static u32 __srambuf_len,__srambuf_lck,__sram_isrlevel,__sram_transfersize;
-static u8 __srambuf[64] ATTRIBUTE_ALIGN(32);
 
 static u32 __sram_writecallback();
 
@@ -244,33 +249,32 @@ static __inline__ u32 __sram_write(void *buffer,u32 loc,u32 len)
 	}
 
 	ret = 0;
-	cmd = 0xa0000100|(loc<<6);
+	cmd = 0xa0000100+(loc<<6);
 	if(EXI_Imm(EXI_CHANNEL_0,&cmd,4,EXI_WRITE,NULL)==0) ret |= 0x01;
 	if(EXI_Sync(EXI_CHANNEL_0)==0) ret |= 0x02;
 	if(EXI_ImmEx(EXI_CHANNEL_0,buffer,len,EXI_WRITE)==0) ret |= 0x04;
 	if(EXI_Deselect(EXI_CHANNEL_0)==0) ret |= 0x08;
 	if(EXI_Unlock(EXI_CHANNEL_0)==0) ret |= 0x10;
 	
-	if(ret) return 1;
-	return 0;
+	if(ret) return 0;
+	return 1;
 }
 
 static u32 __sram_writecallback()
 {
-	if(!__srambuf_lck) return 0;
-
-	__sram_transfersize = __sram_write(__srambuf+__srambuf_len,__srambuf_len,(64-__srambuf_len));
-	if(__sram_transfersize) __srambuf_len = 64;
+	sramcntrl.sync = __sram_write(sramcntrl.srambuf+sramcntrl.offset,sramcntrl.offset,(64-sramcntrl.offset));
+	if(sramcntrl.sync) sramcntrl.offset = 64;
 	
 	return 1;
 }
 
 static void __sram_init()
 {
-	__srambuf_len = 64;
-	__sram_isrlevel = 0;
-	__srambuf_lck = 0;
-	__sram_transfersize = __sram_read(__srambuf);
+	sramcntrl.enabled = 0;
+	sramcntrl.locked = 0;
+	sramcntrl.sync = __sram_read(sramcntrl.srambuf);
+	
+	sramcntrl.offset = 64;
 }
 
 static void DisableWriteGatherPipe()
@@ -285,46 +289,41 @@ static __inline__ void __buildchecksum(u16 *buffer,u16 *c1,u16 *c2)
 	*c1 = 0;
 	*c2 = 0;
 	for(i=0;i<4;i++) {
-		*c1 += buffer[0x0c+(i*2)];
-		*c2 += buffer[0x0c+(i*2)]^-1;
+		*c1 += buffer[6+i];
+		*c2 += buffer[6+i]^-1;
 	}
 }
-static __inline__ u32 __locksram(u32 loc)
+static __inline__ void* __locksram(u32 loc)
 {
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	if(!__srambuf_lck) {
-		if(!__srambuf_lck) {
-			__sram_isrlevel = level;
-			__srambuf_lck = 1;
-			return (u32)__srambuf+loc;
-		}
+	if(!sramcntrl.locked) {
+		sramcntrl.enabled = level;
+		sramcntrl.locked = 1;
+		return (void*)((u32)sramcntrl.srambuf+loc);
 	}
-	_CPU_ISR_Disable(level);
-	return 0;
+	_CPU_ISR_Restore(level);
+	return NULL;
 }
 
 static u32 __unlocksram(u32 write,u32 loc)
 {
-	syssram *sram = (syssram*)__srambuf;
+	syssram *sram = (syssram*)sramcntrl.srambuf;
 
-	if(__srambuf_lck) {
-		if(write) {
-			if(!loc) {
-				if((sram->flags&0x03)>0x02) sram->flags = (sram->flags&~0x02);
-				__buildchecksum((u16*)__srambuf,&sram->checksum,&sram->checksum_inv);
-			}
-			if(loc<__srambuf_len) __srambuf_len = loc;
-			
-			__sram_transfersize = __sram_write(__srambuf+__srambuf_len,__srambuf_len,(64-__srambuf_len));
-			if(__sram_transfersize) __srambuf_len = 64;
+	if(write) {
+		if(!loc) {
+			if((sram->flags&0x03)>0x02) sram->flags = (sram->flags&~0x03);
+			__buildchecksum((u16*)sramcntrl.srambuf,&sram->checksum,&sram->checksum_inv);
 		}
-		__srambuf_lck = 0;
-		_CPU_ISR_Restore(__sram_isrlevel);
-		return __sram_transfersize;
+		if(loc<sramcntrl.offset) sramcntrl.offset = loc;
+		
+		sramcntrl.sync = __sram_write(sramcntrl.srambuf+sramcntrl.offset,sramcntrl.offset,(64-sramcntrl.offset));
+		if(sramcntrl.sync) sramcntrl.offset = 64;
 	}
-	return 0;
+	sramcntrl.locked = 0;
+	_CPU_ISR_Restore(sramcntrl.enabled);
+	return sramcntrl.sync;
 }
 
 static void __dsp_bootstrap()
@@ -381,14 +380,14 @@ static void __dsp_bootstrap()
 #endif
 }
 
-u32 __SYS_LockSram()
+syssram* __SYS_LockSram()
 {
-	return __locksram(0);
+	return (syssram*)__locksram(0);
 }
 
-u32 __SYS_LockSramEx()
+syssramex* __SYS_LockSramEx()
 {
-	return __locksram(20);
+	return (syssramex*)__locksram(sizeof(syssram));
 }
 
 u32 __SYS_UnlockSram(u32 write)
@@ -398,7 +397,7 @@ u32 __SYS_UnlockSram(u32 write)
 
 u32 __SYS_UnlockSramEx(u32 write)
 {
-	return __unlocksram(write,20);
+	return __unlocksram(write,sizeof(syssram));
 }
 
 u32 __SYS_GetRTC(u32 *gctime)

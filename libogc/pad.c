@@ -144,7 +144,7 @@ static void SPEC2_MakeStatus(u32 chan,u32 *data,PADStatus *status)
 	status->stickX = (s8)(data[0]>>8);
 	status->stickY = (s8)data[0];
 #ifdef _PAD_DEBUG
-	printf("SPEC2_MakeStatus(%d,%p,%p)",chan,data,status);
+//	printf("SPEC2_MakeStatus(%d,%p,%p)",chan,data,status);
 #endif
 	mode = __pad_analogmode&0x0700;
 	if(mode==0x100) {
@@ -300,6 +300,19 @@ static void __pad_typeandstatuscallback(s32 chan,u32 type)
 
 static void __pad_receivecheckcallback(s32 chan,u32 type)
 {
+	u32 mask,tmp;
+#ifdef _PAD_DEBUG
+	printf("__pad_receivecheckcallback(%d,%08x)\n",chan,type);
+#endif
+	mask = PAD_ENABLEDMASK(chan);
+	if(__pad_enabledbits&mask) {
+		tmp = type&0xff;
+		type &= ~0xff;
+		__pad_waitingbits &= ~mask;
+		__pad_checkingbits &= ~mask;
+		if(!(tmp&0x0f) && type&0x80100000 && !(type&0x040C0000))  SI_Transfer(chan,&__pad_cmdreadorigin,1,__pad_origin[chan],10,__pad_originupdatecallback,0);
+		else __pad_disable(chan);
+	}
 }
 
 static void __pad_enable(u32 chan)
@@ -334,7 +347,9 @@ static void __pad_doreset()
 {
 	__pad_resettingchan = cntlzw(__pad_resettingbits);
 	if(__pad_resettingchan==32) return;
-
+#ifdef _PAD_DEBUG
+	printf("__pad_doreset(%d)\n",__pad_resettingchan);
+#endif
 	__pad_resettingbits &= ~PAD_ENABLEDMASK(__pad_resettingchan);
 	
 	memset(__pad_origin[__pad_resettingchan],0,12);
@@ -431,7 +446,7 @@ u32 PAD_Read(PADStatus *status)
 #ifdef _PAD_DEBUG
 						printf("PAD_Read(%08x %08x)\n",buf[0],buf[1]);
 #endif
-					__pad_makestatus(chan,buf,&status[chan]);
+						__pad_makestatus(chan,buf,&status[chan]);
 #ifdef _PAD_DEBUG
 						printf("PAD_Read(%08x)\n",status[chan].button);
 #endif

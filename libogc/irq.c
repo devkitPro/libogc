@@ -21,6 +21,7 @@ struct irq_handler_s {
 	void *pCtx;
 };
 
+static u64 spuriousIrq = 0;
 static u32 currIrqMask = 0;
 static struct irq_handler_s g_IRQHandler[32];
 
@@ -30,9 +31,11 @@ static vu16* const _dspReg = (u16*)0xCC005000;
 static vu32* const _exiReg = (u32*)0xCC006800;
 static vu32* const _aiReg = (u32*)0xCC006C00;
 
-static u32 const _irqPrio[] = {0x00000100,0x00000040,0xf8000000,0x00000200,
-							   0x00000080,0x00003000,0x00000020,0x03ff8c00,
-							   0x04000000,0x00004000,0xffffffff};
+static u32 const _irqPrio[] = {IM_PI_ERROR,IM_PI_DEBUG,IM_MEM,IM_PI_RSW,
+							   IM_PI_VI,(IM_PI_PETOKEN|IM_PI_PEFINISH),
+							   IM_PI_HSP,
+							   (IM_DSP_ARAM|IM_DSP_DSP|IM_AI|IM_EXI|IM_PI_SI|IM_PI_DI),
+							   IM_DSP_AI,IM_PI_CP,0xffffffff};
 
 extern void __exception_load(u32,void *,u32,void *);
 
@@ -52,8 +55,9 @@ static void __irqhandler_init()
 void c_irqdispatcher()
 {
 	u32 i,icause,intmask,irq;
-	u32 cause = _piReg[0]&_piReg[1];
-	if(!cause) return;
+	u32 cause = _piReg[0];
+	
+	if(!(cause&_piReg[1])) spuriousIrq++;
 
 	intmask = 0;
 	if(cause&0x00000080) {		//Memory Interface
@@ -154,12 +158,13 @@ void c_irqdispatcher()
 	if(cause&0x00002000) {		//High Speed Port
 		intmask |= IRQMASK(IRQ_PI_HSP);
 	}
-	
+	if(!(currIrqMask&intmask)) return;
+
 	i=0;
 	irq = 0;
 	while(i<(sizeof(_irqPrio)/sizeof(u32))) {
-		if(intmask&_irqPrio[i]) {
-			irq = cntlzw(intmask);
+		if((irq=(intmask&_irqPrio[i]))) {
+			irq = cntlzw(irq);
 			break;
 		}
 		i++;
@@ -172,192 +177,111 @@ void c_irqdispatcher()
 
 	if(g_IRQHandler[irq].pHndl)
 		g_IRQHandler[irq].pHndl(irq,g_IRQHandler[irq].pCtx);
+}
 
-	_piReg[0] = cause;
+void __SetInterrupts(u32 nMask)
+{
+	u32 imask;
+	u32 piMask;
+
+	piMask = 0;
+	if(nMask&IM_PI_ERROR) {
+		piMask |= 0x00000001;
+	}
+	if(nMask&IM_PI_RSW) {
+		piMask |= 0x00000002;
+	}
+	if(nMask&IM_PI_DI) {
+		piMask |= 0x00000004;
+	}
+	if(nMask&IM_PI_SI) {
+		piMask |= 0x00000008;
+	}
+	if(nMask&IM_EXI) {
+		if(nMask&IM_EXI0) {
+			imask = _exiReg[0]&~0x2c0f;
+			if(nMask&IM_EXI0_EXI) imask |= 0x0001;
+			if(nMask&IM_EXI0_TC) imask |= 0x0004;
+			if(nMask&IM_EXI0_EXT) imask |= 0x0400;
+			_exiReg[0] = imask;
+		}
+		if(nMask&IM_EXI1) {
+			imask = _exiReg[5]&~0x0c0f;
+			if(nMask&IM_EXI1_EXI) imask |= 0x0001;
+			if(nMask&IM_EXI1_TC) imask |= 0x0004;
+			if(nMask&IM_EXI1_EXT) imask |= 0x0400;
+			_exiReg[5] = imask;
+		}
+		if(nMask&IM_EXI2) {
+			imask = _exiReg[10]&~0x000f;
+			if(nMask&IM_EXI2_EXI) imask |= 0x0001;
+			if(nMask&IM_EXI2_TC) imask |= 0x0004;
+			_exiReg[10] = imask;
+		}
+		piMask |= 0x00000010;
+	}
+	if(nMask&IM_AI) {
+		imask = _aiReg[0]&~0x2c;
+		if(nMask&IM_AI_AI) imask |= 0x0004;
+		_aiReg[0] = imask;
+		piMask |= 0x00000020;
+	}
+	if(nMask&IM_DSP) {
+		imask = _dspReg[5]&~0x1f8;
+		if(nMask&IM_DSP_AI) imask |= 0x0010;
+		if(nMask&IM_DSP_ARAM) imask |= 0x0040;
+		if(nMask&IM_DSP_DSP) imask |= 0x0100;
+		_dspReg[5] = (u16)imask;
+		piMask |= 0x00000040;
+	}
+	if(nMask&IM_MEM) {
+		imask = 0;
+		if(nMask&IM_MEM0) imask |= 0x0001;
+		if(nMask&IM_MEM1) imask |= 0x0002;
+		if(nMask&IM_MEM2) imask |= 0x0004;
+		if(nMask&IM_MEM3) imask |= 0x0008;
+		if(nMask&IM_MEMADDRESS) imask |= 0x0010;
+		_memReg[14] = (u16)imask;
+		piMask |= 0x00000080;
+	}
+	if(nMask&IM_PI_VI) {
+		piMask |= 0x00000100;
+	}
+	if(nMask&IM_PI_PETOKEN) {
+		piMask |= 0x00000200;
+	}
+	if(nMask&IM_PI_PEFINISH) {
+		piMask |= 0x00000400;
+	}
+	if(nMask&IM_PI_CP) {
+		piMask |= 0x00000800;
+	}
+	if(nMask&IM_PI_DEBUG) {
+		piMask |= 0x00001000;
+	}
+	if(nMask&IM_PI_HSP) {
+		piMask |= 0x00002000;
+	}
+	_piReg[1] = piMask;
 }
 
 void __UnmaskIrq(u32 nMask)
 {
 	u32 level;
-	u32 imask;
 	
 	_CPU_ISR_Disable(level);
-
 	currIrqMask = (currIrqMask&~nMask)|nMask;
-	if(nMask&IM_PI_ERROR) {
-		_piReg[1] = (_piReg[1]&~0x00000001)|0x00000001;
-	}
-	if(nMask&IM_PI_RSW) {
-		_piReg[1] = (_piReg[1]&~0x00000002)|0x00000002;
-	}
-	if(nMask&IM_PI_DI) {
-		_piReg[1] = (_piReg[1]&~0x00000004)|0x00000004;
-	}
-	if(nMask&IM_PI_SI) {
-		_piReg[1] = (_piReg[1]&~0x00000008)|0x00000008;
-	}
-	if(nMask&IM_EXI) {
-		_piReg[1] = (_piReg[1]&~0x00000010)|0x00000010;
-
-		if(nMask&IM_EXI0) {
-			imask = _exiReg[0]&~0x2c0f;
-			if(currIrqMask&IM_EXI0_EXI) imask |= 0x0001;
-			if(currIrqMask&IM_EXI0_TC) imask |= 0x0004;
-			if(currIrqMask&IM_EXI0_EXT) imask |= 0x0400;
-			_exiReg[0] = imask;
-		}
-		if(nMask&IM_EXI1) {
-			imask = _exiReg[5]&~0x0c0f;
-			if(currIrqMask&IM_EXI1_EXI) imask |= 0x0001;
-			if(currIrqMask&IM_EXI1_TC) imask |= 0x0004;
-			if(currIrqMask&IM_EXI1_EXT) imask |= 0x0400;
-			_exiReg[5] = imask;
-		}
-		if(nMask&IM_EXI2) {
-			imask = _exiReg[10]&~0x000f;
-			if(currIrqMask&IM_EXI2_EXI) imask |= 0x0001;
-			if(currIrqMask&IM_EXI2_TC) imask |= 0x0004;
-			_exiReg[10] = imask;
-		}
-
-	}
-	if(nMask&IM_AI) {
-		_piReg[1] = (_piReg[1]&~0x00000020)|0x00000020;
-
-		imask = _aiReg[0]&~0x2c;
-		if(currIrqMask&IM_AI_AI) imask |= 0x0004;
-		_aiReg[0] = imask;
-	}
-	if(nMask&IM_DSP) {
-		_piReg[1] = (_piReg[1]&~0x00000040)|0x00000040;
-
-		imask = _dspReg[5]&~0x1f8;
-		if(currIrqMask&IM_DSP_AI) imask |= 0x0010;
-		if(currIrqMask&IM_DSP_ARAM) imask |= 0x0040;
-		if(currIrqMask&IM_DSP_DSP) imask |= 0x0100;
-		_dspReg[5] = (u16)imask;
-
-	}
-	if(nMask&IM_MEM) {
-		_piReg[1] = (_piReg[1]&~0x00000080)|0x00000080;
-
-		imask = 0;
-		if(currIrqMask&IM_MEM0) imask |= 0x0001;
-		if(currIrqMask&IM_MEM1) imask |= 0x0002;
-		if(currIrqMask&IM_MEM2) imask |= 0x0004;
-		if(currIrqMask&IM_MEM3) imask |= 0x0008;
-		if(currIrqMask&IM_MEMADDRESS) imask |= 0x0010;
-		_memReg[14] = (u16)imask;
-	}
-	if(nMask&IM_PI_VI) {
-		_piReg[1] = (_piReg[1]&~0x00000100)|0x00000100;
-	}
-	if(nMask&IM_PI_PETOKEN) {
-		_piReg[1] = (_piReg[1]&~0x00000200)|0x00000200;
-	}
-	if(nMask&IM_PI_PEFINISH) {
-		_piReg[1] = (_piReg[1]&~0x00000400)|0x00000400;
-	}
-	if(nMask&IM_PI_CP) {
-		_piReg[1] = (_piReg[1]&~0x00000800)|0x00000800;
-	}
-	if(nMask&IM_PI_DEBUG) {
-		_piReg[1] = (_piReg[1]&~0x00001000)|0x00001000;
-	}
-	if(nMask&IM_PI_HSP) {
-		_piReg[1] = (_piReg[1]&~0x00002000)|0x00002000;
-	}
-
+	__SetInterrupts(currIrqMask);
 	_CPU_ISR_Restore(level);
 }
 
 void __MaskIrq(u32 nMask)
 {
 	u32 level;
-	u32 imask;
 
 	_CPU_ISR_Disable(level);
-
 	currIrqMask = (currIrqMask&~nMask);
-	if(nMask&IM_PI_ERROR) {
-		_piReg[1] = (_piReg[1]&~0x00000001);
-	}
-	if(nMask&IM_PI_RSW) {
-		_piReg[1] = (_piReg[1]&~0x00000002);
-	}
-	if(nMask&IM_PI_DI) {
-		_piReg[1] = (_piReg[1]&~0x00000004);
-	}
-	if(nMask&IM_PI_SI) {
-		_piReg[1] = (_piReg[1]&~0x00000008);
-	}
-	if(nMask&IM_EXI) {
-		if(nMask&IM_EXI0) {
-			imask = _exiReg[0]&~0x2c0f;
-			if(currIrqMask&IM_EXI0_EXI) imask |= 0x0001;
-			if(currIrqMask&IM_EXI0_TC) imask |= 0x0004;
-			if(currIrqMask&IM_EXI0_EXT) imask |= 0x0400;
-			_exiReg[0] = imask;
-		}
-		if(nMask&IM_EXI1) {
-			imask = _exiReg[5]&~0x0c0f;
-			if(currIrqMask&IM_EXI1_EXI) imask |= 0x0001;
-			if(currIrqMask&IM_EXI1_TC) imask |= 0x0004;
-			if(currIrqMask&IM_EXI1_EXT) imask |= 0x0400;
-			_exiReg[5] = imask;
-		}
-		if(nMask&IM_EXI2) {
-			imask = _exiReg[10]&~0x000f;
-			if(currIrqMask&IM_EXI2_EXI) imask |= 0x0001;
-			if(currIrqMask&IM_EXI2_TC) imask |= 0x0004;
-			_exiReg[10] = imask;
-		}
-		if(!(currIrqMask&IM_EXI)) _piReg[1] = (_piReg[1]&~0x00000010);
-	}
-	if(nMask&IM_AI) {
-		imask = _aiReg[0]&~0x2c;
-		if(currIrqMask&IM_AI_AI) imask |= 0x0004;
-		_aiReg[0] = imask;
-		if(!(currIrqMask&IM_AI)) _piReg[1] = (_piReg[1]&~0x00000020);
-	}
-	if(nMask&IM_DSP) {
-		imask = _dspReg[5]&~0x1f8;
-		if(currIrqMask&IM_DSP_AI) imask |= 0x0010;
-		if(currIrqMask&IM_DSP_ARAM) imask |= 0x0040;
-		if(currIrqMask&IM_DSP_DSP) imask |= 0x0100;
-		_dspReg[5] = (u16)imask;
-		if(!(currIrqMask&IM_DSP)) _piReg[1] = (_piReg[1]&~0x00000040);
-
-	}
-	if(nMask&IM_MEM) {
-		imask = 0;
-		if(currIrqMask&IM_MEM0) imask |= 0x0001;
-		if(currIrqMask&IM_MEM1) imask |= 0x0002;
-		if(currIrqMask&IM_MEM2) imask |= 0x0004;
-		if(currIrqMask&IM_MEM3) imask |= 0x0008;
-		if(currIrqMask&IM_MEMADDRESS) imask |= 0x0010;
-		_memReg[14] = (u16)imask;
-		if(!(currIrqMask&IM_MEM)) _piReg[1] = (_piReg[1]&~0x00000080);
-	}
-	if(nMask&IM_PI_VI) {
-		_piReg[1] = (_piReg[1]&~0x00000100);
-	}
-	if(nMask&IM_PI_PETOKEN) {
-		_piReg[1] = (_piReg[1]&~0x00000200);
-	}
-	if(nMask&IM_PI_PEFINISH) {
-		_piReg[1] = (_piReg[1]&~0x00000400);
-	}
-	if(nMask&IM_PI_CP) {
-		_piReg[1] = (_piReg[1]&~0x00000800);
-	}
-	if(nMask&IM_PI_DEBUG) {
-		_piReg[1] = (_piReg[1]&~0x00001000);
-	}
-	if(nMask&IM_PI_HSP) {
-		_piReg[1] = (_piReg[1]&~0x00002000);
-	}
-
+	__SetInterrupts(currIrqMask);
 	_CPU_ISR_Restore(level);
 }
 
@@ -377,8 +301,15 @@ void __irq_init()
 	mtspr(272,irqNestingLevel);
 	mtspr(273,intrStack);
 	
-	__irqhandler_init();
+	
+	currIrqMask = 0;
 	_piReg[1] = 0xf0;
+
+	__MaskIrq(0xffffffe0);
+	__irqhandler_init();
+
+	_piReg[0] = 1;
+	__UnmaskIrq(IRQMASK(IRQ_PI_ERROR));
 }
 
 raw_irq_handler_t* IRQ_Request(u32 nIrq,raw_irq_handler_t *pHndl,void *pCtx)

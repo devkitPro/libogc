@@ -3,6 +3,14 @@
 
 #include <gctypes.h>
 
+#define SI_CHAN0			0
+#define SI_CHAN1			1
+#define SI_CHAN2			2
+#define SI_CHAN3			3
+
+#define SI_ERR_UNKNOWN		0x40
+#define SI_ERR_BUSY			0x80
+
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */

@@ -17,7 +17,50 @@
 #define _SHIFTR(v, s, w)	\
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
-#define SIPAD_ENABLED(chn)			(0x80000000>>chn)
+#define SICHAN_0					0x80000000
+#define SICHAN_1					0x40000000
+#define SICHAN_2					0x20000000
+#define SICHAN_3					0x10000000
+#define SICHAN_BIT(chn)				(SICHAN_0>>chn)
+
+//
+// CMD_TYPE_AND_STATUS response data
+//
+#define SI_TYPE_MASK            0x18000000u
+#define SI_TYPE_N64             0x00000000u
+#define SI_TYPE_DOLPHIN         0x08000000u
+#define SI_TYPE_GC              SI_TYPE_DOLPHIN
+
+// GameCube specific
+#define SI_GC_WIRELESS          0x80000000u
+#define SI_GC_NOMOTOR           0x20000000u // no rumble motor
+#define SI_GC_STANDARD          0x01000000u // dolphin standard controller
+
+// WaveBird specific
+#define SI_WIRELESS_RECEIVED    0x40000000u // 0: no wireless unit
+#define SI_WIRELESS_IR          0x04000000u // 0: IR  1: RF
+#define SI_WIRELESS_STATE       0x02000000u // 0: variable  1: fixed
+#define SI_WIRELESS_ORIGIN      0x00200000u // 0: invalid  1: valid
+#define SI_WIRELESS_FIX_ID      0x00100000u // 0: not fixed  1: fixed
+#define SI_WIRELESS_TYPE        0x000f0000u
+#define SI_WIRELESS_LITE_MASK   0x000c0000u // 0: normal 1: lite controller
+#define SI_WIRELESS_LITE        0x00040000u // 0: normal 1: lite controller
+#define SI_WIRELESS_CONT_MASK   0x00080000u // 0: non-controller 1: non-controller
+#define SI_WIRELESS_CONT        0x00000000u
+#define SI_WIRELESS_ID          0x00c0ff00u
+#define SI_WIRELESS_TYPE_ID     (SI_WIRELESS_TYPE | SI_WIRELESS_ID)
+
+#define SI_N64_CONTROLLER       (SI_TYPE_N64 | 0x05000000)
+#define SI_N64_MIC              (SI_TYPE_N64 | 0x00010000)
+#define SI_N64_KEYBOARD         (SI_TYPE_N64 | 0x00020000)
+#define SI_N64_MOUSE            (SI_TYPE_N64 | 0x02000000)
+#define SI_GBA                  (SI_TYPE_N64 | 0x00040000)
+#define SI_GC_CONTROLLER        (SI_TYPE_GC | SI_GC_STANDARD)
+#define SI_GC_RECEIVER          (SI_TYPE_GC | SI_GC_WIRELESS)
+#define SI_GC_WAVEBIRD          (SI_TYPE_GC | SI_GC_WIRELESS | SI_GC_STANDARD | SI_WIRELESS_STATE | SI_WIRELESS_FIX_ID)
+#define SI_GC_KEYBOARD          (SI_TYPE_GC | 0x00200000)
+#define SI_GC_STEERING          (SI_TYPE_GC | 0x00000000)
+
 #define SISR_ERRORMASK(chn)			(0x0f000000>>(chn<<3))
 #define SIPOLL_ENABLE(chn)			(0x80000000>>(chn+24))
 
@@ -27,10 +70,12 @@
 #define SICOMCSR_RDSTINT			(1<<28)
 #define SICOMCSR_RDSTINT_ENABLE		(1<<27)
 
-#define SISR_UNDERRUN				(1<<0)
-#define SISR_OVERRUN				(1<<1)
-#define SISR_COLLISION				(1<<2)
-#define SISR_NORESPONSE				(1<<3)
+#define SISR_UNDERRUN				0x0001
+#define SISR_OVERRUN				0x0002
+#define SISR_COLLISION				0x0004
+#define SISR_NORESPONSE				0x0008
+#define SISR_WRST					0x0010
+#define SISR_RDST					0x0020
 
 typedef union _sicomcsr {
 	u32 val;
@@ -270,31 +315,31 @@ static void __si_gettypecallback(s32 chan,u32 type)
 #ifdef _SI_DEBUG
 	printf("__si_gettypecallback(%d,%08x,%08x)\n",chan,type,si_type[chan]);
 #endif
-	sipad_en = __PADFixBits&SIPAD_ENABLED(chan);
-	__PADFixBits &= ~SIPAD_ENABLED(chan);
+	sipad_en = __PADFixBits&SICHAN_BIT(chan);
+	__PADFixBits &= ~SICHAN_BIT(chan);
 	
-	if(type&0x0f || ((si_type[chan]&0x18000000)-0x08000000)
-		|| !(si_type[chan]&0x80000000) || si_type[chan]&0x04000000) {
+	if(type&0x0f || ((si_type[chan]&SI_TYPE_MASK)-SI_TYPE_GC)
+		|| !(si_type[chan]&SI_GC_WIRELESS) || si_type[chan]&SI_WIRELESS_IR) {
 		SYS_SetWirelessID(chan,0);
 		__si_calltypandstatuscallback(chan,si_type[chan]);
 		return;
 	}
 
-	id = ((SYS_GetWirelessID(chan)<<8)&0x00ff0000);
+	id = ((SYS_GetWirelessID(chan)<<8)&0x00ffff00);
 #ifdef _SI_DEBUG
 	printf("__si_gettypecallback(id = %08x)\n",id);
 #endif
-	if(sipad_en && id&0x00100000) {
+	if(sipad_en && id&SI_WIRELESS_FIX_ID) {
 		cmdfixdevice[chan] = 0x4e100000|(id&0x00CFFF00);
 		si_type[chan] = 128;
 		SI_Transfer(chan,&cmdfixdevice[chan],3,&si_type[chan],3,__si_gettypecallback,0);
 		return;
 	}
 
-	if(si_type[chan]&0x00100000) {
+	if(si_type[chan]&SI_WIRELESS_FIX_ID) {
 		if((id&0x00CFFF00)==(si_type[chan]&0x00CFFF00)) goto exit;
-		if(!(id&0x00100000)) {
-			id = 0x00100000|(si_type[chan]&0x00CFFF00);
+		if(!(id&SI_WIRELESS_FIX_ID)) {
+			id = SI_WIRELESS_FIX_ID|(si_type[chan]&0x00CFFF00);
 			SYS_SetWirelessID(chan,_SHIFTR(id,8,16));
 		}
 		cmdfixdevice[chan] = 0x4e000000|id;
@@ -303,7 +348,7 @@ static void __si_gettypecallback(s32 chan,u32 type)
 		return;
 	}
 	
-	if(si_type[chan]&0x40000000) {
+	if(si_type[chan]&SI_WIRELESS_RECEIVED) {
 		id = 0x00100000|(si_type[chan]&0x00CFFF00);
 		SYS_SetWirelessID(chan,_SHIFTR(id,8,16));
 

@@ -534,7 +534,7 @@ static vu16* const _viReg = (u16*)0xCC002000;
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
 
-extern u32 __SYS_LockSram();
+extern syssram* __SYS_LockSram();
 extern u32 __SYS_UnlockSram(u32 write);
 
 #ifdef _VIDEO_DEBUG
@@ -875,7 +875,7 @@ static inline void __importAdjustingValues()
 {
 	syssram *sram;
 
-	sram = (syssram*)__SYS_LockSram();
+	sram = __SYS_LockSram();
 	displayOffsetH = sram->display_offsetH;
 	displayOffsetV = 0;
 	__SYS_UnlockSram(0);

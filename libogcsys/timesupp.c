@@ -11,13 +11,14 @@ extern int errno;
 #include "lwp_threadq.h"
 #include "timesupp.h"
 #include "exi.h"
+#include "system.h"
 
 /* time variables */
 static lwpq_t time_exi_wait;
 static lwp_thrqueue timedwait_queue;
 
 extern u32 __SYS_GetRTC(u32 *gctime);
-extern u32 __SYS_LockSram();
+extern syssram* __SYS_LockSram();
 extern u32 __SYS_UnlockSram(u32 write);
 
 unsigned long _DEFUN(gettick,(),
@@ -132,15 +133,15 @@ unsigned int timespec_to_interval(const struct timespec *time)
 
 int clock_gettime(struct timespec *tp)
 {
-	u32 srambase;
+	syssram* sram;
 	u32 gctime;
 
 	if(!tp) return -1;
 
 	if(!__SYS_GetRTC(&gctime)) return -1;
 
-	srambase = __SYS_LockSram();
-	gctime += ((u32*)srambase)[3];
+	sram = __SYS_LockSram();
+	gctime += sram->counter_bias;
 	__SYS_UnlockSram(0);
 	gctime += 946684800;
 
@@ -218,7 +219,7 @@ time_t _DEFUN(time,(timer),
 {
 	time_t gctime = 0;
 	u32 command;
-	u32 srambase;
+	syssram* sram;
 
 
 	__time_exi_wait();
@@ -232,8 +233,8 @@ time_t _DEFUN(time,(timer),
 	EXI_Deselect(EXI_CHANNEL_0);
 	EXI_Unlock(EXI_CHANNEL_0);
 	
-	srambase = __SYS_LockSram();
-	gctime += ((u32*)srambase)[3];
+	sram = __SYS_LockSram();
+	gctime += sram->counter_bias;
 	__SYS_UnlockSram(0);
 
 	gctime += 946684800;

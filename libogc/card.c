@@ -189,8 +189,8 @@ static s32 __card_sectorerase(s32 chn,u32 sector,cardcallback callback);
 
 extern unsigned long gettick();
 extern long long gettime();
-extern u32 __SYS_LockSram();
-extern u32 __SYS_LockSramEx();
+extern syssram* __SYS_LockSram();
+extern syssramex* __SYS_LockSramEx();
 extern u32 __SYS_UnlockSram(u32 write);
 extern u32 __SYS_UnlockSramEx(u32 write);
 
@@ -1413,6 +1413,8 @@ static s32 __card_formatregion(s32 chn,u32 encode,cardcallback callback)
 	card_block *card = NULL;
 	struct card_bat *fatblock = NULL;
 	struct card_dircntrl *dircntrl = NULL;
+	syssram *sram;
+	syssramex *sramex;
 #ifdef _CARD_DEBUG
 	printf("__card_formatregion(%d,%d,%p)\n",chn,encode,callback);
 #endif
@@ -1423,7 +1425,7 @@ static s32 __card_formatregion(s32 chn,u32 encode,cardcallback callback)
 	workarea = card->workarea;
 	memset(workarea,0xff,8192);
 	
-	srambase = __SYS_LockSram();
+	sram = __SYS_LockSram();
 	((u32*)workarea)[5] = ((u32*)srambase)[3];
 	((u32*)workarea)[6] = ((u8*)srambase)[18];
 	__SYS_UnlockSram(0);
@@ -1433,7 +1435,7 @@ static s32 __card_formatregion(s32 chn,u32 encode,cardcallback callback)
 	thi = time>>32;
 	tlo = time;
 	
-	srambase = __SYS_LockSramEx();
+	sramex = __SYS_LockSramEx();
 	while(cnt<12) {
 		
 		cnt++;
@@ -1667,9 +1669,9 @@ static s32 __card_domount(s32 chn)
 	u8 status,kval;
 	s32 ret = CARD_ERROR_READY;
 	u32 sum;
-	u32 sram_base;
 	u32 id,idx,cnt;
 	card_block *card;
+	syssramex *sramex;
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
 	card = &cardmap[chn];
@@ -1712,14 +1714,14 @@ static s32 __card_domount(s32 chn)
 				
 					cnt = 0;
 					sum = 0;
-					sram_base = __SYS_LockSramEx();
+					sramex = __SYS_LockSramEx();
 					while(cnt<12) {
 						kval = ((u8*)card->key)[cnt];
-						((u8*)sram_base)[(0x0c*chn)+cnt] = kval;
+						sramex->flash_id[chn][cnt] = kval;
 						sum += kval;
 						cnt++;
 					}
-					((u8*)sram_base)[0x26+chn] = (sum^-1)&0xff;
+					sramex->flashID_chksum[chn] = (sum^-1)&0xff;
 					__SYS_UnlockSramEx(1);
 					return ret;
 				}
@@ -1727,14 +1729,14 @@ static s32 __card_domount(s32 chn)
 
 				cnt = 0;
 				sum = 0;
-				sram_base = __SYS_LockSramEx();
+				sramex = __SYS_LockSramEx();
 				while(cnt<12) {
-					sum += ((u8*)sram_base)[(0x0c*chn)+cnt];
+					sum += sramex->flash_id[chn][cnt];
 					cnt++;
 				}
+				cnt = sramex->flashID_chksum[chn];
 				__SYS_UnlockSramEx(0);
 				
-				cnt = ((u8*)sram_base)[0x26+chn];
 				sum = (sum^-1)&0xff;
 				if(cnt!=sum) {
 					ret = CARD_ERROR_IOERROR;
@@ -2161,7 +2163,7 @@ static s32 __dounlock(s32 chn,u32 *key)
 	DCFlushRange(workarea,16);
 
 	card->dsp_task.prio = 255;
-	card->dsp_task.iram_maddr = (u16*)MEM_K0_TO_PHYSICAL(_cardunlockdata);
+	card->dsp_task.iram_maddr = (u16*)MEM_VIRTUAL_TO_PHYSICAL(_cardunlockdata);
 	card->dsp_task.iram_len = 352;
 	card->dsp_task.iram_addr = 0x0000;
 	card->dsp_task.init_vec = 16;

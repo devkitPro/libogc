@@ -22,14 +22,12 @@
 #define SYS_PROTECTRDWR					(SYS_PROTECTREAD|SYS_PROTECTWRITE)
 
 #define MEM_VIRTUAL_TO_PHYSICAL(x)		(((u32)(x))&~0xC0000000)
-#define MEM_K0_TO_PHYSICAL(x)			(u32)((s8*)(x)-0x80000000)
-#define MEM_K1_TO_PHYSICAL(x)			(u32)((s8*)(x)-0xC0000000)
 
-#define MEM_PHYSICAL_TO_K0(x)			(void*)((u32)(x)+0x80000000)
-#define MEM_PHYSICAL_TO_K1(x)			(void*)((u32)(x)+0xC0000000)
+#define MEM_PHYSICAL_TO_K0(x)			(void*)((u32)(x)|0x80000000)
+#define MEM_PHYSICAL_TO_K1(x)			(void*)((u32)(x)|0xC0000000)
 
-#define MEM_K0_TO_K1(x)					(void*)((u32)(x)+0x40000000)
-#define MEM_K1_TO_K0(x)					(void*)((u32)(x)-0x40000000)
+#define MEM_K0_TO_K1(x)					(void*)((u32)(x)|0x40000000)
+#define MEM_K1_TO_K0(x)					(void*)((u32)(x)&~0x40000000)
 
 
 #ifdef __cplusplus
@@ -47,6 +45,16 @@ typedef struct _syssram {
 	u8 lang;
 	u8 flags;
 } syssram;
+
+typedef struct _syssramex {
+	u8 flash_id[2][12];
+	u32 wirelessKbd_id;
+	u16 wirelessPad_id[4];
+	u8 dvderr_code;
+	u8 __padding0;
+	u16 flashID_chksum[2];
+	u8 __padding1[4];
+} syssramex;
 
 typedef struct _sysalarm sysalarm;
 
