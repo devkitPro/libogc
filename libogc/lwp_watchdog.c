@@ -17,26 +17,34 @@ extern long long gettime();
 
 static void __lwp_wd_settimer(wd_cntrl *wd)
 {
+	s64 now;
+	u64 diff;
 	s64 max_ticks = (s64)0x80000000;
 	s64 min_ticks = (s64)0x0;
 	s64 delta_interval = (s64)wd->delta_interval;
 #ifdef _LWPWD_DEBUG
 	printf("__lwp_wd_settimer(%lld)\n",delta_interval);
 #endif
+	now = gettime();
+	diff = diff_ticks(now,wd->start_time);
+	delta_interval -= diff;
 	if(0<(min_ticks-delta_interval)) {
 #ifdef _LWPWD_DEBUG
 		printf("0<(min_ticks-delta_interval): __lwp_wd_settimer(0)\n");
 #endif
+		wd->delta_interval = 0;
 		mtdec(0);
 	} else if(0<(max_ticks-delta_interval)) {
 #ifdef _LWPWD_DEBUG
 		printf("0<(max_ticks-delta_interval): __lwp_wd_settimer(%d)\n",(u32)delta_interval);
 #endif
+		wd->delta_interval -= diff;
 		mtdec((u32)delta_interval);
 	} else {
 #ifdef _LWPWD_DEBUG
 		printf("__lwp_wd_settimer(0x7fffffff)\n");
 #endif
+		wd->delta_interval -= max_ticks;
 		mtdec(0x7fffffff);
 	}
 }
@@ -103,7 +111,9 @@ u32 __lwp_wd_remove(wd_cntrl *wd)
 	u32 level;
 	u32 prev_state;
 	wd_cntrl *next;
-
+#ifdef _LWPWD_DEBUG
+	printf("__lwp_wd_remove(%p)\n",wd);
+#endif
 	_CPU_ISR_Disable(level);
 	
 	prev_state = wd->state;
@@ -122,16 +132,17 @@ u32 __lwp_wd_remove(wd_cntrl *wd)
 			__lwp_queue_extractI(&wd->node);
 			break;
 	}
-	wd->stop_time = _wd_ticks_since_boot;
 	_CPU_ISR_Restore(level);
 	return prev_state;
 }
 
 void __lwp_wd_tickle(lwp_queue *queue)
 {
+	u32 ret;
 	wd_cntrl *wd;
-	s64 now,diff;
-	s64 max_ticks = (s64)0x80000000;
+	s64 now;
+	u64 diff;
+	u64 max_ticks = (u64)0x80000000;
 
 	if(__lwp_queue_isempty(queue)) return;
 
@@ -139,15 +150,14 @@ void __lwp_wd_tickle(lwp_queue *queue)
 	now = gettime();
 	diff = diff_ticks(now,wd->start_time);
 #ifdef _LWPWD_DEBUG
-	printf("__lwp_wd_tickle(%lld)\n",diff);
+	printf("__lwp_wd_tickle(%llu)\n",diff);
 #endif
 	if(diff<wd->delta_interval && wd->delta_interval<max_ticks) return;
 	if(wd->delta_interval>=max_ticks) {
-		wd->delta_interval -= max_ticks;
+		wd->start_time = gettime();
 		__lwp_wd_settimer(wd);
 		return;
 	}
-	wd->delta_interval = 0;
 
 	do {
 		switch(__lwp_wd_remove(wd)) {
@@ -162,8 +172,8 @@ void __lwp_wd_tickle(lwp_queue *queue)
 				break;
 		}
 		wd = __lwp_wd_first(queue);
-		__lwp_wd_settimer(wd);
-	} while(!__lwp_queue_isempty(queue) && wd->delta_interval==0);
+	} while(!(ret=__lwp_queue_isempty(queue)) && wd->delta_interval==0);
+	if(!ret) __lwp_wd_settimer(wd);
 }
 
 void __lwp_wd_adjust(lwp_queue *queue,u32 dir,u64 interval)

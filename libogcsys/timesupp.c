@@ -49,8 +49,10 @@ void _DEFUN(settime,(t),
 			long long t)
 {
 	__asm__ __volatile__ (
-		"mtspr	284,4\n\
-		 mtspr	285,3\n\
+		"li		5,0\n\
+		 mttbl  5\n\
+		 mttbu  3\n\
+		 mttbl  4\n\
 	     blr"
 		 : : : "memory");
 }
@@ -182,12 +184,12 @@ unsigned int _DEFUN(nanosleep,(tb),
 	exec = _thr_executing;
 	exec->wait.ret_code = TB_SUCCESSFUL;
 
-	if(tb->tv_nsec<TB_USPERTICK) {
+	if(tb->tv_nsec<TB_NSPERUS) {
 		udelay(tb->tv_nsec);
 		return TB_SUCCESSFUL;
 	}
 
-	timeout = timespec_to_interval(tb);
+	timeout = timespec_to_ticks(tb);
 
 	_CPU_ISR_Disable(level);
 	__lwp_threadqueue_csenter(&timedwait_queue);

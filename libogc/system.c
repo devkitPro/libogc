@@ -12,6 +12,7 @@
 #include "lwp_priority.h"
 #include "lwp_watchdog.h"
 #include "lwp_wkspace.h"
+#include "libogcsys/timesupp.h"
 #include "system.h"
 
 #define SYSMEM_SIZE				0x1800000
@@ -77,6 +78,8 @@ extern void __config48Mb();
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
 
+extern void settime(long long);
+extern long long gettime();
 extern unsigned int gettick();
 extern int clock_gettime(struct timespec *tp);
 extern unsigned int timespec_to_interval(const struct timespec *time);
@@ -423,6 +426,46 @@ u32 __SYS_GetRTC(u32 *gctime)
 	return 0;
 }
 
+void __SYS_SetTime(s64 time)
+{
+	u32 level;
+	s64 now;
+	s64 *pBootTime = (s64*)0x800030d8;
+
+	_CPU_ISR_Disable(level);
+	now = gettime();
+	now -= time;
+	now += *pBootTime;
+	*pBootTime = now;
+	settime(now);
+	EXI_ProbeReset();
+	_CPU_ISR_Restore(level);
+}
+
+s64 __SYS_GetSystemTime()
+{
+	u32 level;
+	s64 now;
+	s64 *pBootTime = (s64*)0x800030d8;
+
+	_CPU_ISR_Disable(level);
+	now = gettime();
+	now += *pBootTime;
+	_CPU_ISR_Restore(level);
+	return now;
+}
+
+void __SYS_SetBootTime()
+{
+	syssram *sram;
+	u32 gctime;
+
+	sram = __SYS_LockSram();
+	__SYS_GetRTC(&gctime);
+	__SYS_SetTime(secs_to_ticks(gctime));
+	__SYS_UnlockSram(0);
+}
+
 void __sdloader_boot()
 {
 	void (*reload)() = (void(*)())0x80001800;
@@ -453,6 +496,9 @@ void SYS_Init()
 	__memlock_init();
 	__timesystem_init();
 	__si_init();
+#ifdef SDLOADER_FIX
+	__SYS_SetBootTime();
+#endif
 	DisableWriteGatherPipe();
 
 	IRQ_Request(IRQ_PI_RSW,__RSWHandler,NULL);
@@ -555,7 +601,6 @@ void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb)
 		}
 		else system_alarms = alarm;
 	}
-	_CPU_ISR_Restore(level);
 
 	if(!found) {
 		alarm->handle = NULL;
@@ -565,6 +610,7 @@ void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb)
 		if(!found) __lwp_wd_initialize(alarm->handle,__sys_alarmhandler,alarm);
 		__lwp_wd_insert_ticks(alarm->handle,alarm->ticks);
 	}
+	_CPU_ISR_Restore(level);
 }
 
 void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb)
