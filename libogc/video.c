@@ -434,8 +434,30 @@ void __vi_init()
 
 void VI_Init()
 {
-	__VIInit(VI_TVMODE_NTSC_INT);
+	if(!(_viReg[1]&0x0001))
+		__VIInit(VI_TVMODE_NTSC_INT);
+
+	retraceCount = 0;
 	
+	_viReg[38] = ((taps[1]>>6)|(taps[2]<<4));
+	_viReg[39] = (taps[0]|_SHIFTL(taps[1],10,6));
+	_viReg[40] = ((taps[4]>>6)|(taps[5]<<4));
+	_viReg[41] = (taps[3]|_SHIFTL(taps[4],10,6));
+	_viReg[42] = ((taps[7]>>6)|(taps[8]<<4));
+	_viReg[43] = (taps[6]|_SHIFTL(taps[7],10,6));
+	_viReg[44] = (taps[11]|(taps[12]<<8));
+	_viReg[45] = (taps[9]|(taps[10]<<8));
+	_viReg[46] = (taps[15]|(taps[16]<<8));
+	_viReg[47] = (taps[13]|(taps[14]<<8));
+	_viReg[48] = (taps[19]|(taps[20]<<8));
+	_viReg[49] = (taps[17]|(taps[18]<<8));
+	_viReg[50] = (taps[23]|(taps[24]<<8));
+	_viReg[51] = (taps[21]|(taps[22]<<8));
+	_viReg[56] = 640;
+}
+
+void VIDEO_Configure(GXRModeObj *rmode)
+{
 }
 
 void VIDEO_Init(u32 VideoMode)
