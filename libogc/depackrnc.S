@@ -277,5 +277,3 @@ _check4end:
 	addi	sp,sp,64
 	mtlr	r0
 	blr
-
-	
