@@ -27,9 +27,16 @@
 #define CARDIO_OP_INITFAILED				0x8000
 #define CARDIO_OP_TIMEDOUT					0x4000
 #define CARDIO_OP_IOERR_PARAM				0x1000
+#define CARDIO_OP_IOERR_WRITE				0x0200
 #define CARDIO_OP_IOERR_ADDR				0x0100
 #define CARDIO_OP_IOERR_CRC					0x0002
 #define CARDIO_OP_IOERR_ILL					0x0001
+
+#define _SHIFTL(v, s, w)	\
+    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
+#define _SHIFTR(v, s, w)	\
+    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
+
 
 u8 g_CID[MAX_DRIVE][16];
 u8 g_CSD[MAX_DRIVE][16];
@@ -61,7 +68,7 @@ static sysalarm _ioAlarm[MAX_DRIVE];
 static sem_t _ioSema[MAX_DRIVE];
 static boolean _card_inserted[MAX_DRIVE];
 
-static u8 _ioResponse[5];
+static u8 _ioResponse[MAX_DRIVE][128];
 
 extern unsigned long gettick();
 
@@ -482,16 +489,117 @@ static s32 __card_stopreadresponse(s32 drv_no,void *buf,s32 len)
 	return ret;
 }
 
-static s32 __card_dataresponse(s32 drv_no)
+static s32 __card_datares(s32 drv_no,void *buf)
 {
+	u8 *ptr;
+	s32 startT,ret;
+
+	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
+
+	ptr = buf;
 	
+	__exi_wait(drv_no);
+
+	if(EXI_Select(drv_no,EXI_DEVICE_0,_card_frq)==0) {
+		EXI_Unlock(drv_no);
+		return CARDIO_ERROR_NOCARD;
+	}
+
+	ret = CARDIO_ERROR_READY;
+	*ptr = _clr_flag;
+	if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
+		EXI_Deselect(drv_no);
+		EXI_Unlock(drv_no);
+		return CARDIO_ERROR_IOERROR;
+	}
+#ifdef _CARDIO_DEBUG
+	printf("sd response: %02x\n",((u8*)buf)[0]);
+#endif
+	startT = gettick();
+	while(*ptr&0x10) {
+		*ptr = _clr_flag;
+		if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
+			EXI_Deselect(drv_no);
+			EXI_Unlock(drv_no);
+			return CARDIO_ERROR_IOERROR;
+		}
+#ifdef _CARDIO_DEBUG
+		printf("sd response: %02x\n",((u8*)buf)[0]);
+#endif
+		if(!(*ptr&0x10)) break;
+		if(__card_checktimeout(startT,1500)!=0) {
+			*ptr = _clr_flag;
+			if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
+				EXI_Deselect(drv_no);
+				EXI_Unlock(drv_no);
+				return CARDIO_ERROR_IOERROR;
+			}
+#ifdef _CARDIO_DEBUG
+			printf("sd response: %02x\n",((u8*)buf)[0]);
+#endif
+			if(*ptr&0x10) ret = CARDIO_OP_TIMEDOUT;
+			break;
+		}
+	}
+
+	*(++ptr) = _clr_flag;
+	if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
+		EXI_Deselect(drv_no);
+		EXI_Unlock(drv_no);
+		return CARDIO_ERROR_IOERROR;
+	}
+
+	startT = gettick();
+	while(!*ptr) {
+		*ptr = _clr_flag;
+		if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
+			EXI_Deselect(drv_no);
+			EXI_Unlock(drv_no);
+			return CARDIO_ERROR_IOERROR;
+		}
+#ifdef _CARDIO_DEBUG
+		printf("sd response: %02x\n",((u8*)buf)[0]);
+#endif
+		if(*ptr) break;
+		if(__card_checktimeout(startT,1500)!=0) {
+			*ptr = _clr_flag;
+			if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
+				EXI_Deselect(drv_no);
+				EXI_Unlock(drv_no);
+				return CARDIO_ERROR_IOERROR;
+			}
+#ifdef _CARDIO_DEBUG
+			printf("sd response: %02x\n",((u8*)buf)[0]);
+#endif
+			if(!*ptr) ret = CARDIO_OP_TIMEDOUT;
+			break;
+		}
+	}
+	EXI_Deselect(drv_no);
+	EXI_Unlock(drv_no);
+
+	return ret;
 }
+
 static s32 __card_stopresponse(s32 drv_no)
 {
 	s32 ret;
 
-	if((ret=__card_stopreadresponse(drv_no,_ioResponse,1))!=0) return ret;
-	ret = __check_response(drv_no,_ioResponse[0]);
+	if((ret=__card_stopreadresponse(drv_no,_ioResponse[drv_no],1))!=0) return ret;
+	ret = __check_response(drv_no,_ioResponse[drv_no][0]);
+
+	return ret;
+}
+
+static s32 __card_dataresponse(s32 drv_no)
+{
+	s32 ret;
+	u8 res;
+
+	if((ret=__card_datares(drv_no,_ioResponse[drv_no]))!=0) return ret;
+	res = _SHIFTR(_ioResponse[drv_no][0],1,3);
+	if(res==0x0005) ret = CARDIO_OP_IOERR_CRC;
+	else if(res==0x0006) ret = CARDIO_OP_IOERR_WRITE;
 
 	return ret;
 }
@@ -562,7 +670,7 @@ static s32 __card_dataread(s32 drv_no,void *buf,u32 len)
 
 	/* setalarm, wait */
 	tb.tv_sec = 0;
-	tb.tv_nsec = 40*TB_NSPERUS;
+	tb.tv_nsec = 1*TB_NSPERUS;
 	SYS_SetAlarm(&_ioAlarm[drv_no],&tb,__card_alarmcallback);
 	LWP_SemWait(_ioSema[drv_no]);
 
@@ -581,14 +689,11 @@ static s32 __card_dataread(s32 drv_no,void *buf,u32 len)
 	EXI_Unlock(drv_no);
 
 	crc = __make_crc16(buf,len);
-	if(crc==crc_org) {
+	if(crc!=crc_org) ret = CARDIO_OP_IOERR_CRC;
 #ifdef _CARDIO_DEBUG
-		printf("crc ok: %04x : %04x\n",crc_org,crc);
+	printf("crc ok: %04x : %04x\n",crc_org,crc);
 #endif
-		return CARDIO_ERROR_READY;
-	}
-	
-	return CARDIO_ERROR_FATALERROR;
+	return ret;
 }
 
 static s32 __card_datareadfinal(s32 drv_no,void *buf,u32 len)
@@ -597,6 +702,7 @@ static s32 __card_datareadfinal(s32 drv_no,void *buf,u32 len)
 	u32 cnt;
 	u8 *ptr,cmd[6];
 	u16 crc_org,crc;
+	struct timespec tb;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
@@ -673,19 +779,19 @@ static s32 __card_datareadfinal(s32 drv_no,void *buf,u32 len)
 	crc_org = ((cmd[4]<<8)&0xff00)|(cmd[5]&0xff);
 	
 	/* setalarm, wait */
-	usleep(10);
+	tb.tv_sec = 0;
+	tb.tv_nsec = 1*TB_NSPERUS;
+	SYS_SetAlarm(&_ioAlarm[drv_no],&tb,__card_alarmcallback);
+	LWP_SemWait(_ioSema[drv_no]);
 
 	EXI_Deselect(drv_no);
 	EXI_Unlock(drv_no);
 
 	crc = __make_crc16(buf,len);
-	if(crc==crc_org) {
+	if(crc!=crc_org) ret = CARDIO_OP_IOERR_CRC;
 #ifdef _CARDIO_DEBUG
-		printf("crc ok: %04x : %04x\n",crc_org,crc);
+	printf("crc ok: %04x : %04x\n",crc_org,crc);
 #endif
-		return ret;
-	}
-	
 	return ret;
 }
 
@@ -695,6 +801,7 @@ static s32 __card_datawrite(s32 drv_no,void *buf,u32 len)
 	u16 crc;
 	u32 cnt;
 	s32 ret;
+	struct timespec tb;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
@@ -722,7 +829,10 @@ static s32 __card_datawrite(s32 drv_no,void *buf,u32 len)
 	}
 
 	/* setalarm, wait */
-	usleep(10);
+	tb.tv_sec = 0;
+	tb.tv_nsec = 1*TB_NSPERUS;
+	SYS_SetAlarm(&_ioAlarm[drv_no],&tb,__card_alarmcallback);
+	LWP_SemWait(_ioSema[drv_no]);
 
 	ret = CARDIO_ERROR_READY;
 	if(EXI_ImmEx(drv_no,&crc,2,EXI_WRITE)==0) ret = CARDIO_ERROR_IOERROR;
@@ -739,6 +849,7 @@ static s32 __card_multidatawrite(s32 drv_no,void *buf,u32 len)
 	u16 crc;
 	u32 cnt;
 	s32 ret;
+	struct timespec tb;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
@@ -766,7 +877,10 @@ static s32 __card_multidatawrite(s32 drv_no,void *buf,u32 len)
 	}
 
 	/* setalarm, wait */
-	usleep(10);
+	tb.tv_sec = 0;
+	tb.tv_nsec = 1*TB_NSPERUS;
+	SYS_SetAlarm(&_ioAlarm[drv_no],&tb,__card_alarmcallback);
+	LWP_SemWait(_ioSema[drv_no]);
 
 	ret = CARDIO_ERROR_READY;
 	if(EXI_ImmEx(drv_no,&crc,2,EXI_WRITE)==0) ret = CARDIO_ERROR_IOERROR;
@@ -862,8 +976,8 @@ static s32 __card_response1(s32 drv_no)
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 	
-	if((ret=__card_readresponse(drv_no,_ioResponse,1))!=0) return ret;
-	return __check_response(drv_no,_ioResponse[0]);
+	if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],1))!=0) return ret;
+	return __check_response(drv_no,_ioResponse[drv_no][0]);
 }
 
 static s32 __card_response2(s32 drv_no)
@@ -872,8 +986,8 @@ static s32 __card_response2(s32 drv_no)
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 	
-	if((ret=__card_readresponse(drv_no,_ioResponse,2))!=0) return ret;
-	if(!(_ioResponse[0]&0x7c) && !(_ioResponse[1]&0x9e)) return CARDIO_ERROR_READY;
+	if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],2))!=0) return ret;
+	if(!(_ioResponse[drv_no][0]&0x7c) && !(_ioResponse[drv_no][1]&0x9e)) return CARDIO_ERROR_READY;
 	return CARDIO_ERROR_FATALERROR;
 }
 
@@ -908,11 +1022,11 @@ static s32 __card_sendopcond(s32 drv_no)
 #endif
 			return ret;
 		}
-		if((ret=__card_readresponse(drv_no,_ioResponse,1))!=0) return ret;
-		ret = __check_response(drv_no,_ioResponse[0]);
+		if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],1))!=0) return ret;
+		ret = __check_response(drv_no,_ioResponse[drv_no][0]);
 
 		if(ret!=0) return ret;
-		if(!(_ioResponse[0]&MMC_ERROR_IDLE)) return CARDIO_ERROR_READY;
+		if(!(_ioResponse[drv_no][0]&MMC_ERROR_IDLE)) return CARDIO_ERROR_READY;
 		ret = __card_checktimeout(startT,1500);
 	} while(ret==0);
 
@@ -934,11 +1048,11 @@ static s32 __card_sendopcond(s32 drv_no)
 #endif
 		return ret;
 	}
-	if((ret=__card_readresponse(drv_no,_ioResponse,1))!=0) return ret;
-	ret = __check_response(drv_no,_ioResponse[0]);
+	if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],1))!=0) return ret;
+	ret = __check_response(drv_no,_ioResponse[drv_no][0]);
 
 	if(ret!=0) return ret;
-	if(_ioResponse[0]&MMC_ERROR_IDLE) ret = CARDIO_OP_INITFAILED;
+	if(_ioResponse[drv_no][0]&MMC_ERROR_IDLE) ret = CARDIO_OP_INITFAILED;
 
 	return ret;
 }
@@ -958,8 +1072,8 @@ static s32 __card_sendappcmd(s32 drv_no)
 #endif
 		return ret;
 	}
-	if((ret=__card_readresponse(drv_no,_ioResponse,1))!=0) return ret;
-	ret = __check_response(drv_no,_ioResponse[0]);
+	if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],1))!=0) return ret;
+	ret = __check_response(drv_no,_ioResponse[drv_no][0]);
 
 	return ret;
 }
@@ -1002,8 +1116,8 @@ static s32 __card_setblocklen(s32 drv_no,u32 block_len)
 #endif
 		return ret;
 	}
-	if((ret=__card_readresponse(drv_no,_ioResponse,1))<0) return ret;
-	ret = __check_response(drv_no,_ioResponse[0]);
+	if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],1))<0) return ret;
+	ret = __check_response(drv_no,_ioResponse[drv_no][0]);
 	
 	return ret;
 }
@@ -1026,8 +1140,8 @@ static s32 __card_readcsd(s32 drv_no)
 #endif
 		return ret;
 	}
-	if((ret=__card_readresponse(drv_no,_ioResponse,1))!=0) return ret;
-	ret = __check_response(drv_no,_ioResponse[0]);
+	if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],1))!=0) return ret;
+	ret = __check_response(drv_no,_ioResponse[drv_no][0]);
 	if(ret==0) {
 		if((ret=__card_dataread(drv_no,g_CSD[drv_no],16))!=0) return ret;
 	}
@@ -1052,8 +1166,8 @@ static s32 __card_readcid(s32 drv_no)
 #endif
 		return ret;
 	}
-	if((ret=__card_readresponse(drv_no,_ioResponse,1))!=0) return ret;
-	ret = __check_response(drv_no,_ioResponse[0]);
+	if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],1))!=0) return ret;
+	ret = __check_response(drv_no,_ioResponse[drv_no][0]);
 	if(ret==0) {
 		if((ret=__card_dataread(drv_no,g_CID[drv_no],16))!=0) return ret;
 	}
@@ -1098,15 +1212,15 @@ static s32 __card_softreset(s32 drv_no)
 		return ret;
 	}
 	
-	if((ret=__card_readresponse(drv_no,_ioResponse,1))!=0) return ret;
-	if((ret=__check_response(drv_no,_ioResponse[0]))!=0) return ret;
+	if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],1))!=0) return ret;
+	if((ret=__check_response(drv_no,_ioResponse[drv_no][0]))!=0) return ret;
 
 	memset(cmd,0,5);
 	cmd[0] = 0x0C;
 	if((ret=__card_writecmd(drv_no,cmd,5))!=0) return ret;
 	
-	if((ret=__card_stopreadresponse(drv_no,_ioResponse,1))!=0) return ret;
-	if((ret=__check_response(drv_no,_ioResponse[0]))!=0) return ret;
+	if((ret=__card_stopreadresponse(drv_no,_ioResponse[drv_no],1))!=0) return ret;
+	if((ret=__check_response(drv_no,_ioResponse[drv_no][0]))!=0) return ret;
 
 	memset(cmd,0,5);
 	if((ret=__card_writecmd(drv_no,cmd,5))!=0) {
@@ -1116,8 +1230,8 @@ static s32 __card_softreset(s32 drv_no)
 		return ret;
 	}
 
-	if((ret=__card_readresponse(drv_no,_ioResponse,1))!=0) return ret;
-	ret = __check_response(drv_no,_ioResponse[0]);
+	if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],1))!=0) return ret;
+	ret = __check_response(drv_no,_ioResponse[drv_no][0]);
 
 	return ret;
 }
@@ -1381,6 +1495,7 @@ s32 card_updateBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len)
 			ptr = (u8*)buf;
 			for(i=0;i<blocks;i++) {
 				if((ret=__card_multidatawrite(drv_no,ptr,_cur_page_size[drv_no]))!=0) break;
+				if((ret=__card_dataresponse(drv_no))!=0) break;
 				ptr += _cur_page_size[drv_no];
 			}
 			if((ret=__card_multiwritestop(drv_no))!=0) return ret;

@@ -10,11 +10,11 @@
 #define TB_REQ				250
 #define TB_SUCCESSFUL		0
 
-#define ticks_to_cycles(ticks)		(((ticks)*((TB_CORE_CLOCK*2)/TB_TIMER_CLOCK))/2)
-#define ticks_to_secs(ticks)		((ticks)/(TB_TIMER_CLOCK*1000))
-#define ticks_to_millisecs(ticks)	((ticks)/(TB_TIMER_CLOCK))
-#define ticks_to_microsecs(ticks)	(((ticks)*8)/(TB_TIMER_CLOCK/125))
-#define ticks_to_nanosecs(ticks)	(((ticks)*8000)/(TB_TIMER_CLOCK/125))
+#define ticks_to_cycles(ticks)		((u32)(((u64)(ticks)*((TB_CORE_CLOCK*2)/TB_TIMER_CLOCK))/2))
+#define ticks_to_secs(ticks)		((u32)((u64)(ticks)/(TB_TIMER_CLOCK*1000)))
+#define ticks_to_millisecs(ticks)	((u32)((u64)(ticks)/(TB_TIMER_CLOCK)))
+#define ticks_to_microsecs(ticks)	((u32)(((u64)(ticks)*8)/(TB_TIMER_CLOCK/125)))
+#define ticks_to_nanosecs(ticks)	((u32)(((u64)(ticks)*8000)/(TB_TIMER_CLOCK/125)))
 
 #define secs_to_ticks(sec)			((u64)(sec)*(TB_TIMER_CLOCK*1000))
 #define millisecs_to_ticks(msec)	((u64)(msec)*(TB_TIMER_CLOCK))

@@ -57,38 +57,34 @@ void _DEFUN(settime,(t),
 
 u32 diff_sec(long long start,long long end)
 {
-	u32 upper,lower;
+	s64 diff;
 
-	upper = ((u32)(end>>32))-((u32)(start>>32));
-	if((u32)start > (u32)end)
-		upper--;
-
-	lower = ((u32)end)-((u32)start);
-	return ((upper*((u32)0x80000000/(TB_TIMER_CLOCK*500)))+(lower/(TB_TIMER_CLOCK*1000)));
+	diff = diff_ticks(end,start);
+	return ticks_to_secs(diff);
 }
 
 u32 diff_msec(long long start,long long end)
 {
-	u32 upper,lower;
+	s64 diff;
 
-	upper = ((u32)(end>>32))-((u32)(start>>32));
-	if((u32)start > (u32)end)
-		upper--;
-
-	lower = ((u32)end)-((u32)start);
-	return ((upper*((u32)0x80000000/(TB_TIMER_CLOCK/2)))+(lower/(TB_TIMER_CLOCK)));
+	diff = diff_ticks(end,start);
+	return ticks_to_millisecs(diff);
 }
 
 u32 diff_usec(long long start,long long end)
 {
-	u32 upper,lower;
+	s64 diff;
 
-	upper = ((u32)(end>>32))-((u32)(start>>32));
-	if((u32)start > (u32)end)
-		upper--;
+	diff = diff_ticks(end,start);
+	return ticks_to_microsecs(diff);
+}
 
-	lower = ((u32)end)-((u32)start);
-	return ((upper*((u32)0x80000000/(TB_TIMER_CLOCK/2000)))+(lower/(TB_TIMER_CLOCK/1000)));
+u32 diff_nsec(long long start,long long end)
+{
+	s64 diff;
+
+	diff = diff_ticks(end,start);
+	return ticks_to_nanosecs(diff);
 }
 
 void __timesystem_init()
