@@ -58,9 +58,9 @@ static void __lwp_dumpcontext(frame_context *ctx)
 	printf("LR %08x SRR0 %08x SRR1 %08x MSR %08x\n\n", ctx->LR, ctx->SRR0, ctx->SRR1,ctx->MSR);
 }
 
-void __lwp_dumpcontext_fp(frame_context *ctxA,frame_context *ctxB)
+void __lwp_dumpcontext_fp(lwp_cntrl *thrA,lwp_cntrl *thrB)
 {
-	printf("_cpu_contextfp_dump(%p,%p)\n",ctxA,ctxB);
+	printf("_cpu_contextfp_dump(%p,%p)\n",thrA,thrB);
 }
 #endif
 
@@ -107,7 +107,7 @@ void __thread_dispatch_fp()
 
 	exec = _thr_executing;
 #ifdef _LWPTHREADS_DEBUG
-	__lwp_dumpcontext_fp(&exec->context,&_thr_allocated_fp->context);
+	__lwp_dumpcontext_fp(exec,_thr_allocated_fp);
 #endif
 	if(!__lwp_thread_isallocatedfp(exec)) {
 		if(_thr_allocated_fp) _cpu_context_save_fp(&_thr_allocated_fp->context);

@@ -140,6 +140,7 @@ fpu_exception_handler:
 	lwz		r0,GPR0_OFFSET(sp)
 
 	mfmsr	r4
+	rlwinm	r4,r4,0,19,17
 	rlwinm	r4,r4,0,31,29
 	mtmsr	r4
 	isync

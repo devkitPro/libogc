@@ -231,7 +231,6 @@ _cpu_context_switch:
 
 	stw sp,GPR1_OFFSET-8(r3)
 	stw toc,GPR2_OFFSET-8(r3)
-	stw r3,GPR3_OFFSET-8(r3)
 	stmw r13,GPR13_OFFSET-8(r3)
 
 	mfctr	r6
@@ -260,7 +259,6 @@ _cpu_context_switch:
 
 	lwz sp,GPR1_OFFSET-8(r4)
 	lwz toc,GPR2_OFFSET-8(r4)
-	lwz	r3,GPR3_OFFSET-8(r4)
 	lmw r13,GPR13_OFFSET-8(r4)
 
 	lwz	r6, CTR_OFFSET-8(r4)
@@ -296,7 +294,6 @@ _cpu_context_save:
 
 	stw sp,GPR1_OFFSET-8(r3)
 	stw toc,GPR2_OFFSET-8(r3)
-	stw r3,GPR3_OFFSET-8(r3)
 	stmw r13,GPR13_OFFSET-8(r3)
 
 	mfctr	r6
@@ -329,7 +326,6 @@ _cpu_context_save:
 _cpu_context_restore:
 	lwz sp,GPR1_OFFSET-8(r3)
 	lwz toc,GPR2_OFFSET-8(r3)
-	lwz	r3,GPR3_OFFSET-8(r3)
 	lmw r13,GPR13_OFFSET-8(r3)
 
 	lwz	r6, CTR_OFFSET-8(r3)
