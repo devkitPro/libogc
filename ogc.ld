@@ -26,9 +26,8 @@ SECTIONS
 
   .header	:
   {
-	/*    0000-001B  Text[0..7] sections File Positions */
+	/*    0000-001B  Text[0..6] sections File Positions */
 	LONG(text_file_start);
-	LONG(0);
 	LONG(0);
 	LONG(0);
 	LONG(0);
@@ -47,10 +46,10 @@ SECTIONS
 	LONG(0);
 	LONG(0);
 	LONG(0);
-
-	/*    0048-0063  Text[0..7] sections Mem Address */
-	LONG(text_mem_start);
 	LONG(0);
+
+	/*    0048-0063  Text[0..6] sections Mem Address */
+	LONG(text_mem_start);
 	LONG(0);
 	LONG(0);
 	LONG(0);
@@ -69,10 +68,10 @@ SECTIONS
 	LONG(0);
 	LONG(0);
 	LONG(0);
-
-	/*    0090-00AB  Text[0..7] sections Sizes */
-	LONG(text_mem_size);
 	LONG(0);
+
+	/*    0090-00AB  Text[0..6] sections Sizes */
+	LONG(text_mem_size);
 	LONG(0);
 	LONG(0);
 	LONG(0);
@@ -82,6 +81,7 @@ SECTIONS
 
 	/*    00AC-00D7  Data[0..10] sections Sizes */
 	LONG(data_mem_size);
+	LONG(0);
 	LONG(0);
 	LONG(0);
 	LONG(0);
@@ -334,7 +334,7 @@ __ArenaHi = (0x81700000);
 __gxregs = (__ArenaHi + 31) & (-32);
 
 /* for backward compatibility with old crt0 */
-__stack = __stack_addr;
+__stack = (0x81700000);
 
 PROVIDE (text_mem_start = text_mem_start);
 PROVIDE (data_mem_start = data_mem_start);
