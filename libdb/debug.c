@@ -11,6 +11,7 @@
 #include "cache.h"
 #include "network.h"
 #include "debug.h"
+#include "bba_dbg.h"
 
 //#define _DBG_DEBUG
 
@@ -284,6 +285,8 @@ extern void __exception_load(u32,void *,u32,void*);
 
 void DEBUG_Init(u32 port)
 {
+	bba_init();
+/*
 	u32 s;
 	struct sockaddr_in locAddr;
 
@@ -303,7 +306,7 @@ void DEBUG_Init(u32 port)
 			__exception_load(EX_IBAR,debug_handler_start,(debug_handler_end-debug_handler_start),debug_handler_patch);
 		}
 	}
-
+*/
 }
 
 #define GEKKO_MAX_BP	1024

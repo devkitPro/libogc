@@ -2,7 +2,7 @@
 #include "asm.h"
 #include "processor.h"
 #include "exi.h"
-#include "uIP/uip_arp.h"
+#include "uip/uip_arp.h"
 
 #define BBA_MINPKTSIZE			60
 
@@ -138,6 +138,31 @@
 
 #define BBA_NAPI_WEIGHT 16
 
+#define cpu_to_be16(x) (x)
+#define cpu_to_be32(x) (x)
+extern inline u16 cpu_to_le16(u16 x) { return (x<<8) | (x>>8);}
+extern inline u32 cpu_to_le32(u32 x) { return((x>>24) | ((x>>8)&0xff00) | ((x<<8)&0xff0000) | (x<<24));}
+
+#define cpu_to_le16p(addr) (cpu_to_le16(*(addr)))
+#define cpu_to_le32p(addr) (cpu_to_le32(*(addr)))
+#define cpu_to_be16p(addr) (cpu_to_be16(*(addr)))
+#define cpu_to_be32p(addr) (cpu_to_be32(*(addr)))
+
+extern inline void cpu_to_le16s(u16 *a) {*a = cpu_to_le16(*a);}
+extern inline void cpu_to_le32s(u32 *a) {*a = cpu_to_le32(*a);}
+extern inline void cpu_to_be16s(u16 *a) {*a = cpu_to_be16(*a);}
+extern inline void cpu_to_be32s(u32 *a) {*a = cpu_to_be32(*a);}
+
+#define le16_to_cpup(x) cpu_to_le16p(x)
+#define le32_to_cpup(x) cpu_to_le32p(x)
+#define be16_to_cpup(x) cpu_to_be16p(x)
+#define be32_to_cpup(x) cpu_to_be32p(x)
+
+#define le16_to_cpus(x) cpu_to_le16s(x)
+#define le32_to_cpus(x) cpu_to_le32s(x)
+#define be16_to_cpus(x) cpu_to_be16s(x)
+#define be32_to_cpus(x) cpu_to_be32s(x)
+
 struct bba_priv {
 	u8 revid;
 	u16 devid;
@@ -166,6 +191,8 @@ struct bba_descr {
 							} while(0)
 
 static struct bba_priv bba_device;
+static struct bba_descr cur_descr;
+
 static vu32* const _siReg = (u32*)0xCC006400;
 
 static void bba_cmd_ins(u32 reg,void *val,u32 len);
@@ -365,6 +392,89 @@ static void __bba_recv_init()
 	bba_out8(BBA_GCA,BBA_GCA_ARXERRB);
 }
 
+static u8 rx_buffer[1500];
+static void bba_start_rx()
+{
+	u16 rwp,rrp;
+	u32 size,pkt_status,pos,top;
+
+	rwp = bba_in12(BBA_RWP);
+	rrp = bba_in12(BBA_RRP);
+	while(rrp!=rwp) {
+		bba_ins(rrp<<8,&cur_descr,sizeof(cur_descr));
+		le32_to_cpus((u32*)&cur_descr);
+
+		size = cur_descr.packet_len - 4;
+		pkt_status = cur_descr.status;
+		if(size>(BBA_RX_MAX_PACKET_SIZE+4) || (pkt_status&(BBA_RX_STATUS_RERR|BBA_RX_STATUS_FAE))) {
+			return;
+		}
+
+		pos = (rrp<<8)+4;
+		top = (BBA_INIT_RHBP+1)<<8;
+		if((pos+size)<top) {
+			bba_ins(pos,rx_buffer,size);
+		} else {
+			u32 chunk = top-size;
+			
+			bba_ins(pos,rx_buffer,chunk);
+			rrp = BBA_INIT_RRP;
+			bba_ins(rrp<<8,rx_buffer+chunk,size-chunk);
+		}
+
+		bba_out12(BBA_RRP,cur_descr.next_packet_ptr);
+		
+		rwp = bba_in12(BBA_RWP);
+		rrp = bba_in12(BBA_RRP);
+	}
+	
+}
+
+static inline void bba_interrupt(struct bba_priv *dev)
+{
+	u8 ir,imr,status;
+	
+	ir = bba_in8(BBA_IR);
+	imr = bba_in8(BBA_IMR);
+	status = ir&imr;
+
+
+	if(status&BBA_IR_FRAGI) {
+		bba_out8(BBA_IR,BBA_IR_FRAGI);
+	}
+	if(status&BBA_IR_RI) {
+		bba_start_rx();
+		bba_out8(BBA_IR,BBA_IR_RI);
+	}
+	if(status&BBA_IR_REI) {
+		//__bba_rx_err(bba_in8(BBA_LRPS));
+		bba_out8(BBA_IR,BBA_IR_REI);
+	}
+	if(status&BBA_IR_TI) {
+		//__bba_tx_wake(priv);
+		//__bba_tx_err(bba_in8(BBA_LTPS));
+		bba_out8(BBA_IR,BBA_IR_TI);
+	}
+	if(status&BBA_IR_TEI) {
+		//__bba_tx_wake(priv);
+		//__bba_tx_err(bba_in8(BBA_LTPS));
+		bba_out8(BBA_IR,BBA_IR_TEI);
+	}
+	if(status&BBA_IR_FIFOEI) {
+		//__bba_tx_wake(priv);
+		bba_out8(BBA_IR,BBA_IR_FIFOEI);
+	}
+	if(status&BBA_IR_BUSEI) {
+		bba_out8(BBA_IR,BBA_IR_BUSEI);
+	}
+	if(status&BBA_IR_RBFI) {
+		bba_start_rx();
+	}
+	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+	EXI_Unlock(EXI_CHANNEL_0);
+}
+
+
 static s32 __bba_init(struct bba_priv *dev)
 {
 	if(!dev) return -1;
@@ -421,6 +531,83 @@ static s32 bba_probe(struct bba_priv *dev)
 	return ret;
 }
 
+static u32 bba_calc_response(struct bba_priv *priv,u32 val)
+{
+	u8 revid_0, revid_eth_0, revid_eth_1;
+	revid_0 = priv->revid;
+	revid_eth_0 = _SHIFTR(priv->devid,8,8);
+	revid_eth_1 = priv->devid&0xff;
+
+	u8 i0, i1, i2, i3;
+	i0 = (val & 0xff000000) >> 24;
+	i1 = (val & 0x00ff0000) >> 16;
+	i2 = (val & 0x0000ff00) >> 8;
+	i3 = (val & 0x000000ff);
+
+	u8 c0, c1, c2, c3;
+	c0 = ((i0 + i1 * 0xc1 + 0x18 + revid_0) ^ (i3 * i2 + 0x90)
+	    ) & 0xff;
+	c1 = ((i1 + i2 + 0x90) ^ (c0 + i0 - 0xc1)
+	    ) & 0xff;
+	c2 = ((i2 + 0xc8) ^ (c0 + ((revid_eth_0 + revid_0 * 0x23) ^ 0x19))
+	    ) & 0xff;
+	c3 = ((i0 + 0xc1) ^ (i3 + ((revid_eth_1 + 0xc8) ^ 0x90))
+	    ) & 0xff;
+
+	return ((c0 << 24) | (c1 << 16) | (c2 << 8) | c3);
+}
+
+static u32 bba_event_handler(u32 nChn,u32 nDev)
+{
+	u8 status;
+
+	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,bba_event_handler)==0) {
+		return 1;
+	}
+
+	status = bba_cmd_in8(0x03);
+	bba_cmd_out8(0x02,BBA_CMD_IRMASKALL);
+
+	if(status&0x80) {
+		bba_cmd_out8(0x03,0x80);
+		bba_interrupt(&bba_device);
+		return 1;
+	}
+	if(status&0x40) {
+		bba_cmd_out8(0x03, 0x40);
+		__bba_init(&bba_device);
+		bba_cmd_out8(0x02, BBA_CMD_IRMASKNONE);
+		EXI_Unlock(EXI_CHANNEL_0);
+		return 1;
+	}
+	if(status&0x20) {
+		bba_cmd_out8(0x03, 0x20);
+		bba_cmd_out8(0x02, BBA_CMD_IRMASKNONE);
+		EXI_Unlock(EXI_CHANNEL_0);
+		return 1;
+	}
+	if(status&0x10) {
+		u32 response,challange;
+		bba_cmd_out8(0x05,bba_device.acstart);
+		bba_cmd_ins(0x08,&challange,sizeof(challange));
+		response = bba_calc_response(&bba_device,challange);
+		bba_cmd_outs(0x09,&response,sizeof(response));
+
+		bba_cmd_out8(0x03, 0x10);
+		bba_cmd_out8(0x02, BBA_CMD_IRMASKNONE);
+		EXI_Unlock(EXI_CHANNEL_0);
+		return 1;
+	}
+	if(status&0x08) {
+		bba_cmd_out8(0x03, 0x08);
+		bba_cmd_out8(0x02, BBA_CMD_IRMASKNONE);
+		EXI_Unlock(EXI_CHANNEL_0);
+		return 1;
+	}
+	bba_interrupt(&bba_device);
+	return 1;
+}
+
 void bba_init()
 {
 	s32 ret;
@@ -434,8 +621,12 @@ void bba_init()
 		EXI_Unlock(EXI_CHANNEL_0);
 		return;
 	}
+	EXI_RegisterEXICallback(EXI_CHANNEL_2,bba_event_handler);
 	EXI_Unlock(EXI_CHANNEL_0);
 
+	do {
+		udelay(20000);
+	} while(!__bba_getlink_state_async());
 }
 
 void bba_appcall()

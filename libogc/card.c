@@ -194,6 +194,8 @@ extern syssramex* __SYS_LockSramEx();
 extern u32 __SYS_UnlockSram(u32 write);
 extern u32 __SYS_UnlockSramEx(u32 write);
 
+static vu16* const _viReg = (u16*)0xCC002000;
+
 /* new api */
 static void __card_checksum(u16 *buff,u32 len,u16 *cs1,u16 *cs2)
 {
@@ -1416,8 +1418,10 @@ static s32 __card_read(s32 chn,u32 address,u32 block_len,void *buffer,cardcallba
 static s32 __card_formatregion(s32 chn,u32 encode,cardcallback callback)
 {
 	s32 ret;
-	u32 cnt,thi,tlo;
+	u16 tmp;
+	u32 cnt;
 	s64 time;
+	u64 rnd_val;
 	void *workarea,*memblock;
 	cardcallback cb = NULL;
 	card_block *card = NULL;
@@ -1435,25 +1439,27 @@ static s32 __card_formatregion(s32 chn,u32 encode,cardcallback callback)
 	workarea = card->workarea;
 	memset(workarea,0xff,8192);
 	
+	tmp = _viReg[55];
+	((u16*)workarea)[18] = encode;
+
 	sram = __SYS_LockSram();
 	((u32*)workarea)[5] = sram->counter_bias;
 	((u32*)workarea)[6] = sram->lang;
 	__SYS_UnlockSram(0);
 
 	cnt = 0;
-	time = gettime();
-	thi = time>>32;
-	tlo = time;
-	
+	rnd_val = time = gettime();
 	sramex = __SYS_LockSramEx();
 	while(cnt<12) {
-		
+		rnd_val += (rnd_val>>16);
+		sramex->flash_id[chn][cnt] = 0;
 		cnt++;
 	}
 	__SYS_UnlockSramEx(0);
 
-	*(u64*)(((u32*)workarea)[3]) = time;
-	((u32*)workarea)[8] = 0;
+	*(u64*)&(((u32*)workarea)[3]) = time;
+	((u32*)workarea)[7] = tmp;
+	((u16*)workarea)[11] = 0;
 	((u16*)workarea)[17] = card->card_size;
 	__card_checksum(workarea,508,&((u16*)workarea)[254],&((u16*)workarea)[255]);
 	
