@@ -75,7 +75,8 @@ typedef struct _card_dir {
       u32 fileno; 
       u8 filename[CARD_FILENAMELEN+1]; 
       u8 gamecode[5]; 
-      u8 company[3]; 
+      u8 company[3];
+      bool showall;
 } card_dir; 
 
 typedef void (*cardcallback)(s32 chan,s32 result);
@@ -98,7 +99,7 @@ s32 CARD_WriteAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback
 s32 CARD_Format(s32 chn);
 s32 CARD_FormatAsync(s32 chn,cardcallback callback);
 s32 CARD_GetErrorCode(s32 chn);
-s32 CARD_FindFirst(s32 chn, card_dir *dir); 
+s32 CARD_FindFirst(s32 chn, card_dir *dir, bool ShowAllFlag); 
 s32 CARD_FindNext(card_dir *dir); 
 s32 CARD_GetSectorSize(s32 chn,u32 *sector_size);
 
