@@ -57,7 +57,6 @@ static u8 __srambuf[64] ATTRIBUTE_ALIGN(32);
 static u32 __sram_writecallback();
 
 extern u32 __lwp_sys_init();
-extern void __vi_init();
 extern void __heap_init();
 extern void __exception_init();
 extern void __systemcall_init();
@@ -469,7 +468,7 @@ void SYS_Init()
 	__dsp_bootstrap();
 	__memprotect_init();
 	__pad_init();
-	__vi_init();
+	VIDEO_Init();
 	__memlock_init();
 	__timesystem_init();
 	DisableWriteGatherPipe();

@@ -6,6 +6,7 @@
 #include "processor.h"
 #include "irq.h"
 #include "lwp.h"
+#include "video_types.h"
 #include "gx.h"
 
 //#define _GP_DEBUG
@@ -3793,4 +3794,19 @@ void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1)
 
 	//further implementation needed.....
 	// cnt1 fails....
+}
+
+void GX_AdjustForOverscan(GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver)
+{
+	if(rmin!=rmin) memcpy(rmout,rmin,sizeof(GXRModeObj));
+	rmout->fbWidth = rmin->fbWidth-((hor<<1)&0xfffe);
+	rmout->efbHeight = rmin->efbHeight-((((ver<<1)&0xfffe)*rmin->efbHeight)/rmin->xfbHeight);
+	if(rmin->xfbMode==VI_XFBMODE_SF && !(rmin->viTVMode&VI_PROGRESSIVE)) rmout->xfbHeight = rmin->xfbHeight-ver;
+	else rmout->xfbHeight = rmin->xfbHeight-((ver<<1)&0xfffe);
+
+	rmout->viWidth = rmin->viWidth-((hor<<1)&0xfffe);
+	rmout->viHeight = rmin->viHeight-((ver<<1)&0xfffe);
+
+	rmout->viXOrigin = rmin->viXOrigin+hor;
+	rmout->viYOrigin = rmin->viYOrigin+ver;
 }

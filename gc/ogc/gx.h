@@ -2,6 +2,7 @@
 #define __GX_H__
 
 #include <gctypes.h>
+#include "gx_struct.h"
 #include "gu.h"
 
 #define GX_FALSE			0
@@ -906,6 +907,7 @@ void GX_TexCoord1x16(u16 index);
 
 void GX_SetDispCopySrc(u16 left,u16 top,u16 wd,u16 ht);
 void GX_CopyDisp(void *dest,u8 clear);
+void GX_AdjustForOverscan(GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver);
 void GX_LoadPosMtxImm(Mtx mt,u32 pnidx);
 void GX_LoadPosMtxIdx(u16 mtxidx,u32 pnidx);
 void GX_LoadNrmMtxImm(Mtx mt,u32 pnidx);
