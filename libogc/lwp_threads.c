@@ -33,6 +33,8 @@ static lwp_obj _lwp_objects[1024];
 extern void _cpu_context_switch(void *,void *);
 extern void _cpu_context_save(void *);
 extern void _cpu_context_restore(void *);
+extern void _cpu_context_save_fp(void *);
+extern void _cpu_context_restore_fp(void *);
 
 extern int __libc_create_hook(lwp_cntrl *,lwp_cntrl *);
 extern int __libc_start_hook(lwp_cntrl *,lwp_cntrl *);
@@ -57,12 +59,12 @@ static void __lwp_dumpcontext(frame_context *ctx)
 	printf("GPR07 %08x GPR15 %08x GPR23 %08x GPR31 %08x\n",ctx->GPR[7], ctx->GPR[15], ctx->GPR[23], ctx->GPR[31]);
 	printf("LR %08x SRR0 %08x SRR1 %08x MSR %08x\n\n", ctx->LR, ctx->SRR0, ctx->SRR1,ctx->MSR);
 }
-#endif
 
-void _cpu_contextfp_dump(frame_context *r3,frame_context *r4,frame_context *r5)
+void __lwp_dumpcontext_fp(frame_context *ctxA,frame_context *ctxB)
 {
-	printf("_cpu_contextfp_dump(%p,%p)\n",r3,r5);
+	printf("_cpu_contextfp_dump(%p,%p)\n",ctxA,ctxB);
 }
+#endif
 
 u32 __lwp_isr_in_progress()
 {
@@ -90,6 +92,23 @@ static inline u32 __lwp_msr_getlevel()
 	else return 1;
 }
 
+void __thread_dispatch_fp()
+{
+	u32 level;
+	lwp_cntrl *exec;
+
+	_CPU_ISR_Disable(level);
+	exec = _thr_executing;
+#ifdef _LWPTHREADS_DEBUG
+	__lwp_dumpcontext_fp(&exec->context,&_thr_allocated_fp->context);
+#endif
+	if(!__lwp_thread_isallocatedfp(exec)) {
+		if(_thr_allocated_fp) _cpu_context_save_fp(&_thr_allocated_fp->context);
+		_cpu_context_restore_fp(&exec->context);
+		_thr_allocated_fp = exec;
+	}
+	_CPU_ISR_Restore(level);
+}
 void __thread_dispatch()
 {
 	u32 level;

@@ -121,16 +121,10 @@ fpu_exception_handler:
 	lwz		r5,SRR1_OFFSET(sp)
 	ori		r5,r5,MSR_FP
 	mtsrr1	r5
-	lwz		r5,_thr_allocated_fpctx@sda21(0)
-	stw		r3,_thr_allocated_fpctx@sda21(0)
-	cmpw	r5,r3
-	beq		2f
-	bl		_cpu_contextfp_dump
-	cmpwi	r5,0x0000
-	beq		1f
-	bl		_cpu_context_save_fp
-1:	bl		_cpu_context_restore_fp
-2:	lwz		r5,CR_OFFSET(sp)
+
+	bl		__thread_dispatch_fp
+
+	lwz		r5,CR_OFFSET(sp)
 	mtcr	r5
 	lwz		r5,LR_OFFSET(sp)
 	mtlr	r5
@@ -140,6 +134,16 @@ fpu_exception_handler:
 	mtctr	r5
 	lwz		r5,XER_OFFSET(sp)
 	mtxer	r5
+
+	lmw		r6,GPR6_OFFSET(sp)
+	lwz		toc,GPR2_OFFSET(sp)
+	lwz		r0,GPR0_OFFSET(sp)
+
+	mfmsr	r4
+	rlwinm	r4,r4,0,31,29
+	mtmsr	r4
+	isync
+
 	lwz		r5,GPR5_OFFSET(sp)
 	lwz		r4,GPR4_OFFSET(sp)
 	lwz		r3,GPR3_OFFSET(sp)

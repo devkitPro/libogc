@@ -70,79 +70,79 @@
 
 	.globl _cpu_context_save_fp
 _cpu_context_save_fp:
-	lhz		r4,STATE_OFFSET-8(r5)
+	lhz		r4,STATE_OFFSET-8(r3)
 	ori		r4,r4,0x0001
-	sth		r4,STATE_OFFSET-8(r5)
-	stfd	fr0, FP_0(r5)
-	stfd	fr1, FP_1(r5)
-	stfd	fr2, FP_2(r5)
-	stfd	fr3, FP_3(r5)
-	stfd	fr4, FP_4(r5)
-	stfd	fr5, FP_5(r5)
-	stfd	fr6, FP_6(r5)
-	stfd	fr7, FP_7(r5)
-	stfd	fr8, FP_8(r5)
-	stfd	fr9, FP_9(r5)
-	stfd	fr10, FP_10(r5)
-	stfd	fr11, FP_11(r5)
-	stfd	fr12, FP_12(r5)
-	stfd	fr13, FP_13(r5)
-	stfd	fr14, FP_14(r5)
-	stfd	fr15, FP_15(r5)
-	stfd	fr16, FP_16(r5)
-	stfd	fr17, FP_17(r5)
-	stfd	fr18, FP_18(r5)
-	stfd	fr19, FP_19(r5)
-	stfd	fr20, FP_20(r5)
-	stfd	fr21, FP_21(r5)
-	stfd	fr22, FP_22(r5)
-	stfd	fr23, FP_23(r5)
-	stfd	fr24, FP_24(r5)
-	stfd	fr25, FP_25(r5)
-	stfd	fr26, FP_26(r5)
-	stfd	fr27, FP_27(r5)
-	stfd	fr28, FP_28(r5)
-	stfd	fr29, FP_29(r5)
-	stfd	fr30, FP_30(r5)
-	stfd	fr31, FP_31(r5)
+	sth		r4,STATE_OFFSET-8(r3)
+	stfd	fr0, FP_0(r3)
+	stfd	fr1, FP_1(r3)
+	stfd	fr2, FP_2(r3)
+	stfd	fr3, FP_3(r3)
+	stfd	fr4, FP_4(r3)
+	stfd	fr5, FP_5(r3)
+	stfd	fr6, FP_6(r3)
+	stfd	fr7, FP_7(r3)
+	stfd	fr8, FP_8(r3)
+	stfd	fr9, FP_9(r3)
+	stfd	fr10, FP_10(r3)
+	stfd	fr11, FP_11(r3)
+	stfd	fr12, FP_12(r3)
+	stfd	fr13, FP_13(r3)
+	stfd	fr14, FP_14(r3)
+	stfd	fr15, FP_15(r3)
+	stfd	fr16, FP_16(r3)
+	stfd	fr17, FP_17(r3)
+	stfd	fr18, FP_18(r3)
+	stfd	fr19, FP_19(r3)
+	stfd	fr20, FP_20(r3)
+	stfd	fr21, FP_21(r3)
+	stfd	fr22, FP_22(r3)
+	stfd	fr23, FP_23(r3)
+	stfd	fr24, FP_24(r3)
+	stfd	fr25, FP_25(r3)
+	stfd	fr26, FP_26(r3)
+	stfd	fr27, FP_27(r3)
+	stfd	fr28, FP_28(r3)
+	stfd	fr29, FP_29(r3)
+	stfd	fr30, FP_30(r3)
+	stfd	fr31, FP_31(r3)
 	mffs	fr0
-	stfd	fr0, FP_FPSCR(r5)
-	lfd		fr0, FP_0(r5)
+	stfd	fr0, FP_FPSCR(r3)
+	lfd		fr0, FP_0(r3)
 	mfspr	r4,920
 	extrwi.	r4,r4,1,2
 	beq		1f
-	psq_st	fr0,PSFP_0(r5),0,0
-	psq_st	fr1,PSFP_1(r5),0,0
-	psq_st	fr2,PSFP_2(r5),0,0
-	psq_st	fr3,PSFP_3(r5),0,0
-	psq_st	fr4,PSFP_4(r5),0,0
-	psq_st	fr5,PSFP_5(r5),0,0
-	psq_st	fr6,PSFP_6(r5),0,0
-	psq_st	fr7,PSFP_7(r5),0,0
-	psq_st	fr8,PSFP_8(r5),0,0
-	psq_st	fr9,PSFP_9(r5),0,0
-	psq_st	fr10,PSFP_10(r5),0,0
-	psq_st	fr11,PSFP_11(r5),0,0
-	psq_st	fr12,PSFP_12(r5),0,0
-	psq_st	fr13,PSFP_13(r5),0,0
-	psq_st	fr14,PSFP_14(r5),0,0
-	psq_st	fr15,PSFP_15(r5),0,0
-	psq_st	fr16,PSFP_16(r5),0,0
-	psq_st	fr17,PSFP_17(r5),0,0
-	psq_st	fr18,PSFP_18(r5),0,0
-	psq_st	fr19,PSFP_19(r5),0,0
-	psq_st	fr20,PSFP_20(r5),0,0
-	psq_st	fr21,PSFP_21(r5),0,0
-	psq_st	fr22,PSFP_22(r5),0,0
-	psq_st	fr23,PSFP_23(r5),0,0
-	psq_st	fr24,PSFP_24(r5),0,0
-	psq_st	fr25,PSFP_25(r5),0,0
-	psq_st	fr26,PSFP_26(r5),0,0
-	psq_st	fr27,PSFP_27(r5),0,0
-	psq_st	fr28,PSFP_28(r5),0,0
-	psq_st	fr29,PSFP_29(r5),0,0
-	psq_st	fr30,PSFP_30(r5),0,0
-	psq_st	fr31,PSFP_31(r5),0,0
+	psq_st	fr0,PSFP_0(r3),0,0
+	psq_st	fr1,PSFP_1(r3),0,0
+	psq_st	fr2,PSFP_2(r3),0,0
+	psq_st	fr3,PSFP_3(r3),0,0
+	psq_st	fr4,PSFP_4(r3),0,0
+	psq_st	fr5,PSFP_5(r3),0,0
+	psq_st	fr6,PSFP_6(r3),0,0
+	psq_st	fr7,PSFP_7(r3),0,0
+	psq_st	fr8,PSFP_8(r3),0,0
+	psq_st	fr9,PSFP_9(r3),0,0
+	psq_st	fr10,PSFP_10(r3),0,0
+	psq_st	fr11,PSFP_11(r3),0,0
+	psq_st	fr12,PSFP_12(r3),0,0
+	psq_st	fr13,PSFP_13(r3),0,0
+	psq_st	fr14,PSFP_14(r3),0,0
+	psq_st	fr15,PSFP_15(r3),0,0
+	psq_st	fr16,PSFP_16(r3),0,0
+	psq_st	fr17,PSFP_17(r3),0,0
+	psq_st	fr18,PSFP_18(r3),0,0
+	psq_st	fr19,PSFP_19(r3),0,0
+	psq_st	fr20,PSFP_20(r3),0,0
+	psq_st	fr21,PSFP_21(r3),0,0
+	psq_st	fr22,PSFP_22(r3),0,0
+	psq_st	fr23,PSFP_23(r3),0,0
+	psq_st	fr24,PSFP_24(r3),0,0
+	psq_st	fr25,PSFP_25(r3),0,0
+	psq_st	fr26,PSFP_26(r3),0,0
+	psq_st	fr27,PSFP_27(r3),0,0
+	psq_st	fr28,PSFP_28(r3),0,0
+	psq_st	fr29,PSFP_29(r3),0,0
+	psq_st	fr30,PSFP_30(r3),0,0
+	psq_st	fr31,PSFP_31(r3),0,0
 1:	
 	blr
 
