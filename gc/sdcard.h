@@ -14,6 +14,10 @@
 #define SDCARD_OPEN_R                    1
 #define SDCARD_OPEN_W                    2
 
+#define SDCARD_SEEK_SET					 0
+#define SDCARD_SEEK_CUR					 1
+#define SDCARD_SEEK_END					 2
+
 #define SDCARD_MAX_PATH_LEN				 256
 
 #ifdef __cplusplus
@@ -24,21 +28,19 @@ typedef struct _dir {
 	u8 name[16];
 } dir;
 
-typedef struct _file {
-	u32 pos;
-	u32 size;
-	u8 mode;
-	u8 path[SDCARD_MAX_PATH_LEN];
-	void *wbuffer;
-} file;
-
+typedef void sd_file;
 typedef void (*SDCCallback)(s32 chn,s32 result);
 
 s32 SDCARD_Init();
 s32 SDCARD_Term(s32 drv_no);
 void SDCARD_RegisterCallback(u32 drv_no,void (*pFuncIN)(s32),void (*pFuncOUT)(s32));
 
-file* SDCARD_OpenFile(const char *filename,const char *mode);
+sd_file* SDCARD_OpenFile(const char *filename,const char *mode);
+u32 SDCARD_ReadFile(sd_file *file,void *buf,u32 len);
+u32 SDCARD_SeekFile(sd_file *file,u32 offset,u32 whence);
+u32 SDCARD_GetFileSize(sd_file *file);
+
+
 //s32 SDCARD_ReadDir(const char *dirname,u32 entry_start,u32 entry_cnt,dir *dir_buf,u32 *read_cnt);
 
 #ifdef __cplusplus

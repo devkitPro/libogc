@@ -6,6 +6,7 @@
 
 #include "cache.h"
 #include "mutex.h"
+#include "lwp_wkspace.h"
 
 #include "card_cmn.h"
 #include "card_buf.h"
@@ -82,7 +83,7 @@ void card_initFATDefault()
 	for(drv_no=0;drv_no<MAX_DRIVE;++drv_no) {
 		_fatFlag[drv_no] = NOT_INITIALIZED;
 		if(_fat[drv_no]) {
-			free(_fat[drv_no]);
+			__lwp_wkspace_free(_fat[drv_no]);
 			_fat[drv_no] = NULL;
 		}
 
@@ -192,7 +193,7 @@ s32 card_initFAT(s32 drv_no)
 		return CARDIO_ERROR_INVALIDPBR;
 	}
 
-	if(_fat[drv_no]) free(_fat[drv_no]);
+	if(_fat[drv_no]) __lwp_wkspace_free(_fat[drv_no]);
 	
 	tot_clusters = _sdInfo[drv_no].spbr.sbpb.total_sects/_sdInfo[drv_no].spbr.sbpb.sects_per_cluster;
 	printf("tot_clusters = %d\n",tot_clusters);
@@ -205,7 +206,7 @@ s32 card_initFAT(s32 drv_no)
 		_fatFATId[drv_no] = FS_FAT32;
 	
 	_fatTblIdxCnt[drv_no] = tot_clusters+2;
-	_fat[drv_no] = (u16*)malloc(_fatTblIdxCnt[drv_no]*sizeof(u16));
+	_fat[drv_no] = (u16*)__lwp_wkspace_allocate(_fatTblIdxCnt[drv_no]*sizeof(u16));
 	if(!_fat[drv_no]) {
 		card_freeBuffer(fat_buf);
 		return CARDIO_ERROR_INTERNAL;
@@ -605,12 +606,12 @@ s32 card_findEntryInDirectory(u32 drv_no,u32 find_mode,F_HANDLE h_parent,u32 var
 	
     /* pre-processing before entering for-loop */
     if(find_mode==FIND_FILE_NAME) {
-		p_unicode = (u16*)malloc(MAX_FILE_NAME_LEN+2);
+		p_unicode = (u16*)__lwp_wkspace_allocate(MAX_FILE_NAME_LEN+2);
 		if(!p_unicode) return CARDIO_ERROR_OUTOFMEMORY;
 		
-		p_unicode_read = (u16*)malloc(MAX_FILE_NAME_LEN+2);
+		p_unicode_read = (u16*)__lwp_wkspace_allocate(MAX_FILE_NAME_LEN+2);
 		if(!p_unicode_read) {
-			free(p_unicode);
+			__lwp_wkspace_free(p_unicode);
 			return CARDIO_ERROR_OUTOFMEMORY;
 		}
 
@@ -712,7 +713,7 @@ s32 card_findEntryInDirectory(u32 drv_no,u32 find_mode,F_HANDLE h_parent,u32 var
 
             for(j=0;j<SECTOR_SIZE;j+=32) {
                 if(find_mode == FIND_FILE_NAME) {
-					printf("buf = %s\n",buf+j);
+					//printf("buf = %s\n",buf+j);
                     if(unicode_namelen) {
                         if((memcmp(short_name,buf+j,after_tilde_index)!=0) 
                            || (memcmp(short_name+8,buf+j+8,3)!= 0))
@@ -902,8 +903,8 @@ s32 card_deleteFromOpenedList(s32 drv_no,u32 cluster)
                 if(p_opened->next!=NULL) ((opendfile_list*)p_opened->next)->prev = p_opened->prev;
             }
 
-            if(p_opened->cache.buf!=NULL) free(p_opened->cache.buf);
-            free(p_opened);
+            if(p_opened->cache.buf!=NULL) __lwp_wkspace_free(p_opened->cache.buf);
+            __lwp_wkspace_free(p_opened);
 
             break;
         }
@@ -966,6 +967,8 @@ s32 card_getFileSize(const char *filename,u32 *p_size)
 	F_HANDLE h_dir;
 	u8 *p_filename = (u8*)filename;
 
+	printf("p_filename = %s\n",p_filename);
+
 	drv_no = card_getDriveNo(p_filename);
 	if(drv_no>=MAX_DRIVE)
 		return CARDIO_ERROR_INVALIDPARAM;
@@ -978,6 +981,8 @@ s32 card_getFileSize(const char *filename,u32 *p_size)
 	ret = card_checkPath(drv_no,p_filename,PATH_EXCEPT_LAST,&h_dir);
 	if(ret!=CARDIO_ERROR_READY)
 		FAT_RETURN(drv_no,ret);
+
+	card_extractLastName(p_filename,long_name);
 
 	ret = card_findEntryInDirectory(drv_no,FIND_FILE_NAME,h_dir,(u32)long_name,file_info,&cluster,&offset);
 	if(ret!=CARDIO_ERROR_READY)
@@ -1015,6 +1020,8 @@ s32 card_readFromDisk(s32 drv_no,opendfile_list *p_list,void *buf,u32 cnt,u32 *p
     cluster_end_count = (p_list->f_ptr+read_count+cluster_size-1)/cluster_size;
     offset = p_list->f_ptr%cluster_size;
 
+	printf("cb = %d, ce = %d\n",cluster_start_count,cluster_end_count);
+	
     cluster = p_list->cur_cluster;
     for(i=cluster_start_count;i<cluster_end_count;++i) {
         copy_count = (remaining_count>cluster_size - offset)?(cluster_size-offset):remaining_count;
@@ -1127,7 +1134,7 @@ s32 card_openFile(const char *filename,u32 open_mode,F_HANDLE *p_handle)
 	if(id>=MAX_OPENED_FILE_NUM)
 		FAT_RETURN(drv_no,CARDIO_ERROR_FILEOPENED);
 	
-	p_list = (opendfile_list*)malloc(sizeof(opendfile_list));
+	p_list = (opendfile_list*)__lwp_wkspace_allocate(sizeof(opendfile_list));
 	if(p_list==NULL)
 		FAT_RETURN(drv_no,CARDIO_ERROR_OUTOFMEMORY);
 	
@@ -1144,16 +1151,16 @@ s32 card_openFile(const char *filename,u32 open_mode,F_HANDLE *p_handle)
 
     p_list->cache.f_ptr = 0;
     p_list->cache.cnt = 0;
-    p_list->cache.buf = (u8*)malloc(_fatCacheSize[drv_no]);
+    p_list->cache.buf = (u8*)__lwp_wkspace_allocate(_fatCacheSize[drv_no]);
     if(p_list->cache.buf==NULL) {
-        free(p_list);
+        __lwp_wkspace_free(p_list);
         FAT_RETURN(drv_no, CARDIO_ERROR_OUTOFMEMORY);
     }
 
 	ret = card_addToOpenedFileList(drv_no,p_list);
 	if(ret!=CARDIO_ERROR_READY) {
-		free(p_list->cache.buf);
-		free(p_list);
+		__lwp_wkspace_free(p_list->cache.buf);
+		__lwp_wkspace_free(p_list);
 		FAT_RETURN(drv_no,ret);
 	}
 

@@ -11,6 +11,16 @@
 
 #include "sdcard.h"
 
+struct _sd_file {
+	u32 pos;
+	u32 size;
+	u8 mode;
+	u8 path[SDCARD_MAX_PATH_LEN];
+	void *wbuffer;
+};
+
+static u32 sdcard_inited = 0;
+
 //#define _SDCARD_DEBUG
 /*
 static void __fill_csdregister(s32 chn)
@@ -104,6 +114,7 @@ static s32 __sdcard_read(const char *filename,void *dest,u32 offset,u32 size)
 	F_HANDLE handle;
 	
 	if(card_openFile(filename,oflags,&handle)!=0) return 0;
+
 	if(offset>0) {
 		u32 sd_offset = -1;
 		u32 mode = 1;
@@ -120,27 +131,28 @@ s32 SDCARD_Init()
 {
 	time_t now;
 
-	printf("card_init()\n");
+	if(!sdcard_inited) {
+		printf("card_init()\n");
+		sdcard_inited = 1;
+		now = time(NULL);
+		srand(now);
 
-	now = time(NULL);
-	srand(now);
+		card_initBufferPool();
 
-	card_initBufferPool();
-
-	card_initIODefault();
-	card_initFATDefault();
-	
+		card_initIODefault();
+		card_initFATDefault();
+	}	
 	return CARDIO_ERROR_READY;
 }
 
-file* SDCARD_OpenFile(const char *filename,const char *mode)
+sd_file* SDCARD_OpenFile(const char *filename,const char *mode)
 {
 	s32 err;
 	u32 size;
 	u8 buffer[8];
-	file *rfile = NULL;
+	struct _sd_file *rfile = NULL;
 	
-	rfile = (file*)__lwp_wkspace_allocate(sizeof(file));
+	rfile = (struct _sd_file*)__lwp_wkspace_allocate(sizeof(struct _sd_file));
 	if(!rfile)
 		return NULL;
 
@@ -152,7 +164,7 @@ file* SDCARD_OpenFile(const char *filename,const char *mode)
 			rfile->pos = 0;
 			rfile->mode = 'r';
 			rfile->size = size;	
-			return rfile;
+			return (sd_file*)rfile;
 		}
 	}
 	if(mode[0]=='w') {
@@ -161,8 +173,43 @@ file* SDCARD_OpenFile(const char *filename,const char *mode)
 		rfile->size = 0;
 		rfile->mode = 'w';
 		rfile->wbuffer = NULL;
-		return rfile;
+		return (sd_file*)rfile;
 	}
 	__lwp_wkspace_free(rfile);
 	return NULL;
+}
+
+u32 SDCARD_ReadFile(sd_file *file,void *buf,u32 len)
+{
+	s32 ret = SDCARD_ERROR_READY; 
+	u8 *buffer = (u8*)buf;
+	struct _sd_file *ifile = (struct _sd_file*)file;
+
+	if(ifile && ifile->mode=='r') {
+		ret = __sdcard_read(ifile->path,buffer,ifile->pos,len);
+		ifile->pos += len;
+	}
+	return ret;
+}
+
+u32 SDCARD_SeekFile(sd_file *file,u32 offset,u32 whence)
+{
+	struct _sd_file *ifile = (struct _sd_file*)file;
+
+	if(ifile) {
+		if(whence==SDCARD_SEEK_SET) ifile->pos = 0;
+		else if(whence==SDCARD_SEEK_CUR) ifile->pos += offset;
+		else if(whence==SDCARD_SEEK_END) ifile->pos = ifile->size;
+		else return -1;
+		return 0;
+	}
+	return -1;
+}
+
+u32 SDCARD_GetFileSize(sd_file *file)
+{
+	struct _sd_file *ifile = (struct _sd_file*)file;
+
+	if(ifile) return ifile->size;
+	return 0;
 }

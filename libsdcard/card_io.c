@@ -1245,7 +1245,7 @@ s32 card_readBlock(s32 drv_no,u32 block_no,u32 offset,u8 *buf,u32 len)
 	sect_start = block_no*sects_per_block;
 	sect_start += (offset/read_len);
 	
-	printf("sect_start = %d\n",sect_start);
+	//printf("sect_start = %d\n",sect_start);
 
 	if(len<=read_len)
 		return card_readSector(drv_no,sect_start,buf,len);
