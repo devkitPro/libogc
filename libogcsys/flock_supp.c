@@ -11,12 +11,14 @@
 #undef errno
 extern int errno;
 
+#include <sys/lock.h>
+
 void __flockfile(FILE *fp)
 {
-	printf("__flockfile()\n");
+	__lock_acquire_recursive(*(_LOCK_RECURSIVE_T*)&fp->_lock);
 }
 
 void __funlockfile(FILE *fp)
 {
-	printf("__funlockfile()\n");
+	__lock_release_recursive(*(_LOCK_RECURSIVE_T*)&fp->_lock);
 }
