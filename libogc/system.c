@@ -559,19 +559,7 @@ void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)
 
 void* SYS_AllocateFramebuffer(GXRModeObj *rmode)
 {
-	u32 level;
-	void *ret;
-
-	u32 size = VIDEO_PadFramebufferWidth(rmode->fbWidth)*rmode->xfbHeight*VI_DISPLAY_PIX_SZ+32;
-	_CPU_ISR_Disable(level);
-	ret = (void*)((((u32)SYS_GetArenaHi()-size)+31)&~31);
-	if(ret<SYS_GetArenaLo()) {
-		_CPU_ISR_Restore(level);
-		abort();
-	}
-	SYS_SetArenaHi(ret);
-	_CPU_ISR_Restore(level);
-	return ret;
+	return memalign(32,VIDEO_PadFramebufferWidth(rmode->fbWidth)*rmode->xfbHeight*VI_DISPLAY_PIX_SZ);
 }
 
 void SYS_CreateAlarm(sysalarm *alarm)
