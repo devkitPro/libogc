@@ -2547,40 +2547,39 @@ s32 CARD_GetErrorCode(s32 chn)
 
 s32 __card_findnext(card_dir *dir) 
 { 
-      s32 ret; 
+	s32 ret; 
+	struct card_dir *dirblock = NULL; 
+	struct card_direntry *entries = NULL; 
+	card_block *card = NULL; 
 
-              struct card_dir *dirblock = NULL; 
-      struct card_direntry *entries = NULL; 
-      card_block *card = NULL; 
+	if(dir->chn<EXI_CHANNEL_0 || dir->chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD; 
+	if(dir->fileno>=CARD_MAXFILES) return CARD_ERROR_NOFILE; 
+	if((ret=__card_getcntrlblock(dir->chn,&card))<0) return ret; 
 
-      if(dir->chn<EXI_CHANNEL_0 || dir->chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD; 
-      if(dir->fileno>=CARD_MAXFILES) return CARD_ERROR_NOFILE; 
-      if((ret=__card_getcntrlblock(dir->chn,&card))<0) return ret; 
+	if(!card->attached) return CARD_ERROR_NOCARD; 
+	dirblock = __card_getdirblock(card); 
 
-      if(!card->attached) return CARD_ERROR_NOCARD; 
-      dirblock = __card_getdirblock(card); 
+	entries = dirblock->entries; 
+	do { 
+		//printf("%s\n", entries[dir->fileno].filename); 
+		if(entries[dir->fileno].gamecode[0]!=0xff) { 
+			if ((card_gamecode[0]==0xff || memcmp(entries[dir->fileno].gamecode,card_gamecode,4)==0) 
+				&& (card_company[0]==0xff || memcmp(entries[dir->fileno].company,card_company,2)==0)) { 
+				memcpy(dir->filename, entries[dir->fileno].filename, CARD_FILENAMELEN); 
+				dir->filename[CARD_FILENAMELEN] = 0; 
+				memcpy(dir->gamecode, entries[dir->fileno].gamecode, 4); 
+				dir->gamecode[4] = 0; 
+				memcpy(dir->company, entries[dir->fileno].company, 2); 
+				dir->company[2] = 0; 
 
-      entries = dirblock->entries; 
-      do { 
-              //printf("%s\n", entries[dir->fileno].filename); 
-              if(entries[dir->fileno].gamecode[0]!=0xff) { 
-                      if ((card_gamecode[0]==0xff || memcmp(entries[dir->fileno].gamecode,card_gamecode,4)==0) 
-                          && (card_company[0]==0xff || memcmp(entries[dir->fileno].company,card_company,2)==0)) { 
-                              memcpy(dir->filename, entries[dir->fileno].filename, CARD_FILENAMELEN); 
-                              dir->filename[CARD_FILENAMELEN] = 0; 
-                              memcpy(dir->gamecode, entries[dir->fileno].gamecode, 4); 
-                              dir->gamecode[4] = 0; 
-                              memcpy(dir->company, entries[dir->fileno].company, 2); 
-                              dir->company[2] = 0; 
-
-                              __card_putcntrlblock(card,CARD_ERROR_READY); 
-                              return CARD_ERROR_READY; 
-                      } 
-              } 
-              dir->fileno++; 
-      } while (dir->fileno < CARD_MAXFILES); 
-      __card_putcntrlblock(card,CARD_ERROR_NOFILE); 
-      return CARD_ERROR_NOFILE; 
+				__card_putcntrlblock(card,CARD_ERROR_READY); 
+				return CARD_ERROR_READY; 
+			} 
+		} 
+		dir->fileno++; 
+	} while (dir->fileno < CARD_MAXFILES); 
+	__card_putcntrlblock(card,CARD_ERROR_NOFILE); 
+	return CARD_ERROR_NOFILE; 
 } 
 
 s32 CARD_FindFirst(s32 chn, card_dir *dir) 
@@ -2600,4 +2599,18 @@ s32 CARD_FindNext(card_dir *dir)
       dir->fileno++; 
 
       return __card_findnext(dir); 
+}
+
+s32 CARD_GetSectorSize(s32 chn,u32 *sector_size)
+{
+	s32 ret; 
+	card_block *card = NULL; 
+
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD; 
+	if((ret=__card_getcntrlblock(chn,&card))<0) return ret; 
+
+	*sector_size = card->sector_size;
+	ret = __card_putcntrlblock(card,CARD_ERROR_READY); 
+
+	return ret;
 }

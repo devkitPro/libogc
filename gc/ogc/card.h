@@ -100,6 +100,7 @@ s32 CARD_FormatAsync(s32 chn,cardcallback callback);
 s32 CARD_GetErrorCode(s32 chn);
 s32 CARD_FindFirst(s32 chn, card_dir *dir); 
 s32 CARD_FindNext(card_dir *dir); 
+s32 CARD_GetSectorSize(s32 chn,u32 *sector_size);
 
 #ifdef __cplusplus
    }
