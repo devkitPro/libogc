@@ -189,8 +189,8 @@ install:
 	@cp ./gc/modplay/*.h $(INCDIR)/modplay
 	@cp ./gc/mad/*.h $(INCDIR)/mad
 	@cp ./gc/sdcard/*.h $(INCDIR)/sdcard
-	@cp -rv include $(SPECSPATH)/$(PREFIX)
-	@cp -rv lib $(SPECSPATH)/$(PREFIX)
+	@cp -frv include $(SPECSPATH)/$(PREFIX)
+	@cp -frv lib $(SPECSPATH)/$(PREFIX)
 
 #---------------------------------------------------------------------------------
 dist:
