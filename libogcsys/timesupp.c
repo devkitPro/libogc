@@ -7,12 +7,14 @@ extern int errno;
 
 #include "asm.h"
 #include "processor.h"
+#include "lwp.h"
 #include "lwp_threadq.h"
 #include "timesupp.h"
 #include "exi.h"
 
 
 /* time variables */
+static lwpq_t time_exi_wait;
 static lwp_thrqueue timedwait_queue;
 
 unsigned long long _DEFUN(gettime,(),
@@ -78,6 +80,7 @@ u32 diff_usec(unsigned long long start,unsigned long long end)
 void __timesystem_init()
 {
 	__lwp_threadqueue_init(&timedwait_queue,LWP_THREADQ_MODEPRIORITY,LWP_STATES_LOCALLY_BLOCKED,6);
+	LWP_InitQueue(&time_exi_wait);
 }
 
 
@@ -138,35 +141,44 @@ unsigned int _DEFUN(nanosleep,(tb),
 	return TB_SUCCESSFUL;
 }
 
+static u32 __time_exi_unlock()
+{
+	LWP_WakeThread(time_exi_wait);
+	return 1;
+}
+
+static void __time_exi_wait()
+{
+	u32 ret,level;
+
+	_CPU_ISR_Disable(level);
+	do {
+		if((ret=EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_1,__time_exi_unlock))==1) break;
+		LWP_SleepThread(time_exi_wait);
+	}while(ret==0);
+	_CPU_ISR_Restore(level);
+}
+
 time_t _DEFUN(time,(timer),
 			  time_t *timer)
 {
-	time_t gctime;
+	time_t gctime = 0;
 	u32 command;
 	u32 SRAM[64];
 
 
-	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_1,NULL)==0) return 0;
-	if(EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED8MHZ)==0) {
-		EXI_Unlock(EXI_CHANNEL_0);
-		return 0;
-	}
+	__time_exi_wait();
 
 	command = 0x20000000;
+	EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED8MHZ);
 	EXI_Imm(EXI_CHANNEL_0,&command,4,EXI_WRITE,NULL);
 	EXI_Sync(EXI_CHANNEL_0);
 	EXI_Imm(EXI_CHANNEL_0,&gctime,4,EXI_READ,NULL);
 	EXI_Sync(EXI_CHANNEL_0);
 	EXI_Deselect(EXI_CHANNEL_0);
-	EXI_Unlock(EXI_CHANNEL_0);
-
-	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_1,NULL)==0) return 0;
-	if(EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED8MHZ)==0) {
-		EXI_Unlock(EXI_CHANNEL_0);
-		return 0;
-	}
 
 	command = 0x20000100;
+	EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED8MHZ);
 	EXI_Imm(EXI_CHANNEL_0,&command,4,EXI_WRITE,NULL);
 	EXI_Sync(EXI_CHANNEL_0);
 	EXI_ImmEx(EXI_CHANNEL_0,SRAM,64,EXI_READ);
