@@ -452,7 +452,7 @@ static const struct _timing {
 	u16 hbs640;
 	u8 hbeCCIR656;
 	u16 hbsCCIR656;
-} video_timing[6] = {
+} video_timing[8] = {
 	{
 		0x06,0x00F0,
 		0x0018,0x0019,0x0003,0x0002,
@@ -512,6 +512,26 @@ static const struct _timing {
 		0x40,0x4E,0x70,0xA2,
 		0x0175,
 		0x7A,0x019C
+	},
+	{
+		0x0C,0x01e0,
+		0x0030,0x0030,0x0006,0x0006,
+		0x18,0x18,0x18,0x18,
+		0x040e,0x040e,0x040e,0x040e,
+		0x041a,0x01ad,
+		0x40,0x47,0x69,0xa2,
+		0x0175,
+		0x7a,0x019c
+	},
+	{
+		0x0c,0x01e0,
+		0x002c,0x002c,0x000a,0x000a,
+		0x18,0x18,0x18,0x18,
+		0x040e,0x040e,0x040e,0x040e,
+		0x041a,0x01ad,
+		0x40,0x47,0x69,0xa8,
+		0x017b,		
+		0x7a,0x019c	
 	}
 };
 
@@ -639,11 +659,31 @@ static const struct _timing* __gettiming(u32 vimode)
 		case VI_TVMODE_PAL_DS:
 			return &video_timing[3];
 			break;
+		case VI_TVMODE_EURGB60_INT:
+			return &video_timing[0];
+			break;
+		case VI_TVMODE_EURGB60_DS:
+			return &video_timing[1];
+			break;
 		case VI_TVMODE_MPAL_INT:
 			return &video_timing[4];
 			break;
 		case VI_TVMODE_MPAL_DS:
 			return &video_timing[5];
+			break;
+		case VI_TVMODE_NTSC_PROG:
+			return &video_timing[6];
+			break;
+		case VI_TVMODE_NTSC_PROG_DS:
+			return &video_timing[7];
+			break;
+		case VI_TVMODE_DEBUG_PAL_INT:
+			return &video_timing[2];
+			break;
+		case VI_TVMODE_DEBUG_PAL_DS:
+			return &video_timing[3];
+			break;
+		default:
 			break;
 	}
 	return NULL;
