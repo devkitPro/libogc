@@ -318,11 +318,6 @@ exit:
 	__si_calltypandstatuscallback(chan,si_type[chan]);
 }
 
-static void __si_transfercommands()
-{
-	_siReg[14] = 0x80000000;
-}
-
 static void __si_transfernext(u32 chan)
 {
 	u32 cnt;
@@ -441,7 +436,7 @@ void SI_EnablePolling(u32 poll)
 	poll &= (0x03ffffff|mask);
 	
 	sicntrl.poll |= (poll&~0x03ffff00);
-	__si_transfercommands();
+	SI_TransferCommands();
 #ifdef _SI_DEBUG
 	printf("SI_EnablePolling(%08x)\n",sicntrl.poll);
 #endif
@@ -628,6 +623,11 @@ u32 SI_GetTypeAsync(s32 chan,SICallback cb)
 	cb(chan,type);
 	_CPU_ISR_Restore(level);
 	return type;
+}
+
+void SI_TransferCommands()
+{
+	_siReg[14] = 0x80000000;
 }
 
 void __si_init()

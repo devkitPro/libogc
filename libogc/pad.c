@@ -30,7 +30,6 @@ static u32 __pad_pendingbits = 0;
 static u32 __pad_checkingbits = 0;
 static u32 __pad_resettingchan = 32;
 static u32 __pad_spec = 5;
-static u32 __PADSpec = 5;
 
 static u32 __pad_analogmode = 0x00000300;
 static u32 __pad_cmdreadorigin = 0x41000000;
@@ -351,7 +350,7 @@ u32 PAD_Init()
 #endif
 	if(__pad_initialized) return 1;
 
-	if(__PADSpec) PAD_SetSpec(__PADSpec);
+	if(__pad_spec) PAD_SetSpec(__pad_spec);
 	
 	__pad_initialized = 1;
 	__pad_recalibratebits = 0xf0000000;
@@ -484,10 +483,31 @@ void PAD_SetSpec(u32 spec)
 {
 	if(__pad_initialized) return;
 
-	__PADSpec = 0;
+	__pad_spec = 0;
 	if(spec==0) __pad_makestatus = SPEC0_MakeStatus;
 	else if(spec==1) __pad_makestatus = SPEC1_MakeStatus;
 	else if(spec<6) __pad_makestatus = SPEC2_MakeStatus;
 	
 	__pad_spec = spec;
+}
+
+void PAD_ControlMotor(s32 chan,u32 cmd)
+{
+	u32 level;
+	u32 mask,type;
+
+	_CPU_ISR_Disable(level);
+	
+	mask = PAD_ENABLEDMASK(chan);
+	if(__pad_enabledbits&mask) {
+		type = SI_GetType(chan);
+		if(!(type&0x20000000)) {
+			if(__pad_spec<2 && cmd==PAD_MOTOR_STOP_HARD) cmd = 0;
+
+			cmd = 0x00400000|__pad_analogmode|(cmd&0x03);
+			SI_SetCommand(chan,cmd);
+			SI_TransferCommands();
+		}
+	}
+	_CPU_ISR_Restore(level);
 }

@@ -1966,12 +1966,12 @@ s32 card_closeFile(F_HANDLE h_file)
     ret = card_getOpenedList(drv_no, cluster, id, &p_list);
     if(ret!=CARDIO_ERROR_READY)
         FAT_RETURN(drv_no, ret);
-/*
+
     if(p_list->mode&OPEN_W) {
         if(p_list->cache.cnt!=0)
-            sm_WriteCacheToDisk(drv_no, p_list);
+            card_writeCacheToDisk(drv_no,p_list);
 
-        ret = card_findEntryInDirectory(drv_no, FIND_CLUSTER, p_list->h_parent, cluster, file_info, &cluster_no, &offset);
+        ret = card_findEntryInDirectory(drv_no,FIND_CLUSTER,p_list->h_parent,cluster,file_info,&cluster_no,&offset);
         if(ret!=CARDIO_ERROR_READY) 
             FAT_RETURN(drv_no, ret);
 
@@ -1994,17 +1994,13 @@ s32 card_closeFile(F_HANDLE h_file)
         file_info[30] = (u8)((p_list->size>>16)&0xff);
         file_info[31] = (u8)((p_list->size>>24)&0xff);
 
-        ret = smcWriteCluster(drv_no, cluster_no, offset, file_info, 32);
+        ret = card_writeCluster(drv_no,cluster_no,offset,file_info,32);
         if (ret!=CARDIO_ERROR_READY) 
             FAT_RETURN(drv_no, ret);
 
         card_prepareFileClose(drv_no, p_list);
-
-#ifdef FAT_UPDATE_WHEN_FILE_CLOSE
-        sm_FATUpdate(drv_no);
-#endif
+        card_fatUpdate(drv_no);
     }
-*/
     card_deleteFromOpenedList(drv_no, cluster);
 
     FAT_RETURN(drv_no, CARDIO_ERROR_READY);
