@@ -14,6 +14,10 @@
 #define OPEN_R                          1
 #define OPEN_W                          2
 
+#define FROM_CURRENT					0
+#define FROM_BEGIN                      1
+#define FROM_END                        2
+
 #define PATH_FULL                       0
 #define PATH_EXCEPT_LAST				1
 
@@ -100,13 +104,13 @@ typedef struct _fatcache {
 	u8 *buf;
 } fat_cache;
 
-typedef u32 f_handle;
+typedef u32 F_HANDLE;
 
 typedef struct _opendfile_list {
 	struct _opendfile_list *prev;
 	struct _opendfile_list *next;
 	u32 cluster;
-	f_handle h_parent;
+	F_HANDLE h_parent;
 	u32 f_ptr;
 	u32 cur_cluster;
 	u32 old_cur_cluster;
@@ -123,6 +127,18 @@ s32 card_initFAT(s32 drv_no);
 
 void card_insertedCB(s32 drv_no);
 void card_ejectedCB(s32 drv_no);
+
+s32 card_deleteFromOpenedList(s32 drv_no,u32 cluster);
+
+s32 card_openFile(const char *filename,u32 open_mode,F_HANDLE *p_handle);
+s32 card_closeFile(F_HANDLE h_file);
+s32 card_seekFile(F_HANDLE h_file,u32 seek_mode,s32 offset,s32 *p_oldoffset);
+
+s32 card_readFile(F_HANDLE h_file,void *buf,u32 cnt,u32 *p_cnt);
+
+s32 card_readFromDisk(s32 drv_no,opendfile_list *p_list,void *buf,u32 cnt,u32 *p_cnt);
+
+void card_prepareFileClose(s32 drv_no, const opendfile_list* p_list) ;
 
 #ifdef __cplusplus
    }
