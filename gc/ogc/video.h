@@ -4,7 +4,7 @@
 #include <gctypes.h>
 #include "gx_struct.h"
 
-#define VIDEO_PadFrameBufferWidth(width)     ((u16)(((u16)(width) + 15) & ~15))
+#define VIDEO_PadFramebufferWidth(width)     ((u16)(((u16)(width) + 15) & ~15))
 
 #ifdef __cplusplus
    extern "C" {

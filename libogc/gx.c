@@ -3779,27 +3779,25 @@ void GX_AdjustForOverscan(GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver)
 f32 GX_GetYScaleFactor(u16 efbHeight,u16 xfbHeight)
 {
 	u32 yScale,xfblines,cnt;
-	f64 yscale;
+	f32 yscale;
 
-	yscale = (f64)efbHeight/(f64)xfbHeight;
-	yScale = (u32)((f64)256.0/yscale)&0x1ff;
+	yscale = (f32)efbHeight/(f32)xfbHeight;
+	yScale = (u32)((f32)256.0/yscale)&0x1ff;
 
 	cnt = xfbHeight;
 	xfblines = __GX_GetNumXfbLines(efbHeight,yScale);
 	while(xfblines>=xfbHeight) {
- 		cnt--;
-		yscale = (f64)cnt/(f64)efbHeight;
-		yScale = (u32)((f64)256.0/yscale)&0x1ff;
+		yscale = (f32)(cnt--)/(f32)efbHeight;
+		yScale = (u32)((f32)256.0/yscale)&0x1ff;
 		xfblines = __GX_GetNumXfbLines(efbHeight,yScale);
 	}
 
 	while(xfblines<xfbHeight) {
-		cnt++;
-		yscale = (f64)cnt/(f64)efbHeight;
-		yScale = (u32)((f64)256.0/yscale)&0x1ff;
+		yscale = (f32)(cnt++)/(f32)efbHeight;
+		yScale = (u32)((f32)256.0/yscale)&0x1ff;
 		xfblines = __GX_GetNumXfbLines(efbHeight,yScale);
 	}
-	return (f32)yscale;
+	return yscale;
 }
 
 #undef BIG_NUMBER

@@ -537,6 +537,8 @@ extern u32 __SYS_UnlockSram(u32 write);
 
 static void printRegs()
 {
+	printf("%08x%08x\n",(u32)(shdw_changed>>32),(u32)shdw_changed);
+
 	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[0],regs[1],regs[2],regs[3],regs[4],regs[5],regs[6],regs[7]);
 	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[8],regs[9],regs[10],regs[11],regs[12],regs[13],regs[14],regs[15]);
 	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[16],regs[17],regs[18],regs[19],regs[20],regs[21],regs[22],regs[23]);
@@ -545,6 +547,7 @@ static void printRegs()
 	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[40],regs[41],regs[42],regs[43],regs[44],regs[45],regs[46],regs[47]);
 	printf("%04x %04x %04x %04x %04x %04x %04x %04x\n",regs[48],regs[49],regs[50],regs[51],regs[52],regs[53],regs[54],regs[55]);
 	printf("%04x %04x %04x %04x\n",regs[56],regs[57],regs[58],regs[59]);
+
 }
 
 static __inline__ u32 cntlzd(u64 bit)
@@ -589,8 +592,8 @@ static __inline__ void __calcFbbs(u32 bufAddr,u16 panPosX,u16 panPosY,u8 wordper
 {
 	u32 bytesPerLine,tmp;
 
-	bytesPerLine = (wordperline<<5)&~0x1f;
-	*tfbb = bufAddr+(((panPosX<<1)&~0x1f)+(panPosY*bytesPerLine));
+	bytesPerLine = (wordperline<<5)&0x1fe0;
+	*tfbb = bufAddr+(((panPosX<<1)&0x1ffe0)+(panPosY*bytesPerLine));
 	*bfbb = *tfbb;
 	if(xfbMode==VI_XFBMODE_DF) *bfbb = *tfbb+bytesPerLine;
 
@@ -599,6 +602,7 @@ static __inline__ void __calcFbbs(u32 bufAddr,u16 panPosX,u16 panPosY,u8 wordper
 		*tfbb = *bfbb;
 		*bfbb = tmp;
 	}
+
 	*tfbb = MEM_VIRTUAL_TO_PHYSICAL(*tfbb);
 	*bfbb = MEM_VIRTUAL_TO_PHYSICAL(*bfbb);
 }
@@ -647,23 +651,23 @@ static void __setFbbRegs(struct _horVer *horVer,u32 *tfbb,u32 *bfbb,u32 *rtfbb,u
 		*rbfbb >>= 5;
 	}
 
-	regs[14] = (flag<<12)|(horVer->xof<<8)|(*tfbb>>16);
+	regs[14] = _SHIFTL(flag,12,1)|_SHIFTL(horVer->xof,8,4)|_SHIFTR(*tfbb,16,8);
 	regs[15] = *tfbb&0xffff;
 	changed |= VI_REGCHANGE(14);
 	changed |= VI_REGCHANGE(15);
 
-	regs[18] = (*bfbb>>16);
+	regs[18] = _SHIFTR(*bfbb,16,8);
 	regs[19] = *bfbb&0xffff;
 	changed |= VI_REGCHANGE(18);
 	changed |= VI_REGCHANGE(19);
 	
 	if(horVer->threeD) {
-		regs[16] = *rtfbb>>16;
+		regs[16] = _SHIFTR(*rtfbb,16,8);
 		regs[17] = *rtfbb&0xffff;
 		changed |= VI_REGCHANGE(16);
 		changed |= VI_REGCHANGE(17);
 	
-		regs[20] = *rbfbb>>16;
+		regs[20] = _SHIFTR(*rbfbb,16,8);
 		regs[21] = *rbfbb&0xffff;
 		changed |= VI_REGCHANGE(20);
 		changed |= VI_REGCHANGE(21);
@@ -832,9 +836,7 @@ static u32 __VISetRegs()
 
 static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 {
-	u32 ret;
-
-	if(!(ret=__checkclear_interrupt()) || ret&0xc) return;
+	if(__checkclear_interrupt()&0xc) return;
 
 	retraceCount++;
 	if(preRetraceCB)
@@ -1187,7 +1189,7 @@ void VIDEO_Flush()
 	u64 mask;
 
 	_CPU_ISR_Disable(level);
-	shdw_changeMode |= changeMode;
+	shdw_changeMode = changeMode;
 	changeMode = 0;
 
 	shdw_changed |= changed;
