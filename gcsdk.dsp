@@ -728,6 +728,10 @@ SOURCE=.\lockstubs\flock_supp_stub.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\lockstubs\gcn_crt0.S
+# End Source File
+# Begin Source File
+
 SOURCE=.\lockstubs\lock_supp_stub.c
 # End Source File
 # Begin Source File

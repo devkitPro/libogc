@@ -37,6 +37,7 @@
 #define _SHIFTR(v, s, w)	\
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
+typedef s32 (*cardiocallback)(s32 drv_no);
 
 u8 g_CID[MAX_DRIVE][16];
 u8 g_CSD[MAX_DRIVE][16];
@@ -58,6 +59,8 @@ u16 g_dCode[MAX_MI_NUM][MAX_DI_NUM] =
 static u8 _ioWPFlag;
 static u8 _ioClrFlag;
 static u32 _ioCardFreq;
+static u32 _ioRetryCnt;
+static cardiocallback _ioRetryCB = NULL;
 
 static lwpq_t _ioEXILock[MAX_DRIVE];
 
@@ -1232,6 +1235,16 @@ static boolean __card_check(s32 drv_no)
 	return TRUE;
 }
 
+static s32 __card_retrycb(s32 drv_no)
+{
+#ifdef _CARDIO_DEBUG	
+	printf("__card_retrycb(%d)\n",drv_no);
+#endif
+	_ioRetryCB = NULL;
+	_ioRetryCnt++;
+	return card_initIO(drv_no);
+}
+
 void card_initIODefault()
 {
 	u32 i;
@@ -1239,6 +1252,7 @@ void card_initIODefault()
 	printf("card_initIODefault()\n");
 #endif
 	for(i=0;i<MAX_DRIVE;++i) {
+		_ioRetryCnt = 0;
 		_ioError[i] = 0;
 		_ioCardInserted[i] = FALSE;
 		_ioFlag[i] = NOT_INITIALIZED;
@@ -1249,7 +1263,8 @@ void card_initIODefault()
 s32 card_initIO(s32 drv_no)
 {
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
-
+	if(_ioRetryCnt>5) return CARDIO_ERROR_IOERROR;
+	
 	_ioCardInserted[drv_no] = __card_check(drv_no);
 
 	if(_ioCardInserted[drv_no]==TRUE) {
@@ -1269,13 +1284,14 @@ s32 card_initIO(s32 drv_no)
 
 		if(__card_sd_status(drv_no)!=0) goto exit;
 
+		_ioRetryCnt = 0;
 		_ioFlag[drv_no] = INITIALIZED;
 		return CARDIO_ERROR_READY;
 exit:
-		card_doUnmount(drv_no);
-		return CARDIO_ERROR_IOERROR;
+		_ioRetryCB = __card_retrycb;
+		return card_doUnmount(drv_no);
 	}
-	return CARDIO_ERROR_NOCARD; 
+	return CARDIO_ERROR_NOCARD;
 }
 
 s32 card_preIO(s32 drv_no)
@@ -1656,5 +1672,6 @@ exit:
 		EXI_Detach(drv_no);
 	}
 	_CPU_ISR_Restore(level);
+	if(_ioRetryCB) return _ioRetryCB(drv_no);
 	return CARDIO_ERROR_READY;
 }
