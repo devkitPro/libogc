@@ -11,7 +11,7 @@
 #include "system.h"
 #include "dvd.h"
 
-//#define _DVD_DEBUG
+#define _DVD_DEBUG
 
 #define DVD_BRK				(1<<0)
 #define DVD_DE_MSK			(1<<1)
@@ -65,6 +65,13 @@ typedef struct _dvdwaitq {
 	dvdcmdblk *prev;
 } dvdwaitq;
 
+typedef struct _dvdapploader {
+	u8 revision[16];
+	void (*init)(void *,void *,void *);
+	u32 len;
+	u8 pad[8];
+} dvdapploader;
+
 static u32 __dvd_initflag = 0;
 static u32 __dvd_stopnextint = 0;
 static u32 __dvd_resetoccured = 0;	
@@ -85,9 +92,11 @@ static sysalarm __dvd_resetalarm;
 static dvdcmdblk __dvd_dummycmdblk;
 static dvddiskid __dvd_tmpid0 ATTRIBUTE_ALIGN(32);
 static dvddrvinfo __dvd_driveinfo ATTRIBUTE_ALIGN(32);
+static dvdapploader __dvd_apploader ATTRIBUTE_ALIGN(32);
 static dvdcallbacklow __dvd_callback = NULL;
 static dvdcallbacklow __dvd_resetcovercb = NULL;
 static dvdcallbacklow __dvd_swapdiskcallback = NULL;
+static dvdcallbacklow __dvd_finalunlockcb = NULL;
 static dvdstatecb __dvd_laststate = NULL;
 static dvdcbcallback __dvd_cancelcallback = NULL;
 static dvdcmdblk *__dvd_executing = NULL;
@@ -175,7 +184,7 @@ extern void __UnmaskIrq(u32);
 
 extern u8 sega[];
 
-static void __dvd_clearwaitingqueue()
+static __inline__ void __dvd_clearwaitingqueue()
 {
 	u32 i;
 
@@ -185,7 +194,7 @@ static void __dvd_clearwaitingqueue()
 	}
 }
 
-static s32 __dvd_checkwaitingqueue()
+static __inline__ s32 __dvd_checkwaitingqueue()
 {
 	u32 i,level;
 
@@ -200,7 +209,7 @@ static s32 __dvd_checkwaitingqueue()
 	return 0;
 }
 
-static s32 __dvd_pushwaitingqueue(s32 prio,dvdcmdblk *block)
+static __inline__ s32 __dvd_pushwaitingqueue(s32 prio,dvdcmdblk *block)
 {
 	u32 level;
 #ifdef _DVD_DEBUG
@@ -218,7 +227,7 @@ static s32 __dvd_pushwaitingqueue(s32 prio,dvdcmdblk *block)
 	return 1;
 }
 
-static dvdcmdblk* __dvd_popwaitingqueueprio(s32 prio)
+static __inline__ dvdcmdblk* __dvd_popwaitingqueueprio(s32 prio)
 {
 	u32 level;
 	dvdcmdblk *ret = NULL;
@@ -235,7 +244,7 @@ static dvdcmdblk* __dvd_popwaitingqueueprio(s32 prio)
 	return ret;
 }
 
-static dvdcmdblk* __dvd_popwaitingqueue()
+static __inline__ dvdcmdblk* __dvd_popwaitingqueue()
 {
 	u32 i,level;
 	dvdwaitq *q;
@@ -460,6 +469,13 @@ static void __dvd_statebusycb(s32 result)
 				
 			}
 		}
+
+		block = __dvd_executing;
+		__dvd_executing = &__dvd_dummycmdblk;
+		block->state = 0;
+		if(block->cb) block->cb(0,block);
+		__dvd_stateready();
+		return;
 	}
 	if(result==0x0002) {
 #ifdef _DVD_DEBUG
@@ -699,6 +715,7 @@ static void __DVDPatchDriveCode(s32 result)
 	DVD_LowInquiry(&__dvd_driveinfo,__dvd_unlockdone);
 }
 
+
 static void __DVDUnlockDrive(s32 result)
 {
 	u32 i;
@@ -725,10 +742,19 @@ static void __DVDUnlockDrive(s32 result)
 #endif
 		stage = 2;
 
-		__dvd_callback = __DVDPatchDriveCode;
+		__dvd_callback = __dvd_finalunlockcb;
 		for(i=0;i<3;i++) _diReg[2+i] = ((u32*)__dvd_unlockcmd$222)[i];
 		_diReg[7] = DVD_DI_START;
 	}
+}
+
+static void __DVDUnlockDriveLow(s32 result,dvdcallbacklow cb)
+{
+#ifdef _DVD_DEBUG
+	printf("__DVDUnlockDriveLow()\n");
+#endif
+	__dvd_finalunlockcb = cb;
+	__DVDUnlockDrive(result);
 }
 
 void __dvd_statebusy(dvdcmdblk *block)
@@ -864,10 +890,7 @@ s32 DVD_LowRead(void *buf,u32 len,u32 offset,dvdcallbacklow cb)
 	__dvd_cmd_curr.buf = buf;
 	__dvd_cmd_curr.len = len;
 	__dvd_cmd_curr.offset = offset;
-	if(!__dvd_workaround) {
-		__DoRead(buf,len,offset,cb);
-		return 1;
-	}
+	__DoRead(buf,len,offset,cb);
 	return 1;
 }
 
@@ -1140,7 +1163,7 @@ s32 DVD_SeekPrio(dvdfileinfo *info,u32 offset,s32 prio)
 		_CPU_ISR_Disable(level);
 		do {
 			state = block->state;
-			if(state==0) ret = block->txdsize;
+			if(state==0) ret = 0;
 			else if(state==-1) ret = -1;
 			else if(state==10) ret = -3;
 			else LWP_SleepThread(__dvd_wait_queue);
@@ -1165,7 +1188,7 @@ void DVD_Reset()
 
 static void __dvd_unlockcb(s32 result)
 {
-	__DVDUnlockDrive(result);
+	__DVDUnlockDriveLow(result,__DVDPatchDriveCode);
 }
 
 static void alarmcb(sysalarm *alarm)
@@ -1211,5 +1234,6 @@ void DVD_Init()
 //	DVD_ReadID(&cmd,&__dvd_tmpid0);
 	printf("%04x\n%04x\n%08x\n\n",__dvd_driveinfo.rev_level,__dvd_driveinfo.dev_code,__dvd_driveinfo.rel_date);
 
-	DVD_ReadPrio(&info,buf,32,9280,2);
+	DVD_ReadPrio(&info,&__dvd_apploader,32,9280,2);
+	printf("%s\n%p\n%d\n",__dvd_apploader.revision,__dvd_apploader.init,__dvd_apploader.len);
 }
