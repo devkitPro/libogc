@@ -140,6 +140,9 @@ static s32 SndBufStart(MODSNDBUF *sndbuf)
 		AUDIO_StartDMA();
 		return 1;
 	}
+
+	AUDIO_RegisterDMACallback(NULL);
+	sndPlaying = FALSE;
 	return -1;
 }
 

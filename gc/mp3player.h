@@ -1,5 +1,5 @@
-#ifndef __MADPLAYER_H__
-#define __MADPLAYER_H__
+#ifndef __MP3PLAYER_H__
+#define __MP3PLAYER_H__
 
 #include <gctypes.h>
 
@@ -7,7 +7,7 @@
    extern "C" {
 #endif /* __cplusplus */
 
-u32 MP3_Decode(void *mp3stream,u32 len);
+s32 MP3Player_Play(const void *mp3stream, u32 len);
 
 #ifdef __cplusplus
    }
