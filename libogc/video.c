@@ -8,6 +8,7 @@
 #include "exi.h"
 #include "gx.h"
 #include "lwp.h"
+#include "system.h"
 #include "video.h"
 #include "video_types.h"
 
@@ -232,11 +233,21 @@ static const u32 *currTiming = NULL;
 static VIRetraceCallback preRetraceCB = NULL;
 static VIRetraceCallback postRetraceCB = NULL;
 
+u8 *curr_timing;
+u16 viWidth,fbWidth,xfbWidth;
+u16 viXOrigin,viYOrigin;
+u32 viMode,viFmt;
+
+static s16 displayOffsetH;
+static s16 displayOffsetV;
 static vu16* const _viReg = (u16*)0xCC002000;
 
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
-extern u32 __video_clearif();
+
+extern u32 __SYS_LockSram();
+extern u32 __SYS_UnlockSram(u32 write);
+
 
 #ifdef _VIDEO_DEBUG
 extern int printf(const char *fmt,...);
@@ -434,6 +445,9 @@ void __vi_init()
 
 void VI_Init()
 {
+	u32 vimode = 0;
+	syssram *sram;
+
 	if(!(_viReg[1]&0x0001))
 		__VIInit(VI_TVMODE_NTSC_INT);
 
@@ -454,6 +468,23 @@ void VI_Init()
 	_viReg[50] = (taps[23]|(taps[24]<<8));
 	_viReg[51] = (taps[21]|(taps[22]<<8));
 	_viReg[56] = 640;
+
+	sram = (syssram*)__SYS_LockSram();
+	displayOffsetV = 0;
+	displayOffsetH = (s16)sram->display_offsetH;
+	__SYS_UnlockSram(0)	;
+
+	viMode = _SHIFTR(_viReg[1],2,1);
+	viFmt = _SHIFTR(_viReg[1],8,2);
+
+	vimode = viMode;
+	if(viFmt!=VI_DEBUG) vimode += (viFmt<<2);
+	curr_timing = (u8*)__gettiming(vimode);
+
+	viWidth = 640;
+	viXOrigin = (VI_MAX_WIDTH_NTSC - fbWidth)/2;
+	viYOrigin = 0;
+	
 }
 
 void VIDEO_Configure(GXRModeObj *rmode)
@@ -531,14 +562,18 @@ void VIDEO_SetBlack(bool btrue)
 
 void VIDEO_WaitVSync(void)
 {
-	u32 retcnt = retraceCount;
-
+	u32 level;
+	u32 retcnt;
+	
+	_CPU_ISR_Disable(level);
+	retcnt = retraceCount;
 	while(retraceCount==retcnt) {
 #ifdef _VIDEO_DEBUG
 		printf("VIDEO_WaitVSync(%d,%d)\n",retraceCount,retcnt);
 #endif
 		LWP_SleepThread(video_queue);
 	}
+	_CPU_ISR_Restore(level);
 }
 
 void VIDEO_SetNextFramebuffer(void *fb)
@@ -554,7 +589,14 @@ void VIDEO_SetNextFramebuffer(void *fb)
 
 u32 VIDEO_GetCurrentMode()
 {
-	return _SHIFTR(_viReg[1],8,2);
+	u32 mode;
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	mode = _SHIFTR(_viReg[1],8,2);
+	_CPU_ISR_Restore(level);
+
+	return mode;
 }
 
 u32 VIDEO_GetYCbCr(u8 r,u8 g,u8 b)
