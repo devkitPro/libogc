@@ -40,10 +40,10 @@ typedef struct _tdfile {
 	char *tdf_name;
 } TDFile;
 
-u32 TDF_LoadHeader(TDFile* tdf, const char* file_name);
-u32 TDF_LoadTexture(TDFile *tdf,u32 id,TDTexture **tex);
-//void GetTexFromTDF( TDF* tdf, GXTexObj *tex, u32 id);
-//void GetTexFromTDFCI( TDF* tdf, GXTexObj *tex, GXTlutObj *tlo, u32 tluts, u32 id);
+u32 TDF_OpenTDFile(TDFile* tdf, const char* file_name);
+u32 TDF_GetTexture(TDFile *tdf,u32 id,TDTexture **tex);
+void TDF_ReleaseTexture(TDTexture *tex);
+void TDF_CloseTDFile(TDFile *tdf);
 
 #ifdef __cplusplus
    }

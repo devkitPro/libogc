@@ -203,9 +203,9 @@
 #define GX_TF_RGB565		0x4
 #define GX_TF_RGB5A3		0x5
 #define GX_TF_RGBA8			0x6
-#define GX_TF_C4			0x8
-#define GX_TF_C8			0x9
-#define GX_TF_C14			0xa
+#define GX_TF_CI4			0x8
+#define GX_TF_CI8			0x9
+#define GX_TF_CI14			0xa
 #define GX_TF_CMPR			0xE
 
 #define GX_CTF_R4			(0x0|_GX_TF_CTF)
