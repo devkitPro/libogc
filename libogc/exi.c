@@ -141,10 +141,7 @@ static inline void __exi_setinterrupts(u32 nChn,exibus_priv *exi)
 static __inline__ u32 __exi_attach(u32 nChn,EXICallback ext_cb)
 {
 	u32 level,ret;
-	exibus_priv *exi = NULL;
-	
-	if(nChn<EXI_CHANNEL_0 || nChn>=EXI_CHANNEL_2) return 0;
-	exi = &eximap[nChn];
+	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
 	printf("__exi_attach(%d,%p)\n",nChn,ext_cb);
 #endif
@@ -358,15 +355,12 @@ u32 EXI_Imm(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 	}
 	exi->flags |= EXI_FLAG_IMM;
 	
-	if(nMode==EXI_WRITE) {
-		exi->imm_buff = NULL;
-		exi->imm_len = 0;
-		_exiReg[nChn*5+4] = *(u32*)pData;
-	} else if(nMode==EXI_READ) {
-		exi->imm_buff = pData;
-		exi->imm_len = nLen;
-	}
-	_exiReg[nChn*5+3] = ((nLen-1)<<4)|(nMode<<2)|0x01;
+	exi->imm_buff = pData;
+	exi->imm_len = nLen;
+	if(nMode!=EXI_READ) _exiReg[nChn*5+4] = *(u32*)pData;
+	if(nMode==EXI_WRITE) exi->imm_len = 0;
+
+	_exiReg[nChn*5+3] = (((nLen-1)&0x03)<<4)|((nMode&0x03)<<2)|0x01;
 	
 	_CPU_ISR_Restore(level);
 	return 1;
@@ -425,7 +419,7 @@ u32 EXI_Dma(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 
 	_exiReg[nChn*5+1] = (u32)pData&0x03FFFFE0;
 	_exiReg[nChn*5+2] = nLen;
-	_exiReg[nChn*5+3] = (nMode<<2)|0x03;
+	_exiReg[nChn*5+3] = ((nMode&0x03)<<2)|0x03;
 	
 	_CPU_ISR_Restore(level);
 	return 1;
@@ -507,13 +501,10 @@ u32 EXI_GetID(u32 nChn,u32 nDev,u32 *nId)
 u32 EXI_Attach(u32 nChn,EXICallback ext_cb)
 {
 	u32 level,ret;
-	exibus_priv *exi = NULL;
+	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
 	printf("EXI_Attach(%d)\n",nChn);
 #endif
-	if(nChn<EXI_CHANNEL_0 || nChn>=EXI_CHANNEL_2) return 0;
-	exi = &eximap[nChn];
-
 	EXI_Probe(nChn);
 
 	_CPU_ISR_Disable(level);

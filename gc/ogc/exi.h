@@ -5,6 +5,7 @@
 
 #define EXI_READ					0
 #define EXI_WRITE					1
+#define EXI_READWRITE				2
 
 #define EXI_CHANNEL_0				0
 #define EXI_CHANNEL_1				1
