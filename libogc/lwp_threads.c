@@ -30,8 +30,6 @@ void **__lwp_thr_libc_reent = NULL;
 
 static lwp_obj _lwp_objects[1024];
 
-extern void _cpu_context_save_fp(void *);
-extern void _cpu_context_restore_fp(void *);
 extern void _cpu_context_switch(void *,void *);
 extern void _cpu_context_save(void *);
 extern void _cpu_context_restore(void *);
@@ -61,20 +59,9 @@ static void __lwp_dumpcontext(frame_context *ctx)
 }
 #endif
 
-void __lwp_fpucontext_handler(frame_context *ctx)
+void _cpu_contextfp_dump()
 {
-	frame_context *pctx = NULL;
-
-	mtmsr(mfmsr()|MSR_FP);
-	ctx->SRR1 |= MSR_FP;
-	
-	pctx = _thr_allocated_fpctx;
-	_thr_allocated_fpctx = ctx;
-	if(pctx!=ctx) {
-		printf("__lwp_fpucontext_handler(%p,%p)\n",ctx,pctx);
-		if(pctx) _cpu_context_save_fp((void*)pctx);
-		_cpu_context_restore_fp((void*)ctx);
-	}
+	printf("_cpu_contextfp_dump()\n");
 }
 
 u32 __lwp_isr_in_progress()
@@ -122,16 +109,8 @@ void __thread_dispatch()
 			*__lwp_thr_libc_reent = heir->libc_reent;
 		}
 
-		//_cpu_context_save_fp((void*)&exec->fp);
 		_cpu_context_switch((void*)&exec->context,(void*)&heir->context);
-/*
-		if(!__lwp_thread_isallocatedfp(exec)) {
-			if(_thr_allocated_fp!=NULL)
-				_cpu_context_save_fp((void*)&_thr_allocated_fp->context);
-			_cpu_context_restore_fp((void*)&exec->context);
-			_thr_allocated_fp = exec;
-		}
-*/
+
 		exec = _thr_executing;
 		_CPU_ISR_Disable(level);
 	}
@@ -156,13 +135,6 @@ static void __lwp_thread_handler()
 #endif
 	level = exec->isr_level;
 	__lwp_msr_setlevel(level);
-/*
-	if(!__lwp_thread_isallocatedfp(exec)) {
-		if(_thr_allocated_fp!=NULL)
-			_cpu_context_save_fp((void*)&_thr_allocated_fp->context);
-		_thr_allocated_fp = exec;
-	}
-*/	
 	__lwp_thread_dispatchenable();
 	exec->wait.ret_arg = exec->entry(exec->arg);
 

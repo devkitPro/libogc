@@ -26,7 +26,7 @@ void (*_exceptionhandlertable[NUM_EXCEPTIONS])(frame_context*);
 void c_default_exceptionhandler(frame_context *);
 void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
 
-extern void __lwp_fpucontext_handler(frame_context*);
+extern void fpu_exception_handler(frame_context*);
 
 static u32 exception_location[NUM_EXCEPTIONS] = {
 		0x00000100, 0x00000200, 0x00000300, 0x00000400,
@@ -70,7 +70,7 @@ void __exception_init()
 		//set default exception handler into table
 		__exception_sethandler(i,c_default_exceptionhandler);
 	}
-	__exception_sethandler(EX_FP,__lwp_fpucontext_handler);
+	__exception_sethandler(EX_FP,fpu_exception_handler);
 	mtmsr(mfmsr()|MSR_RI);
 }
 

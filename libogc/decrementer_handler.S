@@ -81,14 +81,10 @@ dechandler_start:
 	bne		1f
 	lis		r5,c_default_exceptionhandler@h
 	ori		r5,r5,c_default_exceptionhandler@l
-	sync
-	isync
 	rfi
 1:	
 	lis		r5,c_decrementer_handler@h
 	ori		r5,r5,c_decrementer_handler@l
-	sync
-	isync
 	rfi
 dechandler_end:
 
@@ -169,10 +165,8 @@ easy_exit:
 	lwz		r5,GPR5_OFFSET(sp)
 
 	mfmsr	r4
-	rlwinm	r4,r4,0,17,15
 	rlwinm	r4,r4,0,31,29
 	mtmsr	r4
-	sync
 	isync
 
 	lwz		r0,GPR0_OFFSET(sp)
@@ -186,6 +180,4 @@ easy_exit:
 	lwz		r4,GPR4_OFFSET(sp)
 	lwz		r3,GPR3_OFFSET(sp)
 	addi	sp,sp,EXCEPTION_FRAME_END
-	sync
-	isync
 	rfi

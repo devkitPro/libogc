@@ -67,7 +67,7 @@ default_exceptionhandler_start:
 	mr		r5,r3
 	nop
 	mfmsr	r3
-	ori		r3,r3,MSR_IR|MSR_DR //|MSR_FP
+	ori		r3,r3,MSR_IR|MSR_DR
 	mtsrr1	r3
 	
 default_exceptionhandler_patch:
@@ -81,8 +81,6 @@ default_exceptionhandler_patch:
 	bne		1f
 	lis		r5,c_default_exceptionhandler@h
 	ori		r5,r5,c_default_exceptionhandler@l
-	sync
-	isync
 	rfi
 1:	
 	lis			r5,_exceptionhandlertable@h
@@ -90,8 +88,6 @@ default_exceptionhandler_patch:
 	clrlwi		r5,r5,2
 	clrlslwi	r3,r3,24,2
 	lwzx		r5,r3,r5
-	sync
-	isync
 	rfi
 default_exceptionhandler_end:
 
@@ -99,46 +95,11 @@ default_exceptionhandler_transfer:
 	stwu	sp,-EXCEPTION_FRAME_END(sp)		//now we're able to adjust the stackpointer with it's cached address
 	mtlr	r5								//move passed handler func adress to LR
 
-	EXCEPTION_PROLOG
-
 	stmw r6,GPR6_OFFSET(sp)
 
 	addi	r3,sp,0x08
 	blrl
 	
-	lwz		r4,CR_OFFSET(sp)
-	mtcr	r4
-	lwz		r4,LR_OFFSET(sp)
-	mtlr	r4
-	lwz		r4,CTR_OFFSET(sp)
-	mtctr	r4
-	lwz		r4,XER_OFFSET(sp)
-	mtxer	r4
-
-	EXCEPTION_EPILOG
-
-	lmw		r5,GPR5_OFFSET(sp)
-	lwz		toc,GPR2_OFFSET(sp)
-	lwz		r0,GPR0_OFFSET(sp)
-
-	mfmsr	r4
-	rlwinm	r4,r4,0,17,15
-	rlwinm	r4,r4,0,31,29
-	mtmsr	r4
-	sync
-	isync
-
-	lwz		r4,SRR0_OFFSET(sp)
-	mtsrr0	r4
-	lwz		r4,SRR1_OFFSET(sp)
-	mtsrr1	r4
-	lwz		r4,GPR4_OFFSET(sp)
-	lwz		r3,GPR3_OFFSET(sp)
-	addi	sp,sp,EXCEPTION_FRAME_END
-	sync
-	isync
-	rfi
-
 	.global systemcall_handler_start,systemcall_handler_end
 systemcall_handler_start:
 	mfspr  r9,1008
@@ -149,3 +110,39 @@ systemcall_handler_start:
 	mtspr  1008,r9
 	rfi
 systemcall_handler_end:
+
+	.extern _cpu_context_save_fp,_cpu_context_restore_fp
+	.globl fpu_exception_handler
+fpu_exception_handler:
+	mfmsr	r5
+	ori		r5,r5,MSR_FP
+	mtmsr	r5
+	isync
+	lwz		r5,SRR1_OFFSET-8(r3)
+	ori		r5,r5,MSR_FP
+	mtsrr1	r5
+	lwz		r5,_thr_allocated_fpctx@sda21(0)
+	stw		r3,_thr_allocated_fpctx@sda21(0)
+	cmpw	r5,r3
+	beq		2f
+	cmpwi	r5,0x0000
+	beq		1f
+	bl		_cpu_contextfp_dump
+	bl		_cpu_context_save_fp
+1:	bl		_cpu_context_restore_fp
+2:	lwz		r5,CR_OFFSET-8(r3)
+	mtcr	r5
+	lwz		r5,LR_OFFSET-8(r3)
+	mtlr	r5
+	lwz		r5,SRR0_OFFSET-8(r3)
+	mtsrr0	r5
+	lwz		r5,CTR_OFFSET-8(r3)
+	mtctr	r5
+	lwz		r5,XER_OFFSET-8(r3)
+	mtxer	r5
+	lwz		r5,GPR5_OFFSET-8(r3)
+	lwz		r4,GPR4_OFFSET-8(r3)
+	lwz		r3,GPR3_OFFSET-8(r3)
+	addi	sp,sp,EXCEPTION_FRAME_END
+	rfi
+
