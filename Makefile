@@ -98,8 +98,7 @@ OGCOBJ	:=	lwp_priority.o lwp_queue.o lwp_threadq.o lwp_threads.o lwp_sema.o	\
 			dsp.o si.o tdf.o ogc_crt0.o
 
 #---------------------------------------------------------------------------------
-MODOBJ	:=	freqtab.o mixer.o modplay.o semitonetab.o gcmodplay.o \
-			bpmtab32.o bpmtab48.o
+MODOBJ	:=	freqtab.o mixer.o modplay.o semitonetab.o gcmodplay.o
 
 #---------------------------------------------------------------------------------
 MADOBJ	:=	bit.o decoder.o fixed.o frame.o huffman.o \

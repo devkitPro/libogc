@@ -444,14 +444,6 @@ SOURCE=.\lwip\network.c
 # PROP Default_Filter ""
 # Begin Source File
 
-SOURCE=.\libmodplay\bpmtab32.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libmodplay\bpmtab48.c
-# End Source File
-# Begin Source File
-
 SOURCE=.\libmodplay\freqtab.c
 # End Source File
 # Begin Source File
@@ -1110,10 +1102,6 @@ SOURCE=.\gc\netif\loopif.h
 # Begin Group "modplay.h"
 
 # PROP Default_Filter ""
-# Begin Source File
-
-SOURCE=.\gc\modplay\bpmtab.h
-# End Source File
 # Begin Source File
 
 SOURCE=.\gc\modplay\defines.h

@@ -30,7 +30,6 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "defines.h"
 #include "semitonetab.h"
 #include "freqtab.h"
-#include "bpmtab.h"
 #include "modplay.h"
 #include "mixer.h"
 #ifndef GEKKO
@@ -51,6 +50,7 @@ extern int deltavline;
 #include "video.h"
 
 static u32 *inc_tabs[2] = {NULL,NULL};
+static u32 *bpm_tabs[2] = {NULL,NULL};
 #endif
 
 #ifdef GP32
@@ -158,6 +158,34 @@ static u32* modplay_getinctab(s32 freq)
 	}
 
 	return inc_tab;
+}
+
+static u32* modplay_getbpmtab(s32 freq)
+{
+	u32 tv;
+	u32 i,curr_tab,*bpm_tab = NULL;
+	f32 fval,fdivid;
+
+	if(freq==32000) curr_tab = 0;
+	else curr_tab = 1;
+
+	if(bpm_tabs[curr_tab]) return bpm_tabs[curr_tab];
+
+	tv = VIDEO_GetCurrentTvMode();
+	if(tv==VI_PAL) fdivid = 50.0F;
+	else fdivid = 60.0F;
+
+	bpm_tab = (u32*)malloc(sizeof(u32)*224);
+	if(bpm_tab) {
+		bpm_tabs[curr_tab] = bpm_tab;
+		for(i=0;i<224;i++) {
+			fval = ((f32)freq/((f32)(i+32)*0.4F));
+			bpm_tab[i] = (u32)fval;
+		}
+
+	}
+
+	return bpm_tab;
 }
 #endif
 
@@ -1036,8 +1064,7 @@ void MOD_Start ( MOD * mod )
 #else
 	if(mod->freq==32000 || mod->freq==48000) {
 		mod->inctab = modplay_getinctab(mod->freq);
-		if(mod->freq==32000) mod->bpmtab = bpmtab32KHz;
-		else mod->bpmtab = bpmtab48KHz;
+		mod->bpmtab = modplay_getbpmtab(mod->freq);
 	}
 #endif
 
