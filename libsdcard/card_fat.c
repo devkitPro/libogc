@@ -807,15 +807,15 @@ s32 card_updateBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len)
 {
 	s32 ret;
 	u8 *temp_buf,*ptr;
-	u8 i;
-	u32 read_offset = 0;
-	u32 buf_offset = 0;
+	u8 sec_cnt;
+	u32 read_offset;
+	u32 buf_offset;
 	u32 write_count,copy_count;
     u32 sectorsPerBlock;
 	bool doWrite;
 	u32 bytesPerBlock;
 #ifdef _CARDFAT_DEBUG
-	printf("card_updateBlock(%d,%d,%d,%p,%d,%d)\n",drv_no,block_no,offset,buf,len);
+	printf("card_updateBlock(%d,%d,%d,%p,%d)\n",drv_no,block_no,offset,buf,len);
 #endif
 	if(len<=0) return CARDIO_ERROR_INVALIDPARAM;
 
@@ -825,7 +825,10 @@ s32 card_updateBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len)
 	temp_buf = card_allocBuffer();
 	if(!temp_buf) return CARDIO_ERROR_OUTOFMEMORY;
 
-	for(i=0;i<sectorsPerBlock && len>0;++i,read_offset+=SECTOR_SIZE) {
+	sec_cnt = 0;
+	read_offset = 0;
+	buf_offset = 0;
+	while(sec_cnt<sectorsPerBlock && len>0) {
 		doWrite = FALSE;
 		/*
 		 * check if the updating contents is within this read sector.
@@ -837,10 +840,13 @@ s32 card_updateBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len)
 			ptr = (u8*)buf;
 			copy_count = bytesPerBlock;
 			if(len<bytesPerBlock) {
-				copy_count = SECTOR_SIZE;
-				if(offset%SECTOR_SIZE || len<SECTOR_SIZE) {
+				copy_count = (len/SECTOR_SIZE)*SECTOR_SIZE;
+				write_count = copy_count;
+				ptr = (u8*)buf+buf_offset;
+				if(offset%SECTOR_SIZE || copy_count<SECTOR_SIZE) {
 					/* read 1 sector */
 					ptr = temp_buf;
+					write_count = SECTOR_SIZE;
 					ret = card_readBlock(drv_no,block_no,read_offset,temp_buf,SECTOR_SIZE);
 					if(ret!=CARDIO_ERROR_READY) {
 						card_freeBuffer(temp_buf);
@@ -850,29 +856,33 @@ s32 card_updateBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len)
 					copy_count = (read_offset+SECTOR_SIZE-offset>len)?len:read_offset+SECTOR_SIZE-offset;
 					memcpy(temp_buf+(offset-read_offset),buf+buf_offset,copy_count);
 				}
-				write_count = SECTOR_SIZE;
+				sec_cnt += write_count/SECTOR_SIZE;
 				offset += copy_count;
 				buf_offset += copy_count;
 				len -= copy_count;
 			} else {
 				write_count = copy_count;
-				offset += copy_count;
-				len -= copy_count;
+				sec_cnt = sectorsPerBlock;
 				read_offset = 0;
 				buf_offset = 0;
-				i = sectorsPerBlock;
+				offset = 0;
+				len = 0;
 			}
 		}
 
-		/* write the updated sector */
+		/* write the updated sector(s) */
 		if(doWrite) {
 			ret = card_writeBlock(drv_no,block_no, read_offset,ptr,write_count);
 			if(ret != CARDIO_ERROR_READY) {
 				card_freeBuffer(temp_buf);
 				return ret;
 			}
+			read_offset += write_count;
+			continue;
 		}
-	}
+		read_offset += SECTOR_SIZE;
+		sec_cnt++;
+	};
 #ifdef _CARDFAT_DEBUG
 	printf("card_updateBlock(0)\n");
 #endif
@@ -1274,7 +1284,9 @@ s32 card_fatUpdate(s32 drv_no)
     u32 offset;
 	u32 sects_per_block;
     u32 surplus = 0;
-
+#ifdef _CARDFAT_DEBUG
+	printf("card_fatUpdate(%d)",drv_no);
+#endif
     if(_fatNoFATUpdate[drv_no])
         return CARDIO_ERROR_READY;
 
