@@ -51,7 +51,7 @@ typedef struct _yay0header {
 	unsigned int dec_size;
 	unsigned int links_offset;
 	unsigned int chunks_offset;
-} yay0header;
+} __attribute__((packed)) yay0header;
 
 static u16 sys_fontenc = 0xffff;
 static u32 sys_fontcharsinsheet = 0;
