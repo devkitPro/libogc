@@ -32,6 +32,8 @@ unsigned int usleep(unsigned int us);
 unsigned int nanosleep(struct timespec *tb);
 
 void console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stride);
+void console_setpos(int x,int y);
+void console_setcolor(unsigned int bgcolor,unsigned int fgcolor);
 
 #ifdef __cplusplus
 	}

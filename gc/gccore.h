@@ -8,6 +8,7 @@
 #include "ogc/cache.h"
 #include "ogc/card.h"
 #include "ogc/cast.h"
+#include "ogc/color.h"
 #include "ogc/dvd.h"
 #include "ogc/exi.h"
 #include "ogc/gu.h"

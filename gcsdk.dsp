@@ -612,10 +612,6 @@ SOURCE=.\libogcsys\close.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\libogcsys\color.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\libogcsys\console.c
 # End Source File
 # Begin Source File
@@ -829,6 +825,10 @@ SOURCE=.\gc\ogc\card.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\cast.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\color.h
 # End Source File
 # Begin Source File
 
