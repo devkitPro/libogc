@@ -34,6 +34,7 @@ void VIDEO_ClearFrameBuffer(u32 FrameBufferAddr,u32 nSize,u32 color);
 void VIDEO_WaitVSync(void);
 void VIDEO_SetFramebuffer(void *fb);
 void VIDEO_SetNextFramebuffer(void *fb);
+void VIDEO_SetNextRightFramebuffer(void *fb);
 VIRetraceCallback VIDEO_SetPreRetraceCallback(VIRetraceCallback callback);
 VIRetraceCallback VIDEO_SetPostRetraceCallback(VIRetraceCallback callback);
 

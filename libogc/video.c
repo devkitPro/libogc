@@ -21,49 +21,81 @@
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
 #define _SHIFTR(v, s, w)	\
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
+#define VI_REGCHANGE(_reg)	\
+	((u64)0x01<<(63-_reg))
 
-static const u8 video_timing[6][38] = {
+static const struct _timing {
+	u8 equ;
+	u16 acv;
+	u16 prbOdd,prbEven;
+	u16 psbOdd,psbEven;
+	u8 bs1,bs2,bs3,bs4;
+	u16 be1,be2,be3,be4;
+	u16 nhlines,hlw;
+	u8 hsy,hcs,hce,hbe640;
+	u16 hbs640;
+	u8 hbeCCIR656;
+	u16 hbsCCIR656;
+} video_timing[6] = {
 	{
-		0x06,0x00,0x00,0xF0,0x00,0x18,0x00,0x19,
-		0x00,0x03,0x00,0x02,0x0C,0x0D,0x0C,0x0D,
-		0x02,0x08,0x02,0x07,0x02,0x08,0x02,0x07,
-		0x02,0x0D,0x01,0xAD,0x40,0x47,0x69,0xA2,
-		0x01,0x75,0x7A,0x00,0x01,0x9C
+		0x06,0x00F0,
+		0x0018,0x0019,0x0003,0x0002,
+		0x0C,0x0D,0x0C,0x0D,
+		0x0208,0x0207,0x0208,0x0207,
+		0x020D,0x01AD,
+		0x40,0x47,0x69,0xA2,
+		0x0175,
+		0x7A,0x019C
 	},
 	{
-		0x06,0x00,0x00,0xF0,0x00,0x18,0x00,0x18,
-		0x00,0x04,0x00,0x04,0x0C,0x0C,0x0C,0x0C,
-		0x02,0x08,0x02,0x08,0x02,0x08,0x02,0x08,
-		0x02,0x0E,0x01,0xAD,0x40,0x47,0x69,0xA2,
-		0x01,0x75,0x7A,0x00,0x01,0x9C
+		0x06,0x00F0,
+		0x0018,0x0018,0x0004,0x0004,
+		0x0C,0x0C,0x0C,0x0C,
+		0x0208,0x0208,0x0208,0x0208,
+		0x020E,0x01AD,
+		0x40,0x47,0x69,0xA2,
+		0x0175,
+		0x7A,0x019C
 	},
 	{
-		0x05,0x00,0x01,0x1F,0x00,0x23,0x00,0x24,
-		0x00,0x01,0x00,0x00,0x0D,0x0C,0x0B,0x0A,
-		0x02,0x6B,0x02,0x6A,0x02,0x69,0x02,0x6C,
-		0x02,0x71,0x01,0xB0,0x40,0x4B,0x6A,0xAC,
-		0x01,0x7C,0x85,0x00,0x01,0xA4	
+		0x05,0x011F,
+		0x0023,0x0024,0x0001,0x0000,
+		0x0D,0x0C,0x0B,0x0A,
+		0x026B,0x026A,0x0269,0x026C,
+		0x0271,0x01B0,
+		0x40,0x4B,0x6A,0xAC,
+		0x017C,
+		0x85,0x01A4	
 	},
 	{
-		0x05,0x00,0x01,0x1F,0x00,0x21,0x00,0x21,
-		0x00,0x02,0x00,0x02,0x0D,0x0B,0x0D,0x0B,
-		0x02,0x6B,0x02,0x6D,0x02,0x6B,0x02,0x6D,
-		0x02,0x70,0x01,0xB0,0x40,0x4B,0x6A,0xAC,
-		0x01,0x7C,0x85,0x00,0x01,0xA4
+		0x05,0x011F,
+		0x0021,0x0021,0x0002,0x0002,
+		0x0D,0x0B,0x0D,0x0B,
+		0x026B,0x026D,0x026B,0x026D,
+		0x0270,0x01B0,
+		0x40,0x4B,0x6A,0xAC,
+		0x017C,
+		0x85,0x01A4
 	},
 	{
-		0x06,0x00,0x00,0xF0,0x00,0x18,0x00,0x19,
-		0x00,0x03,0x00,0x02,0x10,0x0F,0x0E,0x0D,
-		0x02,0x06,0x02,0x05,0x02,0x04,0x02,0x07,
-		0x02,0x0D,0x01,0xAD,0x40,0x4E,0x70,0xA2,
-		0x01,0x75,0x7A,0x00,0x01,0x9C
+		0x06,0x00F0,
+		0x0018,0x0019,0x0003,0x0002,
+		0x10,0x0F,0x0E,0x0D,
+		0x0206,0x0205,0x0204,0x0207,
+		0x020D,0x01AD,
+		0x40,0x4E,0x70,0xA2,
+		0x0175,
+		0x7A,0x019C
 	},
 	{
-		0x06,0x00,0x00,0xF0,0x00,0x18,0x00,0x18,
-		0x00,0x04,0x00,0x04,0x10,0x0E,0x10,0x0E,
-		0x02,0x06,0x02,0x08,0x02,0x06,0x02,0x08,
-		0x02,0x0E,0x01,0xAD,0x40,0x4E,0x70,0xA2,
-		0x01,0x75,0x7A,0x00,0x01,0x9C
+		0x06,0x00F0,
+		0x0018,0x0018,0x0004,0x0004,
+		0x10,0x0E,0x10,0x0E,
+		0x0206,0x0208,0x0206,0x0208,
+		0x020E,0x01AD,
+		0x40,0x4E,0x70,0xA2,
+		0x0175,
+		0x7A,0x019C
 	}
 };
 
@@ -103,10 +135,10 @@ struct _horVer {
 	u8 xof;
 	s32 black;
 	s32 threeD;
-	u32 rbufAddr;
+	void *rbufAddr;
 	u32 rtfbb;
 	u32 rbfbb;
-	const u8 *timing;
+	const struct _timing *timing;
 } HorVer;
 
 GXRModeObj TVNtsc480IntDf = 
@@ -490,7 +522,7 @@ static s16 displayOffsetV;
 static u32 currTvMode,changeMode;
 static u32 shdwChangeMode,flushFlag;
 static u64 changed,shdwChanged;
-static const u8 *currTiming;
+static const struct _timing *currTiming;
 static lwpq_t video_queue;
 static VIRetraceCallback preRetraceCB = NULL;
 static VIRetraceCallback postRetraceCB = NULL;
@@ -567,22 +599,28 @@ static __inline__ void __calcFbbs(u32 bufAddr,u16 panPosX,u16 panPosY,u8 wordper
 	*bfbb = MEM_VIRTUAL_TO_PHYSICAL(*bfbb);
 }
 
-static const u8* __gettiming(u32 vimode)
+static const struct _timing* __gettiming(u32 vimode)
 {
 	if(vimode>0x0015) return NULL;
 
 	switch(vimode) {
 		case VI_TVMODE_NTSC_INT:
-			return video_timing[0];
+			return &video_timing[0];
 			break;
 		case VI_TVMODE_NTSC_DS:
-			return video_timing[1];
+			return &video_timing[1];
 			break;
 		case VI_TVMODE_PAL_INT:
-			return video_timing[2];
+			return &video_timing[2];
 			break;
 		case VI_TVMODE_PAL_DS:
-			return video_timing[3];
+			return &video_timing[3];
+			break;
+		case VI_TVMODE_MPAL_INT:
+			return &video_timing[4];
+			break;
+		case VI_TVMODE_MPAL_DS:
+			return &video_timing[5];
 			break;
 	}
 	return NULL;
@@ -592,7 +630,7 @@ static void __setFbbRegs(struct _horVer *horVer,u32 *tfbb,u32 *bfbb,u32 *rtfbb,u
 {
 	u32 flag;
 	__calcFbbs((u32)horVer->bufAddr,horVer->panPosX,horVer->adjustedPanPosY,horVer->wordPerLine,horVer->fbMode,horVer->adjustedDispPosY,tfbb,bfbb);
-	if(horVer->threeD) __calcFbbs(horVer->rbufAddr,horVer->panPosX,horVer->adjustedPanPosY,horVer->wordPerLine,horVer->fbMode,horVer->adjustedDispPosY,rtfbb,rbfbb);
+	if(horVer->threeD) __calcFbbs((u32)horVer->rbufAddr,horVer->panPosX,horVer->adjustedPanPosY,horVer->wordPerLine,horVer->fbMode,horVer->adjustedDispPosY,rtfbb,rbfbb);
 
 	flag = 1;
 	if((*tfbb)<0x01000000 && (*bfbb)<0x01000000
@@ -604,30 +642,27 @@ static void __setFbbRegs(struct _horVer *horVer,u32 *tfbb,u32 *bfbb,u32 *rtfbb,u
 		*rtfbb >>= 5;
 		*rbfbb >>= 5;
 	}
-	regs[15] = *tfbb&0xffff;
-	changed |= (u64)0x00010000<<32;
 
 	regs[14] = (flag<<12)|(horVer->xof<<8)|(*tfbb>>16);
-	changed |= (u64)0x00020000<<32;
+	regs[15] = *tfbb&0xffff;
+	changed |= VI_REGCHANGE(14);
+	changed |= VI_REGCHANGE(15);
 
-	regs[19] = *bfbb&0xffff;
-	changed |= (u64)0x1000<<32;
-	
 	regs[18] = (*bfbb>>16);
-	changed |= (u64)0x2000<<32;
+	regs[19] = *bfbb&0xffff;
+	changed |= VI_REGCHANGE(18);
+	changed |= VI_REGCHANGE(19);
 	
 	if(horVer->threeD) {
-		regs[17] = *rtfbb&0xffff;
-		changed |= (u64)0x4000<<32; 
-
 		regs[16] = *rtfbb>>16;
-		changed |= (u64)0x8000<<32; 
-	
-		regs[21] = *rbfbb&0xffff;
-		changed |= (u64)0x0400<<32;
+		regs[17] = *rtfbb&0xffff;
+		changed |= VI_REGCHANGE(16);
+		changed |= VI_REGCHANGE(17);
 	
 		regs[20] = *rbfbb>>16;
-		changed |= (u64)0x0800<<32;
+		regs[21] = *rbfbb&0xffff;
+		changed |= VI_REGCHANGE(20);
+		changed |= VI_REGCHANGE(21);
 	}
 }
 
@@ -671,23 +706,24 @@ static void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u16 prbO
 	}
 	
 	regs[0] = ((tmp<<4)&~0x0f)|equ;
-	changed |= (u64)0x80000000<<32;
+	changed |= VI_REGCHANGE(0);
 
-	regs[7] = prbodd;
-	changed |= (u64)0x01000000<<32;	
 	regs[6] = psbodd;
-	changed |= (u64)0x02000000<<32;	
-	regs[9] = prbeven;
-	changed |= (u64)0x00400000<<32;	
+	regs[7] = prbodd;
+	changed |= VI_REGCHANGE(6);
+	changed |= VI_REGCHANGE(7);
+
 	regs[8] = psbeven;
-	changed |= (u64)0x00800000<<32;	
+	regs[9] = prbeven;
+	changed |= VI_REGCHANGE(8);
+	changed |= VI_REGCHANGE(9);
 }
 
 static void __VIInit(u32 vimode)
 {
 	u32 cnt;
 	u32 vi_mode,interlace,prog;
-	const u8 *cur_timing = NULL;
+	const struct _timing *cur_timing = NULL;
 
 	vi_mode = vimode>>2;
 	interlace = vimode&0x01;
@@ -702,28 +738,28 @@ static void __VIInit(u32 vimode)
 	_viReg[1] = 0x00;
 
 	// now begin to setup the interface
-	_viReg[2] = ((cur_timing[29]<<8)|cur_timing[30]);		//set HCS & HCE
-	_viReg[3] = ((u16*)cur_timing)[13];						//set Half Line Width
+	_viReg[2] = ((cur_timing->hcs<<8)|cur_timing->hce);		//set HCS & HCE
+	_viReg[3] = cur_timing->hlw;							//set Half Line Width
 
-	_viReg[4] = ((((u16*)cur_timing)[16]<<1)&0xFFFE);			//set HBS
-	_viReg[5] = ((cur_timing[31]<<7)|cur_timing[28]);		//set HBE & HSY
+	_viReg[4] = ((cur_timing->hbs640<<1)&0xFFFE);			//set HBS640
+	_viReg[5] = ((cur_timing->hbe640<<7)|cur_timing->hsy);	//set HBE640 & HSY
 	
-	_viReg[0] = cur_timing[0];
+	_viReg[0] = cur_timing->equ;
 
-	_viReg[6] = (((u16*)cur_timing)[4]+2);					//set PSB odd field
-	_viReg[7] = (((u16*)cur_timing)[2]+((((u16*)cur_timing)[1]<<1)-2));		//set PRB odd field
+	_viReg[6] = (cur_timing->psbOdd+2);							//set PSB odd field
+	_viReg[7] = (cur_timing->prbOdd+((cur_timing->acv<<1)-2));	//set PRB odd field
 
-	_viReg[8] = (((u16*)cur_timing)[5]+2);					//set PSB even field
-	_viReg[9] = (((u16*)cur_timing)[3]+((((u16*)cur_timing)[1]<<1)-2));		//set PRB even field
+	_viReg[8] = (cur_timing->psbEven+2);						//set PSB even field
+	_viReg[9] = (cur_timing->prbEven+((cur_timing->acv<<1)-2));	//set PRB even field
 
-	_viReg[10] = ((((u16*)cur_timing)[10]<<5)|cur_timing[14]);	//set BE3 & BS3
-	_viReg[11] = ((((u16*)cur_timing)[8]<<5)|cur_timing[12]);	//set BE1 & BS1
+	_viReg[10] = ((cur_timing->be3<<5)|cur_timing->bs3);		//set BE3 & BS3
+	_viReg[11] = ((cur_timing->be1<<5)|cur_timing->bs1);		//set BE1 & BS1
 	
-	_viReg[12] = ((((u16*)cur_timing)[11]<<5)|cur_timing[15]);	//set BE4 & BS4
-	_viReg[13] = ((((u16*)cur_timing)[9]<<5)|cur_timing[13]);	//set BE2 & BS2
+	_viReg[12] = ((cur_timing->be4<<5)|cur_timing->bs4);		//set BE4 & BS4
+	_viReg[13] = ((cur_timing->be2<<5)|cur_timing->bs2);		//set BE2 & BS2
 
-	_viReg[24] = (((((u16*)cur_timing)[12]/2)+1)|0x1000);
-	_viReg[25] = (((u16*)cur_timing)[13]+1);
+	_viReg[24] = (((cur_timing->nhlines/2)+1)|0x1000);
+	_viReg[25] = (cur_timing->hlw+1);
 	
 	_viReg[26] = 0x1001;		//set DI1
 	_viReg[27] = 0x0001;		//set DI1
@@ -740,33 +776,33 @@ static void __VIInit(u32 vimode)
 
 static u32 __getCurrentHalfLine()
 {
-	u32 tmp;
+	u32 hlw;
 	u32 vpos = 0;
 	u32 hpos = 0;
 
 	vpos = _viReg[22]&0x07FF;
 	do {
-		tmp = vpos;
+		hlw = vpos;
 		hpos = _viReg[23]&0x07FF;
 		vpos = _viReg[22]&0x07FF;
-	} while(tmp!=vpos);
+	} while(hlw!=vpos);
 	
 	hpos--;
 	vpos--;
 	vpos <<= 1;
-	tmp = ((u16*)currTiming)[13];
+	hlw = currTiming->hlw;
 
-	return vpos+(hpos/tmp);	
+	return vpos+(hpos/hlw);	
 }
 
 static u32 __getCurrFieldEvenOdd()
 {
 	u32 hline;
-	u32 nhline;
+	u32 nhlines;
 
 	hline = __getCurrentHalfLine();
-	nhline = ((u16*)currTiming)[12];
-	if(hline<nhline) return 1;
+	nhlines = currTiming->nhlines;
+	if(hline<nhlines) return 1;
 
 	return 0;
 }
@@ -783,7 +819,7 @@ static u32 __VISetRegs()
 	while(shdwChanged) {
 		val = cntlzd(shdwChanged);
 		_viReg[val] = shdwRegs[val];
-		mask = (u64)1<<(63-val);
+		mask = VI_REGCHANGE(val);
 		shdwChanged &= ~mask;
 	}
 	shdwChangeMode = 0;
@@ -857,13 +893,13 @@ void VIDEO_Init()
 
 	vimode = HorVer.nonInter;
 	if(HorVer.tv!=VI_DEBUG) vimode += (HorVer.tv<<2);
-	currTiming = (u8*)__gettiming(vimode);
+	currTiming = __gettiming(vimode);
 	currTvMode = HorVer.tv;
 
 	regs[1] = _viReg[1];
 	HorVer.timing = currTiming;
 	HorVer.dispSizeX = 640;
-	HorVer.dispSizeY = ((((u16*)currTiming)[1]<<1)&0xfffe);
+	HorVer.dispSizeY = ((currTiming->acv<<1)&0xfffe);
 	HorVer.dispPosX = (VI_MAX_WIDTH_NTSC-HorVer.dispSizeX)/2;
 	HorVer.dispPosY = 0;
 	
@@ -879,7 +915,7 @@ void VIDEO_Init()
 
 	
 	tmp1 = (HorVer.dispPosY + HorVer.dispSizeY + displayOffsetV);
-	tmp2 = ((((u16*)currTiming)[1]<<1) - tmp3);
+	tmp2 = ((currTiming->acv<<1) - tmp3);
 	if((tmp1-tmp2)>0) tmp1 -= tmp2;
 	else tmp1 = 0;
 	
@@ -897,7 +933,7 @@ void VIDEO_Init()
 	HorVer.adjustedPanPosY = HorVer.panPosY-(tmp1/div);
 	
 	tmp1 = (HorVer.dispPosY+HorVer.dispSizeY+displayOffsetV);
-	tmp2 = ((((u16*)currTiming)[1]<<1)-tmp3);
+	tmp2 = ((currTiming->acv<<1)-tmp3);
 	if((tmp1-tmp2)>0) tmp1 -= tmp2;
 	else tmp1 = 0;
 
@@ -908,11 +944,11 @@ void VIDEO_Init()
 	tmp2 = (HorVer.panSizeY+(tmp2/div));
 	HorVer.adjustedPanSizeY = tmp2-(tmp1/div);
 	HorVer.fbSizeX = 640;
-	HorVer.fbSizeY = ((((u16*)currTiming)[1]<<1)&0xfffe);
+	HorVer.fbSizeY = ((currTiming->acv<<1)&0xfffe);
 	HorVer.panPosX = 0;
 	HorVer.panPosY = 0;
 	HorVer.panSizeX = 640;
-	HorVer.panSizeY = ((((u16*)currTiming)[1]<<1)&0xfffe);
+	HorVer.panSizeY = ((currTiming->acv<<1)&0xfffe);
 	HorVer.fbMode = VI_XFBMODE_SF;
 	HorVer.wordPerLine = 40;
 	HorVer.std = 40;
@@ -938,7 +974,7 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	u16 dcr;
 	s32 tmp,tmp1,tmp2;
 	u32 nonint,vimode,div,tmp4,tmp5,value,level;
-	const u8 *curtiming;
+	const struct _timing *curtiming;
 
 	_CPU_ISR_Disable(level);
 	HorVer.tv = _SHIFTR(rmode->viTVMode,2,3);
@@ -987,7 +1023,7 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	else HorVer.adjustedDispPosY = tmp;
 
 	tmp = HorVer.dispPosY+HorVer.dispSizeY+displayOffsetV;
-	tmp2 = (((u16*)curtiming)[1]<<1) - tmp1;
+	tmp2 = (curtiming->acv<<1) - tmp1;
 	if((tmp-tmp2)>0) tmp -= tmp2;
 	else tmp = 0;
 	
@@ -1002,7 +1038,7 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	HorVer.adjustedPanPosY = HorVer.panPosY-(tmp/div);
 
 	tmp = HorVer.dispPosY+HorVer.dispSizeY+displayOffsetV;
-	tmp2 = (((u16*)curtiming)[1]<<1) - tmp1;
+	tmp2 = (curtiming->acv<<1) - tmp1;
 	if((tmp-tmp2)>0) tmp -= tmp2;
 	else tmp = 0;
 
@@ -1012,15 +1048,15 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	HorVer.adjustedPanSizeY = (HorVer.panSizeY+(tmp2/div))-(tmp/div);
 
 	if(!encoderType) HorVer.tv = VI_DEBUG;
-	tmp4 = ((u16*)curtiming)[12]-((((u16*)curtiming)[12]/2)<<1);
-	tmp5 = (((u16*)curtiming)[12]/2)&0xffff;
+	tmp4 = curtiming->nhlines-((curtiming->nhlines/2)<<1);
+	tmp5 = (curtiming->nhlines/2)&0xffff;
 	if(!(tmp4&0xffff)) tmp4 = 0;
-	else tmp4 = ((u16*)curtiming)[13];
+	else tmp4 = curtiming->hlw;
 
 	regs[24] = 0x1000|(tmp5+1);
 	regs[25] = tmp4+1;
-	changed |= (u64)0x0080<<32;
-	changed |= (u64)0x0040<<32;
+	changed |= VI_REGCHANGE(24);
+	changed |= VI_REGCHANGE(25);
 
 	dcr = regs[1];
 	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) dcr = (dcr&~0x0004)|0x0004;
@@ -1030,62 +1066,58 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	dcr &= ~0x0300;
 	if(!(HorVer.tv==VI_DEBUG_PAL || HorVer.tv==VI_EURGB60)) dcr |= _SHIFTL(HorVer.tv,8,2);
 	regs[1] = dcr;
-	changed |= (u64)0x40000000<<32;
+	changed |= VI_REGCHANGE(1);
 
 	regs[54] &= ~0x0001;
 	if(rmode->viTVMode==VI_TVMODE_NTSC_PROG || rmode->viTVMode==VI_TVMODE_NTSC_PROG_DS) regs[54] |= 0x0001;
-	changed |= (u64)0x0200;
+	changed |= VI_REGCHANGE(54);
 
 	tmp = HorVer.panSizeX;
 	if(HorVer.threeD) tmp <<= 1;
 	if(HorVer.dispSizeX<tmp) {
 		regs[37] = 0x1000|((HorVer.dispSizeX+((tmp<<8)-1))/HorVer.dispSizeX);
-		changed |= (u64)0x04000000;
+		changed |= VI_REGCHANGE(37);
 		regs[56] = tmp;
-		changed |= (u64)0x0080;
+		changed |= VI_REGCHANGE(56);
 	} else {
 		regs[37] = 0x0100;
-		changed |= (u64)0x04000000;
+		changed |= VI_REGCHANGE(37);
 	}
 
-	regs[3] = ((u16*)curtiming)[13];
-	changed |= (u64)0x10000000<<32;
-	
-	regs[2] = (curtiming[29]<<8)|curtiming[30];
-	changed |= (u64)0x20000000<<32;
+	regs[2] = (curtiming->hcs<<8)|curtiming->hce;
+	regs[3] = curtiming->hlw;
+	changed |= VI_REGCHANGE(2);
+	changed |= VI_REGCHANGE(3);
 
-	value = (curtiming[31]+HorVer.adjustedDispPosX-40);
-	regs[5] = ((value<<7)&0xff80)|curtiming[28];
-	changed |= (u64)0x04000000<<32;
-	
-	regs[4] = (value>>9)|(((((u16*)curtiming)[16]+HorVer.adjustedDispPosX+40)-(720-HorVer.dispSizeX))<<1);
-	changed |= (u64)0x08000000<<32;
+	value = (curtiming->hbe640+HorVer.adjustedDispPosX-40);
+	regs[4] = (value>>9)|(((curtiming->hbs640+HorVer.adjustedDispPosX+40)-(720-HorVer.dispSizeX))<<1);
+	regs[5] = ((value<<7)&0xff80)|curtiming->hsy;
+	changed |= VI_REGCHANGE(4);
+	changed |= VI_REGCHANGE(5);
 
-	regs[11] = curtiming[12]|(((u16*)curtiming)[8]<<5);
-	changed |= (u64)0x00100000<<32;
-	
-	regs[10] = curtiming[14]|(((u16*)curtiming)[10]<<5);
-	changed |= (u64)0x00200000<<32;
+	regs[10] = curtiming->bs3|(curtiming->be3<<5);
+	regs[11] = curtiming->bs1|(curtiming->be1<<5);
+	changed |= VI_REGCHANGE(10);
+	changed |= VI_REGCHANGE(11);
 
-	regs[13] = curtiming[13]|(((u16*)curtiming)[9]<<5);
-	changed |= (u64)0x00040000<<32;
-
-	regs[12] = curtiming[15]|(((u16*)curtiming)[11]<<5);
-	changed |= (u64)0x00080000<<32;
+	regs[12] = curtiming->bs4|(curtiming->be4<<5);
+	regs[13] = curtiming->bs2|(curtiming->be2<<5);
+	changed |= VI_REGCHANGE(12);
+	changed |= VI_REGCHANGE(13);
 
 	HorVer.wordPerLine = tmp = (HorVer.fbSizeX+15)/16;
-	
 	if(HorVer.fbMode==VI_XFBMODE_DF) tmp = HorVer.wordPerLine;
+
 	HorVer.std = (tmp<<1)&0xfe;
-	
 	HorVer.xof = HorVer.panPosX-((HorVer.panPosX/16)<<4);
 	HorVer.wpl = (HorVer.panSizeX+15)/16;
+
 	regs[36] = (HorVer.wpl<<8)|HorVer.std;
-	changed |= (u64)0x08000000;
+	changed |= VI_REGCHANGE(36);
 	
 	if(fbSet) __setFbbRegs(&HorVer,&HorVer.tfbb,&HorVer.bfbb,&HorVer.rtfbb,&HorVer.rbfbb);
 
-	__setVerticalRegs(HorVer.adjustedDispPosY,HorVer.adjustedDispSizeY,curtiming[0],((u16*)curtiming)[1],((u16*)curtiming)[2],((u16*)curtiming)[3],((u16*)curtiming)[4],((u16*)curtiming)[5],HorVer.black);
+	__setVerticalRegs(HorVer.adjustedDispPosY,HorVer.adjustedDispSizeY,curtiming->equ,curtiming->acv,curtiming->prbOdd,curtiming->prbEven,curtiming->psbOdd,curtiming->psbEven,HorVer.black);
 	_CPU_ISR_Restore(level);
 }
 
@@ -1096,9 +1128,9 @@ void VIDEO_WaitVSync(void)
 	
 	_CPU_ISR_Disable(level);
 	retcnt = retraceCount;
-	while(retraceCount==retcnt) {
+	do {
 		LWP_SleepThread(video_queue);
-	}
+	}while(retraceCount==retcnt);
 	_CPU_ISR_Restore(level);
 }
 
@@ -1138,6 +1170,17 @@ void VIDEO_SetNextFramebuffer(void *fb)
 	_CPU_ISR_Restore(level);
 }
 
+void VIDEO_SetNextRightFramebuffer(void *fb)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	fbSet = 1;
+	HorVer.rbufAddr = fb;
+	__setFbbRegs(&HorVer,&HorVer.tfbb,&HorVer.bfbb,&HorVer.rtfbb,&HorVer.rbfbb);
+	_CPU_ISR_Restore(level);
+}
+
 void VIDEO_Flush()
 {
 	u32 level;
@@ -1152,7 +1195,7 @@ void VIDEO_Flush()
 	while(changed) {
 		val = cntlzd(changed);
 		shdwRegs[val] = regs[val];
-		mask = (u64)1<<(63-val);
+		mask = VI_REGCHANGE(val);
 		changed &= ~mask;
 	}
 	flushFlag = 1;
@@ -1162,12 +1205,12 @@ void VIDEO_Flush()
 void VIDEO_SetBlack(boolean black)
 {
 	u32 level;
-	const u8 *timing;
+	const struct _timing *curtiming;
 	
 	_CPU_ISR_Disable(level);
 	HorVer.black = black;
-	timing = HorVer.timing;
-	__setVerticalRegs(HorVer.adjustedDispPosY,HorVer.dispSizeY,timing[0],((u16*)timing)[1],((u16*)timing)[2],((u16*)timing)[3],((u16*)timing)[4],((u16*)timing)[5],HorVer.black);
+	curtiming = HorVer.timing;
+	__setVerticalRegs(HorVer.adjustedDispPosY,HorVer.dispSizeY,curtiming->equ,curtiming->acv,curtiming->prbOdd,curtiming->prbEven,curtiming->psbOdd,curtiming->psbEven,HorVer.black);
 	_CPU_ISR_Restore(level);
 }
 
@@ -1183,8 +1226,8 @@ u32 VIDEO_GetNextField()
 	while((dpv=(_viReg[22]&0x7ff))!=tmp);
 	
 	dpv--;	dph--;
-	tdph = ((u16*)currTiming)[12];
-	tdpv = (dpv<<1)+(dph/((u16*)currTiming)[13]);
+	tdph = currTiming->nhlines;
+	tdpv = (dpv<<1)+(dph/currTiming->hlw);
 
 	if(tdpv>=tdph) val = 0;
 	else val = 1;
