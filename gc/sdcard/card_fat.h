@@ -145,6 +145,8 @@ s32 card_init();
 void card_initFATDefault();
 s32 card_initFAT(s32 drv_no);
 s32 card_termFAT(s32 drv_no);
+s32 card_updateFAT(const char *p_volname);
+s32 card_unmountFAT(const char *p_devname);
 
 void card_insertedCB(s32 drv_no);
 void card_ejectedCB(s32 drv_no);

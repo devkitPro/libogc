@@ -252,12 +252,7 @@ s32 SDCARD_CloseFile(sd_file *pfile)
 	return SDCARD_ERROR_READY;
 }
 
-s32 SDCARD_Term(s32 drv_no)
+s32 SDCARD_Unmount(const char *devname)
 {
-	if(drv_no<0 || drv_no>=MAX_DRIVE) return SDCARD_ERROR_NOCARD;
-
-	printf("SDCARD_Term(%d)\n",drv_no);
-
-	card_doUnmount(drv_no);
-	return SDCARD_ERROR_READY;
+	return card_unmountFAT(devname);
 }

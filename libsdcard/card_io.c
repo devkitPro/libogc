@@ -164,7 +164,7 @@ static void __exi_wait(s32 drv_no)
 
 static u32 __card_exthandler(u32 chn,u32 dev)
 {
-	printf("sd card removed.\n");
+	card_doUnmount(chn);
 	card_ejectedCB(chn);
 	return 1;
 }
@@ -1326,7 +1326,7 @@ s32 card_updateBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len)
 	if(ret!=0) return ret;
 
 	write_len = (1<<WRITE_BL_LEN(drv_no));
-	if(len<write_len) return CARDIO_ERROR_INTERNAL;
+	if(len<write_len || len%write_len) return CARDIO_ERROR_INTERNAL;
 
 	sects_per_block = (1<<(C_SIZE_MULT(drv_no)+2));
 
@@ -1382,7 +1382,7 @@ s32 card_updateSector(s32 drv_no,u32 sector_no,const void *buf,u32 len)
 	if(ret!=0) return ret;
 
 	write_len = (1<<WRITE_BL_LEN(drv_no));
-	if(len<write_len) return CARDIO_ERROR_INTERNAL;
+	if(len<write_len || (len/write_len)>1) return CARDIO_ERROR_INTERNAL;
 #ifdef _CARDIO_DEBUG
 	printf("card_updateSector(%d,%d,%d(%d),%d)\n",drv_no,sector_no,len,write_len,_cur_page_size[drv_no]);
 #endif
@@ -1402,16 +1402,144 @@ s32 card_updateSector(s32 drv_no,u32 sector_no,const void *buf,u32 len)
 	return ret;
 }
 
+s32 card_erasePartialBlock(s32 drv_no,u32 block_no,u32 offset,u32 len)
+{
+	s32 ret;
+	u8 arg[4];
+	u32 sect_start,sect_end;
+	u32 sects_per_block;
+	u32 write_len;
+
+	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
+
+	ret = card_preIO(drv_no);
+	if(ret!=0) return ret;
+#ifdef _CARDIO_DEBUG
+	printf("card_eraseBlock(%d,%d,%d,%d)\n",drv_no,block_no,offset,len);
+#endif
+	write_len = (1<<WRITE_BL_LEN(drv_no));
+	if(len<write_len || len%write_len) return CARDIO_ERROR_INTERNAL; 
+
+	sects_per_block = (1<<(C_SIZE_MULT(drv_no)+2));
+
+	sect_start = block_no*sects_per_block;
+	sect_start += (offset/write_len);
+
+	sect_end = (sect_start+(len/write_len));
+
+	arg[0] = (sect_start>>15)&0xff;
+	arg[1] = (sect_start>>7)&0xff;
+	arg[2] = (sect_start<<1)&0xff;
+	arg[3] = (sect_start<<9)&0xff;
+	if((ret=__card_sendcmd(drv_no,0x20,arg))!=0) return ret;
+	if((ret=__card_response1(drv_no))!=0) return ret;
+
+	arg[0] = (sect_end>>15)&0xff;
+	arg[1] = (sect_end>>7)&0xff;
+	arg[2] = (sect_end<<1)&0xff;
+	arg[3] = (sect_end<<9)&0xff;
+	if((ret=__card_sendcmd(drv_no,0x21,arg))!=0) return ret;
+	if((ret=__card_response1(drv_no))!=0) return ret;
+
+	if((ret=__card_sendcmd(drv_no,0x26,NULL))!=0) return ret;
+	ret = __card_response1(drv_no);
+
+	return ret;
+}
+
+s32 card_eraseWholeBlock(s32 drv_no,u32 block_no)
+{
+	s32 ret;
+	u8 arg[4];
+	u32 sect_start,sect_end;
+	u32 sects_per_block;
+
+	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
+
+	ret = card_preIO(drv_no);
+	if(ret!=0) return ret;
+#ifdef _CARDIO_DEBUG
+	printf("card_eraseBlock(%d,%d)\n",drv_no,block_no);
+#endif
+	sects_per_block = (1<<(C_SIZE_MULT(drv_no)+2));
+
+	sect_start = block_no*sects_per_block;
+	sect_end = (sect_start+sects_per_block);
+
+	arg[0] = (sect_start>>15)&0xff;
+	arg[1] = (sect_start>>7)&0xff;
+	arg[2] = (sect_start<<1)&0xff;
+	arg[3] = (sect_start<<9)&0xff;
+	if((ret=__card_sendcmd(drv_no,0x20,arg))!=0) return ret;
+	if((ret=__card_response1(drv_no))!=0) return ret;
+
+	arg[0] = (sect_end>>15)&0xff;
+	arg[1] = (sect_end>>7)&0xff;
+	arg[2] = (sect_end<<1)&0xff;
+	arg[3] = (sect_end<<9)&0xff;
+	if((ret=__card_sendcmd(drv_no,0x21,arg))!=0) return ret;
+	if((ret=__card_response1(drv_no))!=0) return ret;
+
+	if((ret=__card_sendcmd(drv_no,0x26,NULL))!=0) return ret;
+	ret = __card_response1(drv_no);
+
+	return ret;
+}
+
+s32 card_eraseSector(s32 drv_no,u32 sector_no)
+{
+	s32 ret;
+	u8 arg[4];
+
+	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
+
+	ret = card_preIO(drv_no);
+	if(ret!=0) return ret;
+#ifdef _CARDIO_DEBUG
+	printf("card_eraseSector(%d,%d)\n",drv_no,sector_no);
+#endif
+	arg[0] = (sector_no>>15)&0xff;
+	arg[1] = (sector_no>>7)&0xff;
+	arg[2] = (sector_no<<1)&0xff;
+	arg[3] = (sector_no<<9)&0xff;
+	if((ret=__card_sendcmd(drv_no,0x20,arg))!=0) return ret;
+	if((ret=__card_response1(drv_no))!=0) return ret;
+
+	arg[0] = ((sector_no+1)>>15)&0xff;
+	arg[1] = ((sector_no+1)>>7)&0xff;
+	arg[2] = ((sector_no+1)<<1)&0xff;
+	arg[3] = ((sector_no+1)<<9)&0xff;
+	if((ret=__card_sendcmd(drv_no,0x21,arg))!=0) return ret;
+	if((ret=__card_response1(drv_no))!=0) return ret;
+
+	if((ret=__card_sendcmd(drv_no,0x26,NULL))!=0) return ret;
+	ret = __card_response1(drv_no);
+
+	return ret;
+}
+
 s32 card_doUnmount(s32 drv_no)
 {
+	s32 ret;
+	u8 arg[4];
 	u32 level;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 	
 	_CPU_ISR_Disable(level);
+	*(u32*)arg = 0;
+	if(_ioFlag[drv_no]==INITIALIZED) {
+		if((ret=__card_sendappcmd(drv_no))!=0) goto exit;
+		if((ret=__card_sendcmd(drv_no,0x2a,arg))!=0) goto exit;
+		ret = __card_response1(drv_no);
+#ifdef _CARDIO_DEBUG
+		printf("card_doUnmount(%d) disconnected 50KOhm pull-up(%d)\n",drv_no,ret);
+#endif
+		_ioFlag[drv_no] = NOT_INITIALIZED;
+	}
+exit:
 	if(_card_inserted[drv_no]==TRUE) {
 		_card_inserted[drv_no] = FALSE;
-		_ioFlag[drv_no] = NOT_INITIALIZED;
 		EXI_Detach(drv_no);
 	}
 	_CPU_ISR_Restore(level);

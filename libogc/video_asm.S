@@ -3,7 +3,7 @@
 	.globl VIDEO_ClearFrameBuffer
 	//r3 = dst, r4 = length(bytes),r5 = color
 VIDEO_ClearFrameBuffer:
-	addi	r0,r4,3
+	addi	r0,r4,0
 	srwi.	r0,r0,8
 	beq		2f
 	mtctr	r0
@@ -40,7 +40,9 @@ VIDEO_ClearFrameBuffer:
 	stwu	r5,4(r3)
 	stwu	r5,4(r3)
 	stwu	r5,4(r3)
+	stwu	r5,4(r3)
 
+	stwu	r5,4(r3)
 	stwu	r5,4(r3)
 	stwu	r5,4(r3)
 	stwu	r5,4(r3)

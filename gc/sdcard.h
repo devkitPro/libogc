@@ -41,7 +41,7 @@ s32 SDCARD_SeekFile(sd_file *file,u32 offset,u32 whence);
 s32 SDCARD_GetFileSize(sd_file *file);
 s32 SDCARD_ReadDir(const char *dirname,DIR *pdir_list);
 s32 SDCARD_CloseFile(sd_file *pfile);
-s32 SDCARD_Term(s32 drv_no);
+s32 SDCARD_Unmount(const char *devname);
 
 #ifdef __cplusplus
    }

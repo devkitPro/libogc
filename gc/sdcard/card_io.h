@@ -38,6 +38,10 @@ s32 card_readSector(s32 drv_no,u32 sector_no,u8 *buf,u32 len);
 s32 card_readBlock(s32 drv_no,u32 block_no,u32 offset,u8 *buf,u32 len) ;
 s32 card_updateSector(s32 drv_no,u32 sector_no,const void *buf,u32 len);
 s32 card_updateBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len);
+s32 card_eraseSector(s32 drv_no,u32 sector_no);
+s32 card_erasePartialBlock(s32 drv_no,u32 block_no,u32 offset,u32 len);
+s32 card_eraseWholeBlock(s32 drv_no,u32 block_no);
+
 s32 card_doUnmount(s32 drv_no);
 
 #ifdef __cplusplus

@@ -40,6 +40,7 @@ static u32 _fatRootStartSect[MAX_DRIVE];
 static u32 _fatRootSects[MAX_DRIVE];
 static u32 _fatClusterStartSect[MAX_DRIVE];
 static u32 _fatCacheSize[MAX_DRIVE] = {0,0};
+static u32 _fatNoFATUpdate[MAX_DRIVE] = {FALSE,FALSE};
 static u32 _fatFATId[MAX_DRIVE] = {FS_UNKNOWN,FS_UNKNOWN};
 static u8 _drvName[MAX_DRIVE][MAX_DRIVE_NAME_LEN+1];
 
@@ -49,7 +50,12 @@ static opendfile_list *_fatOpenedFile[MAX_DRIVE] = {NULL,NULL};
 static void (*pfCallbackIN[MAX_DRIVE])(s32) = {NULL, NULL};
 static void (*pfCallbackOUT[MAX_DRIVE])(s32) = {NULL, NULL};
 
+
+s32 card_fileRemove(s32 drv_no,F_HANDLE h_dir,const u8* p_name);
+s32 card_fatUpdate(s32 drv_no);
 s32 card_findEntryInDirectory(u32 drv_no,u32 find_mode,F_HANDLE h_parent,u32 var_par,u8* p_info,u32* p_cluster,u32* p_offset);
+s32 card_deleteDirEntry(s32 drv_no,F_HANDLE h_dir,const u8 *long_name);
+s32 card_eraseSectors(s32 drv_no,u32 start_sect,u32 cnt);
 
 extern u32 card_convertStrToUni(u16 *dest,u8 *src,u32 len);
 extern void card_uniToUpper(u16 *dest,u16 *src,u32 len);
@@ -418,10 +424,10 @@ s32 card_addClusters(s32 drv_no,u32 cluster,u32 addClusterCnt)
 
     startSector = _fatClusterStartSect[drv_no] + (nextCluster - 2) * _sdInfo[drv_no].spbr.sbpb.sects_per_cluster;
     endSector = _fatClusterStartSect[drv_no] + (nextCluster + count - 2) * _sdInfo[drv_no].spbr.sbpb.sects_per_cluster;
-/*
-    ret = sm_eraseSectors(drv_no, startSector, endSector - startSector);
+
+    ret = card_eraseSectors(drv_no, startSector, endSector - startSector);
     if(ret!=CARDIO_ERROR_READY) return ret;
-*/
+
     /* repeat for the remaining clusters */
     addClusterCnt -= count;
     if(addClusterCnt) return card_addClusters(drv_no, nextCluster + i, addClusterCnt);
@@ -463,7 +469,6 @@ s32 card_expandClusterSpace(s32 drv_no,F_HANDLE handle,u32 cluster,u32 offset,u3
     u8* buf;
     u32 empty_cluster;
     u32 first_copy_size;
-    u32 i;
     u32 next_cluster;
     u32 next_offset;
     u32 proc_cluster;
@@ -509,7 +514,7 @@ s32 card_expandClusterSpace(s32 drv_no,F_HANDLE handle,u32 cluster,u32 offset,u3
                 SET_FAT_TBL(drv_no, new_cluster, (u16)empty_cluster);
                 SET_FAT_TBL(drv_no, empty_cluster, LAST_CLUSTER);
 
-                ret = sm_FATUpdate(drv_no);
+                ret = card_fatUpdate(drv_no);
                 if(ret!=CARDIO_ERROR_READY) return ret;
             }
         }
@@ -747,6 +752,47 @@ s32 card_writeCluster(s32 drv_no,u32 cluster_no,u32 offset,const void *buf,u32 l
             ret = card_updateBlock(drv_no, blockEndNo, 0, writeBuf, bottomSize);
             if(ret!=CARDIO_ERROR_READY) return ret;
         }
+    }
+
+    return CARDIO_ERROR_READY;
+}
+
+s32 card_eraseSectors(s32 drv_no,u32 start_sect,u32 cnt)
+{
+	s32 ret;
+    u32 curBlock;
+    u32 endBlock;
+    u32 endSector;
+    u32 startOffset;
+    u32 endOffset;
+    u32 sectorsPerBlock;
+
+    sectorsPerBlock = (1<<(C_SIZE_MULT(drv_no)+2));
+    endSector = start_sect+cnt;
+
+    curBlock = start_sect/sectorsPerBlock;
+    endBlock = (endSector-1)/sectorsPerBlock;
+    startOffset = start_sect%sectorsPerBlock;
+    /* if start_sect is not on the block boundary */
+    if(startOffset!=0) {
+        ret = card_erasePartialBlock(drv_no, curBlock, startOffset, sectorsPerBlock - startOffset);
+        if(ret!=CARDIO_ERROR_READY) return ret;
+        ++curBlock;
+    }
+
+    for(;curBlock<endBlock;++curBlock) {
+        ret = card_eraseWholeBlock(drv_no, curBlock);
+        if(ret!=CARDIO_ERROR_READY) return ret;
+    }
+
+    endOffset = endSector%sectorsPerBlock;
+    /* if endSector is not on the block boundary */
+    if(endOffset!=0) {
+        ret = card_erasePartialBlock(drv_no, endBlock, 0, endOffset);
+        if(ret!=CARDIO_ERROR_READY) return ret;
+    } else {
+        ret = card_eraseWholeBlock(drv_no, endBlock);
+        if(ret!=CARDIO_ERROR_READY) return ret;
     }
 
     return CARDIO_ERROR_READY;
@@ -1132,6 +1178,91 @@ s32 card_writeSMInfo(s32 drv_no,sd_info *psm_info)
 	return -1;
 }
 
+s32 card_fatUpdate(s32 drv_no)
+{
+	s32 ret;
+    u32 i, j, k;
+    u32 fat_start_lblock;
+    u32 fat_start_offset;
+    u32 lblock_size;
+    u32 read_offset;
+    u32 buf_offset;
+    u8* temp_buf;
+    u32 lblock;
+    u32 offset;
+	u32 sects_per_block;
+    u32 surplus = 0;
+
+    if(_fatNoFATUpdate[drv_no])
+        return CARDIO_ERROR_READY;
+
+	sects_per_block = (1<<(C_SIZE_MULT(drv_no)+2));
+    fat_start_lblock = _fat1StartSect[drv_no]/sects_per_block;
+    fat_start_offset = (_fat1StartSect[drv_no]%sects_per_block)*SECTOR_SIZE;
+    lblock_size = sects_per_block*SECTOR_SIZE;
+
+    buf_offset = 0;
+    temp_buf = card_allocBuffer();
+    if(!temp_buf) 
+        return CARDIO_ERROR_OUTOFMEMORY;
+
+    for(read_offset=0;read_offset<_fat1Sectors[drv_no]*SECTOR_SIZE;read_offset+=SECTOR_SIZE) {
+            if(_fatFATId[drv_no]==FS_FAT16) {
+                for(j=0,k=0;j<SECTOR_SIZE;j+=2,++k) {
+                    temp_buf[j] = GET_FAT_TBL(drv_no, buf_offset+k)&0xff;
+                    temp_buf[j+1] = (GET_FAT_TBL(drv_no, buf_offset + k)>>8)&0xff;
+                }
+                buf_offset += k;
+            } else {    /* FS_FAT12 */
+                /*
+                 * calculation could be beyond the section boundary.
+                 * The surplus calculation is saved in the end of the
+                 * buffer (offset 512, 513), and must be taken in the next
+                 * loop if surplus variable is not 0
+                 */
+
+                /* head is copied from previously calculated value */
+                temp_buf[0] = temp_buf[512];
+                temp_buf[1] = temp_buf[513];
+
+                /*
+                 * tail(up to offset 512, 513) can be stuffed with the
+                 * presently calculated values and if so, it is saved in
+                 * the "surplus" variable, and must be taken in the next
+                 * loop
+                 */
+                for(j=surplus,k=0;j<SECTOR_SIZE;j+=3,k+=2) {
+                    temp_buf[j] = GET_FAT_TBL(drv_no, buf_offset + k)&0xff;
+                    temp_buf[j+1] = ((GET_FAT_TBL(drv_no, buf_offset+k)>>8)&0xf)|((GET_FAT_TBL(drv_no, buf_offset+k+1)<<4)&0xf0);
+                    temp_buf[j+2] = (GET_FAT_TBL(drv_no, buf_offset+k+1)>>4)&0xff;
+                }
+
+                surplus = j-SECTOR_SIZE;
+                buf_offset += k;
+            }
+
+            /* write the updated sector */
+            for(i=0;i<_sdInfo[drv_no].spbr.sbpb.fat_num;++i) {
+                lblock = fat_start_lblock;
+                offset = fat_start_offset+read_offset+i*_fat1Sectors[drv_no]*SECTOR_SIZE;
+
+                if(offset>lblock_size) {
+                    lblock += offset/lblock_size;
+                    offset %= lblock_size;
+                }
+
+                ret = card_updateBlock(drv_no, lblock, offset, temp_buf, SECTOR_SIZE);
+                if(ret!=CARDIO_ERROR_READY) {
+                    card_freeBuffer(temp_buf);
+                    return ret;
+                }
+            }
+    }
+
+    card_freeBuffer(temp_buf);
+    return CARDIO_ERROR_READY;
+}
+
 s32 card_checkPath(s32 drv_no,const u8 *p_filename,u32 check_mode,F_HANDLE *p_handle)
 {
 	s32 ret;
@@ -1424,6 +1555,53 @@ void card_prepareFileClose(s32 drv_no, const opendfile_list* p_list)
     lsector = _fatClusterStartSect[drv_no]+lastCluster*sectorsPerCluster+(p_list->size%(sectorsPerCluster*SECTOR_SIZE))/SECTOR_SIZE;
     lblock = lsector / sectorsPerBlock;
    // smlTouchBlock(drv_no, lblock);
+}
+
+s32 card_fileRemove(s32 drv_no,F_HANDLE h_dir,const u8* p_name)
+{
+	s32 ret;
+    u8 file_info[32];
+    u32 cluster;
+    u32 offset;
+    F_HANDLE h_file;
+    u32 end_cluster;
+    u32 old_cluster;
+    u32 file_size;
+
+    ret = card_findEntryInDirectory(drv_no, FIND_FILE_NAME, h_dir, (u32)p_name, file_info, &cluster, &offset);
+    if(ret!=CARDIO_ERROR_READY) 
+        return ret;
+
+    h_file = file_info[26]|((u32)file_info[27]<<8);
+    file_size = file_info[28]|((u32)file_info[29]<<8)|((u32)file_info[30]<<16)|((u32)file_info[31]<<24);
+
+    /* delete file entry from directory info */
+    ret = card_deleteDirEntry(drv_no, h_dir, p_name);
+    if(ret!=CARDIO_ERROR_READY)
+        FAT_RETURN(drv_no, ret);
+
+    /* update the FAT table from the end of chain */
+    /*
+     * 1. Do not erase blocks that has contents
+     *              (it may be used in undelete routine)
+     * 2. when the h_file is directory handle, its size is 0 and it
+     *              must be cleared from FAT
+     */
+    if((file_size!=0)||(file_info[11]&0x10)) {
+        end_cluster = h_file & 0xffff;
+        while(1) {
+            if(end_cluster==LAST_CLUSTER) break;
+            else if(end_cluster==UNUSED_CLUSTER) return CARDIO_ERROR_INCORRECTFAT;
+            
+            old_cluster = end_cluster;
+            end_cluster = GET_FAT_TBL(drv_no, end_cluster);
+            SET_FAT_TBL(drv_no, old_cluster, UNUSED_CLUSTER);
+        }
+    }
+
+    card_fatUpdate(drv_no);
+
+    return CARDIO_ERROR_READY;
 }
 
 s32 card_openFile(const char *filename,u32 open_mode,F_HANDLE *p_handle)
@@ -1960,7 +2138,7 @@ s32 card_createFile(const char *filename,u32 create_mode,F_HANDLE *p_handle)
     if(ret!=CARDIO_ERROR_NOTFOUND) {
         if (ret == CARDIO_ERROR_READY) {
             if(create_mode==ALWAYS_CREATE) 
-                card_removeFile(drv_no, h_dir, long_name);
+                card_fileRemove(drv_no, h_dir, long_name);
             else 
                 FAT_RETURN(drv_no, CARDIO_ERROR_FILEEXIST);
         } else 
@@ -2027,9 +2205,9 @@ s32 card_createFile(const char *filename,u32 create_mode,F_HANDLE *p_handle)
     if(card_convertToFATName(long_name, fat_name)) {
         card_convertStrToUni(p_unicode, long_name, 0);     
         ret = card_addDirEntry(drv_no, h_dir, long_name, p_unicode, &sStat, 0, 0, 0);
-    }
-    else
+    } else
         ret = card_addDirEntry(drv_no, h_dir, long_name, NULL, &sStat, 0, 0, 0);
+	
 	__lwp_wkspace_free(p_unicode);
 
 	if(ret!=CARDIO_ERROR_READY) {
@@ -2038,11 +2216,10 @@ s32 card_createFile(const char *filename,u32 create_mode,F_HANDLE *p_handle)
         FAT_RETURN(drv_no, ret);
     }
 
-#ifndef FAT_UPDATE_WHEN_FILE_CLOSE
     /* this can be moved to smCloseFile for speed */
-    sm_FATUpdate(drv_no);
-#endif
-    *p_handle = ((drv_no << 24) & 0xff000000) | ((p_list->id << 16) & 0xff0000) | (cluster & 0xffff);
+    card_fatUpdate(drv_no);
+
+    *p_handle = ((drv_no<<24)&0xff000000)|((p_list->id<<16)&0xff0000)|(cluster&0xffff);
     FAT_RETURN(drv_no, CARDIO_ERROR_READY);
 }
 
@@ -2287,7 +2464,7 @@ s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const u8* long_name,const u16* p_
                     SET_FAT_TBL(drv_no, new_cluster, (u16)empty_cluster);
                     SET_FAT_TBL(drv_no, empty_cluster, LAST_CLUSTER);
 
-                    sm_FATUpdate(drv_no);
+                    card_fatUpdate(drv_no);
                 }
             }
         } else
@@ -2378,6 +2555,79 @@ s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const u8* long_name,const u16* p_
     }
 
     return CARDIO_ERROR_READY;
+}
+
+s32 card_deleteDirEntry(s32 drv_no,F_HANDLE h_dir,const u8 *long_name)
+{
+	s32 ret;
+    u32 cluster;
+    u32 offset;
+    u8 file_info[32];
+
+    ret = card_findEntryInDirectory(drv_no, FIND_FILE_NAME, h_dir, (u32)long_name, file_info, &cluster, &offset);
+    if(ret!=CARDIO_ERROR_READY) return ret;
+
+    file_info[0] = 0xe5;    /* mark to deleted file */
+
+    ret = card_writeCluster(drv_no, cluster, offset, file_info, 32);
+    if(ret!=CARDIO_ERROR_READY) return ret;
+
+    for(;;) {
+        ret = card_findEntryInDirectory(drv_no, FIND_PREVIOUS, h_dir, (cluster<<16)|(offset&0xffff), file_info, &cluster, &offset);
+        if(ret!=CARDIO_ERROR_READY) {
+            if(ret==CARDIO_ERROR_NOTFOUND) break;
+            else return ret;
+        }
+
+        if(file_info[11]==0x0f) {
+            file_info[0] = 0xe5;
+
+            ret = card_writeCluster(drv_no, cluster, offset, file_info, 32);
+            if(ret!=CARDIO_ERROR_READY) return ret;
+        } else 
+            break;
+    }
+
+    return CARDIO_ERROR_READY;
+}
+
+s32 card_updateFAT(const char *p_volname)
+{
+	s32 ret;
+    u32 drv_no;
+    u8 *p_vol_name = (u8*)p_volname;
+
+    drv_no = card_getDriveNo(p_vol_name);
+    if(drv_no>=MAX_DRIVE)
+        return CARDIO_ERROR_INVALIDPARAM;
+
+    ret = card_preFAT(drv_no);
+    if(ret!=CARDIO_ERROR_READY)
+        FAT_RETURN(drv_no, ret);
+
+    _fatNoFATUpdate[drv_no] = FALSE;
+    card_fatUpdate(drv_no);
+    
+    FAT_RETURN(drv_no, CARDIO_ERROR_READY);
+}
+
+s32 card_unmountFAT(const char *p_devname)
+{
+	s32 ret;
+    u32 drv_no;
+    u8 *p_dev_name = (u8*)p_devname;
+#ifdef _CARDFAT_DEBUG
+	printf("card_unmountFAT(%s)\n",p_devname);
+#endif
+    drv_no = card_getDriveNo(p_dev_name);
+    if(drv_no>=MAX_DRIVE)
+        return CARDIO_ERROR_INVALIDPARAM;
+
+	LWP_MutexLock(&_fatLock[drv_no]);
+	if(_fatFlag[drv_no]==INITIALIZED)
+		ret = card_doUnmount(drv_no);
+
+	FAT_RETURN(drv_no,ret);
 }
 
 void card_registerCallback(u32 drv_no,void (*pFuncIN)(s32),void (*pFuncOUT)(s32))
