@@ -10,9 +10,9 @@
 #define INPUT_BUFFER_SIZE	(5*8192)
 #define OUTPUT_BUFFER_SIZE	8192
 
-static u32 thr_running = 0;
 static u32 curr_audio = 0;
 static u32 first_frame = 1;
+static u32 thr_running = FALSE;
 static boolean mp3_playing = FALSE;
 static u8 InputBuffer[INPUT_BUFFER_SIZE+MAD_BUFFER_GUARD];
 static u8 OutputBuffer[2][OUTPUT_BUFFER_SIZE] ATTRIBUTE_ALIGN(32);
@@ -36,6 +36,15 @@ struct _mp3source
 	u32 len;
 } mp3source;
 
+void MP3Player_Init()
+{
+	AUDIO_Init(NULL);
+	AUDIO_SetDSPSampleRate(AI_SAMPLERATE_48KHZ);
+	AUDIO_RegisterDMACallback(dma_callback);
+
+	LWP_InitQueue(&streamplay_queue);
+}
+
 s32 MP3Player_Play(const void *mp3stream, u32 len)
 {
 	if(thr_running==TRUE) return -1;
@@ -49,6 +58,18 @@ s32 MP3Player_Play(const void *mp3stream, u32 len)
 	return -1;
 }
 
+void MP3Player_Stop()
+{
+	if(!mp3_playing) return;
+
+	AUDIO_StopDMA();
+	AUDIO_RegisterDMACallback(NULL);
+
+	mp3_playing = FALSE;
+	LWP_WakeThread(streamplay_queue);
+	LWP_JoinThread(hstreamplay,NULL);
+}
+
 static void* streamplay(void *arg)
 {
 	u32 len;
@@ -57,12 +78,8 @@ static void* streamplay(void *arg)
 	const void *curr_streampos;
 
 	thr_running = TRUE;
-	
-	AUDIO_Init(NULL);
-	AUDIO_SetDSPSampleRate(AI_SAMPLERATE_48KHZ);
-	AUDIO_RegisterDMACallback(dma_callback);
-
-	LWP_InitQueue(&streamplay_queue);
+	curr_audio = 0;
+	first_frame = 1;
 
 restart:
 	curr_streampos = mp3source.mp3stream;
@@ -73,8 +90,6 @@ restart:
 	mad_synth_init(&Synth);
 	mad_timer_reset(&Timer);
 
-	first_frame = 1;
-	curr_audio = 0;
 	while(mp3_playing==TRUE) {
 		if(Stream.buffer==NULL || Stream.error==MAD_ERROR_BUFLEN) {
 			size_t ReadSize, Remaining;
@@ -95,7 +110,12 @@ restart:
 
 			Offset = (curr_streampos - mp3source.mp3stream);
 			if((Offset+ReadSize)>len) ReadSize = len - Offset;
-			if(ReadSize<=0) goto restart;
+			if(ReadSize<=0) {
+				mad_synth_finish(&Synth);
+				mad_frame_finish(&Frame);
+				mad_stream_finish(&Stream);
+				goto restart;
+			}
 
 			memcpy(ReadStart,curr_streampos,ReadSize);
 			curr_streampos += ReadSize;
@@ -151,8 +171,8 @@ restart:
 
 	AUDIO_StopDMA();
 	AUDIO_RegisterDMACallback(NULL);
-	LWP_CloseQueue(streamplay_queue);
 	
+	mp3_playing = FALSE;
 	thr_running = FALSE;
 	
 	return 0;
