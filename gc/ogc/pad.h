@@ -64,9 +64,10 @@ void PAD_ScanPads();
 u16 PAD_ButtonsUp(int pad);
 u16 PAD_ButtonsDown(int pad);
 u16 PAD_ButtonsHeld(int pad);
-
-
-
+s8 PAD_SubStickX(int pad);
+s8 PAD_SubStickY(int pad);
+s8 PAD_StickX(int pad);
+s8 PAD_StickY(int pad);
 
 /*+----------------------------------------------------------------------------------------------+*/
 

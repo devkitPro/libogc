@@ -1447,7 +1447,7 @@ void GX_ClearBoundingBox()
 void GX_SetChanCtrl(s32 channel,u8 enable,u8 ambsrc,u8 matsrc,u8 litmask,u8 diff_fn,u8 attn_fn)
 {
 	u32 difffn = (attn_fn==GX_AF_SPEC)?GX_DF_NONE:diff_fn;
-	u32 val = (matsrc&1)|(_SHIFTL(enable,1,1))|(_SHIFTL(litmask,2,4))|(_SHIFTL(ambsrc,6,1))|(_SHIFTL(difffn,7,2))|(_SHIFTL((GX_AF_NONE-attn_fn)>0,9,1))|(_SHIFTL((attn_fn&1),10,1))|(_SHIFTL((_SHIFTR(litmask,4,4)),11,4));
+	u32 val = (matsrc&1)|(_SHIFTL(enable,1,1))|(_SHIFTL(litmask,2,4))|(_SHIFTL(ambsrc,6,1))|(_SHIFTL(difffn,7,2))|(_SHIFTL(((GX_AF_NONE-attn_fn)>0),9,1))|(_SHIFTL((attn_fn&1),10,1))|(_SHIFTL((_SHIFTR(litmask,4,4)),11,4));
 	switch(channel) {
 		case GX_COLOR0:
 			GX_LOAD_XF_REG(0x100e,val);

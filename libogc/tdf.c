@@ -187,7 +187,7 @@ u32 TDF_GetTextureFromFile(TDFile *tdf,u32 id,TDTexture **tex)
 				image->fmt = deschead[id].imghead->fmt;
 
 				size = TDF_GetTextureSize(image->width,image->height,image->fmt);
-				image->data = memalign(size,32);
+				image->data = memalign(32,size);
 				if(image->data) fread(image->data,1,size,tdffile);
 			}
 
@@ -199,7 +199,7 @@ u32 TDF_GetTextureFromFile(TDFile *tdf,u32 id,TDTexture **tex)
 
 					size = palette->nitems;
 					fseek(tdffile,(long)deschead[id].palhead->data_offset,SEEK_SET);
-					palette->data = memalign(size*sizeof(u16),32);
+					palette->data = memalign(32,size*sizeof(u16));
 					if(palette->data) fread(palette->data,sizeof(u16),size,tdffile);
 				}
 			}

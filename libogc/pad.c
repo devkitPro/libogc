@@ -47,8 +47,8 @@ static u32 __pad_type[PAD_CHANMAX];
 static s8 __pad_origin[PAD_CHANMAX][12];
 static u32 __pad_cmdprobedevice[PAD_CHANMAX];
 
-static volatile keyinput Keys[4] = { {0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}};
-static PADStatus pad[4];
+static volatile keyinput Keys[PAD_CHANMAX] = { {0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}};
+static PADStatus padstatus[PAD_CHANMAX];
 
 static vu32* const _siReg = (u32*)0xCC006400;
 static vu16* const _viReg = (u16*)0xCC002000;
@@ -545,11 +545,11 @@ void PAD_ScanPads()
 {
 	s32 index;
 
-	PAD_Read(pad);
+	PAD_Read(padstatus);
 
 	for(index=0;index<4;index++) {
 		Keys[index].oldstate	= Keys[index].state;
-		Keys[index].state		= pad[index].button;
+		Keys[index].state		= padstatus[index].button;
 		Keys[index].up			= Keys[index].oldstate&~Keys[index].state;
 		Keys[index].down		= ~Keys[index].oldstate&Keys[index].state;
 	}			
@@ -574,3 +574,26 @@ u16 PAD_ButtonsHeld(int pad)
 	return Keys[pad].state;
 }
 
+s8 PAD_SubStickX(int pad)
+{
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
+	return padstatus[pad].substickX;
+}
+
+s8 PAD_SubStickY(int pad)
+{
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
+	return padstatus[pad].substickY;
+}
+
+s8 PAD_StickX(int pad)
+{
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
+	return padstatus[pad].stickX;
+}
+
+s8 PAD_StickY(int pad)
+{
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
+	return padstatus[pad].stickY;
+}

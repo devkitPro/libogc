@@ -1038,6 +1038,25 @@ void GX_GetGPStatus(u8 *overhi,u8 *underlow,u8 *readIdle,u8 *cmdIdle,u8 *brkpt);
 u32 GX_GetOverflowCount();
 void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1);
 
+#define GX_InitLightPosv(lo,vec) \
+    (GX_InitLightPos((lo), *(f32*)(vec), *((f32*)(vec)+1), *((f32*)(vec)+2)))
+
+#define GX_InitLightDirv(lo,vec) \
+    (GX_InitLightDir((lo), *(f32*)(vec), *((f32*)(vec)+1), *((f32*)(vec)+2)))
+
+#define GX_InitSpecularDirv(lo,vec) \
+    (GX_InitSpecularDir((lo), *(f32*)(vec), *((f32*)(vec)+1), *((f32*)(vec)+2)))
+
+#define GX_InitSpecularDirHAv(lo,vec0,vec1) \
+    (GX_InitSpecularDirHA((lo), \
+    *(f32*)(vec0), *((f32*)(vec0)+1), *((f32*)(vec0)+2), \
+    *(f32*)(vec1), *((f32*)(vec1)+1), *((f32*)(vec1)+2)))
+
+#define GX_InitLightShininess(lobj, shininess) \
+    (GX_InitLightAttn(lobj, 0.0F, 0.0F, 1.0F,  \
+                    (shininess)/2.0F, 0.0F,   \
+                    1.0F-(shininess)/2.0F ))
+
 #ifdef __cplusplus
    }
 #endif /* __cplusplus */
