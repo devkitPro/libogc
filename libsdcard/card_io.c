@@ -65,7 +65,7 @@ static u32 _ioPageSize[MAX_DRIVE];
 static u32 _ioFlag[MAX_DRIVE];
 static u32 _ioError[MAX_DRIVE];
 static sysalarm _ioAlarm[MAX_DRIVE];
-static sem_t _ioSema[MAX_DRIVE];
+static lwpq_t _ioWaitIO[MAX_DRIVE];
 static boolean _ioCardInserted[MAX_DRIVE];
 
 static u8 _ioResponse[MAX_DRIVE][128];
@@ -155,12 +155,26 @@ static u16 __make_crc16(void *buffer,u32 len)
 static void __card_alarmcallback(sysalarm *alarm)
 {
 	u32 i;
+	u32 level;
 
 	i=0;
 	while(i<MAX_DRIVE && (alarm!=&_ioAlarm[i]))  i++;
 	if(i>=MAX_DRIVE) return;
 
-	LWP_SemPost(_ioSema[i]);
+	_CPU_ISR_Disable(level);
+	LWP_WakeThread(_ioWaitIO[i]);
+	_CPU_ISR_Restore(level);
+}
+
+static __inline__ void __card_waitio(s32 drv_no,const struct timespec *tb)
+{
+	u32 level;
+
+	SYS_SetAlarm(&_ioAlarm[drv_no],tb,__card_alarmcallback);
+
+	_CPU_ISR_Disable(level);
+	LWP_SleepThread(_ioWaitIO[drv_no]);
+	_CPU_ISR_Restore(level);
 }
 
 static u32 __card_checktimeout(u32 startT,u32 timeout)
@@ -185,7 +199,7 @@ static u32 __exi_unlock(u32 chn,u32 dev)
 	return 1;
 }
 
-static void __exi_wait(s32 drv_no)
+static __inline__ void __exi_wait(s32 drv_no)
 {
 	u32 ret;
 	u32 level;
@@ -671,8 +685,7 @@ static s32 __card_dataread(s32 drv_no,void *buf,u32 len)
 	/* setalarm, wait */
 	tb.tv_sec = 0;
 	tb.tv_nsec = 1*TB_NSPERUS;
-	SYS_SetAlarm(&_ioAlarm[drv_no],&tb,__card_alarmcallback);
-	LWP_SemWait(_ioSema[drv_no]);
+	__card_waitio(drv_no,&tb);
 
 	res[0] = res[1] = _ioClrFlag;
 	if(EXI_ImmEx(drv_no,res,2,EXI_READWRITE)==0) {
@@ -781,8 +794,7 @@ static s32 __card_datareadfinal(s32 drv_no,void *buf,u32 len)
 	/* setalarm, wait */
 	tb.tv_sec = 0;
 	tb.tv_nsec = 1*TB_NSPERUS;
-	SYS_SetAlarm(&_ioAlarm[drv_no],&tb,__card_alarmcallback);
-	LWP_SemWait(_ioSema[drv_no]);
+	__card_waitio(drv_no,&tb);
 
 	EXI_Deselect(drv_no);
 	EXI_Unlock(drv_no);
@@ -831,8 +843,7 @@ static s32 __card_datawrite(s32 drv_no,void *buf,u32 len)
 	/* setalarm, wait */
 	tb.tv_sec = 0;
 	tb.tv_nsec = 1*TB_NSPERUS;
-	SYS_SetAlarm(&_ioAlarm[drv_no],&tb,__card_alarmcallback);
-	LWP_SemWait(_ioSema[drv_no]);
+	__card_waitio(drv_no,&tb);
 
 	ret = CARDIO_ERROR_READY;
 	if(EXI_ImmEx(drv_no,&crc,2,EXI_WRITE)==0) ret = CARDIO_ERROR_IOERROR;
@@ -879,8 +890,7 @@ static s32 __card_multidatawrite(s32 drv_no,void *buf,u32 len)
 	/* setalarm, wait */
 	tb.tv_sec = 0;
 	tb.tv_nsec = 1*TB_NSPERUS;
-	SYS_SetAlarm(&_ioAlarm[drv_no],&tb,__card_alarmcallback);
-	LWP_SemWait(_ioSema[drv_no]);
+	__card_waitio(drv_no,&tb);
 
 	ret = CARDIO_ERROR_READY;
 	if(EXI_ImmEx(drv_no,&crc,2,EXI_WRITE)==0) ret = CARDIO_ERROR_IOERROR;
@@ -1268,7 +1278,7 @@ void card_initIODefault()
 		_ioCardInserted[i] = FALSE;
 		_ioFlag[i] = NOT_INITIALIZED;
 		SYS_CreateAlarm(&_ioAlarm[i]);
-		LWP_SemInit(&_ioSema[i],0,1);
+		LWP_InitQueue(&_ioWaitIO[i]);
 		LWP_InitQueue(&_ioEXILock[i]);
 	}
 }

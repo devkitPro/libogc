@@ -220,6 +220,7 @@ extern void __MaskIrq(u32);
 
 extern void udelay(int us);
 extern unsigned int timespec_to_interval(const struct timespec *);
+extern unsigned long long timespec_to_ticks(const struct timespec *);
 
 /* new functions */
 #define bba_select()		EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_2,EXI_SPEED32MHZ)
@@ -1143,7 +1144,7 @@ err_t bba_init(struct netif *dev)
 
 	tb.tv_sec = ARP_TMR_INTERVAL/TB_MSPERSEC;
 	tb.tv_nsec = 0;
-	net_arp_ticks = timespec_to_interval(&tb);
+	net_arp_ticks = timespec_to_ticks(&tb);
 	__lwp_wd_initialize(&arp_time_cntrl,__arp_timer,NULL);
 	__lwp_wd_insert_ticks(&arp_time_cntrl,net_arp_ticks);
 

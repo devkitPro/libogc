@@ -166,9 +166,9 @@ typedef void (*apimsg_decode)(struct apimsg_msg *);
 
 static u32 g_netinitiated = 0;
 static u32 tcpiplayer_inited = 0;
-static u32 net_tcp_ticks = 0;
-static u32 net_dhcpcoarse_ticks = 0;
-static u32 net_dhcpfine_ticks = 0;
+static u64 net_tcp_ticks = 0;
+static u64 net_dhcpcoarse_ticks = 0;
+static u64 net_dhcpfine_ticks = 0;
 static wd_cntrl tcp_timer_cntrl;
 static wd_cntrl dhcp_coarsetimer_cntrl;
 static wd_cntrl dhcp_finetimer_cntrl;
@@ -241,6 +241,7 @@ static err_t net_callback(void (*)(void *),void *);
 static void* net_thread(void *);
 
 extern unsigned int timespec_to_interval(const struct timespec *);
+extern unsigned long long timespec_to_ticks(const struct timespec *);
 
 /* low level stuff */
 static void __dhcpcoarse_timer(void *arg)
@@ -1386,7 +1387,7 @@ static void* net_thread(void *arg)
 
 	tb.tv_sec = 0;
 	tb.tv_nsec = TCP_TMR_INTERVAL*TB_NSPERMS;
-	net_tcp_ticks = timespec_to_interval(&tb);
+	net_tcp_ticks = timespec_to_ticks(&tb);
 	__lwp_wd_initialize(&tcp_timer_cntrl,__tcp_timer,NULL);
 	
 	LWP_SemPost(sem);
@@ -1553,14 +1554,16 @@ u32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 			//setup coarse timer
 			tb.tv_sec = DHCP_COARSE_TIMER_SECS;
 			tb.tv_nsec = 0;
-			net_dhcpcoarse_ticks = timespec_to_interval(&tb);
+			net_dhcpcoarse_ticks = timespec_to_ticks(&tb);
 			__lwp_wd_initialize(&dhcp_coarsetimer_cntrl,__dhcpcoarse_timer,NULL);
+			__lwp_wd_insert_ticks(&dhcp_coarsetimer_cntrl,net_dhcpcoarse_ticks);
 			
 			//setup fine timer
 			tb.tv_sec = 0;
 			tb.tv_nsec = DHCP_FINE_TIMER_MSECS*TB_NSPERMS;
-			net_dhcpfine_ticks = timespec_to_interval(&tb);
+			net_dhcpfine_ticks = timespec_to_ticks(&tb);
 			__lwp_wd_initialize(&dhcp_finetimer_cntrl,__dhcpfine_timer,NULL);
+			__lwp_wd_insert_ticks(&dhcp_finetimer_cntrl,net_dhcpfine_ticks);
 
 			//now start dhcp client
 			dhcp_start(pnet);
