@@ -198,7 +198,7 @@ a lot of data that needs to be copied, this should be set high. */
 #define MEMP_DEBUG                      DBG_OFF
 #define SYS_DEBUG                       DBG_OFF
 #define RAW_DEBUG                       DBG_OFF
-#define TCP_DEBUG                       DBG_OFF
+#define TCP_DEBUG                       DBG_ON
 #define TCP_INPUT_DEBUG                 DBG_OFF
 #define TCP_FR_DEBUG                    DBG_OFF
 #define TCP_RTO_DEBUG                   DBG_OFF

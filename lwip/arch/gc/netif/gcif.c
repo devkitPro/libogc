@@ -381,6 +381,7 @@ static u32 __bba_exi_wait()
 	_CPU_ISR_Disable(level);
 	do {
 		if((ret=EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,__bba_exi_unlock))==1) break;
+		_CPU_ISR_Flash(level);
 		LWP_SleepThread(wait_exi_queue);
 	} while(ret==0);
 	_CPU_ISR_Restore(level);
@@ -409,7 +410,9 @@ static u32 __bba_tx_stop(struct bba_priv *priv)
 	_CPU_ISR_Disable(level);
 	state = priv->state;
 	while(priv->state==ERR_TXPENDING) {
+		_CPU_ISR_Restore(level);
 		LWP_SleepThread(wait_tx_queue);
+		_CPU_ISR_Disable(level);
 	}
 	priv->state = ERR_TXPENDING;
 	_CPU_ISR_Restore(level);
@@ -601,7 +604,7 @@ static u32 __bba_link_postrxsub1()
 	if(cur_rcv_postimmlen) bba_outsdata(cur_rcv_postbuffer+cur_rcv_postdmalen,cur_rcv_postimmlen);
 	bba_deselect();
 
-	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)&~BBA_NCRA_ST0));		//&~BBA_NCRA_ST0
+	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)&~BBA_NCRA_ST0));
 
 	bba_out8(BBA_IR,BBA_IR_RI);
 	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
@@ -617,7 +620,7 @@ static u32 __bba_link_postrxsub0()
 
 	if(!__linkstate()) {
 		LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_postrxsub0(error link state)\n"));
-		__bba_tx_wake(priv);
+		priv->state = ERR_OK;
 		return ERR_ABRT;
 	}
 
