@@ -36,7 +36,7 @@ cc1 -E %{traditional|ftraditional|traditional-cpp:-traditional-cpp}
 %{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}} %1 %{!Q:-quiet} -dumpbase %B %{d*} %{m*} %{a*} %{c|S:%{o*:-auxbase-strip %*}%{!o*:-auxbase %b}}%{!c:%{!S:-auxbase %b}} %{g*} %{O*} %{W*&pedantic*} %{w} %{std*} %{ansi} %{v:-version} %{pg:-p} %{p} %{f*} %{undef} %{Qn:-fno-ident} %{--help:--help} %{--target-help:--target-help} %{!fsyntax-only:%{S:%W{o*}%{!o*:-o %b.s}}} %{fsyntax-only:-o %j} %{-param*}
 
 *cc1plus:
-
+%{mogc|mvgc: %(cc1plus_os_ogc)}
 
 *link_gcc_c_sequence:
 %G %L %G
@@ -331,8 +331,9 @@ crtend.o%s
 
 *link_os_default:
 
+
 *cc1_os_ogc:
--ffunction-sections -fdata-sections
+
 
 *cc1_endian_big:
 
@@ -342,6 +343,9 @@ crtend.o%s
 
 *cc1_endian_default:
 %(cc1_endian_big)
+
+*cc1plus_os_ogc:
+
 
 *cpp_os_gcn:
 
