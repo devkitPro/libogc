@@ -49,9 +49,10 @@ extern void __MaskIrq(u32);
 ARCallback AR_RegisterCallback(ARCallback callback)
 {
 	u32 level;
-	
-	ARCallback old = __ARDmaCallback;
+	ARCallback old;
+
 	_CPU_ISR_Disable(level);
+	old = __ARDmaCallback;
 	__ARDmaCallback = callback;
 	_CPU_ISR_Restore(level);
 	return old;

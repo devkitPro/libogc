@@ -38,12 +38,33 @@ struct _dvdcmdblk {
 	void *usrdata;
 };
 
-typedef void (*DVDCallback)(u32);
+typedef struct _dvddrvinfo dvddrvinfo;
+
+struct _dvddrvinfo {
+	u16 rev_level;
+	u16 dev_code;
+	u32 rel_date;
+};
+
+typedef struct _dvdfileinfo dvdfileinfo;
+
+typedef void (*dvdcallback)(s32 result,dvdfileinfo *info);
+
+struct _dvdfileinfo {
+	dvdcmdblk block;
+	u32 addr;
+	u32 len;
+	dvdcallback cb;
+};
 
 void DVD_Init();
-s32 DVD_Read(void *pDst,s32 nLen,u32 nOffset);
-s32 DVD_ReadId(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb);
 void DVD_Reset();
+s32 DVD_Inquiry(dvdcmdblk *block,dvddrvinfo *info);
+s32 DVD_InquiryAsync(dvdcmdblk *block,dvddrvinfo *info,dvdcbcallback cb);
+s32 DVD_ReadId(dvdcmdblk *block,dvddiskid *id);
+s32 DVD_ReadIDAsync(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb);
+s32 DVD_ReadPrio(dvdfileinfo *info,void *buf,u32 len,u32 offset,s32 prio);
+s32 DVD_SeekPrio(dvdfileinfo *info,u32 offset,s32 prio);
 
 #ifdef __cplusplus
    }

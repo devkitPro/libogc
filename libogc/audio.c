@@ -195,9 +195,10 @@ u32 AUDIO_GetStreamSampleRate()
 AIDCallback AUDIO_RegisterDMACallback(AIDCallback callback)
 {
 	u32 level;
-
-	AIDCallback old = __AID_Callback;
+	AIDCallback old;
+	
 	_CPU_ISR_Disable(level);
+	old = __AID_Callback;
 	__AID_Callback = callback;
 	_CPU_ISR_Restore(level);
 	return old;
