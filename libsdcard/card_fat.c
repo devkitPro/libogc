@@ -2945,7 +2945,7 @@ s32 card_updateFAT(const char *p_volname)
 
 s32 card_unmountFAT(const char *p_devname)
 {
-	s32 ret;
+	s32 ret = CARDIO_ERROR_READY;
     u32 drv_no;
     u8 *p_dev_name = (u8*)p_devname;
 #ifdef _CARDFAT_DEBUG
