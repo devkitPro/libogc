@@ -602,7 +602,7 @@ static err_t __bba_post_send()
 				buf += tmp->len;
 			}
 
-			cur_rcv_postlen = p->tot_len;
+			cur_rcv_postlen = q->tot_len;
 			ret = __bba_link_postrxsub0();
 			pbuf_free(q);
 		}
