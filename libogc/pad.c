@@ -541,7 +541,7 @@ void PAD_ControlMotor(s32 chan,u32 cmd)
 }
 
 
-void PAD_ScanPads()
+void PAD_ScanPads(u32 dummy)
 {
 	s32 index;
 

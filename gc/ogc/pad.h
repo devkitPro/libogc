@@ -60,7 +60,7 @@ u32 PAD_Read(PADStatus *status);
 u32 PAD_Reset(u32 mask);
 void PAD_ControlMotor(s32 chan,u32 cmd);
 void PAD_SetSpec(u32 spec);
-void PAD_ScanPads();
+void PAD_ScanPads(u32 dummy);
 u16 PAD_ButtonsUp(int pad);
 u16 PAD_ButtonsDown(int pad);
 u16 PAD_ButtonsHeld(int pad);
