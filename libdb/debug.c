@@ -7,7 +7,7 @@
 #include "processor.h"
 #include "spinlock.h"
 #include "lwp.h"
-#include "exception.h"
+#include "context.h"
 #include "cache.h"
 #include "network.h"
 #include "debug.h"
