@@ -13,7 +13,11 @@
    extern "C" {
 #endif /* __cplusplus */
 
+typedef void (*SDCCallback)(s32 chn,s32 result);
+
+void SDCARD_Init();
 s32 SDCARD_Reset(s32 chn);
+s32 SDCARD_Mount(s32 chn,SDCCallback detach_cb);
 
 #ifdef __cplusplus
    }
