@@ -10,6 +10,7 @@
 #include "sys_state.h"
 #include "lwp_threads.h"
 #include "lwp_priority.h"
+#include "lwp_watchdog.h"
 #include "lwp_wkspace.h"
 #include "libogcsys/timesupp.h"
 #include "system.h"
@@ -44,6 +45,7 @@ struct _sramcntrl {
 } sramcntrl ATTRIBUTE_ALIGN(32);
 
 static u32 system_initialized = 0;
+static sysalarm *system_alarm = NULL;
 
 static void *__sysarenalo = NULL;
 static void *__sysarenahi = NULL;
@@ -105,7 +107,7 @@ static void __sys_alarmhandler(void *arg)
 	__lwp_thread_dispatchdisable();
 	if(alarm) {
 		if(alarm->alarmhandler) alarm->alarmhandler(alarm);
-		if(alarm->periodic) __lwp_wd_insert_ticks(&alarm->handle,alarm->periodic);
+		if(alarm->periodic) __lwp_wd_insert_ticks(alarm->handle,alarm->periodic);
 	}
 	__lwp_thread_dispatchunnest();
 }
@@ -576,11 +578,15 @@ void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)
 void SYS_CreateAlarm(sysalarm *alarm)
 {
 	alarm->alarmhandler = NULL;
+	alarm->ticks = 0;
+	alarm->start_per = 0;
+	alarm->periodic = 0;
 }
 
 void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb)
 {
-	u32 level;
+	u32 found,level;
+	sysalarm *ptr;
 
 	alarm->alarmhandler = cb;
 	alarm->ticks = timespec_to_ticks(tp);
@@ -588,15 +594,34 @@ void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb)
 	alarm->periodic = 0;
 	alarm->start_per = 0;
 
+	found = 0;
+
 	_CPU_ISR_Disable(level);
-	__lwp_wd_initialize(&alarm->handle,__sys_alarmhandler,alarm);
-	__lwp_wd_insert_ticks(&alarm->handle,alarm->ticks);
+	ptr = system_alarm;
+	while(ptr && ptr->next && ptr!=alarm) ptr = ptr->next;
+	if(ptr && ptr==alarm) found = 1;
+	else {
+		alarm->prev = NULL;
+		alarm->next = NULL;
+		if(ptr) {
+			alarm->prev = ptr;
+			ptr->next = alarm;
+		} else
+			system_alarm = ptr;
+	}
 	_CPU_ISR_Restore(level);
+
+	if(!found) alarm->handle = __lwp_wkspace_allocate(sizeof(wd_cntrl));
+	if(alarm->handle) {
+		__lwp_wd_initialize(alarm->handle,__sys_alarmhandler,alarm);
+		__lwp_wd_insert_ticks(alarm->handle,alarm->ticks);
+	}
 }
 
 void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb)
 {
-	u32 level;
+	u32 found,level;
+	sysalarm *ptr;
 
 	alarm->start_per = timespec_to_ticks(tp_start);
 	alarm->periodic = timespec_to_ticks(tp_period);
@@ -604,30 +629,56 @@ void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const 
 
 	alarm->ticks = 0;
 
+	found = 0;
+
 	_CPU_ISR_Disable(level);
-	__lwp_wd_initialize(&alarm->handle,__sys_alarmhandler,alarm);
-	__lwp_wd_insert_ticks(&alarm->handle,alarm->start_per);
+	ptr = system_alarm;
+	while(ptr && ptr->next && ptr!=alarm) ptr = ptr->next;
+	if(ptr && ptr==alarm) found = 1;
+	else {
+		alarm->prev = NULL;
+		alarm->next = NULL;
+		if(ptr) {
+			alarm->prev = ptr;
+			ptr->next = alarm;
+		} else
+			system_alarm = ptr;
+	}
 	_CPU_ISR_Restore(level);
+
+	if(!found) alarm->handle = __lwp_wkspace_allocate(sizeof(wd_cntrl));
+	if(alarm->handle) {
+		__lwp_wd_initialize(alarm->handle,__sys_alarmhandler,alarm);
+		__lwp_wd_insert_ticks(alarm->handle,alarm->start_per);
+	}
 }
 
 void SYS_RemoveAlarm(sysalarm *alarm)
 {
 	u32 level;
+	sysalarm *prev,*next;
 
+	alarm->alarmhandler = NULL;
 	alarm->ticks = 0;
 	alarm->periodic = 0;
 	alarm->start_per = 0;
 	
 	_CPU_ISR_Disable(level);
-	__lwp_wd_remove(&alarm->handle);
+	prev = alarm->prev;
+	next = alarm->next;
+	prev->next = next;
+	next->prev = prev;
 	_CPU_ISR_Restore(level);
+
+	__lwp_wd_remove(alarm->handle);
+	__lwp_wkspace_free(alarm->handle);
 }
 
 void SYS_CancelAlarm(sysalarm *alarm)
 {
 	u32 level;
 	_CPU_ISR_Disable(level);
-	__lwp_wd_remove(&alarm->handle);
+	if(alarm->handle) __lwp_wd_remove(alarm->handle);
 	_CPU_ISR_Restore(level);
 }
 

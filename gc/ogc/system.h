@@ -3,7 +3,6 @@
 
 #include <gctypes.h>
 #include <time.h>
-#include "lwp_watchdog.h"
 
 #define R_RESET							*(vu32*)0xCC003024
 
@@ -63,10 +62,13 @@ typedef void (*alarmcallback)(sysalarm *alarm);
 
 struct _sysalarm {
 	alarmcallback alarmhandler;
-	wd_cntrl handle;
+	void* handle;
 	u64 ticks;
 	u64 periodic;
 	u64 start_per;
+
+	struct _sysalarm *prev;
+	struct _sysalarm *next;
 };
 
 typedef void (*resetcallback)(void);

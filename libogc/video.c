@@ -26,6 +26,40 @@
 #define VI_REGCHANGE(_reg)	\
 	((u64)0x01<<(63-_reg))
 
+typedef struct _horVer {
+	u16 dispPosX;
+	u16 dispPosY;
+	u16 dispSizeX;
+	u16 dispSizeY;
+	u16 adjustedDispPosX;
+	u16 adjustedDispPosY;
+	u16 adjustedDispSizeY;
+	u16 adjustedPanPosY;
+	u16 adjustedPanSizeY;
+	u16 fbSizeX;
+	u16 fbSizeY;
+	u16 panPosX;
+	u16 panPosY;
+	u16 panSizeX;
+	u16 panSizeY;
+	u32 fbMode;	
+	u32 nonInter;	
+	u32 tv;
+	u8 wordPerLine;
+	u8 std;
+	u8 wpl;
+	void *bufAddr;
+	u32 tfbb;
+	u32 bfbb;
+	u8 xof;
+	s32 black;
+	s32 threeD;
+	void *rbufAddr;
+	u32 rtfbb;
+	u32 rbfbb;
+	const struct _timing *timing;
+} horVer;
+
 GXRModeObj TVNtsc480IntDf = 
 {
     VI_TVMODE_NTSC_INT,     // viDisplayMode
@@ -398,6 +432,14 @@ GXRModeObj TVPal574IntDfScale =
 	}
 };
 
+static const u16 taps[26] = {
+	0x01F0,0x01DC,0x01AE,0x0174,0x0129,0x00DB,
+	0x008E,0x0046,0x000C,0x00E2,0x00CB,0x00C0,
+	0x00C4,0x00CF,0x00DE,0x00EC,0x00FC,0x0008,
+	0x000F,0x0013,0x0013,0x000F,0x000C,0x0008,
+	0x0001,0x0000                              
+};
+
 static const struct _timing {
 	u8 equ;
 	u16 acv;
@@ -473,48 +515,6 @@ static const struct _timing {
 	}
 };
 
-static const u16 taps[26] = {
-	0x01F0,0x01DC,0x01AE,0x0174,0x0129,0x00DB,
-	0x008E,0x0046,0x000C,0x00E2,0x00CB,0x00C0,
-	0x00C4,0x00CF,0x00DE,0x00EC,0x00FC,0x0008,
-	0x000F,0x0013,0x0013,0x000F,0x000C,0x0008,
-	0x0001,0x0000                              
-};
-
-static struct _horVer {
-	u16 dispPosX;
-	u16 dispPosY;
-	u16 dispSizeX;
-	u16 dispSizeY;
-	u16 adjustedDispPosX;
-	u16 adjustedDispPosY;
-	u16 adjustedDispSizeY;
-	u16 adjustedPanPosY;
-	u16 adjustedPanSizeY;
-	u16 fbSizeX;
-	u16 fbSizeY;
-	u16 panPosX;
-	u16 panPosY;
-	u16 panSizeX;
-	u16 panSizeY;
-	u32 fbMode;	
-	u32 nonInter;	
-	u32 tv;
-	u8 wordPerLine;
-	u8 std;
-	u8 wpl;
-	void *bufAddr;
-	u32 tfbb;
-	u32 bfbb;
-	u8 xof;
-	s32 black;
-	s32 threeD;
-	void *rbufAddr;
-	u32 rtfbb;
-	u32 rbfbb;
-	const struct _timing *timing;
-} HorVer;
-
 static u16 regs[60];
 static u16 shdw_regs[60];
 static u32 encoderType,fbSet = 0;
@@ -526,6 +526,7 @@ static u64 changed,shdw_changed;
 static vu32 retraceCount;
 static const struct _timing *currTiming;
 static lwpq_t video_queue;
+static horVer HorVer;
 static VIRetraceCallback preRetraceCB = NULL;
 static VIRetraceCallback postRetraceCB = NULL;
 
