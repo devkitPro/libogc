@@ -139,20 +139,13 @@ void c_default_exceptionhandler(frame_context *pCtx)
 			&(pAdd[i]),pAdd[i], pAdd[i+1], pAdd[i+2], pAdd[i+3]);
 	}
 
-	PAD pad;
+	PADStatus pads[PAD_CHANMAX];
 
-	while(1)
-	{
-		PAD_ReadState(&pad,0);
-
-		if(pad.Digital.Start) {
-
+	while(1) {
+		PAD_Read(pads);
+		if(pads[PAD_CHAN0].button&PAD_BUTTON_START) {
 			void (*reload)() = (void(*)())0x80001800;
-
 			reload();
-
 		}
-
-
-	};
+	}
 }

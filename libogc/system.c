@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <malloc.h>
 #include "asm.h"
 #include "irq.h"
 #include "exi.h"
@@ -13,8 +14,6 @@
 #include "lwp_watchdog.h"
 #include "lwp_wkspace.h"
 #include "system.h"
-
-//#define _SYS_DEBUG
 
 #define SYSMEM_SIZE				0x1800000
 #define KERNEL_HEAP				(1024*1024)
@@ -37,15 +36,13 @@
 #define _SHIFTR(v, s, w)	\
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
+static u32 system_initialized = 0;
+
 static void *__sysarenalo = NULL;
 static void *__sysarenahi = NULL;
 
 static resetcallback __RSWCallback = NULL;
 static sysalarm *system_alarms = NULL;
-
-#ifdef _SYS_DEBUG
-static void *__dbgframebuffer = NULL;
-#endif
 
 static vu32* const _piReg = (u32*)0xCC003000;
 static vu16* const _memReg = (u16*)0xCC004000;
@@ -61,8 +58,8 @@ extern void __heap_init();
 extern void __exception_init();
 extern void __systemcall_init();
 extern void __decrementer_init();
-extern void __pad_init();
 extern void __exi_init();
+extern void __si_init();
 extern void __irq_init();
 extern void __lwp_start_multitasking();
 extern void __timesystem_init();
@@ -76,9 +73,6 @@ extern void __config48Mb();
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
 
-#ifdef _SYS_DEBUG
-extern void console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stride);
-#endif
 extern unsigned int gettick();
 extern int clock_gettime(struct timespec *tp);
 extern unsigned int timespec_to_interval(const struct timespec *time);
@@ -118,26 +112,6 @@ static void __RSWHandler()
 		__RSWCallback();
 	_piReg[0] = 2;
 }
-
-
-#ifdef _SYS_DEBUG
-static void __dbgconsole_init()		// for debugging purpose where we need it from the begining
-{
-	u32 arLo;
-	const u32 fbsize = 640*576*sizeof(u16);
-
-	arLo = (u32)SYS_GetArenaLo();
-	arLo = (arLo+31)&~31;
-	SYS_SetArenaLo((void*)(arLo+fbsize));
-
-	__dbgframebuffer = MEM_K0_TO_K1(arLo);
-	console_init(__dbgframebuffer,20,20,640,576,1280);
-
-	VIDEO_Init(VIDEO_AUTODETECT);
-	VIDEO_SetFrameBuffer(VIDEO_FRAMEBUFFER_1, MEM_VIRTUAL_TO_PHYSICAL(__dbgframebuffer));
-	VIDEO_SetFrameBuffer(VIDEO_FRAMEBUFFER_2, MEM_VIRTUAL_TO_PHYSICAL(__dbgframebuffer+1280));
-}
-#endif
 
 static void __lowmem_init()
 {
@@ -449,11 +423,12 @@ u32 __SYS_GetRTC(u32 *gctime)
 
 void SYS_Init()
 {
+	if(system_initialized) return;
+
+	system_initialized = 1;
+
 	__lowmem_init();
 	__lwp_wkspace_init(KERNEL_HEAP);
-#ifdef _SYS_DEBUG
-	__dbgconsole_init();
-#endif
 	__libc_init(1);
 	__sys_state_init();
 	__lwp_priority_init();
@@ -463,12 +438,11 @@ void SYS_Init()
 	__decrementer_init();
 	__irq_init();
 	__exi_init();
+	__si_init();
 	__sram_init();
 	__lwp_sys_init();
 	__dsp_bootstrap();
 	__memprotect_init();
-	__pad_init();
-	VIDEO_Init();
 	__memlock_init();
 	__timesystem_init();
 	DisableWriteGatherPipe();
@@ -699,4 +673,28 @@ void SYS_ResetPMC()
 void SYS_DumpPMC()
 {
 	printf("<%d load/stores / %d miss cycles / %d cycles / %d instructions>\n",mfpmc1(),mfpmc2(),mfpmc3(),mfpmc4());
+}
+
+void SYS_SetWirelessID(u32 chan,u32 id)
+{
+	u16 *ex_base,write;
+
+	write = 0;
+	ex_base = (u16*)__SYS_LockSramEx();
+	if(ex_base[14+chan]!=(u16)id) {
+		ex_base[14+chan] = id;
+		write = 1;
+	}
+	__SYS_UnlockSramEx(write);
+}
+
+u32 SYS_GetWirelessID(u32 chan)
+{
+	u16 *ex_base,id;
+
+	id = 0;
+	ex_base = (u16*)__SYS_LockSramEx();
+	id = ex_base[14+chan];
+	__SYS_UnlockSramEx(0);
+	return id;
 }

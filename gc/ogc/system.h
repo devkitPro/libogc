@@ -79,6 +79,8 @@ void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb);
 void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb);
 void SYS_RemoveAlarm(sysalarm *alarm);
 void SYS_CancelAlarm(sysalarm *alarm);
+void SYS_SetWirelessID(u32 chan,u32 id);
+u32 SYS_GetWirelessID(u32 chan);
 
 #ifdef __cplusplus
    }
