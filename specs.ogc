@@ -120,7 +120,7 @@ collect2
 crtsavres.o%s
 
 *lib_gcn:
---start-group -lads -lc -lstubs --end-group
+--start-group -lads -lc -lgclibstubs --end-group
 
 *lib_ogc:
 --start-group -logcsys -lc -logc --end-group

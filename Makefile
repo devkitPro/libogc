@@ -49,7 +49,7 @@ MADLIB		:= $(LIBDIR)/libmad
 DBLIB		:= $(LIBDIR)/libdb
 SDCARDLIB	:= $(LIBDIR)/libsdcard
 GCSYSLIB	:= $(LIBDIR)/libogcsys
-STUBSLIB	:= $(LIBDIR)/libstubs
+STUBSLIB	:= $(LIBDIR)/libgclibstubs
 GCN_CRT0	:= $(LIBDIR)/gcn_crt0
 #---------------------------------------------------------------------------------
 DEFINCS		:= -I$(BASEDIR) -I$(BASEDIR)/gc

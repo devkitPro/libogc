@@ -46,7 +46,7 @@ Open File Line7=6584
 Open File Window Pos7=0,1,-1,-1,-4,-23,176,176,1078,545
 Open File8=
 [File View]
-Current Select=Project Files\specs.ogc
+Current Select=Project Files
 Scroll Position=0
 [Group]
 0=libogcsys
