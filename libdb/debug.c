@@ -395,7 +395,7 @@ static void putdbgchar(s32 ch)
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	if(tx_pos<UIP_BUFSIZE) {
+	if(tx_pos<TCPBUFMAX) {
 		tx_buffer[tx_pos++] = (u8)ch;
 		tx_buffer[tx_pos] = 0;
 	}
@@ -520,6 +520,7 @@ static void handle_query()
 void c_debug_handler(frame_context *ctx)
 {
 	u8* ptr;
+	s32 thrid;
 	u32 addr,len,msr;
 	u32 sigval,res;
 	frame_context *pctx = ctx;
@@ -568,19 +569,23 @@ void c_debug_handler(frame_context *ctx)
 				case 'H':
 					if(remcomInBuffer[2]=='-') dbg_currthr = __lwp_getcurrentid();
 					else dbg_currthr = strtoul(remcomInBuffer+2,0,16);
-					pctx = __lwp_getthrcontext(dbg_currthr);
+					if(dbg_currthr==__lwp_getcurrentid()) pctx = ctx;
+					else pctx = __lwp_getthrcontext(dbg_currthr);
 					strcpy(remcomOutBuffer,"OK");
 					break;
 				case 'g':
 					ptr = remcomOutBuffer;
-					ptr = mem2hex((u8*)ctx->GPR,ptr,32*4);
-					ptr = mem2hex((u8*)ctx->FPR,ptr,32*8);
-					ptr = mem2hex((u8*)&ctx->SRR0,ptr,4);
-					ptr = mem2hex((u8*)&ctx->MSR,ptr,4);
-					ptr = mem2hex((u8*)&ctx->CR,ptr,4);
-					ptr = mem2hex((u8*)&ctx->LR,ptr,4);
-					ptr = mem2hex((u8*)&ctx->CTR,ptr,4);
-					ptr = mem2hex((u8*)&ctx->XER,ptr,4);
+					ptr = mem2hex((u8*)pctx->GPR,ptr,32*4);
+					ptr = mem2hex((u8*)pctx->FPR,ptr,32*8);
+					if(pctx==ctx) 
+						ptr = mem2hex((u8*)&pctx->SRR0,ptr,4);
+					else 
+						ptr = mem2hex((u8*)&pctx->LR,ptr,4);
+					ptr = mem2hex((u8*)&pctx->MSR,ptr,4);
+					ptr = mem2hex((u8*)&pctx->CR,ptr,4);
+					ptr = mem2hex((u8*)&pctx->LR,ptr,4);
+					ptr = mem2hex((u8*)&pctx->CTR,ptr,4);
+					ptr = mem2hex((u8*)&pctx->XER,ptr,4);
 					break;
 				case 'm':
 					ptr = &remcomInBuffer[1];
@@ -608,6 +613,12 @@ void c_debug_handler(frame_context *ctx)
 					dbg_active = 0;
 					mtmsr(msr);
 					return;
+				case 'T':
+					ptr = &remcomInBuffer[1];
+					hexToInt(&ptr,&thrid);
+					if(__lwp_is_threadactive(thrid)) strcpy(remcomOutBuffer,"OK");
+					else strcpy(remcomOutBuffer,"E01");
+					break;
 				case 'z':
 				case 'Z':
 					if(remcomInBuffer[1]!='0') {
@@ -657,13 +668,14 @@ static void* debugger(void *arg)
 					strcpy(remcomOutBuffer,"OK");
 					break;
 				case 'c':
+				case 'k':
 					dbg_instep = 0;
 					continue;
 				case 'g':
 					ptr = remcomOutBuffer;
 					ptr = mem2hex((u8*)ctx->GPR,ptr,32*4);
 					ptr = mem2hex((u8*)ctx->FPR,ptr,32*8);
-					ptr = mem2hex((u8*)&ctx->SRR0,ptr,4);
+					ptr = mem2hex((u8*)&ctx->LR,ptr,4);
 					ptr = mem2hex((u8*)&ctx->MSR,ptr,4);
 					ptr = mem2hex((u8*)&ctx->CR,ptr,4);
 					ptr = mem2hex((u8*)&ctx->LR,ptr,4);

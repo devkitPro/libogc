@@ -197,7 +197,8 @@ static struct bba_priv bba_device;
 static struct bba_descr cur_descr;
 
 static u32 rxd_size;
-static u8 rx_buffer[BBA_RX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
+static u8 rx_buffer0[BBA_RX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
+static u8 rx_buffer1[BBA_RX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
 static u8 tx_buffer[BBA_RX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
 
 static vu32* const _siReg = (u32*)0xCC006400;
@@ -322,8 +323,12 @@ static inline void bba_insregister(u32 reg)
 
 static inline void bba_insdata(void *val,u32 len)
 {
-	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_READ);
-}
+	u32 recv_len = ((len+31)&~31);
+
+	EXI_Dma(EXI_CHANNEL_0,val,recv_len,EXI_READ,NULL);
+	EXI_Sync(EXI_CHANNEL_0);
+	DCInvalidateRange(val,recv_len);
+}	
 
 
 static inline void bba_outsregister(u32 reg)
@@ -336,7 +341,16 @@ static inline void bba_outsregister(u32 reg)
 
 static inline void bba_outsdata(void *val,u32 len)
 {
-	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_WRITE);
+	u32 dma_len = len&~0x1f;
+	u32 imm_len = len&0x1f;
+
+	if(dma_len>0) {
+		DCStoreRange(val,dma_len);
+		EXI_Dma(EXI_CHANNEL_0,val,dma_len,EXI_WRITE,NULL);
+		EXI_Sync(EXI_CHANNEL_0);
+
+	}
+	EXI_ImmEx(EXI_CHANNEL_0,val+dma_len,imm_len,EXI_WRITE);
 }
 
 static __inline__ u32 __linkstate()
@@ -409,7 +423,9 @@ static void bba_start_rx()
 {
 	u16 rwp,rrp;
 	u32 size,pkt_status,pos,top;
+	void *rx;
 
+	rx = rx_buffer0;
 	rwp = bba_in12(BBA_RWP);
 	rrp = bba_in12(BBA_RRP);
 	while(rrp!=rwp) {
@@ -424,16 +440,26 @@ static void bba_start_rx()
 
 		pos = (rrp<<8)+4;
 		top = (BBA_INIT_RHBP+1)<<8;
+		
+		bba_select();
+		bba_insregister(pos);
 		if((pos+size)<top) {
-			bba_ins(pos,rx_buffer,size);
+			bba_insdata(rx,size);
 		} else {
 			u32 chunk = top-size;
 			
-			bba_ins(pos,rx_buffer,chunk);
-			rrp = BBA_INIT_RRP;
-			bba_ins(rrp<<8,rx_buffer+chunk,size-chunk);
-		}
+			bba_insdata(rx,chunk);
+			bba_deselect();
 
+			rrp = BBA_INIT_RRP;
+			bba_select();
+			bba_insregister(rrp<<8);
+			bba_insdata(rx_buffer1,(size-chunk));
+			memcpy(rx+chunk,rx_buffer1,size-chunk);
+		}
+		bba_deselect();
+
+		rx += size;
 		rxd_size += size;
 		bba_out12(BBA_RRP,cur_descr.next_packet_ptr);
 		
@@ -691,8 +717,7 @@ u32 bba_read()
 	rxd_size = 0;
 	bba_poll(&status);
 	if(status&0x0280) {
-		DCFlushRange(tx_buffer,rxd_size);
-		memcpy(uip_buf,rx_buffer,rxd_size);
+		memcpy(uip_buf,rx_buffer0,rxd_size);
 	}
 	return rxd_size;
 }

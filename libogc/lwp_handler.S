@@ -243,10 +243,6 @@ _cpu_context_switch:
 	stw	r8, MSR_OFFSET-8(r3)
 	mfdar	r8
 	stw	r8, DAR_OFFSET-8(r3)
-	mfsrr0	r8
-	stw	r8, SRR0_OFFSET-8(r3)
-	mfsrr1	r8
-	stw	r8, SRR1_OFFSET-8(r3)
 
 	mfspr	r6,913
 	stw	r6,GQR1_OFFSET-8(r3)
@@ -275,10 +271,6 @@ _cpu_context_switch:
 	mtlr	r7
 	lwz	r8, MSR_OFFSET-8(r4)
 	mtmsr	r8
-	lwz	r8, SRR0_OFFSET-8(r4)
-	mtsrr0	r8
-	lwz	r8, SRR1_OFFSET-8(r4)
-	mtsrr1	r8
 
 	lwz	r6, GQR1_OFFSET-8(r4)
 	mtspr	913,r6
