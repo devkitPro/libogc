@@ -15,6 +15,11 @@
 
 #define VIDEO_MQ					1
 
+#define _SHIFTL(v, s, w)	\
+    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
+#define _SHIFTR(v, s, w)	\
+    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
+
 /*+----------------------------------------------------------------------------------------------+*/
 #define MEM_VIDEO_BASE               0xCC002000           ///< Memory address of Video Interface
 #define MEM_VIDEO_BASE_PTR           (u32*)MEM_VIDEO_BASE   ///< Pointer to Video Interface
@@ -211,22 +216,6 @@ static __inline__ u32 __checkclear_interrupt()
 	return ret;
 }
 
-static void __VIRetraceHandler(u32 nIrq,void *pCtx)
-{
-	u32 ret;
-	if(!(ret=__checkclear_interrupt()) || ret&0xc) return;
-
-	retraceCount++;
-	if(preRetraceCB)
-		preRetraceCB(retraceCount);
-
-	if(postRetraceCB)
-		postRetraceCB(retraceCount);
-#ifdef _VIDEO_DEBUG
-	printf("__VIRetraceHandler(%d)\n",retraceCount);
-#endif
-	LWP_WakeThread(video_queue);
-}
 /*
 static void __VIInit(u8 mode)
 {
@@ -262,13 +251,13 @@ static u32 __getCurrentHalfLine()
 	return vpos+(hpos/tmp);	
 }
 
-static u32 __getFieldEvenOdd()
+static u32 __getCurrFieldEvenOdd()
 {
 	u32 hline;
 	u32 nhline;
 
 	hline = __getCurrentHalfLine();
-	nhline = (currTiming[24]-1)*2;
+	nhline = ((((u16*)currTiming)[24]&0x03FF)*2)-1;
 	if(hline<nhline) return 1;
 
 	return 0;
@@ -276,9 +265,26 @@ static u32 __getFieldEvenOdd()
 
 static u32 __VISetRegs()
 {
-	if(!__getFieldEvenOdd()) return 0;
+	if(!__getCurrFieldEvenOdd()) return 0;
 
 	return 1;
+}
+
+static void __VIRetraceHandler(u32 nIrq,void *pCtx)
+{
+	u32 ret;
+	if(!(ret=__checkclear_interrupt()) || ret&0xc) return;
+
+	retraceCount++;
+	if(preRetraceCB)
+		preRetraceCB(retraceCount);
+
+	if(postRetraceCB)
+		postRetraceCB(retraceCount);
+#ifdef _VIDEO_DEBUG
+	printf("__VIRetraceHandler(%d)\n",retraceCount);
+#endif
+	LWP_WakeThread(video_queue);
 }
 
 void __vi_init()
@@ -378,7 +384,7 @@ void VIDEO_WaitVSync(void)
 
 u32 VIDEO_GetCurrentMode()
 {
-	return (R_VIDEO_STATUS1>>8)&3;
+	return _SHIFTR(_viReg[1],8,2);
 }
 
 u32 VIDEO_GetYCbCr(u8 r,u8 g,u8 b)
