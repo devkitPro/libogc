@@ -70,6 +70,14 @@ typedef struct _card_file {
 	u16 iblock;
 } card_file;
 
+typedef struct _card_dir { 
+      s32 chn; 
+      u32 fileno; 
+      u8 filename[CARD_FILENAMELEN+1]; 
+      u8 gamecode[5]; 
+      u8 company[3]; 
+} card_dir; 
+
 typedef void (*cardcallback)(s32 chan,s32 result);
 
 /*new api*/
@@ -90,6 +98,8 @@ s32 CARD_WriteAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback
 s32 CARD_Format(s32 chn);
 s32 CARD_FormatAsync(s32 chn,cardcallback callback);
 s32 CARD_GetErrorCode(s32 chn);
+s32 CARD_FindFirst(s32 chn, card_dir *dir); 
+s32 CARD_FindNext(card_dir *dir); 
 
 #ifdef __cplusplus
    }

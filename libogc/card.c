@@ -2545,3 +2545,60 @@ s32 CARD_GetErrorCode(s32 chn)
 	card = &cardmap[chn];
 	return card->result;
 }
+
+s32 __card_findnext(card_dir *dir) 
+{ 
+      s32 ret; 
+
+              struct card_dir *dirblock = NULL; 
+      struct card_direntry *entries = NULL; 
+      card_block *card = NULL; 
+
+      if(dir->chn<EXI_CHANNEL_0 || dir->chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD; 
+      if(dir->fileno>=CARD_MAXFILES) return CARD_ERROR_NOFILE; 
+      if((ret=__card_getcntrlblock(dir->chn,&card))<0) return ret; 
+
+      if(!card->attached) return CARD_ERROR_NOCARD; 
+      dirblock = __card_getdirblock(card); 
+
+      entries = dirblock->entries; 
+      do { 
+              //printf("%s\n", entries[dir->fileno].filename); 
+              if(entries[dir->fileno].gamecode[0]!=0xff) { 
+                      if ((card_gamecode[0]==0xff || memcmp(entries[dir->fileno].gamecode,card_gamecode,4)==0) 
+                          && (card_company[0]==0xff || memcmp(entries[dir->fileno].company,card_company,2)==0)) { 
+                              memcpy(dir->filename, entries[dir->fileno].filename, CARD_FILENAMELEN); 
+                              dir->filename[CARD_FILENAMELEN] = 0; 
+                              memcpy(dir->gamecode, entries[dir->fileno].gamecode, 4); 
+                              dir->gamecode[4] = 0; 
+                              memcpy(dir->company, entries[dir->fileno].company, 2); 
+                              dir->company[2] = 0; 
+
+                              __card_putcntrlblock(card,CARD_ERROR_READY); 
+                              return CARD_ERROR_READY; 
+                      } 
+              } 
+              dir->fileno++; 
+      } while (dir->fileno < CARD_MAXFILES); 
+      __card_putcntrlblock(card,CARD_ERROR_NOFILE); 
+      return CARD_ERROR_NOFILE; 
+} 
+
+s32 CARD_FindFirst(s32 chn, card_dir *dir) 
+{ 
+      // initialise structure 
+      dir->chn = chn; 
+      dir->fileno = 0; 
+      dir->filename[0] = 0; 
+      dir->gamecode[0] = 0; 
+      dir->company[0] = 0; 
+
+      return __card_findnext(dir); 
+} 
+
+s32 CARD_FindNext(card_dir *dir) 
+{ 
+      dir->fileno++; 
+
+      return __card_findnext(dir); 
+}

@@ -289,7 +289,7 @@ __LCEnable:
 	li		r6,512
 	mtctr	r6
 	li		r6,0
-2:	dbcz_l	r6,r3
+2:	dcbz_l	r6,r3
 	addi	r3,r3,32
 	bdnz	2b
 	nop
@@ -324,7 +324,7 @@ LCAllocOneTag:
 	cmpwi	r3,0
 	beq		1f
 	dcbi	r0,r4
-1:	dbcz_l	r0,r4
+1:	dcbz_l	r0,r4
 	blr
 
 	.globl LCAllocTags
@@ -336,11 +336,11 @@ LCAllocTags:
 	cmpwi	r3,0
 	beq		3f
 1:	dcbi	r0,r4
-	dbcz_l	r0,r4
+	dcbz_l	r0,r4
 	addi	r4,r4,32
 	bdnz	1b
 	b		2f
-3:	dbcz_l	r0,r4
+3:	dcbz_l	r0,r4
 	addi	r4,r4,32
 	bdnz	3b
 2:	mtlr	r6
