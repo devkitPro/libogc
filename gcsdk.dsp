@@ -788,10 +788,6 @@ SOURCE=.\gc\ogc\dvd.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\gc\ogc\exception.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\gc\ogc\exi.h
 # End Source File
 # Begin Source File
