@@ -30,7 +30,7 @@
 cc1 -E %{traditional|ftraditional|traditional-cpp:-traditional-cpp}
 
 *cc1:
-%{G*} %{mlittle|mlittle-endian: %(cc1_endian_little);             mbig   |mbig-endian   : %(cc1_endian_big);                mcall-aixdesc |					    mcall-freebsd |					    mcall-netbsd  |					    mcall-openbsd |					    mcall-linux   |					    mcall-gnu             : -mbig %(cc1_endian_big);          mcall-i960-old        : -mlittle %(cc1_endian_little);                          : %(cc1_endian_default)}          %{mno-sdata: -msdata=none } %{meabi: %{!mcall-*: -mcall-sysv }} %{!meabi: %{!mno-eabi:     %{mrelocatable: -meabi }     %{mcall-freebsd: -mno-eabi }     %{mcall-i960-old: -meabi }     %{mcall-linux: -mno-eabi }     %{mcall-gnu: -mno-eabi }     %{mcall-netbsd: -mno-eabi }     %{mcall-openbsd: -mno-eabi }}} %{msdata: -msdata=default} %{mno-sdata: -msdata=none} %{profile: -p}
+%{G*} %{mogc|mvgc: %(cc1_os_ogc)} %{mlittle|mlittle-endian: %(cc1_endian_little);             mbig   |mbig-endian   : %(cc1_endian_big);                mcall-aixdesc |					    mcall-freebsd |					    mcall-netbsd  |					    mcall-openbsd |					    mcall-linux   |					    mcall-gnu             : -mbig %(cc1_endian_big);          mcall-i960-old        : -mlittle %(cc1_endian_little);                          : %(cc1_endian_default)}          %{mno-sdata: -msdata=none } %{meabi: %{!mcall-*: -mcall-sysv }} %{!meabi: %{!mno-eabi:     %{mrelocatable: -meabi }     %{mcall-freebsd: -mno-eabi }     %{mcall-i960-old: -meabi }     %{mcall-linux: -mno-eabi }     %{mcall-gnu: -mno-eabi }     %{mcall-netbsd: -mno-eabi }     %{mcall-openbsd: -mno-eabi }}} %{msdata: -msdata=default} %{mno-sdata: -msdata=none} %{profile: -p}
 
 *cc1_options:
 %{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}} %1 %{!Q:-quiet} -dumpbase %B %{d*} %{m*} %{a*} %{c|S:%{o*:-auxbase-strip %*}%{!o*:-auxbase %b}}%{!c:%{!S:-auxbase %b}} %{g*} %{O*} %{W*&pedantic*} %{w} %{std*} %{ansi} %{v:-version} %{pg:-p} %{p} %{f*} %{undef} %{Qn:-fno-ident} %{--help:--help} %{--target-help:--target-help} %{!fsyntax-only:%{S:%W{o*}%{!o*:-o %b.s}}} %{fsyntax-only:-o %j} %{-param*}
@@ -331,6 +331,8 @@ crtend.o%s
 
 *link_os_default:
 
+*cc1_os_ogc:
+-ffunction-sections -fdata-sections
 
 *cc1_endian_big:
 
@@ -345,7 +347,7 @@ crtend.o%s
 
 
 *cpp_os_ogc:
-
+-ffunction-sections -fdata-sections
 
 *cpp_os_ads:
 
