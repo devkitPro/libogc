@@ -143,6 +143,74 @@ GXRModeObj TVNtsc480IntDf =
 	}
 };
 
+GXRModeObj TVNtsc480IntAa = 
+{
+    VI_TVMODE_NTSC_INT,     // viDisplayMode
+    640,             // fbWidth
+    242,             // efbHeight
+    480,             // xfbHeight
+    (VI_MAX_WIDTH_NTSC - 640)/2,        // viXOrigin
+    (VI_MAX_HEIGHT_NTSC - 480)/2,       // viYOrigin
+    640,             // viWidth
+    480,             // viHeight
+    VI_XFBMODE_DF,   // xFBmode
+    GX_FALSE,        // field_rendering
+    GX_TRUE,         // aa
+
+    // sample points arranged in increasing Y order
+	{
+		{3,2},{9,6},{3,10},  // pix 0, 3 sample points, 1/12 units, 4 bits each
+		{3,2},{9,6},{3,10},  // pix 1
+		{9,2},{3,6},{9,10},  // pix 2
+		{9,2},{3,6},{9,10}   // pix 3
+	},
+
+    // vertical filter[7], 1/64 units, 6 bits each
+	{
+		 4,         // line n-1
+		 8,         // line n-1
+		12,         // line n
+		16,         // line n
+		12,         // line n
+		 8,         // line n+1
+		 4          // line n+1
+	}
+};
+
+GXRModeObj TVMpal480IntDf = 
+{
+    VI_TVMODE_MPAL_INT,     // viDisplayMode
+    640,             // fbWidth
+    480,             // efbHeight
+    480,             // xfbHeight
+    (VI_MAX_WIDTH_MPAL - 640)/2,        // viXOrigin
+    (VI_MAX_HEIGHT_MPAL - 480)/2,       // viYOrigin
+    640,             // viWidth
+    480,             // viHeight
+    VI_XFBMODE_DF,   // xFBmode
+    GX_FALSE,        // field_rendering
+    GX_FALSE,        // aa
+
+    // sample points arranged in increasing Y order
+	{
+		{6,6},{6,6},{6,6},  // pix 0, 3 sample points, 1/12 units, 4 bits each
+		{6,6},{6,6},{6,6},  // pix 1
+		{6,6},{6,6},{6,6},  // pix 2
+		{6,6},{6,6},{6,6}   // pix 3
+	},
+
+    // vertical filter[7], 1/64 units, 6 bits each
+	{
+		 8,         // line n-1
+		 8,         // line n-1
+		10,         // line n
+		12,         // line n
+		10,         // line n
+		 8,         // line n+1
+		 8          // line n+1
+	}
+};
+
 GXRModeObj TVPal264Ds = 
 {
     VI_TVMODE_PAL_DS,       // viDisplayMode
@@ -463,8 +531,8 @@ static void __setFbbRegs(struct _horVer *horVer,u32 *tfbb,u32 *bfbb,u32 *rtfbb,u
 
 static void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u16 prbOdd,u16 prbEven,u16 psbOdd,u16 psbEven,s32 black)
 {
+	u32 tmp;
 	u32 div1,div2;
-	u32 tmp1;
 	u32 psb,prb;
 	u32 psbodd,prbodd;
 	u32 psbeven,prbeven;
@@ -476,10 +544,10 @@ static void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u16 prbO
 		div2 = 2;
 	}
 	
-	tmp1 = (dispPosY/2)<<1;
-	prb = ((acv*div1)-dispSizeY);
-	psb = (dispPosY*((dispPosY*div2)-dispPosY));
-	if(!(dispPosY-tmp1)) {
+	tmp = (dispPosY/2)<<1;
+	prb = div2*dispPosY;
+	psb = div2*(((acv*div1)-dispSizeY)-dispPosY);
+	if(!(dispPosY-tmp)) {
 		prbodd = prbOdd+prb;
 		psbodd = psbOdd+psb;
 		prbeven = prbEven+prb;
@@ -491,16 +559,16 @@ static void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u16 prbO
 		psbeven = psbOdd+psb;
 	}
 
-	tmp1 = dispSizeY/div1;
+	tmp = dispSizeY/div1;
 	if(black) {
-		prbodd += ((tmp1<<1)-2);
-		prbeven += ((tmp1<<1)-2);
+		prbodd += ((tmp<<1)-2);
+		prbeven += ((tmp<<1)-2);
 		psbodd += 2;
 		psbeven += 2;
-		tmp1 = 0;
+		tmp = 0;
 	}
 	
-	regs[0] = ((tmp1<<4)&~0x0f)|equ;
+	regs[0] = ((tmp<<4)&~0x0f)|equ;
 	changed |= (u64)0x80000000<<32;
 
 	regs[7] = prbodd;
@@ -606,7 +674,9 @@ static u32 __VISetRegs()
 	u32 val;
 	u64 mask;
 
-	if(!__getCurrFieldEvenOdd()) return 0;
+	if(shdwChangeMode==1){
+		if(!__getCurrFieldEvenOdd()) return 0;
+	}
 
 	while(shdwChanged) {
 		val = cntlzd(shdwChanged);
@@ -624,6 +694,7 @@ static u32 __VISetRegs()
 static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 {
 	u32 ret;
+
 	if(!(ret=__checkclear_interrupt()) || ret&0xc) return;
 
 	retraceCount++;
@@ -691,14 +762,14 @@ void VIDEO_Init()
 	HorVer.timing = currTiming;
 	HorVer.dispSizeX = 640;
 	HorVer.dispSizeY = ((((u16*)currTiming)[1]<<1)&0xfffe);
-	HorVer.dispPosX = (VI_MAX_WIDTH_NTSC - HorVer.dispSizeX)/2;
+	HorVer.dispPosX = (VI_MAX_WIDTH_NTSC-HorVer.dispSizeX)/2;
 	HorVer.dispPosY = 0;
 	
-	if((HorVer.dispPosX+displayOffsetH)<=(VI_MAX_WIDTH_NTSC - HorVer.dispSizeX)) {
+	if((HorVer.dispPosX+displayOffsetH)<=(VI_MAX_WIDTH_NTSC-HorVer.dispSizeX)) {
 		if(displayOffsetH>=0) HorVer.adjustedDispPosX = (HorVer.dispPosX+displayOffsetH);
 		else HorVer.adjustedDispPosX = 0;
 	} else
-		HorVer.adjustedDispPosX = (VI_MAX_WIDTH_NTSC - HorVer.dispSizeX);
+		HorVer.adjustedDispPosX = (VI_MAX_WIDTH_NTSC-HorVer.dispSizeX);
 
 	tmp3 = (HorVer.dispPosY&0x0001);
 	if((HorVer.dispPosY+displayOffsetV)<=tmp3) HorVer.adjustedDispPosY = tmp3;
@@ -768,17 +839,9 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	const u8 *curtiming;
 
 	_CPU_ISR_Disable(level);
-	nonint = (rmode->viTVMode&0x0003)
-	if(nonint!=HorVer.nonInter) {
-		changeMode = 1;
-		HorVer.nonInter = nonint;
-	}
 	HorVer.tv = _SHIFTR(rmode->viTVMode,2,3);
 	HorVer.dispPosX = rmode->viXOrigin;
-
 	HorVer.dispPosY = rmode->viYOrigin;
-	if(HorVer.nonInter==VI_NON_INTERLACE) HorVer.dispPosY = (HorVer.dispPosY<<1)&0xfffe;
-	
 	HorVer.dispSizeX = rmode->viWidth;
 	HorVer.fbSizeX = rmode->fbWidth;
 	HorVer.fbSizeY = rmode->xfbHeight;
@@ -788,18 +851,23 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	HorVer.panPosX = 0;
 	HorVer.panPosY = 0;
 
-	nonint = HorVer.nonInter; 
+	nonint = (rmode->viTVMode&0x0003);
+	if(nonint!=HorVer.nonInter) {
+		changeMode = 1;
+		HorVer.nonInter = nonint;
+	}
+	if(HorVer.nonInter==VI_NON_INTERLACE) HorVer.dispPosY = (HorVer.dispPosY<<1)&0xfffe;
+	
 	if(nonint==VI_PROGRESSIVE || nonint==(VI_NON_INTERLACE|VI_PROGRESSIVE)) tmp = HorVer.panSizeY;
 	else if(HorVer.fbMode==VI_XFBMODE_SF) tmp = (HorVer.panSizeY<<1)&0xfffe;
 	else tmp = HorVer.panSizeY;
 	HorVer.dispSizeY = tmp;
 
 	tmp = 0;
-	nonint = HorVer.nonInter; 
 	if(nonint==(VI_NON_INTERLACE|VI_PROGRESSIVE)) tmp = 1;
 	HorVer.threeD = tmp;
 
-	vimode = (HorVer.tv<<2)+HorVer.nonInter;
+	vimode = VI_TVMODE(HorVer.tv,HorVer.nonInter);
 	curtiming = __gettiming(vimode);
 	HorVer.timing = curtiming;
 
@@ -837,7 +905,7 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	else tmp = 0;
 
 	tmp2 = HorVer.dispPosY+displayOffsetV;
-	if((tmp-tmp2)<0) tmp -= tmp2;
+	if((tmp2-tmp1)<0) tmp2 -= tmp1;
 	else tmp = 0;
 	HorVer.adjustedPanSizeY = (HorVer.panSizeY+(tmp2/div))-(tmp/div);
 

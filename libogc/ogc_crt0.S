@@ -347,7 +347,7 @@ __flush_cache:
 	isync
 	blr
 
-	.section .data
-	.balign	8
+//	.section .data
+//	.balign	8
 zfloat:
-	.double 0.0
+	.double 4503599627370496.0

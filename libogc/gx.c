@@ -6,6 +6,7 @@
 #include "processor.h"
 #include "irq.h"
 #include "lwp.h"
+#include "video.h"
 #include "video_types.h"
 #include "gx.h"
 
@@ -316,6 +317,8 @@ static GXTlutRegion* __GXDefTlutRegionCallback(u32 tlut_name)
 static void __GX_InitGX()
 {
 	s32 i;
+	u32 flag;
+	GXRModeObj *rmode;
 	Mtx identity_matrix = 
 	{
 		{1,0,0,0},
@@ -323,6 +326,21 @@ static void __GX_InitGX()
 		{0,0,1,0}
 	};
 
+	switch(VIDEO_GetCurrentTvMode()) {
+		case VI_NTSC:
+			rmode = &TVNtsc480IntDf;
+			break;
+		case VI_PAL:
+			rmode = &TVPal528IntDf;
+			break;
+		case VI_MPAL:
+			rmode = &TVMpal480IntDf;
+			break;
+		default:
+			rmode = &TVNtsc480IntDf;
+			break;
+	}
+	
 	GX_SetCopyClear((GXColor)BLACK,0xffffff);
 	GX_SetTexCoordGen(GX_TEXCOORD0,GX_TG_MTX2x4,GX_TG_TEX0,GX_IDENTITY);
 	GX_SetTexCoordGen(GX_TEXCOORD1,GX_TG_MTX2x4,GX_TG_TEX1,GX_IDENTITY);
@@ -354,12 +372,12 @@ static void __GX_InitGX()
 	GX_LoadTexMtxImm(identity_matrix,GX_IDENTITY,GX_MTX3x4);
 	GX_LoadTexMtxImm(identity_matrix,GX_DTTIDENTITY,GX_MTX3x4);
 
-	GX_SetViewport(0.0,0.0,640.0,480.0,0.0,1.0);
+	GX_SetViewport(0,0,rmode->fbWidth,rmode->efbHeight,0,1);
 	GX_SetCoPlanar(GX_DISABLE);
 	GX_SetCullMode(GX_CULL_BACK);
 	GX_SetClipMode(GX_CLIP_DISABLE);
 
-	GX_SetScissor(0,0,640,480);
+	GX_SetScissor(0,0,rmode->fbWidth,rmode->efbHeight);
 	GX_SetScissorBoxOffset(0,0);
 
 	GX_SetNumChans(0);
@@ -416,7 +434,7 @@ static void __GX_InitGX()
 	GX_SetIndTexCoordScale(GX_INDTEXSTAGE2,GX_ITS_1,GX_ITS_1);
 	GX_SetIndTexCoordScale(GX_INDTEXSTAGE3,GX_ITS_1,GX_ITS_1);
 
-	GX_SetFog(GX_FOG_NONE,0.0F,1.0F,0.1F,1.0F,(GXColor)BLACK);
+	GX_SetFog(GX_FOG_NONE,0,1,0.1,1,(GXColor)BLACK);
 	GX_SetFogRangeAdj(GX_DISABLE,0,NULL);
 
 	GX_SetBlendMode(GX_BM_NONE,GX_BL_SRCALPHA,GX_BL_INVSRCALPHA,GX_LO_CLEAR);
@@ -429,11 +447,14 @@ static void __GX_InitGX()
 	GX_SetPixelFmt(GX_PF_RGB8_Z24,GX_ZC_LINEAR);
 
 	GX_SetFieldMask(GX_ENABLE,GX_ENABLE);
-	GX_SetFieldMode(GX_FALSE,GX_DISABLE);
+	
+	flag = 0;
+	if(rmode->viHeight==(rmode->xfbHeight<<1)) flag = 1;
+	GX_SetFieldMode(rmode->field_rendering,flag);
 
 	GX_SetCopyClear((GXColor)GX_DEFAULT_BG,0x00ffffff);
-	GX_SetDispCopySrc(0,0,640,480);
-	GX_SetDispCopyDst(640,480);
+	GX_SetDispCopySrc(0,0,rmode->fbWidth,rmode->efbHeight);
+	GX_SetDispCopyDst(rmode->fbWidth,rmode->efbHeight);
 	GX_SetDispCopyYScale(1.0);
 	GX_SetCopyClamp(GX_CLAMP_TOP|GX_CLAMP_BOTTOM);
 	GX_SetCopyFilter(GX_FALSE,NULL,GX_FALSE,NULL);
@@ -662,6 +683,21 @@ static void __GX_SetDirtyState()
 		__GX_SetVAT();
 	}
 	_gx[0x08] = 0;
+}
+
+static u32 __GX_GetNumXfbLines(u16 efbHeight,u32 yscale)
+{
+	u32 tmp,tmp1;
+	//(f32)256.0
+	tmp = (((efbHeight-1)<<8)/yscale)+1;
+	if(yscale>128 && yscale<256) {
+		while(yscale&0x01) yscale >>= 1;
+		tmp1 = yscale*(efbHeight/yscale);
+		if(!(efbHeight-tmp1)) tmp++;
+	}
+	if(tmp>1024) tmp = 1024;
+	
+	return tmp;
 }
 
 GXFifoObj* GX_Init(void *base,u32 size)
@@ -3799,14 +3835,35 @@ void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1)
 void GX_AdjustForOverscan(GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver)
 {
 	if(rmin!=rmin) memcpy(rmout,rmin,sizeof(GXRModeObj));
-	rmout->fbWidth = rmin->fbWidth-((hor<<1)&0xfffe);
-	rmout->efbHeight = rmin->efbHeight-((((ver<<1)&0xfffe)*rmin->efbHeight)/rmin->xfbHeight);
-	if(rmin->xfbMode==VI_XFBMODE_SF && !(rmin->viTVMode&VI_PROGRESSIVE)) rmout->xfbHeight = rmin->xfbHeight-ver;
-	else rmout->xfbHeight = rmin->xfbHeight-((ver<<1)&0xfffe);
+	rmout->fbWidth -= ((hor<<1)&0xfffe);
+	rmout->efbHeight -= ((((ver<<1)&0xfffe)*rmin->efbHeight)/rmin->xfbHeight);
+	if(rmin->xfbMode==VI_XFBMODE_SF && !(rmin->viTVMode&VI_PROGRESSIVE)) rmout->xfbHeight -= ver;
+	else rmout->xfbHeight -= ((ver<<1)&0xfffe);
 
-	rmout->viWidth = rmin->viWidth-((hor<<1)&0xfffe);
-	rmout->viHeight = rmin->viHeight-((ver<<1)&0xfffe);
+	rmout->viWidth -= ((hor<<1)&0xfffe);
+	rmout->viHeight -= ((ver<<1)&0xfffe);
 
-	rmout->viXOrigin = rmin->viXOrigin+hor;
-	rmout->viYOrigin = rmin->viYOrigin+ver;
+	rmout->viXOrigin += hor;
+	rmout->viYOrigin += ver;
+}
+
+void GX_GetYScaleFactor(u16 efbHeight,u16 xfbHeight)
+{
+	u32 fbuf1[2],fbuf2[2];
+	f64 fdtmp,fdtmp1,fdtmp2;
+
+	//(f32)256.0
+	//(f64)4503599627370496.0
+	fbuf1[0] = fbuf2[0] = 0x43300000;
+	fbuf1[1] = 0;
+	fdtmp = *(f64*)fbuf1;
+
+	fbuf1[1] = efbHeight;
+	fbuf2[1] = xfbHeight;
+	fdtmp1 = *(f64*)fbuf1;
+	fdtmp2 = *(f64*)fbuf2;
+
+	fdtmp1 = (fdtmp-fdtmp1);
+	fdtmp2 = (fdtmp-fdtmp2);
+	
 }

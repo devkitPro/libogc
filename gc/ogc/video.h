@@ -9,6 +9,8 @@
 #endif /* __cplusplus */
 
 extern GXRModeObj TVNtsc480IntDf;
+extern GXRModeObj TVNtsc480IntAa;
+extern GXRModeObj TVMpal480IntDf;
 extern GXRModeObj TVPal264Ds;
 extern GXRModeObj TVPal528Int;
 extern GXRModeObj TVPal524IntAa;
