@@ -154,7 +154,7 @@ int clock_gettime(struct timespec *tp)
 	gctime += 946684800;
 
 	tp->tv_sec = gctime;
-	tp->tv_nsec = gettick();
+	tp->tv_nsec = ticks_to_nanosecs(gettick());
 
 	return 0;
 }

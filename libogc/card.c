@@ -772,21 +772,15 @@ static void __timeouthandler(sysalarm *alarm)
 
 static void __setuptimeout(card_block *card)
 {
-	u32 secsize;
-	u32 busfreq;
-	s64 time1,time2;
 	struct timespec tb;
 #ifdef _CARD_DEBUG
 	printf("__setuptimeout(%p)\n",card);
 #endif
 	SYS_CancelAlarm(&card->timeout_svc);
 
-	if(card->cmd[0]==0xf3 || card->cmd[0]>=0xf5) return;
-	else if(card->cmd[0]==0xf1 || card->cmd[0]==0xf4) {
-		busfreq = *(u32*)0x800000f8;
-		secsize = card->sector_size;
-		time1 = time2 = gettime();
-		
+	if(card->cmd[0]==0xf1 || card->cmd[0]==0xf4) {
+		tb.tv_sec = 1*(card->sector_size/8192);
+		tb.tv_nsec = 0;
 		SYS_SetAlarm(&card->timeout_svc,&tb,__timeouthandler);
 	} else if(card->cmd[0]==0xf2) {
 		tb.tv_sec = 0;
