@@ -16,7 +16,7 @@ extern "C" {
 #endif
 
 typedef struct _lwp_obj {
-	u32 lwp_id;
+	s32 lwp_id;
 	void *thethread;
 	lwp_thrqueue join_list;
 } lwp_obj;
@@ -35,7 +35,7 @@ typedef struct _lwpwaitinfo {
 typedef struct _lwpcntrl {
 	lwp_node node;
 	
-	u32 id;		//only used for gdb though
+	s32 id;		//only used for gdb though
 	u8  cur_prio,real_prio;
 	u32 suspendcnt,res_cnt;
 	u32 isr_level;
