@@ -2636,16 +2636,16 @@ void GX_ClearVtxDesc()
 
 void GX_SetLineWidth(u8 width,u8 fmt)
 {
-	_gx[0xa9] = (_gx[0xa9]&~0xff)|(width&0xff);
-	_gx[0xa9] = (_gx[0xa9]&~0x70000)|(_SHIFTL(fmt,16,3));
-	GX_LOAD_BP_REG(_gx[0xa9]);
+	_gx[0xaa] = (_gx[0xaa]&~0xff)|(width&0xff);
+	_gx[0xaa] = (_gx[0xaa]&~0x70000)|(_SHIFTL(fmt,16,3));
+	GX_LOAD_BP_REG(_gx[0xaa]);
 }
 
 void GX_SetPointSize(u8 width,u8 fmt)
 {
-	_gx[0xa9] = (_gx[0xa9]&~0xFF00)|(_SHIFTL(width,8,8));
-	_gx[0xa9] = (_gx[0xa9]&~0x380000)|(_SHIFTL(fmt,19,3));
-	GX_LOAD_BP_REG(_gx[0xa9]);
+	_gx[0xaa] = (_gx[0xaa]&~0xFF00)|(_SHIFTL(width,8,8));
+	_gx[0xaa] = (_gx[0xaa]&~0x380000)|(_SHIFTL(fmt,19,3));
+	GX_LOAD_BP_REG(_gx[0xaa]);
 }
 
 void GX_SetTevOp(u8 tevstage,u8 mode)

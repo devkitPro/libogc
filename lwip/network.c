@@ -30,8 +30,8 @@
 //#define _NET_DEBUG
 
 #define STACKSIZE		16384
-#define MQBOX_SIZE		100
-#define NUM_SOCKETS		64
+#define MQBOX_SIZE		1024
+#define NUM_SOCKETS		16
 
 #define NETCONN_NOCOPY	0x00
 #define NETCONN_COPY	0x01
@@ -1333,6 +1333,7 @@ static err_t net_input(struct pbuf *p,struct netif *inp)
 	struct net_msg *msg = (struct net_msg*)malloc(sizeof(struct net_msg));
 
 	if(msg==NULL) {
+		LWIP_ERROR(("net_input: msg out of memory.\n"));
 		pbuf_free(p);
 		return ERR_MEM;
 	}
@@ -1340,7 +1341,7 @@ static err_t net_input(struct pbuf *p,struct netif *inp)
 	msg->type = NETMSG_INPUT;
 	msg->msg.inp.p = p;
 	msg->msg.inp.net = inp;
-	MQ_Send(netthread_mbox,&msg,MQ_MSG_BLOCK);
+	MQ_Send(netthread_mbox,&msg,MQ_MSG_NOBLOCK);
 	return ERR_OK;
 }
 
@@ -1603,6 +1604,7 @@ u32 net_init()
 		tcpiplayer_inited = 1;
 		ret = 0;
 	}
+
 	return ret;
 }
 

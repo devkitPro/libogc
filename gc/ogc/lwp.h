@@ -27,7 +27,7 @@ void LWP_CloseThread(lwp_t thethread);
 u32 LWP_JoinThread(lwp_t thethread,void **value_ptr);
 void LWP_InitQueue(lwpq_t *thequeue);
 void LWP_CloseQueue(lwpq_t thequeue);
-void LWP_SleepThread(lwpq_t thequeue);
+u32 LWP_SleepThread(lwpq_t thequeue);
 void LWP_WakeThread(lwpq_t thequeue);
 
 #ifdef __cplusplus

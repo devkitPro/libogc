@@ -207,7 +207,8 @@ static u16 rrp = 0,rwp = 0;
 static struct pbuf *cur_rcv_buf = NULL;
 static struct bba_descr cur_descr;
 
-static err_t __bba_link_postrx(struct netif *dev,struct pbuf *p);
+static err_t __bba_link_tx(struct netif *dev,struct pbuf *p);
+
 static u32 __bba_link_rxbuffer1();
 static u32 __bba_link_rxsub1();
 static u32 __bba_link_rxsub0(u32 pos);
@@ -383,7 +384,6 @@ static u32 __bba_exi_wait()
 	do {
 		if((ret=EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,__bba_exi_unlock))==1) break;
 		LWP_SleepThread(wait_exi_queue);
-		_CPU_ISR_Restore(level);
 	} while(ret==0);
 	_CPU_ISR_Restore(level);
 	return ret;
@@ -410,9 +410,8 @@ static u32 __bba_tx_stop(struct bba_priv *priv)
 
 	_CPU_ISR_Disable(level);
 	state = priv->state;
-	if(priv->state==ERR_TXPENDING) {
-		LWP_SleepThread(wait_tx_queue);
-		_CPU_ISR_Restore(level);
+	while(priv->state==ERR_TXPENDING) {
+		if(LWP_SleepThread(wait_tx_queue)==-1) break;
 	}
 	priv->state = ERR_TXPENDING;
 	_CPU_ISR_Restore(level);
@@ -437,6 +436,7 @@ static u32 __bba_getlink_state_async()
 
 	_CPU_ISR_Disable(level);
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==0) {
+		LWIP_ERROR(("__bba_getlink_state_async(exi allready locked)\n"));
 		_CPU_ISR_Restore(level);
 		return 0;
 	}
@@ -473,22 +473,79 @@ static void __bba_reset()
 
 static void __bba_recv_init()
 {
+	bba_out8(BBA_NCRB,(BBA_NCRB_AB|BBA_NCRB_CA));
+	bba_out8(BBA_MISC2,(BBA_MISC2_AUTORCVR));
+
 	bba_out12(BBA_TLBP, BBA_INIT_TLBP);
 	bba_out12(BBA_BP,BBA_INIT_BP);
 	bba_out12(BBA_RWP,BBA_INIT_RWP);
 	bba_out12(BBA_RRP,BBA_INIT_RRP);
 	bba_out12(BBA_RHBP,BBA_INIT_RHBP);
 
-	bba_out8(BBA_NCRB,(BBA_NCRB_AB|BBA_NCRB_CA));
 	bba_out8(BBA_NCRA,BBA_NCRA_SR);
-	bba_out8(BBA_MISC2,(BBA_MISC2_AUTORCVR));
 	bba_out8(BBA_GCA,BBA_GCA_ARXERRB);
 }
 
-static u32 __bba_tx_err(struct bba_priv *priv,u8 status)
+static u32 __bba_link_postrxsub1()
 {
-	u32 errors = 0;
-	
+	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
+
+	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_postrxsub1(imm: %d)\n",cur_rcv_postimmlen));
+	priv->state = ERR_TXPENDING;
+	if(cur_rcv_postimmlen) bba_outsdata(cur_rcv_postbuffer+cur_rcv_postdmalen,cur_rcv_postimmlen);
+	bba_deselect();
+
+	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)));		//&~BBA_NCRA_ST0
+	EXI_Unlock(EXI_CHANNEL_0);
+
+	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_postrxsub1(rx interrupt close)\n"));
+	return ERR_OK;
+}
+
+static u32 __bba_link_postrxsub0()
+{
+	u32 len,level;
+	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
+
+	_CPU_ISR_Disable(level);
+	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,__bba_link_postrxsub0)==0) {
+		LWIP_ERROR(("__bba_link_postrxsub0(exi allready locked)\n"));
+		_CPU_ISR_Restore(level);
+		return ERR_OK;
+	}
+	priv->state = ERR_TXPENDING;
+	_CPU_ISR_Restore(level);
+
+	if(!__linkstate()) {
+		LWIP_ERROR(("__bba_link_postrxsub0(error link state)\n"));
+		priv->state = ERR_OK;
+		EXI_Unlock(EXI_CHANNEL_0);
+		return ERR_ABRT;
+	}
+
+	while((bba_in8(BBA_NCRA)&(BBA_NCRA_ST0|BBA_NCRA_ST1)));
+
+	bba_out12(BBA_TXFIFOCNT,cur_rcv_postlen);
+	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_postrxsub0(sndlen: %d)\n",cur_rcv_postlen));
+
+	len = cur_rcv_postlen;
+	if(len<BBA_MINPKTSIZE) len = BBA_MINPKTSIZE;
+
+	cur_rcv_postdmalen = len&~0x1f;
+	cur_rcv_postimmlen = len&0x1f;
+	DCStoreRange(cur_rcv_postbuffer,cur_rcv_postdmalen);
+
+	bba_select();
+	bba_outsregister(BBA_WRTXFIFOD);
+	bba_outsdmadata(cur_rcv_postbuffer,cur_rcv_postdmalen,__bba_link_postrxsub1);
+
+	return ERR_TXPENDING;
+}
+
+static u32 __bba_tx_err(u8 status)
+{
+	u32 errors;
+
 	errors = 0;
 	if(status&BBA_TX_STATUS_TERR) {
 		errors++;
@@ -497,18 +554,71 @@ static u32 __bba_tx_err(struct bba_priv *priv,u8 status)
 		if(status&BBA_TX_STATUS_UF) errors++;
 		if(status&BBA_TX_STATUS_OWC) errors++;
 	}
-	if(errors) {
-		LWIP_DEBUGF(NETIF_DEBUG,("bba_tx_err(%02x)\n",status));
-	}
+	if(errors) LWIP_ERROR(("bba_tx_err(%02x)\n",status));
 
-	__bba_tx_wake(priv);
 	return errors;
+}
+
+static err_t __bba_post_send()
+{
+	u8 *buf;
+	err_t ret = ERR_OK;
+	struct pbuf *p,*tmp,*q = NULL;
+	struct eth_hdr *ethhdr = NULL;
+	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
 	
+	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+	EXI_Unlock(EXI_CHANNEL_0);
+
+	while(cur_rcv_buf && priv->state!=ERR_TXPENDING) {
+		p = cur_rcv_buf;
+		cur_rcv_buf = pbuf_dechain(cur_rcv_buf);
+		ethhdr = p->payload;
+		switch(htons(ethhdr->type)) {
+			case ETHTYPE_IP:
+				LWIP_DEBUGF(NETIF_DEBUG,("__bba_post_send: passing packet up to IP layer\n"));
+
+				q = etharp_ip_input(gc_netif,p);
+				pbuf_header(p,-14);
+				gc_netif->input(p, gc_netif);
+				break;
+			case ETHTYPE_ARP:
+				/* pass p to ARP module, get ARP reply or ARP queued packet */
+				LWIP_DEBUGF(NETIF_DEBUG,("__bba_post_send: passing packet up to ARP layer\n"));
+				q = etharp_arp_input(gc_netif, priv->ethaddr, p);
+				break;
+			/* unsupported Ethernet packet type */
+			default:
+				/* free pbuf */
+				pbuf_free(p);
+				p = NULL;
+				break;
+		}
+
+
+		if(q!=NULL) {
+			LWIP_DEBUGF(NETIF_DEBUG,("__bba_post_send: q!=NULL\n"));
+			buf = cur_rcv_postbuffer;
+			priv->state = ERR_TXPENDING;
+			for(tmp=q;tmp!=NULL;tmp=tmp->next) {
+				memcpy(buf,tmp->payload,tmp->len);
+				buf += tmp->len;
+			}
+
+			cur_rcv_postlen = p->tot_len;
+			ret = __bba_link_postrxsub0();
+			pbuf_free(q);
+		}
+	}
+	return ret;
 }
 
 static u32 __bba_link_txsub1()
 {
+	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
+
 	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_txsub1(imm: %d)\n",cur_snd_immlen));
+	priv->state = ERR_TXPENDING;
 	if(cur_snd_immlen) bba_outsdata(cur_snd_buffer+cur_snd_dmalen,cur_snd_immlen);
 	bba_deselect();
 
@@ -524,18 +634,21 @@ static u32 __bba_link_txsub0()
 
 	_CPU_ISR_Disable(level);
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,__bba_link_txsub0)==0) {
-		LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_txsub0(exi allready locked)\n"));
+		LWIP_ERROR(("__bba_link_txsub0(exi allready locked)\n"));
 		_CPU_ISR_Restore(level);
 		return ERR_OK;
 	}
+	priv->state = ERR_TXPENDING;
 	_CPU_ISR_Restore(level);
 
 	if(!__linkstate()) {
-		LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_txsub0(error link state)\n"));
+		LWIP_ERROR(("__bba_link_txsub0(error link state)\n"));
 		__bba_tx_wake(priv);
 		EXI_Unlock(EXI_CHANNEL_0);
 		return ERR_ABRT;
 	}
+
+	while((bba_in8(BBA_NCRA)&(BBA_NCRA_ST0|BBA_NCRA_ST1)));
 
 	bba_out12(BBA_TXFIFOCNT,cur_snd_len);
 	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_txsub0(%d,%p)\n",cur_snd_len,LWP_GetSelf()));
@@ -556,25 +669,27 @@ static u32 __bba_link_txsub0()
 
 static err_t __bba_link_tx(struct netif *dev,struct pbuf *p)
 {
-	err_t ret = ERR_OK;
+	u32 level;
 	struct pbuf *tmp;
 	struct bba_priv *priv = (struct bba_priv*)dev->state;
 
-	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_tx(%d,%p)\n",p->tot_len,LWP_GetSelf()));
-
+	_CPU_ISR_Disable(level);
 	__bba_tx_stop(priv);
-
 	if(p->tot_len>BBA_TX_MAX_PACKET_SIZE) {
-		LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_tx(packet_size: %d)\n",p->tot_len));
+		LWIP_ERROR(("__bba_link_tx(%d,%p) pkt_size\n",p->tot_len,LWP_GetSelf()));
 		__bba_tx_wake(priv);
+		_CPU_ISR_Restore(level);
 		return ERR_PKTSIZE;
 	}
 
+	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_tx(%d,%p)\n",p->tot_len,LWP_GetSelf()));
+
 	cur_snd_len = 0;
-	for(tmp=p;tmp!=NULL && ret==ERR_OK;tmp=tmp->next) {
+	for(tmp=p;tmp!=NULL;tmp=tmp->next) {
 		memcpy(cur_snd_buffer+cur_snd_len,tmp->payload,tmp->len);
 		cur_snd_len += tmp->len;
 	}
+	_CPU_ISR_Restore(level);
 
 	return __bba_link_txsub0();
 }
@@ -604,8 +719,8 @@ static u32 __bba_rx_err(u8 status)
 		if(status&BBA_RX_STATUS_RW) errors++;
 		if(status&BBA_RX_STATUS_FAE) errors++;
 	}
-	LWIP_DEBUGF(NETIF_DEBUG,("bba_rx_err(%d)\n",errors));
 	if(errors) {
+		LWIP_ERROR(("bba_rx_err(%d)\n",errors));
 		bba_out8(BBA_NCRA,bba_in8(BBA_NCRA)&~BBA_NCRA_SR);
 		bba_out12(BBA_RWP,BBA_INIT_RWP);
 		bba_out12(BBA_RRP,BBA_INIT_RRP);
@@ -613,101 +728,6 @@ static u32 __bba_rx_err(u8 status)
 	}
 	
 	return errors;
-}
-
-static u32 __bba_link_postrxsub1()
-{
-	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_postrxsub1(imm: %d)\n",cur_rcv_postimmlen));
-	if(cur_rcv_postimmlen) bba_outsdata(cur_rcv_postbuffer+cur_rcv_postdmalen,cur_rcv_postimmlen);
-	bba_deselect();
-
-	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)));		//&~BBA_NCRA_ST0
-
-	bba_out8(BBA_IR,BBA_IR_RI);
-	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
-	EXI_Unlock(EXI_CHANNEL_0);
-
-	return ERR_OK;
-}
-
-static u32 __bba_link_postrxsub0()
-{
-	u32 len;
-	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
-
-	if(!__linkstate()) {
-		LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_postrxsub0(error link state)\n"));
-		priv->state = ERR_OK;
-		return ERR_ABRT;
-	}
-
-	bba_out12(BBA_TXFIFOCNT,cur_rcv_postlen);
-	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_postrxsub0(sndlen: %d)\n",cur_rcv_postlen));
-
-	len = cur_rcv_postlen;
-	if(len<BBA_MINPKTSIZE) len = BBA_MINPKTSIZE;
-
-	cur_rcv_postdmalen = len&~0x1f;
-	cur_rcv_postimmlen = len&0x1f;
-	DCStoreRange(cur_rcv_postbuffer,cur_rcv_postdmalen);
-
-	bba_select();
-	bba_outsregister(BBA_WRTXFIFOD);
-	bba_outsdmadata(cur_rcv_postbuffer,cur_rcv_postdmalen,__bba_link_postrxsub1);
-
-	return ERR_TXPENDING;
-}
-
-static err_t __bba_link_postrx(struct netif *dev,struct pbuf *p)
-{
-	u8 *buf;
-	err_t ret = ERR_OK;
-	struct pbuf *tmp,*q = NULL;
-	struct eth_hdr *ethhdr = NULL;
-	struct bba_priv *priv = (struct bba_priv*)dev->state;
-
-	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_postrx(tot_len: %d)\n",p->tot_len));
-
-	ethhdr = p->payload;
-	switch(htons(ethhdr->type)) {
-		case ETHTYPE_IP:
-			LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_postrx: passing packet up to IP layer\n"));
-
-			q = etharp_ip_input(dev,p);
-			pbuf_header(p,-14);
-			dev->input(p, dev);
-			break;
-		case ETHTYPE_ARP:
-			/* pass p to ARP module, get ARP reply or ARP queued packet */
-			LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_postrx: passing packet up to ARP layer\n"));
-			q = etharp_arp_input(dev, priv->ethaddr, p);
-			break;
-		/* unsupported Ethernet packet type */
-		default:
-			/* free pbuf */
-			pbuf_free(p);
-			p = NULL;
-			break;
-	}
-
-
-	cur_rcv_buf = NULL;
-	if(q!=NULL) {
-		buf = cur_rcv_postbuffer;
-		priv->state = ERR_TXPENDING;
-		for(tmp=q;tmp!=NULL;tmp=tmp->next) {
-			memcpy(buf,tmp->payload,tmp->len);
-			buf += tmp->len;
-		}
-
-		cur_rcv_postlen = p->tot_len;
-		ret = __bba_link_postrxsub0();
-
-		pbuf_free(q);
-		return ret;
-	};
-
-	return ret;
 }
 
 static u32 __bba_link_rxbuffer1()
@@ -755,8 +775,9 @@ static u32 __bba_link_rxbuffer1()
 		}
 
 	}
+	
 	if(cur_rcv_buf) {
-		pbuf_cat(cur_rcv_buf,p);
+		pbuf_chain(cur_rcv_buf,p);
 	} else {
 		cur_rcv_buf = p;
 	}
@@ -774,6 +795,7 @@ static u32 __bba_link_rxsub1()
 	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_rxsub1()\n"));
 
 	bba_deselect();
+
 	rrp = BBA_INIT_RRP;
 	
 	bba_select();
@@ -814,6 +836,7 @@ static u32 __bba_link_rx()
 		size = cur_descr.packet_len - 4;
 		pkt_status = cur_descr.status;
 		if(size>(BBA_RX_MAX_PACKET_SIZE+4) || (pkt_status&(BBA_RX_STATUS_RERR|BBA_RX_STATUS_FAE))) {
+			LWIP_ERROR(("__bba_link_rx(size>BBA_RX_MAX_PACKET_SIZE || (pkt_status&(BBA_RX_STATUS_RERR|BBA_RX_STATUS_FAE))\n"));
 			__bba_rx_err(pkt_status);
 
 			bba_out8(BBA_IR,BBA_IR_RI);
@@ -837,13 +860,10 @@ static u32 __bba_link_rx()
 	}
 	bba_out12(BBA_RRP,rwp);
 
-	if(__bba_link_postrx(gc_netif,cur_rcv_buf)==ERR_TXPENDING) return ERR_OK;
-
-	bba_out8(BBA_IR,BBA_IR_RI);
-	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
-	EXI_Unlock(EXI_CHANNEL_0);
-	
 	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_rx(rx interrupt close)\n"));
+	bba_out8(BBA_IR,BBA_IR_RI);
+	
+	__bba_post_send();
 
 	return ERR_OK;
 }
@@ -864,7 +884,6 @@ static err_t bba_start_rx()
 static inline void bba_interrupt(struct netif *dev)
 {
 	u8 ir,imr,status;
-	u32 loops = 0;
 	struct bba_priv *priv = (struct bba_priv*)dev->state;
 	
 	ir = bba_in8(BBA_IR);
@@ -872,46 +891,44 @@ static inline void bba_interrupt(struct netif *dev)
 	status = ir&imr;
 
 	LWIP_DEBUGF(NETIF_DEBUG,("bba_interrupt(status(%02x))\n",status));
-	while(status) {
-		if(status&BBA_IR_FRAGI) {
-			bba_out8(BBA_IR,BBA_IR_FRAGI);
-		}
-		if(status&BBA_IR_RI) {
-			bba_start_rx();
-			return;
-		}
-		if(status&BBA_IR_REI) {
-			__bba_rx_err(bba_in8(BBA_LRPS));
-			bba_out8(BBA_IR,BBA_IR_REI);
-		}
-		if(status&BBA_IR_TI) {
-			__bba_tx_err(priv,bba_in8(BBA_LTPS));
-			bba_out8(BBA_IR,BBA_IR_TI);
-		}
-		if(status&BBA_IR_TEI) {
-			__bba_tx_err(priv,bba_in8(BBA_LTPS));
-			bba_out8(BBA_IR,BBA_IR_TEI);
-		}
-		if(status&BBA_IR_FIFOEI) {
-			__bba_tx_wake(priv);
-			bba_out8(BBA_IR,BBA_IR_FIFOEI);
-		}
-		if(status&BBA_IR_BUSEI) {
-			bba_out8(BBA_IR,BBA_IR_BUSEI);
-		}
-		if(status&BBA_IR_RBFI) {
-			bba_start_rx();
-			return;
-		}
 
-		ir = bba_in8(BBA_IR);
-		imr = bba_in8(BBA_IMR);
-		status = ir&imr;
-		loops++;
+	if(status&BBA_IR_FRAGI) {
+		bba_out8(BBA_IR,BBA_IR_FRAGI);
 	}
-
-	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
-	EXI_Unlock(EXI_CHANNEL_0);
+	if(status&BBA_IR_RI) {
+		if(cur_rcv_buf==NULL) {
+			bba_start_rx();
+			return;
+		}
+	}
+	if(status&BBA_IR_REI) {
+		__bba_rx_err(bba_in8(BBA_LRPS));
+		bba_out8(BBA_IR,BBA_IR_REI);
+	}
+	if(status&BBA_IR_TI) {
+		__bba_tx_wake(priv);
+		__bba_tx_err(bba_in8(BBA_LTPS));
+		bba_out8(BBA_IR,BBA_IR_TI);
+	}
+	if(status&BBA_IR_TEI) {
+		__bba_tx_wake(priv);
+		__bba_tx_err(bba_in8(BBA_LTPS));
+		bba_out8(BBA_IR,BBA_IR_TEI);
+	}
+	if(status&BBA_IR_FIFOEI) {
+		__bba_tx_wake(priv);
+		bba_out8(BBA_IR,BBA_IR_FIFOEI);
+	}
+	if(status&BBA_IR_BUSEI) {
+		bba_out8(BBA_IR,BBA_IR_BUSEI);
+	}
+	if(status&BBA_IR_RBFI) {
+		if(cur_rcv_buf==NULL) {
+			bba_start_rx();
+			return;
+		}
+	}
+	__bba_post_send();
 }
 
 static err_t __bba_init(struct netif *dev)
@@ -1009,7 +1026,7 @@ static u32 bba_event_handler(u32 nChn,void *arg)
 	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
 
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,bba_event_handler)==0) {
-		LWIP_DEBUGF(NETIF_DEBUG,("bba_event_handler(exi allready locked)\n"));
+		LWIP_ERROR(("bba_event_handler(exi allready locked)\n"));
 		return 1;
 	}
 
@@ -1059,7 +1076,7 @@ static u32 bba_event_handler(u32 nChn,void *arg)
 		EXI_Unlock(EXI_CHANNEL_0);
 		return 1;
 	}
-	LWIP_DEBUGF(NETIF_DEBUG,("GCIF - EXI - ?? %02x\n", status));
+	LWIP_ERROR(("GCIF - EXI - ?? %02x\n", status));
 	bba_interrupt(gc_netif);
 	return 1;
 }
@@ -1080,7 +1097,7 @@ err_t bba_init(struct netif *dev)
 
 	priv = mem_malloc(sizeof(struct bba_priv));
 	if(!priv) {
-		LWIP_DEBUGF(NETIF_DEBUG, ("bba_init: out of memory for bba_priv\n"));
+		LWIP_ERROR(("bba_init: out of memory for bba_priv\n"));
 		return ERR_MEM;
 	}
 
@@ -1115,10 +1132,10 @@ err_t bba_init(struct netif *dev)
 
 	EXI_Unlock(EXI_CHANNEL_0);
 
-	while(!__bba_getlink_state_async()) {
-		udelay(1000000);
+	do {
+		udelay(20000);
 		LWIP_DEBUGF(NETIF_DEBUG, ("bba_init(wait link state)\n"));
-	}
+	} while(!__bba_getlink_state_async());
 
 	etharp_init();
 

@@ -350,5 +350,4 @@ __flush_cache:
 	.section .data
 	.balign	8
 zfloat:
-	.float 196.0
 	.double 0.0
