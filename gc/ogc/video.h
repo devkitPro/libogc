@@ -25,10 +25,11 @@ extern GXRModeObj TVPal574IntDfScale;
 typedef void (*VIRetraceCallback)(u32);
 
 void VIDEO_Init(u32 VideoMode);
-void VIDEO_SetFrameBuffer(u32 Which, u32 FrameBufferAddr);
+void VIDEO_SetFrameBuffer(u32 which, void *fb);
 void VIDEO_SetBlack(bool btrue);
 void VIDEO_ClearFrameBuffer(u32 FrameBufferAddr,u32 nSize,u32 color);
 void VIDEO_WaitVSync(void);
+void VIDEO_SetNextFramebuffer(void *fb);
 u32 VIDEO_GetCurrentMode();
 u32 VIDEO_GetYCbCr(u8 r,u8 g,u8 b);
 VIRetraceCallback VIDEO_SetPreRetraceCallback(VIRetraceCallback callback);

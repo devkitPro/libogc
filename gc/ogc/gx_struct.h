@@ -16,7 +16,7 @@ typedef struct _gx_rmodeobj {
 	u16 viYOrigin;	
 	u16 viWidth;
 	u16 viHeight;
-	u8  xfbMode;
+	u32  xfbMode;
 	u8  field_rendering;
 	u8  aa;
 	u8  sample_pattern[12][2];

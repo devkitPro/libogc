@@ -171,6 +171,7 @@ static lwpq_t video_queue;
 
 static u32 videoMode = -1;
 static vu32 retraceCount = 0;
+static void *nextFramebuffer = NULL;
 static const u32 *currTiming = NULL;
 static VIRetraceCallback preRetraceCB = NULL;
 static VIRetraceCallback postRetraceCB = NULL;
@@ -267,6 +268,9 @@ static u32 __VISetRegs()
 {
 	if(!__getCurrFieldEvenOdd()) return 0;
 
+   ((u32*)_viReg)[7] = (0x10000000|(MEM_VIRTUAL_TO_PHYSICAL(nextFramebuffer)>>5));
+   ((u32*)_viReg)[9] = (0x10000000|(MEM_VIRTUAL_TO_PHYSICAL(nextFramebuffer)>>5));
+
 	return 1;
 }
 
@@ -279,6 +283,8 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 	if(preRetraceCB)
 		preRetraceCB(retraceCount);
 
+	__VISetRegs();
+	
 	if(postRetraceCB)
 		postRetraceCB(retraceCount);
 #ifdef _VIDEO_DEBUG
@@ -319,24 +325,24 @@ void VIDEO_Init(u32 VideoMode)
 	memcpy(pDstAddr,currTiming,sizeof(u32)*32);
 }
 
-void VIDEO_SetFrameBuffer(u32 Which, u32 FrameBufferAddr)
+void VIDEO_SetFrameBuffer(u32 which, void *fb)
 {
-   switch(Which)
+   switch(which)
    {
       // Framebuffer 1 
       case VIDEO_FRAMEBUFFER_1:
-               R_VIDEO_FRAMEBUFFER_1 = (0x10000000|(FrameBufferAddr>>5));
+               ((u32*)_viReg)[7] = (0x10000000|(MEM_VIRTUAL_TO_PHYSICAL(fb)>>5));
                break;
 
       // Framebuffer 2 
       case VIDEO_FRAMEBUFFER_2:
-               R_VIDEO_FRAMEBUFFER_2 = (0x10000000|(FrameBufferAddr>>5));
+               ((u32*)_viReg)[9] = (0x10000000|(MEM_VIRTUAL_TO_PHYSICAL(fb)>>5));
                break;
 
       // Set both Framebuffers 
       case VIDEO_FRAMEBUFFER_BOTH:
-               R_VIDEO_FRAMEBUFFER_1 = (0x10000000|(FrameBufferAddr>>5));
-               R_VIDEO_FRAMEBUFFER_2 = (0x10000000|(FrameBufferAddr>>5));
+               ((u32*)_viReg)[7] = (0x10000000|(MEM_VIRTUAL_TO_PHYSICAL(fb)>>5));
+               ((u32*)_viReg)[9] = (0x10000000|(MEM_VIRTUAL_TO_PHYSICAL(fb)>>5));
                break;
    }
 }
@@ -378,6 +384,15 @@ void VIDEO_WaitVSync(void)
 #endif
 		LWP_SleepThread(video_queue);
 	}
+}
+
+void VIDEO_SetNextFramebuffer(void *fb)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	nextFramebuffer = fb;
+	_CPU_ISR_Restore(level);
 }
 
 #define CLAMP(x,l,h) ((x>h)?h:((x<l)?l:x))
