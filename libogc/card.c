@@ -1328,7 +1328,7 @@ static s32 __card_read(u32 chn,u32 address,u32 block_len,void *buffer,cardcallba
 #ifdef _CARD_DEBUG
 	printf("__card_read(%d,%08x,%d,%p,%p)\n",chn,address,block_len,buffer,callback);
 #endif
-	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return -3;
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
 	card = &cardmap[chn];
 
 	card->cmd_sector_addr = address;
@@ -1342,6 +1342,15 @@ static s32 __card_read(u32 chn,u32 address,u32 block_len,void *buffer,cardcallba
 
 static s32 __card_formatregion(u32 chn,u32 encode,cardcallback callback)
 {
+	s32 ret;
+	card_block *card = NULL;
+#ifdef _CARD_DEBUG
+	printf("__card_formatregion(%d,%d,%p)\n",chn,encode,callback);
+#endif
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
+
+	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
+
 	return -1;
 }
 
