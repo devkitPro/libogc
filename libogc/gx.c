@@ -1021,11 +1021,14 @@ void GX_SetDrawDone()
 
 void GX_WaitDrawDone()
 {
+	u32 level;
 #ifdef _GP_DEBUG
 	printf("GX_WaitDrawDone()\n\n");
 #endif
+	_CPU_ISR_Disable(level);
 	while(!_gxfinished)
 		LWP_SleepThread(_gxwaitfinish);
+	_CPU_ISR_Restore(level);
 }
 
 void GX_DrawDone()
@@ -2784,11 +2787,9 @@ void GX_SetTevAlphaOp(u8 tevstage,u8 tevop,u8 tevbias,u8 tevscale,u8 clamp,u8 te
 
 void GX_SetCullMode(u8 mode)
 {
-	u8 tmode = mode;
+    static u8 cm2hw[] = { 0, 2, 1, 3 };
 	
-	if(tmode==GX_CULL_BACK) tmode = 1;
-	else if(tmode==GX_CULL_FRONT) tmode = 2;
-	_gx[0xac] = (_gx[0xac]&~0xC000)|(_SHIFTL(tmode,14,2));
+	_gx[0xac] = (_gx[0xac]&~0xC000)|(_SHIFTL(cm2hw[mode],14,2));
 	_gx[0x08] |= 0x0004;
 }
 
