@@ -60,7 +60,7 @@ void guPerspective(Mtx44 mt,f32 fovy,f32 aspect,f32 n,f32 f)
 	mt[3][3] = 0.0f;
 }
 
-void guOrtho(Mtx44 mt,f32 l,f32 r,f32 b,f32 t,f32 n,f32 f)
+void guOrtho(Mtx44 mt,f32 t,f32 b,f32 l,f32 r,f32 n,f32 f)
 {
 	f32 tmp;
 
