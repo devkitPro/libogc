@@ -12,26 +12,6 @@ extern int errno;
 #include "timesupp.h"
 #include "exi.h"
 
-#define TB_BUS_CLOCK		162000000u
-#define TB_CORE_CLOCK		486000000u
-#define TB_TIMER_CLOCK		(TB_BUS_CLOCK/4000)			//4th of the bus frequency
-
-#define TB_REQ				250
-#define TB_SUCCESSFUL		0
-
-#define ticks_to_cycles(ticks)		(((ticks)*((TB_CORE_CLOCK*2)/TB_TIMER_CLOCK))/2)
-#define ticks_to_secs(ticks)		((ticks)/TB_TIMER_CLOCK)
-#define ticks_to_millisecs(ticks)	((ticks)/(TB_TIMER_CLOCK/1000))
-#define ticks_to_microsecs(ticks)	(((ticks)*8)/(TB_TIMER_CLOCK/125000))
-#define ticks_to_nanosecs(ticks)	(((ticks)*8000)/(TB_TIMER_CLOCK/125000))
-
-#define secs_to_ticks(sec)			((sec)*TB_TIMER_CLOCK)
-#define millisecs_to_ticks(msec)	((msec)*(TB_TIMER_CLOCK/1000))
-#define microsecs_to_ticks(usec)	(((usec)*(TB_TIMER_CLOCK/125000))/8)
-#define nanosecs_to_ticks(nsec)		(((nsec)*(TB_TIMER_CLOCK/125000))/8000)
-
-#define diff_ticks(tick0,tick1)		((signed long long)tick0 - (signed long long)tick1)
-
 /* time variables */
 static lwpq_t time_exi_wait;
 static lwp_thrqueue timedwait_queue;
