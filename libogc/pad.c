@@ -18,6 +18,13 @@
 
 #define PAD_ENABLEDMASK(chan)		(0x80000000>>chan);
 
+typedef struct _keyinput {
+	vs16 up;
+	vs16 down;
+	vs16 state;
+	vs16 oldstate;
+} __attribute__ ((packed)) keyinput;
+
 typedef void (*SPECCallback)(u32,u32*,PADStatus*);
 
 static SPECCallback __pad_makestatus = NULL;
@@ -40,6 +47,9 @@ static u32 __pad_type[PAD_CHANMAX];
 static s8 __pad_origin[PAD_CHANMAX][12];
 static u32 __pad_cmdprobedevice[PAD_CHANMAX];
 
+static volatile keyinput Keys[4] = { {0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}};
+static PADStatus pad[4];
+
 static vu32* const _siReg = (u32*)0xCC006400;
 static vu16* const _viReg = (u16*)0xCC002000;
 
@@ -61,7 +71,7 @@ static void SPEC0_MakeStatus(u32 chan,u32 *data,PADStatus *status)
 	if(data[0]&0x01000000) status->button |= 0x0400;
 	if(data[0]&0x00010000) status->button |= 0x0800;
 	if(data[0]&0x00100000) status->button |= 0x1000;
-	
+
 	status->stickX = (s8)(data[1]>>16);
 	status->stickY = (s8)(data[1]>>24);
 	status->substickX = (s8)data[1];
@@ -70,7 +80,7 @@ static void SPEC0_MakeStatus(u32 chan,u32 *data,PADStatus *status)
 	status->triggerR = (u8)(data[0]&0xff);
 	status->analogA = 0;
 	status->analogB = 0;
-	
+
 	if(status->triggerL>=0xaa) status->button |= 0x40;
 	if(status->triggerR>=0xaa) status->button |= 0x20;
 
@@ -89,7 +99,7 @@ static void SPEC1_MakeStatus(u32 chan,u32 *data,PADStatus *status)
 	if(data[0]&0x00200000) status->button |= 0x0400;
 	if(data[0]&0x00100000) status->button |= 0x0800;
 	if(data[0]&0x02000000) status->button |= 0x1000;
-	
+
 	status->stickX = (s8)(data[1]>>16);
 	status->stickY = (s8)(data[1]>>24);
 	status->substickX = (s8)data[1];
@@ -98,7 +108,7 @@ static void SPEC1_MakeStatus(u32 chan,u32 *data,PADStatus *status)
 	status->triggerR = (u8)data[0]&0xff;
 	status->analogA = 0;
 	status->analogB = 0;
-	
+
 	if(status->triggerL>=0xaa) status->button |= 0x40;
 	if(status->triggerR>=0xaa) status->button |= 0x20;
 
@@ -111,6 +121,7 @@ static void SPEC1_MakeStatus(u32 chan,u32 *data,PADStatus *status)
 static s8 __pad_clampS8(s8 var,s8 org)
 {
 	s32 siorg;
+
 #ifdef _PAD_DEBUG
 	u32 tmp = var;
 	printf("__pad_clampS8(%d,%d)\n",var,org);
@@ -140,11 +151,11 @@ static void SPEC2_MakeStatus(u32 chan,u32 *data,PADStatus *status)
 	u32 mode;
 	
 	status->button = _SHIFTR(data[0],16,14);
-	
+
 	status->stickX = (s8)(data[0]>>8);
 	status->stickY = (s8)data[0];
 #ifdef _PAD_DEBUG
-//	printf("SPEC2_MakeStatus(%d,%p,%p)",chan,data,status);
+	printf("SPEC2_MakeStatus(%d,%p,%p)",chan,data,status);
 #endif
 	mode = __pad_analogmode&0x0700;
 	if(mode==0x100) {
@@ -188,7 +199,6 @@ static void SPEC2_MakeStatus(u32 chan,u32 *data,PADStatus *status)
 	status->stickY -= 128;
 	status->substickX -= 128;
 	status->substickY -= 128;
-	
 	status->stickX = __pad_clampS8(status->stickX,__pad_origin[chan][2]);
 	status->stickY = __pad_clampS8(status->stickY,__pad_origin[chan][3]);
 	status->substickX = __pad_clampS8(status->substickX,__pad_origin[chan][4]);
@@ -369,7 +379,7 @@ u32 PAD_Init()
 	
 	__pad_initialized = 1;
 	__pad_recalibratebits = 0xf0000000;
-	
+
 	chan = 0;
 	while(chan<4) {
 		__pad_cmdprobedevice[chan] = 0x4d000000|(chan<<22)|_SHIFTL(pprodpads[0],8,14);
@@ -530,53 +540,37 @@ void PAD_ControlMotor(s32 chan,u32 cmd)
 	_CPU_ISR_Restore(level);
 }
 
-//---------------------------------------------------------------------------------
-typedef struct tagKeyInput{
-	vs16	up,
-			down,
-			state,
-			oldstate;
-	}__attribute__ ((packed)) KeyInput;
 
-static volatile KeyInput Keys[4] = { {0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}};
-static PADStatus pad[4];
-
-
-//---------------------------------------------------------------------------------
-void PAD_ScanPads() {
-//---------------------------------------------------------------------------------
+void PAD_ScanPads()
+{
+	s32 index;
 
 	PAD_Read(pad);
-	int index;
 
-	for ( index = 0; index < 4; index++) {
-
+	for(index=0;index<4;index++) {
 		Keys[index].oldstate	= Keys[index].state;
 		Keys[index].state		= pad[index].button;
-		Keys[index].up			= Keys[index].oldstate & ~Keys[index].state;
-		Keys[index].down		= ~Keys[index].oldstate & Keys[index].state;
+		Keys[index].up			= Keys[index].oldstate&~Keys[index].state;
+		Keys[index].down		= ~Keys[index].oldstate&Keys[index].state;
 	}			
 }
 
-//---------------------------------------------------------------------------------
-u16 PAD_ButtonsUp(int pad) {
-//---------------------------------------------------------------------------------
-	if (pad<0 || pad >3) return 0;
-	
+
+u16 PAD_ButtonsUp(int pad)
+{
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
 	return 	Keys[pad].up;
 }
-//---------------------------------------------------------------------------------
-u16 PAD_ButtonsDown(int pad) {
-//---------------------------------------------------------------------------------
-	if (pad<0 || pad >3) return 0;
 
+u16 PAD_ButtonsDown(int pad)
+{
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
 	return 	Keys[pad].down;
 }
 
-//---------------------------------------------------------------------------------
-u16 PAD_ButtonsHeld(int pad) {
-//---------------------------------------------------------------------------------
-	if (pad<0 || pad >3) return 0;
-
+u16 PAD_ButtonsHeld(int pad)
+{
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
 	return Keys[pad].state;
 }
+
