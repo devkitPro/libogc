@@ -23,6 +23,7 @@ struct irq_handler_s {
 
 static u64 spuriousIrq = 0;
 static u32 currIrqMask = 0;
+static u32 prevIrqMask = 0;
 static struct irq_handler_s g_IRQHandler[32];
 
 static vu32* const _piReg = (u32*)0xCC003000;
@@ -57,9 +58,13 @@ void c_irqdispatcher()
 	u32 i,icause,intmask,irq;
 	u32 cause,mask;
 
-	mask = _piReg[0];
-	cause = mask&~0x8000;
-	if(!(mask&0x8000) || !(cause&_piReg[1])) spuriousIrq++;
+	cause = _piReg[0]&~0x10000;
+	mask = _piReg[1];
+
+	if(!cause || !(cause&mask)) {
+		spuriousIrq++;
+		return;
+	}
 	
 	intmask = 0;
 	if(cause&0x00000080) {		//Memory Interface
@@ -304,6 +309,7 @@ void __irq_init()
 	
 	
 	currIrqMask = 0;
+	prevIrqMask = 0;
 	_piReg[1] = 0xf0;
 
 	__MaskIrq(0xffffffe0);
