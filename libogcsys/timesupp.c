@@ -122,7 +122,7 @@ unsigned int _DEFUN(nanosleep,(tb),
 		udelay(tb->tv_nsec);
 		return TB_SUCCESSFUL;
 	}
-	
+
 	timeout = timespec_to_interval(tb);
 
 	_CPU_ISR_Disable(level);
@@ -167,7 +167,6 @@ time_t _DEFUN(time,(timer),
 	}
 
 	command = 0x20000100;
-	EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED8MHZ);
 	EXI_Imm(EXI_CHANNEL_0,&command,4,EXI_WRITE,NULL);
 	EXI_Sync(EXI_CHANNEL_0);
 	EXI_ImmEx(EXI_CHANNEL_0,SRAM,64,EXI_READ);
