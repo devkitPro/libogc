@@ -450,10 +450,10 @@ void __lwp_thread_loadenv(lwp_cntrl *thethread)
 		msr_value |= MSR_EE;
 	else
 		msr_value &= ~MSR_EE;
+
+	msr_value &= ~MSR_FP;		//disable FPU, we'll use it only when needed, then it'll get saved/restored in the FP exception handler
 	
 	thethread->context.MSR = msr_value;
-	thethread->context.MSR &= ~MSR_FP;		//disable FPU, we'll use it only when needed, then it'll get saved/restored in the FP exception handler
-
 	thethread->context.LR = (u32)__lwp_thread_handler;
 
 	__asm__ __volatile__ ("mr %0,2; mr %1,13" : "=r" ((r2)), "=r" ((r13)));
