@@ -408,7 +408,7 @@ static void __si_interrupthandler(u32 irq,void *ctx)
 		
 		_siReg[14] &= SISR_ERRORMASK(chn);
 
-		if(si_type[chn]==128 && !SI_IsChanBusy(chn)) SI_Transfer(chn,&cmdtypeandstatus$47,1,&si_type[chn],3,__si_gettypecallback,10);
+		if(si_type[chn]==128 && !SI_IsChanBusy(chn)) SI_Transfer(chn,&cmdtypeandstatus$47,1,&si_type[chn],3,__si_gettypecallback,65);
 	}
 
 	if(csr.csrmap.rdstintmsk && csr.csrmap.rdstint) {
@@ -580,20 +580,20 @@ u32 SI_GetCommand(s32 chan)
 {
 	return (_siReg[chan*3]);
 }
-u32 SI_Transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb,u32 delay)
+u32 SI_Transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb,u32 us_delay)
 {
 	u32 ret = 0;
 	u32 level;
 	struct timespec tb;
 #ifdef _SI_DEBUG
-	printf("SI_Transfer(%d,%p,%d,%p,%d,%p,%d)\n",chan,out,out_len,in,in_len,cb,delay);
+	printf("SI_Transfer(%d,%p,%d,%p,%d,%p,%d)\n",chan,out,out_len,in,in_len,cb,us_delay);
 #endif
 	_CPU_ISR_Disable(level);
 	if(sipacket[chan].chan==-1 && sicntrl.chan!=chan) {
 		ret = 1;
-		if(delay) {
+		if(us_delay) {
 			tb.tv_sec = 0;
-			tb.tv_nsec = delay*TB_NSPERMS;
+			tb.tv_nsec = us_delay*TB_NSPERUS;
 			SYS_SetAlarm(&si_alarm[chan],&tb,__si_alarmhandler);
 		} else if(__si_transfer(chan,out,out_len,in,in_len,cb)) {
 			_CPU_ISR_Restore(level);
@@ -605,7 +605,7 @@ u32 SI_Transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb
 		sipacket[chan].in = in;
 		sipacket[chan].in_bytes = in_len;
 		sipacket[chan].callback = cb;
-		sipacket[chan].fire = delay;
+		sipacket[chan].fire = us_delay;
 #ifdef _SI_DEBUG
 		printf("SI_Transfer(%d,%p,%d,%p,%d,%p,%d)\n",sipacket[chan].chan,sipacket[chan].out,sipacket[chan].out_bytes,sipacket[chan].in,sipacket[chan].in_bytes,sipacket[chan].callback,sipacket[chan].fire);
 #endif
@@ -637,7 +637,7 @@ u32 SI_GetType(s32 chan)
 	}
 	typeTime[chan] = gettime();
 	
-	SI_Transfer(chan,&cmdtypeandstatus$223,1,&si_type[chan],3,__si_gettypecallback,10);
+	SI_Transfer(chan,&cmdtypeandstatus$223,1,&si_type[chan],3,__si_gettypecallback,65);
 	_CPU_ISR_Restore(level);
 
 	return type;

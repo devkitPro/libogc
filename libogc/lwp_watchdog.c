@@ -4,6 +4,8 @@
 #include "lwp_watchdog.h"
 #include "libogcsys/timesupp.h"
 
+//#define _LWPWD_DEBUG
+
 vu32 _wd_sync_level;
 vu32 _wd_sync_count;
 u32 _wd_ticks_since_boot;
@@ -18,10 +20,25 @@ static void __lwp_wd_settimer(wd_cntrl *wd)
 	s64 max_ticks = (s64)0x80000000;
 	s64 min_ticks = (s64)0x0;
 	s64 delta_interval = (s64)wd->delta_interval;
-
-	if(0>=(min_ticks-delta_interval)) mtdec(0);
-	else if(0<=(max_ticks-delta_interval)) mtdec((u32)delta_interval);
-	else mtdec(0x7fffffff);
+#ifdef _LWPWD_DEBUG
+	printf("__lwp_wd_settimer(%lld)\n",delta_interval);
+#endif
+	if(0<(min_ticks-delta_interval)) {
+#ifdef _LWPWD_DEBUG
+		printf("0<(min_ticks-delta_interval): __lwp_wd_settimer(0)\n");
+#endif
+		mtdec(0);
+	} else if(0<(max_ticks-delta_interval)) {
+#ifdef _LWPWD_DEBUG
+		printf("0<(max_ticks-delta_interval): __lwp_wd_settimer(%d)\n",(u32)delta_interval);
+#endif
+		mtdec((u32)delta_interval);
+	} else {
+#ifdef _LWPWD_DEBUG
+		printf("__lwp_wd_settimer(0x7fffffff)\n");
+#endif
+		mtdec(0x7fffffff);
+	}
 }
 
 void __lwp_watchdog_init()
@@ -40,7 +57,9 @@ void __lwp_wd_insert(lwp_queue *header,wd_cntrl *wd)
 	wd_cntrl *after;
 	u32 isr_nest_level;
 	u64 delta_interval;
-
+#ifdef _LWPWD_DEBUG
+	printf("__lwp_wd_insert()\n");
+#endif
 	isr_nest_level = __lwp_isr_in_progress();
 	wd->state = LWP_WD_INSERTED;
 	
@@ -71,8 +90,7 @@ restart:
 	wd->delta_interval = delta_interval;
 	__lwp_queue_insertI(after->node.prev,&wd->node);
 	wd->start_time = gettime();
-	if((!__lwp_wd_prev(wd) && !__lwp_wd_next(wd))
-		|| !__lwp_wd_prev(wd)) __lwp_wd_settimer(wd);
+	if(__lwp_wd_first(header)==wd) __lwp_wd_settimer(wd);
 
 exit_insert:
 	_wd_sync_level = isr_nest_level;
@@ -116,18 +134,20 @@ void __lwp_wd_tickle(lwp_queue *queue)
 	s64 max_ticks = (s64)0x80000000;
 
 	if(__lwp_queue_isempty(queue)) return;
-	
+
 	wd = __lwp_wd_first(queue);
 	now = gettime();
 	diff = diff_ticks(now,wd->start_time);
-	if(diff>wd->delta_interval && wd->delta_interval<max_ticks) return;
+#ifdef _LWPWD_DEBUG
+	printf("__lwp_wd_tickle(%lld)\n",diff);
+#endif
+	if(diff<wd->delta_interval && wd->delta_interval<max_ticks) return;
 	if(wd->delta_interval>=max_ticks) {
 		wd->delta_interval -= max_ticks;
 		__lwp_wd_settimer(wd);
 		return;
 	}
-//	wd->delta_interval--;
-//	if(wd->delta_interval!=0) return;
+	wd->delta_interval = 0;
 
 	do {
 		switch(__lwp_wd_remove(wd)) {

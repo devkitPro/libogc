@@ -790,7 +790,7 @@ static void __setuptimeout(card_block *card)
 		SYS_SetAlarm(&card->timeout_svc,&tb,__timeouthandler);
 	} else if(card->cmd[0]==0xf2) {
 		tb.tv_sec = 0;
-		tb.tv_nsec = 100*TB_NSPERMS;
+		tb.tv_nsec = 100*TB_NSPERUS;
 		SYS_SetAlarm(&card->timeout_svc,&tb,__timeouthandler);
 	}
 }

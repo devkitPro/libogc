@@ -447,13 +447,13 @@ void SYS_Init()
 	__decrementer_init();
 	__irq_init();
 	__exi_init();
-	__si_init();
 	__sram_init();
 	__lwp_sys_init();
 	__dsp_bootstrap();
 	__memprotect_init();
 	__memlock_init();
 	__timesystem_init();
+	__si_init();
 	DisableWriteGatherPipe();
 
 	IRQ_Request(IRQ_PI_RSW,__RSWHandler,NULL);
@@ -556,6 +556,7 @@ void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb)
 		}
 		else system_alarms = alarm;
 	}
+	_CPU_ISR_Restore(level);
 
 	if(!found) {
 		alarm->handle = NULL;
@@ -565,7 +566,6 @@ void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb)
 		if(!found) __lwp_wd_initialize(alarm->handle,__sys_alarmhandler,alarm);
 		__lwp_wd_insert_ticks(alarm->handle,alarm->ticks);
 	}
-	_CPU_ISR_Restore(level);
 }
 
 void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb)

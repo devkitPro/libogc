@@ -65,9 +65,9 @@ struct _sysalarm {
 	struct _sysalarm *next;
 	alarmcallback alarmhandler;
 	void *handle;
-	u32 ticks;
-	u32 periodic;
-	u32 start_per;
+	u64 ticks;
+	u64 periodic;
+	u64 start_per;
 };
 
 typedef void (*resetcallback)(void);
