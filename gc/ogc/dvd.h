@@ -7,6 +7,8 @@
    extern "C" {
 #endif /* __cplusplus */
 
+typedef void (*DVDCallback)(u32);
+
 void DVD_Init();
 s32 DVD_Read(void *pDst,s32 nLen,u32 nOffset);
 s32 DVD_ReadId(void *pDst);
