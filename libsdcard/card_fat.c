@@ -612,7 +612,7 @@ s32 card_expandClusterSpace(s32 drv_no,F_HANDLE handle,u32 cluster,u32 offset,u3
 
 s32 card_readCluster(s32 drv_no,u32 cluster_no,u32 offset,void *buf,u32 len)
 {
-	s32 ret;
+	s32 ret = CARDIO_ERROR_INTERNAL;
 	u32 start,end,i;
 	u32 start_offset,end_offset;
 	u32 block_start_no;
@@ -1517,6 +1517,217 @@ s32 card_readFromDisk(s32 drv_no,opendfile_list *p_list,void *buf,u32 cnt,u32 *p
     return CARDIO_ERROR_READY;
 }
 
+s32 card_writeToDisk(s32 drv_no,opendfile_list *p_list,const u8 *p_buf,u32 count)
+{
+	s32 ret;
+    u32 i;
+    u32 write_count;
+    u32 cluster;
+    u32 offset;
+    u32 cluster_start_count;
+    u32 cluster_end_count;
+    u32 cluster_size;
+    u32 old_cluster;
+    u32 copy_count;
+    bool b_fat_changed = FALSE;
+    u32 walked_cluster_count;
+
+    if(count==0) return CARDIO_ERROR_READY;
+
+    write_count = count;
+
+    cluster_size = _sdInfo[drv_no].spbr.sbpb.sects_per_cluster*SECTOR_SIZE;
+    cluster_start_count = p_list->f_ptr/cluster_size;
+    cluster_end_count = (p_list->f_ptr+write_count+cluster_size-1)/cluster_size;
+    offset = p_list->f_ptr%cluster_size;
+
+    cluster = p_list->cur_cluster;
+    if(cluster==LAST_CLUSTER) {
+        ret = card_allocCluster(drv_no,&cluster);
+        if(ret!=CARDIO_ERROR_READY) 
+            return ret;
+
+        SET_FAT_TBL(drv_no,p_list->old_cur_cluster,(u16)cluster);
+        SET_FAT_TBL(drv_no, cluster,LAST_CLUSTER);
+        b_fat_changed = TRUE;
+
+        p_list->cur_cluster = cluster;
+    }
+
+    for(i=cluster_start_count;i<cluster_end_count;++i) {
+        copy_count = (write_count>cluster_size)?cluster_size:write_count;
+        card_writeCluster(drv_no, cluster,offset,p_buf,copy_count);
+        offset = 0;
+        p_buf += copy_count;
+        write_count -= copy_count;
+
+        if(i<cluster_end_count-1) {
+            old_cluster = cluster;
+            cluster = GET_FAT_TBL(drv_no,old_cluster);
+            if (cluster == LAST_CLUSTER) {
+                ret = card_allocCluster(drv_no,&cluster);
+                if(ret!=CARDIO_ERROR_READY) 
+                    return ret;
+
+                SET_FAT_TBL(drv_no,old_cluster,(u16)cluster);
+                SET_FAT_TBL(drv_no,cluster,LAST_CLUSTER);
+                b_fat_changed = TRUE;
+            }
+        }
+    }
+
+    /* update current cluster */
+    walked_cluster_count = (p_list->f_ptr%cluster_size+count)/cluster_size;
+    if(walked_cluster_count>0) {
+        while(walked_cluster_count-->0) {
+            p_list->old_cur_cluster = p_list->cur_cluster;
+            p_list->cur_cluster = GET_FAT_TBL(drv_no,p_list->cur_cluster);
+        }
+    }
+
+    p_list->f_ptr += count;
+    if (p_list->f_ptr > p_list->size) p_list->size = p_list->f_ptr;
+
+    return CARDIO_ERROR_READY;
+}
+
+s32 card_writeCacheToDisk(s32 drv_no,opendfile_list *p_list)
+{
+	s32 ret;
+    u32 i, j;
+    u8* p_write;
+    u32 write_count;
+    u32 cluster;
+    u32 offset;
+    u32 cluster_start_count;
+    u32 cluster_end_count;
+    u32 cluster_size;
+    u32 old_cluster;
+    u32 copy_count;
+    u32 remained_count;
+    u8* buf;
+    bool b_fat_changed = FALSE;
+    bool b_new_cluster = FALSE;
+
+    p_write = p_list->cache.buf;
+    write_count = p_list->cache.cnt;
+
+    if(write_count==0) 
+        return CARDIO_ERROR_READY;
+
+    cluster_size = _sdInfo[drv_no].spbr.sbpb.sects_per_cluster*SECTOR_SIZE;
+    cluster_start_count = p_list->cache.f_ptr/cluster_size;
+    cluster_end_count = (p_list->cache.f_ptr+write_count)/cluster_size;
+    offset = p_list->cache.f_ptr%cluster_size;
+
+    cluster = p_list->cluster;
+    buf = card_allocBuffer();
+    if(!buf) 
+        return CARDIO_ERROR_OUTOFMEMORY;
+
+    for (i=0;i<=cluster_end_count;++i) {
+        if(i>=cluster_start_count) {
+            copy_count = (write_count>cluster_size-offset)?(cluster_size-offset):write_count;
+
+            if(b_new_cluster) {
+                /* here, offset is always 0 */
+                remained_count = 0;
+
+                /*
+                 * card_writeBlock() must be used on the sector boundary
+                 * remained_count may be not 0 in the last block
+                 */
+                if(copy_count%SECTOR_SIZE) {
+                    remained_count = copy_count%SECTOR_SIZE;
+                    memcpy(buf,p_write+copy_count-remained_count,remained_count);
+                }
+
+                ret = card_writeCluster(drv_no, cluster,0,p_write,copy_count-remained_count);
+                if(ret!=CARDIO_ERROR_READY) {
+                    card_freeBuffer(buf);
+                    return ret;
+                }
+
+                if (remained_count) {
+                    ret = card_writeCluster(drv_no,cluster,copy_count-remained_count,buf,SECTOR_SIZE);
+                    if(ret!=CARDIO_ERROR_READY) {
+                        card_freeBuffer(buf);
+                        return ret;
+                    }
+                }
+
+                /*
+                 * if the cluster is newly made and there is some area
+                 * in which no data is written, fill the area with
+                 * dummy data.
+                 */
+                if(i==cluster_end_count) {
+                    if (copy_count) {
+                        memset(buf,0,SECTOR_SIZE);
+                        for(j=((copy_count-1)/SECTOR_SIZE+1)*SECTOR_SIZE;j<cluster_size;j+=SECTOR_SIZE) {
+                            ret = card_writeCluster(drv_no,cluster,j,buf,SECTOR_SIZE);
+                            if(ret!=CARDIO_ERROR_READY) {
+                                card_freeBuffer(buf);
+                                return ret;
+                            }
+                        }
+                    }
+                }
+            } else {
+                ret = card_writeCluster(drv_no,cluster,offset,p_write,copy_count);
+                if(ret!=CARDIO_ERROR_READY) {
+                    card_freeBuffer(buf);
+                    return ret;
+                }
+            }
+
+            p_write += copy_count;
+            write_count -= copy_count;
+            offset = 0;
+		} else {
+            /*
+             * if the cluster is newly made and there is no data to
+             * write, fill the cluster with dummy data.
+             */
+            if(b_new_cluster) {
+                memset(buf,0,SECTOR_SIZE);
+                for(j=0;j<cluster_size;j+=SECTOR_SIZE) {
+                    ret = card_writeCluster(drv_no,cluster,j,buf,SECTOR_SIZE);
+                    if(ret!=CARDIO_ERROR_READY) {
+                        card_freeBuffer(buf);
+                        return ret;
+                    }
+                }
+            }
+		}
+
+		/* prepare next cluster if this is the last loop */
+		if(i<cluster_end_count) {
+            old_cluster = cluster;
+            cluster = GET_FAT_TBL(drv_no,old_cluster);
+            if(cluster==LAST_CLUSTER) {
+                ret = card_allocCluster(drv_no,&cluster);
+                if(ret!=CARDIO_ERROR_READY) {
+                    card_freeBuffer(buf);
+                    return ret;
+                }
+
+                SET_FAT_TBL(drv_no,old_cluster,(u16)cluster);
+                SET_FAT_TBL(drv_no,cluster,LAST_CLUSTER);
+                b_fat_changed = TRUE;
+                b_new_cluster = TRUE;
+            }
+        }
+    }
+    card_freeBuffer(buf);
+
+    p_list->cache.f_ptr = p_list->f_ptr;
+    p_list->cache.cnt = 0;
+
+
+    return CARDIO_ERROR_READY;
+}
+
 void card_prepareFileClose(s32 drv_no, const opendfile_list* p_list) 
 {
 	s32 ret;
@@ -2011,6 +2222,74 @@ s32 card_readFile(F_HANDLE h_file,void *buf,u32 cnt,u32 *p_cnt)
         FAT_RETURN(drv_no, CARDIO_ERROR_EOF);
 
     FAT_RETURN(drv_no, ret);
+}
+
+s32 card_writeFile(F_HANDLE h_file,const void *p_buf,u32 count)
+{
+	s32 ret;
+    u32 drv_no;
+    u32 cluster;
+    const u8* p_write;
+    u32 write_count;
+    opendfile_list* p_list;
+    u32 id;
+
+    drv_no = (h_file>>24)&0x7f;
+    if(drv_no>=MAX_DRIVE) 
+            return CARDIO_ERROR_INVALIDPARAM;
+
+    cluster = h_file&0xffff;
+    id = (h_file>>16)&0xff;
+
+    p_write = (const u8*)p_buf;
+    write_count = count;
+
+    ret = card_preFAT(drv_no);
+    if(ret!=CARDIO_ERROR_READY)
+        FAT_RETURN(drv_no, ret);
+
+    ret = card_getOpenedList(drv_no,cluster,id,&p_list);
+    if (ret!=CARDIO_ERROR_READY)
+        FAT_RETURN(drv_no, ret);
+
+    if(!(p_list->mode&OPEN_W))
+        FAT_RETURN(drv_no,CARDIO_ERROR_NOTPERMITTED);
+
+    if((p_list->cache.cnt!=0) && (p_list->f_ptr!=p_list->cache.f_ptr+p_list->cache.cnt))
+        card_writeCacheToDisk(drv_no,p_list);
+
+    if(p_list->cache.cnt+write_count<_fatCacheSize[drv_no]) {
+        u32 cluster_size;
+        u32 walked_cluster_count;
+
+        memcpy(p_list->cache.buf+p_list->cache.cnt,p_write,write_count);
+
+        p_list->cache.cnt += write_count;
+
+        /* update current cluster */
+        cluster_size = _sdInfo[drv_no].spbr.sbpb.sects_per_cluster*SECTOR_SIZE;
+        walked_cluster_count = (p_list->f_ptr%cluster_size+write_count)/cluster_size;
+        if(walked_cluster_count>0) {
+            while (walked_cluster_count-- > 0) {
+                p_list->old_cur_cluster = p_list->cur_cluster;
+                p_list->cur_cluster = GET_FAT_TBL(drv_no,p_list->cur_cluster);
+            }
+        }
+        p_list->f_ptr += write_count;
+        if(p_list->size<p_list->f_ptr) p_list->size = p_list->f_ptr;
+    } else {
+        ret = card_writeCacheToDisk(drv_no,p_list);
+        if(ret!=CARDIO_ERROR_READY)
+            FAT_RETURN(drv_no, ret);
+
+        ret = card_writeToDisk(drv_no,p_list,p_write,write_count);
+        if(ret!=CARDIO_ERROR_READY)
+            FAT_RETURN(drv_no, ret);
+
+        p_list->cache.f_ptr = p_list->f_ptr;
+    }
+
+    FAT_RETURN(drv_no, CARDIO_ERROR_READY);
 }
 
 s32 card_getListNumDir(const char *p_dirname,u32 *p_num)

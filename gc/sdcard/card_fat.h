@@ -175,8 +175,11 @@ s32 card_readDir(const char *dirname,u32 entry_start,u32 entry_cnt,dir_entry *di
 s32 card_readStat(const char *p_entry_name,file_stat *p_stat);
 
 s32 card_readFile(F_HANDLE h_file,void *buf,u32 cnt,u32 *p_cnt);
+s32 card_writeFile(F_HANDLE h_file,const void *p_buf,u32 count);
 
 s32 card_readFromDisk(s32 drv_no,opendfile_list *p_list,void *buf,u32 cnt,u32 *p_cnt);
+s32 card_writeToDisk(s32 drv_no,opendfile_list *p_list,const u8 *p_buf,u32 count);
+s32 card_writeCacheToDisk(s32 drv_no,opendfile_list *p_list);
 
 s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const u8* long_name,const u16* p_unicode_name,file_stat* p_stat,u32 b_insert,u32 cluster,u32 offset);
 void card_prepareFileClose(s32 drv_no, const opendfile_list* p_list) ;
