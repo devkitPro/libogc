@@ -25,6 +25,11 @@
 #define EXI_SPEED16MHZ				4
 #define EXI_SPEED32MHZ				5
 
+#define EXI_MEMCARD59				0x00000004
+#define EXI_MEMCARD123				0x00000008
+#define EXI_MEMCARD251				0x00000010
+#define EXI_MEMCARD507				0x00000020
+
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */

@@ -36,6 +36,16 @@ extern int errno;
 static lwpq_t time_exi_wait;
 static lwp_thrqueue timedwait_queue;
 
+unsigned long _DEFUN(gettick,(),
+						  _NOARGS)
+{
+	__asm__ __volatile__ (
+		"1:	mftb	3\n\
+		    blr"
+			: : : "memory");
+	return 0;
+}
+
 unsigned long long _DEFUN(gettime,(),
 						  _NOARGS)
 {

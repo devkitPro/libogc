@@ -73,7 +73,7 @@ static u32 __exi_probe(u32 nChn)
 
 	_CPU_ISR_Disable(level);
 	val = _exiReg[nChn*5];
-	if(!exi->flags&EXI_FLAG_ATTACH) {
+	if(!(exi->flags&EXI_FLAG_ATTACH)) {
 		if(val&EXI_EXT_IRQ) {
 			_exiReg[nChn*5] = (val&~(EXI_EXI_IRQ|EXI_TC_IRQ|EXI_EXT_IRQ))|EXI_EXT_IRQ;
 			exi->var2 = 0;
@@ -86,7 +86,7 @@ static u32 __exi_probe(u32 nChn)
 		}
 	}
 
-	if(!_exiReg[nChn*5]&EXI_EXT_BIT || _exiReg[nChn*5]&EXI_EXT_IRQ) {
+	if(!(_exiReg[nChn*5]&EXI_EXT_BIT) || (_exiReg[nChn*5]&EXI_EXT_IRQ)) {
 		exi->var2 = 0;
 		ret = 0;
 	}

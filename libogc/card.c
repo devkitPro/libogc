@@ -1,7 +1,11 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <malloc.h>
+#include "asm.h"
+#include "processor.h"
 #include "cache.h"
+#include "lwp.h"
 #include "exi.h"
 #include "card.h"
 
@@ -45,13 +49,18 @@ static u32 const _cardunlockdata[] =
 	0x00000000,0x00000000,0x00000000,0x00000000
 };
 
-static u32 cardinit = 0;
+static u32 cardinit[2] = {0,0};
 static u32 crand_next = 0;
 static u32 currslot,numsectors,currfat,currdir;
 
+static lwpq_t wait_exi_queue;
+
 static card_block cardmap[2];
 
+static u32 __dounlock(u32);
+
 extern unsigned long long gettime();
+extern unsigned long gettick();
 
 static void __card_checksum(u16 *buff,u32 len,u16 *cs1,u16 *cs2)
 {
@@ -194,18 +203,39 @@ static u32 __card_getoffsets(CardFile *pFile,CardOffset *pOffset)
 	return CARD_ERROR_NONE;
 }
 
+static u32 __card_exi_unlock()
+{
+	LWP_WakeThread(wait_exi_queue);
+	return 1;
+}
+
+static void __card_exi_wait(u32 nChn)
+{
+	u32 level,ret = 0;
+
+	_CPU_ISR_Disable(level);
+	do {
+		if((ret=EXI_Lock(nChn,EXI_DEVICE_0,__card_exi_unlock))==1) break;
+		LWP_SleepThread(wait_exi_queue);
+	}while(ret==0);
+	_CPU_ISR_Restore(level);
+}
+
 u16 CARD_RetrieveID(u32 nChn)
 {
 	u8 cbuf[2];
 
 	cbuf[0] = 0x85; cbuf[1] = 0x00;
 
-	EXI_Select(nChn,0,EXI_SPEED16MHZ);
-	EXI_Imm(nChn,(void*)cbuf,2,EXI_WRITE,NULL);
+	__card_exi_wait(nChn);
+
+	EXI_Select(nChn,EXI_DEVICE_0,EXI_SPEED16MHZ);
+	EXI_Imm(nChn,cbuf,2,EXI_WRITE,NULL);
 	EXI_Sync(nChn);
-	EXI_Imm(nChn,(void*)cbuf,2,EXI_READ,NULL);
+	EXI_Imm(nChn,cbuf,2,EXI_READ,NULL);
 	EXI_Sync(nChn);
 	EXI_Deselect(nChn);
+	EXI_Unlock(nChn);
 
 	return ((u16*)cbuf)[0];
 }
@@ -216,12 +246,15 @@ u8 CARD_ReadStatus(u32 nChn)
 
 	cbuf[0] = 0x83; cbuf[1] = 0x00;
 
-	EXI_Select(nChn,0,EXI_SPEED16MHZ);
+	__card_exi_wait(nChn);
+
+	EXI_Select(nChn,EXI_DEVICE_0,EXI_SPEED16MHZ);
 	EXI_Imm(nChn,(void*)cbuf,2,EXI_WRITE,NULL);
 	EXI_Sync(nChn);
 	EXI_Imm(nChn,(void*)cbuf,1,EXI_READ,NULL);
 	EXI_Sync(nChn);
 	EXI_Deselect(nChn);
+	EXI_Unlock(nChn);
 
 	return cbuf[0];
 }
@@ -231,10 +264,13 @@ void CARD_ClearStatus(u32 nChn)
 	u8 cbuf[1];
 	cbuf[0] = 0x89;
 
-	EXI_Select(nChn,0,EXI_SPEED16MHZ);
+	__card_exi_wait(nChn);
+
+	EXI_Select(nChn,EXI_DEVICE_0,EXI_SPEED16MHZ);
 	EXI_Imm(nChn,(void*)cbuf,1,EXI_WRITE,NULL);
 	EXI_Sync(nChn);
 	EXI_Deselect(nChn);
+	EXI_Unlock(nChn);
 }
 
 void CARD_ChipErase(u32 nChn)
@@ -243,24 +279,29 @@ void CARD_ChipErase(u32 nChn)
 
 	cbuf[0] = 0xf4; cbuf[1] = 0x00; cbuf[2] = 0x00;
 
-	EXI_Select(nChn,0,EXI_SPEED16MHZ);
+	__card_exi_wait(nChn);
+
+	EXI_Select(nChn,EXI_DEVICE_0,EXI_SPEED16MHZ);
 	EXI_Imm(nChn,(void*)cbuf,3,EXI_WRITE,NULL);
 	EXI_Sync(nChn);
 	EXI_Deselect(nChn);
+	EXI_Unlock(nChn);
 }
 
 void CARD_SectorErase(u32 nChn,u32 nSector)
 {
 	u8 cbuf[3];
 
-	cbuf[0] = 0xf1; cbuf[1] = (nSector>>17)&0x7f; cbuf[2] = (nSector>>9)&0xff;
-
 	while(!(CARD_ReadStatus(nChn)&1));
 
-	EXI_Select(nChn,0,EXI_SPEED16MHZ);
+	cbuf[0] = 0xf1; cbuf[1] = (nSector>>17)&0x7f; cbuf[2] = (nSector>>9)&0xff;
+	__card_exi_wait(nChn);
+
+	EXI_Select(nChn,EXI_DEVICE_0,EXI_SPEED16MHZ);
 	EXI_Imm(nChn,(void*)cbuf,3,EXI_WRITE,NULL);
 	EXI_Sync(nChn);
 	EXI_Deselect(nChn);
+	EXI_Unlock(nChn);
 
 	while(CARD_ReadStatus(nChn)&0x8000);
 }
@@ -277,11 +318,14 @@ void CARD_SectorProgram(u32 nChn,u32 nAddress,u8 *buff,u32 size)
 		cbuf[0] = 0xf2; cbuf[1] = (nAddress>>17)&0x3f; cbuf[2] = (nAddress>>9)&0xff;
 		cbuf[3] = (nAddress>>7)&3; cbuf[4] = nAddress&0x7f;
 
-		EXI_Select(nChn,0,EXI_SPEED16MHZ);
+		__card_exi_wait(nChn);
+
+		EXI_Select(nChn,EXI_DEVICE_0,EXI_SPEED16MHZ);
 		EXI_Imm(nChn,(void*)cbuf,5,EXI_WRITE,NULL);
 		EXI_Sync(nChn);
 		EXI_Dma(nChn,(void*)buff,CARD_WRITESIZE,EXI_WRITE,NULL);
 		EXI_Deselect(nChn);
+		EXI_Unlock(nChn);
 
 		while(CARD_ReadStatus(nChn)&0x8000);
 
@@ -303,29 +347,32 @@ void CARD_ReadArray(u32 nChn,u32 nAddress,u8 *buff,u32 size)
 		cbuf[0] = 0x52; cbuf[1] = (nAddress>>17)&0x3f; cbuf[2] = (nAddress>>9)&0xff;
 		cbuf[3] = (nAddress>>7)&3; cbuf[4] = nAddress&0x7f;
 
-		EXI_Select(nChn,0,EXI_SPEED16MHZ);
-		EXI_Imm(nChn,(void*)cbuf,5,EXI_WRITE,NULL);
-		EXI_Sync(nChn);
+		__card_exi_wait(nChn);
+
+		EXI_Select(nChn,EXI_DEVICE_0,EXI_SPEED16MHZ);
+		EXI_ImmEx(nChn,cbuf,5,EXI_WRITE);
 
 		cbuf[0] = 0; cbuf[1] = 0; cbuf[2] = 0; cbuf[3] = 0;
-		EXI_Imm(nChn,(void*)cbuf,4,EXI_WRITE,NULL);
+		EXI_Imm(nChn,cbuf,4,EXI_WRITE,NULL);
 		EXI_Sync(nChn);
-		EXI_Dma(nChn,(void*)buff,CARD_READSIZE,EXI_READ,NULL);
-		EXI_Deselect(nChn);
 
-		i += CARD_WRITESIZE;
-		nAddress += CARD_WRITESIZE;
-		buff += CARD_WRITESIZE;
+		EXI_Dma(nChn,buff,CARD_READSIZE,EXI_READ,NULL);
+		EXI_Sync(nChn);
+		EXI_Deselect(nChn);
+		EXI_Unlock(nChn);
+
+		i += CARD_READSIZE;
+		nAddress += CARD_READSIZE;
+		buff += CARD_READSIZE;
 	}
 }
 
 u32 CARD_IsPresent(u32 nChn)
 {
-	u32 id;
+	u32 id = 0;
 
-//	id = EXI_RetrieveID(nChn,0);
-
-	if (id & 0xffff0000 || id & 3)
+	EXI_GetID(nChn,EXI_DEVICE_0,&id);
+	if((id&0xffff0000) || (id&0x03))
 		return 0;
 
 	return id;
@@ -336,7 +383,7 @@ void CARD_UpdateDir(u32 nChn)
 	dirblock[currdir].num++;
 
 	__card_checksum((u16*)&dirblock[currdir],0x1ffc,&dirblock[currdir].chksum1,&dirblock[currdir].chksum2);
-	DCFlushRangeNoSync((void*)&dirblock[currdir],sizeof(CardDirBlock));
+	DCFlushRange((void*)&dirblock[currdir],sizeof(CardDirBlock));
 	CARD_SectorErase(nChn,currdir*0x2000+0x2000);
 	CARD_SectorProgram(nChn,currdir*0x2000+0x2000,(u8*)&dirblock[currdir],0x2000);
 
@@ -349,7 +396,7 @@ void CARD_UpdateFat(u32 nChn)
 	fatblock[currfat].num++;
 
 	__card_checksum((u16*)&dirblock[currfat]+2,0x1ffc,&fatblock[currfat].chksum1,&fatblock[currfat].chksum2);
-	DCFlushRangeNoSync((void*)&fatblock[currfat],sizeof(CardFatBlock));
+	DCFlushRange((void*)&fatblock[currfat],sizeof(CardFatBlock));
 	CARD_SectorErase(nChn,currfat*0x2000+0x6000);
 	CARD_SectorProgram(nChn,currfat*0x2000+0x6000,(u8*)&fatblock[currfat],0x2000);
 
@@ -361,34 +408,39 @@ u32 CARD_Init(u32 nChn)
 {
 	u32 id,ret,fix;
 
-	cardinit = 0;
 	if(nChn<0 || nChn>=2) return CARD_ERROR_FATAL;
-
+	
+	cardinit[nChn] = 0;
 	id = CARD_IsPresent(nChn);
 	if(!id) return CARD_ERROR_NOCARD;
 
+	LWP_InitQueue(&wait_exi_queue);
+
+	//__dounlock(nChn);
+	
 	DCInvalidateRange(sysarea,CARD_SYSAREA*CARD_SECTORSIZE);
 	CARD_ReadArray(nChn,0,sysarea,CARD_SYSAREA*CARD_SECTORSIZE);
-	DCFlushRangeNoSync(sysarea,CARD_SYSAREA*CARD_SECTORSIZE);
+	DCFlushRange(sysarea,CARD_SYSAREA*CARD_SECTORSIZE);
 
 	memcpy(&dirblock[0],sysarea+0x2000,sizeof(CardDirBlock));
 	memcpy(&dirblock[1],sysarea+0x4000,sizeof(CardDirBlock));
-	DCFlushRangeNoSync(dirblock,sizeof(CardDirBlock)*2);
+	DCFlushRange(dirblock,sizeof(CardDirBlock)*2);
 
 	memcpy(&fatblock[0],sysarea+0x6000,sizeof(CardFatBlock));
 	memcpy(&fatblock[1],sysarea+0x8000,sizeof(CardFatBlock));
-	DCFlushRangeNoSync(fatblock,sizeof(CardFatBlock)*2);
+	DCFlushRange(fatblock,sizeof(CardFatBlock)*2);
 
 	ret = __card_check(&fix);
 	if(ret!=CARD_ERROR_NONE) return ret;
 
+	printf("fix = %d\n",fix);
 	if(fix&1)
 		CARD_UpdateDir(nChn);
 
 	if(fix&2)
 		CARD_UpdateFat(nChn);
 
-	cardinit = 1;
+	cardinit[nChn] = 1;
 	currslot = nChn;
 	numsectors = id<<4;
 
@@ -574,7 +626,7 @@ u32 CARD_ReadFile(CardFile *pFile,void *pBuf)
 		CARD_ReadArray(currslot,block*CARD_SECTORSIZE,pBuf+(i*CARD_SECTORSIZE),CARD_SECTORSIZE);
 		block  = fatblock[currfat].fat[block-5];
 	}
-	DCFlushRangeNoSync(pBuf,pFile->size);
+	DCFlushRange(pBuf,pFile->size);
 	return CARD_ERROR_NONE;
 }
 
@@ -597,7 +649,7 @@ u32 CARD_WriteFile(CardFile *pFile,void *pBuf)
 	if(!data) return CARD_ERROR_FATAL;
 	memcpy(data,pBuf,pFile->size);
 	memset(data+pFile->size,0,realsize-pFile->size);
-	DCFlushRangeNoSync(data,realsize);
+	DCFlushRange(data,realsize);
 
 	for (i=0;i<pEntry->length;i++) {
 		if (block<CARD_SYSAREA || block>=numsectors) return CARD_ERROR_CORRUPT;
@@ -689,17 +741,49 @@ static u32 __CARD_TxHandler(u32 nChn,void *pCtx)
 	return 1;
 }
 
-static void CARD_SRand(u32 val)
+static void __card_srand(u32 val)
 {
 	crand_next = val;	
 }
 
-static u32 CARD_Rand()
+static u32 __card_rand()
 {
 	crand_next = crand_next*0x41C64E6D+12345;
 	return _SHIFTR(crand_next,16,15);
 }
 
+static u32 __card_initval()
+{
+	u32 ticks = gettick();
+	
+	__card_srand(ticks);
+	return __card_rand();
+}
+
+static u32 __card_dummylen()
+{
+	u32 ticks = gettick();
+	u32 val = 0,cnt = 0,shift = 1;
+
+	__card_srand(ticks);
+	val = __card_rand();
+	val = (val&0x1f)+1;
+	
+	do {
+		ticks = gettick();
+		val = ticks<<shift;
+		shift++;
+		if(shift>16) shift = 1;
+		__card_srand(val);
+		val = __card_rand();
+		val = (val&0x1f)+1;
+		cnt++;
+	}while(val<4 && cnt<10);
+	if(val<4) val = 4;
+
+	return val;
+
+}
 static u32 exnor_1st(u32 a,u32 b)
 {
 	u32 c,d,e,f,r1,r2,r3;
@@ -740,8 +824,35 @@ static u32 exnor(u32 a,u32 b)
 	return a;
 }
 
-static u32 ReadArrayUnlock()
+static u32 ReadArrayUnlock(u32 chn,u32 address,void *buffer,u32 len,u32 flag)
 {
+	u8 regbuf[5];
+
+	__card_exi_wait(chn);
+
+	if(EXI_Select(chn,EXI_DEVICE_0,EXI_SPEED16MHZ)==0) return -3;
+	
+	address &= 0x0C;
+	memset(regbuf,0,5);
+
+	regbuf[0] = 0x52;
+	if(!flag) {
+		regbuf[1] = ((address&0x60000000)>>29)&0xff;
+		regbuf[2] = ((address&0x1FE00000)>>20)&0xff;
+		regbuf[3] = ((address&0x00180000)>>19)&0xff;
+		regbuf[4] = ((address&0x0007F000)>>12)&0xff;
+	} else {
+		regbuf[1] = (address>>24)&0xff;
+		regbuf[2] = ((address&0x00FF0000)>>16)&0xff;
+	}
+	
+	EXI_ImmEx(chn,regbuf,5,EXI_WRITE);
+	EXI_ImmEx(chn,sysarea+512,4,EXI_WRITE);
+	EXI_ImmEx(chn,buffer,len,EXI_READ);
+	
+	EXI_Deselect(chn);
+	EXI_Unlock(chn);
+
 	return 0;
 }
 
@@ -751,4 +862,22 @@ static void InitCallback(void *task)
 
 static void DoneCallback(void *task)
 {
+}
+
+static u32 __dounlock(u32 nChn)
+{
+	u32 array_addr,len;
+	u8 buffer[64];
+
+	array_addr = __card_initval();
+	len = __card_dummylen();
+	
+	printf("array_addr = %08x, len = %d\n",array_addr,len);
+	if(ReadArrayUnlock(nChn,array_addr,buffer,len,0)!=0) return -3;
+
+	exnor_1st(array_addr,(len<<3)+1);
+
+	
+
+	return 1;
 }

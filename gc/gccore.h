@@ -2,6 +2,8 @@
 #define __GCCORE_H__
 
 #include "ogc/aram.h"
+#include "ogc/arqueue.h"
+#include "ogc/arqmgr.h"
 #include "ogc/audio.h"
 #include "ogc/cache.h"
 #include "ogc/card.h"
