@@ -23,8 +23,12 @@ typedef struct _arq_request {
 } ARQRequest;
 
 void ARQ_Init();
+void ARQ_Reset();
 void ARQ_PostRequest(ARQRequest *req,u32 owner,u32 type,u32 prio,u32 src,u32 dest,u32 len,ARQCallback cb);
 void ARQ_RemoveRequest(ARQRequest *req);
+void ARQ_SetChunkSize(u32 size);
+u32 ARQ_GetChunkSize();
+void ARQ_FlushQueue();
 
 #ifdef __cplusplus
    }

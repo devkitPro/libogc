@@ -378,7 +378,7 @@ s32 MOD_Load ( MOD * mod, s8 * fname )
     FILE *fh;
 #endif
     s32 fs;
-    u8 * mem;
+    u8 * mem = NULL;
 
     fs = fsize(fname);
     if (fs<1080+1024)
@@ -409,6 +409,7 @@ s32 MOD_Load ( MOD * mod, s8 * fname )
     fs_read ( fh, mem, fs );
     fs_close ( fh );
 #elif defined(GAMECUBE)
+	fh = NULL;
 #else
     if ((fh=fopen(fname,"rb"))==NULL)
       return -1;

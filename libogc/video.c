@@ -74,19 +74,23 @@ GXRModeObj TVPal524IntAa =
 	GX_TRUE,
 	
     // sample points arranged in increasing Y order
-	 3,  2,  9,  6,  3, 10,  // pix 0, 3 sample points, 1/12 units, 4 bits each
-	 3,  2,  9,  6,  3, 10,  // pix 1
-	 9,  2,  3,  6,  9, 10,  // pix 2
-	 9,  2,  3,  6,  9, 10,  // pix 3
+	{
+		{3,2},{9,6},{3,10},				// pix 0, 3 sample points, 1/12 units, 4 bits each
+		{3,2},{9,6},{3,10},				// pix 1
+		{9,2},{3,6},{9,10},				// pix 2
+		{9,2},{3,6},{9,10}				// pix 3
+	},
  
 	 // vertical filter[7], 1/64 units, 6 bits each
-	 4,         // line n-1
-	 8,         // line n-1
-	12,         // line n
-	16,         // line n
-	12,         // line n
-	 8,         // line n+1
-	 4          // line n+1
+	{
+		4,         // line n-1
+		8,         // line n-1
+		12,        // line n
+		16,        // line n
+		12,        // line n
+		8,         // line n+1
+		4          // line n+1
+	}
 };
 
 GXRModeObj TVPal528IntDf = 
@@ -104,19 +108,22 @@ GXRModeObj TVPal528IntDf =
     GX_FALSE,        // aa
 
     // sample points arranged in increasing Y order
-     6,  6,  6,  6,  6,  6,  // pix 0, 3 sample points, 1/12 units, 4 bits each
-     6,  6,  6,  6,  6,  6,  // pix 1
-     6,  6,  6,  6,  6,  6,  // pix 2
-     6,  6,  6,  6,  6,  6,  // pix 3
-
+	{
+		{6,6},{6,6},{6,6},  // pix 0, 3 sample points, 1/12 units, 4 bits each
+		{6,6},{6,6},{6,6},  // pix 1
+		{6,6},{6,6},{6,6},  // pix 2
+		{6,6},{6,6},{6,6}   // pix 3
+	},
     // vertical filter[7], 1/64 units, 6 bits each
-     8,         // line n-1
-     8,         // line n-1
-    10,         // line n
-    12,         // line n
-    10,         // line n
-     8,         // line n+1
-     8          // line n+1
+	{
+		 8,         // line n-1
+		 8,         // line n-1
+		10,         // line n
+		12,         // line n
+		10,         // line n
+		 8,         // line n+1
+		 8          // line n+1
+	}
 };
 
 GXRModeObj TVPal574IntDfScale = 
@@ -134,19 +141,22 @@ GXRModeObj TVPal574IntDfScale =
     GX_FALSE,        // aa
 
     // sample points arranged in increasing Y order
-     6,  6,  6,  6,  6,  6,  // pix 0, 3 sample points, 1/12 units, 4 bits each
-     6,  6,  6,  6,  6,  6,  // pix 1
-     6,  6,  6,  6,  6,  6,  // pix 2
-     6,  6,  6,  6,  6,  6,  // pix 3
-
+	{
+		{6,6},{6,6},{6,6},  // pix 0, 3 sample points, 1/12 units, 4 bits each
+		{6,6},{6,6},{6,6},  // pix 1
+		{6,6},{6,6},{6,6},  // pix 2
+		{6,6},{6,6},{6,6}   // pix 3
+	},
     // vertical filter[7], 1/64 units, 6 bits each
-     8,         // line n-1
-     8,         // line n-1
-    10,         // line n
-    12,         // line n
-    10,         // line n
-     8,         // line n+1
-     8          // line n+1
+	{
+		 8,         // line n-1
+		 8,         // line n-1
+		10,         // line n
+		12,         // line n
+		10,         // line n
+		 8,         // line n+1
+		 8          // line n+1
+	}
 };
 
 static lwpq_t video_queue;

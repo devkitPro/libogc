@@ -96,6 +96,37 @@ void ARQ_Init()
 	__ARQInitFlag = 1;
 }
 
+void ARQ_Reset()
+{
+	__ARQInitFlag = 0;
+}
+
+void ARQ_SetChunkSize(u32 size)
+{
+	if(!(size&0x1f)) __ARQChunkSize = size;
+	else __ARQChunkSize = (size+31)&~31;
+}
+
+u32 ARQ_GetChunkSize()
+{
+	return __ARQChunkSize;
+}
+
+void ARQ_FlushQueue()
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	
+	__ARQReqQueueHi = NULL;
+	__ARQReqTailHi = NULL;
+	__ARQReqQueueLo = NULL;
+	__ARQReqTailLo = NULL;
+	if(!__ARQCallbackLo) __ARQReqPendingLo = 0;
+
+	_CPU_ISR_Restore(level);
+}
+
 void ARQ_PostRequest(ARQRequest *req,u32 owner,u32 type,u32 prio,u32 src,u32 dest,u32 len,ARQCallback cb)
 {
 	u32 level;

@@ -1,9 +1,38 @@
 #include <stdlib.h>
 #include <unistd.h>
+#include "asm.h"
+#include "processor.h"
 #include "cache.h"
 #include "dvd.h"
 
+static u32 __DVDInitFlag = 0;
+static u32 __DVDNextCmdNum;
+static u32 __DVDWorkaround;
+static u32 __DVDWorkaroundSeek;
+
+static u32* const _diReg = (u32*)0xCC006000;
+
 extern void udelay(int us);
+
+static void __DVDLowWATypeSet(u32 workaround,u32 workaroundseek)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	__DVDWorkaround = workaround;
+	__DVDWorkaroundSeek = workaroundseek;
+	_CPU_ISR_Restore(level);
+}
+
+static void __DVDInitWA()
+{
+	__DVDNextCmdNum = 0;
+	__DVDLowWATypeSet(0,0);	
+}
+
+static void __DVDInterruptHandler(u32 nIrq,void *pCtx)
+{
+}
 
 s32 DVD_ReadId(void *pDst)
 {
@@ -49,12 +78,14 @@ s32 DVD_Read(void *pDst,s32 nLen,u32 nOffset)
 	}
 }
 
-s32 DVD_Init()
+void DVD_Init()
 {
-	if(!DVD_ReadId((void*)0x80000000)) return 0;
-	
+	if(__DVDInitFlag) return;
+	__DVDInitFlag = 1;
+
+	if(!DVD_ReadId((void*)0x80000000)) return;
 	DCInvalidateRange((void*)0x80000000,0x20);
-	return 1;
+
 }
 
 void DVD_Reset()

@@ -7,7 +7,7 @@
    extern "C" {
 #endif /* __cplusplus */
 
-s32 DVD_Init();
+void DVD_Init();
 s32 DVD_Read(void *pDst,s32 nLen,u32 nOffset);
 s32 DVD_ReadId(void *pDst);
 void DVD_Reset();
