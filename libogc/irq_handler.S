@@ -68,7 +68,7 @@ irqhandler_start:
 	mr		r5,r3
 	nop
 	mfmsr	r3
-	ori		r3,r3,MSR_IR|MSR_DR|MSR_FP
+	ori		r3,r3,MSR_IR|MSR_DR|MSR_RI
 	mtsrr1	r3
 	
 	li		r3,4
@@ -165,6 +165,7 @@ easy_exit:
 	lwz		r5,GPR5_OFFSET(sp)
 
 	mfmsr	r4
+	rlwinm	r4,r4,0,19,17
 	rlwinm	r4,r4,0,31,29
 	mtmsr	r4
 	isync
