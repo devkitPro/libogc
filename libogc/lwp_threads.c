@@ -105,10 +105,8 @@ void __lwp_thread_delayended(void *arg)
 
 void __thread_dispatch_fp()
 {
-	u32 level;
 	lwp_cntrl *exec;
 
-	_CPU_ISR_Disable(level);
 	exec = _thr_executing;
 #ifdef _LWPTHREADS_DEBUG
 	__lwp_dumpcontext_fp(&exec->context,&_thr_allocated_fp->context);
@@ -118,7 +116,6 @@ void __thread_dispatch_fp()
 		_cpu_context_restore_fp(&exec->context);
 		_thr_allocated_fp = exec;
 	}
-	_CPU_ISR_Restore(level);		
 }
 void __thread_dispatch()
 {

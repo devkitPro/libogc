@@ -509,22 +509,42 @@ void SYS_Init()
 
 void SYS_SetArenaLo(void *newLo)
 {
+	u32 level;
+
+	_CPU_ISR_Disable(level);
 	__sysarenalo = newLo;
+	_CPU_ISR_Restore(level);
 }
 
 void* SYS_GetArenaLo()
 {
-	return __sysarenalo;
+	u32 level;
+	void *ret;
+
+	_CPU_ISR_Disable(level);
+	ret = __sysarenalo;
+	_CPU_ISR_Restore(level);
+	return ret;
 }
 
 void SYS_SetArenaHi(void *newHi)
 {
+	u32 level;
+
+	_CPU_ISR_Disable(level);
 	__sysarenahi = newHi;
+	_CPU_ISR_Restore(level);
 }
 
 void* SYS_GetArenaHi()
 {
-	return __sysarenahi;
+	u32 level;
+	void *ret;
+
+	_CPU_ISR_Disable(level);
+	ret = __sysarenahi;
+	_CPU_ISR_Restore(level);
+	return ret;
 }
 
 void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)

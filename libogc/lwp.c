@@ -51,7 +51,7 @@ u32 LWP_SuspendThread(lwp_t thethread)
 {
 	lwp_cntrl *lwp_thread = (lwp_cntrl*)thethread;
 
-	if(lwp_thread==_thr_executing) __lwp_thread_dispatchdisable();
+	__lwp_thread_dispatchdisable();
 	if(!__lwp_statesuspended(lwp_thread->cur_state)) {
 		__lwp_thread_suspend(lwp_thread);
 		__lwp_thread_dispatchenable();
@@ -65,7 +65,7 @@ u32 LWP_ResumeThread(lwp_t thethread)
 {
 	lwp_cntrl *lwp_thread = (lwp_cntrl*)thethread;
 
-	if(lwp_thread==_thr_executing) __lwp_thread_dispatchdisable();
+	__lwp_thread_dispatchdisable();
 	if(__lwp_statesuspended(lwp_thread->cur_state)) {
 		__lwp_thread_resume(lwp_thread,TRUE);
 		__lwp_thread_dispatchenable();
@@ -139,13 +139,13 @@ void LWP_InitQueue(lwpq_t *thequeue)
 	__lwp_thread_dispatchdisable();
 	tqueue = (lwp_thrqueue*)__lwp_wkspace_allocate(sizeof(lwp_thrqueue));
 	if(!tqueue) {
-		__lwp_thread_dispatchunnest();
+		__lwp_thread_dispatchenable();
 		return;
 	}
 	__lwp_threadqueue_init(tqueue,LWP_THREADQ_MODEFIFO,LWP_STATES_WAITING_ON_THREADQ,0);
 
 	*thequeue = tqueue;
-	__lwp_thread_dispatchunnest();
+	__lwp_thread_dispatchenable();
 }
 
 void LWP_CloseQueue(lwpq_t thequeue)

@@ -42,7 +42,7 @@ int __libc_lock_init(int *lock,int recursive)
 	__lwp_thread_dispatchdisable();
 	retlck = (lock_t*)__lwp_wkspace_allocate(sizeof(lock_t));
 	if(!retlck) {
-		__lwp_thread_dispatchunnest();
+		__lwp_thread_dispatchenable();
 		return -1;
 	}
 
@@ -54,7 +54,7 @@ int __libc_lock_init(int *lock,int recursive)
 
 	retlck->id = ++_g_libc_lck_id;
 	*lock = (int)retlck;
-	__lwp_thread_dispatchunnest();
+	__lwp_thread_dispatchenable();
 
 	return 0;
 }
@@ -86,9 +86,8 @@ int __libc_lock_acquire(int *lock)
 	lock_t *plock;
 	
 	if(!lock) return -1;
-	if(*lock==-1) __libc_lock_init(lock,0);
-	else if(*lock==-2) __libc_lock_init(lock,1);
-	
+	if(!*lock) return -1;
+
 	plock = (lock_t*)*lock;
 	return __libc_lock_supp(plock,LWP_THREADQ_NOTIMEOUT,TRUE);
 }
@@ -98,8 +97,7 @@ int __libc_lock_try_acquire(int *lock)
 	lock_t *plock;
 	
 	if(!lock) return -1;
-	if(*lock==-1) __libc_lock_init(lock,0);
-	else if(*lock==-2) __libc_lock_init(lock,1);
+	if(!*lock) return -1;
 	
 	plock = (lock_t*)*lock;
 	return __libc_lock_supp(plock,LWP_THREADQ_NOTIMEOUT,FALSE);
@@ -111,6 +109,7 @@ int __libc_lock_release(int *lock)
 	lock_t *plock;
 	
 	if(!lock) return -1;
+	if(!*lock) return -1;
 
 	plock = (lock_t*)*lock;
 	__lwp_thread_dispatchdisable();

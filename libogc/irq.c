@@ -55,10 +55,12 @@ static void __irqhandler_init()
 void c_irqdispatcher()
 {
 	u32 i,icause,intmask,irq;
-	u32 cause = _piReg[0];
-	
-	if(!(cause&_piReg[1])) spuriousIrq++;
+	u32 cause,mask;
 
+	mask = _piReg[0];
+	cause = mask&~0x8000;
+	if(!(mask&0x8000) || !(cause&_piReg[1])) spuriousIrq++;
+	
 	intmask = 0;
 	if(cause&0x00000080) {		//Memory Interface
 		icause = _memReg[14]&_memReg[15];
@@ -128,14 +130,20 @@ void c_irqdispatcher()
 			intmask |= IRQMASK(IRQ_EXI2_TC);
 		}
 	}
-	if(cause&0x00000800) {		//Command FIFO
-		intmask |= IRQMASK(IRQ_PI_CP);
+	if(cause&0x00002000) {		//High Speed Port
+		intmask |= IRQMASK(IRQ_PI_HSP);
+	}
+	if(cause&0x00001000) {		//External Debugger
+		intmask |= IRQMASK(IRQ_PI_DEBUG);
+	}
+	if(cause&0x00000400) {		//Frame Ready (PE_FINISH)
+		intmask |= IRQMASK(IRQ_PI_PEFINISH);
 	}
 	if(cause&0x00000200) {		//Token Assertion (PE_TOKEN)
 		intmask |= IRQMASK(IRQ_PI_PETOKEN);
 	}
-	if(cause&0x00000400) {		//Frame Ready (PE_FINISH)
-		intmask |= IRQMASK(IRQ_PI_PEFINISH);
+	if(cause&0x00000100) {		//Video Interface
+		intmask |= IRQMASK(IRQ_PI_VI);
 	}
 	if(cause&0x00000008) {		//Serial
 		intmask |= IRQMASK(IRQ_PI_SI);
@@ -146,19 +154,12 @@ void c_irqdispatcher()
 	if(cause&0x00000002) {		//Reset Switch
 		intmask |= IRQMASK(IRQ_PI_RSW);
 	}
+	if(cause&0x00000800) {		//Command FIFO
+		intmask |= IRQMASK(IRQ_PI_CP);
+	}
 	if(cause&0x00000001) {		//GP Runtime Error
 		intmask |= IRQMASK(IRQ_PI_ERROR);
 	}
-	if(cause&0x00000100) {		//Video Interface
-		intmask |= IRQMASK(IRQ_PI_VI);
-	}
-	if(cause&0x00001000) {		//External Debugger
-		intmask |= IRQMASK(IRQ_PI_DEBUG);
-	}
-	if(cause&0x00002000) {		//High Speed Port
-		intmask |= IRQMASK(IRQ_PI_HSP);
-	}
-	if(!(currIrqMask&intmask)) return;
 
 	i=0;
 	irq = 0;
@@ -345,4 +346,16 @@ raw_irq_handler_t* IRQ_Free(u32 nIrq)
 	g_IRQHandler[nIrq].pCtx = NULL;
 	_CPU_ISR_Restore(level);
 	return old;
+}
+
+u32 IRQ_Disable()
+{
+	u32 level;
+	_CPU_ISR_Disable(level);
+	return level;
+}
+
+void IRQ_Restore(u32 level)
+{
+	_CPU_ISR_Restore(level);
 }

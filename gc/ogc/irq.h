@@ -87,6 +87,8 @@ typedef void (raw_irq_handler_t)(u32,void *);
 raw_irq_handler_t* IRQ_Request(u32 nIrq,raw_irq_handler_t *pHndl,void *pCtx);
 raw_irq_handler_t* IRQ_Free(u32 nIrq);
 raw_irq_handler_t* IRQ_GetHandler(u32 nIrq);
+u32 IRQ_Disable();
+void IRQ_Restore(u32 level);
 
 #ifdef __cplusplus
    }

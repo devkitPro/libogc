@@ -64,13 +64,10 @@ static lwpq_t _ioEXILock[MAX_DRIVE];
 static u32 _ioPageSize[MAX_DRIVE];
 static u32 _ioFlag[MAX_DRIVE];
 static u32 _ioError[MAX_DRIVE];
-static sysalarm _ioAlarm[MAX_DRIVE];
-static lwpq_t _ioWaitIO[MAX_DRIVE];
 static boolean _ioCardInserted[MAX_DRIVE];
 
 static u8 _ioResponse[MAX_DRIVE][128];
 
-extern void udelay(int);
 extern unsigned long gettick();
 
 static __inline__ u32 __check_response(s32 drv_no,u8 res)
@@ -151,29 +148,6 @@ static u16 __make_crc16(void *buffer,u32 len)
 	}
 	
 	return (res&0xffff);
-}
-
-static void __card_alarmcallback(sysalarm *alarm)
-{
-	u32 i;
-	u32 level;
-
-	i=0;
-	while(i<MAX_DRIVE && (alarm!=&_ioAlarm[i]))  i++;
-	if(i>=MAX_DRIVE) return;
-
-	LWP_WakeThread(_ioWaitIO[i]);
-}
-
-static __inline__ void __card_waitio(s32 drv_no,const struct timespec *tb)
-{
-	u32 level;
-
-	SYS_SetAlarm(&_ioAlarm[drv_no],tb,__card_alarmcallback);
-
-	_CPU_ISR_Disable(level);
-	LWP_SleepThread(_ioWaitIO[drv_no]);
-	_CPU_ISR_Restore(level);
 }
 
 static u32 __card_checktimeout(u32 startT,u32 timeout)
@@ -684,8 +658,8 @@ static s32 __card_dataread(s32 drv_no,void *buf,u32 len)
 		return CARDIO_ERROR_IOERROR;
 	}
 
-	/* setalarm, wait */
-	udelay(1);
+	/* sleep 1us*/
+	usleep(1);
 
 	res[0] = res[1] = _ioClrFlag;
 	if(EXI_ImmEx(drv_no,res,2,EXI_READWRITE)==0) {
@@ -790,8 +764,8 @@ static s32 __card_datareadfinal(s32 drv_no,void *buf,u32 len)
 	ptr[len-1] = cmd[3];
 	crc_org = ((cmd[4]<<8)&0xff00)|(cmd[5]&0xff);
 	
-	/* setalarm, wait */
-	udelay(1);
+	/* sleep 1us*/
+	usleep(1);
 
 	EXI_Deselect(drv_no);
 	EXI_Unlock(drv_no);
@@ -836,8 +810,8 @@ static s32 __card_datawrite(s32 drv_no,void *buf,u32 len)
 		return CARDIO_ERROR_IOERROR;
 	}
 
-	/* setalarm, wait */
-	udelay(1);
+	/* sleep 1us*/
+	usleep(1);
 
 	ret = CARDIO_ERROR_READY;
 	if(EXI_ImmEx(drv_no,&crc,2,EXI_WRITE)==0) ret = CARDIO_ERROR_IOERROR;
@@ -880,8 +854,8 @@ static s32 __card_multidatawrite(s32 drv_no,void *buf,u32 len)
 		return CARDIO_ERROR_IOERROR;
 	}
 
-	/* setalarm, wait */
-	udelay(1);
+	/* sleep 1us*/
+	usleep(1);
 
 	ret = CARDIO_ERROR_READY;
 	if(EXI_ImmEx(drv_no,&crc,2,EXI_WRITE)==0) ret = CARDIO_ERROR_IOERROR;
@@ -1268,8 +1242,6 @@ void card_initIODefault()
 		_ioError[i] = 0;
 		_ioCardInserted[i] = FALSE;
 		_ioFlag[i] = NOT_INITIALIZED;
-		SYS_CreateAlarm(&_ioAlarm[i]);
-		LWP_InitQueue(&_ioWaitIO[i]);
 		LWP_InitQueue(&_ioEXILock[i]);
 	}
 }

@@ -29,7 +29,7 @@ void __memlock_init()
 		attr.prioceil = 1;
 		__lwp_mutex_initialize(&mem_lock,&attr,LWP_MUTEX_UNLOCKED);
 	}
-	__lwp_thread_dispatchunnest();
+	__lwp_thread_dispatchenable();
 }
 
 #ifndef REENTRANT_SYSCALLS_PROVIDED
