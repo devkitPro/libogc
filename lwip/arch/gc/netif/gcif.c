@@ -405,7 +405,6 @@ static u32 __bba_tx_stop(struct bba_priv *priv)
 {
 	u32 level;
 	err_t state;
-	static u32 c = 0;
 
 	_CPU_ISR_Disable(level);
 	state = priv->state;
@@ -619,7 +618,6 @@ static u32 __bba_link_postrxsub0()
 	if(!__linkstate()) {
 		LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_postrxsub0(error link state)\n"));
 		__bba_tx_wake(priv);
-		EXI_Unlock(EXI_CHANNEL_0);
 		return ERR_ABRT;
 	}
 
@@ -637,7 +635,7 @@ static u32 __bba_link_postrxsub0()
 	bba_outsregister(BBA_WRTXFIFOD);
 	bba_outsdmadata(cur_rcv_postbuffer,cur_rcv_postdmalen,__bba_link_postrxsub1);
 
-	return ERR_OK;
+	return ERR_TXPENDING;
 }
 
 static err_t __bba_link_postrx(struct netif *dev,struct pbuf *p)
@@ -657,7 +655,7 @@ static err_t __bba_link_postrx(struct netif *dev,struct pbuf *p)
 
 			q = etharp_ip_input(dev,p);
 			pbuf_header(p,-14);
-			gc_netif->input(p, dev);
+			dev->input(p, dev);
 			break;
 		case ETHTYPE_ARP:
 			/* pass p to ARP module, get ARP reply or ARP queued packet */
@@ -686,7 +684,7 @@ static err_t __bba_link_postrx(struct netif *dev,struct pbuf *p)
 		ret = __bba_link_postrxsub0();
 
 		pbuf_free(q);
-		return ERR_TXPENDING;
+		return ret;
 	};
 
 	return ret;
