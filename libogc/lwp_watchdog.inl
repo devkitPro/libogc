@@ -53,24 +53,24 @@ static __inline__ void __lwp_wd_tickle_secs()
 	__lwp_wd_tickle(&_wd_secs_queue);
 }
 
-static __inline__ void __lwp_wd_insert_ticks(wd_cntrl *wd,u32 interval)
+static __inline__ void __lwp_wd_insert_ticks(wd_cntrl *wd,u64 interval)
 {
 	wd->init_interval = interval;
 	__lwp_wd_insert(&_wd_ticks_queue,wd);
 }
 
-static __inline__ void __lwp_wd_insert_secs(wd_cntrl *wd,u32 interval)
+static __inline__ void __lwp_wd_insert_secs(wd_cntrl *wd,u64 interval)
 {
 	wd->init_interval = interval;
 	__lwp_wd_insert(&_wd_secs_queue,wd);
 }
 
-static __inline__ void __lwp_wd_adjust_ticks(u32 dir,u32 interval)
+static __inline__ void __lwp_wd_adjust_ticks(u32 dir,u64 interval)
 {
 	__lwp_wd_adjust(&_wd_ticks_queue,dir,interval);
 }
 
-static __inline__ void __lwp_wd_adjust_secs(u32 dir,u32 interval)
+static __inline__ void __lwp_wd_adjust_secs(u32 dir,u64 interval)
 {
 	__lwp_wd_adjust(&_wd_secs_queue,dir,interval);
 }

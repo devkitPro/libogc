@@ -533,7 +533,7 @@ void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb)
 	sysalarm *ptr = NULL;
 
 	alarm->alarmhandler = cb;
-	alarm->ticks = timespec_to_interval(tp);
+	alarm->ticks = timespec_to_ticks(tp);
 
 	alarm->periodic = 0;
 	alarm->start_per = 0;
@@ -573,8 +573,8 @@ void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const 
 	u32 found,level;
 	sysalarm *ptr = system_alarms;
 
-	alarm->start_per = timespec_to_interval(tp_start);
-	alarm->periodic = timespec_to_interval(tp_period);
+	alarm->start_per = timespec_to_ticks(tp_start);
+	alarm->periodic = timespec_to_ticks(tp_period);
 	alarm->alarmhandler = cb;
 
 	alarm->ticks = 0;

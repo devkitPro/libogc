@@ -2,6 +2,7 @@
 #include "asm.h"
 #include "lwp_threads.h"
 #include "lwp_watchdog.h"
+#include "libogcsys/timesupp.h"
 
 vu32 _wd_sync_level;
 vu32 _wd_sync_count;
@@ -12,11 +13,15 @@ lwp_queue _wd_secs_queue;
 
 extern long long gettime();
 
-void __lwp_watchdog_settimer(wd_cntrl *wd)
+static void __lwp_wd_settimer(wd_cntrl *wd)
 {
-	if(wd->delta_interval<=0) mtdec(0);
-	else if(wd->delta_interval>=0x80000000) mtdec(0x7fffffff);
-	else mtdec(wd->delta_interval);
+	s64 max_ticks = (s64)0x80000000;
+	s64 min_ticks = (s64)0x0;
+	s64 delta_interval = (s64)wd->delta_interval;
+
+	if(0>=(min_ticks-delta_interval)) mtdec(0);
+	else if(0<=(max_ticks-delta_interval)) mtdec((u32)delta_interval);
+	else mtdec(0x7fffffff);
 }
 
 void __lwp_watchdog_init()
@@ -34,7 +39,7 @@ void __lwp_wd_insert(lwp_queue *header,wd_cntrl *wd)
 	u32 level;
 	wd_cntrl *after;
 	u32 isr_nest_level;
-	u32 delta_interval;
+	u64 delta_interval;
 
 	isr_nest_level = __lwp_isr_in_progress();
 	wd->state = LWP_WD_INSERTED;
@@ -65,7 +70,9 @@ restart:
 	__lwp_wd_activate(wd);
 	wd->delta_interval = delta_interval;
 	__lwp_queue_insertI(after->node.prev,&wd->node);
-	wd->start_time = _wd_ticks_since_boot;
+	wd->start_time = gettime();
+	if((!__lwp_wd_prev(wd) && !__lwp_wd_next(wd))
+		|| !__lwp_wd_prev(wd)) __lwp_wd_settimer(wd);
 
 exit_insert:
 	_wd_sync_level = isr_nest_level;
@@ -105,12 +112,22 @@ u32 __lwp_wd_remove(wd_cntrl *wd)
 void __lwp_wd_tickle(lwp_queue *queue)
 {
 	wd_cntrl *wd;
+	s64 now,diff;
+	s64 max_ticks = (s64)0x80000000;
 
 	if(__lwp_queue_isempty(queue)) return;
 	
 	wd = __lwp_wd_first(queue);
-	wd->delta_interval--;
-	if(wd->delta_interval!=0) return;
+	now = gettime();
+	diff = diff_ticks(now,wd->start_time);
+	if(diff>wd->delta_interval && wd->delta_interval<max_ticks) return;
+	if(wd->delta_interval>=max_ticks) {
+		wd->delta_interval -= max_ticks;
+		__lwp_wd_settimer(wd);
+		return;
+	}
+//	wd->delta_interval--;
+//	if(wd->delta_interval!=0) return;
 
 	do {
 		switch(__lwp_wd_remove(wd)) {
@@ -125,10 +142,11 @@ void __lwp_wd_tickle(lwp_queue *queue)
 				break;
 		}
 		wd = __lwp_wd_first(queue);
+		__lwp_wd_settimer(wd);
 	} while(!__lwp_queue_isempty(queue) && wd->delta_interval==0);
 }
 
-void __lwp_wd_adjust(lwp_queue *queue,u32 dir,u32 interval)
+void __lwp_wd_adjust(lwp_queue *queue,u32 dir,u64 interval)
 {
 	if(!__lwp_queue_isempty(queue)) {
 		switch(dir) {
