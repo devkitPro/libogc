@@ -14,9 +14,9 @@ extern long long gettime();
 
 void __lwp_watchdog_settimer(wd_cntrl *wd)
 {
-	s64 curr_time;
-
-	curr_time = gettime();
+	if(wd->delta_interval<=0) mtdec(0);
+	else if(wd->delta_interval>=0x80000000) mtdec(0x7fffffff);
+	else mtdec(wd->delta_interval);
 }
 
 void __lwp_watchdog_init()
