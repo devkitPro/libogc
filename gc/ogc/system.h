@@ -78,6 +78,7 @@ void SYS_SetArenaLo(void *newLo);
 void* SYS_GetArenaLo();
 void SYS_SetArenaHi(void *newHi);
 void* SYS_GetArenaHi();
+void* SYS_AllocateFramebuffer(u32 size);
 void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl);
 resetcallback SYS_SetResetCallback(resetcallback cb);
 void SYS_StartPMC(u32 mcr0val,u32 mcr1val);

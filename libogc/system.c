@@ -572,6 +572,15 @@ void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)
 	}
 }
 
+void* SYS_AllocateFramebuffer(u32 size)
+{
+	void *ret;
+
+	ret = (void*)((((u32)SYS_GetArenaHi()-size-32)+31)&~31);
+	SYS_SetArenaHi(ret);
+	return ret;
+}
+
 void SYS_CreateAlarm(sysalarm *alarm)
 {
 	alarm->alarmhandler = NULL;

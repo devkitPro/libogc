@@ -26,8 +26,7 @@
                 } while (0)
 
 #define GET_FAT_TBL(drv_no, offset) \
-                (((u32)(offset)<_fatTblIdxCnt[(drv_no)]) \
-                        ?_fat[(drv_no)][(u32)(offset)]:0)
+	(((u32)(offset)<_fatTblIdxCnt[(drv_no)])?_fat[(drv_no)][(u32)(offset)]:0)
 
 
 static sd_info _sdInfo[MAX_DRIVE];
@@ -1307,24 +1306,9 @@ s32 card_fatUpdate(s32 drv_no)
                     temp_buf[j+1] = (GET_FAT_TBL(drv_no, buf_offset + k)>>8)&0xff;
                 }
                 buf_offset += k;
-            } else {    /* FS_FAT12 */
-                /*
-                 * calculation could be beyond the section boundary.
-                 * The surplus calculation is saved in the end of the
-                 * buffer (offset 512, 513), and must be taken in the next
-                 * loop if surplus variable is not 0
-                 */
-
-                /* head is copied from previously calculated value */
+            } else {
                 temp_buf[0] = temp_buf[512];
                 temp_buf[1] = temp_buf[513];
-
-                /*
-                 * tail(up to offset 512, 513) can be stuffed with the
-                 * presently calculated values and if so, it is saved in
-                 * the "surplus" variable, and must be taken in the next
-                 * loop
-                 */
                 for(j=surplus,k=0;j<SECTOR_SIZE;j+=3,k+=2) {
                     temp_buf[j] = GET_FAT_TBL(drv_no, buf_offset + k)&0xff;
                     temp_buf[j+1] = ((GET_FAT_TBL(drv_no, buf_offset+k)>>8)&0xf)|((GET_FAT_TBL(drv_no, buf_offset+k+1)<<4)&0xf0);
@@ -1335,7 +1319,6 @@ s32 card_fatUpdate(s32 drv_no)
                 buf_offset += k;
             }
 
-            /* write the updated sector */
             for(i=0;i<_sdInfo[drv_no].spbr.sbpb.fat_num;++i) {
                 lblock = fat_start_lblock;
                 offset = fat_start_offset+read_offset+i*_fat1Sectors[drv_no]*SECTOR_SIZE;
@@ -1352,7 +1335,6 @@ s32 card_fatUpdate(s32 drv_no)
                 }
             }
     }
-
     card_freeBuffer(temp_buf);
     return CARDIO_ERROR_READY;
 }
