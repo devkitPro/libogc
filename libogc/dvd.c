@@ -36,6 +36,8 @@
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
 typedef void (*dvdcallback)(s32);
+typedef void (*dvdstatecb)(dvdcmdblk *);
+
 typedef struct _dvdcmdl {
 	s32 cmd;
 	void *buf;
@@ -49,7 +51,12 @@ typedef struct _dvdcmds {
 	u32 len;
 	u32 offset;
 } dvdcmds;
-	
+
+typedef struct _dvdwaitq {
+	dvdcmdblk *next;
+	dvdcmdblk *prev;
+} dvdwaitq;
+
 static u32 __dvd_initflag = 0;
 static u32 __dvd_stopnextint = 0;
 static u32 __dvd_resetoccured = 0;	
@@ -60,12 +67,16 @@ static u32 __dvd_nextcmdnum;
 static u32 __dvd_workaround;
 static u32 __dvd_workaroundseek;
 static u32 __dvd_lastcmdwasread;
+static u32 __dvd_currcmd;
 static lwpq_t __dvd_wait_queue;
 static sysalarm __dvd_timeoutalarm;
 static dvdcallback __dvd_callback = NULL;
+static dvdstatecb __dvd_laststate = NULL;
+static dvdcmdblk *__dvd_executing = NULL;
 
 static dvdcmdblk __dvd_buffer$15;
-static dvdcmdl __dvd_cmdlist[3];
+static dvdwaitq __dvd_waitingqueue[4];
+static dvdcmdl __dvd_cmdlist[4];
 static dvdcmds __dvd_cmd_curr,__dvd_cmd_prev;
 
 static u8 __dvd_patchcode[] = {
@@ -121,10 +132,84 @@ static vu32* const _diReg = (u32*)0xCC006000;
 static u8 __dvd_unlockcmd$221[12] = {0xff,0x01,'M','A','T','S','H','I','T','A',0x02,0x00};
 static u8 __dvd_unlockcmd$222[12] = {0xff,0x00,'D','V','D','-','G','A','M','E',0x03,0x00};
 
+s32 DVD_LowReadId(dvddiskid *diskID,dvdcallback cb);
+
 extern void udelay(int us);
 
 extern void __MaskIrq(u32);
 extern void __UnmaskIrq(u32);
+
+static void __dvd_clearwaitingqueue()
+{
+	u32 i;
+
+	for(i=0;i<4;i++) {
+		__dvd_waitingqueue[i].next = (void*)&__dvd_waitingqueue[i];
+		__dvd_waitingqueue[i].prev = (void*)&__dvd_waitingqueue[i];
+	}
+}
+
+static u32 __dvd_checkwaitingqueue()
+{
+	u32 i,level;
+
+	_CPU_ISR_Disable(level);
+	for(i=0;i<4;i++) {
+		if((u32)&__dvd_waitingqueue[i]!=(u32)__dvd_waitingqueue[i].next) {
+			_CPU_ISR_Restore(level);
+			return 1;
+		}
+	}
+	_CPU_ISR_Restore(level);
+	return 0;
+}
+
+static void __dvd_pushwaitingqueue(s32 prio,dvdcmdblk *block)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	__dvd_waitingqueue[prio].prev->next = block;
+	block->prev = __dvd_waitingqueue[prio].prev;
+	block->next = (void*)&__dvd_waitingqueue[prio];
+	__dvd_waitingqueue[prio].prev = block;
+	_CPU_ISR_Restore(level);
+}
+
+static dvdcmdblk* __dvd_popwaitingqueueprio(s32 prio)
+{
+	u32 level;
+	dvdcmdblk *ret = NULL;
+
+	_CPU_ISR_Disable(level);
+	ret = __dvd_waitingqueue[prio].next;
+	__dvd_waitingqueue[prio].next = ret->next;
+	ret->next->prev = (void*)&__dvd_waitingqueue[prio];
+	_CPU_ISR_Restore(level);
+	ret->next = NULL;
+	ret->prev = NULL;
+	return ret;
+}
+
+static dvdcmdblk* __dvd_popwaitingqueue()
+{
+	u32 i,level;
+	dvdwaitq *q;
+	dvdcmdblk *ret = NULL;
+
+	_CPU_ISR_Disable(level);
+	for(i=0;i<4;i++) {
+		q = &__dvd_waitingqueue[i];
+		if((u32)q->next!=(u32)q) {
+			_CPU_ISR_Restore(level);
+			ret = __dvd_popwaitingqueueprio(i);
+			return ret;
+		}
+	}
+	_CPU_ISR_Restore(level);
+	
+	return NULL;
+}
 
 static void __dvd_timeouthandler(sysalarm *alarm)
 {
@@ -211,6 +296,39 @@ static void __DVDInitWA()
 	__dvd_nextcmdnum = 0;
 	__DVDLowWATypeSet(0,0);	
 }
+
+static void __dvd_statebusycb(s32 result)
+{
+}
+
+static void __dvd_statebusy(dvdcmdblk *block)
+{
+	__dvd_laststate = __dvd_statebusy;
+	if(block->cmd>15) return;
+
+	switch(block->cmd) {
+		case 5:					//ReadDiskID
+			_diReg[1] = _diReg[1];
+			block->currtxsize = DVD_DISKIDSIZE;
+			DVD_LowReadId(block->buf,__dvd_statebusycb);
+			return;
+	}
+}
+
+static void __dvd_stateready(dvdcmdblk *block)
+{
+	if(!__dvd_checkwaitingqueue()) {
+		__dvd_executing = NULL;
+		return;
+	}
+
+	__dvd_executing = __dvd_popwaitingqueue();
+	__dvd_currcmd = __dvd_executing->cmd;
+	
+	__dvd_executing->state = 1;
+	__dvd_statebusy(__dvd_executing);
+}
+
 
 static void __DVDInterruptHandler(u32 nIrq,void *pCtx)
 {
@@ -366,7 +484,6 @@ static void __DVDUnlockDrive(s32 result)
 }
 
 static u32 idfin;
-s32 DVD_LowReadId(dvddiskid *diskID,dvdcallback cb);
 
 static void idcb(s32 result)
 {
@@ -499,6 +616,7 @@ void DVD_Init()
 #ifdef _DVD_DEBUG
 	printf("DVD_Init()\n");
 #endif
+	__dvd_clearwaitingqueue();
 	__DVDInitWA();
 
 	IRQ_Request(IRQ_PI_DI,__DVDInterruptHandler,NULL);
