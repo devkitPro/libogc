@@ -416,6 +416,9 @@ u32 PAD_Read(PADStatus *status)
 				printf("PAD_Read(%08x)\n",sistatus);
 #endif
 				if(sistatus&0x08) {
+#ifdef _PAD_DEBUG
+					printf("PAD_Read(%08x)\n",sistatus);
+#endif
 					SI_GetResponse(chan,(void*)buf);
 					if(!(__pad_waitingbits&mask)) {
 						memset(&status[chan],0,sizeof(PADStatus));
