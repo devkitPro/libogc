@@ -21,12 +21,6 @@
 #define EXI_EXT_IRQ					0x0800
 #define EXI_EXT_BIT					0x1000
 
-#define EXI_FLAG_DMA				0x0001
-#define EXI_FLAG_IMM				0x0002
-#define EXI_FLAG_SELECT				0x0004
-#define EXI_FLAG_ATTACH				0x0008
-#define EXI_FLAG_LOCKED				0x0010
-
 #define _SHIFTL(v, s, w)	\
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
 #define _SHIFTR(v, s, w)	\
@@ -44,7 +38,7 @@ typedef struct _exibus_priv {
 	u32 flags;
 	u32 lck_cnt;
 	u32 exi_id;
-	u32 var1;
+	u32 exi_buscode;
 	struct _lck_dev {
 		u32 dev;
 		EXICallback unlockcb;
@@ -53,8 +47,7 @@ typedef struct _exibus_priv {
 } exibus_priv;
 
 static exibus_priv eximap[EXI_MAX_CHANNELS];
-
-static u32 exiids[EXI_MAX_CHANNELS];
+static u32 exi_buscode[2];
 
 static void __exi_irq_handler(u32,void *);
 static void __tc_irq_handler(u32,void *);
@@ -77,18 +70,21 @@ static u32 __exi_probe(u32 nChn)
 	if(!(exi->flags&EXI_FLAG_ATTACH)) {
 		if(val&EXI_EXT_IRQ) {
 			_exiReg[nChn*5] = (val&~(EXI_EXI_IRQ|EXI_TC_IRQ|EXI_EXT_IRQ))|EXI_EXT_IRQ;
-			exi->exi_id = 0;
+			exi->exi_buscode = 0;
+			exi_buscode[nChn] = 0;
 		}
 		if(_exiReg[nChn*5]&EXI_EXT_BIT) {
 		} else {
-			exi->exi_id = 0;
+			exi->exi_buscode = 0;
+			exi_buscode[nChn] = 0;
 			_CPU_ISR_Restore(level);
 			return 0;
 		}
 	}
 
 	if(!(_exiReg[nChn*5]&EXI_EXT_BIT) || (_exiReg[nChn*5]&EXI_EXT_IRQ)) {
-		exi->exi_id = 0;
+		exi->exi_buscode = 0;
+		exi_buscode[nChn] = 0;
 		ret = 0;
 	}
 	_CPU_ISR_Restore(level);
@@ -301,12 +297,12 @@ u32 EXI_Sync(u32 nChn)
 	return ret;
 }
 
-u32 EXI_Imm(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tccb)
+u32 EXI_Imm(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 {
 	u32 level;
 	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
-	printf("EXI_Imm(%d,%p,%d,%d,%p)\n",nChn,pData,nLen,nMode,tccb);
+	printf("EXI_Imm(%d,%p,%d,%d,%p)\n",nChn,pData,nLen,nMode,tc_cb);
 #endif
 	_CPU_ISR_Disable(level);
 
@@ -315,8 +311,8 @@ u32 EXI_Imm(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tccb)
 		return 0;
 	}
 
-	exi->CallbackTC = tccb;
-	if(tccb) {
+	exi->CallbackTC = tc_cb;
+	if(tc_cb) {
 		__exi_clearirqs(nChn,0,1,0);
 		__UnmaskIrq(IRQMASK((IRQ_EXI0_TC+(nChn*3))));
 	}
@@ -358,12 +354,12 @@ u32 EXI_ImmEx(u32 nChn,void *pData,u32 nLen,u32 nMode)
 	return ret;
 }
 
-u32 EXI_Dma(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tccb)
+u32 EXI_Dma(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 {
 	u32 level;
 	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
-	printf("EXI_Dma(%d,%p,%d,%d,%p)\n",nChn,pData,nLen,nMode,tccb);
+	printf("EXI_Dma(%d,%p,%d,%d,%p)\n",nChn,pData,nLen,nMode,tc_cb);
 #endif
 	_CPU_ISR_Disable(level);
 	
@@ -375,10 +371,10 @@ u32 EXI_Dma(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tccb)
 		return 0;
 	}
 #ifdef _EXI_DEBUG
-	printf("EXI_Dma(tccb: %p)\n",tccb);
+	printf("EXI_Dma(tccb: %p)\n",tc_cb);
 #endif
-	exi->CallbackTC = tccb;
-	if(tccb) {
+	exi->CallbackTC = tc_cb;
+	if(tc_cb) {
 		__exi_clearirqs(nChn,0,1,0);
 		__UnmaskIrq(IRQMASK((IRQ_EXI0_TC+(nChn*3))));
 	}
@@ -401,6 +397,9 @@ u32 EXI_GetState(u32 nChn)
 static u32 __unlocked_handler(u32 nChn,u32 nDev)
 {
 	u32 nId;
+#ifdef _EXI_DEBUG
+	printf("__unlocked_handler(%d,%d)\n",nChn,nDev);
+#endif
 	EXI_GetID(nChn,nDev,&nId);
 	return 1;
 }
@@ -411,13 +410,34 @@ u32 EXI_GetID(u32 nChn,u32 nDev,u32 *nId)
 	EXICallback cb;
 	exibus_priv *exi = &eximap[nChn];
 
-	if(nChn<EXI_CHANNEL_2) {
+#ifdef _EXI_DEBUG
+		printf("EXI_GetID(exi_buscode = %d)\n",exi->exi_buscode);
+#endif
+	if(nChn<EXI_CHANNEL_2 && nDev==EXI_DEVICE_0) {
 		if(__exi_probe(nChn)==0) return 0;
-		
-		_CPU_ISR_Disable(level);
-		_CPU_ISR_Restore(level);
-	}
+		if(exi->exi_buscode) {
+#ifdef _EXI_DEBUG
+			printf("EXI_GetID(exi_id = %d)\n",exi->exi_id);
+#endif
+			*nId = exi->exi_id;
+			return exi->exi_id;
+		}
 
+		_CPU_ISR_Disable(level);
+		ret = 0;
+		if(!(exi->flags&EXI_FLAG_ATTACH)) {
+			if(__exi_probe(nChn)==1) {
+				exi->CallbackEXT = NULL;
+				exi->flags |= EXI_FLAG_ATTACH;
+				__exi_clearirqs(nChn,1,0,0);
+				__UnmaskIrq(IRQMASK(IRQ_EXI0_EXT)>>(nChn*3));
+				ret = 1;
+			}
+		}
+		_CPU_ISR_Restore(level);
+		if(!ret) return 0;
+	}
+	
 	lck = 0;
 	if(nChn<EXI_CHANNEL_2 && nDev==EXI_DEVICE_0) lck = 1;
 
@@ -433,6 +453,7 @@ u32 EXI_GetID(u32 nChn,u32 nDev,u32 *nId)
 			EXI_Sync(nChn);
 			EXI_Deselect(nChn);
 		}
+
 		_CPU_ISR_Disable(level);
 		if(exi->flags&EXI_FLAG_LOCKED) {
 			exi->flags &= ~EXI_FLAG_LOCKED;
@@ -449,29 +470,78 @@ u32 EXI_GetID(u32 nChn,u32 nDev,u32 *nId)
 	if(nChn<EXI_CHANNEL_2 && nDev==EXI_DEVICE_0) {
 		_CPU_ISR_Disable(level);
 		if(exi->flags&EXI_FLAG_ATTACH) {
-			if(exi->flags&EXI_FLAG_LOCKED && exi->lockeddev!=EXI_DEVICE_0) {
+			if(!(exi->flags&EXI_FLAG_LOCKED) || exi->lockeddev!=EXI_DEVICE_0) {
 				exi->flags &= ~EXI_FLAG_ATTACH;
 				__MaskIrq(((IRQMASK(IRQ_EXI0_EXI)|IRQMASK(IRQ_EXI0_TC)|IRQMASK(IRQ_EXI0_EXT))>>(nChn*3)));
 			}
 		}
+		exi->exi_buscode = exi_buscode[nChn] = *nId;
 		exi->exi_id = *nId;
+#ifdef _EXI_DEBUG
+		printf("EXI_GetID(exi_id = %d)\n",exi->exi_id);
+#endif
 		_CPU_ISR_Restore(level);
 		return exi->exi_id;
 	}
 	return 0;
 }
 
-EXICallback EXI_RegisterEXICallback(u32 nChn,EXICallback cb)
+u32 EXI_Attach(u32 nChn,EXICallback ext_cb)
+{
+	u32 id,level,ret = 0;
+	exibus_priv *exi = &eximap[nChn];
+
+	if(__exi_probe(nChn) && !exi->exi_id) EXI_GetID(nChn,EXI_DEVICE_0,&id);
+
+	_CPU_ISR_Disable(level);
+	if(exi->exi_id) {
+		_CPU_ISR_Disable(level);
+		if(!(exi->flags&EXI_FLAG_ATTACH)) {
+			if(__exi_probe(nChn)) {
+				exi->CallbackEXT = ext_cb;
+				__exi_clearirqs(nChn,1,0,0);
+				__UnmaskIrq(IRQMASK((IRQ_EXI0_EXT+(nChn*3))));
+				exi->flags |= EXI_FLAG_ATTACH;
+				ret = 1;
+			}
+		}
+		_CPU_ISR_Restore(level);
+	}
+	_CPU_ISR_Restore(level);
+#ifdef _EXI_DEBUG
+	printf("EXI_Attach(exi_id = %d)\n",id);
+#endif
+	return ret;	
+}
+
+u32 EXI_Detach(u32 nChn)
+{
+	u32 level,ret = 1;
+	exibus_priv *exi = &eximap[nChn];
+
+	_CPU_ISR_Disable(level);
+	if(exi->flags&EXI_FLAG_ATTACH) {
+		if(exi->flags&EXI_FLAG_LOCKED && exi->lockeddev!=EXI_DEVICE_0) ret = 0;
+		else {
+			exi->flags &= ~EXI_FLAG_ATTACH;
+			__MaskIrq((IRQMASK(IRQ_EXI0_EXI)|IRQMASK(IRQ_EXI0_TC)|IRQMASK(IRQ_EXI0_EXT))>>(nChn*3));
+		}
+	}
+	_CPU_ISR_Restore(level);
+	return ret;
+}
+
+EXICallback EXI_RegisterEXICallback(u32 nChn,EXICallback exi_cb)
 {
 	u32 level;
 	EXICallback old = NULL;
 	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
-	printf("EXI_RegisterEXICallback(%d,%p)\n",nChn,cb);
+	printf("EXI_RegisterEXICallback(%d,%p)\n",nChn,exi_cb);
 #endif
 	_CPU_ISR_Disable(level);
 	old = exi->CallbackEXI;
-	exi->CallbackEXI = cb;
+	exi->CallbackEXI = exi_cb;
 	if(nChn==EXI_CHANNEL_2) __exi_setinterrupts(EXI_CHANNEL_0,&eximap[EXI_CHANNEL_0]);
 	else __exi_setinterrupts(nChn,exi);
 	_CPU_ISR_Restore(level);
@@ -483,10 +553,9 @@ u32 EXI_Probe(u32 nChn)
 	u32 id,ret;
 	exibus_priv *exi = &eximap[nChn];
 	
-	ret = 0;
-	if(__exi_probe(nChn)==1) {
+	if((ret=__exi_probe(nChn))==1) {
 		if(exi->exi_id==0) {
-			if(EXI_GetID(nChn,EXI_DEVICE_0,&id)==1) ret = 1;
+			if(EXI_GetID(nChn,EXI_DEVICE_0,&id)==0) ret = 0;
 		}
 	}
 	return ret;
@@ -505,7 +574,7 @@ void __exi_init()
 	__MaskIrq(IM_EXI);
 	
 	memset(eximap,0,EXI_MAX_CHANNELS*sizeof(exibus_priv));
-	memset(exiids,0,EXI_MAX_CHANNELS*sizeof(u32));
+	memset(exi_buscode,0,2*sizeof(u32));
 
 	IRQ_Request(IRQ_EXI0_EXI,__exi_irq_handler,NULL);
 	IRQ_Request(IRQ_EXI0_TC,__tc_irq_handler,NULL);

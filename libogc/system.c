@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "asm.h"
 #include "irq.h"
+#include "exi.h"
 #include "cache.h"
 #include "video.h"
 #include "exception.h"
@@ -13,10 +14,23 @@
 #include "lwp_wkspace.h"
 #include "system.h"
 
-//#define _DEBUG_CON
+//#define _SYS_DEBUG
 
 #define SYSMEM_SIZE				0x1800000
 #define KERNEL_HEAP				(1024*1024)
+
+// DSPCR bits
+#define DSPCR_DSPRESET      0x0800        // Reset DSP
+#define DSPCR_ARDMA         0x0200        // ARAM dma in progress, if set
+#define DSPCR_DSPINTMSK     0x0100        // * interrupt mask   (RW)
+#define DSPCR_DSPINT        0x0080        // * interrupt active (RWC)
+#define DSPCR_ARINTMSK      0x0040
+#define DSPCR_ARINT         0x0020
+#define DSPCR_AIINTMSK      0x0010
+#define DSPCR_AIINT         0x0008
+#define DSPCR_HALT          0x0004        // halt DSP
+#define DSPCR_PIINT         0x0002        // assert DSP PI interrupt
+#define DSPCR_RES           0x0001        // reset DSP
 
 #define _SHIFTL(v, s, w)	\
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
@@ -27,12 +41,20 @@ static void *__sysarenalo = NULL;
 static void *__sysarenahi = NULL;
 
 static resetcallback __RSWCallback = NULL;
-#ifdef _DEBUG_CON
+static sysalarm *system_alarms = NULL;
+
+#ifdef _SYS_DEBUG
 static void *__dbgframebuffer = NULL;
 #endif
 
 static vu32* const _piReg = (u32*)0xCC003000;
 static vu16* const _memReg = (u16*)0xCC004000;
+static vu16* const _dspReg = (u16*)0xCC005000;
+
+static u32 __srambuf_len,__srambuf_lck,__sram_isrlevel,__sram_transfersize;
+static u8 __srambuf[64] ATTRIBUTE_ALIGN(32);
+
+static u32 __sram_writecallback();
 
 extern u32 __lwp_sys_init();
 extern void __vi_init();
@@ -47,10 +69,7 @@ extern void __lwp_start_multitasking();
 extern void __timesystem_init();
 extern void __memlock_init();
 extern void __libc_init(int);
-/*#ifdef _DEBUG_CON
-extern void console_init(void *,int,int,int);
-#endif
-*/
+
 extern void __realmode(void*);
 extern void __config24Mb();
 extern void __config48Mb();
@@ -58,7 +77,36 @@ extern void __config48Mb();
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
 
+#ifdef _SYS_DEBUG
+extern void console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stride);
+#endif
+extern unsigned int gettick();
+extern int clock_gettime(struct timespec *tp);
+extern unsigned int timespec_to_interval(const struct timespec *time);
+extern void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
+
 extern u8 __ArenaLo[],__ArenaHi[];
+
+static u32 _dsp_initcode[] = 
+{
+	0x029F0010,0x029F0033,0x029F0034,0x029F0035,
+	0x029F0036,0x029F0037,0x029F0038,0x029F0039,
+	0x12061203,0x12041205,0x00808000,0x0088FFFF,
+	0x00841000,0x0064001D,0x02180000,0x81001C1E,
+	0x00441B1E,0x00840800,0x00640027,0x191E0000,
+	0x00DEFFFC,0x02A08000,0x029C0028,0x16FC0054,
+	0x16FD4348,0x002102FF,0x02FF02FF,0x02FF02FF,
+	0x02FF02FF,0x00000000,0x00000000,0x00000000
+};
+
+static void __sys_alarmhandler(void *arg)
+{
+	sysalarm *alarm = (sysalarm*)arg;
+	if(alarm) {
+		if(alarm->alarmhandler) alarm->alarmhandler(alarm);
+		if(alarm->periodic) __lwp_wd_insert_ticks(alarm->handle,alarm->periodic);
+	}
+}
 
 static void __MEMInterruptHandler()
 {
@@ -73,7 +121,7 @@ static void __RSWHandler()
 }
 
 
-#ifdef _DEBUG_CON
+#ifdef _SYS_DEBUG
 static void __dbgconsole_init()		// for debugging purpose where we need it from the begining
 {
 	u32 arLo;
@@ -84,7 +132,7 @@ static void __dbgconsole_init()		// for debugging purpose where we need it from 
 	SYS_SetArenaLo((void*)(arLo+fbsize));
 
 	__dbgframebuffer = MEM_K0_TO_K1(arLo);
-	console_init(__dbgframebuffer,640,576,1280);
+	console_init(__dbgframebuffer,20,20,640,576,1280);
 
 	VIDEO_Init(VIDEO_AUTODETECT);
 	VIDEO_SetFrameBuffer(VIDEO_FRAMEBUFFER_1, MEM_VIRTUAL_TO_PHYSICAL(__dbgframebuffer));
@@ -159,33 +207,271 @@ static void __memprotect_init()
 	_CPU_ISR_Restore(level);
 }
 
+static __inline__ u32 __getrtc(u32 *gctime)
+{
+	u32 ret;
+	u32 cmd;
+	u32 time;
+
+	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_1,NULL)==0) return 0;
+	if(EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED8MHZ)==0) {
+		EXI_Unlock(EXI_CHANNEL_0);
+		return 0;
+	}
+	
+	ret = 0;
+	time = 0;
+	cmd = 0x20000000;
+	if(EXI_Imm(EXI_CHANNEL_0,&cmd,4,EXI_WRITE,NULL)==0) ret |= 0x01;
+	if(EXI_Sync(EXI_CHANNEL_0)==0) ret |= 0x02;
+	if(EXI_Imm(EXI_CHANNEL_0,&time,4,EXI_READ,NULL)==0) ret |= 0x04;
+	if(EXI_Sync(EXI_CHANNEL_0)==0) ret |= 0x08;
+	if(EXI_Deselect(EXI_CHANNEL_0)==0) ret |= 0x10;
+	
+	EXI_Unlock(EXI_CHANNEL_0);
+	*gctime = time;
+	if(ret) return 0;
+	
+	return 1;
+}
+
+static __inline__ u32 __sram_read(void *buffer)
+{
+	u32 command,ret;
+
+	DCInvalidateRange(buffer,64);
+	
+	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_1,NULL)==0) return 0;
+	if(EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED8MHZ)==0) {
+		EXI_Unlock(EXI_CHANNEL_0);
+		return 0;
+	}
+
+	ret = 0;
+	command = 0x20000100;
+	if(EXI_Imm(EXI_CHANNEL_0,&command,4,EXI_WRITE,NULL)==0) ret |= 0x01;
+	if(EXI_Sync(EXI_CHANNEL_0)==0) ret |= 0x02;
+	if(EXI_Dma(EXI_CHANNEL_0,buffer,64,EXI_READ,NULL)==0) ret |= 0x04;
+	if(EXI_Sync(EXI_CHANNEL_0)==0) ret |= 0x08;
+	if(EXI_Deselect(EXI_CHANNEL_0)==0) ret |= 0x10;
+	if(EXI_Unlock(EXI_CHANNEL_0)==0) ret |= 0x20;
+
+	if(ret) return 0;
+	return 1;
+}
+
+static __inline__ u32 __sram_write(void *buffer,u32 loc,u32 len)
+{
+	u32 cmd,ret;
+
+	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_1,__sram_writecallback)==0) return 0;
+	if(EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED8MHZ)==0) {
+		EXI_Unlock(EXI_CHANNEL_0);
+		return 0;
+	}
+
+	ret = 0;
+	cmd = 0xa0000100|(loc<<6);
+	if(EXI_Imm(EXI_CHANNEL_0,&cmd,4,EXI_WRITE,NULL)==0) ret |= 0x01;
+	if(EXI_Sync(EXI_CHANNEL_0)==0) ret |= 0x02;
+	if(EXI_ImmEx(EXI_CHANNEL_0,buffer,len,EXI_WRITE)==0) ret |= 0x04;
+	if(EXI_Deselect(EXI_CHANNEL_0)==0) ret |= 0x08;
+	if(EXI_Unlock(EXI_CHANNEL_0)==0) ret |= 0x10;
+	
+	if(ret) return 1;
+	return 0;
+}
+
+static u32 __sram_writecallback()
+{
+	if(!__srambuf_lck) return 0;
+
+	__sram_transfersize = __sram_write(__srambuf+__srambuf_len,__srambuf_len,(64-__srambuf_len));
+	if(__sram_transfersize) __srambuf_len = 64;
+	
+	return 1;
+}
+
+static void __sram_init()
+{
+	__srambuf_len = 64;
+	__sram_isrlevel = 0;
+	__srambuf_lck = 0;
+	__sram_transfersize = __sram_read(__srambuf);
+}
+
 static void DisableWriteGatherPipe()
 {
 	mtspr(920,(mfspr(920)&~0x40000000));
+}
+
+static __inline__ void __buildchecksum(u16 *buffer,u16 *c1,u16 *c2)
+{
+	u32 i;
+	
+	*c1 = 0;
+	*c2 = 0;
+	for(i=0;i<4;i++) {
+		*c1 += buffer[0x0c+(i*2)];
+		*c2 += buffer[0x0c+(i*2)]^-1;
+	}
+}
+static __inline__ u32 __locksram(u32 loc)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	if(!__srambuf_lck) {
+		if(!__srambuf_lck) {
+			__sram_isrlevel = level;
+			__srambuf_lck = 1;
+			return (u32)__srambuf+loc;
+		}
+	}
+	_CPU_ISR_Disable(level);
+	return 0;
+}
+
+static u32 __unlocksram(u32 write,u32 loc)
+{
+	u16 *sram16 = (u16*)__srambuf;
+
+	if(__srambuf_lck) {
+		if(write) {
+			if(!loc) {
+				if((__srambuf[19]&0x03)>0x02) __srambuf[19] = (__srambuf[19]&~0x02);
+				__buildchecksum((u16*)__srambuf,&sram16[0],&sram16[1]);
+			}
+			if(loc<__srambuf_len) __srambuf_len = loc;
+			
+			__sram_transfersize = __sram_write(__srambuf+__srambuf_len,__srambuf_len,(64-__srambuf_len));
+			if(__sram_transfersize) __srambuf_len = 64;
+		}
+		__srambuf_lck = 0;
+		_CPU_ISR_Restore(__sram_isrlevel);
+		return __sram_transfersize;
+	}
+	return 0;
+}
+
+static void __dsp_bootstrap()
+{
+	u16 status;
+	u32 tick;
+
+	memcpy(SYS_GetArenaHi()-128,(void*)0x81000000,128);
+	memcpy((void*)0x81000000,_dsp_initcode,128);
+	DCFlushRange((void*)0x81000000,128);
+	
+	_dspReg[9] = 67;
+	_dspReg[5] = (DSPCR_DSPRESET|DSPCR_DSPINT|DSPCR_ARINT|DSPCR_AIINT|DSPCR_HALT);
+	_dspReg[5] |= DSPCR_RES;
+	while(_dspReg[5]&DSPCR_RES);
+
+	_dspReg[0] = 0;
+	while((_SHIFTL(_dspReg[2],16,16)|(_dspReg[3]&0xffff))&0x80000000);
+
+	((u32*)_dspReg)[8] = 0x01000000;
+	((u32*)_dspReg)[9] = 0;
+	((u32*)_dspReg)[10] = 32;
+
+	status = _dspReg[5];
+	while(!(status&DSPCR_ARINT)) status = _dspReg[5];
+	_dspReg[5] = status;
+
+	tick = gettick();
+	while((gettick()-tick)<2194);
+
+	((u32*)_dspReg)[8] = 0x01000000;
+	((u32*)_dspReg)[9] = 0;
+	((u32*)_dspReg)[10] = 32;
+
+	status = _dspReg[5];
+	while(!(status&DSPCR_ARINT)) status = _dspReg[5];
+	_dspReg[5] = status;
+
+	_dspReg[5] &= ~DSPCR_DSPRESET;
+	while(_dspReg[5]&0x400);
+
+	_dspReg[5] &= ~DSPCR_HALT;
+	while(!(_dspReg[2]&0x8000));
+	status = _dspReg[3];
+
+	_dspReg[5] |= DSPCR_HALT;
+	_dspReg[5] = (DSPCR_DSPRESET|DSPCR_DSPINT|DSPCR_ARINT|DSPCR_AIINT|DSPCR_HALT);
+	_dspReg[5] |= DSPCR_RES;
+	while(_dspReg[5]&DSPCR_RES);
+
+	memcpy((void*)0x81000000,SYS_GetArenaHi()-128,128);
+#ifdef _SYS_DEBUG
+	printf("__audiosystem_init(finish)\n");
+#endif
+}
+
+u32 __SYS_LockSram()
+{
+	return __locksram(0);
+}
+
+u32 __SYS_LockSramEx()
+{
+	return __locksram(20);
+}
+
+u32 __SYS_UnlockSram(u32 write)
+{
+	return __unlocksram(write,0);
+}
+
+u32 __SYS_UnlockSramEx(u32 write)
+{
+	return __unlocksram(write,20);
+}
+
+u32 __SYS_GetRTC(u32 *gctime)
+{
+	u32 cnt,ret;
+	u32 time1,time2;
+
+	cnt = 0;
+	ret = 0;
+	while(cnt<16) {
+		if(__getrtc(&time1)==0) ret |= 0x01;
+		if(__getrtc(&time2)==0) ret |= 0x02;
+		if(ret) return 0;
+		if(time1==time2) {
+			*gctime = time1;
+			return 1;
+		}
+		cnt++;
+	}
+	return 0;
 }
 
 void SYS_Init()
 {
 	__lowmem_init();
 	__lwp_wkspace_init(KERNEL_HEAP);
-#ifdef _DEBUG_CON
+#ifdef _SYS_DEBUG
 	__dbgconsole_init();
 #endif
 	__libc_init(1);
-	__memprotect_init();
 	__sys_state_init();
 	__lwp_priority_init();
 	__lwp_watchdog_init();
 	__exception_init();
 	__systemcall_init();
 	__decrementer_init();
-	__timesystem_init();
 	__irq_init();
-	__lwp_sys_init();
-	__memlock_init();
-	__pad_init();
 	__exi_init();
+	__sram_init();
+	__lwp_sys_init();
+	__dsp_bootstrap();
+	__memprotect_init();
+	__pad_init();
 	__vi_init();
+	__memlock_init();
+	__timesystem_init();
 	DisableWriteGatherPipe();
 
 	IRQ_Request(IRQ_PI_RSW,__RSWHandler,NULL);
@@ -240,6 +526,137 @@ void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)
 
 		_CPU_ISR_Restore(level);
 	}
+}
+
+void SYS_CreateAlarm(sysalarm *alarm)
+{
+	u32 level;
+
+	if(!alarm) return;
+
+	_CPU_ISR_Disable(level);
+	alarm->alarmhandler = NULL;
+	alarm->handle = NULL;
+	alarm->next = NULL;
+	alarm->periodic = 0;
+	alarm->prev = NULL;
+	alarm->start_per = 0;
+	alarm->ticks = 0;
+	_CPU_ISR_Restore(level);
+}
+
+void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb)
+{
+	u32 found,level;
+	sysalarm *ptr = NULL;
+
+	alarm->alarmhandler = cb;
+	alarm->ticks = timespec_to_interval(tp);
+
+	alarm->periodic = 0;
+	alarm->start_per = 0;
+	alarm->next = NULL;
+	alarm->prev = NULL;
+
+	found = 0;
+
+	_CPU_ISR_Disable(level);
+	ptr = system_alarms;
+	while(ptr && ptr->next) {
+		if(ptr==alarm) break;
+		ptr = ptr->next;
+	}
+	if(ptr && ptr==alarm) found = 1;
+	else {
+		if(ptr) {
+			ptr->next = alarm;
+			alarm->prev = ptr;
+		}
+		else system_alarms = alarm;
+	}
+
+	if(!found) {
+		alarm->handle = NULL;
+		alarm->handle = __lwp_wkspace_allocate(sizeof(wd_cntrl));
+	}
+	if(alarm->handle) {
+		if(!found) __lwp_wd_initialize(alarm->handle,__sys_alarmhandler,alarm);
+		__lwp_wd_insert_ticks(alarm->handle,alarm->ticks);
+	}
+	_CPU_ISR_Restore(level);
+}
+
+void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb)
+{
+	u32 found,level;
+	sysalarm *ptr = system_alarms;
+
+	alarm->start_per = timespec_to_interval(tp_start);
+	alarm->periodic = timespec_to_interval(tp_period);
+	alarm->alarmhandler = cb;
+
+	alarm->ticks = 0;
+	alarm->next = NULL;
+	alarm->prev = NULL;
+
+	found = 0;
+
+	_CPU_ISR_Disable(level);
+	while(ptr && ptr->next) {
+		if(ptr==alarm) break;
+		ptr = ptr->next;
+	}
+	if(ptr && ptr==alarm) found = 1;
+	else {
+		if(ptr) {
+			ptr->next = alarm;
+			alarm->prev = ptr;
+		}
+		else system_alarms = alarm;
+	}
+
+	if(!found) {
+		alarm->handle = NULL;
+		alarm->handle = __lwp_wkspace_allocate(sizeof(wd_cntrl));
+	}
+	if(alarm->handle) {
+		if(!found) __lwp_wd_initialize(alarm->handle,__sys_alarmhandler,alarm);
+		__lwp_wd_insert_ticks(alarm->handle,alarm->start_per);
+	}
+	_CPU_ISR_Restore(level);
+}
+
+void SYS_RemoveAlarm(sysalarm *alarm)
+{
+	u32 level;
+	sysalarm *prev,*next;
+
+	_CPU_ISR_Disable(level);
+	prev = alarm->prev;
+	next = alarm->next;
+	next->prev = prev;
+	prev->next = next;
+
+	alarm->ticks = 0;
+	alarm->periodic = 0;
+	alarm->start_per = 0;
+	alarm->prev = NULL;
+	alarm->next = NULL;
+	
+	if(alarm->handle) {
+		__lwp_wd_remove(alarm->handle);
+		__lwp_wkspace_free(alarm->handle);
+	}
+	alarm->handle = NULL;
+	_CPU_ISR_Restore(level);
+}
+
+void SYS_CancelAlarm(sysalarm *alarm)
+{
+	u32 level;
+	_CPU_ISR_Disable(level);
+	if(alarm->handle) __lwp_wd_remove(alarm->handle);
+	_CPU_ISR_Restore(level);
 }
 
 resetcallback SYS_SetResetCallback(resetcallback cb)

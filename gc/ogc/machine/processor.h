@@ -16,42 +16,46 @@
 	}									\
 })
 
-#define mfdcr(rn) ({register u32 rval; \
-      asm volatile("mfdcr %0," __stringify(rn) \
-             : "=r" (rval)); rval;})
-#define mtdcr(rn, v)  asm volatile("mtdcr " __stringify(rn) ",%0" : : "r" (v))
+#define mfdcr(_rn) ({register u32 _rval; \
+		asm volatile("mfdcr %0," __stringify(_rn) \
+             : "=r" (_rval)); _rval;})
+#define mtdcr(rn, val)  asm volatile("mtdcr " __stringify(rn) ",%0" : : "r" (val))
 
-#define mfmsr()   ({register u32 rval; \
-      asm volatile("mfmsr %0" : "=r" (rval)); rval;})
-#define mtmsr(v)  asm volatile("mtmsr %0" : : "r" (v))
+#define mfmsr()   ({register u32 _rval; \
+		asm volatile("mfmsr %0" : "=r" (_rval)); _rval;})
+#define mtmsr(val)  asm volatile("mtmsr %0" : : "r" (val))
 
-#define mfdec()   ({register u32 rval; \
-      asm volatile("mfdec %0" : "=r" (rval)); rval;})
-#define mtdec(v)  asm volatile("mtdec %0" : : "r" (v))
+#define mfdec()   ({register u32 _rval; \
+		asm volatile("mfdec %0" : "=r" (_rval)); _rval;})
+#define mtdec(_val)  asm volatile("mtdec %0" : : "r" (_val))
 
-#define mfspr(rn) ({register u32 rval; \
-      asm volatile("mfspr %0," __stringify(rn) \
-             : "=r" (rval)); rval;})
-#define mtspr(rn, v)  asm volatile("mtspr " __stringify(rn) ",%0" : : "r" (v))
+#define mfspr(_rn) ({register u32 _rval; \
+		asm volatile("mfspr %0," __stringify(_rn) \
+             : "=r" (_rval)); _rval;})
+#define mtspr(_rn, _val)  asm volatile("mtspr " __stringify(_rn) ",%0" : : "r" (_val))
 
-#define mfwpar()  mfspr(921)
-#define mtwpar(v) mtspr(921,v)
+#define mfwpar()		mfspr(921)
+#define mtwpar(_val)	mtspr(921,_val)
 
-#define cntlzw(_in,_out) ({asm volatile("cntlzw %0, %1" : "=r"((_out)),"=r"((_in)) : "1"((_in)));})
+#define mfmmcr0()		mfspr(952)
+#define mtmmcr0(_val)	mtspr(952,_val)
+#define mfmmcr1()		mfspr(956)
+#define mtmmcr1(_val)	mtspr(956,_val)
 
-#define mfmmcr0()	mfspr(952)
-#define mtmmcr0(v)	mtspr(952,v)
-#define mfmmcr1()	mfspr(956)
-#define mtmmcr1(v)	mtspr(956,v)
+#define mfpmc1()		mfspr(953)
+#define mtpmc1(_val)	mtspr(953,_val)
+#define mfpmc2()		mfspr(954)
+#define mtpmc2(_val)	mtspr(954,_val)
+#define mfpmc3()		mfspr(957)
+#define mtpmc3(_val)	mtspr(957,_val)
+#define mfpmc4()		mfspr(958)
+#define mtpmc4(_val)	mtspr(958,_val)
 
-#define mfpmc1()	mfspr(953)
-#define mtpmc1(v)	mtspr(953,v)
-#define mfpmc2()	mfspr(954)
-#define mtpmc2(v)	mtspr(954,v)
-#define mfpmc3()	mfspr(957)
-#define mtpmc3(v)	mtspr(957,v)
-#define mfpmc4()	mfspr(958)
-#define mtpmc4(v)	mtspr(958,v)
+#define cntlzw(_val) ({register u32 _rval; \
+					  asm volatile("cntlzw %0, %1" : "=r"((_rval)) : "r"((_val))); _rval;})
+
+#define eqv(_val1,_val2)	({register u32 _rval; \
+							asm volatile("eqv %0,%1,%2" : "=r"((_rval)) : "r"((_val1)),"r"((_val2))); _rval;})
 
 #define _CPU_MSR_GET( _msr_value ) \
   do { \

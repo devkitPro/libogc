@@ -36,6 +36,10 @@ extern int errno;
 static lwpq_t time_exi_wait;
 static lwp_thrqueue timedwait_queue;
 
+extern u32 __SYS_GetRTC(u32 *gctime);
+extern u32 __SYS_LockSram();
+extern u32 __SYS_UnlockSram(u32 write);
+
 unsigned long _DEFUN(gettick,(),
 						  _NOARGS)
 {
@@ -113,6 +117,27 @@ void __timesystem_init()
 }
 
 
+void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result)
+{
+	struct timespec start_st = *tp_start;
+	struct timespec *start = &start_st;
+	u32 nsecpersec = TB_NSPERSEC;
+
+	if(tp_end->tv_nsec<start->tv_nsec) {
+		int secs = (start->tv_nsec - tp_end->tv_nsec)/nsecpersec+1;
+		start->tv_nsec -= nsecpersec * secs;
+		start->tv_sec += secs;
+	}
+	if((tp_end->tv_nsec - start->tv_nsec)>nsecpersec) {
+		int secs = (start->tv_nsec - tp_end->tv_nsec)/nsecpersec;
+		start->tv_nsec += nsecpersec * secs;
+		start->tv_sec -= secs;
+	}
+
+	result->tv_sec = (tp_end->tv_sec - start->tv_sec);
+	result->tv_nsec = (tp_end->tv_nsec - start->tv_nsec);
+}
+
 unsigned int timespec_to_interval(const struct timespec *time)
 {
 	u32 ticks;
@@ -123,6 +148,26 @@ unsigned int timespec_to_interval(const struct timespec *time)
 	if(ticks) return ticks;
 
 	return 1;
+}
+
+int clock_gettime(struct timespec *tp)
+{
+	u32 srambase;
+	u32 gctime;
+
+	if(!tp) return -1;
+
+	if(!__SYS_GetRTC(&gctime)) return -1;
+
+	srambase = __SYS_LockSram();
+	gctime += ((u32*)srambase)[3];
+	__SYS_UnlockSram(0);
+	gctime += 946684800;
+
+	tp->tv_sec = gctime;
+	tp->tv_nsec = gettick();
+
+	return 0;
 }
 
 // this function spins till timeout is reached
@@ -193,7 +238,7 @@ time_t _DEFUN(time,(timer),
 {
 	time_t gctime = 0;
 	u32 command;
-	u32 SRAM[64];
+	u32 srambase;
 
 
 	__time_exi_wait();
@@ -205,19 +250,14 @@ time_t _DEFUN(time,(timer),
 	EXI_Imm(EXI_CHANNEL_0,&gctime,4,EXI_READ,NULL);
 	EXI_Sync(EXI_CHANNEL_0);
 	EXI_Deselect(EXI_CHANNEL_0);
-
-	command = 0x20000100;
-	EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED8MHZ);
-	EXI_Imm(EXI_CHANNEL_0,&command,4,EXI_WRITE,NULL);
-	EXI_Sync(EXI_CHANNEL_0);
-	EXI_ImmEx(EXI_CHANNEL_0,SRAM,64,EXI_READ);
-	EXI_Deselect(EXI_CHANNEL_0);
 	EXI_Unlock(EXI_CHANNEL_0);
+	
+	srambase = __SYS_LockSram();
+	gctime += ((u32*)srambase)[3];
+	__SYS_UnlockSram(0);
 
 	gctime += 946684800;
-	gctime += SRAM[3];
 
 	if (timer) *timer = gctime;
-
 	return gctime;
 }

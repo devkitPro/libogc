@@ -160,7 +160,7 @@ void c_irqdispatcher()
 	irq = 0;
 	while(i<(sizeof(_irqPrio)/sizeof(u32))) {
 		if(intmask&_irqPrio[i]) {
-			cntlzw(intmask,irq);
+			irq = cntlzw(intmask);
 			break;
 		}
 		i++;

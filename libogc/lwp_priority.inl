@@ -38,8 +38,8 @@ static __inline__ void __lwp_priomap_removefrom(prio_cntrl *theprio)
 static __inline__ u32 __lwp_priomap_highest()
 {
 	u32 major,minor;
-	cntlzw(_prio_major_bitmap,major);
-	cntlzw(_prio_bitmap[major],minor);
+	major = cntlzw(_prio_major_bitmap);
+	minor = cntlzw(_prio_bitmap[major]);
 #ifdef _LWPPRIO_DEBUG
 	printf("__lwp_priomap_highest(%d)\n",((major<<4)+minor));
 #endif

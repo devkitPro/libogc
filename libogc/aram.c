@@ -109,17 +109,17 @@ void AR_StartDMA(u32 dir,u32 memaddr,u32 aramaddr,u32 len)
 	_CPU_ISR_Disable(level);
 
 	// set main memory address
-	_dspReg[16] = (_dspReg[16]&~0x3ff)|((memaddr>>16)&0xffff);
-	_dspReg[17] = (_dspReg[17]&~0x0f)|(memaddr&0xffff);
+	_dspReg[16] = (_dspReg[16]&~0x03ff)|((memaddr>>16)&0xffff);
+	_dspReg[17] = (_dspReg[17]&~0xffe0)|(memaddr&0xffff);
 	
 	// set aram address
-	_dspReg[18] = (_dspReg[18]&~0x3ff)|((aramaddr>>16)&0xffff);
-	_dspReg[19] = (_dspReg[19]&~0x0f)|(aramaddr&0xffff);
+	_dspReg[18] = (_dspReg[18]&~0x03ff)|((aramaddr>>16)&0xffff);
+	_dspReg[19] = (_dspReg[19]&~0xffe0)|(aramaddr&0xffff);
 	
 	// set cntrl bits
 	_dspReg[20] = (_dspReg[20]&~0x8000)|(_SHIFTL(dir,15,1));
 	_dspReg[20] = (_dspReg[20]&~0x7fff)|(_SHIFTR(len,16,15));
-	_dspReg[21] = (_dspReg[20]&~0x0f)|(len&0xffff);
+	_dspReg[21] = (_dspReg[21]&~0xffe0)|(len&0xffff);
 
 	_CPU_ISR_Restore(level);
 }
@@ -209,46 +209,46 @@ static __inline__ void __ARWaitDma()
 	while(_dspReg[5]&DSPCR_ARDMA);
 }
 
-static __inline__ void __ARReadDMA(u32 memaddr,u32 aramaddr,u32 len)
+static void __ARReadDMA(u32 memaddr,u32 aramaddr,u32 len)
 {
 #ifdef _AR_DEBUG
 	printf("__ARReadDMA(0x%08x,0x%08x,%d)\n",memaddr,aramaddr,len);
 #endif
 	// set main memory address
-	_dspReg[16] = (_dspReg[16]&~0x3ff)|((memaddr>>16)&0xffff);
-	_dspReg[17] = (_dspReg[17]&~0x0f)|(memaddr&0xffff);
+	_dspReg[16] = (_dspReg[16]&~0x03ff)|((memaddr>>16)&0xffff);
+	_dspReg[17] = (_dspReg[17]&~0xffe0)|(memaddr&0xffff);
 	
 	// set aram address
-	_dspReg[18] = (_dspReg[18]&~0x3ff)|((aramaddr>>16)&0xffff);
-	_dspReg[19] = (_dspReg[19]&~0x0f)|(aramaddr&0xffff);
+	_dspReg[18] = (_dspReg[18]&~0x03ff)|((aramaddr>>16)&0xffff);
+	_dspReg[19] = (_dspReg[19]&~0xffe0)|(aramaddr&0xffff);
 	
 	// set cntrl bits
 	_dspReg[20] = (_dspReg[20]&~0x8000)|0x8000;
 	_dspReg[20] = (_dspReg[20]&~0x7fff)|(_SHIFTR(len,16,15));
-	_dspReg[21] = (_dspReg[20]&~0x0f)|(len&0xffff);
+	_dspReg[21] = (_dspReg[21]&~0xffe0)|(len&0xffff);
 
 	__ARWaitDma();
 	__ARClearInterrupt();
 	
 }
 
-static __inline__ void __ARWriteDMA(u32 memaddr,u32 aramaddr,u32 len)
+static void __ARWriteDMA(u32 memaddr,u32 aramaddr,u32 len)
 {
 #ifdef _AR_DEBUG
 	printf("__ARWriteDMA(0x%08x,0x%08x,%d)\n",memaddr,aramaddr,len);
 #endif
 	// set main memory address
-	_dspReg[16] = (_dspReg[16]&~0x3ff)|((memaddr>>16)&0xffff);
-	_dspReg[17] = (_dspReg[17]&~0x0f)|(memaddr&0xffff);
+	_dspReg[16] = (_dspReg[16]&~0x03ff)|((memaddr>>16)&0xffff);
+	_dspReg[17] = (_dspReg[17]&~0xffe0)|(memaddr&0xffff);
 	
 	// set aram address
-	_dspReg[18] = (_dspReg[18]&~0x3ff)|((aramaddr>>16)&0xffff);
-	_dspReg[19] = (_dspReg[19]&~0x0f)|(aramaddr&0xffff);
+	_dspReg[18] = (_dspReg[18]&~0x03ff)|((aramaddr>>16)&0xffff);
+	_dspReg[19] = (_dspReg[19]&~0xffe0)|(aramaddr&0xffff);
 	
 	// set cntrl bits
 	_dspReg[20] = (_dspReg[20]&~0x8000);
 	_dspReg[20] = (_dspReg[20]&~0x7fff)|(_SHIFTR(len,16,15));
-	_dspReg[21] = (_dspReg[20]&~0x0f)|(len&0xffff);
+	_dspReg[21] = (_dspReg[21]&~0xffe0)|(len&0xffff);
 
 	__ARWaitDma();
 	__ARClearInterrupt();
@@ -259,7 +259,7 @@ static void __ARClearArea(u32 aramaddr,u32 len)
 	u32 currlen,curraddr,endaddr;
 	u8 zero_buffer[2048] ATTRIBUTE_ALIGN(32);
 
-	while(!(_dspReg[8]&0x0001));
+	while(!(_dspReg[11]&0x0001));
 
 	memset(zero_buffer,0,2048);
 	DCFlushRange(zero_buffer,2048);
@@ -288,7 +288,7 @@ static void __ARCheckSize()
 
 	while(!(_dspReg[11]&0x0001));
 
-	__ARInternalSize = arsize  = 0x1000000;
+	__ARSize = __ARInternalSize = arsize  = 0x1000000;
 	_dspReg[9] = (_dspReg[9]&~0x3f)|0x23;
 
 	for(i=0;i<8;i++) {

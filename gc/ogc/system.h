@@ -2,6 +2,7 @@
 #define __SYSTEM_H__
 
 #include <gctypes.h>
+#include <time.h>
 
 #define R_RESET							*(vu32*)0xCC003024
 
@@ -35,6 +36,20 @@
    extern "C" {
 #endif /* __cplusplus */
 
+typedef struct _sysalarm sysalarm;
+
+typedef void (*alarmcallback)(sysalarm *alarm);
+
+struct _sysalarm {
+	struct _sysalarm *prev;
+	struct _sysalarm *next;
+	alarmcallback alarmhandler;
+	void *handle;
+	u32 ticks;
+	u32 periodic;
+	u32 start_per;
+};
+
 typedef void (*resetcallback)(void);
 
 void SYS_Init();
@@ -47,6 +62,11 @@ resetcallback SYS_SetResetCallback(resetcallback cb);
 void SYS_StartPMC(u32 mcr0val,u32 mcr1val);
 void SYS_DumpPMC();
 void SYS_StopPMC();
+void SYS_CreateAlarm(sysalarm *alarm);
+void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb);
+void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb);
+void SYS_RemoveAlarm(sysalarm *alarm);
+void SYS_CancelAlarm(sysalarm *alarm);
 
 #ifdef __cplusplus
    }

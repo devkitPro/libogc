@@ -13,7 +13,9 @@ struct _cond {
 
 static u32 sys_condvarids = 0;
 
+extern int clock_gettime(struct timespec *tp);
 extern unsigned int timespec_to_interval(const struct timespec *time);
+extern void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
 
 static u32 __lwp_cond_waitsupp(cond_t cond,mutex_t *mutex,u32 timeout,u8 timedout)
 {
@@ -109,10 +111,16 @@ u32 LWP_CondBroadcast(cond_t cond)
 u32 LWP_CondTimedWait(cond_t cond,mutex_t *mutex,const struct timespec *abstime)
 {
 	u32 timeout;
-	// todo: allow negative values too, and make checks.
-	// if allready timedout, function should cleanup the queues anyway.
-	timeout = timespec_to_interval(abstime);
-	return __lwp_cond_waitsupp(cond,mutex,timeout,FALSE);
+	struct timespec curr_time;
+	struct timespec diff;
+	boolean timedout = FALSE;
+	
+	clock_gettime(&curr_time);
+	timespec_substract(&curr_time,abstime,&diff);
+	if(diff.tv_sec<0 || (diff.tv_sec==0&& diff.tv_nsec<0)) timedout = TRUE;
+
+	timeout = timespec_to_interval(&diff);
+	return __lwp_cond_waitsupp(cond,mutex,timeout,timedout);
 }
 
 u32 LWP_CondDestroy(cond_t cond)

@@ -1,5 +1,6 @@
 #include <time.h>
 #include <errno.h>
+#include <ogcsys.h>
 #include <lwp.h>
 #include <video.h>
 #include <message.h>
@@ -1384,7 +1385,7 @@ static void* net_thread(void *arg)
 	tcp_init();
 
 	tb.tv_sec = 0;
-	tb.tv_nsec = TCP_TMR_INTERVAL*1000*1000;
+	tb.tv_nsec = TCP_TMR_INTERVAL*TB_NSPERMS;
 	net_tcp_ticks = timespec_to_interval(&tb);
 	__lwp_wd_initialize(&tcp_timer_cntrl,__tcp_timer,NULL);
 	
@@ -1557,7 +1558,7 @@ u32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 			
 			//setup fine timer
 			tb.tv_sec = 0;
-			tb.tv_nsec = DHCP_FINE_TIMER_MSECS*1000*1000;
+			tb.tv_nsec = DHCP_FINE_TIMER_MSECS*TB_NSPERMS;
 			net_dhcpfine_ticks = timespec_to_interval(&tb);
 			__lwp_wd_initialize(&dhcp_finetimer_cntrl,__dhcpfine_timer,NULL);
 

@@ -19,6 +19,19 @@ static u32 __ARQReqPendingHi;
 static ARQCallback __ARQCallbackLo = NULL;
 static ARQCallback __ARQCallbackHi = NULL;
 
+static __inline__ void __ARQPopTaskQueueHi()
+{
+	if(!__ARQReqQueueHi) return;
+	if(__ARQReqQueueHi->type==ARQ_MRAMTOARAM) {
+		AR_StartDMA(__ARQReqQueueHi->type,__ARQReqQueueHi->src,__ARQReqQueueHi->dest,__ARQReqQueueHi->len);
+	} else {
+		AR_StartDMA(__ARQReqQueueHi->type,__ARQReqQueueHi->dest,__ARQReqQueueHi->src,__ARQReqQueueHi->len);
+	}
+	__ARQCallbackHi = __ARQReqQueueHi->callback;
+	__ARQReqPendingHi = (u32)__ARQReqQueueHi;
+	__ARQReqQueueHi = __ARQReqQueueHi->next;
+}
+
 static void __ARQCallbackHack(u32 request)
 {
 }
@@ -62,18 +75,7 @@ static void __ARInterruptServiceRoutine()
 		__ARQReqPendingLo = 0;
 		__ARQCallbackLo = NULL;
 	}
-
-	if(__ARQReqQueueHi) {
-		if(__ARQReqQueueHi->type==ARQ_MRAMTOARAM) {
-			AR_StartDMA(__ARQReqQueueHi->type,__ARQReqQueueHi->src,__ARQReqQueueHi->dest,__ARQReqQueueHi->len);
-		} else {
-			AR_StartDMA(__ARQReqQueueHi->type,__ARQReqQueueHi->dest,__ARQReqQueueHi->src,__ARQReqQueueHi->len);
-		}
-		__ARQCallbackHi = __ARQReqQueueHi->callback;
-		__ARQReqPendingHi = (u32)__ARQReqQueueHi;
-		__ARQReqQueueHi = __ARQReqQueueHi->next;
-	}
-
+	__ARQPopTaskQueueHi();
 	if(!__ARQReqPendingHi) __ARQServiceQueueLo();
 }
 
@@ -131,7 +133,15 @@ void ARQ_PostRequest(ARQRequest *req,u32 owner,u32 type,u32 prio,u32 src,u32 des
 {
 	u32 level;
 
+	req->next = NULL;
+	req->type = type;
+	req->owner = owner;
+	req->src = src;
+	req->dest = dest;
+	req->len = len;
+	req->prio = prio;
 	req->callback = __ARQCallbackHack;
+	if(cb) req->callback = cb;
 	
 	_CPU_ISR_Disable(level);
 	if(prio==ARQ_PRIO_LO) { 

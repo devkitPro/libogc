@@ -1141,7 +1141,7 @@ err_t bba_init(struct netif *dev)
 
 	etharp_init();
 
-	tb.tv_sec = ARP_TMR_INTERVAL/1000;
+	tb.tv_sec = ARP_TMR_INTERVAL/TB_MSPERSEC;
 	tb.tv_nsec = 0;
 	net_arp_ticks = timespec_to_interval(&tb);
 	__lwp_wd_initialize(&arp_time_cntrl,__arp_timer,NULL);
