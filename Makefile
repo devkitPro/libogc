@@ -110,7 +110,7 @@ MADOBJ	:=	bit.o decoder.o fixed.o frame.o huffman.o \
 DBOBJ	:=	debug_handler.o debug.o
 
 #---------------------------------------------------------------------------------
-SDCARDOBJ	:=	sdcard.o fat.o fat_buf.o
+SDCARDOBJ	:=	sdcard.o card_fat.o card_buf.o card_io.o card_uni.o
 
 #---------------------------------------------------------------------------------
 GCSYSOBJ	:=	newlibc.o sbrk.o open.o write.o close.o \

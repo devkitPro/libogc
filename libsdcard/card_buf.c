@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "fat_cmn.h"
-#include "fat_buf.h"
+#include "card_cmn.h"
+#include "card_buf.h"
 
 #define BUF_POOL_CNT			3
 
@@ -15,9 +15,11 @@ typedef struct _buf_node {
 static BufNode s_buf[BUF_POOL_CNT];
 static BufNode *s_freepool;
 
-void fat_bufferpoolinit()
+void card_initBufferPool()
 {
 	u32 i;
+
+	printf("card_initBufferPool()\n");
 
 	for(i=0;i<BUF_POOL_CNT-1;++i) {
 		s_buf[i].next = s_buf+i+1;
@@ -26,7 +28,7 @@ void fat_bufferpoolinit()
 	s_freepool = s_buf;
 }
 
-u8*	fat_allocbuffer()
+u8*	card_allocBuffer()
 {
 	u8 *buf = NULL;
 	
@@ -37,8 +39,8 @@ u8*	fat_allocbuffer()
 
 	return buf;
 }
-
-void fat_freebuffer(u8 *buf)
+ 
+void card_freeBuffer(u8 *buf)
 {
 	if(buf) {
 		BufNode *node = (BufNode*)(buf-offsetof(BufNode,data));

@@ -89,6 +89,8 @@ extern long long gettime();
 extern u32 diff_msec(long long start,long long end);
 extern u32 diff_usec(long long start,long long end);
 
+extern s32 card_init();
+
 //#ifdef _SDCARD_DEBUG
 static void __print_csdregister(s32 chn)
 {
@@ -543,8 +545,9 @@ static s32 __sdcard_readresponse(s32 chn,void *buf,s32 len)
 			return SDCARD_ERROR_IOERROR;
 		}
 	}
-	usleep(1);
-	//usleep(40);
+
+	/* setalarm, wait */
+	usleep(40);
 	
 	EXI_Deselect(chn);
 	EXI_Unlock(chn);
@@ -722,8 +725,7 @@ static s32 __sdcard_dataread(s32 chn,void *buf,u32 len)
 	}
 
 	/* setalarm, wait */
-	usleep(1);
-	//usleep(40);
+	usleep(40);
 
 	res[0] = res[1] = clr_flag;
 	if(EXI_ImmEx(chn,res,2,EXI_READWRITE)==0) {
@@ -833,8 +835,7 @@ static s32 __sdcard_datareadfinal(s32 chn,void *buf,u32 len)
 	crc_org = ((cmd[4]<<8)&0xff00)|(cmd[5]&0xff);
 	
 	/* setalarm, wait */
-	usleep(1);
-	//usleep(40);
+	usleep(40);
 
 	EXI_Deselect(chn);
 	EXI_Unlock(chn);
@@ -884,8 +885,7 @@ static s32 __sdcard_multidatawrite(s32 chn,void *buf,u32 len)
 	}
 
 	/* setalarm, wait */
-	usleep(1);
-	//usleep(40);
+	usleep(40);
 
 	ret = SDCARD_ERROR_READY;
 	if(EXI_ImmEx(chn,&crc,2,EXI_WRITE)==0) ret = SDCARD_ERROR_IOERROR;
@@ -1431,26 +1431,5 @@ s32 SDCARD_Unmount(s32 chn)
 	if((ret=__sdcard_getcntrlblock(chn,&card))<0) ret = SDCARD_ERROR_NOCARD;
 	__sdcard_dounmount(chn,SDCARD_ERROR_READY);
 	
-	return SDCARD_ERROR_READY;
-}
-
-s32 SDCARD_Init()
-{
-	u32 i,level;
-	
-	if(sdcard_inited) return SDCARD_ERROR_BUSY;
-#ifdef _SDCARD_DEBUG
-	printf("SDCARD_Init()\n");
-#endif
-	_CPU_ISR_Disable(level);
-	memset(sdcard_map,0,sizeof(sdcard_block)*2);
-	for(i=0;i<2;i++) {
-		sdcard_map[i].result = SDCARD_ERROR_NOCARD;
-		LWP_InitQueue(&sdcard_map[i].alarm_queue);
-		SYS_CreateAlarm(&sdcard_map[i].timeout_svc);
-	}
-	sdcard_inited = 1;
-	_CPU_ISR_Restore(level);
-
 	return SDCARD_ERROR_READY;
 }

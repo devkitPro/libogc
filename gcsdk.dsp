@@ -672,11 +672,19 @@ SOURCE=.\libogcsys\write.c
 # PROP Default_Filter ""
 # Begin Source File
 
-SOURCE=.\libsdcard\fat.c
+SOURCE=.\libsdcard\card_buf.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\libsdcard\fat_buf.c
+SOURCE=.\libsdcard\card_fat.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libsdcard\card_io.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libsdcard\card_uni.c
 # End Source File
 # Begin Source File
 
@@ -1108,15 +1116,19 @@ SOURCE=.\gc\mad\version.h
 # PROP Default_Filter ""
 # Begin Source File
 
-SOURCE=.\gc\sdcard\fat.h
+SOURCE=.\gc\sdcard\card_buf.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\gc\sdcard\fat_buf.h
+SOURCE=.\gc\sdcard\card_cmn.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\gc\fat_cmn.h
+SOURCE=.\gc\sdcard\card_fat.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\sdcard\card_io.h
 # End Source File
 # End Group
 # Begin Source File
