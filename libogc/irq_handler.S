@@ -138,15 +138,8 @@ nested:
 	beq		easy_exit
 
 switch:
-	mfmsr	r15
-	ori		r15,r15,MSR_EE
-	mtmsr	r15
-
 	bl		__thread_dispatch
 
-	rlwinm	r15,r15,0,17,15
-	mtmsr	r15
-	
 easy_exit:
 	lwz		r4,CR_OFFSET(sp)
 	mtcr	r4
