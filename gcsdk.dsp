@@ -92,6 +92,14 @@ SOURCE=.\libogc\aram.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\arqmgr.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\arqueue.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\audio.c
 # End Source File
 # Begin Source File
@@ -685,6 +693,14 @@ SOURCE=.\gc\ogc\machine\spinlock.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\aram.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\arqmgr.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\arqueue.h
 # End Source File
 # Begin Source File
 
