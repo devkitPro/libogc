@@ -70,6 +70,8 @@ sd_file* SDCARD_OpenFile(const char *filename,const char *mode)
 	s32 err;
 	struct _sd_file *rfile = NULL;
 	
+	printf("filename = %s, mode = %c\n",filename,mode[0]);
+
 	rfile = (struct _sd_file*)__lwp_wkspace_allocate(sizeof(struct _sd_file));
 	if(!rfile)
 		return NULL;

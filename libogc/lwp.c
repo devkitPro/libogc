@@ -95,12 +95,6 @@ void LWP_YieldThread()
 	__lwp_thread_dispatchenable();
 }
 
-void LWP_CloseThread(lwp_t thethread)
-{
-	lwp_cntrl *lwp_thread = (lwp_cntrl*)thethread;
-	if(!lwp_thread) return;
-	__lwp_thread_close(lwp_thread);
-}
 
 u32 LWP_JoinThread(lwp_t thethread,void **value_ptr)
 {

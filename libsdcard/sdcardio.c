@@ -96,11 +96,12 @@ int sdcardio_open(struct _reent *r,const char *path,int flags,int mode)
 	int nFd = -1;
 	
 	__sdcardio_init();
-	
-	m = 0;
-	if(flags&O_RDONLY) m = 'r';
-	else if(flags&O_WRONLY) m = 'w';
 
+	m = 'r';
+	if(flags==O_WRONLY) m = 'w';
+
+	printf("path = %s, flags = %d, mode = %d, m = %c\n",path,flags,mode,m);
+	
 	sdfile = SDCARD_OpenFile(path,&m);
 	if(sdfile) nFd = __sdcardio_allocfd(sdfile);
 

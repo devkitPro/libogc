@@ -12,7 +12,7 @@
 #include "card_fat.h"
 #include "card_io.h"
 
-//#define _CARDIO_DEBUG
+#define _CARDIO_DEBUG
 
 #define CARDIO_OP_TIMEDOUT					0x4000
 #define CARDIO_OP_INITFAILED				0x8000
@@ -199,7 +199,7 @@ static s32 __card_writecmd0(s32 drv_no,void *buf,s32 len)
 
 	
 	cnt = 0;
-	while(cnt<20) {
+	while(cnt<21) {
 		if(EXI_ImmEx(drv_no,dummy,128,EXI_WRITE)==0) {
 			EXI_Deselect(drv_no);
 			EXI_Unlock(drv_no);
@@ -217,7 +217,7 @@ static s32 __card_writecmd0(s32 drv_no,void *buf,s32 len)
 	crc |= 0x01;
 	if(_wp_flag) crc ^= -1;
 #ifdef _CARDIO_DEBUG
-	printf("command: %02x %02x %02x %02x %02x %02x\n",((u8*)buf)[0],((u8*)buf)[1],((u8*)buf)[2],((u8*)buf)[3],((u8*)buf)[4],crc);
+//	printf("command: %02x %02x %02x %02x %02x %02x\n",((u8*)buf)[0],((u8*)buf)[1],((u8*)buf)[2],((u8*)buf)[3],((u8*)buf)[4],crc);
 #endif
 	if(EXI_ImmEx(drv_no,buf,len,EXI_WRITE)==0) {
 		EXI_Deselect(drv_no);
@@ -270,7 +270,7 @@ static s32 __card_writecmd(s32 drv_no,void *buf,s32 len)
 	crc |= 0x01;
 	if(_wp_flag) crc ^= -1;
 #ifdef _CARDIO_DEBUG
-	printf("sd command: %02x %02x %02x %02x %02x %02x\n",((u8*)buf)[0],((u8*)buf)[1],((u8*)buf)[2],((u8*)buf)[3],((u8*)buf)[4],crc);
+//	printf("sd command: %02x %02x %02x %02x %02x %02x\n",((u8*)buf)[0],((u8*)buf)[1],((u8*)buf)[2],((u8*)buf)[3],((u8*)buf)[4],crc);
 #endif
 	if(EXI_ImmEx(drv_no,buf,len,EXI_WRITE)==0) {
 		EXI_Deselect(drv_no);
@@ -312,7 +312,7 @@ static s32 __card_readresponse(s32 drv_no,void *buf,s32 len)
 		return CARDIO_ERROR_IOERROR;
 	}
 #ifdef _CARDIO_DEBUG
-	printf("sd response: %02x\n",((u8*)buf)[0]);
+//	printf("sd response: %02x\n",((u8*)buf)[0]);
 #endif
 
 	startT = gettick();
@@ -324,7 +324,7 @@ static s32 __card_readresponse(s32 drv_no,void *buf,s32 len)
 			return CARDIO_ERROR_IOERROR;
 		}
 #ifdef _CARDIO_DEBUG
-		printf("sd response: %02x\n",((u8*)buf)[0]);
+//		printf("sd response: %02x\n",((u8*)buf)[0]);
 #endif
 		if(!(*ptr&0x80)) break;
 		if(__card_checktimeout(startT,500)!=0) {
@@ -335,7 +335,7 @@ static s32 __card_readresponse(s32 drv_no,void *buf,s32 len)
 				return CARDIO_ERROR_IOERROR;
 			}
 #ifdef _CARDIO_DEBUG
-			printf("sd response: %02x\n",((u8*)buf)[0]);
+//			printf("sd response: %02x\n",((u8*)buf)[0]);
 #endif
 			if(*ptr&0x80) ret = CARDIO_OP_TIMEDOUT;
 			break;

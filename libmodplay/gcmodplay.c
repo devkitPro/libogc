@@ -54,7 +54,9 @@ static void* player(void *arg)
 		}
 	}
 	thr_running = FALSE;
+#ifdef _GCMOD_DEBUG
 	printf("player stopped %d\n",thr_running);
+#endif
 	return 0;
 }
 
@@ -109,9 +111,9 @@ static u32 SndBufStart(MODSNDBUF *sndbuf)
 	MOD *mod = &mp->mod;
 
 	if(sndPlaying) return -1;
-//#ifdef _GCMOD_DEBUG
+#ifdef _GCMOD_DEBUG
 	printf("SndBufStart(%p) enter\n",sndbuf);
-//#endif
+#endif
 	memcpy(&sndBuffer,sndbuf,sizeof(MODSNDBUF));
 	
 	shiftVal = 0;
