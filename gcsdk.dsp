@@ -304,6 +304,10 @@ SOURCE=.\libogc\system_asm.S
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\tdf.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\video.c
 # End Source File
 # Begin Source File
@@ -877,6 +881,10 @@ SOURCE=.\gc\ogc\sys_state.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\system.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\tdf.h
 # End Source File
 # Begin Source File
 

@@ -94,7 +94,7 @@ OGCOBJ	:=	lwp_priority.o lwp_queue.o lwp_threadq.o lwp_threads.o lwp_sema.o	\
 			cache_asm.o system.o system_asm.o cond.o			\
 			gx.o gu.o gu_psasm.o audio.o cache.o decrementer.o			\
 			message.o card.o aram.o depackrnc.o decrementer_handler.o	\
-			dsp.o si.o ogc_crt0.o
+			dsp.o si.o tdf.o ogc_crt0.o
 
 #---------------------------------------------------------------------------------
 MODOBJ	:=	freqtab.o mixer.o modplay.o semitonetab.o gcmodplay.o \
