@@ -538,6 +538,8 @@ extern void __MaskIrq(u32);
 extern syssram* __SYS_LockSram();
 extern u32 __SYS_UnlockSram(u32 write);
 
+extern void __VIClearFramebuffer(void*,u32,u32);
+
 #ifdef _VIDEO_DEBUG
 static u32 messages$128 = 0;
 static u32 printregs = 1;
@@ -1352,4 +1354,10 @@ VIRetraceCallback VIDEO_SetPostRetraceCallback(VIRetraceCallback callback)
 	postRetraceCB = callback;
 	_CPU_ISR_Restore(level);
 	return ret;
+}
+
+void VIDEO_ClearFrameBuffer(GXRModeObj *rmode,void *fb,u32 color)
+{
+	u32 size = VIDEO_PadFramebufferWidth(rmode->fbWidth)*rmode->xfbHeight*VI_DISPLAY_PIX_SZ;
+	__VIClearFramebuffer(fb,size,color);
 }

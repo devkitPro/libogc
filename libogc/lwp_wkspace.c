@@ -6,10 +6,13 @@
 
 static wkspace_cntrl __wkspace_area;
 
+extern void SYS_SetArenaLo(void *newLo);
+extern void* SYS_GetArenaLo();
+
 void __lwp_wkspace_init(u32 size)
 {
 	u32 rsize;
-	u32 arLo;
+	u32 arLo,level;
 	wkspace_block *block;
 
 	if(size<WKSPACE_MIN_SIZE) return;
@@ -18,12 +21,14 @@ void __lwp_wkspace_init(u32 size)
 	rsize = size - WKSPACE_OVERHEAD;
 	
 	// Get current ArenaLo and adjust to 32 byte boundary
+	_CPU_ISR_Disable(level);
 	arLo = (u32)SYS_GetArenaLo();
 	arLo += 31;
 	arLo &= ~31;
 	rsize -= arLo - (u32)SYS_GetArenaLo();
 	SYS_SetArenaLo((void*)(arLo+rsize));
-	
+	_CPU_ISR_Restore(level);
+
 	block = (wkspace_block*)arLo;
 	block->back_flag = WKSPACE_DUMMY_FLAG;
 	block->front_flag = rsize;

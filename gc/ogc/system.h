@@ -3,7 +3,7 @@
 
 #include <gctypes.h>
 #include <time.h>
-#include <gx_struct.h>
+#include "gx_struct.h"
 
 #define R_RESET							*(vu32*)0xCC003024
 

@@ -1,10 +1,9 @@
 #include <asm.h>
 
-	.globl VIDEO_ClearFrameBuffer
+	.globl __VIClearFramebuffer
 	//r3 = dst, r4 = length(bytes),r5 = color
-VIDEO_ClearFrameBuffer:
-	addi	r0,r4,0
-	srwi.	r0,r0,8
+__VIClearFramebuffer:
+	srwi.	r0,r4,8
 	beq		2f
 	mtctr	r0
 	subi	r3,r3,4
@@ -40,9 +39,7 @@ VIDEO_ClearFrameBuffer:
 	stwu	r5,4(r3)
 	stwu	r5,4(r3)
 	stwu	r5,4(r3)
-	stwu	r5,4(r3)
 
-	stwu	r5,4(r3)
 	stwu	r5,4(r3)
 	stwu	r5,4(r3)
 	stwu	r5,4(r3)

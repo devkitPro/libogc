@@ -32,7 +32,7 @@ u32 VIDEO_GetNextField();
 u32 VIDEO_GetCurrentLine();
 u32 VIDEO_GetCurrentTvMode();
 void VIDEO_Configure(GXRModeObj *rmode);
-void VIDEO_ClearFrameBuffer(void *fb,u32 len,u32 color);
+void VIDEO_ClearFrameBuffer(GXRModeObj *rmode,void *fb,u32 color);
 void VIDEO_WaitVSync(void);
 void VIDEO_SetNextFramebuffer(void *fb);
 void VIDEO_SetNextRightFramebuffer(void *fb);

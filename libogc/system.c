@@ -55,6 +55,11 @@ static vu32* const _piReg = (u32*)0xCC003000;
 static vu16* const _memReg = (u16*)0xCC004000;
 static vu16* const _dspReg = (u16*)0xCC005000;
 
+void SYS_SetArenaLo(void *newLo);
+void* SYS_GetArenaLo();
+void SYS_SetArenaHi(void *newHi);
+void* SYS_GetArenaHi();
+
 static u32 __sram_writecallback();
 
 extern u32 __lwp_sys_init();
@@ -506,42 +511,22 @@ void SYS_Init()
 
 void SYS_SetArenaLo(void *newLo)
 {
-	u32 level;
-
-	_CPU_ISR_Disable(level);
 	__sysarenalo = newLo;
-	_CPU_ISR_Restore(level);
 }
 
 void* SYS_GetArenaLo()
 {
-	u32 level;
-	void *ret;
-
-	_CPU_ISR_Disable(level);
-	ret = __sysarenalo;
-	_CPU_ISR_Restore(level);
-	return ret;
+	return __sysarenalo;
 }
 
 void SYS_SetArenaHi(void *newHi)
 {
-	u32 level;
-
-	_CPU_ISR_Disable(level);
 	__sysarenahi = newHi;
-	_CPU_ISR_Restore(level);
 }
 
 void* SYS_GetArenaHi()
 {
-	u32 level;
-	void *ret;
-
-	_CPU_ISR_Disable(level);
-	ret = __sysarenahi;
-	_CPU_ISR_Restore(level);
-	return ret;
+	return __sysarenahi;
 }
 
 void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)
@@ -572,12 +557,20 @@ void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)
 	}
 }
 
-void* SYS_AllocateFramebuffer(u32 size)
+void* SYS_AllocateFramebuffer(GXRModeObj *rmode)
 {
+	u32 level;
 	void *ret;
 
-	ret = (void*)((((u32)SYS_GetArenaHi()-size-32)+31)&~31);
+	u32 size = VIDEO_PadFramebufferWidth(rmode->fbWidth)*rmode->xfbHeight*VI_DISPLAY_PIX_SZ+32;
+	_CPU_ISR_Disable(level);
+	ret = (void*)((((u32)SYS_GetArenaHi()-size)+31)&~31);
+	if(ret<SYS_GetArenaLo()) {
+		_CPU_ISR_Restore(level);
+		abort();
+	}
 	SYS_SetArenaHi(ret);
+	_CPU_ISR_Restore(level);
 	return ret;
 }
 
