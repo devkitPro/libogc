@@ -33,6 +33,7 @@ export MADDIR		:= $(BASEDIR)/libmad
 export DBDIR		:= $(BASEDIR)/libdb
 export SDCARDDIR	:= $(BASEDIR)/libsdcard
 export GCSYSDIR		:= $(BASEDIR)/libogcsys
+export STUBSDIR		:= $(BASEDIR)/lockstubs
 
 export DEPSDIR		:=	$(BASEDIR)/deps
 export INCDIR		:=	$(BASEDIR)/include
@@ -48,6 +49,7 @@ MADLIB		:= $(LIBDIR)/libmad
 DBLIB		:= $(LIBDIR)/libdb
 SDCARDLIB	:= $(LIBDIR)/libsdcard
 GCSYSLIB	:= $(LIBDIR)/libogcsys
+STUBSLIB	:= $(LIBDIR)/libstubs
 
 #---------------------------------------------------------------------------------
 DEFINCS		:= -I$(BASEDIR) -I$(BASEDIR)/gc
@@ -71,7 +73,8 @@ VPATH :=	$(LWIPDIR)				\
 			$(MADDIR)			\
 			$(DBDIR)			\
 			$(SDCARDDIR)			\
-			$(GCSYSDIR)
+			$(GCSYSDIR)		\
+			$(STUBSDIR)
 
 
 #---------------------------------------------------------------------------------
@@ -117,6 +120,8 @@ GCSYSOBJ	:=	newlibc.o sbrk.o open.o write.o close.o \
 				console_font_8x8.o iosupp.o netio_fake.o \
 				stdin_fake.o sdcardio_fake.o flock_supp.o \
 				lock_supp.o
+				
+STUBSOBJ	:=	malloc_lock_stub.o flock_supp_stub.o lock_supp_stub.o
 
 #---------------------------------------------------------------------------------
 # Build rules:
@@ -174,6 +179,7 @@ $(SDCARDLIB).a: $(SDCARDOBJ)
 #---------------------------------------------------------------------------------
 $(GCSYSLIB).a: $(GCSYSOBJ)
 #---------------------------------------------------------------------------------
+$(STUBSLIB).a: $(STUBSOBJ)
 
 .PHONEY: libs install dist
 
@@ -199,7 +205,7 @@ dist:
 	tar -cjf libogc.tar.bz2 include lib license.txt
 
 #---------------------------------------------------------------------------------
-libs: $(OGCLIB).a $(BBALIB).a $(MODLIB).a $(MADLIB).a $(DBLIB).a $(SDCARDLIB).a $(GCSYSLIB).a
+libs: $(OGCLIB).a $(BBALIB).a $(MODLIB).a $(MADLIB).a $(DBLIB).a $(SDCARDLIB).a $(GCSYSLIB).a $(STUBSLIB).a
 #---------------------------------------------------------------------------------
 
 #---------------------------------------------------------------------------------
