@@ -870,6 +870,136 @@ static s32 __sdcard_datareadfinal(s32 chn,void *buf,u32 len)
 	return ret;
 }
 
+static s32 __sdcard_multidatawrite(s32 chn,void *buf,u32 len)
+{
+	u8 dummy[32];
+	u16 crc;
+	u32 cnt;
+	s32 ret;
+	struct timespec tb;
+	sdcard_block *card = NULL;
+
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
+	card = &sdcard_map[chn];
+
+	for(cnt=0;cnt<32;cnt++) dummy[cnt] = clr_flag;
+	crc = __make_crc16(buf,len);
+	
+	if(EXI_Lock(chn,EXI_DEVICE_0,NULL)==0) return SDCARD_ERROR_FATALERROR;
+	if(EXI_Select(chn,EXI_DEVICE_0,EXI_SPEED16MHZ)==0) {
+		EXI_Unlock(chn);
+		return SDCARD_ERROR_NOCARD;
+	}
+
+	dummy[0] = 0xfc;
+	if(EXI_ImmEx(chn,dummy,1,EXI_WRITE)==0) {
+		EXI_Deselect(chn);
+		EXI_Unlock(chn);
+		return SDCARD_ERROR_IOERROR;
+	}
+
+	if(EXI_ImmEx(chn,buf,len,EXI_WRITE)==0) {
+		EXI_Deselect(chn);
+		EXI_Unlock(chn);
+		return SDCARD_ERROR_IOERROR;
+	}
+
+	/* setalarm, wait */
+	tb.tv_sec = 0;
+	tb.tv_nsec = 40*TB_NSPERMS;
+	SYS_SetAlarm(&card->timeout_svc,&tb,__timeout_handler);
+	LWP_SleepThread(card->alarm_queue);
+
+	ret = SDCARD_ERROR_READY;
+	if(EXI_ImmEx(chn,&crc,2,EXI_WRITE)==0) ret = SDCARD_ERROR_IOERROR;
+
+	EXI_Deselect(chn);
+	EXI_Unlock(chn);
+
+	return ret;
+}
+
+static s32 __sdcard_multiwritestop(s32 chn)
+{
+	s32 ret,cnt,startT;
+	u8 dummy[32];
+	sdcard_block *card;
+
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
+	card = &sdcard_map[chn];
+
+	for(cnt=0;cnt<32;cnt++) dummy[cnt] = clr_flag;
+
+	if(EXI_Lock(chn,EXI_DEVICE_0,NULL)==0) return SDCARD_ERROR_FATALERROR;
+	if(EXI_Select(chn,EXI_DEVICE_0,EXI_SPEED16MHZ)==0) {
+		EXI_Unlock(chn);
+		return SDCARD_ERROR_NOCARD;
+	}
+	
+	ret = SDCARD_ERROR_READY;
+	dummy[0] = 0xfd;
+	if(wp_flag) dummy[0] = 0x02;		//!0xfd
+	if(EXI_ImmEx(chn,dummy,1,EXI_WRITE)==0) {
+		EXI_Deselect(chn);
+		EXI_Unlock(chn);
+		return SDCARD_ERROR_IOERROR;
+	}
+
+	dummy[0] = clr_flag;	
+	if(EXI_ImmEx(chn,dummy,1,EXI_READWRITE)==0) {
+		EXI_Deselect(chn);
+		EXI_Unlock(chn);
+		return SDCARD_ERROR_IOERROR;
+	}
+	
+	dummy[0] = clr_flag;	
+	if(EXI_ImmEx(chn,dummy,1,EXI_READWRITE)==0) {
+		EXI_Deselect(chn);
+		EXI_Unlock(chn);
+		return SDCARD_ERROR_IOERROR;
+	}
+	
+	dummy[0] = clr_flag;	
+	if(EXI_ImmEx(chn,dummy,1,EXI_READWRITE)==0) {
+		EXI_Deselect(chn);
+		EXI_Unlock(chn);
+		return SDCARD_ERROR_IOERROR;
+	}
+	
+	dummy[0] = clr_flag;	
+	if(EXI_ImmEx(chn,dummy,1,EXI_READWRITE)==0) {
+		EXI_Deselect(chn);
+		EXI_Unlock(chn);
+		return SDCARD_ERROR_IOERROR;
+	}
+	
+	startT = gettime();
+	startT = gettime();
+	while(dummy[0]==0) {
+	dummy[0] = clr_flag;	
+		if(EXI_ImmEx(chn,dummy,1,EXI_READWRITE)==0) {
+			EXI_Deselect(chn);
+			EXI_Unlock(chn);
+			return SDCARD_ERROR_IOERROR;
+		}
+		if(dummy[0]) break;
+		if(__sdcard_checktimeout(startT,1500)!=0) {
+			dummy[0] = clr_flag;	
+			if(EXI_ImmEx(chn,dummy,1,EXI_READWRITE)==0) {
+				EXI_Deselect(chn);
+				EXI_Unlock(chn);
+				return SDCARD_ERROR_IOERROR;
+			}
+			if(!dummy[0]) ret = SDCARD_OP_TIMEDOUT;
+			break;
+		}
+	}
+
+	EXI_Deselect(chn);
+	EXI_Unlock(chn);
+	return ret;
+}
+
 static s32 __sdcard_response1(s32 chn)
 {
 	s32 ret;
@@ -1267,11 +1397,17 @@ s32 SDCARD_Mount(s32 chn,SDCCallback detach_cb)
 		}
 		card->attached = 1;
 		card->mount_step = 0;
-		ret = SDCARD_Reset(chn);
+		if((ret=SDCARD_Reset(chn))!=0) {
+			ret = SDCARD_ERROR_IOERROR;
+			goto exit;
+		}
+
+		return SDCARD_ERROR_READY;
 	}
-	
-	if(ret) ret = SDCARD_ERROR_NOCARD;
-	return ret;
+
+exit:
+	__sdcard_dounmount(chn,ret);
+	return SDCARD_ERROR_NOCARD;
 }
 
 s32 SDCARD_Unmount(s32 chn)
