@@ -1,6 +1,7 @@
 #ifndef __SDCARD_H__
 #define __SDCARD_H__
 
+#include <time.h>
 #include <gctypes.h>
 
 #define SDCARD_ERROR_READY				 0
