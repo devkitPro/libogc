@@ -688,7 +688,7 @@ static void __GX_SetDirtyState()
 static u32 __GX_GetNumXfbLines(u16 efbHeight,u32 yscale)
 {
 	u32 tmp,tmp1;
-	//(f32)256.0
+
 	tmp = (((efbHeight-1)<<8)/yscale)+1;
 	if(yscale>128 && yscale<256) {
 		while(yscale&0x01) yscale >>= 1;
@@ -1289,14 +1289,16 @@ void GX_SetDispCopyFrame2Field(u8 mode)
 	_gx[0xab] = (_gx[0xab]&~0x3000)|(_SHIFTL(mode,12,2));
 }
 
-void GX_SetDispCopyYScale(f32 yscale)
+u32 GX_SetDispCopyYScale(f32 yscale)
 {
-	u32 yScale = 0;
+	u32 ht,yScale = 0;
 
 	yScale = ((u32)(256.0f/yscale))&0x1ff;
 	GX_LOAD_BP_REG(0x4e000000|yScale);
 
 	_gx[0xab] = (_gx[0xab]&~0x400)|(_SHIFTL(((256-yScale)>0),10,1));
+	ht = _SHIFTR(_gx[0xcc],12,10)+1;
+	return __GX_GetNumXfbLines(ht,yScale);
 }
 
 void GX_SetDispCopyDst(u16 wd,u16 ht)
@@ -3847,34 +3849,31 @@ void GX_AdjustForOverscan(GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver)
 	rmout->viYOrigin += ver;
 }
 
-void GX_GetYScaleFactor(u16 efbHeight,u16 xfbHeight)
+f32 GX_GetYScaleFactor(u16 efbHeight,u16 xfbHeight)
 {
-	u32 yscale,xfblines,cnt;
-	u32 fbuf[2];
-	f64 fdtmp,fdtmp1,fdtmp2;
+	u32 yScale,xfblines,cnt;
+	f32 yscale_ret;
+	f64 yscale;
 
-	//(f32)256.0
-	//(f64)4503599627370496.0
-	fbuf[0] = 0x43300000;
-	fbuf[1] = 0;
-	fdtmp = *(f64*)fbuf;
-
-	fbuf[1] = efbHeight;
-	fdtmp1 = *(f64*)fbuf;
-	fbuf[1] = xfbHeight;
-	fdtmp2 = *(f64*)fbuf;
-
-	fdtmp1 = (fdtmp1-fdtmp);
-	fdtmp2 = (fdtmp2-fdtmp);
-	fdtmp2 = (fdtmp2/fdtmp1);
-	yscale = (u32)((f32)256.0/fdtmp2)&0x1ff;
+	yscale = (f64)efbHeight/(f64)xfbHeight;
+	yScale = (u32)((f64)256.0/yscale)&0x1ff;
 
 	cnt = xfbHeight;
-	xfblines = __GX_GetNumXfbLines(efbHeight,yscale);
+	xfblines = __GX_GetNumXfbLines(efbHeight,yScale);
 	while(xfblines>=xfbHeight) {
-		fbuf[1] = cnt;
-		fdtmp1 = *(f64*)fbuf;
-		
-		cnt--;
+ 		cnt--;
+		yscale = (f64)cnt/(f64)efbHeight;
+		yScale = (u32)((f64)256.0/yscale)&0x1ff;
+		xfblines = __GX_GetNumXfbLines(efbHeight,yScale);
 	}
+
+	yscale_ret = yscale;
+	while(xfblines<xfbHeight) {
+		cnt++;
+		yscale = (f64)cnt/(f64)efbHeight;
+		yScale = (u32)((f64)256.0/yscale)&0x1ff;
+		yscale_ret = yscale;
+		xfblines = __GX_GetNumXfbLines(efbHeight,yScale);
+	}
+	return yscale_ret;
 }

@@ -4,6 +4,8 @@
 #include <gctypes.h>
 #include "gx_struct.h"
 
+#define VIDEO_PadFrameBufferWidth(width)     ((u16)(((u16)(width) + 15) & ~15))
+
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
@@ -12,8 +14,11 @@ extern GXRModeObj TVNtsc480IntDf;
 extern GXRModeObj TVNtsc480IntAa;
 extern GXRModeObj TVMpal480IntDf;
 extern GXRModeObj TVPal264Ds;
-extern GXRModeObj TVPal528Int;
+extern GXRModeObj TVPal264DsAa;
+extern GXRModeObj TVPal264Int;
+extern GXRModeObj TVPal264IntAa;
 extern GXRModeObj TVPal524IntAa;
+extern GXRModeObj TVPal528Int;
 extern GXRModeObj TVPal528IntDf;
 extern GXRModeObj TVPal574IntDfScale;
 

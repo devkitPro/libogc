@@ -964,7 +964,8 @@ void GX_SetFieldMask(u8 even_mask,u8 odd_mask);
 void GX_SetFieldMode(u8 field_mode,u8 half_aspect_ratio);
 
 void GX_SetDispCopyDst(u16 wd,u16 ht);
-void GX_SetDispCopyYScale(f32 yscale);
+f32 GX_GetYScaleFactor(u16 efbHeight,u16 xfbHeight);
+u32 GX_SetDispCopyYScale(f32 yscale);
 void GX_SetCopyClamp(u8 clamp);
 void GX_SetDispCopyGamma(u8 gamma);
 void GX_SetCopyFilter(u8 aa,u8 sample_pattern[12][2],u8 vf,u8 vfilter[7]);
