@@ -180,7 +180,10 @@
 #define GX_DTTMTX19			121
 #define GX_DTTIDENTITY		125
 
-/* tex coord id */
+/* tex coord id 
+   used by: XF: 0x1040,0x1050
+            BP: 0x30
+*/
 #define GX_TEXCOORD0		0x0
 #define GX_TEXCOORD1		0x1
 #define GX_TEXCOORD2		0x2
