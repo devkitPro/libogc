@@ -1280,5 +1280,9 @@ SOURCE=.\ogc.ld
 
 SOURCE=.\specs.ogc
 # End Source File
+# Begin Source File
+
+SOURCE=.\vgcogc.ld
+# End Source File
 # End Target
 # End Project
