@@ -95,6 +95,12 @@ void LWP_YieldThread()
 	__lwp_thread_dispatchenable();
 }
 
+void LWP_Reschedule(u32 prio)
+{
+	__lwp_thread_dispatchdisable();
+	__lwp_rotate_readyqueue(prio);
+	__lwp_thread_dispatchenable();
+}
 
 s32 LWP_JoinThread(lwp_t thethread,void **value_ptr)
 {
