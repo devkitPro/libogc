@@ -3157,6 +3157,13 @@ void GX_PokeBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op)
 	_peReg[1] = (u16)regval;
 }
 
+void GX_PokeARGB(u16 x,u16 y,GXColor color)
+{
+	regval = 0xc8000000|(_SHIFTL(x,2,10));
+	regval = (regval&~0x3FF000)|(_SHIFTL(y,12,10));
+	*(u32*)regval = _SHIFTL(color.a,24,8)|_SHIFTL(color.r,16,8)|_SHIFTL(color.g,8,8)|(color.b&0xff);
+}
+
 void GX_PokeZ(u16 x,u16 y,u32 z)
 {
 	u32 regval;

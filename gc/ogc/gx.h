@@ -982,6 +982,7 @@ void GX_PokeDither(u8 dither);
 void GX_PokeBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op);
 void GX_PokeAlphaRead(u8 mode);
 void GX_PokeDstAlpha(u8 enable,u8 a);
+void GX_PokeARGB(u16 x,u16 y,GXColor color);
 void GX_PokeZ(u16 x,u16 y,u32 z);
 void GX_PokeZMode(u8 comp_enable,u8 func,u8 update_enable);
 
