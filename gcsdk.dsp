@@ -719,6 +719,22 @@ SOURCE=.\libsdcard\sdcard.c
 SOURCE=.\libsdcard\sdcardio.c
 # End Source File
 # End Group
+# Begin Group "lockstubs.c"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\lockstubs\flock_supp_stub.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\lockstubs\lock_supp_stub.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\lockstubs\malloc_lock_stub.c
+# End Source File
+# End Group
 # End Group
 # Begin Group "Header Files"
 
