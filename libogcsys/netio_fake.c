@@ -13,7 +13,7 @@ int netio_close_f(struct _reent *r,int fd);
 int netio_write_f(struct _reent *r,int fd,const char *ptr,int len);
 int netio_read_f(struct _reent *r,int fd,char *ptr,int len);
 
-const devoptab_t dotab_netfake = {"stdnet",netio_open_f,netio_close_f,netio_write_f,netio_read_f};
+const devoptab_t dotab_netfake = {"stdnet",netio_open_f,netio_close_f,netio_write_f,netio_read_f,NULL};
 
 int netio_open_f(struct _reent *r,const char *path,int flags,int mode)
 {

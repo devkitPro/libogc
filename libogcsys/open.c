@@ -3,6 +3,8 @@
 #include <_syslist.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
+#include <stdlib.h>
 #ifdef REENTRANT_SYSCALLS_PROVIDED
 #include <reent.h>
 #endif
@@ -40,17 +42,30 @@ int _DEFUN (open, (file, flags, mode),
         int   flags _AND
         int   mode)
 {
-	int i,whichdev,fd;
-	char *lfile;
+	int handle;
+	int i,whichdev,fd,namelen;
+	char lfile[256];
 
 	i = 0;
 	whichdev = -1;
-	lfile = file;
 	while(devoptab_list[i]) {
-		if(strncmp(devoptab_list[i]->name,file,strlen(devoptab_list[i]->name))==0) {
-			if(lfile[strlen(devoptab_list[i]->name)]==':') {
-				lfile = (lfile+strlen(devoptab_list[i]->name)+1);
+		namelen = strlen(devoptab_list[i]->name);
+		if(strncmp(devoptab_list[i]->name,file,namelen)==0) {
+			switch(i) {
+				case STD_IN:
+				case STD_OUT:
+					break;
+				case STD_NET:
+					if(file[namelen]!=':') return -1;
+					sprintf(lfile,"%s",&file[namelen+1]);
+					break;
+				case STD_SDCARD:
+					if(!isdigit(file[namelen]) || file[namelen+1]!=':') return -1;
+					sprintf(lfile,"dev%d:%s",atoi(&file[namelen]),&file[namelen+2]);
+					break;
+
 			}
+
 			whichdev = i;
 			break;
 		}
@@ -58,11 +73,12 @@ int _DEFUN (open, (file, flags, mode),
 	}
 
 	fd = -1;
+	handle = -1;
 	if(whichdev!=-1) {
 		fd = devoptab_list[whichdev]->open_r(0,lfile,flags,mode);
-		if(fd!=-1) fd += STD_MAX;
+		if(fd!=-1) handle = _SHIFTL(whichdev,16,16)|fd&0xffff;
 	}
 
-	return fd;
+	return handle;
 }
 #endif

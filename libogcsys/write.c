@@ -27,15 +27,14 @@ int _DEFUN (write, (file, ptr, len),
         int   len)
 {
 	int ret = -1;
-	unsigned int whichdev = (unsigned)file;
-	unsigned int whichfile = (unsigned)file;
+	unsigned int dev;
+	unsigned int fd;
 
-	if(whichdev>STD_NET) {
-		whichdev = STD_NET;
-		whichfile -= STD_MAX;
+	if(file!=-1) {
+		dev = _SHIFTR(file,16,16);
+		fd = file&0xffff;
+		ret = devoptab_list[dev]->write_r(0,fd,ptr,len);
 	}
-	ret = devoptab_list[whichdev]->write_r(0,whichfile,ptr,len);
-
 	return ret;
 }
 #endif

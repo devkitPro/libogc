@@ -9,6 +9,8 @@
 #include "card_io.h"
 #include "card_fat.h"
 
+#include "libogcsys/iosupp.h"
+
 #include "sdcard.h"
 
 struct _sd_file {
@@ -23,6 +25,8 @@ struct _sd_file {
 static u32 sdcard_inited = 0;
 
 //#define _SDCARD_DEBUG
+
+extern const devoptab_t dotab_sdcardio;
 
 static s32 __sdcard_read(F_HANDLE handle,void *dest,u32 offset,u32 size)
 {
@@ -47,6 +51,9 @@ s32 SDCARD_Init()
 		printf("card_init()\n");
 #endif
 		sdcard_inited = 1;
+
+		devoptab_list[STD_SDCARD] = &dotab_sdcardio;
+		
 		now = time(NULL);
 		srand(now);
 

@@ -644,6 +644,14 @@ SOURCE=.\libogcsys\sbrk.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogcsys\sdcardio_fake.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogcsys\sdcardio_fake.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogcsys\sleep.c
 # End Source File
 # Begin Source File
@@ -693,6 +701,10 @@ SOURCE=.\libsdcard\card_uni.c
 # Begin Source File
 
 SOURCE=.\libsdcard\sdcard.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libsdcard\sdcardio.c
 # End Source File
 # End Group
 # End Group

@@ -23,15 +23,14 @@ int _DEFUN(close,(fildes),
            int fildes)
 {
 	int ret = -1;
-	unsigned int whichdev = (unsigned)fildes;
-	unsigned int whichfile = (unsigned)fildes;
+	unsigned int dev;
+	unsigned int fd;
 
-	if(whichdev>STD_NET) {
-		whichdev = STD_NET;
-		whichfile -= STD_MAX;
+	if(fildes!=-1) {
+		dev = _SHIFTR(fildes,16,16);
+		fd = fildes&0xffff;
+		ret = devoptab_list[dev]->close_r(0,fd);
 	}
-	ret = devoptab_list[whichdev]->close_r(0,whichfile);
-
 	return ret;
 }
 #endif

@@ -12,7 +12,7 @@ int stdin_close(struct _reent *r,int fd);
 int stdin_write(struct _reent *r,int fd,const char *ptr,int len);
 int stdin_read(struct _reent *r,int fd,char *ptr,int len);
 
-const devoptab_t dotab_stdin = {"stdin",stdin_open,stdin_close,stdin_write,stdin_read};
+const devoptab_t dotab_stdin = {"stdin",stdin_open,stdin_close,stdin_write,stdin_read,NULL};
 
 int stdin_open(struct _reent *r,const char *path,int flags,int mode)
 {

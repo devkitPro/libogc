@@ -34,7 +34,7 @@ int con_close(struct _reent *r,int fd);
 int con_write(struct _reent *r,int fd,const char *ptr,int len);
 int con_read(struct _reent *r,int fd,char *ptr,int len);
 
-const devoptab_t dotab_con = {"stdout",con_open,con_close,con_write,con_read};
+const devoptab_t dotab_con = {"stdout",con_open,con_close,con_write,con_read,NULL};
 
 static struct _console_data_s stdcon;
 static struct _console_data_s *curr_con = NULL;

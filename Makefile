@@ -110,7 +110,7 @@ MADOBJ	:=	bit.o decoder.o fixed.o frame.o huffman.o \
 DBOBJ	:=	debug_handler.o debug.o
 
 #---------------------------------------------------------------------------------
-SDCARDOBJ	:=	sdcard.o card_fat.o card_buf.o card_io.o card_uni.o
+SDCARDOBJ	:=	sdcard.o sdcardio.o card_fat.o card_buf.o card_io.o card_uni.o
 
 #---------------------------------------------------------------------------------
 GCSYSOBJ	:=	newlibc.o sbrk.o open.o write.o close.o \
@@ -118,7 +118,7 @@ GCSYSOBJ	:=	newlibc.o sbrk.o open.o write.o close.o \
 				lseek.o sleep.o usleep.o timesupp.o \
 				malloc_lock.o console.o console_font.o \
 				console_font_8x8.o iosupp.o netio_fake.o \
-				stdin_fake.o
+				stdin_fake.o sdcardio_fake.o
 
 #---------------------------------------------------------------------------------
 # Build rules:

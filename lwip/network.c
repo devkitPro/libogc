@@ -1510,7 +1510,7 @@ static void evt_callback(struct netconn *conn,enum netconn_evt evt,u32 len)
 	
 }
 
-extern devoptab_t dotab_net;
+extern const devoptab_t dotab_net;
 u32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean use_dhcp)
 {
 	u32 ret = 0;

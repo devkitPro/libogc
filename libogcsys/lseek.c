@@ -8,10 +8,12 @@
 #undef errno
 extern int errno;
 
+#include "iosupp.h"
+
 #ifndef REENTRANT_SYSCALLS_PROVIDED
-int _DEFUN(lseek,(file, ptr, dir),
+int _DEFUN(lseek,(file, pos, dir),
            int   file  _AND
-           int   ptr   _AND
+		   int   pos   _AND
            int   dir)
 {
 	return 0;
@@ -24,7 +26,16 @@ int _DEFUN(_lseek_r,(ptr, file, pos, dir),
            int   pos   _AND
            int   dir)
 {
-	return 0;
+	int ret = -1;
+	unsigned int dev;
+	unsigned int fd;
+
+	if(file!=-1) {
+		dev = _SHIFTR(file,16,16);
+		fd = file&0xffff;
+		ret = devoptab_list[dev]->seek_r(0,fd,pos,dir);
+	}
+	return ret;
 }
 
 #endif
