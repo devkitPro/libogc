@@ -42,7 +42,7 @@ cc1 -E %{traditional|ftraditional|traditional-cpp:-traditional-cpp}
 %G %L %G
 
 *endfile:
-%{mgcn  : crtsavres.o%s %(endfile_gcn);  mogc : crtsavres.o%s  %(endfile_ogc); mads: crtsavres.o%s  %(endfile_ads); myellowknife : crtsavres.o%s        %(endfile_yellowknife) ;   mmvme        : crtsavres.o%s        %(endfile_mvme)        ;   msim         : crtsavres.o%s        %(endfile_sim)         ;   mwindiss     :                      %(endfile_windiss)     ;   mcall-freebsd: crtsavres.o%s        %(endfile_freebsd)     ;   mcall-linux  : crtsavres.o%s        %(endfile_linux)       ;   mcall-gnu    : crtsavres.o%s        %(endfile_gnu)         ;   mcall-netbsd : crtsavres.o%s        %(endfile_netbsd)      ;   mcall-openbsd: crtsavres.o%s        %(endfile_openbsd)     ;                : %(crtsavres_default) %(endfile_default)     }
+%{mgcn  : crtsavres.o%s %(endfile_gcn);  mogc : crtsavres.o%s  %(endfile_ogc);  mads : crtsavres.o%s  %(endfile_ads); myellowknife : crtsavres.o%s        %(endfile_yellowknife) ;   mmvme        : crtsavres.o%s        %(endfile_mvme)        ;   msim         : crtsavres.o%s        %(endfile_sim)         ;   mwindiss     :                      %(endfile_windiss)     ;   mcall-freebsd: crtsavres.o%s        %(endfile_freebsd)     ;   mcall-linux  : crtsavres.o%s        %(endfile_linux)       ;   mcall-gnu    : crtsavres.o%s        %(endfile_gnu)         ;   mcall-netbsd : crtsavres.o%s        %(endfile_netbsd)      ;   mcall-openbsd: crtsavres.o%s        %(endfile_openbsd)     ;                : %(crtsavres_default) %(endfile_default)     }
 
 *link:
 %{h*} %{v:-V} %{!msdata=none:%{G*}} %{msdata=none:-G0} %{YP,*} %{R*} %{Qy:} %{!Qn:-Qy} %(link_shlib) %{!Wl,-T*: %{!T*: %(link_start) }} %(link_target) %(link_os)
@@ -119,11 +119,11 @@ collect2
 *crtsavres_default:
 crtsavres.o%s
 
-*lib_ogc:
---start-group -logcsys -lc -logc --end-group
-
 *lib_gcn:
 --start-group -lads -lc --end-group
+
+*lib_ogc:
+--start-group -logcsys -lc -logc --end-group
 
 *lib_ads:
 --start-group -lads -lc --end-group
@@ -254,7 +254,7 @@ crtend.o%s
 *link_start_ogc:
 -T ogc.ld%s
 
-*link_start_ogc:
+*link_start_ads:
 -T ads.ld%s
 
 *link_start_yellowknife:
@@ -288,7 +288,7 @@ crtend.o%s
 
 
 *link_os:
-%{mgcn         : %(link_os_gcn)         ;mogc         : %(link_os_ogc)         ;mads         : %(link_os_ads)         ;   myellowknife : %(link_os_yellowknife) ;   mmvme        : %(link_os_mvme)        ;   msim         : %(link_os_sim)         ;   mwindiss     : %(link_os_windiss)     ;   mcall-freebsd: %(link_os_freebsd)     ;   mcall-linux  : %(link_os_linux)       ;   mcall-gnu    : %(link_os_gnu)         ;   mcall-netbsd : %(link_os_netbsd)      ;   mcall-openbsd: %(link_os_openbsd)     ;                : %(link_os_default)     }
+%{mgcn         : %(link_os_gcn)         ;  mogc         : %(link_os_ogc)         ;  mads         : %(link_os_ads)         ;   myellowknife : %(link_os_yellowknife) ;   mmvme        : %(link_os_mvme)        ;   msim         : %(link_os_sim)         ;   mwindiss     : %(link_os_windiss)     ;   mcall-freebsd: %(link_os_freebsd)     ;   mcall-linux  : %(link_os_linux)       ;   mcall-gnu    : %(link_os_gnu)         ;   mcall-netbsd : %(link_os_netbsd)      ;   mcall-openbsd: %(link_os_openbsd)     ;                : %(link_os_default)     }
 
 *link_os_gcn:
 
