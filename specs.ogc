@@ -297,7 +297,7 @@ crtend.o%s
 
 
 *link_os_ogc:
--O2
+-O2 --gc-sections
 
 *link_os_ads:
 
