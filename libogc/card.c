@@ -674,7 +674,7 @@ u32 CARD_FileAddress(CardFile *pFile)
 static u32 __CARD_TxHandler(u32 nChn,void *pCtx)
 {
 	u32 ret = 0;
-	CARDCallback *txcb = NULL;
+	CARDCallback txcb = NULL;
 	card_block *card = &cardmap[nChn];
 
 	EXI_Deselect(nChn);
