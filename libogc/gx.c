@@ -867,7 +867,7 @@ void GX_InitFifoLimits(GXFifoObj *fifo,u32 hiwatermark,u32 lowatermark)
 void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr)
 {
 	u32 level;
-	u32 rdwt_dst;
+	s32 rdwt_dst;
 
 	_CPU_ISR_Disable(level);
 	rdwt_dst =  wt_ptr-rd_ptr;	
@@ -876,7 +876,7 @@ void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr)
 	((u32*)fifo->pad)[7] = rdwt_dst;
 	if(rdwt_dst<0) {
 		rdwt_dst +=  ((u32*)fifo->pad)[2];
-		((u32*)fifo->pad)[7] = rdwt_dst;
+		((u32*)fifo->pad)[7] = (u32)rdwt_dst;
 	}
 	_CPU_ISR_Restore(level);
 }
@@ -2543,7 +2543,8 @@ void GX_InvalidateTexAll()
 void GX_InvalidateTexRegion(GXTexRegion *region)
 {
 	u8 ismipmap;
-	u32 cw_e,ch_e,cw_o,ch_o,size,tmp,regvalA = 0,regvalB = 0;
+	s32 cw_e,ch_e,cw_o,ch_o;
+	u32 size,tmp,regvalA = 0,regvalB = 0;
 
 	cw_e = (_SHIFTR(region->val[0],15,3))-1;
 	ch_e = (_SHIFTR(region->val[0],18,3))-1;
