@@ -1271,14 +1271,14 @@ void GX_SetCopyFilter(u8 aa,u8 sample_pattern[12][2],u8 vf,u8 vfilter[7])
 	reg53 = 0x53595000;
 	reg54 = 0x54000015;
 	if(vf) {
-		reg53 = vfilter[0]&0x3f;
+		reg53 = 0x53000000|(vfilter[0]&0x3f);
 		reg53 = (reg53&~0xfc0)|(_SHIFTL(vfilter[1],6,6));
-		reg53 = (reg53&~0x3f00)|(_SHIFTL(vfilter[2],12,6));
+		reg53 = (reg53&~0x3f000)|(_SHIFTL(vfilter[2],12,6));
 		reg53 = (reg53&~0xfc0000)|(_SHIFTL(vfilter[3],18,6));
 		
-		reg54 = vfilter[4]&0x3f;
+		reg54 = 0x54000000|(vfilter[4]&0x3f);
 		reg54 = (reg54&~0xfc0)|(_SHIFTL(vfilter[5],6,6));
-		reg54 = (reg54&~0x3f00)|(_SHIFTL(vfilter[6],12,6));
+		reg54 = (reg54&~0x3f000)|(_SHIFTL(vfilter[6],12,6));
 	}
 	GX_LOAD_BP_REG(reg53);
 	GX_LOAD_BP_REG(reg54);
@@ -3849,21 +3849,32 @@ void GX_AdjustForOverscan(GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver)
 
 void GX_GetYScaleFactor(u16 efbHeight,u16 xfbHeight)
 {
-	u32 fbuf1[2],fbuf2[2];
+	u32 yscale,xfblines,cnt;
+	u32 fbuf[2];
 	f64 fdtmp,fdtmp1,fdtmp2;
 
 	//(f32)256.0
 	//(f64)4503599627370496.0
-	fbuf1[0] = fbuf2[0] = 0x43300000;
-	fbuf1[1] = 0;
-	fdtmp = *(f64*)fbuf1;
+	fbuf[0] = 0x43300000;
+	fbuf[1] = 0;
+	fdtmp = *(f64*)fbuf;
 
-	fbuf1[1] = efbHeight;
-	fbuf2[1] = xfbHeight;
-	fdtmp1 = *(f64*)fbuf1;
-	fdtmp2 = *(f64*)fbuf2;
+	fbuf[1] = efbHeight;
+	fdtmp1 = *(f64*)fbuf;
+	fbuf[1] = xfbHeight;
+	fdtmp2 = *(f64*)fbuf;
 
-	fdtmp1 = (fdtmp-fdtmp1);
-	fdtmp2 = (fdtmp-fdtmp2);
-	
+	fdtmp1 = (fdtmp1-fdtmp);
+	fdtmp2 = (fdtmp2-fdtmp);
+	fdtmp2 = (fdtmp2/fdtmp1);
+	yscale = (u32)((f32)256.0/fdtmp2)&0x1ff;
+
+	cnt = xfbHeight;
+	xfblines = __GX_GetNumXfbLines(efbHeight,yscale);
+	while(xfblines>=xfbHeight) {
+		fbuf[1] = cnt;
+		fdtmp1 = *(f64*)fbuf;
+		
+		cnt--;
+	}
 }
