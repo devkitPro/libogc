@@ -682,6 +682,10 @@ SOURCE=.\libsdcard\fat.c
 
 SOURCE=.\libsdcard\fat_ops.c
 # End Source File
+# Begin Source File
+
+SOURCE=.\libsdcard\sdcard.c
+# End Source File
 # End Group
 # End Group
 # Begin Group "Header Files"
@@ -1109,6 +1113,10 @@ SOURCE=.\gc\mad\version.h
 # Begin Source File
 
 SOURCE=.\gc\sdcard\fat.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\sdcard\sdcard.h
 # End Source File
 # End Group
 # Begin Source File
