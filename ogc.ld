@@ -287,6 +287,7 @@ SECTIONS
   /* calculate file addresses */
   text_file_start = text_mem_start - file_start;
   data_file_start = data_mem_start - file_start;
+  bss_file_start = bss_mem_start - file_start;
 
   _end = .;
   PROVIDE(end = .);
@@ -337,6 +338,12 @@ __gxregs = (__ArenaHi + 31) & (-32);
 /* for backward compatibility with old crt0 */
 PROVIDE (__stack = (0x81700000));
 
+PROVIDE(__text_start = text_mem_start);
+PROVIDE(__text_fstart = text_file_start);
+PROVIDE(__data_start = data_mem_start);
+PROVIDE(__data_fstart = data_file_start);
+PROVIDE(__bss_start = bss_mem_start);
+PROVIDE(__bss_fstart = bss_file_start);
 PROVIDE(__stack_addr = __stack_addr);
 PROVIDE(__stack_end = __stack_end);
 PROVIDE(__intrstack_addr = __intrstack_addr);

@@ -36,12 +36,12 @@
 	lwz		r0,GQR7_OFFSET(r4);		\
 	mtspr	919,r0
 
+	.extern c_debug_handler
 	.globl debug_handler_start,debug_handler_end,debug_handler_patch
 debug_handler_start:
 	mtspr	SPRG3,r4
-	lis		r4,debug_context@ha
-	ori		r4,r4,debug_context@l
-	clrlwi	r4,r4,2
+	clrlwi	r4,sp,2			//make sp physical and move new value to r4
+	stwu	r4,-EXCEPTION_FRAME_END(r4)
 	stw		r0,GPR0_OFFSET(r4)
 	stw		sp,GPR1_OFFSET(r4)
 	stw		toc,GPR2_OFFSET(r4)
@@ -65,85 +65,110 @@ debug_handler_start:
 	stw		r3,SRR0_OFFSET(r4)
 	mfsrr1	r3
 	stw		r3,SRR1_OFFSET(r4)
-	mr		r5,r3
 	nop
 	mfmsr	r3
-	ori		r3,r3,MSR_IR|MSR_DR|MSR_FP
+	ori		r3,r3,MSR_IR|MSR_DR|MSR_RI		//MSR_FP
 	mtsrr1	r3
 
 debug_handler_patch:
 	li		r3,0
 	stw		r3,EXCEPTION_NUMBER(r4)
 	
-	rlwinm.	r5,r5,0,30,30
-	lis		r5,debug_handler_transfer@ha
+	lis		r5,debug_handler_transfer@h
 	ori		r5,r5,debug_handler_transfer@l
 	mtsrr0	r5
-	bne		1f
-	lis		r5,c_default_exceptionhandler@ha
-	ori		r5,r5,c_default_exceptionhandler@l
-	sync
-	isync
-	rfi
-1:
-	lis		r5,c_debug_handler@ha
+	lis		r5,c_debug_handler@h
 	ori		r5,r5,c_debug_handler@l
-	sync
-	isync
 	rfi
+
 debug_handler_end:
 
 debug_handler_transfer:
-	lis		r4,debug_context@ha
-	ori		r4,r4,debug_context@l
-	mtlr	r5
+	stwu	sp,-EXCEPTION_FRAME_END(sp)		//now we're able to adjust the stackpointer with it's cached address
+	mtlr	r5								//move passed handler func adress to LR
 
-	EXCEPTION_PROLOG
+	stmw r6,GPR6_OFFSET(sp)
 
-	stmw r6,GPR6_OFFSET(r4)
-
-	lis		sp,debug_stack@ha
-	ori		sp,sp,debug_stack@l
-	subi	sp,sp,4
-
-	addi	r3,r4,0x08
+	addi	r3,sp,0x08
 	blrl
 
-	lis		r4,debug_context@ha
-	ori		r4,r4,debug_context@l
+	lwz		r5,CR_OFFSET(sp)
+	mtcr	r5
+	lwz		r5,LR_OFFSET(sp)
+	mtlr	r5
+	lwz		r5,SRR1_OFFSET(sp)
+	mtsrr1	r5
+	lwz		r5,SRR0_OFFSET(sp)
+	mtsrr0	r5
+	lwz		r5,CTR_OFFSET(sp)
+	mtctr	r5
+	lwz		r5,XER_OFFSET(sp)
+	mtxer	r5
 
-	lwz		r3,CR_OFFSET(r4)
-	mtcr	r3
-	lwz		r3,LR_OFFSET(r4)
-	mtlr	r3
-	lwz		r3,CTR_OFFSET(r4)
-	mtctr	r3
-	lwz		r3,XER_OFFSET(r4)
-	mtxer	r3
+	lmw		r6,GPR6_OFFSET(sp)
+	lwz		toc,GPR2_OFFSET(sp)
+	lwz		r0,GPR0_OFFSET(sp)
 
-	EXCEPTION_EPILOG
-
-	lmw		r5,GPR5_OFFSET(r4)
-	lwz		toc,GPR2_OFFSET(r4)
-	lwz		r0,GPR0_OFFSET(r4)
-	lwz		sp,GPR1_OFFSET(r4)
-
-	mfmsr	r3
-	rlwinm	r3,r3,0,17,15
-	rlwinm	r3,r3,0,31,29
-	mtmsr	r3
-	sync
+	mfmsr	r4
+	rlwinm	r4,r4,0,19,17
+	rlwinm	r4,r4,0,31,29
+	mtmsr	r4
 	isync
 
-	lwz		r3,SRR0_OFFSET(r4)
-	mtsrr0	r3
-	lwz		r3,SRR1_OFFSET(r4)
-	mtsrr1	r3
-	lwz		r3,GPR3_OFFSET(r4)
-	lwz		r4,GPR4_OFFSET(r4)
-	sync
-	isync
+	lwz		r5,GPR5_OFFSET(sp)
+	lwz		r4,GPR4_OFFSET(sp)
+	lwz		r3,GPR3_OFFSET(sp)
+	addi	sp,sp,EXCEPTION_FRAME_END
 	rfi
+
+	.globl __set_ibar
+__set_ibar:
+	mfmsr	r4
+	rlwinm	r5,r4,0,18,16
+	mtmsr	r5
+	clrrwi	r3,r3,2
+	mtspr	1010,r3
+	isync
+	sync
+	mtmsr	r4
+	blr
+
+	.globl __enable_ibar
+__enable_ibar:
+	mfmsr	r4
+	rlwinm	r5,r4,0,18,16
+	mtmsr	r5
+	mfspr	r3,1010
+	ori		r3,r3,0x0003
+	mtspr	1010,r3
+	isync
+	sync
+	mtmsr	r4
+	blr
+
+	.globl __disable_ibar
+__disable_ibar:
+	mfmsr	r4
+	rlwinm	r5,r4,0,18,16
+	mtmsr	r5
+	mfspr	r3,1010
+	clrrwi	r3,r3,2
+	mtspr	1010,r3
+	isync
+	sync
+	mtmsr	r4
+	blr
+
+	.globl __clr_ibar
+__clr_ibar:
+	mfmsr	r4
+	rlwinm	r5,r4,0,18,16
+	mtmsr	r5
+	mtspr	1010,0
+	isync
+	sync
+	mtmsr	r4
+	blr
 
 	.section .bss
 	.align 4
