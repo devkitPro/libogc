@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 #include "asm.h"
 #include "processor.h"
 #include "cache.h"
@@ -10,7 +11,7 @@
 #include "system.h"
 #include "dvd.h"
 
-#define _DVD_DEBUG
+//#define _DVD_DEBUG
 
 #define DVD_BRK				(1<<0)
 #define DVD_DE_MSK			(1<<1)
@@ -74,7 +75,9 @@ static u32 __dvd_stopnextint = 0;
 static u32 __dvd_resetoccured = 0;	
 static u32 __dvd_waitcoverclose = 0;
 static u32 __dvd_breaking = 0;
+static u32 __dvd_resetrequired = 0;
 static s64 __dvd_lastresetend = 0;
+static u64 __dvd_spuriousirq = 0;
 static u32 __dvd_lastlen;
 static u32 __dvd_nextcmdnum;
 static u32 __dvd_workaround;
@@ -85,10 +88,12 @@ static lwpq_t __dvd_wait_queue;
 static sysalarm __dvd_timeoutalarm;
 static sysalarm __dvd_resetalarm;
 static dvdcmdblk __dvd_dummycmdblk;
+static dvddiskid __dvd_tmpid0 ATTRIBUTE_ALIGN(32);
 static dvddrvinfo __dvd_driveinfo ATTRIBUTE_ALIGN(32);
 static dvdcallback __dvd_callback = NULL;
 static dvdcallback __dvd_resetcovercb = NULL;
 static dvdstatecb __dvd_laststate = NULL;
+static dvdcbcallback __dvd_cancelcallback = NULL;
 static dvdcmdblk *__dvd_executing = NULL;
 
 static dvdcmdblk __dvd_buffer$15;
@@ -150,13 +155,16 @@ static u8 __dvd_unlockcmd$221[12] = {0xff,0x01,'M','A','T','S','H','I','T','A',0
 static u8 __dvd_unlockcmd$222[12] = {0xff,0x00,'D','V','D','-','G','A','M','E',0x03,0x00};
 
 void __dvd_statecoverclosed();
-void __dvd_statebusy(dvdcmdblk *block);
 void __dvd_stateready();
+void __dvd_statemotorstopped();
+void __dvd_statecoverclosed_cmd(dvdcmdblk *block);
+void __dvd_statebusy(dvdcmdblk *block);
 s32 __issuecommand(s32 prio,dvdcmdblk *block);
 s32 DVD_LowReadId(dvddiskid *diskID,dvdcallback cb);
 s32 DVD_LowRequestError(dvdcallback cb);
 s32 DVD_LowStopMotor(dvdcallback cb);
 s32 DVD_LowInquiry(dvddrvinfo *info,dvdcallback cb);
+s32 DVD_LowWaitCoverClose(dvdcallback cb);
 
 extern void udelay(int us);
 extern u32 diff_msec(unsigned long long start,unsigned long long end);
@@ -174,7 +182,7 @@ static void __dvd_clearwaitingqueue()
 	}
 }
 
-static u32 __dvd_checkwaitingqueue()
+static s32 __dvd_checkwaitingqueue()
 {
 	u32 i,level;
 
@@ -189,7 +197,7 @@ static u32 __dvd_checkwaitingqueue()
 	return 0;
 }
 
-static void __dvd_pushwaitingqueue(s32 prio,dvdcmdblk *block)
+static s32 __dvd_pushwaitingqueue(s32 prio,dvdcmdblk *block)
 {
 	u32 level;
 
@@ -199,6 +207,7 @@ static void __dvd_pushwaitingqueue(s32 prio,dvdcmdblk *block)
 	block->next = (void*)&__dvd_waitingqueue[prio];
 	__dvd_waitingqueue[prio].prev = block;
 	_CPU_ISR_Restore(level);
+	return 1;
 }
 
 static dvdcmdblk* __dvd_popwaitingqueueprio(s32 prio)
@@ -324,23 +333,63 @@ static void __DVDInitWA()
 
 static void __dvd_statebusycb(s32 result)
 {
+	dvdcmdblk *block;
+
+	if(result==0x0010) {
+		__dvd_executing->state = -1;
+	}
 	if(__dvd_currcmd==0x0003 || __dvd_currcmd==0x000f) {
 		if(result&0x0002) {
 			__dvd_executing->state = -1;
 		}
+		if(result==0x0001) {
+			if(__dvd_currcmd==0x000f) __dvd_resetrequired = 1;
+		}
+	}
+	if(result&0x0004) {
+		
 	}
 	if(__dvd_currcmd==0x0001 || __dvd_currcmd==0x0004
 		|| __dvd_currcmd==0x0005 || __dvd_currcmd==0x000e) {
 		__dvd_executing->txdsize =+ (__dvd_executing->currtxsize-_diReg[6]);
 	}
 	if(result&0x0008) {
-		
+		block = __dvd_executing;
+		__dvd_executing = &__dvd_dummycmdblk;
+		__dvd_executing->state = 10;
+		if(block->cb) block->cb(-3,block);
+		if(__dvd_cancelcallback) __dvd_cancelcallback(0,block);
+		__dvd_stateready();
+		return;
 	}
 
 }
 
+static void __dvd_statemotorstoppedcb(s32 result)
+{
+	_diReg[1] = 0;
+	__dvd_executing->state = 3;
+	__dvd_statecoverclosed();
+}
+
+static void __dvd_statecoverclosedcb(s32 result)
+{
+	if(result==0x0010) {
+		__dvd_executing->state = -1;
+	}
+	
+}
+
+static void __dvd_statecheckid1cb(s32 result)
+{
+}
+
 static void __dvd_alarmhandler(sysalarm *alarm)
 {
+	DVD_Reset();
+	DCInvalidateRange(&__dvd_tmpid0,DVD_DISKIDSIZE);
+	__dvd_laststate = __dvd_statecoverclosed_cmd;
+	__dvd_statecoverclosed_cmd(__dvd_executing);
 }
 
 static void __DVDInterruptHandler(u32 nIrq,void *pCtx)
@@ -371,6 +420,8 @@ static void __DVDInterruptHandler(u32 nIrq,void *pCtx)
 	if(ir&DVD_TC_INT) irmm |= 0x0001;
 	if(ir&DVD_DE_INT) irmm |= 0x0002;
 
+	if(irmm==0x0000) __dvd_spuriousirq++;
+	
 	if(irmm) __dvd_resetoccured = 0;
 	
 	_diReg[0] = (ir|irm);
@@ -419,6 +470,7 @@ static void __DVDInterruptHandler(u32 nIrq,void *pCtx)
 	__dvd_breaking = 0;
 }
 
+static u32 idfin;
 static void __DVDPatchDriveCode(s32 result)
 {
 	u32 i;
@@ -470,6 +522,7 @@ static void __DVDPatchDriveCode(s32 result)
 			return;
 		}
 	}
+	idfin = 1;
 	LWP_WakeThread(__dvd_wait_queue);
 }
 
@@ -503,48 +556,6 @@ static void __DVDUnlockDrive(s32 result)
 		for(i=0;i<3;i++) _diReg[2+i] = ((u32*)__dvd_unlockcmd$222)[i];
 		_diReg[7] = DVD_DI_START;
 	}
-}
-
-static u32 idfin;
-static dvddiskid idTmp ATTRIBUTE_ALIGN(32);
-
-static void idcb(s32 result)
-{
-	idfin = 1;
-	LWP_WakeThread(__dvd_wait_queue);
-}
-
-static void __fst_cb(s32 result,dvdcmdblk *block)
-{
-}
-
-static void __DVDInitFST()
-{
-	u32 level;
-#ifdef _DVD_DEBUG
-	printf("__DVDInitFST()\n");
-#endif
-	DVD_Reset();
-
-	__DVDUnlockDrive(0);
-	LWP_SleepThread(__dvd_wait_queue);
-#ifdef _DVD_DEBUG
-	printf("__DVDInitFST(unlock done)\n");
-#endif
-
-	idfin = 0;
-	DCInvalidateRange(&idTmp,32);
-	DVD_LowReadId(&idTmp,idcb);
-	_CPU_ISR_Disable(level);
-	while(!idfin) {
-		LWP_SleepThread(__dvd_wait_queue);
-	}
-	_CPU_ISR_Restore(level);
-
-	printf("%c%c\n",idTmp.company[0],idTmp.company[1]);
-/*	
-	DVD_ReadId(&__dvd_buffer$15,&idtmp,__fst_cb);
-*/
 }
 
 void __dvd_statebusy(dvdcmdblk *block)
@@ -597,8 +608,28 @@ void __dvd_statecoverclosed()
 	}
 }
 
+void __dvd_statecoverclosed_cmd(dvdcmdblk *block)
+{
+	DVD_LowReadId(&__dvd_tmpid0,__dvd_statecoverclosedcb);
+}
+
+void __dvd_statemotorstopped()
+{
+	DVD_LowWaitCoverClose(__dvd_statemotorstoppedcb);
+}
+
+void __dvd_statecheckid()
+{
+	if(__dvd_currcmd==0x0003) {
+		if(memcmp(&__dvd_dummycmdblk,&__dvd_executing,sizeof(dvdcmdblk))) {
+			DVD_LowStopMotor(__dvd_statecheckid1cb);
+			return;
+		}
+	}
+}
 s32 __issuecommand(s32 prio,dvdcmdblk *block)
 {
+	s32 ret;
 	u32 level;
 
 	if(block->cmd==0x0001 || block->cmd==0x00004
@@ -606,7 +637,9 @@ s32 __issuecommand(s32 prio,dvdcmdblk *block)
 
 	_CPU_ISR_Disable(level);
 	block->state = 0x0002;
+	ret = __dvd_pushwaitingqueue(prio,block);
 	_CPU_ISR_Restore(level);
+	return ret;
 }
 
 s32 DVD_LowReadId(dvddiskid *diskID,dvdcallback cb)
@@ -696,6 +729,15 @@ s32 DVD_LowInquiry(dvddrvinfo *info,dvdcallback cb)
 	return 1;
 }
 
+s32 DVD_LowWaitCoverClose(dvdcallback cb)
+{
+	__dvd_callback = cb;
+	__dvd_waitcoverclose = 1;
+	__dvd_stopnextint = 0;
+	_diReg[1] = 2;
+	return 1;
+}
+
 void DVD_LowReset()
 {
 	u32 val;
@@ -727,9 +769,7 @@ s32 DVD_ReadId(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb)
 	block->txdsize = 0;
 	block->cb = cb;
 
-	__issuecommand(2,block);
-	
-	return 0;
+	return __issuecommand(2,block);
 }
 
 s32 DVD_Read(void *pDst,s32 nLen,u32 nOffset)
@@ -753,16 +793,31 @@ s32 DVD_Read(void *pDst,s32 nLen,u32 nOffset)
 			return 1;
 	}
 }
-
-static void inqcb(s32 result)
+static void __dvd_unlockcb2(s32 result)
 {
-	idfin = 1;
-	LWP_WakeThread(__dvd_wait_queue);
+	__DVDUnlockDrive(result);
+}
+
+static void __dvd_unlockcb(s32 result)
+{
+	DCInvalidateRange(&__dvd_tmpid0,DVD_DISKIDSIZE);
+	DVD_LowReadId(&__dvd_tmpid0,__dvd_unlockcb2);
+}
+
+static void alarmcb(sysalarm *alarm)
+{
+	if(__dvd_spuriousirq) {
+		DCInvalidateRange(&__dvd_driveinfo,32);
+		DVD_LowInquiry(&__dvd_driveinfo,__dvd_unlockcb);
+		return;
+	}
+	__dvd_unlockcb(0);
 }
 
 void DVD_Init()
 {
 	u32 level;
+	struct timespec tb;
 
 	if(__dvd_initflag) return;
 	__dvd_initflag = 1;
@@ -777,24 +832,20 @@ void DVD_Init()
 
 	LWP_InitQueue(&__dvd_wait_queue);
 
-	//__DVDInitFST();
-	DVD_LowReset();
-
 	idfin = 0;
-	DCInvalidateRange(&__dvd_driveinfo,32);
-	DVD_LowInquiry(&__dvd_driveinfo,inqcb);
+	DVD_Reset();
+	SYS_CreateAlarm(&__dvd_resetalarm);
+
+	tb.tv_sec = 1;
+	tb.tv_nsec = 150*TB_NSPERMS;
+	SYS_SetAlarm(&__dvd_resetalarm,&tb,alarmcb);
 	_CPU_ISR_Disable(level);
 	while(!idfin)
 		LWP_SleepThread(__dvd_wait_queue);
 	_CPU_ISR_Restore(level);
 
-	printf("%04x\n%04x\n%08x\n",__dvd_driveinfo.rev_level,__dvd_driveinfo.dev_code,__dvd_driveinfo.rel_date);
-
-	__DVDUnlockDrive(0);
-	_CPU_ISR_Disable(level);
-	LWP_SleepThread(__dvd_wait_queue);
-	_CPU_ISR_Restore(level);
-
+	printf("%04x\n%04x\n%08x\n\n",__dvd_driveinfo.rev_level,__dvd_driveinfo.dev_code,__dvd_driveinfo.rel_date);
+	printf("%c%c%c%c\n%c%c\n%02x\n",__dvd_tmpid0.gamename[0],__dvd_tmpid0.gamename[1],__dvd_tmpid0.gamename[2],__dvd_tmpid0.gamename[3],__dvd_tmpid0.company[0],__dvd_tmpid0.company[1],__dvd_tmpid0.gamever);
 }
 
 void DVD_Reset()

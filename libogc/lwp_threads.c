@@ -62,6 +62,13 @@ void __lwp_dumpcontext_fp(lwp_cntrl *thrA,lwp_cntrl *thrB)
 {
 	printf("_cpu_contextfp_dump(%p,%p)\n",thrA,thrB);
 }
+
+void __lwp_showmsr()
+{
+	register u32 msr;
+	_CPU_MSR_GET(msr);
+	printf("msr: %08x\n",msr);
+}
 #endif
 
 u32 __lwp_isr_in_progress()
