@@ -2535,14 +2535,19 @@ s32 CARD_Delete(s32 chn,const char *filename)
 
 s32 CARD_FormatAsync(s32 chn,cardcallback callback)
 {
-	return __card_formatregion(chn,1,callback);
+	u32 enc;
+
+	enc = SYS_GetFontEncoding();
+	return __card_formatregion(chn,enc,callback);
 }
 
 s32 CARD_Format(s32 chn)
 {
 	s32 ret;
+	u32 enc;
 
-	if((ret=__card_formatregion(chn,1,__card_synccallback))>=0) {
+	enc = SYS_GetFontEncoding();
+	if((ret=__card_formatregion(chn,enc,__card_synccallback))>=0) {
 		ret = __card_sync(chn);
 	}
 	return ret;
