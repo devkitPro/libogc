@@ -75,4 +75,5 @@ static __inline__ boolean __lwp_thread_isdispatchenabled()
 {
 	return (_thread_dispatch_disable_level==0);
 }
+
 #endif

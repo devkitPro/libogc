@@ -3,6 +3,7 @@
 
 #include <gctypes.h>
 
+#define PAD_MAX					4
 /*+----------------------------------------------------------------------------------------------+*/
 #define MEM_PAD_CHANNEL_BASE   (0xCC006400)               ///< Start address of pad-channels
 #define MEM_PAD_CHANNEL(Number)(MEM_PAD_CHANNEL_BASE+(Number*12)) ///< Memory address of pad-channel "Number". "Number" can be 0, 1, 2 or 3. \n You can also specify one of the PAD_CHANNEL_[0/1/2/3] defines

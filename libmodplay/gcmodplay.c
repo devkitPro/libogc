@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include "audio.h"
 #include "cache.h"
@@ -26,14 +27,16 @@ static u32 player_stack[STACKSIZE/sizeof(u32)];
 static void* player(void *);
 
 #ifdef _GCMOD_DEBUG
-extern int printk(const char *fmt,...);
+extern unsigned long long gettime();
+extern u32 diff_usec(unsigned long long start,unsigned long long end);
+extern u32 diff_msec(unsigned long long start,unsigned long long end);
 #endif
 
 static void* player(void *arg)
 {
 	u32 datalen,tmp;
 #ifdef _GCMOD_DEBUG
-	time_t start,end;
+	unsigned long long start,end;
 #endif
 
 	thr_running = TRUE;
@@ -77,10 +80,10 @@ static void dmaCallback()
 
 	if(!datalen) datalen = sndBuffer.data_len;
 #ifdef _GCMOD_DEBUG
-	static time_t start = 0,end = 0;
+	static unsigned long long start = 0,end = 0;
 
 	end = gettime();
-	if(start) printk("dmaCallback(%p,%d,%d - after %d ms)\n",(void*)audioBuf[curaudio],datalen,curaudio,diff_msec(start,end));
+	if(start) printf("dmaCallback(%p,%d,%d - after %d ms)\n",(void*)audioBuf[curaudio],datalen,curaudio,diff_msec(start,end));
 #endif
 	AUDIO_StopDMA();
 	AUDIO_InitDMA((u32)audioBuf[curaudio],datalen);
@@ -90,7 +93,7 @@ static void dmaCallback()
 	__lwpmq_broadcast(&playermq,(void*)&datalen,sizeof(u32),AUDIO_DMA_REQ,&cnt);
 #ifdef _GCMOD_DEBUG
 	start = gettime();
-	printk("dmaCallback(%p,%d,%d,%d us) leave\n",(void*)audioBuf[curaudio],datalen,curaudio,diff_usec(end,start));
+	printf("dmaCallback(%p,%d,%d,%d us) leave\n",(void*)audioBuf[curaudio],datalen,curaudio,diff_usec(end,start));
 #endif
 }
 
@@ -158,17 +161,17 @@ static u32 SndBufStart(MODSNDBUF *sndbuf)
 static void SndBufStop()
 {
 	u32 close = -1;
-
-	if(!sndPlaying) return;
-
-	curaudio = 0;
-	sndPlaying = FALSE;
 	
-	__lwpmq_send(&playermq,&close,sizeof(u32),AUDIO_DMA_REQ,FALSE,LWP_THREADQ_NOTIMEOUT);
-	while(thr_running==TRUE);
+	if(!sndPlaying) return;
 
 	AUDIO_StopDMA();
 	AUDIO_RegisterDMACallback(NULL);
+
+	curaudio = 0;
+	sndPlaying = FALSE;
+	__lwpmq_send(&playermq,&close,sizeof(u32),AUDIO_DMA_REQ,FALSE,LWP_THREADQ_NOTIMEOUT);
+
+	LWP_JoinThread(hplayer,NULL);
 }
 
 static s32 updateWaveFormat(MODPlay *mod)

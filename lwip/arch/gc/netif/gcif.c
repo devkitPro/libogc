@@ -382,9 +382,8 @@ static u32 __bba_exi_wait()
 	_CPU_ISR_Disable(level);
 	do {
 		if((ret=EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,__bba_exi_unlock))==1) break;
-		_CPU_ISR_Restore(level);
 		LWP_SleepThread(wait_exi_queue);
-		_CPU_ISR_Disable(level);
+		_CPU_ISR_Restore(level);
 	} while(ret==0);
 	_CPU_ISR_Restore(level);
 	return ret;
@@ -411,11 +410,9 @@ static u32 __bba_tx_stop(struct bba_priv *priv)
 
 	_CPU_ISR_Disable(level);
 	state = priv->state;
-	while(priv->state==ERR_TXPENDING) {
-		_CPU_ISR_Restore(level);
+	if(priv->state==ERR_TXPENDING) {
 		LWP_SleepThread(wait_tx_queue);
-		LWIP_DEBUGF(NETIF_DEBUG,("__bba_tx_stop(%p,%p,%d)\n",priv,LWP_GetSelf(),_thread_dispatch_disable_level));
-		_CPU_ISR_Disable(level);
+		_CPU_ISR_Restore(level);
 	}
 	priv->state = ERR_TXPENDING;
 	_CPU_ISR_Restore(level);
@@ -435,9 +432,16 @@ static __inline__ u32 __linkstate()
 
 static u32 __bba_getlink_state_async()
 {
-	u32 ret;
+	u32 level,ret;
 
-	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==0) return 0;
+
+	_CPU_ISR_Disable(level);
+	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==0) {
+		_CPU_ISR_Restore(level);
+		return 0;
+	}
+	_CPU_ISR_Restore(level);
+
 	ret = __linkstate();
 	EXI_Unlock(EXI_CHANNEL_0);
 	return ret;
@@ -515,13 +519,16 @@ static u32 __bba_link_txsub1()
 
 static u32 __bba_link_txsub0()
 {
-	u32 len;
+	u32 level,len;
 	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
 
+	_CPU_ISR_Disable(level);
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,__bba_link_txsub0)==0) {
 		LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_txsub0(exi allready locked)\n"));
+		_CPU_ISR_Restore(level);
 		return ERR_OK;
 	}
+	_CPU_ISR_Restore(level);
 
 	if(!__linkstate()) {
 		LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_txsub0(error link state)\n"));
@@ -555,12 +562,13 @@ static err_t __bba_link_tx(struct netif *dev,struct pbuf *p)
 
 	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_tx(%d,%p)\n",p->tot_len,LWP_GetSelf()));
 
+	__bba_tx_stop(priv);
+
 	if(p->tot_len>BBA_TX_MAX_PACKET_SIZE) {
 		LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_tx(packet_size: %d)\n",p->tot_len));
+		__bba_tx_wake(priv);
 		return ERR_PKTSIZE;
 	}
-
-	__bba_tx_stop(priv);
 
 	cur_snd_len = 0;
 	for(tmp=p;tmp!=NULL && ret==ERR_OK;tmp=tmp->next) {

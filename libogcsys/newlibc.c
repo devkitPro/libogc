@@ -8,6 +8,9 @@
 int libc_reentrant;
 struct _reent libc_globl_reent;
 
+extern void _wrapup_reent(struct _reent *);
+extern void _reclaim_reent(struct _reent *);
+
 int __libc_create_hook(lwp_cntrl *curr_thr,lwp_cntrl *create_thr)
 {
 	create_thr->libc_reent = NULL;
@@ -38,12 +41,15 @@ int __libc_delete_hook(lwp_cntrl *curr_thr, lwp_cntrl *delete_thr)
 	else
 		ptr = (struct _reent*)delete_thr->libc_reent;
 	
-	if(ptr && ptr!=&libc_globl_reent) free(ptr);
-	
+	if(ptr && ptr!=&libc_globl_reent) {
+		_wrapup_reent(ptr);
+		_reclaim_reent(ptr);
+		free(ptr);
+	}
 	delete_thr->libc_reent = 0;
-	
+
 	if(curr_thr==delete_thr) _REENT = 0;
-	
+
 	return 1;
 }
 
@@ -62,6 +68,7 @@ void __libc_wrapup()
 {
 	if(!__sys_state_up(__sys_state_get())) return;
 	if(_REENT!=&libc_globl_reent) {
+		_wrapup_reent(&libc_globl_reent);
 		_REENT = &libc_globl_reent;
 	}
 }

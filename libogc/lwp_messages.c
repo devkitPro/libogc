@@ -2,6 +2,7 @@
 #include <string.h>
 #include "asm.h"
 #include "lwp_messages.h"
+#include "lwp_wkspace.h"
 
 void __lwpmq_msg_insert(mq_cntrl *mqueue,mq_buffercntrl *msg,u32 type)
 {
@@ -62,7 +63,7 @@ u32 __lwpmq_initialize(mq_cntrl *mqueue,mq_attr *attrs,u32 max_pendingmsgs,u32 m
 		alloc_msgsize = (alloc_msgsize+sizeof(u32))&~(sizeof(u32)-1);
 	
 	buffering_req = max_pendingmsgs*(alloc_msgsize+sizeof(mq_buffercntrl));
-	mqueue->msq_buffers = (mq_buffer*)malloc(buffering_req);
+	mqueue->msq_buffers = (mq_buffer*)__lwp_wkspace_allocate(buffering_req);
 
 	if(!mqueue->msq_buffers) return 0;
 
@@ -213,7 +214,7 @@ void __lwpmq_close(mq_cntrl *mqueue,u32 status)
 {
 	__lwp_threadqueue_flush(&mqueue->wait_queue,status);
 	__lwpmq_flush_support(mqueue);
-	free(mqueue->msq_buffers);
+	__lwp_wkspace_free(mqueue->msq_buffers);
 }
 
 u32 __lwpmq_flush(mq_cntrl *mqueue)

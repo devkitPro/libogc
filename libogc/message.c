@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <lwp_messages.h>
+#include <lwp_wkspace.h>
 #include "message.h"
 
 typedef struct _mqbox {
@@ -19,7 +20,7 @@ u32 MQ_Init(mq_box_t *mqbox,u32 count)
 	
 	__lwp_thread_dispatchdisable();
 
-	ret = (mq_box*)malloc(sizeof(mq_box));
+	ret = (mq_box*)__lwp_wkspace_allocate(sizeof(mq_box));
 	if(!ret) {
 		__lwp_thread_dispatchenable();
 		return MQ_ERROR_TOOMANY;
@@ -27,7 +28,7 @@ u32 MQ_Init(mq_box_t *mqbox,u32 count)
 
 	attr.mode = LWP_MQ_FIFO;
 	if(!__lwpmq_initialize(&ret->mqcntrl,&attr,count,sizeof(mqmsg))) {
-		free(ret);
+		__lwp_wkspace_free(ret);
 		__lwp_thread_dispatchenable();
 		return MQ_ERROR_TOOMANY;
 	}
@@ -46,7 +47,7 @@ void MQ_Close(mq_box_t mqbox)
 	
 	__lwp_thread_dispatchdisable();
 	__lwpmq_close(&mbox->mqcntrl,0);
-	free(mbox);
+	__lwp_wkspace_free(mbox);
 	__lwp_thread_dispatchenable();
 }
 

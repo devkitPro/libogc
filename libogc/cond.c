@@ -2,6 +2,7 @@
 #include <errno.h>
 #include "mutex.h"
 #include "lwp_threadq.h"
+#include "lwp_wkspace.h"
 #include "cond.h"
 
 struct _cond {
@@ -74,7 +75,7 @@ u32 LWP_CondInit(cond_t *cond)
 	if(!cond) return -1;
 	
 	__lwp_thread_dispatchdisable();
-	ret = (struct _cond*)malloc(sizeof(struct _cond));
+	ret = (struct _cond*)__lwp_wkspace_allocate(sizeof(struct _cond));
 	if(!ret) {
 		__lwp_thread_dispatchenable();
 		return ENOMEM;
@@ -122,7 +123,7 @@ u32 LWP_CondDestroy(cond_t cond)
 		__lwp_thread_dispatchenable();
 		return EBUSY;
 	}
-	free(ptr);
+	__lwp_wkspace_free(ptr);
 	__lwp_thread_dispatchenable();
 	return 0;
 }

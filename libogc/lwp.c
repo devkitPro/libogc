@@ -4,6 +4,7 @@
 #include "processor.h"
 #include "lwp_threadq.h"
 #include "lwp_threads.h"
+#include "lwp_wkspace.h"
 #include "lwp.h"
 
 #define LWP_SLEEP_THREAD		240
@@ -20,7 +21,7 @@ u32 LWP_CreateThread(lwp_t *thethread,void* (*entry)(void *),void *arg,void *sta
 	
 	__lwp_thread_dispatchdisable();
 
-	lwp_thread = (lwp_cntrl*)malloc(sizeof(lwp_cntrl));
+	lwp_thread = (lwp_cntrl*)__lwp_wkspace_allocate(sizeof(lwp_cntrl));
 	if(!lwp_thread) {
 		__lwp_thread_dispatchenable();
 		return -1;
@@ -28,14 +29,14 @@ u32 LWP_CreateThread(lwp_t *thethread,void* (*entry)(void *),void *arg,void *sta
 
 	status = __lwp_thread_init(lwp_thread,stackbase,stack_size,__lwp_priotocore(prio),0);
 	if(!status) {
-		free(lwp_thread);
+		__lwp_wkspace_free(lwp_thread);
 		__lwp_thread_dispatchenable();
 		return -1;
 	}
 	
 	status = __lwp_thread_start(lwp_thread,entry,arg);
 	if(!status) {
-		free(lwp_thread);
+		__lwp_wkspace_free(lwp_thread);
 		__lwp_thread_dispatchenable();
 		return -1;
 	}
@@ -103,17 +104,30 @@ void LWP_CloseThread(lwp_t thethread)
 
 u32 LWP_JoinThread(lwp_t thethread,void **value_ptr)
 {
+	u32 level;
 	void *return_ptr;
-	lwp_cntrl *lwp_thread = (lwp_cntrl*)thethread;
+	lwp_obj *object;
+	lwp_cntrl *exec,*lwp_thread = (lwp_cntrl*)thethread;
 	
 	__lwp_thread_dispatchdisable();
+
+	object = __lwp_thread_getobject(lwp_thread);
+	if(!object) {
+		__lwp_thread_dispatchenable();
+		return 0;
+	}
+
 	if(__lwp_thread_isexec(lwp_thread)) {
 		__lwp_thread_dispatchenable();
 		return EDEADLK;			//EDEADLK
 	}
 
-	_thr_executing->wait.ret_arg = (void*)&return_ptr;
-	__lwp_threadqueue_csenter(&lwp_thread->wait.join);
+	exec = _thr_executing;
+	_CPU_ISR_Disable(level);
+	__lwp_threadqueue_csenter(&object->join_list);
+	exec->wait.ret_arg = (void*)&return_ptr;
+	_CPU_ISR_Restore(level);
+	__lwp_threadqueue_enqueue(&object->join_list,LWP_WD_NOTIMEOUT);
 	__lwp_thread_dispatchenable();
 
 	if(value_ptr)
@@ -127,7 +141,7 @@ void LWP_InitQueue(lwpq_t *thequeue)
 	lwp_thrqueue *tqueue;
 
 	__lwp_thread_dispatchdisable();
-	tqueue = (lwp_thrqueue*)malloc(sizeof(lwp_thrqueue));
+	tqueue = (lwp_thrqueue*)__lwp_wkspace_allocate(sizeof(lwp_thrqueue));
 	if(!tqueue) {
 		__lwp_thread_dispatchenable();
 		return;
@@ -136,6 +150,12 @@ void LWP_InitQueue(lwpq_t *thequeue)
 
 	*thequeue = tqueue;
 	__lwp_thread_dispatchenable();
+}
+
+void LWP_CloseQueue(lwpq_t thequeue)
+{
+	LWP_WakeThread(thequeue);
+	__lwp_wkspace_free(thequeue);
 }
 
 void LWP_SleepThread(lwpq_t thequeue)

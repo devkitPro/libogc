@@ -232,14 +232,16 @@
 
 #endif		//_LANGUAGE_ASSEMBLY
 
-#define MSR_RI		0x00000002
-#define MSR_DR		0x00000010
-#define MSR_IR		0x00000020
-#define MSR_IP		0x00000040
-#define MSR_SE		0x00000400
-#define MSR_ME		0x00001000
-#define MSR_FP		0x00002000
-#define MSR_POW		0x00004000
-#define MSR_EE		0x00008000
+#define MSR_RI				0x00000002
+#define MSR_DR				0x00000010
+#define MSR_IR				0x00000020
+#define MSR_IP				0x00000040
+#define MSR_SE				0x00000400
+#define MSR_ME				0x00001000
+#define MSR_FP				0x00002000
+#define MSR_POW				0x00004000
+#define MSR_EE				0x00008000
+
+#define PPC_ALIGNMENT		4
 
 #endif		//__ASM_H__

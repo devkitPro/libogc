@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include "lwp_sema.h"
+#include "lwp_wkspace.h"
 #include "semaphore.h"
 
 static u32 __lwp_semwaitsupp(lwp_sema *sem,u32 id,u32 timeout,u8 blocking)
@@ -34,7 +35,7 @@ u32 LWP_SemInit(sem_t *sem,u32 start,u32 max)
 	*sem = NULL;
 	
 	__lwp_thread_dispatchdisable();
-	ret = (lwp_sema*)malloc(sizeof(lwp_sema));
+	ret = (lwp_sema*)__lwp_wkspace_allocate(sizeof(lwp_sema));
 	if(!ret) {
 		__lwp_thread_dispatchenable();
 		return -1;
@@ -71,7 +72,7 @@ u32 LWP_SemDestroy(sem_t sem)
 
 	__lwp_thread_dispatchdisable();
 	__lwp_sema_flush(p,-1);
-	free(p);
+	__lwp_wkspace_free(p);
 	__lwp_thread_dispatchenable();
 
 	return 0;

@@ -84,7 +84,7 @@ LWIPOBJ	:=	network.o netio.o gcif.o lib_arch.o		\
 #---------------------------------------------------------------------------------
 OGCOBJ	:=	lwp_priority.o lwp_queue.o lwp_threadq.o lwp_threads.o lwp_sema.o	\
 			lwp_messages.o lwp.o lwp_handler.o lwp_stack.o lwp_mutex.o 	\
-			lwp_watchdog.o sys_state.o \
+			lwp_watchdog.o lwp_wkspace.o sys_state.o \
 			exception_handler.o exception.o irq.o irq_handler.o semaphore.o \
 			video_asm.o video.o pad.o dvd.o exi.o mutex.o 				\
 			cache_asm.o system.o system_asm.o cond.o			\

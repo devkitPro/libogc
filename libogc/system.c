@@ -10,11 +10,13 @@
 #include "lwp_threads.h"
 #include "lwp_priority.h"
 #include "lwp_watchdog.h"
+#include "lwp_wkspace.h"
 #include "system.h"
 
 //#define _DEBUG_CON
 
-#define SYSMEM_SIZE 0x1800000
+#define SYSMEM_SIZE				0x1800000
+#define KERNEL_HEAP				(1024*1024)
 
 #define _SHIFTL(v, s, w)	\
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
@@ -165,6 +167,7 @@ static void DisableWriteGatherPipe()
 void SYS_Init()
 {
 	__lowmem_init();
+	__lwp_wkspace_init(KERNEL_HEAP);
 #ifdef _DEBUG_CON
 	__dbgconsole_init();
 #endif

@@ -29,6 +29,9 @@
  * Author: Adam Dunkels <adam@sics.se>
  *
  */
+
+#include <time.h>
+#include "lwp_watchdog.h"
 #include "lwip/opt.h"
 
 #if LWIP_HAVE_LOOPIF
@@ -43,14 +46,19 @@
 #include "lwip/tcp.h"
 #include "lwip/ip.h"
 
+static u32 loopif_ticks;
+static wd_cntrl loopif_tmr_cntrl;
+
+extern unsigned int timespec_to_interval(const struct timespec *);
+
 static void
 loopif_input( void * arg )
 {
-	struct netif *netif = (struct netif *)( ((void **)arg)[ 0 ] );
-	struct pbuf *r = (struct pbuf *)( ((void **)arg)[ 1 ] );
+	struct netif *netif = (struct netif*)(((void**)arg)[0]);
+	struct pbuf *r = (struct pbuf*)(((void**)arg)[1]);
 
-	mem_free( arg );
-	netif -> input( r, netif );
+	mem_free(arg);
+	netif->input(r,netif);
 }
 
 static err_t
@@ -90,7 +98,8 @@ loopif_output(struct netif *netif, struct pbuf *p,
 	 * 
 	 * TODO: Is there still a race condition here? Leon
 	 */
-	sys_timeout( 1, loopif_input, arg );
+	__lwp_wd_initialize(&loopif_tmr_cntrl,loopif_input,arg);
+	__lwp_wd_insert_ticks(&loopif_tmr_cntrl,loopif_ticks);
 	
     return ERR_OK;    
   }
@@ -100,13 +109,20 @@ loopif_output(struct netif *netif, struct pbuf *p,
 err_t
 loopif_init(struct netif *netif)
 {
+  struct timespec tb;
+
   netif->name[0] = 'l';
   netif->name[1] = 'o';
 #if 0 /** TODO: I think this should be enabled, or not? Leon */
   netif->input = loopif_input;
 #endif
   netif->output = loopif_output;
-  return ERR_OK;
+
+ tb.tv_sec = 0;
+ tb.tv_nsec = 10*1000*1000;
+ loopif_ticks = timespec_to_interval(&tb);
+
+ return ERR_OK;
 }
 
 #endif /* LWIP_HAVE_LOOPIF */

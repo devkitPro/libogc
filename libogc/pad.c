@@ -1,49 +1,132 @@
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include <time.h>
+#include <irq.h>
 #include "asm.h"
+#include "processor.h"
 #include "pad.h"
 
-static vu32* const siReg = (u32*)0xCC006400;
+#define SI_TC_INT			(1<<31)
+#define SI_TC_MSK			(1<<30)
+#define SI_COM_ERR			(1<<29)
+#define SI_RS_INT			(1<<28)
+#define SI_RS_MSK			(1<<27)
+#define SI_CHN_MSK(v)		((v&3)<<25)
+#define SI_CHN_EN			(1<<24)
+#define SI_OUT_LEN(v)		((v&40)<<16)
+#define SI_IN_LEN(v)		((v&40)<<8)
+#define SI_CMD_EN			(1<<7)
+#define SI_CB_EN			(1<<6)
+#define SI_CHANNEL(v)		((v&3)<<1)
+#define SI_TRS_EN			(1<<0)
+
+typedef void (*SIRSHandler)(u32,void*);
+
+static u32 _padId[PAD_MAX];
+static SIRSHandler _sirshandler[PAD_MAX];
+
+static vu32* const _siReg = (u32*)0xCC006400;
 
 extern void udelay(int);
+extern void __UnmaskIrq(u32);
+
+static __inline__ void __si_wait_tc_complete()
+{
+	while(!(_siReg[13]&SI_TC_INT));
+	_siReg[13] |= SI_TC_INT;
+}
+
+static void __si_tc_handler(u32 nIrq,void *pCtx)
+{
+	u32 status;
+
+	status = _siReg[13];
+	if(status&SI_TC_INT) {
+		_siReg[13] |= SI_TC_INT;
+	}
+	if(status&SI_RS_INT) {
+		_siReg[13] |= SI_RS_INT;
+	}
+}
+
+static void __reset_si()
+{
+	u32 level,i;
+
+	_CPU_ISR_Disable(level);
+	for(i=0;i<PAD_MAX;i++) _siReg[(i*3)+0] = 0;
+	for(i=0;i<PAD_MAX;i++) _siReg[(i*3)+1] = 0;
+	for(i=0;i<PAD_MAX;i++) _siReg[(i*3)+2] = 0;
+
+	_siReg[12] = 0;
+	_siReg[13] = 0;
+	_siReg[14] = 0;
+
+	for(i=0;i<12;i++) _siReg[32+i] = 0;
+	_CPU_ISR_Restore(level);
+}
+
+static void __set_polling_interrupt(u32 intr)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	_siReg[13] &= ~SI_RS_MSK;
+	if(intr) {
+		memset(_sirshandler,0,PAD_MAX*sizeof(SIRSHandler));
+		_siReg[13] |= SI_RS_MSK;
+	}
+	_siReg[13] &= ~(SI_TC_INT|SI_TRS_EN);
+	_CPU_ISR_Restore(level);
+}
+
+static void __set_polling()
+{
+	u32 level,i,pad_bits = 0;
+
+	_CPU_ISR_Disable(level);
+	for(i=0;i<PAD_MAX;i++) {
+		_siReg[(i*3)+0] = 0x00400300;
+		pad_bits |= 1<<(7-i);
+	}
+	_siReg[12] = (0x00f70200|pad_bits);
+	_siReg[14] = 0x80000000;
+	_siReg[13] = (SI_TC_INT|SI_TC_MSK|SI_OUT_LEN(1)|SI_IN_LEN(8)|SI_TRS_EN);
+	_CPU_ISR_Restore(level);
+
+	__si_wait_tc_complete();
+}
+
+static u32 __get_controllerid(u32 port)
+{
+	u32 level;
+
+	__reset_si();
+
+	_CPU_ISR_Disable(level);
+	_siReg[12] = 0;
+	_siReg[(port*3)+0] = 0;
+	_siReg[14] = 0x80000000;
+	_siReg[13] = 0xd0010001|(port<<1);
+	_CPU_ISR_Restore(level);
+	
+	__si_wait_tc_complete();
+
+	return _siReg[32];
+}
 
 void __pad_init()
 {
-	*(vu32*)0xCC006430 = 0x00000000;
-	*(vu32*)0xCC006438 = 0x80000000;
-	*(vu32*)0xCC006430 = 0x00f70200;
-	*(vu32*)0xCC006438 = 0x80000000;
-	*(vu32*)0xCC006480 = 0x00000000;
-	*(vu32*)0xCC006434 = 0xc0010301;
-	*(vu32*)0xCC006438 = 0x00000000;
+	u32 i;
 
-	(void)*(vu32*)0xCC006434;
+	for(i=0;i<PAD_MAX;i++) 
+		_padId[i] = __get_controllerid(i)>>16;
+	
+	__set_polling();
 
-	*(vu32*)0xCC006430 |= 0xF0; // enable all four controller ports
-
-	*(vu32*)0xCC006400  = 0x00400300;
-	*(vu32*)0xCC00640C  = 0x00400300;
-	*(vu32*)0xCC006418  = 0x00400300;
-	*(vu32*)0xCC006424  = 0x00400300;
-
-	udelay(1000);
-
-	*(vu32*)0xCC006430 = 0x00000000;
-	*(vu32*)0xCC006438 = 0x80000000;
-	*(vu32*)0xCC006430 = 0x00f70200;
-	*(vu32*)0xCC006438 = 0x80000000;
-	*(vu32*)0xCC006480 = 0x00000000;
-	*(vu32*)0xCC006434 = 0xc0010301;
-	*(vu32*)0xCC006438 = 0x00000000;
-
-	(void)*(vu32*)0xCC006434;
-
-	*(vu32*)0xCC006430 |= 0xF0; // enable all four controller ports
-
-	*(vu32*)0xCC006400  = 0x00400300;
-	*(vu32*)0xCC00640C  = 0x00400300;
-	*(vu32*)0xCC006418  = 0x00400300;
-	*(vu32*)0xCC006424  = 0x00400300;
+	IRQ_Request(IRQ_PI_SI,__si_tc_handler,NULL);
+	__UnmaskIrq(IRQMASK(IRQ_PI_SI));
 }
 
 void PAD_ReadState(PAD *pPad, u8 PadChannel)

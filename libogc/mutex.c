@@ -1,6 +1,8 @@
 #include <stdlib.h>
+#include <errno.h>
 #include "asm.h"
 #include "lwp_mutex.h"
+#include "lwp_wkspace.h"
 #include "mutex.h"
 
 static u32 __lwp_mutex_locksupp(mutex_t *mutex,u32 timeout,u8 block)
@@ -20,7 +22,7 @@ u32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
 	if(mutex->mutex) return 0;
 
 	__lwp_thread_dispatchdisable();
-	ret = (lwp_mutex*)malloc(sizeof(lwp_mutex));
+	ret = (lwp_mutex*)__lwp_wkspace_allocate(sizeof(lwp_mutex));
 	if(!ret) {
 		__lwp_thread_dispatchenable();
 		return -1;
@@ -34,6 +36,21 @@ u32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
 
 	mutex->id++;
 	mutex->mutex = (void*)ret;
+	__lwp_thread_dispatchenable();
+	return 0;
+}
+
+u32 LWP_MutexDestroy(mutex_t *mutex)
+{
+	__lwp_thread_dispatchdisable();
+	if(__lwp_mutex_locked((lwp_mutex*)mutex->mutex)) {
+		__lwp_thread_dispatchenable();
+		return EBUSY;
+	}
+	
+	__lwp_mutex_flush((lwp_mutex*)mutex->mutex,EINVAL);
+	__lwp_wkspace_free(mutex->mutex);
+
 	__lwp_thread_dispatchenable();
 	return 0;
 }
