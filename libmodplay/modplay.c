@@ -162,18 +162,13 @@ static u32* modplay_getinctab(s32 freq)
 
 static u32* modplay_getbpmtab(s32 freq)
 {
-	u32 tv;
 	u32 i,curr_tab,*bpm_tab = NULL;
-	f32 fval,fdivid;
+	f32 fval;
 
 	if(freq==32000) curr_tab = 0;
 	else curr_tab = 1;
 
 	if(bpm_tabs[curr_tab]) return bpm_tabs[curr_tab];
-
-	tv = VIDEO_GetCurrentTvMode();
-	if(tv==VI_PAL) fdivid = 50.0F;
-	else fdivid = 60.0F;
 
 	bpm_tab = (u32*)malloc(sizeof(u32)*224);
 	if(bpm_tab) {
