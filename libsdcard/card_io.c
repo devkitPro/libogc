@@ -59,7 +59,7 @@ static __inline__ u32 __check_response(s32 drv_no,u8 *res)
 	return _err_status[drv_no];
 }
 
-static __inline__ u8 __make_crc7(void *buffer,u32 len)
+static u8 __make_crc7(void *buffer,u32 len)
 {
 	u32 mask,cnt,bcnt;
 	u32 res,val;
@@ -90,7 +90,7 @@ static __inline__ u8 __make_crc7(void *buffer,u32 len)
 	return (res<<1)&0xff;
 }
 
-static __inline__ u16 __make_crc16(void *buffer,u32 len)
+static u16 __make_crc16(void *buffer,u32 len)
 {
 	u32 mask,cnt,bcnt;
 	u32 res,val,tmp;
@@ -127,14 +127,14 @@ static __inline__ u16 __make_crc16(void *buffer,u32 len)
 	return (res&0xffff);
 }
 
-static __inline__ u32 __card_checktimeout(u32 startT,u32 timeout)
+static u32 __card_checktimeout(u32 startT,u32 timeout)
 {
 	s32 endT,diff;
 	s32 msec;
 
 	endT = gettick();
-	if(startT>endT) {
-		diff = ((endT+(startT-1))+1);
+	if(endT<startT) {
+		diff = (endT+(-1-startT))+1;
 	} else
 		diff = (endT-startT);
 
@@ -199,7 +199,7 @@ static s32 __card_writecmd0(s32 drv_no,void *buf,s32 len)
 
 	
 	cnt = 0;
-	while(cnt<21) {
+	while(cnt<20) {
 		if(EXI_ImmEx(drv_no,dummy,128,EXI_WRITE)==0) {
 			EXI_Deselect(drv_no);
 			EXI_Unlock(drv_no);
@@ -361,6 +361,7 @@ static s32 __card_readresponse(s32 drv_no,void *buf,s32 len)
 static s32 __card_stopreadresponse(s32 drv_no,void *buf,s32 len)
 {
 	u8 *ptr;
+	u8 res[2];
 	s32 startT,ret;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
