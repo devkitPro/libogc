@@ -309,7 +309,7 @@ static void __VIInit(u32 vimode)
 	//reset the interface
 	cnt = 0;
 	_viReg[1] = 0x02;
-	while(cnt<1000) cnt += 8;
+	while(cnt<1000) cnt++;
 	_viReg[1] = 0x00;
 
 	// now begin to setup the interface
@@ -430,6 +430,12 @@ void __vi_init()
 
 	IRQ_Request(IRQ_PI_VI,__VIRetraceHandler,NULL);
 	__UnmaskIrq(IRQMASK(IRQ_PI_VI));
+}
+
+void VI_Init()
+{
+	__VIInit(VI_TVMODE_NTSC_INT);
+	
 }
 
 void VIDEO_Init(u32 VideoMode)
