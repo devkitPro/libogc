@@ -1023,8 +1023,6 @@ void GX_InitLightAttnK(GXLightObj *lit_obj,f32 k0,f32 k1,f32 k2);
 void GX_InitSpecularDirHA(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz,f32 hx,f32 hy,f32 hz);
 void GX_InitSpecularDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz);
 void GX_InitLightSpot(GXLightObj *lit_obj,f32 cut_off,u8 spotfn);
-#define GX_InitLightShininess(lobj, shininess)   \
-        GX_InitLightAttn(lobj, 0.0F, 0.0F, 1.0F, (shininess)/2.0F, 0.0F, 1.0F-(shininess)/2.0F )
 
 void GX_SetGPMetric(u32 perf0,u32 perf1);
 void GX_ClearGPMetric();

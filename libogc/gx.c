@@ -721,6 +721,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	
 	_gx[0x01] = 0;
 	_gx[0x02] = 0;
+	_gx[0x03] = 0;
 
 	_gx[0xaf] = 0xff;
 	_gx[0xaf] = (_gx[0xaf]&~0xff000000)|(_SHIFTL(0x0f,24,8));
