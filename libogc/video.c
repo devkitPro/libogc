@@ -972,9 +972,9 @@ void VIDEO_Init()
 
 void VIDEO_Configure(GXRModeObj *rmode)
 {
-	u16 dcr;
+	u16 dcr,value;
 	s32 tmp,tmp1,tmp2;
-	u32 nonint,vimode,div,tmp4,tmp5,value,level;
+	u32 nonint,vimode,div,tmp4,tmp5,level;
 	const struct _timing *curtiming;
 
 	_CPU_ISR_Disable(level);
@@ -1091,7 +1091,7 @@ void VIDEO_Configure(GXRModeObj *rmode)
 
 	value = (curtiming->hbe640+HorVer.adjustedDispPosX-40);
 	regs[4] = (value>>9)|(((curtiming->hbs640+HorVer.adjustedDispPosX+40)-(720-HorVer.dispSizeX))<<1);
-	regs[5] = ((value<<7)&0xff80)|curtiming->hsy;
+	regs[5] = ((value<<7)&~0x7f)|curtiming->hsy;
 	changed |= VI_REGCHANGE(4);
 	changed |= VI_REGCHANGE(5);
 
@@ -1128,9 +1128,8 @@ void VIDEO_WaitVSync(void)
 	
 	_CPU_ISR_Disable(level);
 	retcnt = retraceCount;
-	do {
+	while(retraceCount==retcnt)
 		LWP_SleepThread(video_queue);
-	} while(retraceCount==retcnt);
 	_CPU_ISR_Restore(level);
 }
 
