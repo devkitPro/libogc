@@ -13,7 +13,7 @@
 //#define _GP_DEBUG
 
 #define GX_FINISH		2
-
+#define BIG_NUMBER		(1024*1024)
 #define WGPIPE			0xCC008000
 
 #define _SHIFTL(v, s, w)	\
@@ -2990,69 +2990,44 @@ void GX_SetIndTexCoordScale(u8 indtexid,u8 scale_s,u8 scale_t)
 
 void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col)
 {
-	u32 val;
-/*	
-	u32 tmp,i,ftmp[2],regval;
-	f32 v1,v2;
-	f64 ftmp1;
+    f32 A, B, B_mant, C, A_f;
+    u32 b_expn, b_m, a_hex, c_hex,proj = 0;
 
-	if(farz==nearz || endz==startz) {
-		v2 = nearz = 0.0f;
-		farz = 0.5f;
-	} else {
-		v1 = farz-nearz;
-		v2 = endz-startz;
-		endz = 	farz*nearz;
-		farz /= v1;
-		v1 *= v2;
-		v2 = startz/v2;
-		nearz = endz/v1;
-	}
-	
-	i=0;
-	startz = 0.5f;
-	while(farz>(f64)1.0f) {
-		farz *= startz;
-		i++;
-	}
-	endz = 2.0f;
-	while(farz<(f64)0.5f) {
-		if(farz<=0.0f) break;
-		farz *= endz;
-		i--;
-	}
-	i++;
-	
-	tmp = (1<<i)^0x80000000;
-	startz = 8388638.0f*farz;
-	
-	ftmp[0] = 0x43300000;
-	ftmp[1] = tmp;
-	ftmp1 = *(f64*)ftmp;
-	ftmp1 -= (f64)4503601774854144.0f;
-	ftmp1 =  nearz/ftmp1;
-	
-	regval = (((u32)ftmp1)<<20)&0x7f800;
-	regval = (regval&~0x7ff)|((((u32)ftmp1)<<20)&0x7ff);
 
-	tmp = (((u32)ftmp1)<<20)&0x80000;
-	regval = (tmp&~0x7FFFF)|(regval&0x7FFFF);
+    // Calculate constants a, b, and c (TEV HW requirements).
+    if((farz==nearz) || (endz==startz)) {
+        // take care of the odd-ball case.
+        A = 0.0f;
+        B = 0.5f;
+        C = 0.0f;
+    } else {
+        A = (farz*nearz)/((farz-nearz)*(endz-startz));
+        B = farz/(farz-nearz);
+        C = startz/(endz-startz);
+    }
 
-	GX_LOAD_BP_REG(0xee000000|(regval&0x00ffffff));
-*/	
-	GX_LOAD_BP_REG(0xee03ce38);
-	GX_LOAD_BP_REG(0xef471c82);
-	GX_LOAD_BP_REG(0xf0000002);
+    B_mant = B;
+    b_expn = 1;
+    while(B_mant>1.0) {
+        B_mant /= 2;
+        b_expn++;
+    }
 
-	val = 0;
-	val = (val&~0xE00000)|(_SHIFTL(type,21,3));
-	GX_LOAD_BP_REG(val);
+    while((B_mant>0) && (B_mant<0.5)) {
+        B_mant *= 2;
+        b_expn--;
+    }
 
-	val = 0;
-	val = (val&~0xff)|(col.b&0xff);
-	val = (val&~0xFF00)|(_SHIFTL(col.g,8,8));
-	val = (val&~0xFF0000)|(_SHIFTL(col.r,16,8));
-	GX_LOAD_BP_REG(val);
+    A_f   = A/(1<<(b_expn));
+    b_m   = (u32)(B_mant * 8388638);
+    a_hex = (*(u32*)&A_f);
+    c_hex = (*(u32*)&C);
+
+	GX_LOAD_BP_REG(0xee000000|(a_hex>>12));
+	GX_LOAD_BP_REG(0xef000000|b_m);
+	GX_LOAD_BP_REG(0xf0000000|b_expn);
+	GX_LOAD_BP_REG(0xf1000000|((type<<21)|(proj<<20)|(c_hex>>12)));
+	GX_LOAD_BP_REG(0xf2000000|(_SHIFTL(col.r,16,8)|_SHIFTL(col.g,8,8)|(col.b&0xff)));
 }
 
 void GX_SetFogRangeAdj(u8 enable,u16 center,GXFogAdjTbl *table)
@@ -3342,44 +3317,37 @@ void GX_InitLightDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz)
 
 void GX_InitLightDistAttn(GXLightObj *lit_obj,f32 ref_dist,f32 ref_brite,u8 dist_fn)
 {
-	f32 ksub1,ksub2,ksub3,tmp;
+	f32 k0,k1,k2;
 
-	if(ref_dist<0.0f) dist_fn = GX_DA_OFF;
-	if(ref_brite<0.0f || ref_brite>=1.0f) dist_fn = GX_DA_OFF;
+	if(ref_dist<0.0f ||
+		ref_brite<0.0f || ref_brite>=1.0f) dist_fn = GX_DA_OFF;
 	
 	switch(dist_fn) {
-		case GX_DA_OFF:
-			ksub1 = 1.0f;
-			ksub2 = 0.0f;
-			ksub3 = 0.0f;
-			break;
 		case GX_DA_GENTLE:
-			ksub1 = 1.0f;
-			tmp = (1.0f-ref_brite);
-			ksub2 = tmp/(ref_brite*ref_dist);
-			ksub3 = 0.0f;
+			k0 = 1.0f;
+			k1 = (1.0f-ref_brite)/(ref_brite*ref_dist);
+			k2 = 0.0f;
 			break;
 		case GX_DA_MEDIUM:
-			ksub1 = 1.0f;
-			tmp = (1.0f-ref_brite);
-			ksub2 = (0.5f*tmp)/(ref_brite*ref_dist);
-			ksub3 = (0.5f*tmp)/(ref_dist*(ref_brite*ref_dist));
+			k0 = 1.0f;
+			k1 = 0.5f*(1.0f-ref_brite)/(ref_brite*ref_dist);
+			k2 = 0.5f*(1.0f-ref_brite)/(ref_brite*ref_dist*ref_dist);
 			break;
 		case GX_DA_STEEP:
-			ksub1 = 1.0f;
-			ksub2 = 0.0f;
-			tmp = (1.0f-ref_brite);
-			ksub3 = (0.5f*tmp)/(ref_dist*(ref_brite*ref_dist));
+			k0 = 1.0f;
+			k1 = 0.0f;
+			k2 = (1.0f-ref_brite)/(ref_brite*ref_dist*ref_dist);
 			break;
+		case GX_DA_OFF:
 		default:
-			ksub1 = 0.0f;
-			ksub2 = 0.0f;
-			ksub3 = 0.0f;
+			k0 = 1.0f;
+			k1 = 0.0f;
+			k2 = 0.0f;
 			break;
 	}
-	((f32*)lit_obj->val)[7] = ksub1;	
-	((f32*)lit_obj->val)[8] = ksub2;	
-	((f32*)lit_obj->val)[9] = ksub3;	
+	((f32*)lit_obj->val)[7] = k0;	
+	((f32*)lit_obj->val)[8] = k1;	
+	((f32*)lit_obj->val)[9] = k2;	
 }
 
 void GX_InitLightAttn(GXLightObj *lit_obj,f32 a0,f32 a1,f32 a2,f32 k0,f32 k1,f32 k2)
@@ -3408,131 +3376,90 @@ void GX_InitLightAttnK(GXLightObj *lit_obj,f32 k0,f32 k1,f32 k2)
 
 void GX_InitSpecularDirHA(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz,f32 hx,f32 hy,f32 hz)
 {
-	f32 posx,posy,posz;
+    f32 px, py, pz;
 
+    px = -nx * BIG_NUMBER;
+    py = -ny * BIG_NUMBER;
+    pz = -nz * BIG_NUMBER;
+
+	((f32*)lit_obj)[10] = px;
+	((f32*)lit_obj)[11] = py;
+	((f32*)lit_obj)[12] = pz;
 	((f32*)lit_obj)[13] = hx;
 	((f32*)lit_obj)[14] = hy;
 	((f32*)lit_obj)[15] = hz;
-
-	posx = 1048576.0f*(-nx);
-	posy = 1048576.0f*(-ny);
-	posz = 1048576.0f*(-nz);
-	
-	((f32*)lit_obj)[10] = posx;
-	((f32*)lit_obj)[11] = posy;
-	((f32*)lit_obj)[12] = posz;
 }
 
 void GX_InitSpecularDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz)
 {
-	f64 a = 0.5;
-	f64 b = 3.0;
-	f32 nrmx,nrmy,nrmz,posx,posy,posz;
-	f32 nxx,nyy,nzz,nzsub,tmp,tmp1;
+    f32 px, py, pz;
+    f32 hx, hy, hz, mag;
 
-	#define frsqrte(in,out) {asm volatile("frsqrte %0,%1" : "=&r"(out) : "r"(in));}
-	#define frsp(in,out) {asm volatile("frsp %0,%1" : "=&r"(out) : "r"(in));}
+    // Compute half-angle vector
+    hx  = -nx;
+    hy  = -ny;
+    hz  = (-nz + 1.0f);
+    mag = 1.0f / sqrtf((hx * hx) + (hy * hy) + (hz * hz));
+    hx *= mag;
+    hy *= mag;
+    hz *= mag;
 
-	nx = -nx;
-	ny = -ny;
-	nzsub = 1.0f-nz;
-
-	nxx = (nx*nx)+1.0f;
-	nyy = ny*ny;
-	nzz = (nzsub*nzsub)+1.0f;
-	if(nzz>0.0f) {
-		frsqrte(nzz,tmp);
-		tmp1 = tmp*tmp;
-		tmp = a*tmp;
-		tmp1 = nzz*tmp1;
-		tmp1 = b-tmp1;
-		tmp = tmp*tmp1;
-		tmp1 = tmp*tmp;
-		tmp = a*tmp1;
-		tmp1 = nzz*tmp1;
-		tmp1 = b-tmp1;
-		tmp = tmp*tmp1;
-		tmp1 = tmp*tmp;
-		tmp = a*tmp1;
-		tmp1 = nzz*tmp1;
-		tmp1 = b-tmp1;
-		tmp1 = tmp*tmp1;
-		tmp1 = nzz*tmp1;
-		frsp(tmp1,nzz);
-	}
-
-	nz = -nz;
-	tmp = 1.0f/nzz;
-	nrmx = nx*tmp;
-	nrmy = ny*tmp;
-	nrmz = nzsub*tmp;
+    px  = -nx * BIG_NUMBER;
+    py  = -ny * BIG_NUMBER;
+    pz  = -nz * BIG_NUMBER;
 	
-	posx = 1048576.0f*nx;
-	posy = 1048576.0f*ny;
-	posz = 1048576.0f*nz;
-
-	((f32*)lit_obj)[10] = posx;
-	((f32*)lit_obj)[11] = posy;
-	((f32*)lit_obj)[12] = posz;
-
-	((f32*)lit_obj)[13] = nrmx;
-	((f32*)lit_obj)[14] = nrmy;
-	((f32*)lit_obj)[15] = nrmz;
+	((f32*)lit_obj)[10] = px;
+	((f32*)lit_obj)[11] = py;
+	((f32*)lit_obj)[12] = pz;
+	((f32*)lit_obj)[13] = hx;
+	((f32*)lit_obj)[14] = hy;
+	((f32*)lit_obj)[15] = hz;
 }
 
 void GX_InitLightSpot(GXLightObj *lit_obj,f32 cut_off,u8 spotfn)
 {
-	f32 tmp,tmp1,tmp2,tmp3,a0,a1,a2;
+	f32 r,d,cr,a0,a1,a2;
 
 	if(cut_off<0.0f ||	cut_off>90.0f) spotfn = GX_SP_OFF;
 	
-	tmp = (cut_off*M_PI)/180.0f;
-	tmp = cosf(tmp);
+	r = (cut_off*M_PI)/180.0f;
+	cr = cosf(r);
 
 	switch(spotfn) {
 		case GX_SP_FLAT:
-			a0 = -1000.0f*tmp;
+			a0 = -1000.0f*cr;
 			a1 = 1000.0f;
 			a2 = 0.0f;
 			break;
 		case GX_SP_COS:
-			a0 = -tmp/(1.0f-tmp);
-			a1 = 1.0f/(1.0f-tmp);
+			a0 = -cr/(1.0f-cr);
+			a1 = 1.0f/(1.0f-cr);
 			a2 = 0.0f;
 			break;
 		case GX_SP_COS2:
 			a0 = 0.0f;
-			a1 = -tmp/(1.0f-tmp);
-			a2 = 1.0f/(1.0f-tmp);
+			a1 = -cr/(1.0f-cr);
+			a2 = 1.0f/(1.0f-cr);
 			break;
 		case GX_SP_SHARP:
-			tmp1 = 1.0f-tmp;
-			tmp1 = tmp1*tmp1;
-			tmp = tmp*(tmp-2.0f);
-			a0 = tmp/tmp1;
-			a1 = 2.0f/tmp1;
-			a2 = -1.0/tmp1;
+			d = (1.0f-cr)*(1.0f-cr);
+			a0 = cr*(cr-2.0f);
+			a1 = 2.0f/d;
+			a2 = -1.0/d;
 			break;
 		case GX_SP_RING1:
-			tmp1 = 1.0f-tmp;
-			tmp1 = tmp1*tmp1;
-			tmp2 = 1.0f+tmp;
-			tmp2 = 4.0f*tmp2;
-			tmp = -4.0f*tmp;
-			a0 = tmp/tmp1;
-			a1 = tmp2/tmp1;
-			a2 = -4.0f/tmp1;
+			d = (1.0f-cr)*(1.0f-cr);
+			a0 = -4.0f*cr/d;
+			a1 = 4.0f*(1.0f+cr)/d;
+			a2 = -4.0f/d;
 			break;
 		case GX_SP_RING2:
-			tmp1 = 1.0f-tmp;
-			tmp1 = tmp1*tmp1;
-			tmp2 = 2.0f*tmp;
-			tmp3 = 4.0f*tmp;
-			tmp = tmp2*tmp;
-			a0 = 1.0f/(tmp/tmp1);
-			a1 = tmp3/tmp1;
-			a2 = -2.0f/tmp1;
+			d = (1.0f-cr)*(1.0f-cr);
+			a0 = 1.0f-2.0f*cr*cr/d;
+			a1 = 4.0f*cr/d;
+			a2 = -2.0f/d;
 			break;
+		case GX_SP_OFF:
 		default:
 			a0 = 1.0f;
 			a1 = 0.0f;
@@ -3874,3 +3801,5 @@ f32 GX_GetYScaleFactor(u16 efbHeight,u16 xfbHeight)
 	}
 	return (f32)yscale;
 }
+
+#undef BIG_NUMBER
