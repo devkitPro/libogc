@@ -73,6 +73,20 @@ static __inline__ struct _xy* __si_getxy()
 	return NULL;
 }
 
+static __inline__ void si_cleartcinterrupt()
+{
+	_siReg[13] = (_siReg[13]&~1)|0x80000000;
+}
+
+static u32 __si_completetransfer()
+{
+	u32 tmp;
+
+	tmp = _siReg[14];
+
+	return 1;	
+}
+
 static void __si_transfercommands()
 {
 	_siReg[14] = 0x80000000;
