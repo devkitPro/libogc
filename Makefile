@@ -50,7 +50,7 @@ DBLIB		:= $(LIBDIR)/libdb
 SDCARDLIB	:= $(LIBDIR)/libsdcard
 GCSYSLIB	:= $(LIBDIR)/libogcsys
 STUBSLIB	:= $(LIBDIR)/libstubs
-
+GCN_CRT0	:= $(LIBDIR)/gcn_crt0
 #---------------------------------------------------------------------------------
 DEFINCS		:= -I$(BASEDIR) -I$(BASEDIR)/gc
 INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
@@ -121,7 +121,7 @@ GCSYSOBJ	:=	newlibc.o sbrk.o open.o write.o close.o \
 				stdin_fake.o sdcardio_fake.o flock_supp.o \
 				lock_supp.o
 				
-STUBSOBJ	:=	malloc_lock_stub.o flock_supp_stub.o lock_supp_stub.o
+STUBSOBJ	:=	malloc_lock_stub.o flock_supp_stub.o lock_supp_stub.o gcn_crt0.o
 
 #---------------------------------------------------------------------------------
 # Build rules:
@@ -147,7 +147,7 @@ STUBSOBJ	:=	malloc_lock_stub.o flock_supp_stub.o lock_supp_stub.o
 %.o : %.s
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
-	@$(AS) -mgekko -Qy $< -o $(OBJDIR)/$@
+	@$(AS) -mgekko -Qy $< -o $@
 
 #---------------------------------------------------------------------------------
 %.a:
@@ -180,7 +180,8 @@ $(SDCARDLIB).a: $(SDCARDOBJ)
 $(GCSYSLIB).a: $(GCSYSOBJ)
 #---------------------------------------------------------------------------------
 $(STUBSLIB).a: $(STUBSOBJ)
-
+#---------------------------------------------------------------------------------
+ 
 .PHONEY: libs install dist
 
 #---------------------------------------------------------------------------------
@@ -202,7 +203,7 @@ install:
 #---------------------------------------------------------------------------------
 dist:
 #---------------------------------------------------------------------------------
-	tar -cjf libogc.tar.bz2 include lib license.txt
+	@tar -cvjf libogc.tar.bz2 include lib license.txt
 
 #---------------------------------------------------------------------------------
 libs: $(OGCLIB).a $(BBALIB).a $(MODLIB).a $(MADLIB).a $(DBLIB).a $(SDCARDLIB).a $(GCSYSLIB).a $(STUBSLIB).a

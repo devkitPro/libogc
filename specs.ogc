@@ -63,7 +63,7 @@ cc1 -E %{traditional|ftraditional|traditional-cpp:-traditional-cpp}
 1
 
 *version:
-3.4.2
+3.4.3
 
 *multilib:
 . ;
@@ -120,7 +120,7 @@ collect2
 crtsavres.o%s
 
 *lib_gcn:
---start-group -lads -lc --end-group
+--start-group -lads -lc -lstubs --end-group
 
 *lib_ogc:
 --start-group -logcsys -lc -logc --end-group
@@ -159,7 +159,7 @@ crtsavres.o%s
 
 
 *startfile_gcn:
-gcn_crt0.o%s ecrti.o%s crtbegin.o%s
+ecrti.o%s crtbegin.o%s
 
 *startfile_ogc:
 ecrti.o%s crtbegin.o%s
@@ -249,7 +249,7 @@ crtend.o%s
 %{mgcn         : %(link_start_gcn); mogc   : %(link_start_ogc); mads   : %(link_start_ads);   myellowknife : %(link_start_yellowknife) ;   mmvme        : %(link_start_mvme)        ;   msim         : %(link_start_sim)         ;   mwindiss     : %(link_start_windiss)     ;   mcall-freebsd: %(link_start_freebsd)     ;   mcall-linux  : %(link_start_linux)       ;   mcall-gnu    : %(link_start_gnu)         ;   mcall-netbsd : %(link_start_netbsd)      ;   mcall-openbsd: %(link_start_openbsd)     ;                : %(link_start_default)     }
 
 *link_start_gcn:
--T gcn.ld%s
+-T ogc.ld%s
 
 *link_start_ogc:
 -T ogc.ld%s
