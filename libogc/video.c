@@ -62,33 +62,6 @@ static const u32 VIDEO_Mode640X480YUV16[3][32] = {
 	}
 };
 
-static const u32 timing[] = {
-	0x060000f0, 0x00180019, 0x00030002, 0x0c0d0c0d,
-	0x02080207, 0x02080207, 0x020d01ad, 0x404769a2,
-	0x01757a00,	0x019c,
-
-			          0600,	0x00f00018,	0x00180004,
-	0x00040c0c,	0x0c0c0208,	0x02080208,	0x0208020e,
-	0x01ad4047,	0x69a20175,	0x7a00019c,	0x0500011f,
-	
-	0x00230024,	0x00010000,	0x0d0c0b0a,	0x026b026a,
-	0x0269026c,	0x027101b0,	0x404b6aac,	0x017c8500,
-	0x01a40500,	0x011f,
-	
-				      0021,	0x00210002,	0x00020d0b,
-	0x0d0b026b,	0x026d026b,	0x026d0270,	0x01b0404b,
-	0x6aac017c,	0x850001a4,	0x060000f0,	0x00180019,
-	0x00030002,	0x100f0e0d,	0x02060205,	0x02040207,
-	0x020d01ad,	0x404e70a2,	0x01757a00,	0x019c0600,
-	0x00f00018,	0x00180004,	0x0004100e,	0x100e0206,
-	0x02080206,	0x0208020e,	0x01ad404e,	0x70a20175,
-	0x7a00019c,	0x0c0001e0,	0x00300030,	0x00060006,
-	0x18181818,	0x040e040e,	0x040e040e,	0x041a01ad,
-	0x404769a2,	0x01757a00,	0x019c0c00,	0x01e0002c,
-	0x002c000a,	0x000a1818,	0x1818040e,	0x040e040e,
-	0x040e041a,	0x01ad4047,	0x69a8017b,	0x7a00019c
-};
-
 GXRModeObj TVPal524IntAa = 
 {
 	VI_TVMODE_PAL_INT,
@@ -207,9 +180,41 @@ extern u32 __video_clearif();
 extern int printf(const char *fmt,...);
 #endif
 
+static __inline__ void __clear_interrupt()
+{
+	_viReg[24] &= ~0x8000;
+	_viReg[26] &= ~0x8000;
+	_viReg[28] &= ~0x8000;
+	_viReg[30] &= ~0x8000;
+}
+
+static __inline__ u32 __checkclear_interrupt()
+{
+	u32 ret = 0;
+
+	if(_viReg[24]&0x8000) {
+		_viReg[24] &= ~0x8000;
+		ret |= 0x01;
+	}
+	if(_viReg[26]&0x8000) {
+		_viReg[26] &= ~0x8000;
+		ret |= 0x02;
+	}
+	if(_viReg[28]&0x8000) {
+		_viReg[28] &= ~0x8000;
+		ret |= 0x04;
+	}
+	if(_viReg[30]&0x8000) {
+		_viReg[30] &= ~0x8000;
+		ret |= 0x08;
+	}
+	return ret;
+}
+
 static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 {
-	if(__video_clearif()&0xc) return;
+	u32 ret;
+	if(!(ret=__checkclear_interrupt()) || ret&0xc) return;
 
 	retraceCount++;
 	if(preRetraceCB)
@@ -222,7 +227,7 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 #endif
 	LWP_WakeThread(video_queue);
 }
-
+/*
 static void __VIInit(u8 mode)
 {
 	int cnt;
@@ -235,7 +240,7 @@ static void __VIInit(u8 mode)
 
 	
 }
-
+*/
 static u32 __getCurrentHalfLine()
 {
 	u32 tmp;
@@ -257,11 +262,31 @@ static u32 __getCurrentHalfLine()
 	return vpos+(hpos/tmp);	
 }
 
+static u32 __getFieldEvenOdd()
+{
+	u32 hline;
+	u32 nhline;
+
+	hline = __getCurrentHalfLine();
+	nhline = (currTiming[24]-1)*2;
+	if(hline<nhline) return 1;
+
+	return 0;
+}
+
+static u32 __VISetRegs()
+{
+	if(!__getFieldEvenOdd()) return 0;
+
+	return 1;
+}
 
 void __vi_init()
 {
 	retraceCount = 0;
 	
+	__clear_interrupt();
+
 	LWP_InitQueue(&video_queue);
 
 	IRQ_Request(IRQ_PI_VI,__VIRetraceHandler,NULL);
@@ -272,6 +297,7 @@ void VIDEO_Init(u32 VideoMode)
 {
 	u32 *pDstAddr=MEM_VIDEO_BASE_PTR;
 
+	retraceCount = 0;
 	videoMode = VideoMode;
 	switch(VideoMode) {
 		case VIDEO_640X480_NTSC_YUV16:
