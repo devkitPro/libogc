@@ -11,7 +11,7 @@ typedef void (*DVDCallback)(u32);
 
 void DVD_Init();
 s32 DVD_Read(void *pDst,s32 nLen,u32 nOffset);
-s32 DVD_ReadId(void *pDst);
+s32 DVD_ReadId(void *block,u32 *id,DVDCallback cb);
 void DVD_Reset();
 
 #ifdef __cplusplus

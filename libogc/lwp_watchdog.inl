@@ -56,12 +56,14 @@ static __inline__ void __lwp_wd_tickle_secs()
 static __inline__ void __lwp_wd_insert_ticks(wd_cntrl *wd,u64 interval)
 {
 	wd->init_interval = interval;
+	wd->start_time = 0;
 	__lwp_wd_insert(&_wd_ticks_queue,wd);
 }
 
 static __inline__ void __lwp_wd_insert_secs(wd_cntrl *wd,u64 interval)
 {
 	wd->init_interval = interval;
+	wd->start_time = 0;
 	__lwp_wd_insert(&_wd_secs_queue,wd);
 }
 

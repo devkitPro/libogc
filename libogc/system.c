@@ -666,12 +666,15 @@ void SYS_RemoveAlarm(sysalarm *alarm)
 	_CPU_ISR_Disable(level);
 	prev = alarm->prev;
 	next = alarm->next;
-	prev->next = next;
-	next->prev = prev;
+	if(alarm==system_alarm) system_alarm = system_alarm->next;
+	if(prev) prev->next = next;
+	if(next) next->prev = prev;
 	_CPU_ISR_Restore(level);
 
-	__lwp_wd_remove(alarm->handle);
-	__lwp_wkspace_free(alarm->handle);
+	if(alarm->handle) {
+		__lwp_wd_remove(alarm->handle);
+		__lwp_wkspace_free(alarm->handle);
+	}
 }
 
 void SYS_CancelAlarm(sysalarm *alarm)

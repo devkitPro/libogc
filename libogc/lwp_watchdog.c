@@ -61,10 +61,11 @@ void __lwp_watchdog_init()
 
 void __lwp_wd_insert(lwp_queue *header,wd_cntrl *wd)
 {
+	s64 now;
 	u32 level;
 	wd_cntrl *after;
 	u32 isr_nest_level;
-	u64 delta_interval;
+	u64 delta_interval,diff;
 #ifdef _LWPWD_DEBUG
 	printf("__lwp_wd_insert()\n");
 #endif
@@ -78,7 +79,11 @@ restart:
 	_CPU_ISR_Disable(level);
 	for(after=__lwp_wd_first(header);;after=__lwp_wd_next(after)) {
 		if(delta_interval==0 || !__lwp_wd_next(after)) break;
-
+	
+		now = gettime();
+		diff = diff_ticks(now,after->start_time);
+		after->start_time = now;
+		after->delta_interval -= diff;
 		if(delta_interval<after->delta_interval) {
 			after->delta_interval -= delta_interval;
 			break;
@@ -97,8 +102,8 @@ restart:
 	__lwp_wd_activate(wd);
 	wd->delta_interval = delta_interval;
 	__lwp_queue_insertI(after->node.prev,&wd->node);
-	wd->start_time = gettime();
-	if(__lwp_wd_first(header)==wd) __lwp_wd_settimer(wd);
+	wd->start_time = now;
+	__lwp_wd_settimer(__lwp_wd_first(header));
 
 exit_insert:
 	_wd_sync_level = isr_nest_level;
@@ -110,12 +115,15 @@ u32 __lwp_wd_remove(wd_cntrl *wd)
 {
 	u32 level;
 	u32 prev_state;
+	s64 now;
+	u64 diff;
 	wd_cntrl *next;
 #ifdef _LWPWD_DEBUG
 	printf("__lwp_wd_remove(%p)\n",wd);
 #endif
 	_CPU_ISR_Disable(level);
-	
+	now = gettime();
+	diff = diff_ticks(now,wd->start_time);
 	prev_state = wd->state;
 	switch(prev_state) {
 		case LWP_WD_INACTIVE:
@@ -127,7 +135,11 @@ u32 __lwp_wd_remove(wd_cntrl *wd)
 		case LWP_WD_REMOVE:
 			wd->state = LWP_WD_INACTIVE;
 			next = __lwp_wd_next(wd);
-			if(__lwp_wd_next(next)) next->delta_interval += wd->delta_interval;
+			if(wd->delta_interval>0) wd->delta_interval -= diff;
+			if(__lwp_wd_next(next)) {
+				next->delta_interval += wd->delta_interval;
+				__lwp_wd_settimer(next);
+			}
 			if(_wd_sync_count) _wd_sync_level = __lwp_isr_in_progress();
 			__lwp_queue_extractI(&wd->node);
 			break;
@@ -138,7 +150,6 @@ u32 __lwp_wd_remove(wd_cntrl *wd)
 
 void __lwp_wd_tickle(lwp_queue *queue)
 {
-	u32 ret;
 	wd_cntrl *wd;
 	s64 now;
 	u64 diff;
@@ -159,6 +170,7 @@ void __lwp_wd_tickle(lwp_queue *queue)
 		return;
 	}
 
+	wd->delta_interval = 0;
 	do {
 		switch(__lwp_wd_remove(wd)) {
 			case LWP_WD_ACTIVE:	
@@ -172,8 +184,7 @@ void __lwp_wd_tickle(lwp_queue *queue)
 				break;
 		}
 		wd = __lwp_wd_first(queue);
-	} while(!(ret=__lwp_queue_isempty(queue)) && wd->delta_interval==0);
-	if(!ret) __lwp_wd_settimer(wd);
+	} while(!__lwp_queue_isempty(queue) && wd->delta_interval==0);
 }
 
 void __lwp_wd_adjust(lwp_queue *queue,u32 dir,u64 interval)
