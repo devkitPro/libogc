@@ -32,7 +32,6 @@ static sd_info _sdInfo[MAX_DRIVE];
 static mutex_t _fatLock[MAX_DRIVE];
 static opendfile_list *_fatOpenedFile[MAX_DRIVE];
 static u32 _fatFlag[MAX_DRIVE];
-static u16 *_fat[MAX_DRIVE];
 static u32 _fatTblIdxCnt[MAX_DRIVE];
 static u32 _fat1StartSect[MAX_DRIVE];
 static u32 _fat1Sectors[MAX_DRIVE];
@@ -41,6 +40,9 @@ static u32 _fatRootSects[MAX_DRIVE];
 static u32 _fatClusterStartSect[MAX_DRIVE];
 static u32 _fatCacheSize[MAX_DRIVE];
 static u8 _drvName[MAX_DRIVE][MAX_DRIVE_NAME_LEN+1];
+
+static u16 *_fat[MAX_DRIVE] = {NULL,NULL};
+static opendfile_list *_fatOpenedFile[MAX_DRIVE] = {NULL,NULL};
 
 static void (*pfCallbackIN[MAX_DRIVE])(s32) = {NULL, NULL};
 static void (*pfCallbackOUT[MAX_DRIVE])(s32) = {NULL, NULL};
@@ -895,6 +897,75 @@ s32 card_addToOpenedFileList(s32 drv_no,opendfile_list* p_list)
     return CARDIO_ERROR_READY;
 }
 
+s32 card_openFile(const char *filename,u32 open_mode,f_handle *p_handle)
+{
+	s32 ret,drv_no;
+	u32 cluster,id;
+	u32 dummy_offset;
+	f_handle h_dir;
+	opendfile_list *p_list;
+	u8 file_info[32];
+	u8 long_name[MAX_FILE_NAME_LEN+1];
+	u8 *p_filename = (u8*)filename;
+	
+	drv_no = card_getDriveNo(p_filename);
+	if(drv_no>=MAX_DRIVE) return CARDIO_ERROR_INVALIDPARAM;
+
+	ret = card_preFAT(drv_no);
+	if(ret!=CARDIO_ERROR_READY)
+		FAT_RETURN(drv_no,ret);
+
+	ret = card_checkPath(drv_no,p_filename,PATH_EXCEPT_LAST,&h_dir);
+	if(ret!=CARDIO_ERROR_READY) 
+		FAT_RETURN(drv_no,ret);
+
+	card_extractLastName(p_filename,long_name);
+	ret = card_findEntryInDirectory(drv_no,FIND_FILE_NAME,h_dir,(u32)long_name,file_info,&cluster,&dummy_offset);
+	if(ret!=CARDIO_ERROR_READY)
+		FAT_RETURN(drv_no,ret);
+	
+	cluster = (u32)file_info[26]|((u32)file_info[27]<<8);
+	
+	for(id=0;id<MAX_OPENED_FILE_NUM;++id) {
+		ret = card_getOpenedList(drv_no,cluster,id,&p_list);
+		if(ret==CARDIO_ERROR_FILENOTOPENED) break;
+	}
+	if(id>=MAX_OPENED_FILE_NUM)
+		FAT_RETURN(drv_no,CARDIO_ERROR_FILEOPENED);
+	
+	p_list = (opendfile_list*)malloc(sizeof(opendfile_list));
+	if(p_list==NULL)
+		FAT_RETURN(drv_no,CARDIO_ERROR_OUTOFMEMORY);
+	
+    p_list->prev = NULL;
+    p_list->next = NULL;
+    p_list->cluster = cluster;
+    p_list->h_parent = h_dir;
+    p_list->f_ptr = 0;
+    p_list->cur_cluster = cluster;
+    p_list->old_cur_cluster = 0;
+    p_list->size = (u32)file_info[28]|((u32)file_info[29]<<8)|((u32)file_info[30]<<16)|((u32)file_info[31]<<24);
+    p_list->mode = open_mode;
+    p_list->id = id;
+
+    p_list->cache.f_ptr = 0;
+    p_list->cache.cnt = 0;
+    p_list->cache.buf = (u8*)malloc(_fatCacheSize[drv_no]);
+    if(p_list->cache.buf==NULL) {
+        free(p_list);
+        FAT_RETURN(drv_no, CARDIO_ERROR_OUTOFMEMORY);
+    }
+
+	ret = card_addToOpenedFileList(drv_no,p_list);
+	if(ret!=CARDIO_ERROR_READY) {
+		free(p_list->cache.buf);
+		free(p_list);
+		FAT_RETURN(drv_no,ret);
+	}
+
+	*p_handle = ((drv_no<<24)&0xff000000)|((p_list->id<<16)&0x00ff0000)|(cluster&0xffff);
+	FAT_RETURN(drv_no,CARDIO_ERROR_READY);
+}
 
 s32 SDCARD_Init()
 {
@@ -975,6 +1046,10 @@ s32 SDCARD_OpenFile(const char *filename,u32 open_mode,f_handle *p_handle)
 	}
 	if(id>=MAX_OPENED_FILE_NUM)
 		FAT_RETURN(drv_no,CARDIO_ERROR_FILEOPENED);
+	
+	p_list = (opendfile_list*)malloc(sizeof(opendfile_list));
+	if(p_list==NULL)
+		FAT_RETURN(drv_no,CARDIO_ERROR_OUTOFMEMORY);
 	
     p_list->prev = NULL;
     p_list->next = NULL;
