@@ -273,7 +273,7 @@ static s32 __card_getfilenum(card_block *card,const char *filename,s32 *fileno)
 	entries = dirblock->entries;
 	for(i=0;i<CARD_MAXFILES;i++) {
 		if(entries[i].gamecode[0]!=0xff) {
-			if(stricmp(entries[i].filename,filename)==0
+			if(memcmp(entries[i].filename,filename,CARD_FILENAMELEN)==0
 				&& (card_gamecode[0]!=0xff && memcmp(entries[i].gamecode,card_gamecode,4)==0)
 				&& (card_company[0]!=0xff && memcmp(entries[i].company,card_company,2)==0)) {
 				*fileno = i;
@@ -373,15 +373,16 @@ static u32 __card_checkdir(card_block *card,u32 *currdir)
 
 	dir = bad_dir;
 	if(!bad) {
-		if(card->curr_dir==NULL) {
-			if(dircntrl[0]->updated<dircntrl[1]->updated) dir = 0;
-			else dir = 1;
-			card->curr_dir = dirblock[dir];
-			memcpy(dirblock[dir],dirblock[dir^1],8192);
-		} 
-		else if(card->curr_dir==dirblock[0]) dir = 0;
+		if(dircntrl[0]->updated<dircntrl[1]->updated) dir = 0;
 		else dir = 1;
 	}
+	if(card->curr_dir==NULL) {
+		card->curr_dir = dirblock[dir];
+		memcpy(dirblock[dir],dirblock[dir^1],8192);
+	} 
+	else if(card->curr_dir==dirblock[0]) dir = 0;
+	else dir = 1;
+
 	if(currdir) *currdir = dir;
 	return bad;
 }
@@ -428,15 +429,16 @@ static u32 __card_checkfat(card_block *card,u32 *currfat)
 
 	fat = bad_fat;
 	if(!bad) {
-		if(card->curr_fat==NULL) {
-			if(fatblock[0]->updated<fatblock[1]->updated) fat = 0;
-			else fat = 1;
-			card->curr_fat = fatblock[fat];
-			memcpy(fatblock[fat],fatblock[fat^1],8192);
-		} 
-		else if(card->curr_fat==fatblock[0]) fat = 0;
+		if(fatblock[0]->updated<fatblock[1]->updated) fat = 0;
 		else fat = 1;
 	}
+	if(card->curr_fat==NULL) {
+		card->curr_fat = fatblock[fat];
+		memcpy(fatblock[fat],fatblock[fat^1],8192);
+	} 
+	else if(card->curr_fat==fatblock[0]) fat = 0;
+	else fat = 1;
+
 	if(currfat) *currfat = fat;
 	return bad;
 }
@@ -444,10 +446,13 @@ static u32 __card_checkfat(card_block *card,u32 *currfat)
 static s32 __card_verify(card_block *card)
 {
 	u32 ret = 0;
-	
+
 	ret += __card_checkdir(card,NULL);
 	ret += __card_checkfat(card,NULL);
-	if(!ret) {
+#ifdef _CARD_DEBUG
+	printf("__card_verify(%d)\n",ret);
+#endif
+	if(ret<=2) {
 		if(card->curr_dir && card->curr_fat) return CARD_ERROR_READY;
 	}
 	return CARD_ERROR_BROKEN;
@@ -751,7 +756,7 @@ static void __timeouthandler(sysalarm *alarm)
 	cardcallback cb;
 	card_block *card = NULL;
 #ifdef _CARD_DEBUG
-	printf("__setuptimeout(%p)\n",alarm);
+	printf("__timeouthandler(%p)\n",alarm);
 #endif
 	chn = 0;
 	while(chn<EXI_CHANNEL_2) {
@@ -777,31 +782,39 @@ static void __setuptimeout(card_block *card)
 {
 	struct timespec tb;
 #ifdef _CARD_DEBUG
-	printf("__setuptimeout(%p)\n",card);
+	printf("__setuptimeout(%p)\n",&card->timeout_svc);
 #endif
 	SYS_CancelAlarm(&card->timeout_svc);
 
 	if(card->cmd[0]==0xf1 || card->cmd[0]==0xf4) {
+#ifdef _CARD_DEBUG
+		printf("__setuptimeout(%02x, %dsec)\n",card->cmd[0],1*(card->sector_size/8192));
+#endif
 		tb.tv_sec = 1*(card->sector_size/8192);
 		tb.tv_nsec = 0;
 		SYS_SetAlarm(&card->timeout_svc,&tb,__timeouthandler);
 	} else if(card->cmd[0]==0xf2) {
+#ifdef _CARD_DEBUG
+		printf("__setuptimeout(0xf2, 100ms)\n");
+#endif
 		tb.tv_sec = 0;
-		tb.tv_nsec = 100*TB_NSPERUS;
+		tb.tv_nsec = 100*TB_NSPERMS;
 		SYS_SetAlarm(&card->timeout_svc,&tb,__timeouthandler);
 	}
 }
 
-static void __card_sync(s32 chn)
+static s32 __card_sync(s32 chn)
 {
+	s32 ret;
 	u32 level;
 	card_block *card = &cardmap[chn];
 
 	_CPU_ISR_Disable(level);
-	while(CARD_GetErrorCode(chn)==CARD_ERROR_BUSY) {
+	while((ret=CARD_GetErrorCode(chn))==CARD_ERROR_BUSY) {
 		LWP_SleepThread(card->wait_sync_queue);
 	}
 	_CPU_ISR_Restore(level);
+	return ret;
 }
 
 static s32 __retry(s32 chn)
@@ -2277,9 +2290,8 @@ s32 CARD_Mount(s32 chn,void *workarea,cardcallback detach_cb)
 	printf("CARD_Mount(%d,%p,%p)\n",chn,workarea,detach_cb);
 #endif
 	if((ret=CARD_MountAsync(chn,workarea,detach_cb,__card_synccallback)>=0)) {
-		__card_sync(chn);
+		ret = __card_sync(chn);
 	}
-
 	return ret;
 }
 
@@ -2327,7 +2339,7 @@ s32 CARD_Read(card_file *file,void *buffer,u32 len,u32 offset)
 	s32 ret;
 
 	if((ret=CARD_ReadAsync(file,buffer,len,offset,__card_synccallback))>=0) {
-		__card_sync(file->chn);
+		ret = __card_sync(file->chn);
 	}
 	return ret;
 }
@@ -2360,7 +2372,7 @@ s32 CARD_Write(card_file *file,void *buffer,u32 len,u32 offset)
 	s32 ret;
 
 	if((ret=CARD_WriteAsync(file,buffer,len,offset,__card_synccallback))>=0) {
-		__card_sync(file->chn);
+		ret = __card_sync(file->chn);
 	}
 	return ret;
 }
@@ -2389,7 +2401,7 @@ s32 CARD_CreateAsync(s32 chn,const char *filename,u32 size,card_file *file,cardc
 	for(i=0;i<CARD_MAXFILES;i++) {
 		if(entry[i].gamecode[0]==0xff) {
 			if(filenum==-1) filenum = i;
-		} else if(stricmp(entry[i].filename,filename)==0
+		} else if(memcmp(entry[i].filename,filename,CARD_FILENAMELEN)==0
 			&& (card_gamecode[0]!=0xff && memcmp(entry[i].gamecode,card_gamecode,4)==0)
 			&& (card_company[0]!=0xff && memcmp(entry[i].company,card_company,2)==0)) {
 			__card_putcntrlblock(card,CARD_ERROR_EXIST);
@@ -2430,7 +2442,7 @@ s32 CARD_Create(s32 chn,const char *filename,u32 size,card_file *file)
 	s32 ret;
 
 	if((ret=CARD_CreateAsync(chn,filename,size,file,__card_synccallback))>=0) {
-		__card_sync(chn);
+		ret = __card_sync(chn);
 	}
 	return ret;
 }
@@ -2516,7 +2528,7 @@ s32 CARD_Delete(s32 chn,const char *filename)
 	printf("CARD_Delete(%d,%s)\n",chn,filename);
 #endif
 	if((ret=CARD_DeleteAsync(chn,filename,__card_synccallback))>=0) {
-		__card_sync(chn);
+		ret = __card_sync(chn);
 	}
 	return ret;
 }
@@ -2531,7 +2543,7 @@ s32 CARD_Format(s32 chn)
 	s32 ret;
 
 	if((ret=__card_formatregion(chn,1,__card_synccallback))>=0) {
-		__card_sync(chn);
+		ret = __card_sync(chn);
 	}
 	return ret;
 }
