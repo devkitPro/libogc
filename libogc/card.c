@@ -1564,7 +1564,7 @@ static s32 __card_domount(u32 chn)
 				card->latency = card_latency[idx>>2];
 
 				if((ret=__card_clearstatus(chn))<0) goto exit;
-				if((ret=__card_readstatus(chn,&status))<0) goto exit;;
+				if((ret=__card_readstatus(chn,&status))<0) goto exit;
 				
 				if(EXI_Probe(chn)==0) {
 					ret = -3;
