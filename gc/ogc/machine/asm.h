@@ -187,12 +187,82 @@
 #define MSR_OFFSET	 196
 #define DAR_OFFSET	 200
 
+#define	STATE_OFFSET 204
+#define MODE_OFFSET	 206
+	 
+#define FPR0_OFFSET	208
+#define FPR1_OFFSET 216
+#define FPR2_OFFSET 224
+#define FPR3_OFFSET 232
+#define FPR4_OFFSET 240
+#define FPR5_OFFSET 248
+#define FPR6_OFFSET 256
+#define FPR7_OFFSET 264
+#define FPR8_OFFSET 272
+#define FPR9_OFFSET 280
+#define FPR10_OFFSET 288
+#define FPR11_OFFSET 296
+#define FPR12_OFFSET 304
+#define FPR13_OFFSET 312
+#define FPR14_OFFSET 320
+#define FPR15_OFFSET 328
+#define FPR16_OFFSET 336
+#define FPR17_OFFSET 344
+#define FPR18_OFFSET 352
+#define FPR19_OFFSET 360
+#define FPR20_OFFSET 368
+#define FPR21_OFFSET 376
+#define FPR22_OFFSET 384
+#define FPR23_OFFSET 392
+#define FPR24_OFFSET 400
+#define FPR25_OFFSET 408
+#define FPR26_OFFSET 416
+#define FPR27_OFFSET 424
+#define FPR28_OFFSET 432
+#define FPR29_OFFSET 440
+#define FPR30_OFFSET 448
+#define FPR31_OFFSET 456
+
+#define FPSCR_OFFSET 464
+
+#define PSR0_OFFSET 472
+#define PSR1_OFFSET 480
+#define PSR2_OFFSET 488
+#define PSR3_OFFSET 496
+#define PSR4_OFFSET 504
+#define PSR5_OFFSET 512
+#define PSR6_OFFSET 520
+#define PSR7_OFFSET 528
+#define PSR8_OFFSET 536
+#define PSR9_OFFSET 544
+#define PSR10_OFFSET 552
+#define PSR11_OFFSET 560
+#define PSR12_OFFSET 568
+#define PSR13_OFFSET 576
+#define PSR14_OFFSET 584
+#define PSR15_OFFSET 592
+#define PSR16_OFFSET 600
+#define PSR17_OFFSET 608
+#define PSR18_OFFSET 616
+#define PSR19_OFFSET 624
+#define PSR20_OFFSET 632
+#define PSR21_OFFSET 640
+#define PSR22_OFFSET 648
+#define PSR23_OFFSET 656
+#define PSR24_OFFSET 664
+#define PSR25_OFFSET 672
+#define PSR26_OFFSET 680
+#define PSR27_OFFSET 688
+#define PSR28_OFFSET 696
+#define PSR29_OFFSET 704
+#define PSR30_OFFSET 712
+#define PSR31_OFFSET 720
 /*
  * maintain the EABI requested 8 bytes aligment
  * As SVR4 ABI requires 16, make it 16 (as some
  * exception may need more registers to be processed...)
  */
-#define EXCEPTION_FRAME_END 208
+#define EXCEPTION_FRAME_END 728
 
 #define	IBAT0U		528
 #define	IBAT0L		529	
