@@ -626,7 +626,6 @@ static s32 __card_dataread(s32 drv_no,void *buf,u32 len)
 	u8 res[2];
 	u16 crc,crc_org;
 	s32 startT,ret;
-	struct timespec tb;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
@@ -684,9 +683,7 @@ static s32 __card_dataread(s32 drv_no,void *buf,u32 len)
 	}
 
 	/* setalarm, wait */
-	tb.tv_sec = 0;
-	tb.tv_nsec = 5*TB_NSPERUS;
-	__card_waitio(drv_no,&tb);
+	udelay(1);
 
 	res[0] = res[1] = _ioClrFlag;
 	if(EXI_ImmEx(drv_no,res,2,EXI_READWRITE)==0) {
@@ -716,7 +713,6 @@ static s32 __card_datareadfinal(s32 drv_no,void *buf,u32 len)
 	u32 cnt;
 	u8 *ptr,cmd[6];
 	u16 crc_org,crc;
-	struct timespec tb;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
@@ -794,11 +790,7 @@ static s32 __card_datareadfinal(s32 drv_no,void *buf,u32 len)
 	
 	/* setalarm, wait */
 	udelay(1);
-/*
-	tb.tv_sec = 0;
-	tb.tv_nsec = 5*TB_NSPERUS;
-	__card_waitio(drv_no,&tb);
-*/
+
 	EXI_Deselect(drv_no);
 	EXI_Unlock(drv_no);
 
@@ -816,7 +808,6 @@ static s32 __card_datawrite(s32 drv_no,void *buf,u32 len)
 	u16 crc;
 	u32 cnt;
 	s32 ret;
-	struct timespec tb;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
@@ -845,11 +836,6 @@ static s32 __card_datawrite(s32 drv_no,void *buf,u32 len)
 
 	/* setalarm, wait */
 	udelay(1);
-/*
-	tb.tv_sec = 0;
-	tb.tv_nsec = 5*TB_NSPERUS;
-	__card_waitio(drv_no,&tb);
-*/
 
 	ret = CARDIO_ERROR_READY;
 	if(EXI_ImmEx(drv_no,&crc,2,EXI_WRITE)==0) ret = CARDIO_ERROR_IOERROR;
@@ -866,7 +852,6 @@ static s32 __card_multidatawrite(s32 drv_no,void *buf,u32 len)
 	u16 crc;
 	u32 cnt;
 	s32 ret;
-	struct timespec tb;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
@@ -895,11 +880,6 @@ static s32 __card_multidatawrite(s32 drv_no,void *buf,u32 len)
 
 	/* setalarm, wait */
 	udelay(1);
-/*
-	tb.tv_sec = 0;
-	tb.tv_nsec = 5*TB_NSPERUS;
-	__card_waitio(drv_no,&tb);
-*/
 
 	ret = CARDIO_ERROR_READY;
 	if(EXI_ImmEx(drv_no,&crc,2,EXI_WRITE)==0) ret = CARDIO_ERROR_IOERROR;
