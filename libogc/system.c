@@ -189,6 +189,7 @@ void SYS_Init()
 	DisableWriteGatherPipe();
 
 	IRQ_Request(IRQ_PI_RSW,__RSWHandler,NULL);
+	__MaskIrq(IRQMASK(IRQ_PI_RSW));
 
 	__lwp_start_multitasking();
 }
