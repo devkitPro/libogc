@@ -6,7 +6,7 @@
 
 //#define _GCMOD_DEBUG
 
-#define STACKSIZE		16384
+#define STACKSIZE		8192
 #define SNDBUFFERSIZE	3523<<2
 
 static BOOL thr_running = FALSE;
@@ -16,7 +16,6 @@ static MODSNDBUF sndBuffer;
 static u32 curr_datalen = 0;
 static u32 shiftVal = 0;
 static vu32 curaudio = 0;
-static u32 dma_stack[(STACKSIZE/2)/sizeof(u32)];
 static u8 audioBuf[2][SNDBUFFERSIZE] ATTRIBUTE_ALIGN(32);
 
 static lwpq_t player_queue;
@@ -198,7 +197,7 @@ void MODPlay_Init(MODPlay *mod)
 {
 	memset(mod,0,sizeof(MODPlay));
 
-	AUDIO_Init((u8*)&(dma_stack[(STACKSIZE/2)/sizeof(u32)]));
+	AUDIO_Init(NULL);
 	MODPlay_SetFrequency(mod,48000);
 	MODPlay_SetStereo(mod,TRUE);
 
