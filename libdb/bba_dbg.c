@@ -2,7 +2,7 @@
 #include "asm.h"
 #include "processor.h"
 #include "exi.h"
-#include "uip/uip_arp.h"
+#include "uIP/uip_arp.h"
 
 #define BBA_MINPKTSIZE			60
 
