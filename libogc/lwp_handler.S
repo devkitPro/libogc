@@ -282,18 +282,6 @@ _cpu_context_switch:
 
 	blr
 
-	.globl _cpu_switch_fpu_ctx_handler
-_cpu_switch_fpu_ctx_handler:
-	mfmsr	r5
-	ori		r5,r5,MSR_FP
-	mtmsr	r5
-	isync
-	lwz		r5,SRR1_OFFSET(r3)
-	ori		r5,r5,MSR_FP
-	mtsrr1	r5
-	lwz		r5,_thr_executing(0)
-	rfi
-
 	.globl _cpu_context_save
 _cpu_context_save:
 	sync
