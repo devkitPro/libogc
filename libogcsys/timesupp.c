@@ -118,26 +118,9 @@ void timespec_substract(const struct timespec *tp_start,const struct timespec *t
 	result->tv_nsec = (tp_end->tv_nsec - start->tv_nsec);
 }
 
-unsigned int timespec_to_interval(const struct timespec *time)
+unsigned long long timespec_to_ticks(const struct timespec *tp)
 {
-	u32 ticks;
-
-	ticks = (time->tv_sec*TB_USPERSEC)/TB_USPERTICK;
-	ticks += (time->tv_nsec/TB_NSPERUS)/TB_USPERTICK;
-
-	if(ticks) return ticks;
-
-	return 1;
-}
-
-unsigned long long timespec_to_ticks(const struct timespec *time)
-{
-	u64 ticks;
-
-	ticks = secs_to_ticks(time->tv_sec);
-	ticks += nanosecs_to_ticks(time->tv_nsec);
-
-	return ticks;
+	return __lwp_wd_calc_ticks(tp);
 }
 
 int clock_gettime(struct timespec *tp)
@@ -181,7 +164,7 @@ unsigned int _DEFUN(nanosleep,(tb),
 
 	__lwp_thread_dispatchdisable();
 
-	timeout = timespec_to_ticks(tb);
+	timeout = __lwp_wd_calc_ticks(tb);
 	__lwp_thread_setstate(_thr_executing,LWP_STATES_DELAYING|LWP_STATES_INTERRUPTIBLE_BY_SIGNAL);
 	__lwp_wd_initialize(&_thr_executing->timer,__lwp_thread_delayended,_thr_executing->own);
 	__lwp_wd_insert_ticks(&_thr_executing->timer,timeout);

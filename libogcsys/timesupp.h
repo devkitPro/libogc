@@ -1,27 +1,8 @@
 #ifndef __TIMESUPP_H__
 #define __TIMESUPP_H__
 
-#include <sys/types.h>
-
-#define TB_BUS_CLOCK		162000000u
-#define TB_CORE_CLOCK		486000000u
-#define TB_TIMER_CLOCK		(TB_BUS_CLOCK/4000)			//4th of the bus frequency
-
-#define TB_REQ				250
-#define TB_SUCCESSFUL		0
-
-#define ticks_to_cycles(ticks)		((u32)(((u64)(ticks)*((TB_CORE_CLOCK*2)/TB_TIMER_CLOCK))/2))
-#define ticks_to_secs(ticks)		((u32)((u64)(ticks)/(TB_TIMER_CLOCK*1000)))
-#define ticks_to_millisecs(ticks)	((u32)((u64)(ticks)/(TB_TIMER_CLOCK)))
-#define ticks_to_microsecs(ticks)	((u32)(((u64)(ticks)*8)/(TB_TIMER_CLOCK/125)))
-#define ticks_to_nanosecs(ticks)	((u32)(((u64)(ticks)*8000)/(TB_TIMER_CLOCK/125)))
-
-#define secs_to_ticks(sec)			((u64)(sec)*(TB_TIMER_CLOCK*1000))
-#define millisecs_to_ticks(msec)	((u64)(msec)*(TB_TIMER_CLOCK))
-#define microsecs_to_ticks(usec)	(((u64)(usec)*(TB_TIMER_CLOCK/125))/8)
-#define nanosecs_to_ticks(nsec)		(((u64)(nsec)*(TB_TIMER_CLOCK/125))/8000)
-
-#define diff_ticks(tick0,tick1)		((signed long long)tick0 - (signed long long)tick1)
+#define TB_REQ						250
+#define TB_SUCCESSFUL				0
 
 #define TB_SECSPERMIN				60
 #define TB_MINSPERHR				60
@@ -37,6 +18,8 @@
 #define TB_NSPERMS					1000000
 #define TB_NSPERUS					1000
 #define TB_USPERTICK				10000
+
+#include <sys/types.h>
 
 time_t time(time_t *timer);
 unsigned int nanosleep(struct timespec *tb);

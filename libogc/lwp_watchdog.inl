@@ -43,6 +43,16 @@ static __inline__ u32 __lwp_wd_isactive(wd_cntrl *wd)
 	return (wd->state==LWP_WD_ACTIVE);
 }
 
+static __inline__ u64 __lwp_wd_calc_ticks(const struct timespec *time)
+{
+	u64 ticks;
+
+	ticks = secs_to_ticks(time->tv_sec);
+	ticks += nanosecs_to_ticks(time->tv_nsec);
+
+	return ticks;
+}
+
 static __inline__ void __lwp_wd_tickle_ticks()
 {
 	__lwp_wd_tickle(&_wd_ticks_queue);

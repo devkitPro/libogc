@@ -80,14 +80,15 @@ sd_file* SDCARD_OpenFile(const char *filename,const char *mode)
 	}
 	if(mode[0]=='w') {
 		err = card_openFile(filename,OPEN_W,&rfile->handle);
+		if(err==CARDIO_ERROR_NOTFOUND) err = card_createFile(filename,ALWAYS_CREATE,&rfile->handle);
 		if(err==CARDIO_ERROR_READY) {
 			strncpy(rfile->path,filename,SDCARD_MAX_PATH_LEN);
 			rfile->pos = 0;
 			rfile->size = 0;
 			rfile->mode = 'w';
 			rfile->wbuffer = NULL;
+			return (sd_file*)rfile;
 		}
-		return (sd_file*)rfile;
 	}
 	__lwp_wkspace_free(rfile);
 	return NULL;
@@ -108,6 +109,20 @@ s32 SDCARD_ReadFile(sd_file *pfile,void *buf,u32 len)
 		ifile->pos += readcnt;
 	}
 	return readcnt;
+}
+
+s32 SDCARD_WriteFile(sd_file *pfile,const void *buf,u32 len)
+{
+	u32 ret = SDCARD_ERROR_IOERROR;
+	struct _sd_file *ifile = (struct _sd_file*)pfile;
+#ifdef _SDCARD_DEBUG
+	printf("SDCARD_WriteFile(%p,%p,%d)\n",pfile,buf,len);
+#endif
+	if(ifile && ifile->mode=='w' && ifile->handle!=-1) {
+		ret = card_writeFile(ifile->handle,buf,len);
+		if(ret!=SDCARD_ERROR_READY) return SDCARD_ERROR_EOF;
+	}
+	return len;
 }
 
 s32 SDCARD_SeekFile(sd_file *pfile,s32 offset,u32 whence)
@@ -181,13 +196,7 @@ s32 SDCARD_CloseFile(sd_file *pfile)
 	struct _sd_file *ifile = (struct _sd_file*)pfile;
 
 	if(ifile) {
-		if(ifile->handle!=-1) {
-			if(ifile->mode=='r') {
-				card_closeFile(ifile->handle);
-			}
-			else if(ifile->mode=='w') {
-			}
-		}
+		if(ifile->handle!=-1) card_closeFile(ifile->handle);
 		__lwp_wkspace_free(ifile);
 	}
 	return SDCARD_ERROR_READY;

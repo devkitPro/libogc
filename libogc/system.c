@@ -12,7 +12,6 @@
 #include "lwp_priority.h"
 #include "lwp_watchdog.h"
 #include "lwp_wkspace.h"
-#include "libogcsys/timesupp.h"
 #include "system.h"
 
 #define SYSMEM_SIZE				0x1800000
@@ -82,8 +81,6 @@ extern void settime(long long);
 extern long long gettime();
 extern unsigned int gettick();
 extern int clock_gettime(struct timespec *tp);
-extern unsigned int timespec_to_interval(const struct timespec *time);
-extern long long timespec_to_ticks(const struct timespec *time);
 extern void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
 
 extern u8 __ArenaLo[],__ArenaHi[];
@@ -589,7 +586,7 @@ void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb)
 	sysalarm *ptr;
 
 	alarm->alarmhandler = cb;
-	alarm->ticks = timespec_to_ticks(tp);
+	alarm->ticks = __lwp_wd_calc_ticks(tp);
 
 	alarm->periodic = 0;
 	alarm->start_per = 0;
@@ -623,8 +620,8 @@ void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const 
 	u32 found,level;
 	sysalarm *ptr;
 
-	alarm->start_per = timespec_to_ticks(tp_start);
-	alarm->periodic = timespec_to_ticks(tp_period);
+	alarm->start_per = __lwp_wd_calc_ticks(tp_start);
+	alarm->periodic = __lwp_wd_calc_ticks(tp_period);
 	alarm->alarmhandler = cb;
 
 	alarm->ticks = 0;

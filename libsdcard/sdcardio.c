@@ -141,9 +141,10 @@ int sdcardio_write(struct _reent *r,int fd,const char *ptr,int len)
 	if(!sdcardio_inited) return -1;
 
 	sdfile = __sdcardio_getfd(fd);
-	if(sdfile) {
-
-	}
+	if(sdfile) ret = SDCARD_WriteFile(sdfile,ptr,len);
+#ifdef _SDCARDIO_DEBUG
+	printf("sdcardio_write(%d,%d,%p,%d)\n",fd,ret,ptr,len);
+#endif
 	return ret;
 }
 

@@ -51,6 +51,13 @@
 
 #define MAX_FILE_NAME_LEN				80
 
+#define FAT2CPU16(x)					((u16)(((x&0x00ff)<<8)|((x&0xff00)>>8)))
+#define FAT2CPU32(x)					((u32)(((x&0x000000ff)<<24)|((x&0x0000ff00)<<8)|((x&0x00ff0000)>>8)|((x&0xff000000)>>24)))
+
+#define FAT_VAL8(x,ofs)					(u8)(*((u8*)(x)+(ofs)))
+#define FAT_VAL16(x,ofs)				(u16)((u16)(*((u8*)(x)+(ofs))))|((u16)(*((u8*)(x)+(ofs)+1))<<8)
+#define FAT_VAL32(x,ofs)				(u32)((u32)(*((u8*)(x)+(ofs))))|((u32)(*((u8*)(x)+(ofs)+1))<<8)|		\
+											 ((u32)(*((u8*)(x)+(ofs)+2))<<16)|((u32)(*((u8*)(x)+(ofs)+3))<<24)
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
@@ -163,6 +170,7 @@ s32 card_setCluster(s32 drv_no,u32 cluster_no,u8 val);
 s32 card_expandClusterSpace(s32 drv_no,F_HANDLE handle,u32 cluster,u32 offset,u32 len);
 s32 card_writeCluster(s32 drv_no,u32 cluster_no,u32 offset,const void *buf,u32 len);
 s32 card_readCluster(s32 drv_no,u32 cluster_no,u32 offset,void *buf,u32 len);
+s32 card_updateBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len);
 
 s32 card_createFile(const char *filename,u32 create_mode,F_HANDLE *p_handle);
 s32 card_openFile(const char *filename,u32 open_mode,F_HANDLE *p_handle);

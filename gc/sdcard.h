@@ -54,6 +54,7 @@ s32 SDCARD_Init();
 sd_file* SDCARD_OpenFile(const char *filename,const char *mode);
 s32 SDCARD_ReadFile(sd_file *file,void *buf,u32 len);
 s32 SDCARD_SeekFile(sd_file *file,s32 offset,u32 whence);
+s32 SDCARD_WriteFile(sd_file *pfile,const void *buf,u32 len);
 s32 SDCARD_GetFileSize(sd_file *file);
 s32 SDCARD_ReadDir(const char *dirname,DIR *pdir_list);
 s32 SDCARD_CloseFile(sd_file *pfile);

@@ -11,7 +11,7 @@
 #include "system.h"
 #include "dvd.h"
 
-#define _DVD_DEBUG
+//#define _DVD_DEBUG
 
 #define DVD_BRK				(1<<0)
 #define DVD_DE_MSK			(1<<1)
@@ -30,6 +30,7 @@
 #define DVD_DI_START		(1<<0)
 
 #define DVD_DISKIDSIZE		0x20
+#define DVD_DRVINFSIZE		0x20
 
 #define DVD_DVDINQUIRY		0x12000000
 #define DVD_READSECTOR		0xA8000000
@@ -79,6 +80,8 @@ static u32 __dvd_waitcoverclose = 0;
 static u32 __dvd_breaking = 0;
 static u32 __dvd_resetrequired = 0;
 static u32 __dvd_canceling = 0;
+static u32 __dvd_pauseflag = 0;
+static u32 __dvd_pausingflag = 0;
 static s64 __dvd_lastresetend = 0;
 static u32 __dvd_lastlen;
 static u32 __dvd_nextcmdnum;
@@ -181,8 +184,6 @@ extern u32 diff_msec(unsigned long long start,unsigned long long end);
 extern long long gettime();
 extern void __MaskIrq(u32);
 extern void __UnmaskIrq(u32);
-
-extern u8 sega[];
 
 static __inline__ void __dvd_clearwaitingqueue()
 {
@@ -625,27 +626,6 @@ static void __DVDInterruptHandler(u32 nIrq,void *pCtx)
 }
 
 static u32 idfin;
-static u32 old_samplerate;
-static AIDCallback old_audiocb = NULL;
-static void __dvd_swapdiskcbstopaudio()
-{
-	AUDIO_SetDSPSampleRate(old_samplerate);
-	AUDIO_RegisterDMACallback(old_audiocb);
-}
-
-static void __dvd_swapdiskcb(s32 result)
-{
-	old_audiocb = AUDIO_RegisterDMACallback(__dvd_swapdiskcbstopaudio);;
-	old_samplerate = AUDIO_GetDSPSampleRate();
-#ifdef _DVD_DEBUG
-	printf("__dvd_swapdiskcb(%d,%d)\n",result,old_samplerate);
-#endif
-	AUDIO_StopDMA();
-	AUDIO_SetDSPSampleRate(AI_SAMPLERATE_32KHZ);
-	AUDIO_InitDMA((u32)sega,209344);
-	AUDIO_StartDMA();
-}
-
 static void __dvd_unlockdone(s32 result)
 {
 	idfin = 1;
@@ -696,7 +676,6 @@ static void __DVDPatchDriveCode(s32 result)
 			printf("__DVDPatchDriveCode(%02x)\n",stage);
 #endif
 			if(stage&0x0002) {
-				cb = __dvd_swapdiskcb;
 				if(__dvd_swapdiskcallback) cb = __dvd_swapdiskcallback;
 			}
 			stage = 0;
@@ -711,8 +690,8 @@ static void __DVDPatchDriveCode(s32 result)
 			return;
 		}
 	}
-	DCInvalidateRange(&__dvd_driveinfo,DVD_DISKIDSIZE);
-	DVD_LowInquiry(&__dvd_driveinfo,__dvd_unlockdone);
+	DCInvalidateRange(&__dvd_tmpid0,DVD_DISKIDSIZE);
+	DVD_LowReadId(&__dvd_tmpid0,__dvd_unlockdone);
 }
 
 
@@ -755,6 +734,20 @@ static void __DVDUnlockDriveLow(s32 result,dvdcallbacklow cb)
 #endif
 	__dvd_finalunlockcb = cb;
 	__DVDUnlockDrive(result);
+}
+
+void __dvd_resetasync(dvdcbcallback cb)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	__dvd_clearwaitingqueue();
+	if(__dvd_canceling) __dvd_cancelcallback = cb;
+	else {
+		if(__dvd_executing) __dvd_executing->cb = NULL;
+		DVD_CancelAllAsync(cb);
+	}
+	_CPU_ISR_Restore(level);
 }
 
 void __dvd_statebusy(dvdcmdblk *block)
@@ -1175,6 +1168,26 @@ s32 DVD_SeekPrio(dvdfileinfo *info,u32 offset,s32 prio)
 	return -1;
 }
 
+s32 DVD_CancelAllAsync(dvdcbcallback cb)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	DVD_Pause();	
+	_CPU_ISR_Restore(level);
+	return 1;
+}
+
+void DVD_Pause()
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	__dvd_pauseflag = 1;
+	if(__dvd_executing==NULL) __dvd_pausingflag = 1;
+	_CPU_ISR_Restore(level);
+}
+
 void DVD_Reset()
 {
 #ifdef _DVD_DEBUG
@@ -1195,8 +1208,8 @@ static void __dvd_unlockcb(s32 result)
 
 static void alarmcb(sysalarm *alarm)
 {
-	DCInvalidateRange(&__dvd_tmpid0,DVD_DISKIDSIZE);
-	DVD_LowReadId(&__dvd_tmpid0,__dvd_unlockcb);
+	DCInvalidateRange(&__dvd_driveinfo,DVD_DRVINFSIZE);
+	DVD_LowInquiry(&__dvd_driveinfo,__dvd_unlockcb);
 }
 
 static u8 buf[2048] ATTRIBUTE_ALIGN(32);
