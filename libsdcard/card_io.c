@@ -1334,15 +1334,15 @@ s32 card_updateBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len)
 	sect_start += (offset/write_len);
 	blocks = len/write_len;
 	
-	arg[0] = 0:
-	arg[1] = (blocks>>24)&0x7f;
-	arg[2] = (blocks>>16)&0xff;
-	arg[3] = blocks&0xff;
-	
 	if(write_len!=_cur_page_size[drv_no]) {
 		_cur_page_size[drv_no] = write_len;
 		if((ret=__card_setblocklen(drv_no,_cur_page_size[drv_no]))!=0) return ret;
 	}
+
+	arg[0] = 0;
+	arg[1] = (blocks>>24)&0x7f;
+	arg[2] = (blocks>>16)&0xff;
+	arg[3] = blocks&0xff;
 
 	if((ret=__card_sendappcmd(drv_no))!=0) return ret;
 	if((ret=__card_sendcmd(drv_no,0x17,arg))!=0) return ret;
@@ -1354,10 +1354,52 @@ s32 card_updateBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len)
 	arg[3] = (sect_start<<9)&0xff;
 	if(blocks>1) {
 		if((ret=__card_sendcmd(drv_no,0x19,arg))!=0) return ret;
-		if((ret=__card_response1(drv_no))!=0) return ret;
-		
+		if((ret=__card_response1(drv_no))==0) {
+			ptr = (u8*)buf;
+			for(i=0;i<blocks;i++) {
+				if((ret=__card_multidatawrite(drv_no,ptr,_cur_page_size[drv_no]))!=0) break;
+				ptr += _cur_page_size[drv_no];
+			}
+			if((ret=__card_multiwritestop(drv_no))!=0) return ret;
+			ret = __card_sendcmd(drv_no,0x0d,NULL);
+			ret |= __card_response2(drv_no);
+		}
+		return ret;
 	}
+	return card_updateSector(drv_no,sect_start,buf,len);
 	
+}
+
+s32 card_updateSector(s32 drv_no,u32 sector_no,const void *buf,u32 len)
+{
+	s32 ret;
+	u8 arg[4];
+	u32 write_len;
+
+	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
+
+	ret = card_preIO(drv_no);
+	if(ret!=0) return ret;
+
+	write_len = (1<<WRITE_BL_LEN(drv_no));
+	if(len<write_len) return CARDIO_ERROR_INTERNAL;
+#ifdef _CARDIO_DEBUG
+	printf("card_updateSector(%d,%d,%d(%d),%d)\n",drv_no,sector_no,len,write_len,_cur_page_size[drv_no]);
+#endif
+	arg[0] = (sector_no>>15)&0xff;
+	arg[1] = (sector_no>>7)&0xff;
+	arg[2] = (sector_no<<1)&0xff;
+	arg[3] = (sector_no<<9)&0xff;
+
+	if(write_len!=_cur_page_size[drv_no]) {
+		_cur_page_size[drv_no] = write_len;
+		if((ret=__card_setblocklen(drv_no,_cur_page_size[drv_no]))!=0) return ret;
+	}
+	if((ret=__card_sendcmd(drv_no,0x18,arg))!=0) return ret;
+	if((ret=__card_response1(drv_no))!=0) return ret;
+
+	ret = __card_datawrite(drv_no,(void*)buf,_cur_page_size[drv_no]);
+	return ret;
 }
 
 s32 card_doUnmount(s32 drv_no)
