@@ -259,7 +259,7 @@ void ps_guMtxRotAxisRad(register Mtx mt,Vector *axis,register f32 tmp0)
 		"psq_st			%%f7,24(%0),0,0\n"
 		"psq_st			%%f5,32(%0),0,0\n"
 		"psq_st			%%f6,40(%0),0,0\n"
-		: "=r"(mt) : "r"(axis), "f"(cT), "f"(tT), "f"(sT), "f"(fc0)
+		: "+r"(mt) : "r"(axis), "f"(cT), "f"(tT), "f"(sT), "f"(fc0)
 	);
 }
 
