@@ -694,7 +694,7 @@ static err_t __bba_link_postrx(struct netif *dev,struct pbuf *p)
 
 static u32 __bba_link_rxbuffer1()
 {
-	u32 len;
+	u32 len,ret = ERR_OK;
 	void *pc;
 	u8 *rcv_buf0,*rcv_buf1;
 	struct pbuf *tmp,*p = NULL;
@@ -744,9 +744,9 @@ static u32 __bba_link_rxbuffer1()
 	}
 	
 	rrp = cur_descr.next_packet_ptr;
-	__bba_link_rx();
+	ret = __bba_link_rx();
 
-	return ERR_OK;
+	return ret;
 }
 
 static u32 __bba_link_rxsub1()
@@ -795,9 +795,12 @@ static u32 __bba_link_rx()
 		
 		size = cur_descr.packet_len - 4;
 		pkt_status = cur_descr.status;
-		if(size>(BBA_RX_MAX_PACKET_SIZE+4)
-			|| (pkt_status&(BBA_RX_STATUS_RERR|BBA_RX_STATUS_FAE))) {
+		if(size>(BBA_RX_MAX_PACKET_SIZE+4) || (pkt_status&(BBA_RX_STATUS_RERR|BBA_RX_STATUS_FAE))) {
 			__bba_rx_err(pkt_status);
+
+			bba_out8(BBA_IR,BBA_IR_RI);
+			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+			EXI_Unlock(EXI_CHANNEL_0);
 			return ERR_PKTSIZE;
 		}
 
