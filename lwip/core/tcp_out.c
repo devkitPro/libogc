@@ -107,7 +107,7 @@ tcp_enqueue(struct tcp_pcb *pcb, void *arg, u16_t len,
   u32_t left, seqno;
   u16_t seglen;
   void *ptr;
-  u8_t queuelen;
+  u32_t queuelen;
 
   LWIP_DEBUGF(TCP_OUTPUT_DEBUG, ("tcp_enqueue(pcb=%p, arg=%p, len=%u, flags=%x, copy=%u)\n",
     (void *)pcb, arg, len, (unsigned int)flags, (unsigned int)copy));
@@ -377,9 +377,9 @@ tcp_output(struct tcp_pcb *pcb)
   useg = pcb->unacked;
   if (useg != NULL) {
     for (; useg->next != NULL; useg = useg->next);
-  }                                                                             
+  }
 
-   
+
   /* If the TF_ACK_NOW flag is set, we check if there is data that is
      to be sent. If data is to be sent out, we'll just piggyback our
      acknowledgement with the outgoing segment. If no data will be
@@ -612,7 +612,7 @@ tcp_keepalive(struct tcp_pcb *pcb)
                            ip4_addr3(&pcb->remote_ip), ip4_addr4(&pcb->remote_ip)));
 
    LWIP_DEBUGF(TCP_DEBUG, ("tcp_keepalive: tcp_ticks %ld   pcb->tmr %ld  pcb->keep_cnt %ld\n", tcp_ticks, pcb->tmr, pcb->keep_cnt));
-   
+
    p = pbuf_alloc(PBUF_IP, TCP_HLEN, PBUF_RAM);
 
    if(p == NULL) {
@@ -628,7 +628,7 @@ tcp_keepalive(struct tcp_pcb *pcb)
    tcphdr->wnd = htons(pcb->rcv_wnd);
    tcphdr->urgp = 0;
    TCPH_HDRLEN_SET(tcphdr, 5);
-   
+
    tcphdr->chksum = 0;
    tcphdr->chksum = inet_chksum_pseudo(p, &pcb->local_ip, &pcb->remote_ip, IP_PROTO_TCP, p->tot_len);
 
