@@ -22,9 +22,9 @@ int _DEFUN(_close_r,(ptr,fildes),
 
 	if(fildes!=-1) {
 		dev = fildes;
-		if(fildes&0xffff0000) {
-			dev = _SHIFTR(fildes,16,16);
-			fd = fildes&0xffff;
+		if(fildes&0xf000) {
+			dev = _SHIFTR(fildes,12,4);
+			fd = fildes&0x0fff;
 		}
 		if(devoptab_list[dev]->close_r)
 			ret = devoptab_list[dev]->close_r(ptr,fd);
@@ -39,15 +39,19 @@ int _DEFUN(close,(fildes),
 	unsigned int dev = 0;
 	unsigned int fd = -1;
 
+	printf("close(%04x)\n",fildes);
+	
 	if(fildes!=-1) {
 		dev = fildes;
-		if(fildes&0xffff0000) {
-			dev = _SHIFTR(fildes,16,16);
-			fd = fildes&0xffff;
+		if(fildes&0xf000) {
+			dev = _SHIFTR(fildes,12,4);
+			fd = fildes&0x0fff;
 		}
+
 		if(devoptab_list[dev]->close_r)
 			ret = devoptab_list[dev]->close_r(0,fd);
 	}
+	printf("close(%d)\n",ret);
 	return ret;
 }
 #endif

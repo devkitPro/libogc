@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <config.h>
 #include <_ansi.h>
 #include <_syslist.h>
@@ -23,9 +24,9 @@ int _DEFUN(_lseek_r,(ptr, file, pos, dir),
 
 	if(file!=-1) {
 		dev = file;
-		if(file&0xffff0000) {
-			dev = _SHIFTR(file,16,16);
-			fd = file&0xffff;
+		if(file&0xf000) {
+			dev = _SHIFTR(file,12,4);
+			fd = file&0x0fff;
 		}
 		if(devoptab_list[dev]->seek_r)
 			ret = devoptab_list[dev]->seek_r(ptr,fd,pos,dir);
@@ -44,10 +45,11 @@ int _DEFUN(lseek,(file, pos, dir),
 
 	if(file!=-1) {
 		dev = file;
-		if(file&0xffff0000) {
-			dev = _SHIFTR(file,16,16);
-			fd = file&0xffff;
+		if(file&0xf000) {
+			dev = _SHIFTR(file,12,4);
+			fd = file&0x0fff;
 		}
+
 		if(devoptab_list[dev]->seek_r)
 			ret = devoptab_list[dev]->seek_r(0,fd,pos,dir);
 	}

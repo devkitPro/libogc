@@ -12,8 +12,12 @@
 #define DEFECTIVE_CLUSTER				0xfff7
 #define LAST_CLUSTER					0xffff
 
-#define ATTRIB_DIR                      0x10
-#define ATTRIB_FILE                     0x20
+#define ATTRIB_ARCHIVE                  0x20
+#define ATTRIB_RONLY                    0x10
+#define ATTRIB_SYSTEM                   0x08
+#define ATTRIB_HIDDEN					0x04
+#define ATTRIB_DIR						0x02
+#define ATTRIB_VOL						0x01
 
 #define OPEN_R                          1
 #define OPEN_W                          2
@@ -105,7 +109,7 @@ typedef struct _filestat {
 	u32 attr;
 	u32 cluster;
 	u32 size;
-	struct tm *time;
+	struct tm time;
 } file_stat;
 
 typedef struct _dir_entry {
@@ -168,6 +172,7 @@ s32 card_seekFile(F_HANDLE h_file,u32 seek_mode,s32 offset,s32 *p_oldoffset);
 s32 card_getFileSize(const char *filename,u32 *p_size);
 s32 card_getListNumDir(const char *p_dirname,u32 *p_num);
 s32 card_readDir(const char *dirname,u32 entry_start,u32 entry_cnt,dir_entry *dir_buf,u32 *read_cnt);
+s32 card_readStat(const char *p_entry_name,file_stat *p_stat);
 
 s32 card_readFile(F_HANDLE h_file,void *buf,u32 cnt,u32 *p_cnt);
 

@@ -1,16 +1,7 @@
 .SUFFIXES:
 
 #---------------------------------------------------------------------------------
-ifeq ($(USERNAME),davem)
-#---------------------------------------------------------------------------------
-export PATH:=/c/devkitPPC_r8/bin:/bin
-PREFIX	:=	powerpc-elf-
-#---------------------------------------------------------------------------------
-else
-#---------------------------------------------------------------------------------
-PREFIX	:=	powerpc-eabi-elf-
-#---------------------------------------------------------------------------------
-endif
+PREFIX	:=	powerpc-gekko-
 #---------------------------------------------------------------------------------
 
 
@@ -118,7 +109,8 @@ GCSYSOBJ	:=	newlibc.o sbrk.o open.o write.o close.o \
 				lseek.o sleep.o usleep.o timesupp.o \
 				malloc_lock.o console.o console_font.o \
 				console_font_8x8.o iosupp.o netio_fake.o \
-				stdin_fake.o sdcardio_fake.o
+				stdin_fake.o sdcardio_fake.o flock_supp.o \
+				lock_supp.o
 
 #---------------------------------------------------------------------------------
 # Build rules:

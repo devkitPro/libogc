@@ -71,7 +71,6 @@ int _DEFUN (open, (file, flags, mode),
 	int i,dev,fd,namelen;
 	char lfile[256];
 
-	printf("file = %s\n",file);
 	i = 0;
 	dev = -1;
 	while(i<STD_MAX) {
@@ -100,13 +99,11 @@ int _DEFUN (open, (file, flags, mode),
 	}
 	if(i>=STD_MAX) return -1;
 
-	printf("lfile = %s, dev = %d\n",lfile,i);
-
 	fd = -1;
 	handle = -1;
 	if(dev!=-1 && devoptab_list[dev]->open_r) {
 		fd = devoptab_list[dev]->open_r(0,lfile,flags,mode);
-		if(fd!=-1) handle = _SHIFTL(dev,16,16)|(fd&0xffff);
+		if(fd!=-1) handle = _SHIFTL(dev,12,4)|(fd&0x0fff);
 	}
 
 	return handle;

@@ -22,6 +22,7 @@ typedef struct {
 	int (*write_r)(struct _reent *r,int fd,const char *ptr,int len);
 	int (*read_r)(struct _reent *r,int fd,char *ptr,int len);
 	int (*seek_r)(struct _reent *r,int fd,int pos,int dir);
+	int (*stat_r)(struct _reent *r,int fd,struct stat *st);
 } devoptab_t;
 
 extern const devoptab_t *devoptab_list[];

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <reent.h>
 #include <errno.h>
+#include <stdio.h>
 #include <fcntl.h>
 #undef errno
 extern int errno;
@@ -11,6 +12,8 @@ extern int errno;
 #include "mutex.h"
 #include "libogcsys/iosupp.h"
 #include "sdcard.h"
+
+#define _SDCARDIO_DEBUG
 
 #define MAX_SDCARD_FD		64
 
@@ -27,8 +30,9 @@ int sdcardio_close(struct _reent *r,int fd);
 int sdcardio_write(struct _reent *r,int fd,const char *ptr,int len);
 int sdcardio_read(struct _reent *r,int fd,char *ptr,int len);
 int sdcardio_seek(struct _reent *r,int fd,int pos,int dir);
+int sdcardio_stat(struct _reent *r,int fd,struct stat *st);
 
-const devoptab_t dotab_sdcardio = {"sd",sdcardio_open,sdcardio_close,sdcardio_write,sdcardio_read,sdcardio_seek};
+const devoptab_t dotab_sdcardio = {"sd",sdcardio_open,sdcardio_close,sdcardio_write,sdcardio_read,sdcardio_seek,sdcardio_stat};
 
 static int __sdcardio_allocfd(sd_file *sdfile)
 {
@@ -99,9 +103,9 @@ int sdcardio_open(struct _reent *r,const char *path,int flags,int mode)
 
 	m = 'r';
 	if(flags==O_WRONLY) m = 'w';
-
+#ifdef _SDCARDIO_DEBUG
 	printf("path = %s, flags = %d, mode = %d, m = %c\n",path,flags,mode,m);
-	
+#endif
 	sdfile = SDCARD_OpenFile(path,&m);
 	if(sdfile) nFd = __sdcardio_allocfd(sdfile);
 
@@ -114,10 +118,15 @@ int sdcardio_close(struct _reent *r,int fd)
 	sd_file *sdfile = NULL;
 
 	if(!sdcardio_inited) return -1;
-
+#ifdef _SDCARDIO_DEBUG
+	printf("sdcardio_close(%d)\n",fd);
+#endif
 	sdfile = __sdcardio_getfd(fd);
 	if(sdfile) {
 		ret = SDCARD_CloseFile(sdfile);
+#ifdef _SDCARDIO_DEBUG
+	printf("sdcardio_close(%d)\n",ret);
+#endif
 		__sdcardio_freefd(fd);
 	}
 
@@ -133,6 +142,7 @@ int sdcardio_write(struct _reent *r,int fd,const char *ptr,int len)
 
 	sdfile = __sdcardio_getfd(fd);
 	if(sdfile) {
+
 	}
 	return ret;
 }
@@ -146,7 +156,9 @@ int sdcardio_read(struct _reent *r,int fd,char *ptr,int len)
 
 	sdfile = __sdcardio_getfd(fd);
 	if(sdfile) ret = SDCARD_ReadFile(sdfile,ptr,len);
-
+#ifdef _SDCARDIO_DEBUG
+//	printf("sdcardio_read(%d,%d,%p,%d)\n",fd,ret,ptr,len);
+#endif
 	return ret;
 }
 
@@ -159,6 +171,46 @@ int sdcardio_seek(struct _reent *r,int fd,int pos,int dir)
 
 	sdfile = __sdcardio_getfd(fd);
 	if(sdfile) ret = SDCARD_SeekFile(sdfile,pos,dir);
+	return ret;
+}
+ 
+int sdcardio_stat(struct _reent *r,int fd,struct stat *st)
+{
+	int attr,ret = -1;
+	sd_file *sdfile = NULL;
+	SDSTAT stats;
+
+	
+	if(!sdcardio_inited) return -1;
+
+	sdfile = __sdcardio_getfd(fd);
+	if(sdfile) {
+#ifdef _SDCARDIO_DEBUG
+		printf("sdcardio_stat(%d,%p)\n",fd,sdfile);
+#endif
+		if(SDCARD_GetStats(sdfile,&stats)==SDCARD_ERROR_READY) {
+			st->st_size = stats.size;
+			st->st_ino = stats.ino;
+			st->st_dev = stats.dev;
+			st->st_mtime = mktime(&stats.ftime);
+			
+			printf("S_IFREG = %08x\n",S_IFREG);
+			
+			attr = 0;
+			if(stats.attr&SDCARD_ATTR_ARCHIVE) attr |= S_IFREG;
+			else if(stats.attr&SDCARD_ATTR_DIR) attr |= S_IFDIR;
+			if(stats.attr&SDCARD_ATTR_RONLY) attr |= (S_IRUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
+			else attr |= (S_IRWXU|S_IRWXG|S_IRWXO);
+			st->st_mode = attr;
+
+			st->st_blksize = stats.blk_sz;
+			st->st_blocks = stats.blk_cnt;
+#ifdef _SDCARDIO_DEBUG
+			printf("sdcardio_stat(%d,%08x,%d,%08x,%08x,%d,%d)\n",st->st_dev,st->st_ino,(int)st->st_size,st->st_mode,attr,(int)st->st_blksize,(int)st->st_blocks);
+#endif
+			ret = 0;
+		}
+	}
 
 	return ret;
 }

@@ -592,6 +592,10 @@ SOURCE=.\libogcsys\console_font_8x8.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogcsys\flock_supp.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogcsys\fstat.c
 # End Source File
 # Begin Source File
@@ -613,6 +617,10 @@ SOURCE=.\libogcsys\isatty.c
 # Begin Source File
 
 SOURCE=.\libogcsys\kill.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogcsys\lock_supp.c
 # End Source File
 # Begin Source File
 

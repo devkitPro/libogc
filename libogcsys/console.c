@@ -30,11 +30,11 @@ typedef struct _console_data_s {
 } console_data_s;
 
 int con_open(struct _reent *r,const char *path,int flags,int mode);
-int con_close(struct _reent *r,int fd);
 int con_write(struct _reent *r,int fd,const char *ptr,int len);
 int con_read(struct _reent *r,int fd,char *ptr,int len);
+int con_close(struct _reent *r,int fd);
 
-const devoptab_t dotab_stdout = {"stdout",con_open,con_close,con_write,con_read,NULL};
+const devoptab_t dotab_stdout = {"stdout",con_open,con_close,con_write,con_read,NULL,NULL};
 
 static struct _console_data_s stdcon;
 static struct _console_data_s *curr_con = NULL;
@@ -163,11 +163,6 @@ int con_open(struct _reent *r,const char *path,int flags,int mode)
 	return 0;
 }
 
-int con_close(struct _reent *r,int fd)
-{
-	return 0;
-}
-
 int con_write(struct _reent *r,int fd,const char *ptr,int len)
 {
 	int i, count = 0;
@@ -186,6 +181,11 @@ int con_write(struct _reent *r,int fd,const char *ptr,int len)
 }
 
 int con_read(struct _reent *r,int fd,char *ptr,int len)
+{
+	return -1;
+}
+
+int con_close(struct _reent *r,int fd)
 {
 	return -1;
 }

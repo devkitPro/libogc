@@ -5,6 +5,8 @@
 #include "lwp_wkspace.h"
 #include "mutex.h"
 
+static u32 _g_mutex_id = 0;
+
 static u32 __lwp_mutex_locksupp(mutex_t *mutex,u32 timeout,u8 block)
 {
 	u32 level;
@@ -34,7 +36,7 @@ u32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
 	attr.prioceil = 1; //__lwp_priotocore(LWP_PRIO_MAX-1);
 	__lwp_mutex_initialize(ret,&attr,LWP_MUTEX_UNLOCKED);
 
-	mutex->id++;
+	mutex->id = ++_g_mutex_id;
 	mutex->mutex = (void*)ret;
 	__lwp_thread_dispatchenable();
 	return 0;
