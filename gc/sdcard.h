@@ -31,10 +31,8 @@ typedef struct _dir {
 
 
 typedef void sd_file;
-typedef void (*SDCCallback)(s32 chn,s32 result);
 
 s32 SDCARD_Init();
-
 sd_file* SDCARD_OpenFile(const char *filename,const char *mode);
 s32 SDCARD_ReadFile(sd_file *file,void *buf,u32 len);
 s32 SDCARD_SeekFile(sd_file *file,u32 offset,u32 whence);
