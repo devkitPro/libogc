@@ -299,6 +299,19 @@ static void __DVDInitWA()
 
 static void __dvd_statebusycb(s32 result)
 {
+	if(__dvd_currcmd==0x0003 || __dvd_currcmd==0x000f) {
+		if(result&0x0002) {
+			__dvd_executing->state = -1;
+		}
+	}
+	if(__dvd_currcmd==0x0001 || __dvd_currcmd==0x0004
+		|| __dvd_currcmd==0x0005 || __dvd_currcmd==0x000e) {
+		__dvd_executing->txdsize =+ (__dvd_executing->currtxsize-_diReg[6]);
+	}
+	if(result&0x0008) {
+		
+	}
+
 }
 
 static void __dvd_statebusy(dvdcmdblk *block)
