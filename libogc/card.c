@@ -26,6 +26,19 @@
 
 #define CARD_STATUS_UNLOCKED			0x40
 
+struct card_header {
+	u8 pad_00[0x0c];
+	u8 time[0x08];
+	u8 card_id[0x12];
+	u8 pad_ff[0x02];
+	u16	mcard_size;
+	u16 encoding;
+	u8 pad_0f[0x1d4];
+	u16 updated;
+	u16 chksum1;
+	u16 chksum2;
+};
+
 struct card_direntry {
 	u8 gamecode[4];
 	u8 company[2];
@@ -50,7 +63,7 @@ struct card_dir {
 
 struct card_dircntrl {
 	u8 pad[58];
-	u16 num;
+	u16 updated;
 	u16 chksum1;
 	u16 chksum2;
 };
@@ -58,7 +71,7 @@ struct card_dircntrl {
 struct card_bat {
 	u16 chksum1;
 	u16 chksum2;
-	u16 num;
+	u16 updated;
 	u16 freeblocks;
 	u16 lastalloc;
 	u16 fat[0xffb];
@@ -73,8 +86,8 @@ typedef struct _card_block {
 	u32 cmd_retries;
 	u32 attached;
 	s32 result;
-	u32 exi_id;
-	u16 card_type;
+	u32 cid;
+	u16 card_size;
 	u32 mount_step;
 	u32 format_step;
 	u32 sector_size;
@@ -172,7 +185,9 @@ static s32 __card_sectorerase(u32 chn,u32 sector,cardcallback callback);
 
 extern unsigned long long gettime();
 extern unsigned long gettick();
+extern u32 __SYS_LockSram();
 extern u32 __SYS_LockSramEx();
+extern u32 __SYS_UnlockSram(u32 write);
 extern u32 __SYS_UnlockSramEx(u32 write);
 
 /* new api */
@@ -355,7 +370,7 @@ static u32 __card_checkdir(card_block *card,u32 *currdir)
 	dir = bad_dir;
 	if(!bad) {
 		if(card->curr_dir==NULL) {
-			if(dircntrl[0]->num<dircntrl[1]->num) dir = 0;
+			if(dircntrl[0]->updated<dircntrl[1]->updated) dir = 0;
 			else dir = 1;
 			card->curr_dir = dirblock[dir];
 			memcpy(dirblock[dir],dirblock[dir^1],8192);
@@ -410,7 +425,7 @@ static u32 __card_checkfat(card_block *card,u32 *currfat)
 	fat = bad_fat;
 	if(!bad) {
 		if(card->curr_fat==NULL) {
-			if(fatblock[0]->num<fatblock[1]->num) fat = 0;
+			if(fatblock[0]->updated<fatblock[1]->updated) fat = 0;
 			else fat = 1;
 			card->curr_fat = fatblock[fat];
 			memcpy(fatblock[fat],fatblock[fat^1],8192);
@@ -1035,6 +1050,10 @@ static void __delete_callback(u32 chn,s32 result)
 	if(cb) cb(chn,ret);
 }
 
+static void __format_callback(u32 chn,s32 result)
+{
+}
+
 static void __blockwritecallback(u32 chn,s32 result)
 {
 	s32 ret = CARD_ERROR_READY;
@@ -1343,7 +1362,13 @@ static s32 __card_read(u32 chn,u32 address,u32 block_len,void *buffer,cardcallba
 static s32 __card_formatregion(u32 chn,u32 encode,cardcallback callback)
 {
 	s32 ret;
+	u32 srambase,cnt;
+	u64 time;
+	void *workarea,*memblock;
+	cardcallback cb = NULL;
 	card_block *card = NULL;
+	struct card_bat *fatblock = NULL;
+	struct card_dircntrl *dircntrl = NULL;
 #ifdef _CARD_DEBUG
 	printf("__card_formatregion(%d,%d,%p)\n",chn,encode,callback);
 #endif
@@ -1351,7 +1376,59 @@ static s32 __card_formatregion(u32 chn,u32 encode,cardcallback callback)
 
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
 	
-	return -1;
+	workarea = card->workarea;
+	memset(workarea,0xff,8192);
+	
+	srambase = __SYS_LockSram();
+	((u32*)workarea)[5] = ((u32*)srambase)[3];
+	((u32*)workarea)[6] = ((u8*)srambase)[18];
+	__SYS_UnlockSram(0);
+
+	cnt = 0;
+	time = gettime();
+	srambase = __SYS_LockSramEx();
+	while(cnt<12) {
+		
+		cnt++;
+	}
+	__SYS_UnlockSramEx(0);
+
+	*(u64*)(((u32*)workarea)[3]) = time;
+	((u32*)workarea)[8] = 0;
+	((u16*)workarea)[17] = card->card_size;
+	__card_checksum(workarea,508,&((u16*)workarea)[254],&((u16*)workarea)[255]);
+	
+	cnt = 0;
+	while(cnt<2) {
+		memblock = workarea+((cnt+1)<<13);
+		memset(memblock,255,8192);
+		__card_checksum(memblock,8188,&dircntrl->chksum1,&dircntrl->chksum2);
+		cnt++;
+	}
+
+	cnt = 0;
+	while(cnt<2) {
+		memblock = workarea+((cnt+3)<<13);
+		fatblock = memblock;
+		memset(memblock,0,8192);
+		fatblock->updated = cnt;
+		fatblock->freeblocks = card->blocks-CARD_SYSAREA;
+		fatblock->lastalloc = 4;
+		__card_checksum(memblock+4,8188,&fatblock->chksum1,&fatblock->chksum2);
+		cnt++;
+	}
+
+	cb = callback;
+	if(!cb) cb = __card_defaultapicallback;
+	card->card_api_cb = cb;
+	
+	DCStoreRange(card->workarea,0xA000);
+	
+	card->format_step = 0;
+	if((ret=__card_sectorerase(chn,(card->sector_size*card->format_step),__format_callback))>=0) return ret;
+
+	__card_putcntrlblock(card,ret);
+	return ret;
 }
 
 static s32 __card_sectorerase(u32 chn,u32 sector,cardcallback callback)
@@ -1486,7 +1563,7 @@ static s32 __card_updatefat(u32 chn,struct card_bat *fatblock,cardcallback callb
 
 	if(!card->attached) return CARD_ERROR_NOCARD;
 
-	++fatblock->num;
+	++fatblock->updated;
 	__card_checksum((u16*)(((u32)fatblock)+4),0x1ffc,&fatblock->chksum1,&fatblock->chksum2);
 	DCStoreRange(fatblock,8192);
 	card->card_erase_cb = callback;
@@ -1509,7 +1586,7 @@ static s32 __card_updatedir(u32 chn,cardcallback callback)
 	
 	dirblock = __card_getdirblock(card);
 	dircntrl = dirblock+8128;
-	++dircntrl->num;
+	++dircntrl->updated;
 	__card_checksum((u16*)dirblock,0x1ffc,&dircntrl->chksum1,&dircntrl->chksum2);
 	DCStoreRange(dirblock,0x2000);
 	card->card_erase_cb = callback;
@@ -1558,15 +1635,15 @@ static s32 __card_domount(u32 chn)
 		else if(!__card_iscard(id)) ret = CARD_ERROR_WRONGDEVICE;
 
 		if(ret<0) goto exit;
-		card->exi_id = id;
-		card->card_type = (id&0xfc);
+		card->cid = id;
+		card->card_size = (id&0xfc);
 #ifdef _CARD_DEBUG
 		printf("__card_domount(card_type = %08x,%08x,%08x)\n",card->card_type,card->exi_id,id);
 #endif
-		if(card->card_type) {
+		if(card->card_size) {
 			idx = _ROTL(id,23)&0x1c;
 			card->sector_size = card_sector_size[idx>>2];
-			card->blocks = ((card->card_type<<20)>>3)/card->sector_size;
+			card->blocks = ((card->card_size<<20)>>3)/card->sector_size;
 
 			if(card->blocks>0x0008) {
 				idx = _ROTL(id,26)&0x1c;
