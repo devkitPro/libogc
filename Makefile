@@ -16,7 +16,7 @@ OBJCOPY	:=	$(PREFIX)-objcopy
 
 BUILD	:=	build
 
-GETPATH		:=	$(CC) -v 2>&1 | sed -n -e 's/Reading specs from //p' | sed -e 's/\/bin.*//'
+GETPATH		:=	$(CC) -v 2>&1 | sed -n -e 's/Reading specs from //p' | sed -e 's/\/lib.*//'
 INSTALLPATH	:=	$(shell $(GETPATH))
 GCC_VERSION	:=	$(shell $(CC) -dumpversion)
 
