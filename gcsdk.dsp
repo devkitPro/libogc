@@ -280,10 +280,6 @@ SOURCE=.\libogc\pad.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\libogc\processor64.c
-# End Source File
-# Begin Source File
-
 SOURCE=.\libogc\semaphore.c
 # End Source File
 # Begin Source File
@@ -680,7 +676,7 @@ SOURCE=.\libsdcard\fat.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\libsdcard\fat_ops.c
+SOURCE=.\libsdcard\fat_buf.c
 # End Source File
 # Begin Source File
 
@@ -1114,14 +1110,18 @@ SOURCE=.\gc\mad\version.h
 
 SOURCE=.\gc\sdcard\fat.h
 # End Source File
+# Begin Source File
+
+SOURCE=.\gc\sdcard\fat_buf.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\fat_cmn.h
+# End Source File
 # End Group
 # Begin Source File
 
 SOURCE=.\gc\debug.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\gc\sdcard\fat_ops.h
 # End Source File
 # Begin Source File
 

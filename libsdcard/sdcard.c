@@ -543,7 +543,8 @@ static s32 __sdcard_readresponse(s32 chn,void *buf,s32 len)
 			return SDCARD_ERROR_IOERROR;
 		}
 	}
-	usleep(40);
+	usleep(1);
+	//usleep(40);
 	
 	EXI_Deselect(chn);
 	EXI_Unlock(chn);
@@ -721,7 +722,8 @@ static s32 __sdcard_dataread(s32 chn,void *buf,u32 len)
 	}
 
 	/* setalarm, wait */
-	usleep(40);
+	usleep(1);
+	//usleep(40);
 
 	res[0] = res[1] = clr_flag;
 	if(EXI_ImmEx(chn,res,2,EXI_READWRITE)==0) {
@@ -831,7 +833,8 @@ static s32 __sdcard_datareadfinal(s32 chn,void *buf,u32 len)
 	crc_org = ((cmd[4]<<8)&0xff00)|(cmd[5]&0xff);
 	
 	/* setalarm, wait */
-	usleep(40);
+	usleep(1);
+	//usleep(40);
 
 	EXI_Deselect(chn);
 	EXI_Unlock(chn);
@@ -881,7 +884,8 @@ static s32 __sdcard_multidatawrite(s32 chn,void *buf,u32 len)
 	}
 
 	/* setalarm, wait */
-	usleep(40);
+	usleep(1);
+	//usleep(40);
 
 	ret = SDCARD_ERROR_READY;
 	if(EXI_ImmEx(chn,&crc,2,EXI_WRITE)==0) ret = SDCARD_ERROR_IOERROR;
