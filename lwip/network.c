@@ -161,18 +161,16 @@ struct netselect_cb {
 	sem_t sem;
 };
 
-struct net_sem {
-	u32 c;
-	cond_t cond;
-	mutex_t mutex;
-};
-
 typedef void (*apimsg_decode)(struct apimsg_msg *);
 
 static u32 g_netinitiated = 0;
 static u32 tcpiplayer_inited = 0;
 static u32 net_tcp_ticks = 0;
-static wd_cntrl tcp_time_cntrl;
+static u32 net_dhcpcoarse_ticks = 0;
+static u32 net_dhcpfine_ticks = 0;
+static wd_cntrl tcp_timer_cntrl;
+static wd_cntrl dhcp_coarsetimer_cntrl;
+static wd_cntrl dhcp_finetimer_cntrl;
 
 static struct netif g_hNetIF;
 static struct netif g_hLoopIF;
@@ -244,6 +242,18 @@ static void* net_thread(void *);
 extern unsigned int timespec_to_interval(const struct timespec *);
 
 /* low level stuff */
+static void __dhcpcoarse_timer(void *arg)
+{
+	dhcp_coarse_tmr();
+	__lwp_wd_insert_ticks(&dhcp_coarsetimer_cntrl,net_dhcpcoarse_ticks);
+}
+
+static void __dhcpfine_timer(void *arg)
+{
+	dhcp_fine_tmr();
+	__lwp_wd_insert_ticks(&dhcp_finetimer_cntrl,net_dhcpfine_ticks);
+}
+
 static void __tcp_timer(void *arg)
 {
 #ifdef _NET_DEBUG
@@ -251,7 +261,7 @@ static void __tcp_timer(void *arg)
 #endif
 	tcp_tmr();
 	if (tcp_active_pcbs || tcp_tw_pcbs) {
-		__lwp_wd_insert_ticks(&tcp_time_cntrl,net_tcp_ticks);
+		__lwp_wd_insert_ticks(&tcp_timer_cntrl,net_tcp_ticks);
 	} else
 		tcp_timer_active = 0;
 }
@@ -260,7 +270,7 @@ void tcp_timer_needed(void)
 {
 	if(!tcp_timer_active && (tcp_active_pcbs || tcp_tw_pcbs)) {
 		tcp_timer_active = 1;
-		__lwp_wd_insert_ticks(&tcp_time_cntrl,net_tcp_ticks);	
+		__lwp_wd_insert_ticks(&tcp_timer_cntrl,net_tcp_ticks);	
 	}
 }
 
@@ -1375,7 +1385,7 @@ static void* net_thread(void *arg)
 	tb.tv_sec = 0;
 	tb.tv_nsec = TCP_TMR_INTERVAL*1000*1000;
 	net_tcp_ticks = timespec_to_interval(&tb);
-	__lwp_wd_initialize(&tcp_time_cntrl,__tcp_timer,NULL);
+	__lwp_wd_initialize(&tcp_timer_cntrl,__tcp_timer,NULL);
 	
 	LWP_SemPost(sem);
 	
@@ -1498,30 +1508,13 @@ static void evt_callback(struct netconn *conn,enum netconn_evt evt,u32 len)
 	
 }
 
-static void net_getipfrom(const s8 *pszIp,u32 ret_ip[])
-{
-	s32 cnt = 0;
-	s8 *ptr = (s8*)pszIp;
-	if(ptr) {
-		while(*ptr!='\0') {
-			if(*ptr=='.' && cnt<4) {
-				ret_ip[cnt++] = atoi(pszIp);
-				pszIp = ptr+1;
-			}
-			ptr++;
-		}
-		ret_ip[cnt] = atoi(pszIp);
-	}
-}
-
 extern devoptab_t dotab_net;
 u32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean use_dhcp)
 {
-	u32 loc_ip[4] = {0,0,0,0};
-	u32 gw_ip[4] = {0,0,0,0};
-	u32 netmask_ip[4] = {0,0,0,0};
-	struct ip_addr ipaddr, netmask, gw;
+	u32 ret = 0;
+	struct ip_addr loc_ip, netmask, gw;
 	struct netif *pnet;
+	struct timespec tb;
 
 	if(g_netinitiated) return 0;
 	g_netinitiated = 1;
@@ -1538,37 +1531,54 @@ u32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 	netif_init();
 
 	// setup interface 
+	gw.addr = 0;
+	loc_ip.addr = 0;
+	netmask.addr = 0;
 	if(!use_dhcp) {
-		if(pszIP && pszGW && pszMASK) {
-			net_getipfrom(pszIP,loc_ip);
-			net_getipfrom(pszGW,gw_ip);
-			net_getipfrom(pszMASK,netmask_ip);
+		gw.addr = inet_addr(pszGW);
+		if(pszIP && pszMASK) {
+			loc_ip.addr = inet_addr(pszIP);
+			netmask.addr = inet_addr(pszMASK);
 		} else
 			return -1;
 	}
 
-	IP4_ADDR(&gw,gw_ip[0],gw_ip[1],gw_ip[2],gw_ip[3]);
-	IP4_ADDR(&ipaddr, loc_ip[0],loc_ip[1],loc_ip[2],loc_ip[3]);
-	IP4_ADDR(&netmask,netmask_ip[0],netmask_ip[1],netmask_ip[2],netmask_ip[3]);
-
-	pnet = netif_add(&g_hNetIF,&ipaddr, &netmask, &gw, NULL, bba_init, net_input);
+	pnet = netif_add(&g_hNetIF,&loc_ip, &netmask, &gw, NULL, bba_init, net_input);
 	if(pnet) {
 		netif_set_default(pnet);
 #if (LWIP_DHCP)
-		if(use_dhcp==TRUE) 
+		if(use_dhcp==TRUE) {
+			//setup coarse timer
+			tb.tv_sec = DHCP_COARSE_TIMER_SECS;
+			tb.tv_nsec = 0;
+			net_dhcpcoarse_ticks = timespec_to_interval(&tb);
+			__lwp_wd_initialize(&dhcp_coarsetimer_cntrl,__dhcpcoarse_timer,NULL);
+			
+			//setup fine timer
+			tb.tv_sec = 0;
+			tb.tv_nsec = DHCP_FINE_TIMER_MSECS*1000*1000;
+			net_dhcpfine_ticks = timespec_to_interval(&tb);
+			__lwp_wd_initialize(&dhcp_finetimer_cntrl,__dhcpfine_timer,NULL);
+
+			//now start dhcp client
 			dhcp_start(pnet);
+		}
 #endif
 	} else
 		return -1;
 	
 	// setup loopinterface
 	IP4_ADDR(&gw, 127,0,0,1);
-	IP4_ADDR(&ipaddr, 127,0,0,1);
+	IP4_ADDR(&loc_ip, 127,0,0,1);
 	IP4_ADDR(&netmask, 255,0,0,0);
-	pnet = netif_add(&g_hLoopIF,&ipaddr,&netmask,&gw,NULL,loopif_init,net_input);
+	pnet = netif_add(&g_hLoopIF,&loc_ip,&netmask,&gw,NULL,loopif_init,net_input);
 
-	return 0;
+	//last and least start the tcpip layer
+	ret = net_init();
+
+	return ret;
 }
+
 u32 net_init()
 {
 	u32 ret = -1;

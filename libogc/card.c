@@ -5,6 +5,11 @@
 #include "exi.h"
 #include "card.h"
 
+#define _SHIFTL(v, s, w)	\
+    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
+#define _SHIFTR(v, s, w)	\
+    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
+
 static CardDirBlock dirblock[2] __attribute__ ((aligned (32)));
 static CardFatBlock fatblock[2] __attribute__ ((aligned (32)));
 
@@ -37,6 +42,7 @@ static u32 const _cardunlockdata[] =
 };
 
 static u32 cardinit = 0;
+static u32 crand_next = 0;
 static u32 currslot,numsectors,currfat,currdir;
 
 extern unsigned long long gettime();
@@ -659,9 +665,64 @@ u32 CARD_FileAddress(CardFile *pFile)
 	return (pEntry->block*CARD_SECTORSIZE);
 }
 
+static void CARD_SRand(u32 val)
+{
+	crand_next = val;	
+}
+
+static u32 CARD_Rand()
+{
+	crand_next = crand_next*0x41C64E6D+12345;
+	return _SHIFTR(crand_next,16,15);
+}
+
+static u32 exnor_1st(u32 a,u32 b)
+{
+	u32 c,d,e,f,r1,r2,r3;
+
+	c = 0;
+	while(c<b) {
+		d = a>>23;
+		e = a>>15;
+		f = a>>7;
+		r1 = a^f;
+		r1 = e^r1;
+		r2 = (d^~r1);
+		d = a>>1;
+		r3 = (r2<<30)&0x40000000;
+		a = d|r3;
+		c++;
+	};
+	return a;
+}
+
+static u32 exnor(u32 a,u32 b)
+{
+	u32 c,d,e,f,r1,r2,r3;
+
+	c = 0;
+	while(c<b) {
+		d = a<<23;
+		e = a<<15;
+		f = a<<7;
+		r1 = a^f;
+		r1 = e^r1;
+		r2 = (d^~r1);
+		d = a<<1;
+		r3 = (r2>>31)&1;
+		a = d|r3;
+		c++;
+	};
+	return a;
+}
+
+static u32 ReadArrayUnlock()
+{
+	return 0;
+}
+
 static void InitCallback(void *task)
 {
-	
 }
 
 static void DoneCallback(void *task)

@@ -3,8 +3,9 @@
 #include <errno.h>
 #include <math.h>
 #include "asm.h"
+#include "processor.h"
 #include "irq.h"
-#include "lwp_messages.h"
+#include "lwp.h"
 #include "gx.h"
 
 //#define _GP_DEBUG
@@ -61,7 +62,7 @@
 #define WHITE			{255,255,255,255}
 
 static void *_gxcurrbp = NULL;
-static lwp_cntrl *_gxcurrentlwp = NULL;
+static lwp_t _gxcurrentlwp = NULL;
 
 static GXFifoObj _gxdefiniobj;
 
@@ -71,7 +72,8 @@ static u32 _gxoverflowsuspend = 0;
 static u32 _gxoverflowcount = 0;
 static u32 _gpfifo = 0;
 static u32 _cpufifo = 0;
-static mq_cntrl gxFinishMQ;
+static u32 _gxfinished = 0;
+static lwpq_t _gxwaitfinish;
 
 static GXBreakPtCallback breakPtCB = NULL;
 static GXDrawDoneCallback drawDoneCB = NULL;
@@ -157,7 +159,7 @@ static void __GXOverflowHandler()
 		_gxoverflowcount++;
 		__GX_WriteFifoIntEnable(GX_DISABLE,GX_ENABLE);
 		__GX_WriteFifoIntReset(GX_TRUE,GX_FALSE);
-		__lwp_thread_suspend(_gxcurrentlwp);
+		LWP_SuspendThread(_gxcurrentlwp);
 	}
 }
 
@@ -165,7 +167,7 @@ static void __GXUnderflowHandler()
 {	
 	if(_gxoverflowsuspend) {
 		_gxoverflowsuspend = 0;
-		__lwp_thread_resume(_gxcurrentlwp,FALSE);
+		LWP_ResumeThread(_gxcurrentlwp);
 		__GX_WriteFifoIntReset(GX_TRUE,GX_TRUE);
 		__GX_WriteFifoIntEnable(GX_ENABLE,GX_DISABLE);
 	}
@@ -201,14 +203,13 @@ static void __GXTokenInterruptHandler()
 
 static void __GXFinishInterruptHandler()
 {
-	u32 cnt,finishInt = 1;
-	
+	_gxfinished = 1;
 	if(drawDoneCB)
 		drawDoneCB();
 #ifdef _GP_DEBUG
 	printk("__GXFinishInterruptHandler()\n\n");
 #endif
-	__lwpmq_broadcast(&gxFinishMQ,&finishInt,sizeof(u32),GX_FINISH,&cnt);
+	LWP_WakeThread(_gxwaitfinish);
 
 	_peReg[5] |= 8;
 }
@@ -233,7 +234,7 @@ static void __GX_FifoInit()
 	_gxoverflowsuspend = 0;
 	_cpufifo = 0;
 	_gpfifo = 0;
-	_gxcurrentlwp = _thr_executing;
+	_gxcurrentlwp = LWP_GetSelf();
 	_CPU_ISR_Restore(level);
 
 	IRQ_Request(IRQ_PI_CP,__GXCPInterruptHandler,NULL);
@@ -670,10 +671,8 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	u32 divid = *(u32*)0x800000F8;
 	GXTexRegion *region = NULL;
 	GXTlutRegion *tregion = NULL;
-	mq_attr attr;
 
-	attr.mode = LWP_MQ_PRIORITY;
-	__lwpmq_initialize(&gxFinishMQ,&attr,8,sizeof(u32));
+	LWP_InitQueue(&_gxwaitfinish);
 
 	__GX_FifoInit();
 	GX_InitFifoBase(&_gxdefiniobj,base,size);
@@ -977,22 +976,18 @@ void GX_SetDrawDone()
 	_CPU_ISR_Disable(level);
 	GX_LOAD_BP_REG(0x45000002); // set draw done!
 	GX_Flush();
+	_gxfinished = 0;
 	_CPU_ISR_Restore(level);
 }
 
 
 void GX_WaitDrawDone()
 {
-	u32 tmp,finishInt = 0;
-
 #ifdef _GP_DEBUG
 	printf("GX_WaitDrawDone()\n\n");
 #endif
-	while(!finishInt) {
-		__lwp_thread_dispatchdisable();
-		__lwpmq_seize(&gxFinishMQ,GX_FINISH,&finishInt,&tmp,TRUE,LWP_THREADQ_NOTIMEOUT);
-		__lwp_thread_dispatchenable();
-	}
+	while(!_gxfinished)
+		LWP_SleepThread(_gxwaitfinish);
 }
 
 void GX_DrawDone()
