@@ -10,6 +10,10 @@
 #define _SHIFTR(v, s, w)	\
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
+typedef struct _card_block {
+	CARDCallback CARDTxCallback;
+} card_block;
+
 static CardDirBlock dirblock[2] __attribute__ ((aligned (32)));
 static CardFatBlock fatblock[2] __attribute__ ((aligned (32)));
 
@@ -44,6 +48,8 @@ static u32 const _cardunlockdata[] =
 static u32 cardinit = 0;
 static u32 crand_next = 0;
 static u32 currslot,numsectors,currfat,currdir;
+
+static card_block cardmap[2];
 
 extern unsigned long long gettime();
 
@@ -663,6 +669,24 @@ u32 CARD_FileAddress(CardFile *pFile)
 
 	pEntry = &dirblock[currdir].entries[pFile->filenum];
 	return (pEntry->block*CARD_SECTORSIZE);
+}
+
+static u32 __CARD_TxHandler(u32 nChn,void *pCtx)
+{
+	u32 ret = 0;
+	CARDCallback *txcb = NULL;
+	card_block *card = &cardmap[nChn];
+
+	EXI_Deselect(nChn);
+	EXI_Unlock(nChn);
+	
+	txcb = card->CARDTxCallback;
+	card->CARDTxCallback = NULL;
+	if(!txcb) return 1;
+	
+	txcb(nChn,ret);
+
+	return 1;
 }
 
 static void CARD_SRand(u32 val)
