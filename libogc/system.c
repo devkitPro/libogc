@@ -334,13 +334,13 @@ static __inline__ u32 __locksram(u32 loc)
 
 static u32 __unlocksram(u32 write,u32 loc)
 {
-	u16 *sram16 = (u16*)__srambuf;
+	syssram *sram = (syssram*)__srambuf;
 
 	if(__srambuf_lck) {
 		if(write) {
 			if(!loc) {
-				if((__srambuf[19]&0x03)>0x02) __srambuf[19] = (__srambuf[19]&~0x02);
-				__buildchecksum((u16*)__srambuf,&sram16[0],&sram16[1]);
+				if((sram->flags&0x03)>0x02) sram->flags = (sram->flags&~0x02);
+				__buildchecksum((u16*)__srambuf,&sram->checksum,&sram->checksum_inv);
 			}
 			if(loc<__srambuf_len) __srambuf_len = loc;
 			

@@ -36,6 +36,18 @@
    extern "C" {
 #endif /* __cplusplus */
 
+typedef struct _syssram {
+	u16 checksum;
+	u16 checksum_inv;
+	u32 ead0;
+	u32 ead1;
+	u32 counter_bias;
+	s8 display_offsetH;
+	u8 ntd;
+	u8 lang;
+	u8 flags;
+} syssram;
+
 typedef struct _sysalarm sysalarm;
 
 typedef void (*alarmcallback)(sysalarm *alarm);

@@ -45,7 +45,7 @@ static const u32 VIDEO_Mode640X480YUV16[3][32] = {
 	},
 	//PAL 50Hz
 	{
-		0x11F50101, 0x4B6A01B0, 0x02F85640, 0x00010023,
+		0x11F50105, 0x4B6A01B0, 0x02F85640, 0x00010023,
 		0x00000024, 0x4D2B4D6D, 0x4D8A4D4C, 0x00435A4E,
 		0x00000000, 0x00435A4E, 0x00000000, 0x013C0144,
 		0x113901B1, 0x10010001, 0x00010001, 0x00010001,
@@ -169,9 +169,12 @@ GXRModeObj TVPal574IntDfScale =
 
 static lwpq_t video_queue;
 
+static u32 curFB = 0;
 static u32 videoMode = -1;
 static vu32 retraceCount = 0;
 static void *nextFramebuffer = NULL;
+static void *nextFramebufferA = NULL;
+static void *nextFramebufferB = NULL;
 static const u32 *currTiming = NULL;
 static VIRetraceCallback preRetraceCB = NULL;
 static VIRetraceCallback postRetraceCB = NULL;
@@ -266,11 +269,20 @@ static u32 __getCurrFieldEvenOdd()
 
 static u32 __VISetRegs()
 {
+	void *tmp = nextFramebuffer;
+
 	if(!__getCurrFieldEvenOdd()) return 0;
 
-   ((u32*)_viReg)[7] = (0x10000000|(MEM_VIRTUAL_TO_PHYSICAL(nextFramebuffer)>>5));
-   ((u32*)_viReg)[9] = (0x10000000|(MEM_VIRTUAL_TO_PHYSICAL(nextFramebuffer)>>5));
+	nextFramebufferA = tmp;
+	if(curFB==1) {
+		tmp = (void*)(u8*)tmp+1280;
+	}
+	nextFramebufferB = tmp;
+	
+	((u32*)_viReg)[7] = (0x10000000|(MEM_VIRTUAL_TO_PHYSICAL(nextFramebufferA)>>5));
+	((u32*)_viReg)[9] = (0x10000000|(MEM_VIRTUAL_TO_PHYSICAL(nextFramebufferB)>>5));
 
+	curFB ^= 1;
 	return 1;
 }
 
