@@ -7,6 +7,7 @@
 #include "cache.h"
 #include "ogcsys.h"
 #include "lwp.h"
+#include "lwp_threads.h"
 #include "lwp_watchdog.h"
 #include "lwip/debug.h"
 #include "lwip/opt.h"
@@ -381,8 +382,9 @@ static u32 __bba_exi_wait()
 	_CPU_ISR_Disable(level);
 	do {
 		if((ret=EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,__bba_exi_unlock))==1) break;
-		_CPU_ISR_Flash(level);
+		_CPU_ISR_Restore(level);
 		LWP_SleepThread(wait_exi_queue);
+		_CPU_ISR_Disable(level);
 	} while(ret==0);
 	_CPU_ISR_Restore(level);
 	return ret;
@@ -395,8 +397,10 @@ static u32 __bba_tx_wake(struct bba_priv *priv)
 	_CPU_ISR_Disable(level);
 	if(priv->state==ERR_TXPENDING) {
 		priv->state = ERR_OK;
+		_CPU_ISR_Restore(level);
 		LWP_WakeThread(wait_tx_queue);
 		LWIP_DEBUGF(NETIF_DEBUG,("__bba_tx_wake(%p,%p)\n",priv,LWP_GetSelf()));
+		_CPU_ISR_Disable(level);
 	}
 	_CPU_ISR_Restore(level);
 	return 1;
@@ -412,6 +416,7 @@ static u32 __bba_tx_stop(struct bba_priv *priv)
 	while(priv->state==ERR_TXPENDING) {
 		_CPU_ISR_Restore(level);
 		LWP_SleepThread(wait_tx_queue);
+		LWIP_DEBUGF(NETIF_DEBUG,("__bba_tx_stop(%p,%p,%d)\n",priv,LWP_GetSelf(),_thread_dispatch_disable_level));
 		_CPU_ISR_Disable(level);
 	}
 	priv->state = ERR_TXPENDING;
@@ -471,9 +476,8 @@ static void __bba_recv_init()
 	bba_out12(BBA_RWP,BBA_INIT_RWP);
 	bba_out12(BBA_RRP,BBA_INIT_RRP);
 	bba_out12(BBA_RHBP,BBA_INIT_RHBP);
-	bba_out12(BBA_RXINTT,0x0600);
 
-	bba_out8(BBA_NCRB,(BBA_NCRB_AB|BBA_NCRB_CA|BBA_NCRB_2_PACKETS_PER_INT));
+	bba_out8(BBA_NCRB,(BBA_NCRB_AB|BBA_NCRB_CA));
 	bba_out8(BBA_NCRA,BBA_NCRA_SR);
 	bba_out8(BBA_MISC2,(BBA_MISC2_AUTORCVR));
 	bba_out8(BBA_GCA,BBA_GCA_ARXERRB);
@@ -506,7 +510,7 @@ static u32 __bba_link_txsub1()
 	if(cur_snd_immlen) bba_outsdata(cur_snd_buffer+cur_snd_dmalen,cur_snd_immlen);
 	bba_deselect();
 
-	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)&~BBA_NCRA_ST0));		//&~BBA_NCRA_ST0
+	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)));		//&~BBA_NCRA_ST0
 	EXI_Unlock(EXI_CHANNEL_0);
 	return ERR_OK;
 }
@@ -553,13 +557,20 @@ static err_t __bba_link_tx(struct netif *dev,struct pbuf *p)
 
 	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_tx(%d,%p)\n",p->tot_len,LWP_GetSelf()));
 
-	for(tmp=p;tmp!=NULL && ret==ERR_OK;tmp=tmp->next) {
-		__bba_tx_stop(priv);
-		memcpy(cur_snd_buffer,tmp->payload,tmp->len);
-		cur_snd_len = tmp->len;
-		ret = __bba_link_txsub0();
+	if(p->tot_len>BBA_TX_MAX_PACKET_SIZE) {
+		LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_tx(packet_size: %d)\n",p->tot_len));
+		return ERR_PKTSIZE;
 	}
-	return ret;
+
+	__bba_tx_stop(priv);
+
+	cur_snd_len = 0;
+	for(tmp=p;tmp!=NULL && ret==ERR_OK;tmp=tmp->next) {
+		memcpy(cur_snd_buffer+cur_snd_len,tmp->payload,tmp->len);
+		cur_snd_len += tmp->len;
+	}
+
+	return __bba_link_txsub0();
 }
 
 static err_t bba_start_tx(struct netif *dev,struct pbuf *p,struct ip_addr *ipaddr)
@@ -604,7 +615,7 @@ static u32 __bba_link_postrxsub1()
 	if(cur_rcv_postimmlen) bba_outsdata(cur_rcv_postbuffer+cur_rcv_postdmalen,cur_rcv_postimmlen);
 	bba_deselect();
 
-	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)&~BBA_NCRA_ST0));
+	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)));		//&~BBA_NCRA_ST0
 
 	bba_out8(BBA_IR,BBA_IR_RI);
 	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
