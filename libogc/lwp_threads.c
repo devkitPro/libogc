@@ -19,6 +19,8 @@ lwp_cntrl *_thr_executing = NULL;
 lwp_cntrl *_thr_heir = NULL;
 lwp_cntrl *_thr_allocated_fp = NULL;
 
+frame_context *_thr_allocated_fpctx = NULL;
+
 lwp_queue _lwp_thr_ready[256];
 
 volatile boolean _context_switch_want;
@@ -58,6 +60,22 @@ static void __lwp_dumpcontext(frame_context *ctx)
 	printf("LR %08x SRR0 %08x SRR1 %08x MSR %08x\n\n", ctx->LR, ctx->SRR0, ctx->SRR1,ctx->MSR);
 }
 #endif
+
+void __lwp_fpucontext_handler(frame_context *ctx)
+{
+	frame_context *pctx = NULL;
+
+	mtmsr(mfmsr()|MSR_FP);
+	ctx->SRR1 |= MSR_FP;
+	
+	pctx = _thr_allocated_fpctx;
+	_thr_allocated_fpctx = ctx;
+	if(pctx!=ctx) {
+		printf("__lwp_fpucontext_handler(%p,%p)\n",ctx,pctx);
+		if(pctx) _cpu_context_save_fp((void*)pctx);
+		_cpu_context_restore_fp((void*)ctx);
+	}
+}
 
 u32 __lwp_isr_in_progress()
 {
@@ -106,14 +124,14 @@ void __thread_dispatch()
 
 		//_cpu_context_save_fp((void*)&exec->fp);
 		_cpu_context_switch((void*)&exec->context,(void*)&heir->context);
-
+/*
 		if(!__lwp_thread_isallocatedfp(exec)) {
 			if(_thr_allocated_fp!=NULL)
-				_cpu_context_save_fp((void*)&_thr_allocated_fp->fp);
-			_cpu_context_restore_fp((void*)&exec->fp);
+				_cpu_context_save_fp((void*)&_thr_allocated_fp->context);
+			_cpu_context_restore_fp((void*)&exec->context);
 			_thr_allocated_fp = exec;
 		}
-
+*/
 		exec = _thr_executing;
 		_CPU_ISR_Disable(level);
 	}
@@ -138,13 +156,13 @@ static void __lwp_thread_handler()
 #endif
 	level = exec->isr_level;
 	__lwp_msr_setlevel(level);
-
+/*
 	if(!__lwp_thread_isallocatedfp(exec)) {
 		if(_thr_allocated_fp!=NULL)
-			_cpu_context_save_fp((void*)&_thr_allocated_fp->fp);
+			_cpu_context_save_fp((void*)&_thr_allocated_fp->context);
 		_thr_allocated_fp = exec;
 	}
-	
+*/	
 	__lwp_thread_dispatchenable();
 	exec->wait.ret_arg = exec->entry(exec->arg);
 
@@ -423,7 +441,7 @@ void __lwp_thread_loadenv(lwp_cntrl *thethread)
 	u32 stackbase,sp,size;
 	u32 r2,r13,msr_value;
 	
-	thethread->fp.FPSCR = 0x000000f8;
+	thethread->context.FPSCR = 0x000000f8;
 
 	stackbase = (u32)thethread->stack;
 	size = thethread->stack_size;
@@ -443,7 +461,7 @@ void __lwp_thread_loadenv(lwp_cntrl *thethread)
 		msr_value &= ~MSR_EE;
 	
 	thethread->context.MSR = msr_value;
-	thethread->context.MSR |= MSR_FP;
+	thethread->context.MSR &= ~MSR_FP;		//disable FPU, we'll use it only when needed, then it'll get saved/restored in the FP exception handler
 
 	thethread->context.LR = (u32)__lwp_thread_handler;
 
@@ -516,7 +534,6 @@ u32 __lwp_thread_init(lwp_cntrl *thethread,void *stack_area,u32 stack_size,u32 p
 		return 0;
 
 	memset(&thethread->context,0,sizeof(thethread->context));
-	memset(&thethread->fp,0,sizeof(thethread->fp));
 	memset(&thethread->wait,0,sizeof(thethread->wait));
 
 	thethread->is_preemptible = is_preemtible;
@@ -611,7 +628,7 @@ void __lwp_start_multitasking()
 #ifdef _LWPTHREADS_DEBUG
 	printf("__lwp_start_multitasking(%p,%p)\n",_thr_executing,_thr_heir);
 #endif
-	_cpu_context_restore_fp((void*)&_thr_heir->fp);
+	//_cpu_context_restore_fp((void*)&_thr_heir->context);
 	_cpu_context_switch((void*)&core_context,(void*)&_thr_heir->context);
 
 	_CPU_ISR_Restore(level);
@@ -640,6 +657,7 @@ u32 __lwp_sys_init()
 	_thr_executing = NULL;
 	_thr_heir = NULL;
 	_thr_allocated_fp = NULL;
+	_thr_allocated_fpctx = NULL;
 
 	for(index=0;index<1024;index++) {
 		_lwp_objects[index].lwp_id = 0;

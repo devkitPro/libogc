@@ -67,7 +67,7 @@ default_exceptionhandler_start:
 	mr		r5,r3
 	nop
 	mfmsr	r3
-	ori		r3,r3,MSR_IR|MSR_DR|MSR_FP
+	ori		r3,r3,MSR_IR|MSR_DR //|MSR_FP
 	mtsrr1	r3
 	
 default_exceptionhandler_patch:
@@ -85,8 +85,11 @@ default_exceptionhandler_patch:
 	isync
 	rfi
 1:	
-	clrlslwi	r5,r3,24,2
-	lwz			r5,0x3000(r5)
+	lis			r5,_exceptionhandlertable@h
+	ori			r5,r5,_exceptionhandlertable@l
+	clrlwi		r5,r5,2
+	clrlslwi	r3,r3,24,2
+	lwzx		r5,r3,r5
 	sync
 	isync
 	rfi

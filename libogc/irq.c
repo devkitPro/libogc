@@ -2,7 +2,7 @@
 #include <string.h>
 #include "asm.h"
 #include "cache.h"
-#include "exception.h"
+#include "context.h"
 #include "processor.h"
 #include "irq.h"
 

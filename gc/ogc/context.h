@@ -33,13 +33,14 @@ typedef struct _excption_frame {
 	u32 GPR[32];
 	u32 GQR[8];
 	u32 CR, LR, CTR, XER, MSR, DAR;
-} frame_context;
 
-typedef struct _fp_context {
+	u16	state;		//used to determine whether to restore the fpu context or not
+	u16 mode;		//unused
+
 	f64 FPR[32];
 	f64	FPSCR;
 	f64 PSFPR[32];
-} fp_context;
+} frame_context;
 
 #ifdef __cplusplus
    }

@@ -2,7 +2,7 @@
 
 	.set	FP_SIZE,	8
 
-	.set	FP_0, 0
+	.set	FP_0, FPR0_OFFSET-8
 	.set	FP_1, (FP_0 + FP_SIZE)
 	.set	FP_2, (FP_1 + FP_SIZE)
 	.set	FP_3, (FP_2 + FP_SIZE)
@@ -70,6 +70,9 @@
 
 	.globl _cpu_context_save_fp
 _cpu_context_save_fp:
+	lhz		r4,STATE_OFFSET-8(r3)
+	ori		r4,r4,0x0001
+	sth		r4,STATE_OFFSET-8(r3)
 	stfd	fr0, FP_0(r3)
 	stfd	fr1, FP_1(r3)
 	stfd	fr2, FP_2(r3)
@@ -145,6 +148,9 @@ _cpu_context_save_fp:
 
 	.globl _cpu_context_restore_fp
 _cpu_context_restore_fp:
+	lhz		r4,STATE_OFFSET-8(r3)
+	clrlwi.	r4,r4,31
+	beq		2f
 	lfd		fr0, FP_FPSCR(r3)
 	mtfsf	255, fr0
 	mfspr	r5,920
@@ -215,7 +221,8 @@ _cpu_context_restore_fp:
 	lfd		fr29, FP_29(r3)
 	lfd		fr30, FP_30(r3)
 	lfd		fr31, FP_31(r3)
-	blr
+
+2:	blr
 
 	.globl _cpu_context_switch
 _cpu_context_switch:

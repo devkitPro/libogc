@@ -5,7 +5,7 @@
 #include "processor.h"
 #include "cache.h"
 #include "irq.h"
-#include "exception.h"
+#include "context.h"
 
 #include "pad.h"
 
@@ -21,8 +21,12 @@ typedef struct _framerec {
 extern s8 default_exceptionhandler_start[],default_exceptionhandler_end[],default_exceptionhandler_patch[];
 extern s8 systemcall_handler_start[],systemcall_handler_end[];
 
-extern void c_default_exceptionhandler(frame_context *);
-extern void decrementer_handler();
+void (*_exceptionhandlertable[NUM_EXCEPTIONS])(frame_context*);
+
+void c_default_exceptionhandler(frame_context *);
+void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
+
+extern void __lwp_fpucontext_handler(frame_context*);
 
 static u32 exception_location[NUM_EXCEPTIONS] = {
 		0x00000100, 0x00000200, 0x00000300, 0x00000400,
@@ -64,8 +68,9 @@ void __exception_init()
 		// load default exception vector handler code
 		__exception_load(i,default_exceptionhandler_start,(default_exceptionhandler_end-default_exceptionhandler_start),default_exceptionhandler_patch);
 		//set default exception handler into table
-		ExceptionSetHandler(i,c_default_exceptionhandler);
+		__exception_sethandler(i,c_default_exceptionhandler);
 	}
+	__exception_sethandler(EX_FP,__lwp_fpucontext_handler);
 	mtmsr(mfmsr()|MSR_RI);
 }
 
@@ -80,9 +85,9 @@ void __excpetion_close()
 	}
 }
 
-void ExceptionSetHandler(u32 nExcept, void (*pHndl)(frame_context*))
+void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*))
 {
-	((void**)0x80003000)[nExcept] = pHndl;
+	_exceptionhandlertable[nExcept] = pHndl;
 }
 
 static void _cpu_print_stack(void *pc,void *lr,void *r1)

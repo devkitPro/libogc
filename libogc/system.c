@@ -7,7 +7,6 @@
 #include "exi.h"
 #include "cache.h"
 #include "video.h"
-#include "exception.h"
 #include "sys_state.h"
 #include "lwp_threads.h"
 #include "lwp_priority.h"

@@ -53,7 +53,6 @@ typedef struct _lwpcntrl {
 	u8 stack_allocated;
 	lwp_queue *ready;
 	frame_context context;		//16
-	fp_context fp;
 	void *libc_reent;
 } lwp_cntrl, *lwp_cntrl_t;
 
