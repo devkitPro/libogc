@@ -7,7 +7,7 @@
 //#define _GCMOD_DEBUG
 
 #define STACKSIZE		8192
-#define SNDBUFFERSIZE	3523<<2
+#define SNDBUFFERSIZE	3750<<2			//that's the maximum buffer size for one VBlank we need.
 
 static BOOL thr_running = FALSE;
 static BOOL sndPlaying = FALSE;

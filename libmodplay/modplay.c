@@ -33,6 +33,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "modplay.h"
 #include "mixer.h"
 #ifndef GEKKO
+#include "bpmtab.h"
 #include "inctab.h"
 #endif
 
