@@ -292,7 +292,7 @@ u32 EXI_SelectSD(u32 nChn,u32 nDev,u32 nFrq)
 	if(nChn!=EXI_CHANNEL_2) {
 		if(nDev==EXI_DEVICE_0 && !(exi->flags&EXI_FLAG_ATTACH)) {
 			if((ret=__exi_probe(nChn))==1) {
-				if(!exi->exi_idtime) ret = EXI_GetID(nChn,nDev,&id);
+				if(!exi->exi_idtime) ret = EXI_GetID(nChn,EXI_DEVICE_0,&id);
 			}
 			if(ret==0) {
 				_CPU_ISR_Restore(level);
@@ -310,7 +310,7 @@ u32 EXI_SelectSD(u32 nChn,u32 nDev,u32 nFrq)
 
 	exi->flags |= EXI_FLAG_SELECT;
 	val = _exiReg[nChn*5];
-	val = (val&0x405)|(0x80<<nDev)|(nFrq<<4);
+	val = (val&0x405)|(nFrq<<4);
 	_exiReg[nChn*5] = val;
 
 	if(exi->flags&EXI_FLAG_ATTACH) {
@@ -542,7 +542,7 @@ u32 EXI_GetID(u32 nChn,u32 nDev,u32 *nId)
 		EXI_Detach(nChn);
 		
 		_CPU_ISR_Disable(level);
-		if(diff_usec(last_exi_idtime[nChn],idtime)==0) {
+		if(idtime==last_exi_idtime[nChn]) {
 			exi->exi_idtime = idtime;
 			exi->exi_id = *nId;
 			ret = 1;

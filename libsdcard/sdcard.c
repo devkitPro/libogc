@@ -202,22 +202,6 @@ static void __fill_cidregister(s32 chn)
 	memcpy(card->cid.pnm,cid+3,5);
 }
 
-static void __timeout_handler(sysalarm *alarm)
-{
-	u32 chn;
-	sdcard_block *card = NULL;
-	
-	chn = 0;
-	while(chn<2) {
-		card = &sdcard_map[chn];
-		if((&card->timeout_svc)==alarm) break;
-		chn++;
-	}
-	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return;
-
-	LWP_WakeThread(card->alarm_queue);
-}
-
 static __inline__ u32 __check_response(s32 chn,u8 *res)
 {
 	sdcard_block *card = NULL;
@@ -679,7 +663,6 @@ static s32 __sdcard_dataread(s32 chn,void *buf,u32 len)
 	u8 res[2];
 	u16 crc,crc_org;
 	s32 startT,ret;
-	struct timespec tb;
 	sdcard_block *card = NULL;
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
@@ -738,10 +721,7 @@ static s32 __sdcard_dataread(s32 chn,void *buf,u32 len)
 	}
 
 	/* setalarm, wait */
-	tb.tv_sec = 0;
-	tb.tv_nsec = 40*TB_NSPERMS;
-	SYS_SetAlarm(&card->timeout_svc,&tb,__timeout_handler);
-	LWP_SleepThread(card->alarm_queue);
+	usleep(40);
 
 	res[0] = res[1] = clr_flag;
 	if(EXI_ImmEx(chn,res,2,EXI_READWRITE)==0) {
@@ -774,7 +754,6 @@ static s32 __sdcard_datareadfinal(s32 chn,void *buf,u32 len)
 	u32 cnt;
 	u8 *ptr,cmd[6];
 	u16 crc_org,crc;
-	struct timespec tb;
 	sdcard_block *card = NULL;
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
@@ -852,10 +831,7 @@ static s32 __sdcard_datareadfinal(s32 chn,void *buf,u32 len)
 	crc_org = ((cmd[4]<<8)&0xff00)|(cmd[5]&0xff);
 	
 	/* setalarm, wait */
-	tb.tv_sec = 0;
-	tb.tv_nsec = 40*TB_NSPERMS;
-	SYS_SetAlarm(&card->timeout_svc,&tb,__timeout_handler);
-	LWP_SleepThread(card->alarm_queue);
+	usleep(40);
 
 	EXI_Deselect(chn);
 	EXI_Unlock(chn);
@@ -877,7 +853,6 @@ static s32 __sdcard_multidatawrite(s32 chn,void *buf,u32 len)
 	u16 crc;
 	u32 cnt;
 	s32 ret;
-	struct timespec tb;
 	sdcard_block *card = NULL;
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
@@ -906,10 +881,7 @@ static s32 __sdcard_multidatawrite(s32 chn,void *buf,u32 len)
 	}
 
 	/* setalarm, wait */
-	tb.tv_sec = 0;
-	tb.tv_nsec = 40*TB_NSPERMS;
-	SYS_SetAlarm(&card->timeout_svc,&tb,__timeout_handler);
-	LWP_SleepThread(card->alarm_queue);
+	usleep(40);
 
 	ret = SDCARD_ERROR_READY;
 	if(EXI_ImmEx(chn,&crc,2,EXI_WRITE)==0) ret = SDCARD_ERROR_IOERROR;
@@ -1356,6 +1328,8 @@ static void __sdcard_dounmount(s32 chn,s32 result)
 	_CPU_ISR_Disable(level);
 	if(card->attached) {
 		card->attached = 0;
+		card->mount_step = 0;
+		card->result = result;
 		EXI_RegisterEXICallback(chn,NULL);
 		EXI_Detach(chn);
 		SYS_CancelAlarm(&card->timeout_svc);
@@ -1365,7 +1339,7 @@ static void __sdcard_dounmount(s32 chn,s32 result)
 
 s32 SDCARD_Reset(s32 chn)
 {
-	u32 ret;
+	s32 ret;
 	sdcard_block *card = NULL;
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return SDCARD_ERROR_NOCARD;
@@ -1379,7 +1353,7 @@ s32 SDCARD_Reset(s32 chn)
 		wp_flag = 1;
 		if(__sdcard_softreset(chn)!=0) return -1;
 	}
-
+		
 	if(__sdcard_sendopcond(chn)!=0) return -1;
 	if(__sdcard_sendcsd(chn)!=0) return -1;
 	if(__sdcard_sendcid(chn)!=0) return -1;
@@ -1409,7 +1383,6 @@ s32 SDCARD_Mount(s32 chn,SDCCallback detach_cb)
 
 	while((ret=EXI_ProbeEx(chn))==0);
 	if(ret!=1) return SDCARD_ERROR_NOCARD;
-	
 
 	ret = SDCARD_ERROR_BUSY;
 	if(card->attached || !(EXI_GetState(chn)&EXI_FLAG_ATTACH)) {
@@ -1426,17 +1399,20 @@ s32 SDCARD_Mount(s32 chn,SDCCallback detach_cb)
 		}
 		card->attached = 1;
 		card->mount_step = 0;
+		card->err_status = 0;
 		if((ret=SDCARD_Reset(chn))!=0) {
 			ret = SDCARD_ERROR_IOERROR;
 			goto exit;
 		}
 
+		card->result = SDCARD_ERROR_READY;
 		return SDCARD_ERROR_READY;
-	}
-
 exit:
-	__sdcard_dounmount(chn,ret);
-	return SDCARD_ERROR_NOCARD;
+		__sdcard_dounmount(chn,ret);
+		return ret;
+	}
+	ret = SDCARD_ERROR_WRONGDEVICE;
+	return ret;
 }
 
 s32 SDCARD_Unmount(s32 chn)

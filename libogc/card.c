@@ -1719,7 +1719,7 @@ static s32 __card_domount(s32 chn)
 						sum += kval;
 						cnt++;
 					}
-					((u8*)sram_base)[0x26] = sum^-1;
+					((u8*)sram_base)[0x26+chn] = (sum^-1)&0xff;
 					__SYS_UnlockSramEx(1);
 					return ret;
 				}
@@ -1734,7 +1734,7 @@ static s32 __card_domount(s32 chn)
 				}
 				__SYS_UnlockSramEx(0);
 				
-				cnt = ((u8*)sram_base)[0x26];
+				cnt = ((u8*)sram_base)[0x26+chn];
 				sum = (sum^-1)&0xff;
 				if(cnt!=sum) {
 					ret = CARD_ERROR_IOERROR;
