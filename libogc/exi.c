@@ -62,6 +62,19 @@ extern void __MaskIrq(u32);
 extern long long gettime();
 extern u32 diff_usec(long long start,long long end);
 
+static __inline__ void __exi_clearirqs(u32 nChn,u32 nEXIIrq,u32 nTCIrq,u32 nEXTIrq)
+{
+	u32 d;
+#ifdef _EXI_DEBUG
+	printf("__exi_clearirqs(%d,%d,%d,%d)\n",nChn,nEXIIrq,nTCIrq,nEXTIrq);
+#endif
+	d = (_exiReg[nChn*5]&~(EXI_EXI_IRQ|EXI_TC_IRQ|EXI_EXT_IRQ));
+	if(nEXIIrq) d |= EXI_EXI_IRQ;
+	if(nTCIrq) d |= EXI_TC_IRQ;
+	if(nEXTIrq) d |= EXI_EXT_IRQ;
+	_exiReg[nChn*5] = d;
+}
+
 static u32 __exi_probe(u32 nChn)
 {
 	s64 time;
@@ -75,7 +88,7 @@ static u32 __exi_probe(u32 nChn)
 	val = _exiReg[nChn*5];
 	if(!(exi->flags&EXI_FLAG_ATTACH)) {
 		if(val&EXI_EXT_IRQ) {
-			_exiReg[nChn*5] = (val&~(EXI_EXI_IRQ|EXI_TC_IRQ|EXI_EXT_IRQ))|EXI_EXT_IRQ;
+			__exi_clearirqs(nChn,0,0,1);
 			exi->exi_idtime = 0;
 			last_exi_idtime[nChn] = 0;
 		}
@@ -104,19 +117,6 @@ static u32 __exi_probe(u32 nChn)
 	}
 	_CPU_ISR_Restore(level);
 	return ret;
-}
-
-static __inline__ void __exi_clearirqs(u32 nChn,u32 nEXIIrq,u32 nTCIrq,u32 nEXTIrq)
-{
-	u32 d;
-#ifdef _EXI_DEBUG
-	printf("__exi_clearirqs(%d,%d,%d,%d)\n",nChn,nEXIIrq,nTCIrq,nEXTIrq);
-#endif
-	d = (_exiReg[nChn*5]&~(EXI_EXI_IRQ|EXI_TC_IRQ|EXI_EXT_IRQ));
-	if(nEXIIrq) d |= EXI_EXI_IRQ;
-	if(nTCIrq) d |= EXI_TC_IRQ;
-	if(nEXTIrq) d |= EXI_EXT_IRQ;
-	_exiReg[nChn*5] = d;
 }
 
 static inline void __exi_setinterrupts(u32 nChn,exibus_priv *exi)
@@ -495,7 +495,7 @@ static u32 __unlocked_handler(u32 nChn,u32 nDev)
 u32 EXI_GetID(u32 nChn,u32 nDev,u32 *nId)
 {
 	s64 idtime = 0;
-	u32 ret,lck,reg;
+	u32 ret,lck,reg,level;
 	exibus_priv *exi = &eximap[nChn];
 
 #ifdef _EXI_DEBUG
@@ -537,16 +537,22 @@ u32 EXI_GetID(u32 nChn,u32 nDev,u32 *nId)
 		}
 	}
 	
+	ret = 0;
 	if(nChn<EXI_CHANNEL_2 && nDev==EXI_DEVICE_0) {
 		EXI_Detach(nChn);
-		exi->exi_idtime = idtime;
-		exi->exi_id = *nId;
+		
+		_CPU_ISR_Disable(level);
+		if(diff_usec(last_exi_idtime[nChn],idtime)==0) {
+			exi->exi_idtime = idtime;
+			exi->exi_id = *nId;
+			ret = 1;
+		}
+		_CPU_ISR_Restore(level);
 #ifdef _EXI_DEBUG
 		printf("EXI_GetID(exi_id = %d)\n",exi->exi_id);
 #endif
-		return 1;
 	}
-	return 0;
+	return ret;
 }
 
 u32 EXI_Attach(u32 nChn,EXICallback ext_cb)
@@ -646,7 +652,7 @@ u32 EXI_ProbeReset()
 void __exi_init()
 {
 #ifdef _EXI_DEBUG
-	printf("__exit_init(): init expansion system.\n");
+	printf("__exi_init(): init expansion system.\n");
 #endif
 	__MaskIrq(IM_EXI);
 
