@@ -397,10 +397,8 @@ static u32 __bba_tx_wake(struct bba_priv *priv)
 	_CPU_ISR_Disable(level);
 	if(priv->state==ERR_TXPENDING) {
 		priv->state = ERR_OK;
-		_CPU_ISR_Restore(level);
 		LWP_WakeThread(wait_tx_queue);
 		LWIP_DEBUGF(NETIF_DEBUG,("__bba_tx_wake(%p,%p)\n",priv,LWP_GetSelf()));
-		_CPU_ISR_Disable(level);
 	}
 	_CPU_ISR_Restore(level);
 	return 1;
