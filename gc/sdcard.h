@@ -25,23 +25,21 @@
 #endif /* __cplusplus */
 
 typedef struct _dir {
-	u8 name[16];
-} dir;
+	u8 name[128][32];
+	u32 size[128];
+} DIR;
+
 
 typedef void sd_file;
 typedef void (*SDCCallback)(s32 chn,s32 result);
 
 s32 SDCARD_Init();
-s32 SDCARD_Term(s32 drv_no);
-void SDCARD_RegisterCallback(u32 drv_no,void (*pFuncIN)(s32),void (*pFuncOUT)(s32));
 
 sd_file* SDCARD_OpenFile(const char *filename,const char *mode);
 u32 SDCARD_ReadFile(sd_file *file,void *buf,u32 len);
 u32 SDCARD_SeekFile(sd_file *file,u32 offset,u32 whence);
 u32 SDCARD_GetFileSize(sd_file *file);
-
-
-//s32 SDCARD_ReadDir(const char *dirname,u32 entry_start,u32 entry_cnt,dir *dir_buf,u32 *read_cnt);
+u32 SDCARD_ReadDir(const char *dirname,DIR *pdir_list);
 
 #ifdef __cplusplus
    }

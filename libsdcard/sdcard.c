@@ -213,3 +213,30 @@ u32 SDCARD_GetFileSize(sd_file *file)
 	if(ifile) return ifile->size;
 	return 0;
 }
+
+u32 SDCARD_ReadDir(const char *dirname,DIR *pdir_list)
+{
+	s32 ret;
+	u32 size;
+	u8 buffer[32+16];
+	u32 count = 0;
+	u32 cnt,entries = 0;
+	dir_entry dent;
+
+	ret = card_getListNumDir(dirname,&entries);
+	if(ret!=0) return SDCARD_ERROR_FATALERROR;
+	
+	if(entries>128) entries = 128;
+
+	cnt = 0;
+	while(cnt<entries) {
+		card_readDir(dirname,cnt,1,&dent,&count);
+		strcpy(pdir_list->name[cnt],dent.name);
+
+		sprintf(buffer,"%s%s",dirname,dent.name);
+		card_getFileSize(buffer,&size);
+		pdir_list->size[cnt] = size;
+		cnt++;
+	}
+	return entries;
+}

@@ -95,9 +95,22 @@ typedef struct _sm_info {
 	pbr spbr;
 } sd_info;
 
+typedef struct _filestat {
+	u32 attr;
+	u32 cluster;
+	u32 size;
+	time_t time;
+} file_stat;
+
 typedef struct _dir_entry {
 	u8 name[16];
 } dir_entry;
+
+typedef struct _dir_entry_ex {
+	u8 name[16];
+	u16 long_name[(MAX_FILE_NAME_LEN>>1)+1];		/* unicode */
+	file_stat stat;
+} dir_entryex;
 
 typedef struct _fatcache {
 	u32 f_ptr;
@@ -125,23 +138,30 @@ s32 card_init();
 
 void card_initFATDefault();
 s32 card_initFAT(s32 drv_no);
+s32 card_termFAT(s32 drv_no);
 
 void card_insertedCB(s32 drv_no);
 void card_ejectedCB(s32 drv_no);
 
 s32 card_deleteFromOpenedList(s32 drv_no,u32 cluster);
 
+s32 card_allocCluster(s32 drv_no,u32 *p_cluster);
+u32 card_searchCluster(s32 drv_no,u32 count, u32 *pmax_cnt);
+
 s32 card_openFile(const char *filename,u32 open_mode,F_HANDLE *p_handle);
 s32 card_closeFile(F_HANDLE h_file);
 s32 card_seekFile(F_HANDLE h_file,u32 seek_mode,s32 offset,s32 *p_oldoffset);
 
 s32 card_getFileSize(const char *filename,u32 *p_size);
+s32 card_getListNumDir(const char *p_dirname,u32 *p_num);
+s32 card_readDir(const char *dirname,u32 entry_start,u32 entry_cnt,dir_entry *dir_buf,u32 *read_cnt);
 
 s32 card_readFile(F_HANDLE h_file,void *buf,u32 cnt,u32 *p_cnt);
 
 s32 card_readFromDisk(s32 drv_no,opendfile_list *p_list,void *buf,u32 cnt,u32 *p_cnt);
 
 void card_prepareFileClose(s32 drv_no, const opendfile_list* p_list) ;
+void card_registerCallback(u32 drv_no,void (*pFuncIN)(s32),void (*pFuncOUT)(s32));
 
 #ifdef __cplusplus
    }
