@@ -3,6 +3,7 @@
 
 #include <gctypes.h>
 #include "gx_struct.h"
+#include "video_types.h"
 
 #define VIDEO_PadFramebufferWidth(width)     ((u16)(((u16)(width) + 15) & ~15))
 

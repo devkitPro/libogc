@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <irq.h>
+#include <video.h>
 #include "asm.h"
 #include "processor.h"
 #include "pad.h"
@@ -27,6 +28,7 @@ static u32 _padId[PAD_MAX];
 static SIRSHandler _sirshandler[PAD_MAX];
 
 static vu32* const _siReg = (u32*)0xCC006400;
+static vu16* const _viReg = (u16*)0xCC002000;
 
 extern void udelay(int);
 extern void __UnmaskIrq(u32);
@@ -36,6 +38,7 @@ static __inline__ void __si_wait_tc_complete()
 	while(!(_siReg[13]&SI_TC_INT));
 	_siReg[13] |= SI_TC_INT;
 }
+
 
 static void __si_tc_handler(u32 nIrq,void *pCtx)
 {

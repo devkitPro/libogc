@@ -6,6 +6,7 @@
 #include "processor.h"
 #include "irq.h"
 #include "lwp.h"
+#include "system.h"
 #include "video.h"
 #include "video_types.h"
 #include "gx.h"
@@ -1341,7 +1342,7 @@ void GX_CopyDisp(void *dest,u8 clear)
 
 	GX_LOAD_BP_REG(_gx[0xcd]);
 
-	p = ((u32)dest)&~0xC0000000;
+	p = MEM_VIRTUAL_TO_PHYSICAL(dest);
 	val = 0x4b000000|(_SHIFTR(p,5,24));
 	GX_LOAD_BP_REG(val);
 

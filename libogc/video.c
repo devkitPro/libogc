@@ -558,53 +558,9 @@ static __inline__ u32 cntlzd(u64 bit)
 	lo = (u32)(bit&-1);
 
 	value = cntlzw(hi);
-	if(value>=32) {
-		value = cntlzw(lo);
-		value += 32;
-	}
+	if(value>=32) value += cntlzw(lo);
+
 	return value;
-}
-
-static __inline__ u32 __checkclear_interrupt()
-{
-	u32 ret = 0;
-
-	if(_viReg[24]&0x8000) {
-		_viReg[24] &= ~0x8000;
-		ret |= 0x01;
-	}
-	if(_viReg[26]&0x8000) {
-		_viReg[26] &= ~0x8000;
-		ret |= 0x02;
-	}
-	if(_viReg[28]&0x8000) {
-		_viReg[28] &= ~0x8000;
-		ret |= 0x04;
-	}
-	if(_viReg[30]&0x8000) {
-		_viReg[30] &= ~0x8000;
-		ret |= 0x08;
-	}
-	return ret;
-}
-
-static __inline__ void __calcFbbs(u32 bufAddr,u16 panPosX,u16 panPosY,u8 wordperline,u32 xfbMode,u16 dispPosY,u32 *tfbb,u32 *bfbb)
-{
-	u32 bytesPerLine,tmp;
-
-	bytesPerLine = (wordperline<<5)&0x1fe0;
-	*tfbb = bufAddr+(((panPosX<<1)&0x1ffe0)+(panPosY*bytesPerLine));
-	*bfbb = *tfbb;
-	if(xfbMode==VI_XFBMODE_DF) *bfbb = *tfbb+bytesPerLine;
-
-	if((dispPosY-((dispPosY/2)<<1))==1) {
-		tmp = *tfbb;
-		*tfbb = *bfbb;
-		*bfbb = tmp;
-	}
-
-	*tfbb = MEM_VIRTUAL_TO_PHYSICAL(*tfbb);
-	*bfbb = MEM_VIRTUAL_TO_PHYSICAL(*bfbb);
 }
 
 static const struct _timing* __gettiming(u32 vimode)
@@ -632,6 +588,76 @@ static const struct _timing* __gettiming(u32 vimode)
 			break;
 	}
 	return NULL;
+}
+
+static void __setInterruptRegs(const struct _timing *tm)
+{
+	u16 hlw;
+
+	hlw = 0;
+	if(tm->nhlines%2) hlw = tm->hlw;
+	regs[24] = 0x1000|((tm->nhlines/2)+1);
+	regs[25] = hlw+1;
+	changed |= VI_REGCHANGE(24);
+	changed |= VI_REGCHANGE(25);
+}
+
+static void __setPicConfig(u16 fbSizeX,u32 xfbMode,u16 panPosX,u16 panSizeX,u8 *wordPerLine,u8 *std,u8 *wpl,u8 *xof)
+{
+	*wordPerLine = (fbSizeX+15)/16;
+	*std = *wordPerLine;
+	if(xfbMode==VI_XFBMODE_DF) *std <<= 1;
+	
+	*xof = panPosX%16;
+	*wpl = (*xof+(panSizeX+15))/16;
+	regs[36] = (*wpl<<8)|*std;
+	changed |= VI_REGCHANGE(36);
+}
+
+static void __setBBIntervalRegs(const struct _timing *tm)
+{
+	regs[10] = tm->bs3|(tm->be3<<5);
+	regs[11] = tm->bs1|(tm->be1<<5);
+	changed |= VI_REGCHANGE(10);
+	changed |= VI_REGCHANGE(11);
+
+	regs[12] = tm->bs4|(tm->be4<<5);
+	regs[13] = tm->bs2|(tm->be2<<5);
+	changed |= VI_REGCHANGE(12);
+	changed |= VI_REGCHANGE(13);
+}
+
+static void __setScalingRegs(u16 panSizeX,u16 dispSizeX,s32 threeD)
+{
+	if(threeD) panSizeX = (panSizeX<<1)&0x1fffe;
+	if(panSizeX<dispSizeX) {
+		regs[37] = 0x1000|((dispSizeX+((panSizeX<<8)-1))/dispSizeX);
+		regs[56] = panSizeX;
+		changed |= VI_REGCHANGE(37);
+		changed |= VI_REGCHANGE(56);
+	} else {
+		regs[37] = 0x100;
+		changed |= VI_REGCHANGE(37);
+	}
+}
+
+static void __calcFbbs(u32 bufAddr,u16 panPosX,u16 panPosY,u8 wordperline,u32 xfbMode,u16 dispPosY,u32 *tfbb,u32 *bfbb)
+{
+	u32 bytesPerLine,tmp;
+
+	bytesPerLine = (wordperline<<5)&0x1fe0;
+	*tfbb = bufAddr+(((panPosX<<1)&0x1ffe0)+(panPosY*bytesPerLine));
+	*bfbb = *tfbb;
+	if(xfbMode==VI_XFBMODE_DF) *bfbb = *tfbb+bytesPerLine;
+
+	if(dispPosY%2) {
+		tmp = *tfbb;
+		*tfbb = *bfbb;
+		*bfbb = tmp;
+	}
+
+	*tfbb = MEM_VIRTUAL_TO_PHYSICAL(*tfbb);
+	*bfbb = MEM_VIRTUAL_TO_PHYSICAL(*bfbb);
 }
 
 static void __setFbbRegs(struct _horVer *horVer,u32 *tfbb,u32 *bfbb,u32 *rtfbb,u32 *rbfbb)
@@ -674,6 +700,23 @@ static void __setFbbRegs(struct _horVer *horVer,u32 *tfbb,u32 *bfbb,u32 *rtfbb,u
 	}
 }
 
+static void __setHorizontalRegs(const struct _timing *tm,u16 dispPosX,u16 dispSizeX)
+{
+	u32 val1,val2;
+
+	regs[2] = (tm->hcs<<8)|tm->hce;
+	regs[3] = tm->hlw;
+	changed |= VI_REGCHANGE(2);
+	changed |= VI_REGCHANGE(3);
+
+	val1 = (tm->hbe640+dispPosX-40)&0x01ff;
+	val2 = (tm->hbs640+dispPosX+40)-(720-dispSizeX);
+	regs[4] = (val1>>9)|(val2<<1);
+	regs[5] = (val1<<7)|tm->hsy;
+	changed |= VI_REGCHANGE(4);
+	changed |= VI_REGCHANGE(5);
+}
+
 static void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u16 prbOdd,u16 prbEven,u16 psbOdd,u16 psbEven,s32 black)
 {
 	u32 tmp;
@@ -689,19 +732,18 @@ static void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u16 prbO
 		div2 = 2;
 	}
 	
-	tmp = (dispPosY/2)<<1;
 	prb = div2*dispPosY;
 	psb = div2*(((acv*div1)-dispSizeY)-dispPosY);
-	if(!(dispPosY-tmp)) {
-		prbodd = prbOdd+prb;
-		psbodd = psbOdd+psb;
-		prbeven = prbEven+prb;
-		psbeven = psbEven+psb;
-	} else {
+	if(dispPosY%2) {
 		prbodd = prbEven+prb;
 		psbodd = psbEven+psb;
 		prbeven = prbOdd+prb;
 		psbeven = psbOdd+psb;
+	} else {
+		prbodd = prbOdd+prb;
+		psbodd = psbOdd+psb;
+		prbeven = prbEven+prb;
+		psbeven = psbEven+psb;
 	}
 
 	tmp = dispSizeY/div1;
@@ -727,6 +769,60 @@ static void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u16 prbO
 	changed |= VI_REGCHANGE(9);
 }
 
+static void __AdjustPosition(u16 acv)
+{
+	u32 fact,field;
+	s16 dispPosX,dispPosY;
+	s16 dispSizeY;
+	
+	dispPosX = (HorVer.dispPosX+displayOffsetH);
+	if(dispPosX<=(720-HorVer.dispSizeX)) {
+		if(dispPosX>=0) HorVer.adjustedDispPosX = dispPosX;
+		else HorVer.adjustedDispPosX = 0;
+	} else HorVer.adjustedDispPosX = (720-HorVer.dispSizeX);
+
+	if(HorVer.fbMode==VI_XFBMODE_SF) fact = 2;
+	else fact = 1;
+
+	field = HorVer.dispPosY&0x0001;
+	dispPosY = HorVer.dispPosY+displayOffsetV;
+	if(dispPosY>field) HorVer.adjustedDispPosY = dispPosY;
+	else HorVer.adjustedDispPosY = field;
+
+	dispSizeY = HorVer.dispPosY+HorVer.dispSizeY+displayOffsetV;
+	if(dispSizeY>((acv<<1)-field)) dispSizeY -= (acv<<1)-field;
+	else dispSizeY = 0;
+	
+	dispPosY = HorVer.dispPosY+displayOffsetV;
+	if(dispPosY<field) dispPosY -= field;
+	else dispPosY = 0;
+	HorVer.adjustedDispSizeY = HorVer.dispSizeY+dispPosY-dispSizeY;
+	
+	dispPosY = HorVer.dispPosY+displayOffsetV;
+	if(dispPosY<field) dispPosY -= field;
+	else dispPosY = 0;
+	HorVer.adjustedPanPosY = HorVer.panPosY-(dispPosY/fact);
+
+	dispSizeY = HorVer.dispPosY+HorVer.dispSizeY+displayOffsetV;
+	if(dispSizeY>((acv<<1)-field)) dispSizeY -= (acv<<1)-field;
+	else dispSizeY = 0;
+	
+	dispPosY = HorVer.dispPosY+displayOffsetV;
+	if(dispPosY<field) dispPosY -= field;
+	else dispPosY = 0;
+	HorVer.adjustedPanSizeY = HorVer.panSizeY+(dispPosY/fact)-(dispSizeY/fact);
+}
+
+static void __ImportAdjustingValues()
+{
+	syssram *sram;
+
+	sram = (syssram*)__SYS_LockSram();
+	displayOffsetH = sram->display_offsetH;
+	displayOffsetV = 0;
+	__SYS_UnlockSram(0);
+}
+
 static void __VIInit(u32 vimode)
 {
 	u32 cnt;
@@ -749,7 +845,7 @@ static void __VIInit(u32 vimode)
 	_viReg[2] = ((cur_timing->hcs<<8)|cur_timing->hce);		//set HCS & HCE
 	_viReg[3] = cur_timing->hlw;							//set Half Line Width
 
-	_viReg[4] = ((cur_timing->hbs640<<1)&0xFFFE);			//set HBS640
+	_viReg[4] = (cur_timing->hbs640<<1);					//set HBS640
 	_viReg[5] = ((cur_timing->hbe640<<7)|cur_timing->hsy);	//set HBE640 & HSY
 	
 	_viReg[0] = cur_timing->equ;
@@ -766,7 +862,7 @@ static void __VIInit(u32 vimode)
 	_viReg[12] = ((cur_timing->be4<<5)|cur_timing->bs4);		//set BE4 & BS4
 	_viReg[13] = ((cur_timing->be2<<5)|cur_timing->bs2);		//set BE2 & BS2
 
-	_viReg[24] = (((cur_timing->nhlines/2)+1)|0x1000);
+	_viReg[24] = (0x1000|((cur_timing->nhlines/2)+1));
 	_viReg[25] = (cur_timing->hlw+1);
 	
 	_viReg[26] = 0x1001;		//set DI1
@@ -836,7 +932,25 @@ static u32 __VISetRegs()
 
 static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 {
-	if(__checkclear_interrupt()&0xc) return;
+	u32 ret = 0;
+	
+	if(_viReg[24]&0x8000) {
+		_viReg[24] &= ~0x8000;
+		ret |= 0x01;
+	}
+	if(_viReg[26]&0x8000) {
+		_viReg[26] &= ~0x8000;
+		ret |= 0x02;
+	}
+	if(_viReg[28]&0x8000) {
+		_viReg[28] &= ~0x8000;
+		ret |= 0x04;
+	}
+	if(_viReg[30]&0x8000) {
+		_viReg[30] &= ~0x8000;
+		ret |= 0x08;
+	}
+	if(ret&0xc) return;
 
 	retraceCount++;
 	if(preRetraceCB)
@@ -856,9 +970,7 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 
 void VIDEO_Init()
 {
-	u32 div,vimode = 0;
-	s16 tmp1,tmp2,tmp3;
-	syssram *sram;
+	u32 vimode = 0;
 
 	if(!(_viReg[1]&0x0001))
 		__VIInit(VI_TVMODE_NTSC_INT);
@@ -886,10 +998,7 @@ void VIDEO_Init()
 	_viReg[51] = (taps[21]|(taps[22]<<8));
 	_viReg[56] = 640;
 
-	sram = (syssram*)__SYS_LockSram();
-	displayOffsetV = 0;
-	displayOffsetH = (s16)sram->display_offsetH;
-	__SYS_UnlockSram(0)	;
+	__ImportAdjustingValues();
 
 	HorVer.nonInter = _SHIFTR(_viReg[1],2,1);
 	HorVer.tv = _SHIFTR(_viReg[1],8,2);
@@ -902,56 +1011,18 @@ void VIDEO_Init()
 	regs[1] = _viReg[1];
 	HorVer.timing = currTiming;
 	HorVer.dispSizeX = 640;
-	HorVer.dispSizeY = ((currTiming->acv<<1)&0xfffe);
+	HorVer.dispSizeY = currTiming->acv<<1;
 	HorVer.dispPosX = (VI_MAX_WIDTH_NTSC-HorVer.dispSizeX)/2;
 	HorVer.dispPosY = 0;
 	
-	if((HorVer.dispPosX+displayOffsetH)<=(VI_MAX_WIDTH_NTSC-HorVer.dispSizeX)) {
-		if(displayOffsetH>=0) HorVer.adjustedDispPosX = (HorVer.dispPosX+displayOffsetH);
-		else HorVer.adjustedDispPosX = 0;
-	} else
-		HorVer.adjustedDispPosX = (VI_MAX_WIDTH_NTSC-HorVer.dispSizeX);
+	__AdjustPosition(currTiming->acv);
 
-	tmp3 = (HorVer.dispPosY&0x0001);
-	if((HorVer.dispPosY+displayOffsetV)<=tmp3) HorVer.adjustedDispPosY = tmp3;
-	else HorVer.adjustedDispPosY = (HorVer.dispPosY+displayOffsetV);
-
-	
-	tmp1 = (HorVer.dispPosY + HorVer.dispSizeY + displayOffsetV);
-	tmp2 = ((currTiming->acv<<1) - tmp3);
-	if((tmp1-tmp2)>0) tmp1 -= tmp2;
-	else tmp1 = 0;
-	
-	tmp2 = (HorVer.dispPosY+displayOffsetV);
-	if((tmp2-tmp3)<0)  tmp2 -= tmp3;
-	else tmp2 = 0;
-	HorVer.adjustedDispSizeY = tmp1-(HorVer.dispSizeY+tmp2);
-	
-	tmp1 = (HorVer.dispPosY+displayOffsetV);
-	if((tmp1-tmp3)<0) tmp1 -= tmp3;
-	else tmp1 = 0;
-
-	if(HorVer.fbMode==VI_XFBMODE_SF) div = 2;
-	else div = 1;
-	HorVer.adjustedPanPosY = HorVer.panPosY-(tmp1/div);
-	
-	tmp1 = (HorVer.dispPosY+HorVer.dispSizeY+displayOffsetV);
-	tmp2 = ((currTiming->acv<<1)-tmp3);
-	if((tmp1-tmp2)>0) tmp1 -= tmp2;
-	else tmp1 = 0;
-
-	tmp2 = (HorVer.dispPosY+displayOffsetV);
-	if((tmp2-tmp3)<0) tmp2 -= tmp3;
-	else tmp2 = 0;
-	
-	tmp2 = (HorVer.panSizeY+(tmp2/div));
-	HorVer.adjustedPanSizeY = tmp2-(tmp1/div);
 	HorVer.fbSizeX = 640;
-	HorVer.fbSizeY = ((currTiming->acv<<1)&0xfffe);
+	HorVer.fbSizeY = currTiming->acv<<1;
 	HorVer.panPosX = 0;
 	HorVer.panPosY = 0;
 	HorVer.panSizeX = 640;
-	HorVer.panSizeY = ((currTiming->acv<<1)&0xfffe);
+	HorVer.panSizeY = currTiming->acv<<1;
 	HorVer.fbMode = VI_XFBMODE_SF;
 	HorVer.wordPerLine = 40;
 	HorVer.std = 40;
@@ -974,15 +1045,21 @@ void VIDEO_Init()
 
 void VIDEO_Configure(GXRModeObj *rmode)
 {
-	u16 dcr,value;
-	s32 tmp,tmp1,tmp2;
-	u32 nonint,vimode,div,tmp4,tmp5,level;
+	u16 dcr;
+	u32 nonint,vimode,level;
 	const struct _timing *curtiming;
 
 	_CPU_ISR_Disable(level);
+	nonint = (rmode->viTVMode&0x0003);
+	if(nonint!=HorVer.nonInter) {
+		changeMode = 1;
+		HorVer.nonInter = nonint;
+	}
 	HorVer.tv = _SHIFTR(rmode->viTVMode,2,3);
 	HorVer.dispPosX = rmode->viXOrigin;
 	HorVer.dispPosY = rmode->viYOrigin;
+	if(HorVer.nonInter==VI_NON_INTERLACE) HorVer.dispPosY = HorVer.dispPosY<<1;
+
 	HorVer.dispSizeX = rmode->viWidth;
 	HorVer.fbSizeX = rmode->fbWidth;
 	HorVer.fbSizeY = rmode->xfbHeight;
@@ -991,81 +1068,28 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	HorVer.panSizeY = HorVer.fbSizeY;
 	HorVer.panPosX = 0;
 	HorVer.panPosY = 0;
-
-	nonint = (rmode->viTVMode&0x0003);
-	if(nonint!=HorVer.nonInter) {
-		changeMode = 1;
-		HorVer.nonInter = nonint;
-	}
-	if(HorVer.nonInter==VI_NON_INTERLACE) HorVer.dispPosY = (HorVer.dispPosY<<1)&0xfffe;
 	
-	tmp = HorVer.panSizeY;
-	if(HorVer.fbMode==VI_XFBMODE_SF) tmp = (tmp<<1)&0xfffe;
-	HorVer.dispSizeY = tmp;
-
-	tmp = 0;
-	if(HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) tmp = 1;
-	HorVer.threeD = tmp;
+	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) HorVer.dispSizeY = HorVer.panSizeY;
+	else if(HorVer.fbMode==VI_XFBMODE_SF) HorVer.dispSizeY = HorVer.panSizeY<<1;
+	else HorVer.dispSizeY = HorVer.panSizeY;
+	
+	if(HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) HorVer.threeD = 1;
+	else HorVer.threeD = 0;
 
 	vimode = VI_TVMODE(HorVer.tv,HorVer.nonInter);
 	curtiming = __gettiming(vimode);
 	HorVer.timing = curtiming;
 
-	tmp = (HorVer.dispPosX+displayOffsetH);
-	tmp1 = (720 - HorVer.dispSizeX);
-	if(tmp>=0 && tmp<=tmp1) HorVer.adjustedDispPosX = tmp;
-	else HorVer.adjustedDispPosX = 0;
+	__AdjustPosition(curtiming->acv);
 	
-	if(HorVer.fbMode==VI_XFBMODE_SF) div = 2;
-	else div = 1;
-	
-	tmp = HorVer.dispPosY + displayOffsetV;
-	tmp1 = (HorVer.dispPosY&0x0001);
-	if(tmp<=tmp1) HorVer.adjustedDispPosY = tmp1;
-	else HorVer.adjustedDispPosY = tmp;
-
-	tmp = HorVer.dispPosY+HorVer.dispSizeY+displayOffsetV;
-	tmp2 = (curtiming->acv<<1) - tmp1;
-	if((tmp-tmp2)>0) tmp -= tmp2;
-	else tmp = 0;
-	
-	tmp2 = HorVer.dispPosY+displayOffsetV;
-	if((tmp2-tmp1)<0) tmp2 -= tmp1;
-	else tmp2 = 0;
-	HorVer.adjustedDispSizeY = HorVer.dispSizeY+tmp+tmp2;
-	
-	tmp = HorVer.dispPosY + displayOffsetV;
-	if((tmp-tmp1)<0) tmp -= tmp1;
-	else tmp = 0;
-	HorVer.adjustedPanPosY = HorVer.panPosY-(tmp/div);
-
-	tmp = HorVer.dispPosY+HorVer.dispSizeY+displayOffsetV;
-	tmp2 = (curtiming->acv<<1) - tmp1;
-	if((tmp-tmp2)>0) tmp -= tmp2;
-	else tmp = 0;
-
-	tmp2 = HorVer.dispPosY+displayOffsetV;
-	if((tmp2-tmp1)<0) tmp2 -= tmp1;
-	else tmp = 0;
-	HorVer.adjustedPanSizeY = (HorVer.panSizeY+(tmp2/div))-(tmp/div);
-
 	if(!encoderType) HorVer.tv = VI_DEBUG;
-	tmp4 = curtiming->nhlines-((curtiming->nhlines/2)<<1);
-	tmp5 = (curtiming->nhlines/2)&0xffff;
-	if(!(tmp4&0xffff)) tmp4 = 0;
-	else tmp4 = curtiming->hlw;
-
-	regs[24] = 0x1000|(tmp5+1);
-	regs[25] = tmp4+1;
-	changed |= VI_REGCHANGE(24);
-	changed |= VI_REGCHANGE(25);
-
-	dcr = regs[1];
-	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) dcr = (dcr&~0x0004)|0x0004;
-	else dcr = (dcr&~0x0004)|_SHIFTL(HorVer.nonInter,2,1);
-
-	dcr = (dcr&~0x0008)|_SHIFTL(HorVer.threeD,3,1);
-	dcr &= ~0x0300;
+	
+	__setInterruptRegs(curtiming);
+	
+	dcr = regs[1]&~0x030c;
+	dcr |= _SHIFTL(HorVer.threeD,3,1);
+	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) dcr |= 0x0004;
+	else dcr |= _SHIFTL(HorVer.nonInter,2,1);
 	if(!(HorVer.tv==VI_DEBUG_PAL || HorVer.tv==VI_EURGB60)) dcr |= _SHIFTL(HorVer.tv,8,2);
 	regs[1] = dcr;
 	changed |= VI_REGCHANGE(1);
@@ -1074,49 +1098,11 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	if(rmode->viTVMode==VI_TVMODE_NTSC_PROG || rmode->viTVMode==VI_TVMODE_NTSC_PROG_DS) regs[54] |= 0x0001;
 	changed |= VI_REGCHANGE(54);
 
-	tmp = HorVer.panSizeX;
-	if(HorVer.threeD) tmp <<= 1;
-	if(HorVer.dispSizeX<tmp) {
-		regs[37] = 0x1000|((HorVer.dispSizeX+((tmp<<8)-1))/HorVer.dispSizeX);
-		changed |= VI_REGCHANGE(37);
-		regs[56] = tmp;
-		changed |= VI_REGCHANGE(56);
-	} else {
-		regs[37] = 0x0100;
-		changed |= VI_REGCHANGE(37);
-	}
+	__setScalingRegs(HorVer.panSizeX,HorVer.dispSizeX,HorVer.threeD);
+	__setHorizontalRegs(curtiming,HorVer.adjustedDispPosX,HorVer.dispSizeX);
+	__setBBIntervalRegs(curtiming);
+	__setPicConfig(HorVer.fbSizeX,HorVer.fbMode,HorVer.panPosX,HorVer.panSizeX,&HorVer.wordPerLine,&HorVer.std,&HorVer.wpl,&HorVer.xof);
 
-	regs[2] = (curtiming->hcs<<8)|curtiming->hce;
-	regs[3] = curtiming->hlw;
-	changed |= VI_REGCHANGE(2);
-	changed |= VI_REGCHANGE(3);
-
-	value = (curtiming->hbe640+HorVer.adjustedDispPosX-40);
-	regs[4] = (value>>9)|(((curtiming->hbs640+HorVer.adjustedDispPosX+40)-(720-HorVer.dispSizeX))<<1);
-	regs[5] = ((value<<7)&~0x7f)|curtiming->hsy;
-	changed |= VI_REGCHANGE(4);
-	changed |= VI_REGCHANGE(5);
-
-	regs[10] = curtiming->bs3|(curtiming->be3<<5);
-	regs[11] = curtiming->bs1|(curtiming->be1<<5);
-	changed |= VI_REGCHANGE(10);
-	changed |= VI_REGCHANGE(11);
-
-	regs[12] = curtiming->bs4|(curtiming->be4<<5);
-	regs[13] = curtiming->bs2|(curtiming->be2<<5);
-	changed |= VI_REGCHANGE(12);
-	changed |= VI_REGCHANGE(13);
-
-	HorVer.wordPerLine = tmp = (HorVer.fbSizeX+15)/16;
-	if(HorVer.fbMode==VI_XFBMODE_DF) tmp = (HorVer.wordPerLine<<1)&0xfe;
-
-	HorVer.std = tmp;
-	HorVer.xof = HorVer.panPosX-((HorVer.panPosX/16)<<4);
-	HorVer.wpl = (HorVer.panSizeX+15)/16;
-
-	regs[36] = (HorVer.wpl<<8)|HorVer.std;
-	changed |= VI_REGCHANGE(36);
-	
 	if(fbSet) __setFbbRegs(&HorVer,&HorVer.tfbb,&HorVer.bfbb,&HorVer.rtfbb,&HorVer.rbfbb);
 
 	__setVerticalRegs(HorVer.adjustedDispPosY,HorVer.adjustedDispSizeY,curtiming->equ,curtiming->acv,curtiming->prbOdd,curtiming->prbEven,curtiming->psbOdd,curtiming->psbEven,HorVer.black);
@@ -1130,8 +1116,9 @@ void VIDEO_WaitVSync(void)
 	
 	_CPU_ISR_Disable(level);
 	retcnt = retraceCount;
-	while(retraceCount==retcnt)
+	do {
 		LWP_SleepThread(video_queue);
+	} while(retraceCount==retcnt);
 	_CPU_ISR_Restore(level);
 }
 
@@ -1200,6 +1187,7 @@ void VIDEO_Flush()
 		changed &= ~mask;
 	}
 	flushFlag = 1;
+	printRegs();
 	_CPU_ISR_Restore(level);
 }
 
@@ -1220,10 +1208,10 @@ u32 VIDEO_GetNextField()
 	u32 level,field;
 
 	_CPU_ISR_Disable(level);
-	field = __getCurrFieldEvenOdd();
+	field = __getCurrFieldEvenOdd()^1;
 	_CPU_ISR_Restore(level);
 	
-	return ((field^1)^(HorVer.adjustedDispPosY&0x0001));
+	return field^(HorVer.adjustedDispPosY&0x0001);
 }
 
 u32 VIDEO_GetCurrentTvMode()
@@ -1236,7 +1224,7 @@ u32 VIDEO_GetCurrentTvMode()
 	mode = currTvMode;
 	if(mode==VI_DEBUG) tv = VI_NTSC;
 	else if(mode==VI_EURGB60) tv = mode;
-	else if(mode==VI_PAL) tv = VI_PAL;
+	else if(mode==VI_MPAL) tv = VI_MPAL;
 	else if(mode==VI_NTSC) tv = VI_NTSC;
 	else tv = VI_PAL;
 	_CPU_ISR_Restore(level);

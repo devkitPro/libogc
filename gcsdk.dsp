@@ -284,6 +284,10 @@ SOURCE=.\libogc\semaphore.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\si.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\sys_state.c
 # End Source File
 # Begin Source File
@@ -849,6 +853,10 @@ SOURCE=.\gc\ogc\pad.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\semaphore.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\si.h
 # End Source File
 # Begin Source File
 
