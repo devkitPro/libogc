@@ -16,10 +16,10 @@
 #define ticks_to_microsecs(ticks)	(((ticks)*8)/(TB_TIMER_CLOCK/125))
 #define ticks_to_nanosecs(ticks)	(((ticks)*8000)/(TB_TIMER_CLOCK/125))
 
-#define secs_to_ticks(sec)			((sec)*(TB_TIMER_CLOCK*1000))
-#define millisecs_to_ticks(msec)	((msec)*(TB_TIMER_CLOCK))
-#define microsecs_to_ticks(usec)	(((usec)*(TB_TIMER_CLOCK/125))/8)
-#define nanosecs_to_ticks(nsec)		(((nsec)*(TB_TIMER_CLOCK/125))/8000)
+#define secs_to_ticks(sec)			((u64)(sec)*(TB_TIMER_CLOCK*1000))
+#define millisecs_to_ticks(msec)	((u64)(msec)*(TB_TIMER_CLOCK))
+#define microsecs_to_ticks(usec)	(((u64)(usec)*(TB_TIMER_CLOCK/125))/8)
+#define nanosecs_to_ticks(nsec)		(((u64)(nsec)*(TB_TIMER_CLOCK/125))/8000)
 
 #define diff_ticks(tick0,tick1)		((signed long long)tick0 - (signed long long)tick1)
 
