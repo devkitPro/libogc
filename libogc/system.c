@@ -679,10 +679,7 @@ void SYS_RemoveAlarm(sysalarm *alarm)
 
 void SYS_CancelAlarm(sysalarm *alarm)
 {
-	u32 level;
-	_CPU_ISR_Disable(level);
 	if(alarm->handle) __lwp_wd_remove(alarm->handle);
-	_CPU_ISR_Restore(level);
 }
 
 resetcallback SYS_SetResetCallback(resetcallback cb)
