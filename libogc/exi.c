@@ -43,7 +43,8 @@ typedef struct _exibus_priv {
 	u32 lockeddev;
 	u32 flags;
 	u32 lck_cnt;
-	u32 var1,var2;
+	u32 exi_id;
+	u32 var1;
 	struct _lck_dev {
 		u32 dev;
 		EXICallback unlockcb;
@@ -76,18 +77,18 @@ static u32 __exi_probe(u32 nChn)
 	if(!(exi->flags&EXI_FLAG_ATTACH)) {
 		if(val&EXI_EXT_IRQ) {
 			_exiReg[nChn*5] = (val&~(EXI_EXI_IRQ|EXI_TC_IRQ|EXI_EXT_IRQ))|EXI_EXT_IRQ;
-			exi->var2 = 0;
+			exi->exi_id = 0;
 		}
 		if(_exiReg[nChn*5]&EXI_EXT_BIT) {
 		} else {
-			exi->var2 = 0;
+			exi->exi_id = 0;
 			_CPU_ISR_Restore(level);
 			return 0;
 		}
 	}
 
 	if(!(_exiReg[nChn*5]&EXI_EXT_BIT) || (_exiReg[nChn*5]&EXI_EXT_IRQ)) {
-		exi->var2 = 0;
+		exi->exi_id = 0;
 		ret = 0;
 	}
 	_CPU_ISR_Restore(level);
@@ -453,9 +454,11 @@ u32 EXI_GetID(u32 nChn,u32 nDev,u32 *nId)
 				__MaskIrq(((IRQMASK(IRQ_EXI0_EXI)|IRQMASK(IRQ_EXI0_TC)|IRQMASK(IRQ_EXI0_EXT))>>(nChn*3)));
 			}
 		}
+		exi->exi_id = *nId;
 		_CPU_ISR_Restore(level);
+		return exi->exi_id;
 	}
-	return 1;
+	return 0;
 }
 
 EXICallback EXI_RegisterEXICallback(u32 nChn,EXICallback cb)
@@ -477,10 +480,16 @@ EXICallback EXI_RegisterEXICallback(u32 nChn,EXICallback cb)
 
 u32 EXI_Probe(u32 nChn)
 {
-	if(_exiReg[nChn*5]&0x1000) 
-		return 1;
-	else
-		return 0;
+	u32 id,ret;
+	exibus_priv *exi = &eximap[nChn];
+	
+	ret = 0;
+	if(__exi_probe(nChn)==1) {
+		if(exi->exi_id==0) {
+			if(EXI_GetID(nChn,EXI_DEVICE_0,&id)==1) ret = 1;
+		}
+	}
+	return ret;
 }
 
 void __exi_init()

@@ -15,6 +15,7 @@
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
 typedef struct _card_block {
+	void *workarea;
 	CARDCallback CARDTxCallback;
 } card_block;
 
@@ -723,21 +724,32 @@ u32 CARD_FileAddress(CardFile *pFile)
 	return (pEntry->block*CARD_SECTORSIZE);
 }
 
-static u32 __CARD_TxHandler(u32 nChn,void *pCtx)
+static u32 __CARD_ExiHanlder(u32 nChn,u32 nDev)
+{
+	return 1;
+}
+
+static u32 __CARD_TxHandler(u32 nChn,u32 nDev)
 {
 	u32 ret = 0;
 	CARDCallback txcb = NULL;
-	card_block *card = &cardmap[nChn];
+	card_block *card = NULL;
+	
+	if(nChn<EXI_CHANNEL_0 || nChn>=EXI_CHANNEL_2) return 0;
+	card = &cardmap[nChn];
 
-	EXI_Deselect(nChn);
-	EXI_Unlock(nChn);
+	ret = 0;
+	if(EXI_Deselect(nChn)==0) ret |= 0x01;
+	if(EXI_Unlock(nChn)==0) ret |= 0x02;
 	
 	txcb = card->CARDTxCallback;
-	card->CARDTxCallback = NULL;
-	if(!txcb) return 1;
-	
-	txcb(nChn,ret);
-
+	if(txcb) {
+		card->CARDTxCallback = NULL;
+		if(!ret) {
+			if(EXI_Probe(nChn)==0) ret = -3;
+		} else ret = -3;
+		txcb(nChn,ret);
+	}
 	return 1;
 }
 
@@ -824,21 +836,27 @@ static u32 exnor(u32 a,u32 b)
 	return a;
 }
 
+static u32 bitrev(u32 val)
+{
+	return 0;
+}
+
 static u32 ReadArrayUnlock(u32 chn,u32 address,void *buffer,u32 len,u32 flag)
 {
 	u8 regbuf[5];
+	card_block *card = &cardmap[chn];
 
 	__card_exi_wait(chn);
 
 	if(EXI_Select(chn,EXI_DEVICE_0,EXI_SPEED16MHZ)==0) return -3;
 	
-	address &= 0x0C;
+	address &= 0xFFFFF000;
 	memset(regbuf,0,5);
 
 	regbuf[0] = 0x52;
 	if(!flag) {
 		regbuf[1] = ((address&0x60000000)>>29)&0xff;
-		regbuf[2] = ((address&0x1FE00000)>>20)&0xff;
+		regbuf[2] = ((address&0x1FE00000)>>21)&0xff;
 		regbuf[3] = ((address&0x00180000)>>19)&0xff;
 		regbuf[4] = ((address&0x0007F000)>>12)&0xff;
 	} else {
@@ -847,7 +865,7 @@ static u32 ReadArrayUnlock(u32 chn,u32 address,void *buffer,u32 len,u32 flag)
 	}
 	
 	EXI_ImmEx(chn,regbuf,5,EXI_WRITE);
-	EXI_ImmEx(chn,sysarea+512,4,EXI_WRITE);
+	EXI_ImmEx(chn,card->workarea+512,4,EXI_WRITE);
 	EXI_ImmEx(chn,buffer,len,EXI_READ);
 	
 	EXI_Deselect(chn);
@@ -866,8 +884,9 @@ static void DoneCallback(void *task)
 
 static u32 __dounlock(u32 nChn)
 {
-	u32 array_addr,len,val0 = 0x7FEC8000;
 	u8 buffer[64];
+	u32 array_addr,len,tmp,val,val1;
+	u32 val0 = 0x7FEC8000;
 
 	array_addr = (val0|__card_initval())&0xFFFFF000;
 	len = __card_dummylen();
@@ -875,9 +894,11 @@ static u32 __dounlock(u32 nChn)
 	printf("array_addr = %08x, len = %d\n",array_addr,len);
 	if(ReadArrayUnlock(nChn,array_addr,buffer,len,0)!=0) return -3;
 
-	exnor_1st(array_addr,(len<<3)+1);
-
+	tmp = (len<<3)+1;
+	val = exnor_1st(array_addr,tmp);
 	
+	val1 = (val|(((val>>23)^~((val>>15)^(val^(val>>7))))<<31));
+	bitrev(val1);
 
 	return 1;
 }
