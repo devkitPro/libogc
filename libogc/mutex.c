@@ -1,0 +1,58 @@
+#include <stdlib.h>
+#include "asm.h"
+#include "lwp_mutex.h"
+#include "mutex.h"
+
+static u32 __lwp_mutex_locksupp(mutex_t *mutex,u32 timeout,u8 block)
+{
+	u32 level;
+	_CPU_ISR_Disable(level);
+	__lwp_mutex_seize((lwp_mutex*)mutex->mutex,mutex->id,block,timeout,level);
+	return _thr_executing->wait.ret_code;
+}
+
+u32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
+{
+	lwp_mutex_attr attr;
+	lwp_mutex *ret;
+	
+	if(!mutex) return -1;
+	if(mutex->mutex) return 0;
+
+	__lwp_thread_dispatchdisable();
+	ret = (lwp_mutex*)malloc(sizeof(lwp_mutex));
+	if(!ret) {
+		__lwp_thread_dispatchenable();
+		return -1;
+	}
+
+	attr.mode = LWP_MUTEX_FIFO;
+	attr.nest_behavior = use_recursive?LWP_MUTEX_NEST_ACQUIRE:LWP_MUTEX_NEST_ERROR;
+	attr.onlyownerrelease = TRUE;
+	attr.prioceil = 1; //__lwp_priotocore(LWP_PRIO_MAX-1);
+	__lwp_mutex_initialize(ret,&attr,LWP_MUTEX_UNLOCKED);
+
+	mutex->id++;
+	mutex->mutex = (void*)ret;
+	__lwp_thread_dispatchenable();
+	return 0;
+}
+
+u32 LWP_MutexLock(mutex_t *mutex)
+{
+	return __lwp_mutex_locksupp(mutex,LWP_THREADQ_NOTIMEOUT,TRUE);
+}
+
+u32 LWP_MutexTryLock(mutex_t *mutex)
+{
+	return __lwp_mutex_locksupp(mutex,LWP_THREADQ_NOTIMEOUT,FALSE);
+}
+
+u32 LWP_MutexUnlock(mutex_t *mutex)
+{
+	u32 ret;
+	__lwp_thread_dispatchdisable();
+	ret = __lwp_mutex_surrender((lwp_mutex*)mutex->mutex);
+	__lwp_thread_dispatchenable();
+	return ret;
+}
