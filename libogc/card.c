@@ -1403,7 +1403,7 @@ static s32 __card_read(s32 chn,u32 address,u32 block_len,void *buffer,cardcallba
 static s32 __card_formatregion(s32 chn,u32 encode,cardcallback callback)
 {
 	s32 ret;
-	u32 srambase,cnt,thi,tlo;
+	u32 cnt,thi,tlo;
 	s64 time;
 	void *workarea,*memblock;
 	cardcallback cb = NULL;
@@ -1423,8 +1423,8 @@ static s32 __card_formatregion(s32 chn,u32 encode,cardcallback callback)
 	memset(workarea,0xff,8192);
 	
 	sram = __SYS_LockSram();
-	((u32*)workarea)[5] = ((u32*)srambase)[3];
-	((u32*)workarea)[6] = ((u8*)srambase)[18];
+	((u32*)workarea)[5] = sram->counter_bias;
+	((u32*)workarea)[6] = sram->lang;
 	__SYS_UnlockSram(0);
 
 	cnt = 0;
