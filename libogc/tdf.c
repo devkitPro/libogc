@@ -3,12 +3,20 @@
 #include <stdio.h>
 #include "tdf.h"
 
+#define LOWORD(l)           ((u16)(l))
+#define HIWORD(l)           ((u16)(((u32)(l) >> 16) & 0xFFFF))
+#define LOBYTE(w)           ((u8)(w))
+#define HIBYTE(w)           ((u8)(((u16)(w) >> 8) & 0xFF))
+
+#define SwapInt(n)			(LOBYTE(LOWORD(n))<<24) + (HIBYTE(LOWORD(n))<<16) + (LOBYTE(HIWORD(n))<<8) + HIBYTE(HIWORD(n))
+#define SwapShort(n)		(LOBYTE(n)<<8) + HIBYTE(n);
+
 // texture header
 typedef struct _tdimgheader {
 	u16 height;
 	u16 width;
 	u32 fmt;
-	void *data;
+	u32 data_offset;
 	u32 wraps;
 	u32 wrapt;
 	u32 minfilter;
@@ -26,7 +34,7 @@ typedef struct _tdpalheader {
 	u8 unpacked;
 	u8 pad;
 	u32 fmt;
-	void *data;
+	u32 data_offset;
 } TDPalHeader;
 
 // texture descriptor
@@ -37,10 +45,35 @@ typedef struct _tddesc {
 
 static u32 TDF_GetTextureSize(u32 width,u32 height,u32 fmt)
 {
-	return 0;
+	u32 size = 0;
+
+	switch(fmt) {
+			case GX_TF_I4:
+			case GX_TF_CI4:
+			case GX_TF_CMPR:
+				size = ((width+7)>>3)*((height+7)>>3)*32;
+				break;
+			case GX_TF_I8:
+			case GX_TF_IA4:
+			case GX_TF_CI8:
+				size = ((width+7)>>3)*((height+7)>>2)*32;
+				break;
+			case GX_TF_IA8:
+			case GX_TF_CI14:
+			case GX_TF_RGB565:
+			case GX_TF_RGB5A3:
+				size = ((width+3)>>2)*((height+3)>>2)*32;
+				break;
+			case GX_TF_RGBA8:
+				size = ((width+3)>>2)*((height+3)>>2)*32*2;
+				break;
+			default:
+				break;
+	}
+	return size;
 }
 
-u32 TDF_LoadHeader(TDFile* tdf, const char* file_name)
+u32 TDF_OpenTDFile(TDFile* tdf, const char* file_name)
 {
 	u32 c;
 	TDDescHeader *deschead;
@@ -59,7 +92,9 @@ u32 TDF_LoadHeader(TDFile* tdf, const char* file_name)
 	//seek/read num textures
 	fseek(tdffile, 4, SEEK_SET);
 	fread(&tdf->ntextures, sizeof(int), 1, tdffile);
-
+#ifndef BIGENDIAN
+	tdf->ntextures = SwapInt(tdf->ntextures);
+#endif
 	//seek/read texture descriptors
 	fseek(tdffile, 12, 0);
 	deschead = malloc(tdf->ntextures * sizeof(TDDescHeader));
@@ -69,6 +104,10 @@ u32 TDF_LoadHeader(TDFile* tdf, const char* file_name)
 		// read in texture and pal data
 		for(c=0; c<tdf->ntextures; c++)
 		{
+#ifndef BIGENDIAN
+			deschead[c].imghead = SwapInt(deschead[c].imghead);
+			deschead[c].palhead = SwapInt(deschead[c].palhead);
+#endif
 			imghead = deschead[c].imghead;
 			palhead = deschead[c].palhead;
 
@@ -77,7 +116,11 @@ u32 TDF_LoadHeader(TDFile* tdf, const char* file_name)
 				fseek(tdffile,(long)palhead,SEEK_SET);
 				palhead = malloc(sizeof(TDPalHeader));
 				fread(palhead,1,sizeof(TDPalHeader),tdffile);
-
+#ifndef BIGENDIAN
+				palhead->fmt = SwapInt(palhead->fmt);
+				palhead->nitems = SwapShort(palhead->nitems);
+				palhead->data_offset = SwapInt(palhead->data_offset);
+#endif
 				deschead[c].palhead = palhead;
 			}
 
@@ -85,7 +128,17 @@ u32 TDF_LoadHeader(TDFile* tdf, const char* file_name)
 			fseek(tdffile,(long)imghead,SEEK_SET);
 			imghead = malloc(sizeof(TDImgHeader));
 			fread(imghead,1,sizeof(TDImgHeader),tdffile);
-
+#ifndef BIGENDIAN
+			imghead->fmt = SwapInt(imghead->fmt);
+			imghead->width = SwapShort(imghead->width);
+			imghead->height = SwapShort(imghead->height);
+			imghead->data_offset = SwapInt(imghead->data_offset);
+			imghead->minfilter = SwapInt(imghead->minfilter);
+			imghead->magfilter = SwapInt(imghead->magfilter);
+			imghead->lodbias = (f32)SwapInt((int)imghead->lodbias);
+			imghead->wraps = SwapInt(imghead->wraps);
+			imghead->wrapt = SwapInt(imghead->wrapt);
+#endif
 			deschead[c].imghead = imghead;
 		}
 		tdf->texdesc = deschead;
@@ -94,7 +147,7 @@ u32 TDF_LoadHeader(TDFile* tdf, const char* file_name)
 	return 1;
 }
 
-u32 TDF_LoadTexture(TDFile *tdf,u32 id,TDTexture **tex)
+u32 TDF_GetTextureFromFile(TDFile *tdf,u32 id,TDTexture **tex)
 {
 	u32 nRet,size;
 	TDDescHeader *deschead;
@@ -123,24 +176,32 @@ u32 TDF_LoadTexture(TDFile *tdf,u32 id,TDTexture **tex)
 			texture->wraps = deschead[id].imghead->wraps;
 			texture->wrapt = deschead[id].imghead->wrapt;
 
-			if(deschead[id].imghead->data) {
-				fseek(tdffile,(long)deschead[id].imghead->data,SEEK_SET);
-				image = malloc(sizeof(TDImage));
-				if(image) {
-					image->width = deschead[id].imghead->width;
-					image->height = deschead[id].imghead->height;
-					image->fmt = deschead[id].imghead->fmt;
+			fseek(tdffile,(long)deschead[id].imghead->data_offset,SEEK_SET);
+			image = malloc(sizeof(TDImage));
+			if(image) {
+				image->width = deschead[id].imghead->width;
+				image->height = deschead[id].imghead->height;
+				image->fmt = deschead[id].imghead->fmt;
 
-					size = TDF_GetTextureSize(image->fmt,image->width,image->height);
-					image->data = malloc(size);
-					if(image->data) fread(image->data,1,size,tdffile);
-
-					texture->image = image;
-				}
+				size = TDF_GetTextureSize(image->width,image->height,image->fmt);
+				image->data = malloc(size);
+				if(image->data) fread(image->data,1,size,tdffile);
 			}
 
 			if(deschead[id].palhead) {
+				palette = malloc(sizeof(TDPalette));
+				if(palette) {
+					palette->fmt = deschead[id].palhead->fmt;
+					palette->nitems = deschead[id].palhead->nitems;
+
+					size = palette->nitems;
+					fseek(tdffile,(long)deschead[id].palhead->data_offset,SEEK_SET);
+					palette->data = malloc(size*sizeof(u16));
+					if(palette->data) fread(palette->data,sizeof(u16),size,tdffile);
+				}
 			}
+			texture->palette = palette;
+			texture->image = image;
 		}
 	}
 	fclose(tdffile);
@@ -148,34 +209,39 @@ u32 TDF_LoadTexture(TDFile *tdf,u32 id,TDTexture **tex)
 
 	return nRet;
 }
-/*
-void GetTexFromTDF( TDF* tdf, GXTexObj *tex, u32 id)
+
+void TDF_ReleaseTexture(TDTexture *tex)
 {
-	u8 mipmap = false;
-	// get texture header
-	TexHeader *thead = tdf.texdesc[id].texhead;
-	if(head.maxlod>0) mipmap = true;
-	// init texture and texture lod
-	GX_InitTexObj(tex, thead.data, thead.width, thead.height, thead.fmt,
-					thead.wraps, thead.wrapt, mipmap);
-	GX_InitTexObjLOD( tex, thead.minfilter, thead.magfilter, (f32)thead.minlod, (f32)thead.maxlod,
-						thead.lodbias, GX_FALSE, GX_FALSE, thead.edgelod);
+	if(!tex) return;
+
+	if(tex->palette) {
+		if(tex->palette->data) free(tex->palette->data);
+		free(tex->palette);
+	}
+
+	if(tex->image) {
+		if(tex->image->data) free(tex->image->data);
+		free(tex->image);
+	}
+
+	free(tex);
 }
 
-void GetCITexFromTDF( TDF* tdf, GXTexObj *tex, GXTlutObj *tlo, u32 tluts, u32 id);
+void TDF_CloseTDFile(TDFile *tdf)
 {
-	u8 mipmap = false;
-	// get texture and palette header
-	TexHeader *thead = tdf.texdesc[id].texhead;
-	TexPalHeader *phead = tdf.texdesc[id].palhead
-	if(head.maxlod>0) mipmap = true;
+	int i;
+	TDDescHeader *deschead;
 
-	// init texture, load and init tlut, init texture lod
-	GX_InitTexObjCI( tex,
-		    thead.data, thead.width, thead.height, thead.fmt, thead.wraps, thead.wrapt, mipmap, tluts);
-	GX_InitTlutObj(tlo, phead.data, phead.fmt, phead.nitems );
-	GX_LoadTlut(tex, tluts );
-	GX_InitTexObjLOD( tex, thead.minfilter, thead.magfilter, (f32)thead.minlod, (f32)thead.maxlod,
-						thead.lodbias, GX_FALSE, GX_FALSE, thead.edgelod);
+	if(!tdf) return;
+
+	if(tdf->tdf_name) free(tdf->tdf_name);
+
+	deschead = (TDDescHeader*)tdf->texdesc;
+	if(!deschead) return;
+	
+	for(i=0;i<tdf->ntextures;i++) {
+		if(deschead[i].imghead) free(deschead[i].imghead);
+		if(deschead[i].palhead) free(deschead[i].palhead);
+	}
+	free(tdf->texdesc);
 }
-*/
