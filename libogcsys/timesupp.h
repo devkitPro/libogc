@@ -3,7 +3,6 @@
 
 #include <sys/types.h>
 
-#define TB_CLOCK			40500			//4th of the bus frequency
 #define TB_SECSPERMIN		60
 #define TB_MINSPERHR		60
 #define TB_MONSPERYR		12
@@ -17,9 +16,6 @@
 #define TB_NSPERSEC			1000000000
 #define TB_NSPERMS			1000000
 #define TB_NSPERUS			1000
-
-#define TB_REQ				250
-#define TB_SUCCESSFUL		0
 #define TB_USPERTICK		10000
 
 unsigned int nanosleep(struct timespec *tb);
