@@ -108,7 +108,7 @@ MADOBJ	:=	bit.o decoder.o fixed.o frame.o huffman.o \
 			version.o madplayer.o
 
 #---------------------------------------------------------------------------------
-DBOBJ	:=	debug_handler.o debug.o uip_arp.o uip.o
+DBOBJ	:=	debug_handler.o debug.o bba_dbg.o uip_arp.o uip_arch.o uip.o 
 
 #---------------------------------------------------------------------------------
 SDCARDOBJ	:=	sdcard.o sdcardio.o card_fat.o card_buf.o card_io.o card_uni.o

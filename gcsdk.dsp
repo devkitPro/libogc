@@ -583,9 +583,17 @@ SOURCE=.\libdb\uIP\uip_arp.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\libdb\uIP\uipopt.h
+SOURCE=.\libdb\uip\uipopt.h
 # End Source File
 # End Group
+# Begin Source File
+
+SOURCE=.\libdb\bba_dbg.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\bba_dbg.h
+# End Source File
 # Begin Source File
 
 SOURCE=.\libdb\debug.c

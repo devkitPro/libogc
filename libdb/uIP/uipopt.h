@@ -50,7 +50,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uipopt.h,v 1.1 2005-03-10 15:39:14 shagkur Exp $
+ * $Id: uipopt.h,v 1.2 2005-03-11 16:27:22 shagkur Exp $
  *
  */
 
@@ -553,9 +553,9 @@ struct httpd_state {
 /* Include the header file for the application program that should be
    used. If you don't use the example web server, you should change
    this. */
-//#include "httpd.h"
+#include "../bba_dbg.h"
 
-#define UIP_APPCALL	 getDebugChar
+#define UIP_APPCALL	 bba_appcall
 #define UIP_APPSTATE_SIZE	0
 
 #endif /* __UIPOPT_H__ */
