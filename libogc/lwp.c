@@ -173,7 +173,7 @@ u32 LWP_SleepThread(lwpq_t thequeue)
 	exec = _thr_executing;
 	_CPU_ISR_Disable(level);
 	__lwp_threadqueue_csenter(tqueue);
-	exec->wait.ret_code = 1;
+	exec->wait.ret_code = 0;
 	exec->wait.ret_arg = NULL;
 	exec->wait.ret_arg_1 = NULL;
 	exec->wait.queue = tqueue;
