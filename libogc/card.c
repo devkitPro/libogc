@@ -170,7 +170,7 @@ static u32 card_latency[] =
 };
 
 static u32 card_inited = 0;
-static u32 crand_next = 0;
+static u32 crand_next = 1;
 
 static u8 card_gamecode[4] = {0xff,0xff,0xff,0xff};
 static u8 card_company[2] = {0xff,0xff};
@@ -770,23 +770,29 @@ static void __timeouthandler(sysalarm *alarm)
 	}
 }
 
-static void __setuptimeout(u32 chn)
+static void __setuptimeout(card_block *card)
 {
+	u32 secsize;
+	u32 busfreq;
+	u64 time1,time2;
 	struct timespec tb;
-	card_block *card = &cardmap[chn];
 #ifdef _CARD_DEBUG
-	printf("__setuptimeout(%d)\n",chn);
+	printf("__setuptimeout(%p)\n",card);
 #endif
 	SYS_CancelAlarm(&card->timeout_svc);
 
 	if(card->cmd[0]==0xf3 || card->cmd[0]>=0xf5) return;
 	else if(card->cmd[0]==0xf1 || card->cmd[0]==0xf4) {
+		busfreq = *(u32*)0x800000f8;
+		secsize = card->sector_size;
+		time1 = time2 = gettime();
+		
+		SYS_SetAlarm(&card->timeout_svc,&tb,__timeouthandler);
 	} else if(card->cmd[0]==0xf2) {
 		tb.tv_sec = 0;
 		tb.tv_nsec = 100*TB_NSPERMS;
 		SYS_SetAlarm(&card->timeout_svc,&tb,__timeouthandler);
 	}
-	
 }
 
 static void __card_sync(u32 chn)
@@ -816,7 +822,7 @@ static s32 __retry(u32 chn)
 		return CARD_ERROR_NOCARD;
 	}
 
-	__setuptimeout(chn);
+	__setuptimeout(card);
 
 	if(EXI_ImmEx(chn,card->cmd,card->cmd_len,EXI_WRITE)==0) {
 		EXI_Deselect(chn);
@@ -1208,7 +1214,7 @@ static s32 __card_start(u32 chn,cardcallback tx_cb,cardcallback exi_cb)
 		return CARD_ERROR_NOCARD;
 	}
 
-	__setuptimeout(chn);
+	__setuptimeout(card);
 	_CPU_ISR_Restore(level);
 
 #ifdef _CARD_DEBUG
@@ -1785,18 +1791,12 @@ static __inline__ u32 __card_rand()
 	return _SHIFTR(crand_next,16,15);
 }
 
-static __inline__ u32 __card_rand2()
-{
-	crand_next = (crand_next*0x41C64E6D)+12345;
-	return crand_next;
-}
-
 static u32 __card_initval()
 {
 	u32 ticks = gettick();
 	
 	__card_srand(ticks);
-	return ((0x7FEC8000|__card_rand())&0xfffff000);
+	return ((0x7FEC8000|__card_rand())&~0x00000fff);
 }
 
 static u32 __card_dummylen()
@@ -1805,7 +1805,7 @@ static u32 __card_dummylen()
 	u32 val = 0,cnt = 0,shift = 1;
 
 	__card_srand(ticks);
-	val = ((__card_rand2()&0x001F8000)>>15)+1;
+	val = (__card_rand()&0x1f)+1;
 	
 	do {
 		ticks = gettick();
@@ -1813,7 +1813,7 @@ static u32 __card_dummylen()
 		shift++;
 		if(shift>16) shift = 1;
 		__card_srand(val);
-		val = ((__card_rand2()&0x001F8000)>>15)+1;
+		val = (__card_rand()&0x1f)+1;
 		cnt++;
 	}while(val<4 && cnt<10);
 	if(val<4) val = 4;
@@ -1951,7 +1951,8 @@ static void __dsp_initcallback(void *task)
 
 static void __dsp_donecallback(void *task)
 {
-	u8 buffer[64];
+	u8 buffer[64] ATTRIBUTE_ALIGN(32);
+
 	u8 status;
 	s32 ret;
 	u32 chn,len,key;
@@ -1988,7 +1989,7 @@ static void __dsp_donecallback(void *task)
 		c = (val<<7);
 		r1 = (val^c);
 		r2 = (b^r1);
-		r3 = eqv(a,r2);
+		r3 = eqv(a,r2);		//~(a^r2)
 		r1 = (val|(r3>>31));
 		card->cipher = r1;
 	}
@@ -2016,7 +2017,8 @@ static void __dsp_donecallback(void *task)
 
 static s32 __dounlock(u32 chn,u32 *key)
 {
-	u8 buffer[64];
+	u8 buffer[64] ATTRIBUTE_ALIGN(32);
+	
 	s32 ret;
 	u32 array_addr,len,val;
 	u32 a,b,c,d,e;
@@ -2041,7 +2043,7 @@ static s32 __dounlock(u32 chn,u32 *key)
 		c = (val>>7);
 		r1 = (val^c);
 		r2 = (b^r1);
-		r3 = eqv(a,r2);
+		r3 = eqv(a,r2);		//~(a^r2)
 		r1 = (val|(r3<<31));
 		card->cipher = r1;
 	}
@@ -2066,7 +2068,7 @@ static s32 __dounlock(u32 chn,u32 *key)
 		c = (val<<7);
 		r1 = (val^c);
 		r2 = (b^r1);
-		r3 = eqv(a,r2);
+		r3 = eqv(a,r2);		//~(a^r2)
 		r1 = (val|(r3>>31));
 		card->cipher = r1;
 	}
@@ -2080,7 +2082,7 @@ static s32 __dounlock(u32 chn,u32 *key)
 		c = (val<<7);
 		r1 = (val^c);
 		r2 = (b^r1);
-		r3 = eqv(a,r2);
+		r3 = eqv(a,r2);		//~(a^r2)
 		r1 = (val|(r3>>31));
 		card->cipher = r1;
 	}
@@ -2094,7 +2096,7 @@ static s32 __dounlock(u32 chn,u32 *key)
 		c = (val<<7);
 		r1 = (val^c);
 		r2 = (b^r1);
-		r3 = eqv(a,r2);
+		r3 = eqv(a,r2);		//~(a^r2)
 		r1 = (val|(r3>>31));
 		card->cipher = r1;
 	}
@@ -2108,7 +2110,7 @@ static s32 __dounlock(u32 chn,u32 *key)
 		c = (val<<7);
 		r1 = (val^c);
 		r2 = (b^r1);
-		r3 = eqv(a,r2);
+		r3 = eqv(a,r2);		//~(a^r2)
 		r1 = (val|(r3>>31));
 		card->cipher = r1;
 	}
@@ -2122,7 +2124,7 @@ static s32 __dounlock(u32 chn,u32 *key)
 		c = (val<<7);
 		r1 = (val^c);
 		r2 = (b^r1);
-		r3 = eqv(a,r2);
+		r3 = eqv(a,r2);		//~(a^r2)
 		r1 = (val|(r3>>31));
 		card->cipher = r1;
 	}
@@ -2135,7 +2137,7 @@ static s32 __dounlock(u32 chn,u32 *key)
 		c = (val<<7);
 		r1 = (val^c);
 		r2 = (b^r1);
-		r3 = eqv(a,r2);
+		r3 = eqv(a,r2);		//~(a^r2)
 		r1 = (val|(r3>>31));
 		card->cipher = r1;
 	}
