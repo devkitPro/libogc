@@ -40,7 +40,7 @@ typedef struct _lwpcntrl {
 	u32 suspendcnt,res_cnt;
 	u32 isr_level;
 	u32 cur_state;
-	
+	boolean is_preemptible;
 	lwp_waitinfo wait;
 	lwp_obj *own;
 	prio_cntrl priomap;
@@ -77,7 +77,7 @@ void __lwp_thread_suspend(lwp_cntrl *);
 void __lwp_thread_resume(lwp_cntrl *,u32);
 void __lwp_thread_loadenv(lwp_cntrl *);
 void __lwp_thread_ready(lwp_cntrl *);
-u32 __lwp_thread_init(lwp_cntrl *,void *,u32,u32,u32);
+u32 __lwp_thread_init(lwp_cntrl *,void *,u32,u32,u32,boolean);
 u32 __lwp_thread_start(lwp_cntrl *,void* (*)(void*),void *);
 void __lwp_thread_exit(void *);
 void __lwp_thread_close(lwp_cntrl *);
@@ -85,6 +85,7 @@ void __lwp_start_multitasking();
 void __lwp_stop_multitasking();
 u32 __lwp_init();
 lwp_obj* __lwp_thread_getobject(lwp_cntrl *);
+boolean __lwp_evaluatemode();
 
 u32 __lwp_isr_in_progress();
 void __lwp_rotate_readyqueue(u32);

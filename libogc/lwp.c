@@ -27,7 +27,7 @@ u32 LWP_CreateThread(lwp_t *thethread,void* (*entry)(void *),void *arg,void *sta
 		return -1;
 	}
 
-	status = __lwp_thread_init(lwp_thread,stackbase,stack_size,__lwp_priotocore(prio),0);
+	status = __lwp_thread_init(lwp_thread,stackbase,stack_size,__lwp_priotocore(prio),0,TRUE);
 	if(!status) {
 		__lwp_wkspace_free(lwp_thread);
 		__lwp_thread_dispatchenable();

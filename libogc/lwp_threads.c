@@ -261,12 +261,27 @@ void __lwp_thread_clearstate(lwp_cntrl *thethread,u32 state)
 			
 			if(thethread->cur_prio<_thr_heir->cur_prio) {
 				_thr_heir = thethread;
+				if(_thr_executing->is_preemptible
+					|| thethread->cur_prio==0)
 				_context_switch_want = TRUE;
 			}
 		}
 	}
 
 	_CPU_ISR_Restore(level);
+}
+
+boolean __lwp_evaluatemode()
+{
+	lwp_cntrl *exec;
+	
+	exec = _thr_executing;
+	if(!__lwp_stateready(exec->cur_state)
+		|| (!__lwp_thread_isheir(exec) && exec->is_preemptible)){
+		_context_switch_want = TRUE;
+		return TRUE;
+	}
+	return FALSE;
 }
 
 void __lwp_thread_changepriority(lwp_cntrl *thethread,u32 prio,u32 prependit)
@@ -296,7 +311,8 @@ void __lwp_thread_changepriority(lwp_cntrl *thethread,u32 prio,u32 prependit)
 
 	__lwp_thread_calcheir();
 	
-	if(!(_thr_executing==_thr_heir))
+	if(!(_thr_executing==_thr_heir)
+		&& _thr_executing->is_preemptible)
 		_context_switch_want = TRUE;
 
 	_CPU_ISR_Restore(level);
@@ -394,6 +410,8 @@ void __lwp_thread_resume(lwp_cntrl *thethread,u32 force)
 			_CPU_ISR_Flash(level);
 			if(thethread->cur_prio<_thr_heir->cur_prio) {
 				_thr_heir = thethread;
+				if(_thr_executing->is_preemptible
+					|| thethread->cur_prio==0)
 				_context_switch_want = TRUE;
 			}
 		}
@@ -456,13 +474,13 @@ void __lwp_thread_ready(lwp_cntrl *thethread)
 
 	__lwp_thread_calcheir();
 	heir = _thr_heir;
-	if(!(__lwp_thread_isexec(heir)))
+	if(!(__lwp_thread_isexec(heir)) && _thr_executing->is_preemptible)
 		_context_switch_want = TRUE;
 	
 	_CPU_ISR_Restore(level);
 }
 
-u32 __lwp_thread_init(lwp_cntrl *thethread,void *stack_area,u32 stack_size,u32 prio,u32 isr_level)
+u32 __lwp_thread_init(lwp_cntrl *thethread,void *stack_area,u32 stack_size,u32 prio,u32 isr_level,boolean is_preemtible)
 {
 	u32 i,act_stack_size = 0;
 
@@ -503,7 +521,7 @@ u32 __lwp_thread_init(lwp_cntrl *thethread,void *stack_area,u32 stack_size,u32 p
 	memset(&thethread->fp,0,sizeof(thethread->fp));
 	memset(&thethread->wait,0,sizeof(thethread->wait));
 
-	
+	thethread->is_preemptible = is_preemtible;
 	thethread->isr_level = isr_level;
 	thethread->real_prio = prio;
 	thethread->cur_state = LWP_STATES_DORMANT;
@@ -640,14 +658,14 @@ u32 __lwp_sys_init()
 	
 	// create idle thread, is needed if all threads are locked on a queue
 	_thr_idle = (lwp_cntrl*)__lwp_wkspace_allocate(sizeof(lwp_cntrl));
-	__lwp_thread_init(_thr_idle,NULL,8192,255,0);
+	__lwp_thread_init(_thr_idle,NULL,8192,255,0,TRUE);
 	_thr_executing = _thr_heir = _thr_idle;
 	__lwp_thread_start(_thr_idle,idle_func,NULL);
 
 	// create main thread, as this is our entry point
 	// for every GC application.
 	_thr_main = (lwp_cntrl*)__lwp_wkspace_allocate(sizeof(lwp_cntrl));
-	__lwp_thread_init(_thr_main,NULL,65536,191,0);
+	__lwp_thread_init(_thr_main,NULL,65536,191,0,TRUE);
 	_thr_executing = _thr_heir = _thr_main;
 	__lwp_thread_start(_thr_main,(void*)main,NULL);
 

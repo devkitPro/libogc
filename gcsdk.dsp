@@ -671,6 +671,18 @@ SOURCE=.\libogcsys\usleep.c
 SOURCE=.\libogcsys\write.c
 # End Source File
 # End Group
+# Begin Group "libsdcard.c"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\libsdcard\fat.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libsdcard\fat_ops.c
+# End Source File
+# End Group
 # End Group
 # Begin Group "Header Files"
 
@@ -1091,9 +1103,21 @@ SOURCE=.\gc\mad\timer.h
 SOURCE=.\gc\mad\version.h
 # End Source File
 # End Group
+# Begin Group "sdcard.h"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\gc\sdcard\fat.h
+# End Source File
+# End Group
 # Begin Source File
 
 SOURCE=.\gc\debug.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\sdcard\fat_ops.h
 # End Source File
 # Begin Source File
 

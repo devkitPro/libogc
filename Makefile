@@ -26,18 +26,19 @@ BUILD	:=	build
 #---------------------------------------------------------------------------------
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 #---------------------------------------------------------------------------------
-export BASEDIR	:= $(CURDIR)
-export BUILDDIR	:= $(BASEDIR)/$(BUILD)
-export LIBDIR	:= $(BASEDIR)/lib
-export LWIPDIR	:= $(BASEDIR)/lwip
-export OGCDIR	:= $(BASEDIR)/libogc
-export MODDIR	:= $(BASEDIR)/libmodplay
-export MADDIR	:= $(BASEDIR)/libmad
-export DBDIR	:= $(BASEDIR)/libdb
-export GCSYSDIR	:= $(BASEDIR)/libogcsys
+export BASEDIR		:= $(CURDIR)
+export BUILDDIR		:= $(BASEDIR)/$(BUILD)
+export LIBDIR		:= $(BASEDIR)/lib
+export LWIPDIR		:= $(BASEDIR)/lwip
+export OGCDIR		:= $(BASEDIR)/libogc
+export MODDIR		:= $(BASEDIR)/libmodplay
+export MADDIR		:= $(BASEDIR)/libmad
+export DBDIR		:= $(BASEDIR)/libdb
+export SDCARDDIR	:= $(BASEDIR)/libsdcard
+export GCSYSDIR		:= $(BASEDIR)/libogcsys
 
-export DEPSDIR	:=	$(BASEDIR)/deps
-export INCDIR	:=	$(BASEDIR)/include
+export DEPSDIR		:=	$(BASEDIR)/deps
+export INCDIR		:=	$(BASEDIR)/include
 #---------------------------------------------------------------------------------
 endif
 #---------------------------------------------------------------------------------
@@ -48,12 +49,14 @@ OGCLIB		:= $(LIBDIR)/libogc
 MODLIB		:= $(LIBDIR)/libmodplay
 MADLIB		:= $(LIBDIR)/libmad
 DBLIB		:= $(LIBDIR)/libdb
+SDCARDLIB	:= $(LIBDIR)/libsdcard
 GCSYSLIB	:= $(LIBDIR)/libogcsys
 
 #---------------------------------------------------------------------------------
 DEFINCS		:= -I$(BASEDIR) -I$(BASEDIR)/gc
 INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
-				-I$(BASEDIR)/gc/ogc -I$(BASEDIR)/gc/ogc/machine -I$(BASEDIR)/gc/modplay -I$(BASEDIR)/gc/mad
+				-I$(BASEDIR)/gc/ogc -I$(BASEDIR)/gc/ogc/machine \
+				-I$(BASEDIR)/gc/modplay -I$(BASEDIR)/gc/mad -I$(BASEDIR)/gc/sdcard
 
 MACHDEP		:= -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float
 CFLAGS		:= -DGAMECUBE -O2 $(MACHDEP) -Wall $(INCLUDES)
@@ -70,6 +73,7 @@ VPATH :=	$(LWIPDIR)				\
 			$(MODDIR)			\
 			$(MADDIR)			\
 			$(DBDIR)			\
+			$(SDCARDDIR)			\
 			$(GCSYSDIR)
 
 
@@ -104,6 +108,9 @@ MADOBJ	:=	bit.o decoder.o fixed.o frame.o huffman.o \
 
 #---------------------------------------------------------------------------------
 DBOBJ	:=	debug_handler.o debug.o
+
+#---------------------------------------------------------------------------------
+SDCARDOBJ	:=	fat.o fat_ops.o
 
 #---------------------------------------------------------------------------------
 GCSYSOBJ	:=	newlibc.o sbrk.o open.o write.o close.o \
@@ -165,6 +172,8 @@ $(MADLIB).a: $(MADOBJ)
 #---------------------------------------------------------------------------------
 $(DBLIB).a: $(DBOBJ)
 #---------------------------------------------------------------------------------
+$(SDCARDLIB).a: $(SDCARDOBJ)
+#---------------------------------------------------------------------------------
 $(GCSYSLIB).a: $(GCSYSOBJ)
 #---------------------------------------------------------------------------------
 
@@ -177,10 +186,12 @@ install:
 	@mkdir -p $(INCDIR)/ogc
 	@mkdir -p $(INCDIR)/modplay
 	@mkdir -p $(INCDIR)/mad
+	@mkdir -p $(INCDIR)/sdcard
 	cp ./gc/*.h $(INCDIR)
 	cp ./gc/ogc/*.h $(INCDIR)/ogc
 	cp ./gc/modplay/*.h $(INCDIR)/modplay
 	cp ./gc/mad/*.h $(INCDIR)/mad
+	cp ./gc/sdcard/*.h $(INCDIR)/sdcard
 
 #---------------------------------------------------------------------------------
 dist:
@@ -188,7 +199,7 @@ dist:
 	tar -cjf libogc.tar.bz2 include lib license.txt
 
 #---------------------------------------------------------------------------------
-libs: $(OGCLIB).a $(BBALIB).a $(MODLIB).a $(MADLIB).a $(DBLIB).a $(GCSYSLIB).a
+libs: $(OGCLIB).a $(BBALIB).a $(MODLIB).a $(MADLIB).a $(DBLIB).a $(SDCARDLIB).a $(GCSYSLIB).a
 #---------------------------------------------------------------------------------
 
 #---------------------------------------------------------------------------------
