@@ -4,6 +4,11 @@
 #include "exi.h"
 #include "sdcard.h"
 
+static __inline__ u32 __make_crc7(void *buffer)
+{
+	return 0;
+}
+
 s32 SDCARD_SetModeSPI(s32 chn)
 {
 	s32 ret;

@@ -643,7 +643,7 @@ void __tc_irq_handler(u32 nIrq,void *pCtx)
 
 	exi = &eximap[chan];
 	__MaskIrq(IRQMASK(nIrq));
-	_exiReg[chan*5] = ((_exiReg[chan*5]&~(EXI_EXI_IRQ|EXI_TC_IRQ|EXI_EXT_IRQ))|EXI_TC_IRQ);
+	__exi_clearirqs(chan,0,1,0);
 
 	tccb = exi->CallbackTC;
 #ifdef _EXI_DEBUG
