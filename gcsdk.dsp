@@ -280,6 +280,10 @@ SOURCE=.\libogc\pad.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\processor64.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\semaphore.c
 # End Source File
 # Begin Source File

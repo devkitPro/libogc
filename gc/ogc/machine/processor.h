@@ -54,9 +54,6 @@
 #define cntlzw(_val) ({register u32 _rval; \
 					  asm volatile("cntlzw %0, %1" : "=r"((_rval)) : "r"((_val))); _rval;})
 
-#define eqv(_val1,_val2)	({register u32 _rval; \
-							asm volatile("eqv %0,%1,%2" : "=r"((_rval)) : "r"((_val1)),"r"((_val2))); _rval;})
-
 #define _CPU_MSR_GET( _msr_value ) \
   do { \
     _msr_value = 0; \

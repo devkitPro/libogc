@@ -44,6 +44,7 @@
 
 typedef u32 (*EXICallback)(u32,u32);
 
+u32 EXI_ProbeReset();
 u32 EXI_Probe(u32 nChn);
 u32 EXI_Lock(u32 nChn,u32 nDev,EXICallback unlockCB);
 u32 EXI_Unlock(u32 nChn);

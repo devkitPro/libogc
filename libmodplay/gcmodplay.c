@@ -27,7 +27,7 @@ static u32 player_stack[STACKSIZE/sizeof(u32)];
 static void* player(void *);
 
 #ifdef _GCMOD_DEBUG
-extern unsigned long long gettime();
+extern long long gettime();
 extern u32 diff_usec(unsigned long long start,unsigned long long end);
 extern u32 diff_msec(unsigned long long start,unsigned long long end);
 #endif
@@ -36,7 +36,7 @@ static void* player(void *arg)
 {
 	u32 datalen,tmp;
 #ifdef _GCMOD_DEBUG
-	unsigned long long start,end;
+	long long start,end;
 #endif
 
 	thr_running = TRUE;
@@ -80,7 +80,7 @@ static void dmaCallback()
 
 	if(!datalen) datalen = sndBuffer.data_len;
 #ifdef _GCMOD_DEBUG
-	static unsigned long long start = 0,end = 0;
+	static long long start = 0,end = 0;
 
 	end = gettime();
 	if(start) printf("dmaCallback(%p,%d,%d - after %d ms)\n",(void*)audioBuf[curaudio],datalen,curaudio,diff_msec(start,end));

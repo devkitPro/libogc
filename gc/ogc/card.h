@@ -63,32 +63,33 @@
 #endif /* __cplusplus */
 
 typedef struct _card_file {
-	u32 chn;
+	s32 chn;
 	s32 filenum;
-	u32 offset;
-	u32 len;
+	s32 offset;
+	s32 len;
 	u16 iblock;
 } card_file;
 
-typedef void (*cardcallback)(u32 chan,s32 result);
+typedef void (*cardcallback)(s32 chan,s32 result);
 
 /*new api*/
 s32 CARD_Init(const char *gamecode,const char *company);
-s32 CARD_Mount(u32 chn,void *workarea,cardcallback detach_cb);
-s32 CARD_MountAsync(u32 chn,void *workarea,cardcallback detach_cb,cardcallback attach_cb);
-s32 CARD_Unmount(u32 chn);
+s32 CARD_Mount(s32 chn,void *workarea,cardcallback detach_cb);
+s32 CARD_MountAsync(s32 chn,void *workarea,cardcallback detach_cb,cardcallback attach_cb);
+s32 CARD_Unmount(s32 chn);
 s32 CARD_Read(card_file *file,void *buffer,u32 len,u32 offset);
-s32 CARD_Open(u32 chn,const char *filename,card_file *file);
+s32 CARD_ReadAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback callback);
+s32 CARD_Open(s32 chn,const char *filename,card_file *file);
 s32 CARD_Close(card_file *file);
-s32 CARD_Create(u32 chn,const char *filename,u32 size,card_file *file);
-s32 CARD_CreateAsync(u32 chn,const char *filename,u32 size,card_file *file,cardcallback callback);
-s32 CARD_Delete(u32 chn,const char *filename);
-s32 CARD_DeleteAsync(u32 chn,const char *filename,cardcallback callback);
+s32 CARD_Create(s32 chn,const char *filename,u32 size,card_file *file);
+s32 CARD_CreateAsync(s32 chn,const char *filename,u32 size,card_file *file,cardcallback callback);
+s32 CARD_Delete(s32 chn,const char *filename);
+s32 CARD_DeleteAsync(s32 chn,const char *filename,cardcallback callback);
 s32 CARD_Write(card_file *file,void *buffer,u32 len,u32 offset);
 s32 CARD_WriteAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback callback);
-s32 CARD_Format(u32 chn);
-s32 CARD_FormatAsync(u32 chn,cardcallback callback);
-s32 CARD_GetErrorCode(u32 chn);
+s32 CARD_Format(s32 chn);
+s32 CARD_FormatAsync(s32 chn,cardcallback callback);
+s32 CARD_GetErrorCode(s32 chn);
 
 #ifdef __cplusplus
    }

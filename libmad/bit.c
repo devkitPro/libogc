@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: bit.c,v 1.1.1.1 2004-08-03 13:56:11 wntrmute Exp $
+ * $Id: bit.c,v 1.2 2004-09-02 08:04:42 shagkur Exp $
  */
 
 # ifdef HAVE_CONFIG_H

@@ -50,7 +50,7 @@ unsigned long _DEFUN(gettick,(),
 	return 0;
 }
 
-unsigned long long _DEFUN(gettime,(),
+long long _DEFUN(gettime,(),
 						  _NOARGS)
 {
 	__asm__ __volatile__ (
@@ -65,7 +65,7 @@ unsigned long long _DEFUN(gettime,(),
 }
 
 void _DEFUN(settime,(t),
-			unsigned long long t)
+			long long t)
 {
 	__asm__ __volatile__ (
 		"mtspr	284,4\n\
@@ -74,7 +74,7 @@ void _DEFUN(settime,(t),
 		 : : : "memory");
 }
 
-u32 diff_sec(unsigned long long start,unsigned long long end)
+u32 diff_sec(long long start,long long end)
 {
 	u32 upper,lower;
 
@@ -86,7 +86,7 @@ u32 diff_sec(unsigned long long start,unsigned long long end)
 	return ((upper*((u32)0x80000000/(TB_TIMER_CLOCK*500)))+(lower/(TB_TIMER_CLOCK*1000)));
 }
 
-u32 diff_msec(unsigned long long start,unsigned long long end)
+u32 diff_msec(long long start,long long end)
 {
 	u32 upper,lower;
 
@@ -98,7 +98,7 @@ u32 diff_msec(unsigned long long start,unsigned long long end)
 	return ((upper*((u32)0x80000000/(TB_TIMER_CLOCK/2)))+(lower/(TB_TIMER_CLOCK)));
 }
 
-u32 diff_usec(unsigned long long start,unsigned long long end)
+u32 diff_usec(long long start,long long end)
 {
 	u32 upper,lower;
 
@@ -174,7 +174,7 @@ int clock_gettime(struct timespec *tp)
 void _DEFUN(udelay,(us),
 			int us)
 {
-	unsigned long long start, end;
+	long long start, end;
 	start = gettime();
 	while (1)
 	{

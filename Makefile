@@ -87,7 +87,7 @@ OGCOBJ	:=	lwp_priority.o lwp_queue.o lwp_threadq.o lwp_threads.o lwp_sema.o	\
 			lwp_watchdog.o lwp_wkspace.o sys_state.o \
 			exception_handler.o exception.o irq.o irq_handler.o semaphore.o \
 			video_asm.o video.o pad.o dvd.o exi.o mutex.o arqueue.o	arqmgr.o	\
-			cache_asm.o system.o system_asm.o cond.o			\
+			cache_asm.o system.o system_asm.o cond.o processor64.o			\
 			gx.o gu.o gu_psasm.o audio.o cache.o decrementer.o			\
 			message.o card.o aram.o depackrnc.o decrementer_handler.o	\
 			dsp.o ogc_crt0.o
