@@ -17,7 +17,6 @@ typedef struct _arqm_info {
 
 static u32 __ARQMStackLocation;
 static u32 __ARQMFreeBytes;
-static u32 __ARQMPendingReads = 0;
 static u32 __ARQMStackPointer[ARQM_STACKENTRIES];
 static ARQM_Info __ARQMInfo[ARQM_STACKENTRIES];
 static u32 __ARQMZeroBuffer[ARQM_ZEROBYTES/sizeof(u32)] ATTRIBUTE_ALIGN(32);
@@ -51,7 +50,6 @@ void ARQM_Init(u32 arambase,u32 len)
 	__ARQMStackLocation = 0;
 	__ARQMStackPointer[0] = arambase;
 	__ARQMFreeBytes = len;
-	__ARQMPendingReads = 0;
 	
 	for(i=0;i<ARQM_ZEROBYTES/sizeof(u32);i++) __ARQMZeroBuffer[i] = 0;
 }
