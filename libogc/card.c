@@ -1173,7 +1173,7 @@ static s32 __card_writepage(u32 chn,cardcallback callback)
 	s32 ret;
 	card_block *card = NULL;
 #ifdef _CARD_DEBUG
-	printf("__card_writepage(%d,%p)\n",chn,block_write_cb);
+	printf("__card_writepage(%d,%p)\n",chn,callback);
 #endif
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
 	card = &cardmap[chn];
@@ -1205,7 +1205,7 @@ static s32 __card_readsegment(u32 chn,cardcallback callback)
 	s32 ret;
 	card_block *card = NULL;
 #ifdef _CARD_DEBUG
-	printf("__card_readsegment(%d,%p)\n",chn,block_read_cb);
+	printf("__card_readsegment(%d,%p)\n",chn,callback);
 #endif
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
 	card = &cardmap[chn];
@@ -1350,7 +1350,7 @@ static s32 __card_sectorerase(u32 chn,u32 sector,cardcallback callback)
 	s32 ret;
 	card_block *card = NULL;
 #ifdef _CARD_DEBUG
-	printf("__card_sectorerase(%d,%08x,%p)\n",chn,sector,done_cb);
+	printf("__card_sectorerase(%d,%08x,%p)\n",chn,sector,callback);
 #endif
 	if(chn<EXI_CHANNEL_0 || chn>= EXI_CHANNEL_2) return CARD_ERROR_FATAL_ERROR;
 	card = &cardmap[chn];
@@ -1470,7 +1470,7 @@ static s32 __card_updatefat(u32 chn,struct card_bat *fatblock,cardcallback callb
 {
 	card_block *card = NULL;
 #ifdef _CARD_DEBUG
-	printf("__card_updatefat(%d,%p,%p)\n",chn,fatblock,done_cb);
+	printf("__card_updatefat(%d,%p,%p)\n",chn,fatblock,callback);
 #endif
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_FATAL_ERROR;
 	card = &cardmap[chn];
@@ -1491,7 +1491,7 @@ static s32 __card_updatedir(u32 chn,cardcallback callback)
 	void *dirblock = NULL;
 	struct card_dircntrl *dircntrl = NULL;
 #ifdef _CARD_DEBUG
-	printf("__card_updatedir(%d,%p)\n",chn,done_cb);
+	printf("__card_updatedir(%d,%p)\n",chn,callback);
 #endif
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_FATAL_ERROR;
 	card = &cardmap[chn];
@@ -1540,7 +1540,7 @@ static s32 __card_domount(u32 chn)
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
 	card = &cardmap[chn];
 #ifdef _CARD_DEBUG
-	printf("__card_domount(%d,%d)\n",chn,card->card_unlocked);
+	printf("__card_domount(%d,%d)\n",chn,card->mount_step);
 #endif
 	if(card->mount_step==0) {
 		ret = 0;
@@ -1570,7 +1570,7 @@ static s32 __card_domount(u32 chn)
 					ret = -3;
 					goto exit;
 				}
-				if(!(status&CARD_STATUS_UNLOCKED)) {
+				if(!(status&CARD_STATUS_UNLOCKED) && card->latency==4) {
 #ifdef _CARD_DEBUG
 					printf("__card_domount(card locked)\n");
 #endif
@@ -1618,7 +1618,7 @@ static s32 __card_domount(u32 chn)
 		DCInvalidateRange(card->workarea,0xA000);
 	}
 
-	if(__card_read(chn,(card->sector_size*(card->mount_step-2)),8192,card->workarea+((card->mount_step-2)<<13),__card_mountcallback)<0) goto exit;
+	if(__card_read(chn,(card->sector_size*(card->mount_step-2)),card->sector_size,card->workarea+((card->mount_step-2)<<13),__card_mountcallback)<0) goto exit;
 	return ret;	
 	
 exit:
@@ -2091,7 +2091,7 @@ s32 CARD_MountAsync(u32 chn,void *workarea,cardcallback detach_cb,cardcallback a
 
 	_CPU_ISR_Disable(level);
 #ifdef _CARD_DEBUG
-	printf("card->mounted = %d,%08x\n",card->mounted,EXI_GetState(chn));
+	printf("card->mounted = %d,%08x\n",card->attached,EXI_GetState(chn));
 #endif
 	if(card->result==CARD_ERROR_BUSY) {
 		_CPU_ISR_Restore(level);
@@ -2111,7 +2111,7 @@ s32 CARD_MountAsync(u32 chn,void *workarea,cardcallback detach_cb,cardcallback a
 			if(EXI_Attach(chn,__card_exthandler)==0) {
 				card->result = CARD_ERROR_NOCARD;
 #ifdef _CARD_DEBUG
-				printf("card->mounted = %d,%08x,attach failed\n",card->mounted,EXI_GetState(chn));
+				printf("card->mounted = %d,%08x,attach failed\n",card->attached,EXI_GetState(chn));
 #endif
 				_CPU_ISR_Restore(level);
 				return CARD_ERROR_NOCARD;
