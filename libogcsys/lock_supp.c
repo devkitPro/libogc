@@ -23,6 +23,14 @@ typedef struct _lock {
 
 static int _g_libc_lck_id = 0;
 
+static u32 __libc_lock_supp(lock_t *lock,u32 timeout,u8 block)
+{
+	u32 level;
+	_CPU_ISR_Disable(level);
+	__lwp_mutex_seize(&lock->lck,lock->id,block,timeout,level);
+	return _thr_executing->wait.ret_code;
+}
+
 void __libc_lock_init(int *lock,boolean recursive)
 {
 	lwp_mutex_attr attr;
@@ -44,9 +52,44 @@ void __libc_lock_init(int *lock,boolean recursive)
 	__lwp_mutex_initialize(&retlck->lck,&attr,LWP_MUTEX_UNLOCKED);
 
 	retlck->id = ++_g_libc_lck_id;
+	*lock = (int)retlck;
 	__lwp_thread_dispatchenable();
 }
 
 void __libc_lock_close(int *lock)
 {
+	lock_t *plock = (lock_t*)*lock;
+	
+	__lwp_thread_dispatchdisable();
+	if(__lwp_mutex_locked(&plock->lck)) {
+		__lwp_thread_dispatchenable();
+		return;
+	}
+	
+	__lwp_mutex_flush(&plock->lck,EINVAL);
+	__lwp_wkspace_free(plock);
+
+	__lwp_thread_dispatchenable();
 }
+
+void __libc_lock_acquire(int *lock)
+{
+	lock_t *plock = (lock_t*)*lock;
+	__libc_lock_supp(plock,LWP_THREADQ_NOTIMEOUT,TRUE);
+}
+
+void __libc_lock_try_acquire(int *lock)
+{
+	lock_t *plock = (lock_t*)*lock;
+	__libc_lock_supp(plock,LWP_THREADQ_NOTIMEOUT,FALSE);
+}
+
+void __libc_lock_release(int *lock)
+{
+	lock_t *plock = (lock_t*)*lock;
+	__lwp_thread_dispatchdisable();
+	__lwp_mutex_surrender(&plock->lck);
+	__lwp_wkspace_free(plock);
+	__lwp_thread_dispatchenable();
+}
+
