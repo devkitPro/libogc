@@ -26,7 +26,6 @@ vu32 _thread_dispatch_disable_level;
 
 void **__lwp_thr_libc_reent = NULL;
 
-static u32 _lwp_threads[1024];
 static lwp_obj _lwp_objects[1024];
 
 extern void _cpu_context_save_fp(void *);
@@ -487,6 +486,8 @@ u32 __lwp_thread_init(lwp_cntrl *thethread,void *stack_area,u32 stack_size,u32 p
 #ifdef _LWPTHREADS_DEBUG
 	printf("__lwp_thread_init(%p,%p,%d,%d,%d)\n",thethread,stack_area,stack_size,prio,isr_level);
 #endif
+	thethread->id = -1;
+	thethread->own = NULL;
 	if(!stack_area) {
 		if(!__lwp_stack_isenough(stack_size))
 			act_stack_size = CPU_MINIMUM_STACK_SIZE;
@@ -505,17 +506,14 @@ u32 __lwp_thread_init(lwp_cntrl *thethread,void *stack_area,u32 stack_size,u32 p
 	thethread->stack_size = act_stack_size;
 
 	i=0;
-	while(i<1024 && _lwp_threads[i]!=-1) i++;
+	while(i<1024 && _lwp_objects[i].thethread) i++;
 	if(i<1024) {
 		thethread->own = &_lwp_objects[i];
-		_lwp_threads[i] = (u32)thethread;
 		_lwp_objects[i].lwp_id = thethread->id = i+1;
-		_lwp_objects[i].thread = thethread;
+		_lwp_objects[i].thethread = thethread;
 		__lwp_threadqueue_init(&_lwp_objects[i].join_list,LWP_THREADQ_MODEFIFO,LWP_STATES_WAITING_FOR_JOINATEXIT,0);
-	} else{
-		__lwp_stack_free(thethread);
+	} else 
 		return 0;
-	}
 
 	memset(&thethread->context,0,sizeof(thethread->context));
 	memset(&thethread->fp,0,sizeof(thethread->fp));
@@ -550,15 +548,15 @@ void __lwp_thread_close(lwp_cntrl *thethread)
 	
 	_CPU_ISR_Disable(level);
 	idx = thethread->id-1;
-	_lwp_threads[idx] = -1;
-
+	thethread->id = -1;
 	value_ptr = (void**)thethread->wait.ret_arg;
 	if(thethread->own) {
 		while((p=__lwp_threadqueue_dequeue(&thethread->own->join_list))) {
 			*(void**)p->wait.ret_arg = value_ptr;
 		}
-		_lwp_objects[idx].lwp_id = -1;
-		_lwp_objects[idx].thread = NULL;
+		_lwp_objects[idx].lwp_id = 0;
+		_lwp_objects[idx].thethread = NULL;
+		thethread->own = NULL;
 	}
 	_CPU_ISR_Restore(level);
 
@@ -568,7 +566,6 @@ void __lwp_thread_close(lwp_cntrl *thethread)
 		__lwp_thread_deallocatefp();
 
 	__lwp_stack_free(thethread);
-	__lwp_wkspace_free(thethread);
 }
 
 void __lwp_thread_exit(void *value_ptr)
@@ -581,12 +578,7 @@ void __lwp_thread_exit(void *value_ptr)
 
 lwp_obj* __lwp_thread_getobject(lwp_cntrl *thethread)
 {
-	u32 i;
-
-	i=0;
-	while(i<1024 && _lwp_threads[i]!=(u32)thethread && _lwp_threads[i]!=-1) i++;
-	if(i>=1024) return NULL;
-	return &_lwp_objects[i];
+	return thethread->own;
 }
 
 u32 __lwp_thread_start(lwp_cntrl *thethread,void* (*entry)(void*),void *arg)
@@ -649,8 +641,10 @@ u32 __lwp_sys_init()
 	_thr_heir = NULL;
 	_thr_allocated_fp = NULL;
 
-	memset(_lwp_threads,-1,1024*sizeof(u32));
-
+	for(index=0;index<1024;index++) {
+		_lwp_objects[index].lwp_id = 0;
+		_lwp_objects[index].thethread = NULL;
+	}
 	for(index=0;index<=LWP_PRIO_MAX;index++)
 		__lwp_queue_init_empty(&_lwp_thr_ready[index]);
 	

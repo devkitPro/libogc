@@ -17,7 +17,7 @@ extern "C" {
 
 typedef struct _lwp_obj {
 	u32 lwp_id;
-	void *thread;
+	void *thethread;
 	lwp_thrqueue join_list;
 } lwp_obj;
 

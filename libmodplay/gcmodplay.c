@@ -1,14 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "audio.h"
-#include "cache.h"
-#include "lwp.h"
-#include "lwp_messages.h"
+#include <gccore.h>
 #include "gcmodplay.h"
 
 //#define _GCMOD_DEBUG
-#define AUDIO_DMA_REQ	3
+
 #define STACKSIZE		16384
 #define SNDBUFFERSIZE	3523<<2
 
@@ -16,12 +13,13 @@ static BOOL thr_running = FALSE;
 static BOOL sndPlaying = FALSE;
 static MODSNDBUF sndBuffer;
 
+static u32 curr_datalen = 0;
 static u32 shiftVal = 0;
 static vu32 curaudio = 0;
 static u32 dma_stack[(STACKSIZE/2)/sizeof(u32)];
 static u8 audioBuf[2][SNDBUFFERSIZE] ATTRIBUTE_ALIGN(32);
 
-static mq_cntrl playermq;
+static lwpq_t player_queue;
 static lwp_t hplayer;
 static u32 player_stack[STACKSIZE/sizeof(u32)];
 static void* player(void *);
@@ -34,33 +32,21 @@ extern u32 diff_msec(unsigned long long start,unsigned long long end);
 
 static void* player(void *arg)
 {
-	u32 datalen,tmp;
 #ifdef _GCMOD_DEBUG
 	long long start,end;
 #endif
 
 	thr_running = TRUE;
 	while(sndPlaying==TRUE) {
-		datalen = 0;
-		while(!datalen) {
-#ifdef _GCMOD_DEBUG
-			printf("player(get req)\n\n");
-#endif
-			__lwp_thread_dispatchdisable();
-			__lwpmq_seize(&playermq,AUDIO_DMA_REQ,(void*)&datalen,&tmp,TRUE,LWP_THREADQ_NOTIMEOUT);
-			__lwp_thread_dispatchenable();
-#ifdef _GCMOD_DEBUG
-			printf("player(got req,%d)\n",datalen);
-#endif
-		}
-		if(datalen!=-1 && sndPlaying==TRUE) {
+		LWP_SleepThread(player_queue);
+
+		if(curr_datalen>0 && sndPlaying==TRUE) {
 #ifdef _GCMOD_DEBUG
 			printf("player(run callback)\n\n");
 			start = gettime();
 #endif
-			curaudio ^= 1;
-			sndBuffer.callback(sndBuffer.usr_data,(u8*)audioBuf[curaudio],datalen);
-			DCFlushRange(audioBuf[curaudio],datalen);
+			sndBuffer.callback(sndBuffer.usr_data,(u8*)audioBuf[curaudio],curr_datalen);
+			DCFlushRange(audioBuf[curaudio],curr_datalen);
 #ifdef _GCMOD_DEBUG
 			end = gettime();
 			printf("player(end callback,%d - %d us)\n\n",curaudio,diff_usec(start,end));
@@ -68,32 +54,31 @@ static void* player(void *arg)
 		}
 	}
 	thr_running = FALSE;
+	printf("player stopped %d\n",thr_running);
 	return 0;
 }
 
 static void dmaCallback()
 {	
-	u32 cnt;
-	static u32 datalen = 0;
 	MODPlay *mp = (MODPlay*)sndBuffer.usr_data;
 	MOD *mod = &mp->mod;
 
-	if(!datalen) datalen = sndBuffer.data_len;
 #ifdef _GCMOD_DEBUG
 	static long long start = 0,end = 0;
 
 	end = gettime();
-	if(start) printf("dmaCallback(%p,%d,%d - after %d ms)\n",(void*)audioBuf[curaudio],datalen,curaudio,diff_msec(start,end));
+	if(start) printf("dmaCallback(%p,%d,%d - after %d ms)\n",(void*)audioBuf[curaudio],curr_datalen,curaudio,diff_msec(start,end));
 #endif
 	AUDIO_StopDMA();
-	AUDIO_InitDMA((u32)audioBuf[curaudio],datalen);
+	AUDIO_InitDMA((u32)audioBuf[curaudio],curr_datalen);
 	AUDIO_StartDMA();
 
-	datalen = mod->samplespertick<<2;
-	__lwpmq_broadcast(&playermq,(void*)&datalen,sizeof(u32),AUDIO_DMA_REQ,&cnt);
+	curaudio ^= 1;
+	curr_datalen = mod->samplespertick<<2;
+	LWP_WakeThread(player_queue);
 #ifdef _GCMOD_DEBUG
 	start = gettime();
-	printf("dmaCallback(%p,%d,%d,%d us) leave\n",(void*)audioBuf[curaudio],datalen,curaudio,diff_usec(end,start));
+	printf("dmaCallback(%p,%d,%d,%d us) leave\n",(void*)audioBuf[curaudio],curr_datalen,curaudio,diff_usec(end,start));
 #endif
 }
 
@@ -120,14 +105,13 @@ static void mixCallback(void *usrdata,u8 *stream,u32 len)
 
 static u32 SndBufStart(MODSNDBUF *sndbuf)
 {
-	u32 datalen;
 	MODPlay *mp = (MODPlay*)sndbuf->usr_data;
 	MOD *mod = &mp->mod;
 
 	if(sndPlaying) return -1;
-#ifdef _GCMOD_DEBUG
+//#ifdef _GCMOD_DEBUG
 	printf("SndBufStart(%p) enter\n",sndbuf);
-#endif
+//#endif
 	memcpy(&sndBuffer,sndbuf,sizeof(MODSNDBUF));
 	
 	shiftVal = 0;
@@ -136,7 +120,7 @@ static u32 SndBufStart(MODSNDBUF *sndbuf)
 	if(sndBuffer.fmt==16)
 		shiftVal++;
 
-	sndBuffer.data_len = datalen = mod->samplespertick<<2;
+	sndBuffer.data_len = curr_datalen = mod->samplespertick<<2;
 
 	memset(audioBuf[0],0,SNDBUFFERSIZE);
 	memset(audioBuf[1],0,SNDBUFFERSIZE);
@@ -151,7 +135,7 @@ static u32 SndBufStart(MODSNDBUF *sndbuf)
 	curaudio = 0;
 	sndPlaying = TRUE;
 	if(LWP_CreateThread(&hplayer,player,NULL,player_stack,STACKSIZE,80)!=-1) {
-		AUDIO_InitDMA((u32)audioBuf[curaudio],datalen);
+		AUDIO_InitDMA((u32)audioBuf[curaudio],curr_datalen);
 		AUDIO_StartDMA();
 		return 1;
 	}
@@ -160,17 +144,15 @@ static u32 SndBufStart(MODSNDBUF *sndbuf)
 
 static void SndBufStop()
 {
-	u32 close = -1;
-	
 	if(!sndPlaying) return;
 
 	AUDIO_StopDMA();
 	AUDIO_RegisterDMACallback(NULL);
 
+	curr_datalen = 0;
 	curaudio = 0;
 	sndPlaying = FALSE;
-	__lwpmq_send(&playermq,&close,sizeof(u32),AUDIO_DMA_REQ,FALSE,LWP_THREADQ_NOTIMEOUT);
-
+	LWP_WakeThread(player_queue);
 	LWP_JoinThread(hplayer,NULL);
 }
 
@@ -212,17 +194,14 @@ static s32 updateWaveFormat(MODPlay *mod)
 
 void MODPlay_Init(MODPlay *mod)
 {
-	mq_attr attr;
-
 	memset(mod,0,sizeof(MODPlay));
 
 	AUDIO_Init((u8*)&(dma_stack[(STACKSIZE/2)/sizeof(u32)]));
 	MODPlay_SetFrequency(mod,48000);
 	MODPlay_SetStereo(mod,TRUE);
 
-	attr.mode = LWP_MQ_PRIORITY;
-	__lwpmq_initialize(&playermq,&attr,8,sizeof(u32));
-	
+	LWP_InitQueue(&player_queue);
+
 	sndPlaying = FALSE;
 	thr_running = FALSE;
 

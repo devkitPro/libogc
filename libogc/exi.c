@@ -499,7 +499,7 @@ u32 EXI_GetID(u32 nChn,u32 nDev,u32 *nId)
 	exibus_priv *exi = &eximap[nChn];
 
 #ifdef _EXI_DEBUG
-	printf("EXI_GetID(exi_buscode = %d)\n",exi->exi_buscode);
+	printf("EXI_GetID(exi_id = %d)\n",exi->exi_id);
 #endif
 	if(nChn<EXI_CHANNEL_2 && nDev==EXI_DEVICE_0) {
 		if(__exi_probe(nChn)==0) return 0;
@@ -537,8 +537,8 @@ u32 EXI_GetID(u32 nChn,u32 nDev,u32 *nId)
 		}
 	}
 	
-	ret = 0;
 	if(nChn<EXI_CHANNEL_2 && nDev==EXI_DEVICE_0) {
+		ret = 0;
 		EXI_Detach(nChn);
 		
 		_CPU_ISR_Disable(level);
@@ -633,20 +633,22 @@ u32 EXI_ProbeEx(u32 nChn)
 
 u32 EXI_ProbeReset()
 {
-	exibus_priv *exi = NULL;
+	u32 nID;
 
 	last_exi_idtime[0] = 0;
 	last_exi_idtime[1] = 0;
 
-	exi = &eximap[0];
-	exi->exi_idtime = 0;
-	exi = &eximap[1];
-	exi->exi_idtime = 0;
-
+	eximap[0].exi_id = 0;
+	eximap[0].exi_idtime = 0;
+	eximap[1].exi_id = 0;
+	eximap[1].exi_idtime = 0;
+	eximap[2].exi_id = 0;
+	eximap[2].exi_idtime = 0;
+	
 	__exi_probe(0);
 	__exi_probe(1);
 
-	return 1;
+	return EXI_GetID(EXI_CHANNEL_0,EXI_DEVICE_2,&nID);
 }
 
 void __exi_init()
@@ -660,6 +662,8 @@ void __exi_init()
 	_exiReg[5] = 0;
 	_exiReg[10] = 0;
 
+	_exiReg[0] = 0x2000;
+	
 	memset(eximap,0,EXI_MAX_CHANNELS*sizeof(exibus_priv));
 
 	IRQ_Request(IRQ_EXI0_EXI,__exi_irq_handler,NULL);

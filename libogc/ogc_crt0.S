@@ -50,6 +50,7 @@ _start:
 	bl		__fini
 
 eloop:
+	bl __sdloader_boot
 	b eloop			# If the main function returns, which should never happen then just loop endlessly.
 
 InitGPRS:

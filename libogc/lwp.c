@@ -112,7 +112,8 @@ u32 LWP_JoinThread(lwp_t thethread,void **value_ptr)
 	__lwp_thread_dispatchdisable();
 
 	object = __lwp_thread_getobject(lwp_thread);
-	if(!object) {
+	if(!object || lwp_thread->id==-1) {
+		__lwp_wkspace_free(thethread);
 		__lwp_thread_dispatchenable();
 		return 0;
 	}
@@ -128,11 +129,12 @@ u32 LWP_JoinThread(lwp_t thethread,void **value_ptr)
 	exec->wait.ret_arg = (void*)&return_ptr;
 	_CPU_ISR_Restore(level);
 	__lwp_threadqueue_enqueue(&object->join_list,LWP_WD_NOTIMEOUT);
+	__lwp_wkspace_free(thethread);
 	__lwp_thread_dispatchenable();
 
 	if(value_ptr)
 		*value_ptr = return_ptr;
-	
+
 	return 0;
 }
 
