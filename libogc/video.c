@@ -1210,26 +1210,25 @@ void VIDEO_WaitVSync(void)
 
 void VIDEO_SetFramebuffer(void *fb)
 {
-	u32 level,flag;
-	u32 tfbb,bfbb;
+	u32 level;
 
 	_CPU_ISR_Disable(level);
-	tfbb = MEM_VIRTUAL_TO_PHYSICAL(fb);
-	bfbb = tfbb+1280;
+	fbSet = 1;
+	HorVer.bufAddr = fb;
+	__setFbbRegs(&HorVer,&HorVer.tfbb,&HorVer.bfbb,&HorVer.rtfbb,&HorVer.rbfbb);
+	_viReg[14] = regs[14];
+	_viReg[15] = regs[15];
 
-	flag = 1;
-	if(tfbb<0x01000000 && bfbb<0x01000000) flag = 0;
-	if(flag) {
-		tfbb >>= 5;
-		bfbb >>= 5;
-	}
-
-	_viReg[14] = (flag<<12)|(0<<8)|(tfbb>>16);
-	_viReg[15] = tfbb;
-
-	_viReg[18] = bfbb>>16;
-	_viReg[19] = bfbb&0xffff;
+	_viReg[18] = regs[18];
+	_viReg[19] = regs[19];
 	
+	if(HorVer.threeD) {
+		_viReg[16] = regs[16];
+		_viReg[17] = regs[17];
+	
+		_viReg[20] = regs[20];
+		_viReg[21] = regs[21];
+	}
 	_CPU_ISR_Restore(level);
 }
 

@@ -18,17 +18,6 @@ extern int errno;
 #define FONT_XGAP			2
 #define FONT_YGAP			0
 
-typedef struct _console_data_s {
-	unsigned char *framebuffer;
-	unsigned char *font;
-	int xres,yres,stride;
-	int cursor_x,cursor_y;
-	int border_left,border_right,border_top,border_bottom;
-	int scrolled_lines;
-
-	unsigned int foreground,background;
-} console_data_s;
-
 int con_open(struct _reent *r,const char *path,int flags,int mode);
 int con_write(struct _reent *r,int fd,const char *ptr,int len);
 int con_read(struct _reent *r,int fd,char *ptr,int len);

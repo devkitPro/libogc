@@ -8,7 +8,7 @@
 #include "context.h"
 
 #include "pad.h"
-
+#include "libogcsys/console.h"
 //#define _EXC_DEBUG
 
 #define CPU_STACK_TRACE_DEPTH		10
@@ -18,15 +18,20 @@ typedef struct _framerec {
 	void *lr;
 } frame_rec, *frame_rec_t;
 
-extern s8 default_exceptionhandler_start[],default_exceptionhandler_end[],default_exceptionhandler_patch[];
-extern s8 systemcall_handler_start[],systemcall_handler_end[];
-
-void (*_exceptionhandlertable[NUM_EXCEPTIONS])(frame_context*);
+static void *exception_xfb = (void*)0xC1710000;			//we use a static address above ArenaHi.
+static console_data_s exception_con;
 
 void c_default_exceptionhandler(frame_context *);
 void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
 
 extern void fpu_exception_handler(frame_context*);
+extern void VIDEO_SetFramebuffer(void *);
+extern void __console_init(console_data_s *con,void *framebuffer,int xstart,int ystart,int xres,int yres,int stride);
+
+extern s8 default_exceptionhandler_start[],default_exceptionhandler_end[],default_exceptionhandler_patch[];
+extern s8 systemcall_handler_start[],systemcall_handler_end[];
+
+void (*_exceptionhandlertable[NUM_EXCEPTIONS])(frame_context*);
 
 static u32 exception_location[NUM_EXCEPTIONS] = {
 		0x00000100, 0x00000200, 0x00000300, 0x00000400,
@@ -120,6 +125,9 @@ static void _cpu_print_stack(void *pc,void *lr,void *r1)
 //just implement core for unrecoverable exceptions.
 void c_default_exceptionhandler(frame_context *pCtx)
 {
+	VIDEO_SetFramebuffer(exception_xfb);
+	__console_init(&exception_con,exception_xfb,20,20,640,574,1280);
+
 	printf("Exception (%s) occured!\n", exception_name[pCtx->EXCPT_Number]);
 
 	printf("GPR00 %08x GPR08 %08x GPR16 %08x GPR24 %08x\n",pCtx->GPR[0], pCtx->GPR[8], pCtx->GPR[16], pCtx->GPR[24]);
