@@ -1315,8 +1315,7 @@ s32 card_readSector(s32 drv_no,u32 sector_no,u8 *buf,u32 len)
 	if((ret=__card_sendcmd(drv_no,0x11,arg))!=0) return ret;
 	if((ret=__card_response1(drv_no))!=0) return ret;
 
-	ret = __card_dataread(drv_no,buf,_cur_page_size[drv_no]);
-	return ret;
+	return __card_datareadfinal(drv_no,buf,_cur_page_size[drv_no]);
 }
 
 s32 card_updateBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len)

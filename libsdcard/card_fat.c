@@ -678,12 +678,9 @@ s32 card_readCluster(s32 drv_no,u32 cluster_no,u32 offset,void *buf,u32 len)
 
 			read_buf += bytes_per_block;
 		}
-		if(bottom_size) {
-			ret	= card_readBlock(drv_no,block_end_no,0,read_buf,bottom_size);
-			if(ret!=CARDIO_ERROR_READY) return ret;
-		}
+		if(bottom_size) ret	= card_readBlock(drv_no,block_end_no,0,read_buf,bottom_size);
 	}
-	return CARDIO_ERROR_READY;
+	return ret;
 }
 
 s32 card_writeCluster(s32 drv_no,u32 cluster_no,u32 offset,const void *buf,u32 len)
@@ -1476,7 +1473,7 @@ s32 card_readFromDisk(s32 drv_no,opendfile_list *p_list,void *buf,u32 cnt,u32 *p
     if(p_list->f_ptr+read_count>p_list->size) read_count = p_list->size - p_list->f_ptr;
 
     *p_cnt = 0;
-    if(read_count==0) return CARDIO_ERROR_READY;
+    if(read_count==0) return CARDIO_ERROR_EOF;
 
     remaining_count = read_count;
 
@@ -1516,7 +1513,6 @@ s32 card_readFromDisk(s32 drv_no,opendfile_list *p_list,void *buf,u32 cnt,u32 *p
 
     p_list->f_ptr += read_count;
     *p_cnt = read_count;
-    if(read_count<cnt) return CARDIO_ERROR_EOF;
 
     return CARDIO_ERROR_READY;
 }

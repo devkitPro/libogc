@@ -103,7 +103,7 @@ s32 SDCARD_ReadFile(sd_file *pfile,void *buf,u32 len)
 	readcnt = SDCARD_ERROR_EOF;
 	if(ifile && ifile->mode=='r' && ifile->handle!=-1) {
 		ret = card_readFile(ifile->handle,buf,len,&readcnt);
-		if(ret!=CARDIO_ERROR_READY) return SDCARD_ERROR_EOF;
+		if(ret!=CARDIO_ERROR_READY && ret!=CARDIO_ERROR_EOF) return SDCARD_ERROR_IOERROR;
 		else if(ret==CARDIO_ERROR_EOF && readcnt<=0) return SDCARD_ERROR_EOF;
 		ifile->pos += readcnt;
 	}
