@@ -414,7 +414,7 @@ static u32 __bba_tx_stop(struct bba_priv *priv)
 	priv->state = ERR_TXPENDING;
 	_CPU_ISR_Restore(level);
 
-	LWIP_DEBUGF(NETIF_DEBUG,("__bba_tx_sleep(%p,%s,%p)\n",priv,state==ERR_TXPENDING?"ERR_TXPENDING":"ERR_OK",LWP_GetSelf()));
+	LWIP_DEBUGF(NETIF_DEBUG,("__bba_tx_stop(%p,%s,%p)\n",priv,state==ERR_TXPENDING?"ERR_TXPENDING":"ERR_OK",LWP_GetSelf()));
 	return 1;
 }
 

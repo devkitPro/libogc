@@ -1,12 +1,9 @@
+#include <stdio.h>
 #include <lwp_watchdog.h>
 #include "asm.h"
 #include "lwp_threadq.h"
 
 //#define _LWPTHRQ_DEBUG
-
-#ifdef _LWPTHRQ_DEBUG
-extern int printk(const char *fmt,...);
-#endif
 
 static void __lwp_threadqueue_timeout(void *usr_data)
 {
@@ -52,7 +49,9 @@ void __lwp_threadqueue_enqueuefifo(lwp_thrqueue *queue,lwp_cntrl *thethread,u32 
 	
 	sync_state = queue->sync_state;
 	queue->sync_state = LWP_THREADQ_SYNCHRONIZED;
-	
+#ifdef _LWPTHRQ_DEBUG
+	printf("__lwp_threadqueue_enqueuefifo(%p,%d)\n",thethread,sync_state);
+#endif
 	switch(sync_state) {
 		case LWP_THREADQ_SYNCHRONIZED:
 			break;
@@ -197,7 +196,7 @@ reverse_search:
 
 equal_prio:
 #ifdef _LWPTHRQ_DEBUG
-	printk("__lwp_threadqueue_enqueuepriority(%p,equal_prio)\n",thethread);
+	printf("__lwp_threadqueue_enqueuepriority(%p,equal_prio)\n",thethread);
 #endif
 	search_node = __lwp_queue_tail(&search_thread->wait.block2n);
 	prev_node = search_node->prev;
@@ -215,7 +214,7 @@ synchronize:
 	queue->sync_state = LWP_THREADQ_SYNCHRONIZED;
 
 #ifdef _LWPTHRQ_DEBUG
-	printk("__lwp_threadqueue_enqueuepriority(%p,sync_state = %d)\n",thethread,sync_state);
+	printf("__lwp_threadqueue_enqueuepriority(%p,sync_state = %d)\n",thethread,sync_state);
 #endif
 	switch(sync_state) {
 		case LWP_THREADQ_SYNCHRONIZED:
@@ -253,7 +252,7 @@ lwp_cntrl* __lwp_threadqueue_dequeuepriority(lwp_thrqueue *queue)
 	}
 
 #ifdef _LWPTHRQ_DEBUG
-	printk("__lwp_threadqueue_dequeuepriority(%p,sync_state = %d)\n",ret,queue->sync_state);
+	printf("__lwp_threadqueue_dequeuepriority(%p,sync_state = %d)\n",ret,queue->sync_state);
 #endif
 	switch(queue->sync_state) {
 		case LWP_THREADQ_SYNCHRONIZED:
@@ -269,7 +268,7 @@ lwp_cntrl* __lwp_threadqueue_dequeuepriority(lwp_thrqueue *queue)
 
 dequeue:
 #ifdef _LWPTHRQ_DEBUG
-	printk("__lwp_threadqueue_dequeuepriority(%p,dequeue)\n",ret);
+	printf("__lwp_threadqueue_dequeuepriority(%p,dequeue)\n",ret);
 #endif
 	newfirstnode = ret->wait.block2n.first;
 	newfirstthr = (lwp_cntrl*)newfirstnode;

@@ -185,7 +185,7 @@ a lot of data that needs to be copied, this should be set high. */
 #define DBG_TYPES_ON                    -1
 #define DEMO_DEBUG                      DBG_OFF
 #define ETHARP_DEBUG                    DBG_OFF
-#define NETIF_DEBUG                     DBG_OFF
+#define NETIF_DEBUG                     DBG_ON
 #define PBUF_DEBUG                      DBG_OFF
 #define API_LIB_DEBUG                   DBG_OFF
 #define API_MSG_DEBUG                   DBG_OFF
@@ -199,13 +199,13 @@ a lot of data that needs to be copied, this should be set high. */
 #define SYS_DEBUG                       DBG_OFF
 #define RAW_DEBUG                       DBG_OFF
 #define TCP_DEBUG                       DBG_OFF
-#define TCP_INPUT_DEBUG                 DBG_ON
+#define TCP_INPUT_DEBUG                 DBG_OFF
 #define TCP_FR_DEBUG                    DBG_OFF
 #define TCP_RTO_DEBUG                   DBG_OFF
 #define TCP_REXMIT_DEBUG                DBG_OFF
 #define TCP_CWND_DEBUG                  DBG_OFF
 #define TCP_WND_DEBUG                   DBG_OFF
-#define TCP_OUTPUT_DEBUG                DBG_ON
+#define TCP_OUTPUT_DEBUG                DBG_OFF
 #define TCP_RST_DEBUG                   DBG_OFF
 #define TCP_QLEN_DEBUG                  DBG_OFF
 #define UDP_DEBUG                       DBG_OFF

@@ -141,15 +141,16 @@ void LWP_InitQueue(lwpq_t *thequeue)
 void LWP_SleepThread(lwpq_t thequeue)
 {
 	u32 level;
+	lwp_thrqueue *tqueue = (lwp_thrqueue*)thequeue;
 
 	_CPU_ISR_Disable(level);
 	__lwp_thread_dispatchdisable();
-	__lwp_threadqueue_csenter(thequeue);
+	__lwp_threadqueue_csenter(tqueue);
 	_thr_executing->wait.ret_code = 0;
-	_thr_executing->wait.queue = thequeue;
+	_thr_executing->wait.queue = tqueue;
 	_thr_executing->wait.id = LWP_SLEEP_THREAD;
 	_CPU_ISR_Restore(level);
-	__lwp_threadqueue_enqueue(thequeue,LWP_THREADQ_NOTIMEOUT);
+	__lwp_threadqueue_enqueue(tqueue,LWP_THREADQ_NOTIMEOUT);
 	__lwp_thread_dispatchenable();
 }
 
@@ -157,11 +158,13 @@ void LWP_WakeThread(lwpq_t thequeue)
 {
 	u32 level;
 	lwp_cntrl *thethread;
+	lwp_thrqueue *tqueue = (lwp_thrqueue*)thequeue;
+
 	_CPU_ISR_Disable(level);
 	__lwp_thread_dispatchdisable();
 	do {
-		thethread = __lwp_threadqueue_dequeue(thequeue);
+		thethread = __lwp_threadqueue_dequeue(tqueue);
 	} while(thethread);
 	_CPU_ISR_Restore(level);
-	__lwp_thread_dispatchenable();
+	__lwp_thread_dispatchunnest();
 }

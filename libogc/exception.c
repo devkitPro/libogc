@@ -100,14 +100,14 @@ static void _cpu_print_stack(void *pc,void *lr,void *r1)
 
 		switch(i) {
 			case 0:
-				if(pc) printf("0x%p",pc);
+				if(pc) printf("%p",pc);
 				break;
 			case 1:
 				if(!l) l = (frame_rec_t)mfspr(8);
-				printf("0x%p",(void*)l);
+				printf("%p",(void*)l);
 				break;
 			default:
-				printf("0x%p",(void*)(p->up->lr));
+				printf("%p",(void*)(p->up->lr));
 				break;
 		}
 	}
@@ -144,10 +144,15 @@ void c_default_exceptionhandler(frame_context *pCtx)
 	while(1)
 	{
 		PAD_ReadState(&pad,0);
+
 		if(pad.Digital.Start) {
+
 			void (*reload)() = (void(*)())0x80001800;
+
 			reload();
+
 		}
+
 
 	};
 }
