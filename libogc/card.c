@@ -1350,7 +1350,7 @@ static s32 __card_formatregion(u32 chn,u32 encode,cardcallback callback)
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
 
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
-
+	
 	return -1;
 }
 
