@@ -18,7 +18,18 @@ int _DEFUN(_read_r,(ptr, file, buf, len),
            char			 *buf _AND
            int			 len)
 {
-	return -1;
+	int ret = -1;
+	unsigned int dev;
+	unsigned int fd;
+
+	if(file!=-1) {
+		dev = _SHIFTR(file,16,16);
+		fd = file&0xffff;
+
+		if(devoptab_list[dev]->read_r)
+			ret = devoptab_list[dev]->read_r(ptr,fd,ptr,len);
+	}
+	return ret;
 }
 #else
 int _DEFUN(read,(file, ptr, len),
@@ -33,7 +44,9 @@ int _DEFUN(read,(file, ptr, len),
 	if(file!=-1) {
 		dev = _SHIFTR(file,16,16);
 		fd = file&0xffff;
-		ret = devoptab_list[dev]->read_r(0,fd,ptr,len);
+
+		if(devoptab_list[dev]->read_r)
+			ret = devoptab_list[dev]->read_r(0,fd,ptr,len);
 	}
 	return ret;
 }

@@ -10,16 +10,7 @@ extern int errno;
 
 #include "iosupp.h"
 
-#ifndef REENTRANT_SYSCALLS_PROVIDED
-int _DEFUN(lseek,(file, pos, dir),
-           int   file  _AND
-		   int   pos   _AND
-           int   dir)
-{
-	return 0;
-}
-
-#else
+#ifdef REENTRANT_SYSCALLS_PROVIDED
 int _DEFUN(_lseek_r,(ptr, file, pos, dir),
 		   struct _reent *ptr _AND
 		   int   file  _AND
@@ -33,7 +24,28 @@ int _DEFUN(_lseek_r,(ptr, file, pos, dir),
 	if(file!=-1) {
 		dev = _SHIFTR(file,16,16);
 		fd = file&0xffff;
-		ret = devoptab_list[dev]->seek_r(0,fd,pos,dir);
+
+		if(devoptab_list[dev]->seek_r)
+			ret = devoptab_list[dev]->seek_r(ptr,fd,pos,dir);
+	}
+	return ret;
+}
+#else
+int _DEFUN(lseek,(file, pos, dir),
+           int   file  _AND
+		   int   pos   _AND
+           int   dir)
+{
+	int ret = -1;
+	unsigned int dev;
+	unsigned int fd;
+
+	if(file!=-1) {
+		dev = _SHIFTR(file,16,16);
+		fd = file&0xffff;
+
+		if(devoptab_list[dev]->seek_r)
+			ret = devoptab_list[dev]->seek_r(0,fd,pos,dir);
 	}
 	return ret;
 }

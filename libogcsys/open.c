@@ -21,20 +21,43 @@ int _DEFUN (_open_r, (r, file, flags, mode),
 			int   flags _AND
 			int   mode)
 {
-	int whichdev,fd;
+	int handle;
+	int i,dev,fd,namelen;
+	char lfile[256];
 
-	fd = -1;
-	whichdev = 0;
-	while(devoptab_list[whichdev]) {
-		if(strcmp(devoptab_list[whichdev]->name,file)==0) {
-			fd = whichdev;
+	i = 0;
+	dev = -1;
+	while(devoptab_list[i]) {
+		namelen = strlen(devoptab_list[i]->name);
+		if(strncmp(devoptab_list[i]->name,file,namelen)==0) {
+			switch(i) {
+				case STD_NET:
+					if(file[namelen]!=':') return -1;
+					sprintf(lfile,"%s",&file[namelen+1]);
+					break;
+				case STD_SDCARD:
+					if(!isdigit(file[namelen]) || file[namelen+1]!=':') return -1;
+					sprintf(lfile,"dev%d:%s",(file[namelen]-'0'),&file[namelen+2]);
+					break;
+				default:
+					break;
+
+			}
+
+			dev = i;
 			break;
 		}
-		whichdev++;
+		i++;
 	}
-	if(fd!=-1) devoptab_list[fd]->open_r(r,file,flags,mode);
 
-	return fd;
+	fd = -1;
+	handle = -1;
+	if(dev!=-1 && devoptab_list[dev]->open_r) {
+		fd = devoptab_list[dev]->open_r(r,lfile,flags,mode);
+		if(fd!=-1) handle = _SHIFTL(dev,16,16)|(fd&0xffff);
+	}
+
+	return handle;
 }
 #else
 int _DEFUN (open, (file, flags, mode),
@@ -43,30 +66,29 @@ int _DEFUN (open, (file, flags, mode),
         int   mode)
 {
 	int handle;
-	int i,whichdev,fd,namelen;
+	int i,dev,fd,namelen;
 	char lfile[256];
 
 	i = 0;
-	whichdev = -1;
+	dev = -1;
 	while(devoptab_list[i]) {
 		namelen = strlen(devoptab_list[i]->name);
 		if(strncmp(devoptab_list[i]->name,file,namelen)==0) {
 			switch(i) {
-				case STD_IN:
-				case STD_OUT:
-					break;
 				case STD_NET:
 					if(file[namelen]!=':') return -1;
 					sprintf(lfile,"%s",&file[namelen+1]);
 					break;
 				case STD_SDCARD:
-					if(!isdigit(file[namelen]) || file[namelen+1]!=':') return -1;
-					sprintf(lfile,"dev%d:%s",atoi(&file[namelen]),&file[namelen+2]);
+					if(!isdigit(file[namelen]) && file[namelen+1]!=':') return -1;
+					sprintf(lfile,"dev%d:%s",(file[namelen]-'0'),&file[namelen+2]);
+					break;
+				default:
 					break;
 
 			}
 
-			whichdev = i;
+			dev = i;
 			break;
 		}
 		i++;
@@ -74,9 +96,9 @@ int _DEFUN (open, (file, flags, mode),
 
 	fd = -1;
 	handle = -1;
-	if(whichdev!=-1) {
-		fd = devoptab_list[whichdev]->open_r(0,lfile,flags,mode);
-		if(fd!=-1) handle = _SHIFTL(whichdev,16,16)|fd&0xffff;
+	if(dev!=-1 && devoptab_list[dev]->open_r) {
+		fd = devoptab_list[dev]->open_r(0,lfile,flags,mode);
+		if(fd!=-1) handle = _SHIFTL(dev,16,16)|(fd&0xffff);
 	}
 
 	return handle;
