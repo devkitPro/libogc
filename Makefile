@@ -1,19 +1,24 @@
 .SUFFIXES:
 
 #---------------------------------------------------------------------------------
-PREFIX	:=	powerpc-eabi-elf-
+PREFIX	:=	powerpc-gekko
 #---------------------------------------------------------------------------------
 
 
 
-CC		:=	$(PREFIX)gcc
-CXX		:=	$(PREFIX)g++
-AS		:=	$(PREFIX)as
-AR		:=	$(PREFIX)ar
-LD		:=	$(PREFIX)ld
-OBJCOPY	:=	$(PREFIX)objcopy
+CC		:=	$(PREFIX)-gcc
+CXX		:=	$(PREFIX)-g++
+AS		:=	$(PREFIX)-as
+AR		:=	$(PREFIX)-ar
+LD		:=	$(PREFIX)-ld
+OBJCOPY	:=	$(PREFIX)-objcopy
 
 BUILD	:=	build
+
+GETPATH	:=	$(CC) -v 2>&1 | sed -n -e 's/Reading specs from //p' | sed -e 's/\/bin.*//'
+SPECSPATH:=$(shell $(GETPATH))
+
+
 #---------------------------------------------------------------------------------
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 #---------------------------------------------------------------------------------
@@ -179,11 +184,13 @@ install:
 	@mkdir -p $(INCDIR)/modplay
 	@mkdir -p $(INCDIR)/mad
 	@mkdir -p $(INCDIR)/sdcard
-	cp ./gc/*.h $(INCDIR)
-	cp ./gc/ogc/*.h $(INCDIR)/ogc
-	cp ./gc/modplay/*.h $(INCDIR)/modplay
-	cp ./gc/mad/*.h $(INCDIR)/mad
-	cp ./gc/sdcard/*.h $(INCDIR)/sdcard
+	@cp ./gc/*.h $(INCDIR)
+	@cp ./gc/ogc/*.h $(INCDIR)/ogc
+	@cp ./gc/modplay/*.h $(INCDIR)/modplay
+	@cp ./gc/mad/*.h $(INCDIR)/mad
+	@cp ./gc/sdcard/*.h $(INCDIR)/sdcard
+	@cp -rv include $(SPECSPATH)/$(PREFIX)
+	@cp -rv lib $(SPECSPATH)/$(PREFIX)
 
 #---------------------------------------------------------------------------------
 dist:
