@@ -248,9 +248,60 @@ u32 EXI_Select(u32 nChn,u32 nDev,u32 nFrq)
 				return 0;
 			}
 		}
-		if(exi->flags&EXI_FLAG_LOCKED && exi->lockeddev!=nDev) {
+		if(!(exi->flags&EXI_FLAG_LOCKED) || exi->lockeddev!=nDev) {
 #ifdef _EXI_DEBUG
-			printf("EXI_Select(): allready locked(%d).\n",exi->lockeddev);
+			printf("EXI_Select(): not locked or wrong dev(%d).\n",exi->lockeddev);
+#endif
+			_CPU_ISR_Restore(level);
+			return 0;
+		}
+	}
+
+	exi->flags |= EXI_FLAG_SELECT;
+	val = _exiReg[nChn*5];
+	val = (val&0x405)|(0x80<<nDev)|(nFrq<<4);
+	_exiReg[nChn*5] = val;
+
+	if(exi->flags&EXI_FLAG_ATTACH) {
+		if(nChn==EXI_CHANNEL_0) __MaskIrq(IRQMASK(IRQ_EXI0_EXT));
+		else if(nChn==EXI_CHANNEL_1) __MaskIrq(IRQMASK(IRQ_EXI1_EXT));
+	}
+	
+	_CPU_ISR_Restore(level);
+	return 1;
+}
+
+u32 EXI_SelectSD(u32 nChn,u32 nDev,u32 nFrq)
+{
+	u32 val,id,ret;
+	u32 level;
+	exibus_priv *exi = &eximap[nChn];
+#ifdef _EXI_DEBUG
+	printf("EXI_SelectSD(%d,%d,%d)\n",nChn,nDev,nFrq);
+#endif
+	_CPU_ISR_Disable(level);
+
+	if(exi->flags&EXI_FLAG_SELECT) {
+#ifdef _EXI_DEBUG
+		printf("EXI_SelectSD(): allready selected.\n");
+#endif
+		_CPU_ISR_Restore(level);
+		return 0;
+	}
+
+	if(nChn!=EXI_CHANNEL_2) {
+		if(nDev==EXI_DEVICE_0 && !(exi->flags&EXI_FLAG_ATTACH)) {
+			if((ret=__exi_probe(nChn))==1) {
+				if(!exi->exi_idtime) ret = EXI_GetID(nChn,nDev,&id);
+			}
+			if(ret==0) {
+				_CPU_ISR_Restore(level);
+				return 0;
+			}
+		}
+		if(!(exi->flags&EXI_FLAG_LOCKED) || exi->lockeddev!=nDev) {
+#ifdef _EXI_DEBUG
+			printf("EXI_SelectSD(): not locked or wrong dev(%d).\n",exi->lockeddev);
 #endif
 			_CPU_ISR_Restore(level);
 			return 0;

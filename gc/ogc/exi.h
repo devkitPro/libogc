@@ -52,6 +52,7 @@ u32 EXI_Probe(u32 nChn);
 u32 EXI_Lock(u32 nChn,u32 nDev,EXICallback unlockCB);
 u32 EXI_Unlock(u32 nChn);
 u32 EXI_Select(u32 nChn,u32 nDev,u32 nFrq);
+u32 EXI_SelectSD(u32 nChn,u32 nDev,u32 nFrq);
 u32 EXI_Deselect(u32 nChn);
 u32 EXI_Sync(u32 nChn);
 u32 EXI_Imm(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb);

@@ -1114,10 +1114,6 @@ SOURCE=.\gc\mad\version.h
 
 SOURCE=.\gc\sdcard\fat.h
 # End Source File
-# Begin Source File
-
-SOURCE=.\gc\sdcard\sdcard.h
-# End Source File
 # End Group
 # Begin Source File
 
@@ -1154,6 +1150,10 @@ SOURCE=.\gc\network.h
 # Begin Source File
 
 SOURCE=.\gc\ogcsys.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\sdcard.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"
