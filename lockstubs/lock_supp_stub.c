@@ -18,27 +18,27 @@ extern int errno;
 
 int __libc_lock_init(int *lock,int recursive)
 {
-	return -1;
+	return 0;
 }
 
 int __libc_lock_close(int *lock)
 {
-	return -1;
+	return 0;
 	
 }
 
 int __libc_lock_acquire(int *lock)
 {
-	return -1;
+	return 0;
 }
 
 int __libc_lock_try_acquire(int *lock)
 {
-	return -1;
+	return 0;
 }
 
 int __libc_lock_release(int *lock)
 {
-	return -1;
+	return 0;
 }
 
