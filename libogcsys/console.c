@@ -111,9 +111,26 @@ void console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,int 
 	__console_init(&stdcon,framebuffer,xstart,ystart,xres,yres,stride);
 }
 
+void console_setpos(int x,int y)
+{
+	if(curr_con) {
+		curr_con->cursor_x = x;
+		curr_con->cursor_y = y;
+	}
+}
+
+void console_setcolor(unsigned int bgcolor,unsigned int fgcolor)
+{
+	if(curr_con) {
+		curr_con->background = bgcolor;
+		curr_con->foreground = fgcolor;
+	}
+}
 
 int console_putc(console_data_s *con,int c)
 {
+	u32 curr_x,tabsize;
+
 	if(!con) return -1;
 
 	switch(c) 
@@ -121,6 +138,12 @@ int console_putc(console_data_s *con,int c)
 		case '\n':
 			con->cursor_y += FONT_YSIZE*FONT_YFACTOR+FONT_YGAP;
 			con->cursor_x = con->border_left;
+			break;
+		case '\t':
+			curr_x = con->cursor_x;
+			tabsize = (FONT_XSIZE*FONT_XFACTOR+FONT_XGAP)*4;
+			if(curr_x%tabsize) con->cursor_x += (curr_x%tabsize);
+			else con->cursor_x += tabsize;
 			break;
 		default:
 			__console_drawc(con,con->cursor_x,con->cursor_y,c);

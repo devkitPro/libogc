@@ -201,6 +201,7 @@ install:
 	@cp -frv include $(INSTALLPATH)/$(PREFIX)
 	@cp -frv lib $(INSTALLPATH)/$(PREFIX)
 	@cp -fv ogc.ld $(INSTALLPATH)/$(PREFIX)/lib/ogc.ld
+	@cp -fv vgcogc.ld $(INSTALLPATH)/$(PREFIX)/lib/vgcogc.ld
 	@cp -fv specs.ogc $(INSTALLPATH)/lib/gcc/$(PREFIX)/$(GCC_VERSION)/specs
 
 #---------------------------------------------------------------------------------
