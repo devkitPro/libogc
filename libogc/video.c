@@ -535,6 +535,7 @@ extern void __MaskIrq(u32);
 extern u32 __SYS_LockSram();
 extern u32 __SYS_UnlockSram(u32 write);
 
+#ifdef _VIDEO_DEBUG
 static void printRegs()
 {
 	printf("%08x%08x\n",(u32)(shdw_changed>>32),(u32)shdw_changed);
@@ -549,6 +550,7 @@ static void printRegs()
 	printf("%04x %04x %04x %04x\n",regs[56],regs[57],regs[58],regs[59]);
 
 }
+#endif
 
 static __inline__ u32 cntlzd(u64 bit)
 {
@@ -1187,7 +1189,9 @@ void VIDEO_Flush()
 		changed &= ~mask;
 	}
 	flushFlag = 1;
+#ifdef _VIDEO_DEBUG
 	printRegs();
+#endif
 	_CPU_ISR_Restore(level);
 }
 
