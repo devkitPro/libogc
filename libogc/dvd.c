@@ -95,7 +95,6 @@ static sysalarm __dvd_resetalarm;
 static dvdcmdblk __dvd_dummycmdblk;
 static dvddiskid __dvd_tmpid0 ATTRIBUTE_ALIGN(32);
 static dvddrvinfo __dvd_driveinfo ATTRIBUTE_ALIGN(32);
-static dvdapploader __dvd_apploader ATTRIBUTE_ALIGN(32);
 static dvdcallbacklow __dvd_callback = NULL;
 static dvdcallbacklow __dvd_resetcovercb = NULL;
 static dvdcallbacklow __dvd_finalunlockcb = NULL;
@@ -104,7 +103,6 @@ static dvdcallback __dvd_swapdiskcallback = NULL;
 static dvdstatecb __dvd_laststate = NULL;
 static dvdcmdblk *__dvd_executing = NULL;
 
-static dvdcmdblk __dvd_buffer$15;
 static dvdwaitq __dvd_waitingqueue[4];
 static dvdcmdl __dvd_cmdlist[4];
 static dvdcmds __dvd_cmd_curr,__dvd_cmd_prev;
@@ -1249,15 +1247,14 @@ static void alarmcb(sysalarm *alarm)
 	DVD_LowInquiry(&__dvd_driveinfo,__dvd_unlockcb);
 }
 
-static u8 buf[2048] ATTRIBUTE_ALIGN(32);
-void DVD_UnlockDrive()
+void DVD_UnlockDrive(dvdcallback swapcb)
 {
 	u32 level;
 	struct timespec tb;
-	dvdcmdblk cmd;
-	dvdfileinfo info;
 
 	idfin = 0;
+	__dvd_swapdiskcallback = swapcb;
+	
 	DVD_Reset();
 	SYS_CreateAlarm(&__dvd_resetalarm);
 
@@ -1268,12 +1265,6 @@ void DVD_UnlockDrive()
 	while(!idfin)
 		LWP_SleepThread(__dvd_wait_queue);
 	_CPU_ISR_Restore(level);
-
-//	DVD_ReadID(&cmd,&__dvd_tmpid0);
-	printf("%04x\n%04x\n%08x\n\n",__dvd_driveinfo.rev_level,__dvd_driveinfo.dev_code,__dvd_driveinfo.rel_date);
-
-	DVD_ReadPrio(&info,&__dvd_apploader,32,9280,2);
-	printf("%s\n%p\n%d\n",__dvd_apploader.revision,__dvd_apploader.init,__dvd_apploader.len);
 }
 
 static void __dvd_dumpcb(s32 result)
@@ -1322,16 +1313,4 @@ void DVD_Init()
 
 		LWP_InitQueue(&__dvd_wait_queue);
 	}
-}
-
-dvdcallback DVD_SetSwapDiskCallback(dvdcallback cb)
-{
-	u32 level;
-	dvdcallback retcb;
-
-	_CPU_ISR_Disable(level);
-	retcb = __dvd_swapdiskcallback;
-	__dvd_swapdiskcallback = cb;
-	_CPU_ISR_Restore(level);
-	return retcb;
 }
