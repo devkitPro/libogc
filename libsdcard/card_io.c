@@ -70,6 +70,7 @@ static boolean _ioCardInserted[MAX_DRIVE];
 
 static u8 _ioResponse[MAX_DRIVE][128];
 
+extern void udelay(int);
 extern unsigned long gettick();
 
 static __inline__ u32 __check_response(s32 drv_no,u8 res)
@@ -684,7 +685,7 @@ static s32 __card_dataread(s32 drv_no,void *buf,u32 len)
 
 	/* setalarm, wait */
 	tb.tv_sec = 0;
-	tb.tv_nsec = 1*TB_NSPERUS;
+	tb.tv_nsec = 5*TB_NSPERUS;
 	__card_waitio(drv_no,&tb);
 
 	res[0] = res[1] = _ioClrFlag;
@@ -792,10 +793,12 @@ static s32 __card_datareadfinal(s32 drv_no,void *buf,u32 len)
 	crc_org = ((cmd[4]<<8)&0xff00)|(cmd[5]&0xff);
 	
 	/* setalarm, wait */
+	udelay(1);
+/*
 	tb.tv_sec = 0;
-	tb.tv_nsec = 1*TB_NSPERUS;
+	tb.tv_nsec = 5*TB_NSPERUS;
 	__card_waitio(drv_no,&tb);
-
+*/
 	EXI_Deselect(drv_no);
 	EXI_Unlock(drv_no);
 
@@ -841,9 +844,12 @@ static s32 __card_datawrite(s32 drv_no,void *buf,u32 len)
 	}
 
 	/* setalarm, wait */
+	udelay(1);
+/*
 	tb.tv_sec = 0;
-	tb.tv_nsec = 1*TB_NSPERUS;
+	tb.tv_nsec = 5*TB_NSPERUS;
 	__card_waitio(drv_no,&tb);
+*/
 
 	ret = CARDIO_ERROR_READY;
 	if(EXI_ImmEx(drv_no,&crc,2,EXI_WRITE)==0) ret = CARDIO_ERROR_IOERROR;
@@ -888,9 +894,12 @@ static s32 __card_multidatawrite(s32 drv_no,void *buf,u32 len)
 	}
 
 	/* setalarm, wait */
+	udelay(1);
+/*
 	tb.tv_sec = 0;
-	tb.tv_nsec = 1*TB_NSPERUS;
+	tb.tv_nsec = 5*TB_NSPERUS;
 	__card_waitio(drv_no,&tb);
+*/
 
 	ret = CARDIO_ERROR_READY;
 	if(EXI_ImmEx(drv_no,&crc,2,EXI_WRITE)==0) ret = CARDIO_ERROR_IOERROR;
