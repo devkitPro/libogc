@@ -2692,7 +2692,7 @@ void GX_SetPointSize(u8 width,u8 fmt)
 	GX_LOAD_BP_REG(_gx[0xaa]);
 }
 
-void GX_SetTevColor(u32 tev_regid,GXColor color)
+void GX_SetTevColor(u8 tev_regid,GXColor color)
 {
 	u32 reg;
 

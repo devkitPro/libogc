@@ -920,7 +920,7 @@ void GX_LoadTexMtxIdx(u16 mtxidx,u32 texidx,u8 type);
 void GX_SetCurrentMtx(u32 mtx);
 
 void GX_SetTevOp(u8 tevstage,u8 mode);
-void GX_SetTevColor(u32 tev_regid,GXColor color);
+void GX_SetTevColor(u8 tev_regid,GXColor color);
 void GX_SetTevColorIn(u8 tevstage,u8 a,u8 b,u8 c,u8 d);
 void GX_SetTevAlphaIn(u8 tevstage,u8 a,u8 b,u8 c,u8 d);
 void GX_SetTevColorOp(u8 tevstage,u8 tevop,u8 tevbias,u8 tevscale,u8 clamp,u8 tevregid);
