@@ -616,7 +616,7 @@ static u32 bba_poll(u16 *pstatus)
 	ret = 0;
 	*pstatus = 0;
 	start = now = gettime();
-	while(!ret && diff_msec(start,now)<10) {
+	while(diff_msec(start,now)<10) {
 		if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==1) {
 			status = bba_cmd_in8(0x03);
 			bba_cmd_out8(0x02,BBA_CMD_IRMASKALL);
@@ -648,6 +648,8 @@ static u32 bba_poll(u16 *pstatus)
 			}
 			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
 			EXI_Unlock(EXI_CHANNEL_0);
+			if(ret) break;
+
 			now = gettime();
 		}
 	}

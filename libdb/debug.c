@@ -523,6 +523,7 @@ void c_debug_handler(frame_context *ctx)
 	s32 thrid;
 	u32 addr,len,msr;
 	u32 sigval,res;
+	u32 except_thr;
 	frame_context *pctx = ctx;
 
 	if(dbg_active) return;
@@ -555,6 +556,7 @@ void c_debug_handler(frame_context *ctx)
 	
 	put_packet(remcomOutBuffer);
 	
+	except_thr = __lwp_getcurrentid();
 	while(1) {
 		remcomOutBuffer[0] = 0;
 		
@@ -567,9 +569,9 @@ void c_debug_handler(frame_context *ctx)
 					remcomOutBuffer[3] = 0;
 					break;
 				case 'H':
-					if(remcomInBuffer[2]=='-') dbg_currthr = __lwp_getcurrentid();
+					if(remcomInBuffer[2]=='-') dbg_currthr = except_thr;
 					else dbg_currthr = strtoul(remcomInBuffer+2,0,16);
-					if(dbg_currthr==__lwp_getcurrentid()) pctx = ctx;
+					if(dbg_currthr==except_thr) pctx = ctx;
 					else pctx = __lwp_getthrcontext(dbg_currthr);
 					strcpy(remcomOutBuffer,"OK");
 					break;
