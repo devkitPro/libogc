@@ -30,15 +30,16 @@ typedef void (*wd_service_routine)(void *);
 typedef struct _wdcntrl {
 	lwp_node node;
 	u32 state;
-	u32 init_interval;
-	u32 delta_interval;
-	u32 start_time;
-	u32 stop_time;
+	s64 init_interval;
+	s64 delta_interval;
+	s64 start_time;
+	s64 stop_time;
 	wd_service_routine routine;
 	void *usr_data;
 } wd_cntrl;
 
 void __lwp_watchdog_init();
+void __lwp_watchdog_settimer(wd_cntrl *wd);
 void __lwp_wd_insert(lwp_queue *,wd_cntrl *);
 u32 __lwp_wd_remove(wd_cntrl *);
 void __lwp_wd_tickle(lwp_queue *);

@@ -10,6 +10,15 @@ u32 _wd_ticks_since_boot;
 lwp_queue _wd_ticks_queue;
 lwp_queue _wd_secs_queue;
 
+extern long long gettime();
+
+void __lwp_watchdog_settimer(wd_cntrl *wd)
+{
+	s64 curr_time;
+
+	curr_time = gettime();
+}
+
 void __lwp_watchdog_init()
 {
 	_wd_sync_level = 0;

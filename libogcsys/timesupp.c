@@ -131,6 +131,16 @@ unsigned int timespec_to_interval(const struct timespec *time)
 	return 1;
 }
 
+unsigned long long timespec_to_ticks(const struct timespec *time)
+{
+	u64 ticks;
+
+	ticks = secs_to_ticks(time->tv_sec);
+	ticks += nanosecs_to_ticks(time->tv_nsec);
+
+	return ticks;
+}
+
 int clock_gettime(struct timespec *tp)
 {
 	syssram* sram;
