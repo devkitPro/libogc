@@ -30,9 +30,9 @@ typedef struct _tdtexture {
 	u8 edgelod;
 	u8 minlod;
 	u8 maxlod;
-	GXTexObj *tex;
+	GXTexObj tex;
 	TDImage *image;
-	GXTlutObj *tlut;
+	GXTlutObj tlut;
 	TDPalette *palette;
 } TDTexture;
 // tdf file
@@ -44,6 +44,8 @@ typedef struct _tdfile {
 
 u32 TDF_OpenTDFile(TDFile* tdf, const char* file_name);
 u32 TDF_GetTextureFromFile(TDFile *tdf,u32 id,TDTexture **tex);
+u32 TDF_InitTextureFromFile(TDFile *tdf,u32 id,TDTexture **tex);
+u32 TDF_InitCITextureFromFile(TDFile *tdf,u32 id,u32 tlut_name,TDTexture **tex);
 void TDF_ReleaseTexture(TDTexture *tex);
 void TDF_CloseTDFile(TDFile *tdf);
 

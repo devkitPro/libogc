@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <malloc.h>
 #include "tdf.h"
 
 #define LOWORD(l)           ((u16)(l))
@@ -157,12 +158,14 @@ u32 TDF_GetTextureFromFile(TDFile *tdf,u32 id,TDTexture **tex)
 	FILE *tdffile = NULL;
 
 	if(!tdf) return 0;
+	if(!tex) return 0;
 	if(!tdf->tdf_name) return 0;
 
 	tdffile = fopen(tdf->tdf_name,"rb");
 	if(!tdffile) return 0;
 
 	nRet = 0;
+	*tex = NULL;
 	deschead = (TDDescHeader*)tdf->texdesc;
 	if(deschead && deschead[id].imghead) {
 		texture = malloc(sizeof(TDTexture));
@@ -184,7 +187,7 @@ u32 TDF_GetTextureFromFile(TDFile *tdf,u32 id,TDTexture **tex)
 				image->fmt = deschead[id].imghead->fmt;
 
 				size = TDF_GetTextureSize(image->width,image->height,image->fmt);
-				image->data = malloc(size);
+				image->data = memalign(size,32);
 				if(image->data) fread(image->data,1,size,tdffile);
 			}
 
@@ -196,17 +199,93 @@ u32 TDF_GetTextureFromFile(TDFile *tdf,u32 id,TDTexture **tex)
 
 					size = palette->nitems;
 					fseek(tdffile,(long)deschead[id].palhead->data_offset,SEEK_SET);
-					palette->data = malloc(size*sizeof(u16));
+					palette->data = memalign(size*sizeof(u16),32);
 					if(palette->data) fread(palette->data,sizeof(u16),size,tdffile);
 				}
 			}
+
 			texture->palette = palette;
 			texture->image = image;
+			if(image) nRet = 1;			//only if image header is present, then return 1
 		}
 	}
 	fclose(tdffile);
-	if(tex) *tex = texture;
+	if(nRet) *tex = texture;
 
+	return nRet;
+}
+
+u32 TDF_InitTextureFromFile(TDFile *tdf,u32 id,TDTexture **tex)
+{
+	u32 nRet;
+	u8 biasclamp = GX_DISABLE;
+	boolean bMipMap = false;
+	TDTexture *texture = NULL;
+
+	nRet = TDF_GetTextureFromFile(tdf,id,tex);
+	if(nRet) {
+		// sanity check to avoid the try to set a wrong texture format
+		texture = *tex;
+		switch(texture->image->fmt) {
+			case GX_TF_CI4:
+			case GX_TF_CI8:
+			case GX_TF_CI14:
+				TDF_ReleaseTexture(texture);
+				*tex = NULL;
+				return 0;
+		}
+
+		if(texture->maxlod>0) bMipMap = true;
+		if(texture->lodbias>0) biasclamp = GX_ENABLE;
+		GX_InitTexObj(&texture->tex,texture->image->data,texture->image->width,texture->image->height,texture->image->fmt,texture->wraps,texture->wrapt,bMipMap);
+		
+		if(bMipMap==true) GX_InitTexObjLOD(&texture->tex,texture->minfilter,texture->magfilter,texture->minlod,texture->maxlod,
+											texture->lodbias,biasclamp,biasclamp,texture->edgelod);
+	}
+	return nRet;
+}
+
+u32 TDF_InitCITextureFromFile(TDFile *tdf,u32 id,u32 tlut_name,TDTexture **tex)
+{
+	u32 nRet;
+	u32 biasclamp = GX_DISABLE;
+	boolean bMipMap = false;
+	TDTexture *texture = NULL;
+
+	nRet = TDF_GetTextureFromFile(tdf,id,tex);
+	if(nRet) {
+		// sanity check to avoid the try to set a wrong texture format
+		texture = *tex;
+		switch(texture->image->fmt) {
+			case GX_TF_I4:
+			case GX_TF_I8:
+			case GX_TF_IA4:
+			case GX_TF_IA8:
+			case GX_TF_RGB565:
+			case GX_TF_RGB5A3:
+			case GX_TF_RGBA8:
+				TDF_ReleaseTexture(texture);
+				*tex = NULL;
+				return 0;
+		}
+
+		//if no palette is present we destroy our texture object and return immediately
+		//CI textures need to have a palette associated.
+		if(!texture->palette) {
+			TDF_ReleaseTexture(texture);
+			*tex = NULL;
+			return 0;
+		}
+		if(texture->maxlod>0) bMipMap = true;
+		if(texture->lodbias>0) biasclamp = GX_ENABLE;
+
+		GX_InitTlutObj(&texture->tlut,texture->palette->data,texture->palette->fmt,texture->palette->nitems);
+		GX_LoadTlut(&texture->tlut,tlut_name);
+		
+		GX_InitTexObjCI(&texture->tex,texture->image->data,texture->image->width,texture->image->height,texture->image->fmt,texture->wraps,texture->wrapt,bMipMap,tlut_name);
+		if(bMipMap==true) GX_InitTexObjLOD(&texture->tex,texture->minfilter,texture->magfilter,texture->minlod,texture->maxlod,
+											texture->lodbias,biasclamp,biasclamp,texture->edgelod);
+	}
 	return nRet;
 }
 
