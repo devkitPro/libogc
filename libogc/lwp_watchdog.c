@@ -28,7 +28,7 @@ static void __lwp_wd_settimer(wd_cntrl *wd)
 	now = gettime();
 	diff = diff_ticks(now,wd->start_time);
 	delta_interval -= diff;
-	if(0<(min_ticks-delta_interval)) {
+	if(0<=(min_ticks-delta_interval)) {
 #ifdef _LWPWD_DEBUG
 		printf("0<(min_ticks-delta_interval): __lwp_wd_settimer(0)\n");
 #endif
@@ -77,10 +77,10 @@ restart:
 	delta_interval = wd->init_interval;
 	
 	_CPU_ISR_Disable(level);
+	now = gettime();
 	for(after=__lwp_wd_first(header);;after=__lwp_wd_next(after)) {
 		if(delta_interval==0 || !__lwp_wd_next(after)) break;
 	
-		now = gettime();
 		diff = diff_ticks(now,after->start_time);
 		after->start_time = now;
 		after->delta_interval -= diff;
@@ -113,7 +113,7 @@ exit_insert:
 
 u32 __lwp_wd_remove(wd_cntrl *wd)
 {
-	u32 level;
+	u32 level,has_next;
 	u32 prev_state;
 	s64 now;
 	u64 diff;
@@ -122,6 +122,7 @@ u32 __lwp_wd_remove(wd_cntrl *wd)
 	printf("__lwp_wd_remove(%p)\n",wd);
 #endif
 	_CPU_ISR_Disable(level);
+	has_next = 0;
 	now = gettime();
 	diff = diff_ticks(now,wd->start_time);
 	prev_state = wd->state;
@@ -137,11 +138,12 @@ u32 __lwp_wd_remove(wd_cntrl *wd)
 			next = __lwp_wd_next(wd);
 			if(wd->delta_interval>0) wd->delta_interval -= diff;
 			if(__lwp_wd_next(next)) {
+				has_next = 1;
 				next->delta_interval += wd->delta_interval;
-				__lwp_wd_settimer(next);
 			}
 			if(_wd_sync_count) _wd_sync_level = __lwp_isr_in_progress();
 			__lwp_queue_extractI(&wd->node);
+			if(has_next && !__lwp_wd_prev(next)) __lwp_wd_settimer(next);
 			break;
 	}
 	_CPU_ISR_Restore(level);
