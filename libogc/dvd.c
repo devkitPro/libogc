@@ -365,6 +365,15 @@ static void __DVDUnlockDrive(s32 result)
 	}
 }
 
+static u32 idfin;
+s32 DVD_LowReadId(dvddiskid *diskID,dvdcallback cb);
+
+static void idcb(s32 result)
+{
+	idfin = 1;
+	LWP_WakeThread(__dvd_wait_queue);
+}
+
 static void __fst_cb(s32 result,dvdcmdblk *block)
 {
 }
@@ -382,6 +391,12 @@ static void __DVDInitFST()
 #ifdef _DVD_DEBUG
 	printf("__DVDInitFST(unlock done)\n");
 #endif
+
+	idfin = 0;
+	DVD_LowReadId(&idtmp,idcb);
+	while(!idfin) LWP_SleepThread(__dvd_wait_queue);
+
+	printf("%c%c\n",idtmp.company[0],idtmp.company[1]);
 /*	
 	DVD_ReadId(&__dvd_buffer$15,&idtmp,__fst_cb);
 */
