@@ -769,7 +769,7 @@ static void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u16 prbO
 	changed |= VI_REGCHANGE(9);
 }
 
-static void __AdjustPosition(u16 acv)
+static void __adjustPosition(u16 acv)
 {
 	u32 fact,field;
 	s16 dispPosX,dispPosY;
@@ -813,7 +813,7 @@ static void __AdjustPosition(u16 acv)
 	HorVer.adjustedPanSizeY = HorVer.panSizeY+(dispPosY/fact)-(dispSizeY/fact);
 }
 
-static void __ImportAdjustingValues()
+static void __importAdjustingValues()
 {
 	syssram *sram;
 
@@ -998,7 +998,7 @@ void VIDEO_Init()
 	_viReg[51] = (taps[21]|(taps[22]<<8));
 	_viReg[56] = 640;
 
-	__ImportAdjustingValues();
+	__importAdjustingValues();
 
 	HorVer.nonInter = _SHIFTR(_viReg[1],2,1);
 	HorVer.tv = _SHIFTR(_viReg[1],8,2);
@@ -1015,7 +1015,7 @@ void VIDEO_Init()
 	HorVer.dispPosX = (VI_MAX_WIDTH_NTSC-HorVer.dispSizeX)/2;
 	HorVer.dispPosY = 0;
 	
-	__AdjustPosition(currTiming->acv);
+	__adjustPosition(currTiming->acv);
 
 	HorVer.fbSizeX = 640;
 	HorVer.fbSizeY = currTiming->acv<<1;
@@ -1080,7 +1080,7 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	curtiming = __gettiming(vimode);
 	HorVer.timing = curtiming;
 
-	__AdjustPosition(curtiming->acv);
+	__adjustPosition(curtiming->acv);
 	
 	if(!encoderType) HorVer.tv = VI_DEBUG;
 	
