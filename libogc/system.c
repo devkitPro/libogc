@@ -758,12 +758,12 @@ u32 SYS_InitFont(sys_fontheader *font_header)
 
 	memset(font_header,0,sizeof(sys_fontheader));
 	if(SYS_GetFontEncoding()==1) {
-		sys_fontarea = malloc(FONT_SIZE_SJIS);
+		sys_fontarea = memalign(32,FONT_SIZE_SJIS);
 		memset(sys_fontarea,0,FONT_SIZE_SJIS);
 		packed_data = (void*)(((u32)sys_fontarea+868096)&~31);
 		unpacked_data = sys_fontarea+3840;
 	} else {
-		sys_fontarea = malloc(FONT_SIZE_ANSI);
+		sys_fontarea = memalign(32,FONT_SIZE_ANSI);
 		memset(sys_fontarea,0,FONT_SIZE_ANSI);
 		packed_data = (void*)(((u32)sys_fontarea+119072)&~31);
 		unpacked_data = sys_fontarea+288;
