@@ -67,6 +67,14 @@ static const u32 VIDEO_Mode640X480YUV16[3][32] = {
 	}
 };
 
+static const u8 video_timing[38] = {
+	0x06,0x00,0x00,0xF0,0x00,0x18,0x00,0x19,
+	0x00,0x03,0x00,0x02,0x0C,0x0D,0x0C,0x0D,
+	0x02,0x08,0x02,0x07,0x02,0x08,0x02,0x07,
+	0x02,0x0D,0x01,0xAD,0x40,0x47,0x69,0xA2,
+	0x01,0x75,0x7A,0x00,0x01,0x9C
+};
+
 GXRModeObj TVPal524IntAa = 
 {
 	VI_TVMODE_PAL_INT,
@@ -220,20 +228,53 @@ static __inline__ u32 __checkclear_interrupt()
 	return ret;
 }
 
-/*
-static void __VIInit(u8 mode)
+
+static void __VIInit(u32 vimode)
 {
-	int cnt;
+	u32 cnt;
+	u32 vi_mode,interlace;
 
+	vi_mode = vimode>>2;
+	interlace = vimode&0x01;
 
+	//reset the interface
 	cnt = 0;
 	_viReg[1] = 0x02;
-	while(cnt<1000) cnt++;
+	while(cnt<1000) cnt += 8;
 	_viReg[1] = 0x00;
 
+	// now begin to setup the interface
+	_viReg[2] = ((video_timing[29]<<8)|video_timing[30]);		//set HCS & HCE
+	_viReg[3] = ((u16*)video_timing)[13];						//set Half Line Width
+
+	_viReg[4] = ((((u16*)video_timing)[16]<<1)&0xFFFE);			//set HBS
+	_viReg[5] = ((video_timing[31]<<7)|video_timing[28]);		//set HBE & HSY
 	
+	_viReg[0] = video_timing[0];
+
+	_viReg[6] = (((u16*)video_timing)[4]+2);					//set PSB odd field
+	_viReg[7] = (((u16*)video_timing)[2]+((((u16*)video_timing)[1]<<1)-2));		//set PRB odd field
+
+	_viReg[8] = (((u16*)video_timing)[5]+2);					//set PSB even field
+	_viReg[9] = (((u16*)video_timing)[3]+((((u16*)video_timing)[1]<<1)-2));		//set PRB even field
+
+	_viReg[10] = ((((u16*)video_timing)[10]<<5)|video_timing[14]);	//set BE3 & BS3
+	_viReg[11] = ((((u16*)video_timing)[8]<<5)|video_timing[12]);	//set BE1 & BS1
+	
+	_viReg[12] = ((((u16*)video_timing)[11]<<5)|video_timing[15]);	//set BE4 & BS4
+	_viReg[13] = ((((u16*)video_timing)[9]<<5)|video_timing[13]);	//set BE2 & BS2
+
+	_viReg[24] = (((((u16*)video_timing)[12]/2)+1)|0x1000);
+	_viReg[25] = (((u16*)video_timing)[13]+1);
+	
+	_viReg[26] = 0x1001;		//set DI1
+	_viReg[27] = 0x0001;		//set DI1
+	_viReg[36] = 0x2828;		//set HSR
+	
+	_viReg[1] = ((vi_mode<<8)|0x0005);
+	_viReg[54] = 0x0001;
 }
-*/
+
 static u32 __getCurrentHalfLine()
 {
 	u32 tmp;
