@@ -23,6 +23,7 @@ u32 SI_Transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb
 u32 SI_GetTypeAsync(s32 chan,SICallback cb);
 u32 SI_GetType(s32 chan);
 u32 SI_GetCommand(s32 chan);
+void SI_TransferCommands();
 
 #ifdef __cplusplus
    }

@@ -9,6 +9,10 @@
 #define PAD_CHAN3					3
 #define PAD_CHANMAX					4
 
+#define PAD_MOTOR_STOP				0
+#define PAD_MOTOR_RUMBLE			1
+#define PAD_MOTOR_STOP_HARD			2
+
 #define PAD_ERR_NONE				0
 #define PAD_ERR_NO_CONTROLLER		-1
 #define PAD_ERR_NOT_READY			-2
@@ -54,6 +58,7 @@ typedef struct _padstatus {
 u32 PAD_Init();
 u32 PAD_Read(PADStatus *status);
 u32 PAD_Reset(u32 mask);
+void PAD_ControlMotor(s32 chan,u32 cmd);
 void PAD_SetSpec(u32 spec);
 
 /*+----------------------------------------------------------------------------------------------+*/
