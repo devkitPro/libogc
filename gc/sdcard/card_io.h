@@ -14,7 +14,7 @@
 
 /* CSD Register */
 #define READ_BL_LEN(drv_no)					((u8)(g_CSD[drv_no][5]&0x0f))
-#define WRITE_BL_LEN(drv_no)				((u8)((g_CSD[drv_no][12]&0x03)<<2)|((g_CSD[drv_no][13]>>6)&0x03));
+#define WRITE_BL_LEN(drv_no)				((u8)((g_CSD[drv_no][12]&0x03)<<2)|((g_CSD[drv_no][13]>>6)&0x03))
 #define C_SIZE(drv_no)						((u16)(((g_CSD[drv_no][6]&0x03)<<10)|(g_CSD[drv_no][7]<<2)|((g_CSD[drv_no][8]>>6)&0x03)))
 #define C_SIZE_MULT(drv_no)					((u8)((g_CSD[drv_no][9]&0x03)<<1)|((g_CSD[drv_no][10]>>7)&0x01))
 
@@ -36,6 +36,7 @@ s32 card_readCSD(s32 drv_no);
 s32 card_readStatus(s32 drv_no);
 s32 card_readSector(s32 drv_no,u32 sector_no,u8 *buf,u32 len);
 s32 card_readBlock(s32 drv_no,u32 block_no,u32 offset,u8 *buf,u32 len) ;
+s32 card_updateBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len);
 s32 card_doUnmount(s32 drv_no);
 
 #ifdef __cplusplus

@@ -429,6 +429,180 @@ s32 card_addClusters(s32 drv_no,u32 cluster,u32 addClusterCnt)
     return CARDIO_ERROR_READY;
 }
 
+s32 card_setCluster(s32 drv_no,u32 cluster_no,u8 val)
+{
+	s32 ret;
+    u32 cluster_size;
+    u32 offset;
+    u8* buf = card_allocBuffer();
+
+    if(!buf) return CARDIO_ERROR_OUTOFMEMORY;
+    if(cluster_no==ROOT_HANDLE) return CARDIO_ERROR_INTERNAL;
+            
+    cluster_size = _sdInfo[drv_no].spbr.sbpb.sects_per_cluster*SECTOR_SIZE;
+    memset(buf,val,SECTOR_SIZE);
+
+    for(offset=0;offset<cluster_size;offset+=SECTOR_SIZE) {
+        ret = card_writeCluster(drv_no, cluster_no, offset, buf, SECTOR_SIZE);
+        if(ret!=CARDIO_ERROR_READY) {
+			card_freeBuffer(buf);
+			return ret;
+        }
+    }
+
+    card_freeBuffer(buf);
+    return CARDIO_ERROR_READY;
+}
+
+s32 card_expandClusterSpace(s32 drv_no,F_HANDLE handle,u32 cluster,u32 offset,u32 len)
+{
+	s32 ret;
+    u32 new_cluster;
+    u32 new_offset;
+    u8 dummy_info[32];
+    u8* buf;
+    u32 empty_cluster;
+    u32 first_copy_size;
+    u32 i;
+    u32 next_cluster;
+    u32 next_offset;
+    u32 proc_cluster;
+    u32 old_cluster;
+    u32 cluster_size;
+    u32 copy_offset;
+    u32 copy_size;
+    u32 b_loop_end;
+    u32 max_offset;
+
+    cluster_size = _sdInfo[drv_no].spbr.sbpb.sects_per_cluster*SECTOR_SIZE;
+    if(handle==ROOT_HANDLE) max_offset = _fatRootSects[drv_no]*SECTOR_SIZE;
+    else max_offset = cluster_size;
+
+    ret = card_findEntryInDirectory(drv_no, FIND_UNUSED, handle, 0, dummy_info, &new_cluster, &new_offset);
+    if(ret!=CARDIO_ERROR_READY) {
+        if(ret==CARDIO_ERROR_NOTFOUND) {
+            if(handle==ROOT_HANDLE) return CARDIO_ERROR_OUTOFROOTENTRY;
+            else {
+                new_cluster = handle;
+                while(1) {
+                    if(GET_FAT_TBL(drv_no, new_cluster)==LAST_CLUSTER) break;
+                    new_cluster = GET_FAT_TBL(drv_no, new_cluster);
+                }
+                new_offset = max_offset;
+            }
+        } else
+            return ret;
+    }
+
+    if(new_offset+len>max_offset) {
+        if(handle==ROOT_HANDLE) return CARDIO_ERROR_OUTOFROOTENTRY;
+		else {
+            if(GET_FAT_TBL(drv_no, new_cluster)==LAST_CLUSTER) {
+                ret = card_allocCluster(drv_no, &empty_cluster);
+                if(ret!=CARDIO_ERROR_READY) return ret;
+
+                /* directory contents initialize */
+                ret = card_setCluster(drv_no, empty_cluster, 0);
+                if(ret!=CARDIO_ERROR_READY) return ret;
+
+                /* fat table update */
+                SET_FAT_TBL(drv_no, new_cluster, (u16)empty_cluster);
+                SET_FAT_TBL(drv_no, empty_cluster, LAST_CLUSTER);
+
+                ret = sm_FATUpdate(drv_no);
+                if(ret!=CARDIO_ERROR_READY) return ret;
+            }
+        }
+    }
+
+    /****
+    *       now, new_cluster & new_offset indicates the end of the area that will be copied,
+    *       and the space for the shift is prepared. 
+    *       If the space is not available, this function is returned already
+    *****/
+    
+    buf = card_allocBuffer();
+
+    copy_size = SECTOR_SIZE;
+    copy_offset = 0;
+    b_loop_end = FALSE;
+    while(1) {
+        for(new_offset=max_offset-SECTOR_SIZE;(s16)new_offset>=0;new_offset-=SECTOR_SIZE) {
+            ret = card_readCluster(drv_no, new_cluster, new_offset, buf, SECTOR_SIZE);
+            if (ret!=CARDIO_ERROR_READY) {
+                card_freeBuffer(buf);
+                return ret;
+            }
+
+            if((new_cluster<=cluster) && (new_offset<=offset)) {
+                copy_size = SECTOR_SIZE - (offset - new_offset);
+                copy_offset = offset - new_offset;
+                b_loop_end = TRUE;
+            }
+
+            if(new_offset+copy_offset+len+copy_size>max_offset) {
+                if(new_offset+copy_offset+len<max_offset) {
+                    first_copy_size =  max_offset-(new_offset+copy_offset+len);
+                    ret = card_writeCluster(drv_no, new_cluster, new_offset+copy_offset+len, buf+copy_offset, first_copy_size);
+                    if(ret!=CARDIO_ERROR_READY) {
+                        card_freeBuffer(buf);
+                        return ret;
+                    }
+                    next_offset = 0;
+                } else {
+                    first_copy_size = 0;
+                    next_offset = new_offset+copy_offset+len-max_offset;
+                }
+
+                /****
+                *       copying size is calculated, and its required block is calculated and prepared already
+                * if the next block is not available, the area does not need to be copied 
+                ****/
+                if(handle == ROOT_HANDLE) continue;
+                else {
+                    next_cluster = GET_FAT_TBL(drv_no, new_cluster);
+                    if(next_cluster==LAST_CLUSTER) continue;
+                }
+
+                ret = card_writeCluster(drv_no, next_cluster, next_offset, buf+copy_offset+first_copy_size, copy_size-first_copy_size);
+                if(ret!=CARDIO_ERROR_READY) {
+                    card_freeBuffer(buf);
+                    return ret;
+                }
+            } else {
+                ret = card_writeCluster(drv_no, new_cluster, new_offset+copy_offset+len, buf+copy_offset, copy_size);
+                if(ret!=CARDIO_ERROR_READY) {
+                    card_freeBuffer(buf);
+                    return ret;
+                }
+            }
+            if(b_loop_end) break;
+        }
+
+        /* all the needed area is copied */
+        if(b_loop_end) break;
+
+        /* find previous cluster in FAT table, and set it to new_cluster */
+        if(handle==ROOT_HANDLE) {
+            /* if handle is ROOT_HANDLE, all the needed area is copied already */
+            card_freeBuffer(buf);
+            return CARDIO_ERROR_INTERNAL;
+        } else {
+            proc_cluster = handle;
+            while(1) {
+                old_cluster = proc_cluster;
+                proc_cluster = GET_FAT_TBL(drv_no, proc_cluster);
+
+                if(proc_cluster==new_cluster) break;
+            }
+            new_cluster = old_cluster;
+        }
+    }
+    
+    card_freeBuffer(buf);
+    return CARDIO_ERROR_READY;
+}
+
 s32 card_readCluster(s32 drv_no,u32 cluster_no,u32 offset,void *buf,u32 len)
 {
 	s32 ret;
@@ -499,6 +673,83 @@ s32 card_readCluster(s32 drv_no,u32 cluster_no,u32 offset,void *buf,u32 len)
 		}
 	}
 	return CARDIO_ERROR_READY;
+}
+
+s32 card_writeCluster(s32 drv_no,u32 cluster_no,u32 offset,const void *buf,u32 len)
+{
+	s32 ret;
+    u32 start;
+    u32 end;
+    u32 blockStartNo;
+    u32 blockEndNo;
+    u32 topSize;
+    u32 bottomSize;
+    u32 sectorsPerBlock;
+    u32 bytesPerBlock;
+    u32 i;
+    const u8* writeBuf = (const u8*)buf;
+    u32 startOffset;
+    u32 endOffset;
+    s16 signed_cluster_no;
+    u32 extra_sectors;
+
+    if(cluster_no==ROOT_HANDLE) {
+        signed_cluster_no = 2 - ((_fatRootSects[drv_no]-1)/_sdInfo[drv_no].spbr.sbpb.sects_per_cluster+1);
+        extra_sectors = _fatRootSects[drv_no]%_sdInfo[drv_no].spbr.sbpb.sects_per_cluster;
+        if(extra_sectors) offset += (_sdInfo[drv_no].spbr.sbpb.sects_per_cluster-extra_sectors)*SECTOR_SIZE;
+	} else
+        signed_cluster_no = (s16)cluster_no;
+
+    start = _fatClusterStartSect[drv_no]+_sdInfo[drv_no].spbr.sbpb.sects_per_cluster*(signed_cluster_no-2);
+
+    start += offset/SECTOR_SIZE;
+    startOffset = offset%SECTOR_SIZE;
+
+    sectorsPerBlock = (1<<(C_SIZE_MULT(drv_no)+2));
+    blockStartNo = start/sectorsPerBlock;
+
+    end = start+(startOffset+len)/SECTOR_SIZE;
+    endOffset = (startOffset+len)%SECTOR_SIZE;
+
+    blockEndNo = end/sectorsPerBlock;
+
+    bytesPerBlock = sectorsPerBlock*SECTOR_SIZE;
+
+    /* topSize <= writable bytes in the present block - starting from the current write pointer(cluster, offset)    */
+    topSize = bytesPerBlock-((start-blockStartNo*sectorsPerBlock)*SECTOR_SIZE+startOffset);
+
+    if(blockStartNo==blockEndNo) {         /* all within one block */
+        ret = card_updateBlock(drv_no, blockStartNo, bytesPerBlock - topSize, writeBuf, len);
+        if(ret!=CARDIO_ERROR_READY) return ret;
+    } else {
+        bottomSize = (end-blockEndNo*sectorsPerBlock)*SECTOR_SIZE+endOffset;
+        if(topSize== bytesPerBlock) topSize = 0;
+
+        /* upper part */
+        if(topSize) {
+            ret = card_updateBlock(drv_no, blockStartNo, bytesPerBlock - topSize, writeBuf, topSize);
+            if(ret!=CARDIO_ERROR_READY) return ret;
+
+            writeBuf += topSize;
+            ++blockStartNo;
+        }
+
+        /* body part */
+        for(i=blockStartNo;i<blockEndNo;++i) {
+            ret = card_updateBlock(drv_no, i, 0, writeBuf, bytesPerBlock);
+            if(ret!=CARDIO_ERROR_READY) return ret;
+
+            writeBuf += bytesPerBlock;
+        }
+
+        /* lower part */
+        if(bottomSize) {
+            ret = card_updateBlock(drv_no, blockEndNo, 0, writeBuf, bottomSize);
+            if(ret!=CARDIO_ERROR_READY) return ret;
+        }
+    }
+
+    return CARDIO_ERROR_READY;
 }
 
 boolean card_convertToFATName(const u8* p_name, u8* p_short_name) 
@@ -1804,13 +2055,12 @@ s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const u8* long_name,const u16* p_
     u32 new_cluster;
     u32 new_offset;
     u32 empty_cluster;
-    u32 len;
+    u32 len = 0;
     u32 entry_count;
     u32 buf_size;
     u32 offset_short_name;
     u8 checksum;
     u32 i, j, k;
-    u32 b_found_deleted_cluster;
     u32 write_cluster;
     u32 write_offset;
     u32 first_copy_size;
@@ -2030,7 +2280,7 @@ s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const u8* long_name,const u16* p_
                     if (ret != CARDIO_ERROR_READY) return ret;
 
                     /* directory contents initialize */
-                    ret = smcSetCluster(drv_no, empty_cluster, 0);
+                    ret = card_setCluster(drv_no, empty_cluster, 0);
                     if (ret != CARDIO_ERROR_READY) return ret;
 
                     /* fat table update */
@@ -2043,7 +2293,7 @@ s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const u8* long_name,const u16* p_
         } else
 			first_copy_size = entry_count*32;
 
-        ret = smcWriteCluster(drv_no, new_cluster, new_offset, file_info, first_copy_size);
+        ret = card_writeCluster(drv_no, new_cluster, new_offset, file_info, first_copy_size);
         if(ret!=CARDIO_ERROR_READY) return ret;
                 
         if(first_copy_size!=entry_count*32) {
@@ -2051,7 +2301,7 @@ s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const u8* long_name,const u16* p_
             new_cluster = GET_FAT_TBL(drv_no, new_cluster);
             new_offset = 0;
 
-            ret = smcWriteCluster(drv_no, new_cluster, new_offset, file_info + first_copy_size, entry_count * 32 - first_copy_size);
+            ret = card_writeCluster(drv_no, new_cluster, new_offset, file_info + first_copy_size, entry_count * 32 - first_copy_size);
             if(ret!=CARDIO_ERROR_READY) return ret;
         }
     } else {   /* add to the specified cluster & offset */
@@ -2104,7 +2354,7 @@ s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const u8* long_name,const u16* p_
 
         empty_entry_count = empty_entry_count+prev_empty_entry_count+next_empty_entry_count;
         if(empty_entry_count<entry_count) {
-            ret = sm_ExpandClusterSpace(drv_no, h_dir, cluster, offset, (entry_count-empty_entry_count)*32);
+            ret = card_expandClusterSpace(drv_no, h_dir, cluster, offset, (entry_count-empty_entry_count)*32);
             if(ret != CARDIO_ERROR_READY) return ret;
         }
 
@@ -2114,7 +2364,7 @@ s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const u8* long_name,const u16* p_
         } else
 			first_copy_size = entry_count*32;
                 
-        ret = smcWriteCluster(drv_no, write_cluster, write_offset, file_info, first_copy_size);
+        ret = card_writeCluster(drv_no, write_cluster, write_offset, file_info, first_copy_size);
         if(ret!=CARDIO_ERROR_READY) return ret;
 
         if(first_copy_size!=entry_count*32) {
@@ -2122,7 +2372,7 @@ s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const u8* long_name,const u16* p_
             write_cluster = GET_FAT_TBL(drv_no, write_cluster);
             write_offset = 0;
             
-            ret = smcWriteCluster(drv_no, write_cluster, write_offset, file_info+first_copy_size, entry_count*32-first_copy_size);
+            ret = card_writeCluster(drv_no, write_cluster, write_offset, file_info+first_copy_size, entry_count*32-first_copy_size);
             if(ret!=CARDIO_ERROR_READY) return ret;
         }
     }

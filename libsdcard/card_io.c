@@ -1309,6 +1309,57 @@ s32 card_readSector(s32 drv_no,u32 sector_no,u8 *buf,u32 len)
 	return ret;
 }
 
+s32 card_updateBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len)
+{
+	s32 ret;
+	u8 *ptr;
+	u8 arg[4];
+	u32 sect_start,i;
+	u32 sects_per_block;
+	u32 blocks,write_len;
+
+	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
+#ifdef _CARDIO_DEBUG
+	printf("card_updateBlock(%d,%d,%d,%p,%d)\n",drv_no,block_no,offset,buf,len);
+#endif
+	ret = card_preIO(drv_no);
+	if(ret!=0) return ret;
+
+	write_len = (1<<WRITE_BL_LEN(drv_no));
+	if(len<write_len) return CARDIO_ERROR_INTERNAL;
+
+	sects_per_block = (1<<(C_SIZE_MULT(drv_no)+2));
+
+	sect_start = block_no*sects_per_block;
+	sect_start += (offset/write_len);
+	blocks = len/write_len;
+	
+	arg[0] = 0:
+	arg[1] = (blocks>>24)&0x7f;
+	arg[2] = (blocks>>16)&0xff;
+	arg[3] = blocks&0xff;
+	
+	if(write_len!=_cur_page_size[drv_no]) {
+		_cur_page_size[drv_no] = write_len;
+		if((ret=__card_setblocklen(drv_no,_cur_page_size[drv_no]))!=0) return ret;
+	}
+
+	if((ret=__card_sendappcmd(drv_no))!=0) return ret;
+	if((ret=__card_sendcmd(drv_no,0x17,arg))!=0) return ret;
+	if((ret=__card_response1(drv_no))!=0) return ret;
+
+	arg[0] = (sect_start>>15)&0xff;
+	arg[1] = (sect_start>>7)&0xff;
+	arg[2] = (sect_start<<1)&0xff;
+	arg[3] = (sect_start<<9)&0xff;
+	if(blocks>1) {
+		if((ret=__card_sendcmd(drv_no,0x19,arg))!=0) return ret;
+		if((ret=__card_response1(drv_no))!=0) return ret;
+		
+	}
+	
+}
+
 s32 card_doUnmount(s32 drv_no)
 {
 	u32 level;

@@ -153,6 +153,10 @@ s32 card_deleteFromOpenedList(s32 drv_no,u32 cluster);
 
 s32 card_allocCluster(s32 drv_no,u32 *p_cluster);
 s32 card_searchCluster(s32 drv_no,u32 count, u32 *pmax_cnt);
+s32 card_setCluster(s32 drv_no,u32 cluster_no,u8 val);
+s32 card_expandClusterSpace(s32 drv_no,F_HANDLE handle,u32 cluster,u32 offset,u32 len);
+s32 card_writeCluster(s32 drv_no,u32 cluster_no,u32 offset,const void *buf,u32 len);
+s32 card_readCluster(s32 drv_no,u32 cluster_no,u32 offset,void *buf,u32 len);
 
 s32 card_createFile(const char *filename,u32 create_mode,F_HANDLE *p_handle);
 s32 card_openFile(const char *filename,u32 open_mode,F_HANDLE *p_handle);
