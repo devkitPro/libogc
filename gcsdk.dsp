@@ -460,14 +460,6 @@ SOURCE=.\libmodplay\gcmodplay.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\libmodplay\inctab32.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libmodplay\inctab48.c
-# End Source File
-# Begin Source File
-
 SOURCE=.\libmodplay\mixer.c
 # End Source File
 # Begin Source File
@@ -520,7 +512,7 @@ SOURCE=.\libmad\layer3.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\libmad\madplayer.c
+SOURCE=.\libmad\mp3player.c
 # End Source File
 # Begin Source File
 
@@ -1132,10 +1124,6 @@ SOURCE=.\gc\modplay\freqtab.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\gc\modplay\inctab.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\gc\modplay\mixer.h
 # End Source File
 # Begin Source File
@@ -1245,7 +1233,7 @@ SOURCE=.\gc\gctypes.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\gc\madplayer.h
+SOURCE=.\gc\mp3player.h
 # End Source File
 # Begin Source File
 
