@@ -8,6 +8,8 @@
 #include "processor.h"
 #include "exi.h"
 #include "lwp.h"
+#include "system.h"
+#include "semaphore.h"
 #include "card_cmn.h"
 #include "card_fat.h"
 #include "card_io.h"
@@ -55,6 +57,8 @@ static lwpq_t _exi_lock[MAX_DRIVE];
 static u32 _cur_page_size[MAX_DRIVE];
 static u32 _ioFlag[MAX_DRIVE];
 static u32 _ioError[MAX_DRIVE];
+static sysalarm _ioAlarm[MAX_DRIVE];
+static sem_t _ioSema[MAX_DRIVE];
 static boolean _card_inserted[MAX_DRIVE];
 
 static u8 _ioResponse[5];
@@ -139,6 +143,17 @@ static u16 __make_crc16(void *buffer,u32 len)
 	}
 	
 	return (res&0xffff);
+}
+
+static void __card_alarmcallback(sysalarm *alarm)
+{
+	u32 i;
+
+	i=0;
+	while(i<MAX_DRIVE && (alarm!=&_ioAlarm[i]))  i++;
+	if(i>=MAX_DRIVE) return;
+
+	LWP_SemPost(_ioSema[i]);
 }
 
 static u32 __card_checktimeout(u32 startT,u32 timeout)
@@ -355,17 +370,10 @@ static s32 __card_readresponse(s32 drv_no,void *buf,s32 len)
 			break;
 		}
 	}
-	if(len>1) {
+	if(len>1 && ret==CARDIO_ERROR_READY) {
 		*(++ptr) = _clr_flag;
-		if(EXI_ImmEx(drv_no,ptr,len-1,EXI_READWRITE)==0) {
-			EXI_Deselect(drv_no);
-			EXI_Unlock(drv_no);
-			return CARDIO_ERROR_IOERROR;
-		}
+		if(EXI_ImmEx(drv_no,ptr,len-1,EXI_READWRITE)==0) ret = CARDIO_ERROR_IOERROR;
 	}
-
-	/* setalarm, wait */
-	usleep(10);
 	
 	EXI_Deselect(drv_no);
 	EXI_Unlock(drv_no);
@@ -464,13 +472,9 @@ static s32 __card_stopreadresponse(s32 drv_no,void *buf,s32 len)
 	}
 	ptr[0] = ptr[1];
 
-	if(len>1) {
+	if(len>1 && ret==CARDIO_ERROR_READY) {
 		*(++ptr) = _clr_flag;
-		if(EXI_ImmEx(drv_no,ptr,len-1,EXI_READWRITE)==0) {
-			EXI_Deselect(drv_no);
-			EXI_Unlock(drv_no);
-			return CARDIO_ERROR_IOERROR;
-		}
+		if(EXI_ImmEx(drv_no,ptr,len-1,EXI_READWRITE)==0) ret = CARDIO_ERROR_IOERROR;
 	}
 	
 	EXI_Deselect(drv_no);
@@ -478,6 +482,10 @@ static s32 __card_stopreadresponse(s32 drv_no,void *buf,s32 len)
 	return ret;
 }
 
+static s32 __card_dataresponse(s32 drv_no)
+{
+	
+}
 static s32 __card_stopresponse(s32 drv_no)
 {
 	s32 ret;
@@ -495,6 +503,7 @@ static s32 __card_dataread(s32 drv_no,void *buf,u32 len)
 	u8 res[2];
 	u16 crc,crc_org;
 	s32 startT,ret;
+	struct timespec tb;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
@@ -552,7 +561,10 @@ static s32 __card_dataread(s32 drv_no,void *buf,u32 len)
 	}
 
 	/* setalarm, wait */
-	usleep(10);
+	tb.tv_sec = 0;
+	tb.tv_nsec = 40*TB_NSPERUS;
+	SYS_SetAlarm(&_ioAlarm[drv_no],&tb,__card_alarmcallback);
+	LWP_SemWait(_ioSema[drv_no]);
 
 	res[0] = res[1] = _clr_flag;
 	if(EXI_ImmEx(drv_no,res,2,EXI_READWRITE)==0) {
@@ -1141,6 +1153,8 @@ void card_initIODefault()
 		_ioError[i] = 0;
 		_card_inserted[i] = FALSE;
 		_ioFlag[i] = NOT_INITIALIZED;
+		SYS_CreateAlarm(&_ioAlarm[i]);
+		LWP_SemInit(&_ioSema[i],0,1);
 		LWP_InitQueue(&_exi_lock[i]);
 	}
 }
