@@ -23,6 +23,7 @@ s32 LWP_ResumeThread(lwp_t thethread);
 lwp_t LWP_GetSelf();
 void LWP_SetThreadPriority(lwp_t thethread,u32 prio);
 void LWP_YieldThread();
+void LWP_Reschedule(u32 prio);
 s32 LWP_JoinThread(lwp_t thethread,void **value_ptr);
 void LWP_InitQueue(lwpq_t *thequeue);
 void LWP_CloseQueue(lwpq_t thequeue);
