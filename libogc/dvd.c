@@ -1184,6 +1184,8 @@ void DVD_Reset()
 
 	_diReg[0] = (DVD_DE_MSK|DVD_TC_MSK|DVD_BRK_MSK);
 	_diReg[1] = _diReg[1];
+
+	__dvd_resetrequired = 0;
 }
 
 static void __dvd_unlockcb(s32 result)
