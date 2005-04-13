@@ -16,7 +16,7 @@ static MODSNDBUF sndBuffer;
 static u32 curr_datalen = 0;
 static u32 shiftVal = 0;
 static vu32 curaudio = 0;
-static u8 *audioBuf[2][SNDBUFFERSIZE] ATTRIBUTE_ALIGN(32);
+static u8 audioBuf[2][SNDBUFFERSIZE] ATTRIBUTE_ALIGN(32);
 
 static lwpq_t player_queue;
 static lwp_t hplayer;
