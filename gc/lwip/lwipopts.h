@@ -187,8 +187,8 @@ a lot of data that needs to be copied, this should be set high. */
 #define ETHARP_DEBUG                    DBG_OFF
 #define NETIF_DEBUG                     DBG_ON
 #define PBUF_DEBUG                      DBG_OFF
-#define API_LIB_DEBUG                   DBG_OFF
-#define API_MSG_DEBUG                   DBG_OFF
+#define API_LIB_DEBUG                   DBG_ON
+#define API_MSG_DEBUG                   DBG_ON
 #define SOCKETS_DEBUG                   DBG_OFF
 #define ICMP_DEBUG                      DBG_OFF
 #define INET_DEBUG                      DBG_OFF

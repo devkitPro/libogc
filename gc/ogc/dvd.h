@@ -2,6 +2,7 @@
 #define __DVD_H__
 
 #include <gctypes.h>
+#include <ogc/lwp_queue.h>
 
 #ifdef __cplusplus
    extern "C" {
@@ -24,8 +25,7 @@ typedef struct _dvdcmdblk dvdcmdblk;
 typedef void (*dvdcbcallback)(s32 result,dvdcmdblk *block);
 
 struct _dvdcmdblk {
-	dvdcmdblk *next;
-	dvdcmdblk *prev;
+	lwp_node node;
 	u32 cmd;
 	s32 state;
 	s32 offset;
@@ -44,6 +44,7 @@ struct _dvddrvinfo {
 	u16 rev_level;
 	u16 dev_code;
 	u32 rel_date;
+	u8 pad[24];
 };
 
 typedef struct _dvdfileinfo dvdfileinfo;
@@ -60,14 +61,20 @@ struct _dvdfileinfo {
 void DVD_Init();
 void DVD_Reset();
 void DVD_Pause();
-void DVD_UnlockDrive(dvdcallback swapcb);
+void DVD_StartNormal();
+void DVD_StartNormalAsync(dvdcbcallback cb);
+void DVD_StartUnlocked(dvdcbcallback swapcb);
+void DVD_StartUnlockedAsync(dvdcbcallback swapcb,dvdcbcallback cb);
 s32 DVD_Inquiry(dvdcmdblk *block,dvddrvinfo *info);
 s32 DVD_InquiryAsync(dvdcmdblk *block,dvddrvinfo *info,dvdcbcallback cb);
-s32 DVD_ReadId(dvdcmdblk *block,dvddiskid *id);
+s32 DVD_ReadID(dvdcmdblk *block,dvddiskid *id);
 s32 DVD_ReadIDAsync(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb);
 s32 DVD_ReadPrio(dvdfileinfo *info,void *buf,u32 len,u32 offset,s32 prio);
 s32 DVD_SeekPrio(dvdfileinfo *info,u32 offset,s32 prio);
 s32 DVD_CancelAllAsync(dvdcbcallback cb);
+s32 DVD_StopStreamAtEndAsync(dvdcmdblk *block,dvdcbcallback cb);
+s32 DVD_StopStreamAtEnd(dvdcmdblk *block);
+dvddiskid* DVD_GetCurrentDiskID();
 
 #ifdef __cplusplus
    }

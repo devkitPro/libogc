@@ -179,7 +179,7 @@ static u32 __exi_unlock(u32 chn,u32 dev)
 	return 1;
 }
 
-static __inline__ void __exi_wait(s32 drv_no)
+static void __exi_wait(s32 drv_no)
 {
 	u32 ret;
 	u32 level;

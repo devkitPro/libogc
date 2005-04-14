@@ -244,14 +244,14 @@ static __inline__ void bba_cmd_insnosel(u32 reg,void *val,u32 len)
 	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_READ);
 }
 
-static __inline__ void bba_cmd_ins(u32 reg,void *val,u32 len)
+static void bba_cmd_ins(u32 reg,void *val,u32 len)
 {
 	bba_select();
 	bba_cmd_insnosel(reg,val,len);
 	bba_deselect();
 }
 
-static inline void bba_cmd_outsnosel(u32 reg,void *val,u32 len)
+static __inline__ void bba_cmd_outsnosel(u32 reg,void *val,u32 len)
 {
 	u16 req;
 	req = (reg<<8)|0x4000;

@@ -188,6 +188,13 @@ struct linger {
 #define ntohl(x) (x)
 #endif
 
+#ifndef IP4_ADDR
+#define IP4_ADDR(ipaddr, a,b,c,d) (ipaddr)->s_addr = htonl(((u32)(a&0xff)<<24)|((u32)(b&0xff)<<16)|((u32)(c&0xff)<<8)|(u32)(d&0xff))
+#define ip4_addr1(ipaddr) ((u32)(ntohl((ipaddr)->s_addr) >> 24) & 0xff)
+#define ip4_addr2(ipaddr) ((u32)(ntohl((ipaddr)->s_addr) >> 16) & 0xff)
+#define ip4_addr3(ipaddr) ((u32)(ntohl((ipaddr)->s_addr) >> 8) & 0xff)
+#define ip4_addr4(ipaddr) ((u32)(ntohl((ipaddr)->s_addr)) & 0xff)
+#endif
 
 #ifdef __cplusplus
 extern "C" {

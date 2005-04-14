@@ -138,7 +138,7 @@ static inline void __exi_setinterrupts(u32 nChn,exibus_priv *exi)
 	}
 }
 
-static __inline__ u32 __exi_attach(u32 nChn,EXICallback ext_cb)
+static u32 __exi_attach(u32 nChn,EXICallback ext_cb)
 {
 	u32 level,ret;
 	exibus_priv *exi = &eximap[nChn];

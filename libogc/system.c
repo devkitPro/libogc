@@ -220,7 +220,7 @@ static __inline__ u32 __get_fontsize(void *buffer)
 	else return 0;
 }
 
-static __inline__ u32 __read_rom(void *buf,u32 len,u32 offset)
+static u32 __read_rom(void *buf,u32 len,u32 offset)
 {
 	u32 ret;
 	u32 loff;
@@ -246,7 +246,7 @@ static __inline__ u32 __read_rom(void *buf,u32 len,u32 offset)
 	return 1;
 }
 
-static __inline__ u32 __getrtc(u32 *gctime)
+static u32 __getrtc(u32 *gctime)
 {
 	u32 ret;
 	u32 cmd;
@@ -274,7 +274,7 @@ static __inline__ u32 __getrtc(u32 *gctime)
 	return 1;
 }
 
-static __inline__ u32 __sram_read(void *buffer)
+static u32 __sram_read(void *buffer)
 {
 	u32 command,ret;
 
@@ -299,7 +299,7 @@ static __inline__ u32 __sram_read(void *buffer)
 	return 1;
 }
 
-static __inline__ u32 __sram_write(void *buffer,u32 loc,u32 len)
+static u32 __sram_write(void *buffer,u32 loc,u32 len)
 {
 	u32 cmd,ret;
 
@@ -343,7 +343,7 @@ static void DisableWriteGatherPipe()
 	mtspr(920,(mfspr(920)&~0x40000000));
 }
 
-static __inline__ void __buildchecksum(u16 *buffer,u16 *c1,u16 *c2)
+static void __buildchecksum(u16 *buffer,u16 *c1,u16 *c2)
 {
 	u32 i;
 	
@@ -355,7 +355,7 @@ static __inline__ void __buildchecksum(u16 *buffer,u16 *c1,u16 *c2)
 	}
 }
 
-static __inline__ void* __locksram(u32 loc)
+static void* __locksram(u32 loc)
 {
 	u32 level;
 

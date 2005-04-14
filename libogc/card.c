@@ -628,7 +628,7 @@ static s32 __card_readstatus(s32 chn,u8 *pstatus)
 	return ret;
 }
 
-static __inline__ s32 __card_clearstatus(s32 chn)
+static s32 __card_clearstatus(s32 chn)
 {
 	u8 val;
 	u32 err;
@@ -651,7 +651,7 @@ static __inline__ s32 __card_clearstatus(s32 chn)
 	return ret;
 }
 
-static __inline__ s32 __card_sleep(s32 chn)
+static s32 __card_sleep(s32 chn)
 {
 	u8 val;
 	u32 err;
@@ -674,7 +674,7 @@ static __inline__ s32 __card_sleep(s32 chn)
 	return ret;
 }
 
-static __inline__ s32 __card_wake(s32 chn)
+static s32 __card_wake(s32 chn)
 {
 	u8 val;
 	u32 err;
@@ -698,7 +698,7 @@ static __inline__ s32 __card_wake(s32 chn)
 	return ret;
 }
 
-static __inline__ s32 __card_enableinterrupt(s32 chn,u32 enable)
+static s32 __card_enableinterrupt(s32 chn,u32 enable)
 {
 	u8 val[2];
 	u32 err;

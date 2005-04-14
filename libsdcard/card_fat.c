@@ -317,7 +317,10 @@ s32 card_preFAT(s32 drv_no)
 
 	if(_fatFlag[drv_no]!=INITIALIZED) {
 		ret = card_initFAT(drv_no);
-		if(ret!=0) return ret;
+		if(ret!=0) {
+			LWP_MutexUnlock(&_fatLock[drv_no]);
+			return ret;
+		}
 	}
 	return CARDIO_ERROR_READY;
 }

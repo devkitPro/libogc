@@ -132,6 +132,10 @@ SOURCE=.\libogc\depackrnc.S
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\depackrnc1.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\dsp.c
 # End Source File
 # Begin Source File
