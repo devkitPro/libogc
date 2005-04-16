@@ -204,7 +204,6 @@ static u32 cur_snd_len = 0;
 static u32 cur_rcv_len0 = 0;
 static u32 cur_rcv_len1 = 0;
 static u16 rrp = 0,rwp = 0;
-static struct pbuf *cur_rcv_buf = NULL;
 static struct bba_descr cur_descr;
 
 static err_t __bba_link_tx(struct netif *dev,struct pbuf *p);
@@ -495,7 +494,6 @@ static u32 __bba_link_postrxsub1()
 	bba_deselect();
 
 	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)));		//&~BBA_NCRA_ST0
-	EXI_Unlock(EXI_CHANNEL_0);
 
 	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_postrxsub1(rx interrupt close)\n"));
 	return ERR_OK;
@@ -503,22 +501,12 @@ static u32 __bba_link_postrxsub1()
 
 static u32 __bba_link_postrxsub0()
 {
-	u32 len,level;
+	u32 len;
 	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
-
-	_CPU_ISR_Disable(level);
-	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,__bba_link_postrxsub0)==0) {
-		LWIP_ERROR(("__bba_link_postrxsub0(exi allready locked)\n"));
-		_CPU_ISR_Restore(level);
-		return ERR_OK;
-	}
-	priv->state = ERR_TXPENDING;
-	_CPU_ISR_Restore(level);
 
 	if(!__linkstate()) {
 		LWIP_ERROR(("__bba_link_postrxsub0(error link state)\n"));
 		priv->state = ERR_OK;
-		EXI_Unlock(EXI_CHANNEL_0);
 		return ERR_ABRT;
 	}
 
@@ -558,17 +546,15 @@ static u32 __bba_tx_err(u8 status)
 	return errors;
 }
 
-static err_t __bba_post_send()
+static err_t __bba_post_rxtx(struct pbuf *p)
 {
 	u8 *buf;
 	err_t ret = ERR_OK;
-	struct pbuf *p,*tmp,*q = NULL;
+	struct pbuf *tmp,*q = NULL;
 	struct eth_hdr *ethhdr = NULL;
 	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
-	
-	while(cur_rcv_buf && priv->state!=ERR_TXPENDING) {
-		p = cur_rcv_buf;
-		cur_rcv_buf = pbuf_dechain(cur_rcv_buf);
+
+	if(p) {
 		ethhdr = p->payload;
 		switch(htons(ethhdr->type)) {
 			case ETHTYPE_IP:
@@ -587,7 +573,6 @@ static err_t __bba_post_send()
 			default:
 				/* free pbuf */
 				pbuf_free(p);
-				p = NULL;
 				break;
 		}
 
@@ -744,26 +729,26 @@ static u32 __bba_link_rxbuffer1()
 		pc = tmp->payload;
 		len = tmp->len;
 		if(cur_rcv_len0>0 && cur_rcv_len0<=len) {
-			DCInvalidateRange(rcv_buf0,((cur_rcv_len0+31)&~31));
+			DCInvalidateRange(rcv_buf0,cur_rcv_len0);
 			memcpy(pc,rcv_buf0,cur_rcv_len0);
 			pc += cur_rcv_len0;
 			len -= cur_rcv_len0;
 			cur_rcv_len0 = 0;
 		} else if(cur_rcv_len0>0 && cur_rcv_len0>len) {
-			DCInvalidateRange(rcv_buf0,((len+31)&~31));
+			DCInvalidateRange(rcv_buf0,len);
 			memcpy(pc,rcv_buf0,len);
 			cur_rcv_len0 -= len;
 			rcv_buf0 += len;
 			pc += len;
 		}
 		if(!cur_rcv_len0 && (cur_rcv_len1>0 && cur_rcv_len1<=len)) {
-			DCInvalidateRange(rcv_buf1,((cur_rcv_len1+31)&~31));
+			DCInvalidateRange(rcv_buf1,cur_rcv_len1);
 			memcpy(pc,rcv_buf1,cur_rcv_len1);
 			pc += cur_rcv_len1;
 			len -= cur_rcv_len1;
 			cur_rcv_len1 = 0;
 		} else if(!cur_rcv_len0 && (cur_rcv_len1>0 && cur_rcv_len1>len)) {
-			DCInvalidateRange(rcv_buf1,((len+31)&~31));
+			DCInvalidateRange(rcv_buf1,len);
 			memcpy(pc,rcv_buf1,len);
 			cur_rcv_len1 -= len;
 			rcv_buf1 += len;
@@ -772,12 +757,7 @@ static u32 __bba_link_rxbuffer1()
 
 	}
 	
-	if(cur_rcv_buf) {
-		pbuf_chain(cur_rcv_buf,p);
-	} else {
-		cur_rcv_buf = p;
-	}
-	
+	__bba_post_rxtx(p);	
 	rrp = cur_descr.next_packet_ptr;
 	ret = __bba_link_rx();
 
@@ -861,8 +841,6 @@ static u32 __bba_link_rx()
 	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
 	EXI_Unlock(EXI_CHANNEL_0);
 
-	__bba_post_send();
-
 	return ERR_OK;
 }
 
@@ -894,10 +872,8 @@ static inline void bba_interrupt(struct netif *dev)
 		bba_out8(BBA_IR,BBA_IR_FRAGI);
 	}
 	if(status&BBA_IR_RI) {
-		if(cur_rcv_buf==NULL) {
-			bba_start_rx();
-			return;
-		}
+		bba_start_rx();
+		return;
 	}
 	if(status&BBA_IR_REI) {
 		__bba_rx_err(bba_in8(BBA_LRPS));
@@ -921,15 +897,11 @@ static inline void bba_interrupt(struct netif *dev)
 		bba_out8(BBA_IR,BBA_IR_BUSEI);
 	}
 	if(status&BBA_IR_RBFI) {
-		if(cur_rcv_buf==NULL) {
-			bba_start_rx();
-			return;
-		}
+		bba_start_rx();
+		return;
 	}
 	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
 	EXI_Unlock(EXI_CHANNEL_0);
-
-	__bba_post_send();
 }
 
 static err_t __bba_init(struct netif *dev)
@@ -956,7 +928,7 @@ static err_t __bba_init(struct netif *dev)
 	bba_out8(0x5e, 0x01);
 	bba_out8(0x5c, (bba_in8(0x5c)|0x04));
 
-	bba_out8(BBA_NCRB, 0x00);
+	bba_out8(BBA_NCRB,0x00);
 
 	__bba_recv_init();
 	
