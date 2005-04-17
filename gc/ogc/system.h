@@ -2,6 +2,7 @@
 #define __SYSTEM_H__
 
 #include <gctypes.h>
+#include <gcutil.h>
 #include <time.h>
 #include "gx_struct.h"
 

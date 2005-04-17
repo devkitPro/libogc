@@ -3,12 +3,15 @@
 
 #include <reent.h>
 
-#define STD_IN			0
-#define STD_OUT			1
-#define STD_ERR			2
-#define STD_NET			3
-#define STD_SDCARD		4
-#define STD_MAX			5
+enum	{
+	STD_IN,
+	STD_OUT,
+	STD_ERR,
+	STD_NET,
+	STD_SDCARD,
+	STD_DVD,
+	STD_MAX	
+};
 
 #define _SHIFTL(v, s, w)	\
     ((unsigned int) (((unsigned int)(v) & ((0x01 << (w)) - 1)) << (s)))

@@ -44,7 +44,7 @@ struct _dvddrvinfo {
 	u16 rev_level;
 	u16 dev_code;
 	u32 rel_date;
-	u8 pad[24];
+	u8  pad[24];
 };
 
 typedef struct _dvdfileinfo dvdfileinfo;

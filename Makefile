@@ -2,7 +2,6 @@
 
 #---------------------------------------------------------------------------------
 PREFIX	:=	powerpc-gekko
-#PREFIX	:=	powerpc-eabi-elf
 #---------------------------------------------------------------------------------
 
 
@@ -19,6 +18,8 @@ BUILD	:=	build
 GETPATH		:=	$(CC) -v 2>&1 | sed -n -e 's/Reading specs from //p' | sed -e 's/\/lib.*//'
 INSTALLPATH	:=	$(shell $(GETPATH))
 GCC_VERSION	:=	$(shell $(CC) -dumpversion)
+DATESTRING	:=	$(shell date +%Y)$(shell date +%m)$(shell date +%d)
+
 
 #---------------------------------------------------------------------------------
 ifneq ($(BUILD),$(notdir $(CURDIR)))
@@ -115,10 +116,10 @@ SDCARDOBJ	:=	sdcard.o sdcardio.o card_fat.o card_buf.o card_io.o card_uni.o
 GCSYSOBJ	:=	newlibc.o sbrk.o open.o write.o close.o \
 				getpid.o kill.o isatty.o fstat.o read.o \
 				lseek.o sleep.o usleep.o timesupp.o \
-				malloc_lock.o console.o console_font.o \
+				console.o console_font.o \
 				console_font_8x8.o iosupp.o netio_fake.o \
 				stdin_fake.o sdcardio_fake.o flock_supp.o \
-				lock_supp.o
+				lock_supp.o dvd_supp.o malloc_lock.o
 				
 STUBSOBJ	:=	malloc_lock_stub.o flock_supp_stub.o lock_supp_stub.o gcn_crt0.o
 
@@ -205,7 +206,10 @@ install:
 #---------------------------------------------------------------------------------
 dist:
 #---------------------------------------------------------------------------------
-	@tar -cvjf libogc.tar.bz2 include lib license.txt
+	@tar	--exclude=*CVS* --exclude=*build* --exclude=*deps* \
+			--exclude=*.bz2  --exclude=*include* --exclude=*lib/* \
+			-cvjf libogc-src-$(DATESTRING).tar.bz2 *
+	@tar -cvjf libogc-$(DATESTRING).tar.bz2 include lib license.txt
 
 #---------------------------------------------------------------------------------
 libs: $(OGCLIB).a $(BBALIB).a $(MODLIB).a $(MADLIB).a $(DBLIB).a $(SDCARDLIB).a $(GCSYSLIB).a $(STUBSLIB).a

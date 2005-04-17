@@ -1,6 +1,4 @@
 build
 deps
 lib
-.cvsignore
 include
-libogc.tar.bz2

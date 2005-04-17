@@ -4,11 +4,13 @@
 #include "console.h"
 #include "netio_fake.h"
 #include "sdcardio_fake.h"
+#include "dvd_supp.h"
 
 const devoptab_t *devoptab_list[STD_MAX] = {
 	&dotab_stdin,
 	&dotab_stdout,
-	NULL,
+	&dotab_stdout,
 	&dotab_netfake,
-	&dotab_sdcardfake
+	&dotab_sdcardfake,
+	&dotab_dvd
 };
