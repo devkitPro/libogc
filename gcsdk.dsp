@@ -616,6 +616,14 @@ SOURCE=.\libogcsys\console_font_8x8.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogcsys\dvd_supp.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogcsys\dvd_supp.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogcsys\flock_supp.c
 # End Source File
 # Begin Source File
@@ -1222,6 +1230,10 @@ SOURCE=.\gc\gcmodplay.h
 # Begin Source File
 
 SOURCE=.\gc\gctypes.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\gcutil.h
 # End Source File
 # Begin Source File
 
