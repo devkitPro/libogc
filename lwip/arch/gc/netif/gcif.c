@@ -156,8 +156,8 @@
 #define BBA_INIT_RWP	BBA_INIT_BP
 #define BBA_INIT_RRP	BBA_INIT_BP
 
-#define BBA_TX_MAX_PACKET_SIZE (1514)									/* 6 pages * 256 bytes */
-#define BBA_RX_MAX_PACKET_SIZE (((BBA_INIT_RHBP-BBA_INIT_BP)+1)<<8)		/* n pages * 256 bytes */
+#define BBA_TX_MAX_PACKET_SIZE (1518)									/* 6 pages * 256 bytes */
+#define BBA_RX_MAX_PACKET_SIZE (1536)									/* n pages * 256 bytes */
 #define BBA_MAX_PACKETBUF_SIZE BBA_RX_MAX_PACKET_SIZE
 
 #define BBA_NAPI_WEIGHT 16

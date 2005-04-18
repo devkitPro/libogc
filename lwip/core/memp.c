@@ -177,7 +177,7 @@ memp_init(void)
   }
 
 #if !SYS_LIGHTWEIGHT_PROT
-  if(LWP_SemInit(&memp_sem,1,1)==-1) return;
+  LWP_SemInit(&memp_sem,1,1)==-1);
 #endif
 
   
