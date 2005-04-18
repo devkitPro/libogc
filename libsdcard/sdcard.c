@@ -59,7 +59,7 @@ sd_file* SDCARD_OpenFile(const char *filename,const char *mode)
 #ifdef _SDCARD_DEBUG
 	printf("SDCARD_OpenFile(%s,%c)\n",filename,mode[0]);
 #endif
-	rfile = (struct _sd_file*)__lwp_wkspace_allocate(sizeof(struct _sd_file));
+	rfile = (struct _sd_file*)malloc(sizeof(struct _sd_file));
 	if(!rfile)
 		return NULL;
 
@@ -90,7 +90,7 @@ sd_file* SDCARD_OpenFile(const char *filename,const char *mode)
 			return (sd_file*)rfile;
 		}
 	}
-	__lwp_wkspace_free(rfile);
+	free(rfile);
 	return NULL;
 }
 
@@ -197,7 +197,7 @@ s32 SDCARD_CloseFile(sd_file *pfile)
 
 	if(ifile) {
 		if(ifile->handle!=-1) card_closeFile(ifile->handle);
-		__lwp_wkspace_free(ifile);
+		free(ifile);
 	}
 	return SDCARD_ERROR_READY;
 }

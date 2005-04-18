@@ -15,7 +15,7 @@
 #include "system.h"
 
 #define SYSMEM_SIZE				0x1800000
-#define KERNEL_HEAP				(512*1024)
+#define KERNEL_HEAP				(128*1024)
 
 // DSPCR bits
 #define DSPCR_DSPRESET      0x0800        // Reset DSP

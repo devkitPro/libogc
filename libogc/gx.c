@@ -3039,8 +3039,8 @@ void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col)
 
     A_f   = A/(1<<(b_expn));
     b_m   = (u32)(B_mant * 8388638);
-    a_hex = (*(u32*)&A_f);
-    c_hex = (*(u32*)&C);
+    a_hex = (*(u32*)((void*)&A_f));
+    c_hex = (*(u32*)((void*)&C));
 
 	GX_LOAD_BP_REG(0xee000000|(a_hex>>12));
 	GX_LOAD_BP_REG(0xef000000|b_m);

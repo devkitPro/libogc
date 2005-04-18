@@ -48,12 +48,12 @@
 
 /* MEM_SIZE: the size of the heap memory. If the application will send
 a lot of data that needs to be copied, this should be set high. */
-#define MEM_SIZE                128*1024
+#define MEM_SIZE                (128*1024)
 
 /* MEMP_NUM_PBUF: the number of memp struct pbufs. If the application
    sends a lot of data out of ROM (or other static memory), this
    should be set high. */
-#define MEMP_NUM_PBUF           256
+#define MEMP_NUM_PBUF           (128)
 /* MEMP_NUM_UDP_PCB: the number of UDP protocol control blocks. One
    per active UDP "connection". */
 #define MEMP_NUM_UDP_PCB        4
@@ -65,7 +65,7 @@ a lot of data that needs to be copied, this should be set high. */
 #define MEMP_NUM_TCP_PCB_LISTEN 16
 /* MEMP_NUM_TCP_SEG: the number of simultaneously queued TCP
    segments. */
-#define MEMP_NUM_TCP_SEG        64
+#define MEMP_NUM_TCP_SEG        128
 
 /* The following four are used only with the sequential API and can be
    set to 0 if the application only will use the raw API. */
@@ -87,10 +87,10 @@ a lot of data that needs to be copied, this should be set high. */
 
 /* ---------- Pbuf options ---------- */
 /* PBUF_POOL_SIZE: the number of buffers in the pbuf pool. */
-#define PBUF_POOL_SIZE          256
+#define PBUF_POOL_SIZE          (128)
 
 /* PBUF_POOL_BUFSIZE: the size of each pbuf in the pbuf pool. */
-#define PBUF_POOL_BUFSIZE       2048
+#define PBUF_POOL_BUFSIZE       1024
 
 /* PBUF_LINK_HLEN: the number of bytes that should be allocated for a
    link level header. */
@@ -112,7 +112,7 @@ a lot of data that needs to be copied, this should be set high. */
 
 /* TCP sender buffer space (pbufs). This must be at least = 2 *
    TCP_SND_BUF/TCP_MSS for things to work. */
-#define TCP_SND_QUEUELEN        2 * TCP_SND_BUF/TCP_MSS
+#define TCP_SND_QUEUELEN        4 * TCP_SND_BUF/TCP_MSS
 
 /* TCP receive window. */
 #define TCP_WND                 16*1024
@@ -125,7 +125,7 @@ a lot of data that needs to be copied, this should be set high. */
 
 /* ---------- ARP options ---------- */
 #define ARP_TABLE_SIZE			10
-#define ARP_QUEUEING			0
+#define ARP_QUEUEING			1
 /**
  * - If enabled, cache entries are generated for every kind of ARP traffic or
  * broadcast IP traffic. This enhances behaviour for sending to a dynamic set
@@ -164,31 +164,32 @@ a lot of data that needs to be copied, this should be set high. */
 #define LWIP_UDP                1
 #define UDP_TTL                 255
 
-
+#define LWIP_STATS				0
 /* ---------- Statistics options ---------- */
 /*#define STATS*/
+#if LWIP_STATS
+#define LINK_STATS				0
+#define IP_STATS				0
+#define ICMP_STATS				0
+#define UDP_STATS				0
+#define TCP_STATS				0
+#define MEM_STATS				0
+#define MEMP_STATS				0
+#define PBUF_STATS				0
+#define SYS_STATS				0
+#define RAW_STATS				0
+#endif
 
-#ifdef STATS
-#define LINK_STATS
-#define IP_STATS
-#define ICMP_STATS
-#define UDP_STATS
-#define TCP_STATS
-#define MEM_STATS
-#define MEMP_STATS
-#define PBUF_STATS
-#define SYS_STATS
-#endif /* STATS */
-#define BYTE_ORDER BIG_ENDIAN
+#define BYTE_ORDER				BIG_ENDIAN
 
-#if 0
+#ifdef LWIP_DEBUG 
 #define DBG_TYPES_ON                    -1
 #define DEMO_DEBUG                      DBG_OFF
 #define ETHARP_DEBUG                    DBG_OFF
 #define NETIF_DEBUG                     DBG_ON
 #define PBUF_DEBUG                      DBG_OFF
-#define API_LIB_DEBUG                   DBG_ON
-#define API_MSG_DEBUG                   DBG_ON
+#define API_LIB_DEBUG                   DBG_OFF
+#define API_MSG_DEBUG                   DBG_OFF
 #define SOCKETS_DEBUG                   DBG_OFF
 #define ICMP_DEBUG                      DBG_OFF
 #define INET_DEBUG                      DBG_OFF

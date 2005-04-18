@@ -59,7 +59,7 @@ void __libc_init(int reentrant)
 	_REENT = &libc_globl_reent;
 
 	if(reentrant) {
-		__lwp_thread_setlibcreent((void**)&_REENT);
+		__lwp_thread_setlibcreent((void*)&_REENT);
 		libc_reentrant = reentrant;
 	}
 }

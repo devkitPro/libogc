@@ -183,7 +183,7 @@ static sem_t sockselect_sem;
 static mq_box_t netthread_mbox = NULL;
 
 static lwp_t hnet_thread;
-static u32 netthread_stack[STACKSIZE/sizeof(u32)];
+static u8 netthread_stack[STACKSIZE];
 
 static u32 tcp_timer_active = 0;
 
@@ -1608,7 +1608,6 @@ s32 net_init()
 		tcpiplayer_inited = 1;
 		ret = 0;
 	}
-
 	return ret;
 }
 

@@ -15,11 +15,7 @@
 extern "C" {
 #endif
 
-typedef struct _lwp_obj {
-	s32 lwp_id;
-	void *thethread;
-	lwp_thrqueue join_list;
-} lwp_obj;
+typedef struct _lwp_obj lwp_obj;
 
 typedef struct _lwpwaitinfo {
 	u32 id;
@@ -52,9 +48,15 @@ typedef struct _lwpcntrl {
 	u32 stack_size;
 	u8 stack_allocated;
 	lwp_queue *ready;
+	lwp_thrqueue join_list;
 	frame_context context;		//16
 	void *libc_reent;
 } lwp_cntrl, *lwp_cntrl_t;
+
+struct _lwp_obj {
+	s32 lwp_id;
+	lwp_cntrl thethread;
+};
 
 extern lwp_cntrl *_thr_idle;
 extern lwp_cntrl *_thr_executing;
@@ -83,6 +85,8 @@ void __lwp_thread_close(lwp_cntrl *);
 void __lwp_start_multitasking();
 void __lwp_stop_multitasking();
 u32 __lwp_init();
+void __lwp_thread_freelwp(lwp_cntrl *);
+lwp_cntrl* __lwp_thread_alloclwp();
 lwp_obj* __lwp_thread_getobject(lwp_cntrl *);
 boolean __lwp_evaluatemode();
 

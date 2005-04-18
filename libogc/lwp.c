@@ -21,7 +21,7 @@ s32 LWP_CreateThread(lwp_t *thethread,void* (*entry)(void *),void *arg,void *sta
 	
 	__lwp_thread_dispatchdisable();
 
-	lwp_thread = (lwp_cntrl*)__lwp_wkspace_allocate(sizeof(lwp_cntrl));
+	lwp_thread = __lwp_thread_alloclwp();
 	if(!lwp_thread) {
 		__lwp_thread_dispatchenable();
 		return -1;
@@ -29,14 +29,14 @@ s32 LWP_CreateThread(lwp_t *thethread,void* (*entry)(void *),void *arg,void *sta
 
 	status = __lwp_thread_init(lwp_thread,stackbase,stack_size,__lwp_priotocore(prio),0,TRUE);
 	if(!status) {
-		__lwp_wkspace_free(lwp_thread);
+		__lwp_thread_freelwp(lwp_thread);
 		__lwp_thread_dispatchenable();
 		return -1;
 	}
 	
 	status = __lwp_thread_start(lwp_thread,entry,arg);
 	if(!status) {
-		__lwp_wkspace_free(lwp_thread);
+		__lwp_thread_freelwp(lwp_thread);
 		__lwp_thread_dispatchenable();
 		return -1;
 	}
@@ -113,7 +113,6 @@ s32 LWP_JoinThread(lwp_t thethread,void **value_ptr)
 
 	object = __lwp_thread_getobject(lwp_thread);
 	if(!object || lwp_thread->id==-1) {
-		__lwp_wkspace_free(thethread);
 		__lwp_thread_dispatchenable();
 		return 0;
 	}
@@ -125,11 +124,10 @@ s32 LWP_JoinThread(lwp_t thethread,void **value_ptr)
 
 	exec = _thr_executing;
 	_CPU_ISR_Disable(level);
-	__lwp_threadqueue_csenter(&object->join_list);
+	__lwp_threadqueue_csenter(&lwp_thread->join_list);
 	exec->wait.ret_arg = (void*)&return_ptr;
 	_CPU_ISR_Restore(level);
-	__lwp_threadqueue_enqueue(&object->join_list,LWP_WD_NOTIMEOUT);
-	__lwp_wkspace_free(thethread);
+	__lwp_threadqueue_enqueue(&lwp_thread->join_list,LWP_WD_NOTIMEOUT);
 	__lwp_thread_dispatchenable();
 
 	if(value_ptr)

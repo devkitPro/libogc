@@ -150,14 +150,15 @@
 #define BBA_TX_STATUS_OWN     (1<<7)
 #define BBA_TX_STATUS_TERR    (1<<7)
 
-#define BBA_TX_MAX_PACKET_SIZE 1518	/* 14+1500+4 */
-#define BBA_RX_MAX_PACKET_SIZE 1536	/* 6 pages * 256 bytes */
-
 #define BBA_INIT_TLBP	0x00
-#define BBA_INIT_BP		0x01
+#define BBA_INIT_BP		0x06
 #define BBA_INIT_RHBP	0x0f
 #define BBA_INIT_RWP	BBA_INIT_BP
 #define BBA_INIT_RRP	BBA_INIT_BP
+
+#define BBA_TX_MAX_PACKET_SIZE (1514)									/* 6 pages * 256 bytes */
+#define BBA_RX_MAX_PACKET_SIZE (((BBA_INIT_RHBP-BBA_INIT_BP)+1)<<8)		/* n pages * 256 bytes */
+#define BBA_MAX_PACKETBUF_SIZE BBA_RX_MAX_PACKET_SIZE
 
 #define BBA_NAPI_WEIGHT 16
 
@@ -191,10 +192,10 @@ static struct netif *gc_netif = NULL;
 static vu32* const _siReg = (u32*)0xCC006400;
 static const struct eth_addr ethbroadcast = {{0xffU,0xffU,0xffU,0xffU,0xffU,0xffU}};
 
-static u8 cur_rcv_buffer0[BBA_RX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
-static u8 cur_rcv_buffer1[BBA_RX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
-static u8 cur_snd_buffer[BBA_TX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
-static u8 cur_rcv_postbuffer[BBA_TX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
+static u8 cur_rcv_buffer0[BBA_MAX_PACKETBUF_SIZE] ATTRIBUTE_ALIGN(32);
+static u8 cur_rcv_buffer1[BBA_MAX_PACKETBUF_SIZE] ATTRIBUTE_ALIGN(32);
+static u8 cur_snd_buffer[BBA_MAX_PACKETBUF_SIZE] ATTRIBUTE_ALIGN(32);
+static u8 cur_rcv_postbuffer[BBA_MAX_PACKETBUF_SIZE] ATTRIBUTE_ALIGN(32);
 static u32 cur_rcv_postdmalen = 0;
 static u32 cur_rcv_postimmlen = 0;
 static u32 cur_rcv_postlen = 0;
@@ -207,10 +208,11 @@ static u16 rrp = 0,rwp = 0;
 static struct bba_descr cur_descr;
 
 static err_t __bba_link_tx(struct netif *dev,struct pbuf *p);
-
+/*
 static u32 __bba_link_rxbuffer1();
 static u32 __bba_link_rxsub1();
 static u32 __bba_link_rxsub0(u32 pos);
+*/
 static u32 __bba_link_rx();
 static u32 __bba_rx_err(u8 status);
 
@@ -222,11 +224,12 @@ extern void udelay(int us);
 /* new functions */
 #define bba_select()		EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_2,EXI_SPEED32MHZ)
 #define bba_deselect()		EXI_Deselect(EXI_CHANNEL_0)
+#define bba_sync()			EXI_Sync(EXI_CHANNEL_0)
 
-#define bba_in12(reg)		((bba_in8(reg)&0xff)|((bba_in8((reg)+1)&0x0f)<<8))
+#define bba_in12(reg)		((bba_in8((reg))&0xff)|((bba_in8(((reg)+1))&0x0f)<<8))
 #define bba_out12(reg,val)	do { \
-									bba_out8((reg),(val)&0xff); \
-									bba_out8((reg)+1,((val)&0x0f00)>>8); \
+									bba_out8((reg),((val)&0xff)); \
+									bba_out8(((reg)+1),(((val)&0x0f00)>>8)); \
 							} while(0)
 
 static void bba_cmd_ins(u32 reg,void *val,u32 len);
@@ -404,10 +407,13 @@ static u32 __bba_tx_wake(struct bba_priv *priv)
 static u32 __bba_tx_stop(struct bba_priv *priv)
 {
 	u32 level;
-	err_t state;
-
+#ifdef LWIP_DEBUG
+	err_t state = 0;
+#endif
 	_CPU_ISR_Disable(level);
+#ifdef LWIP_DEBUG
 	state = priv->state;
+#endif
 	while(priv->state==ERR_TXPENDING) {
 		if(LWP_SleepThread(wait_tx_queue)==-1) break;
 	}
@@ -483,7 +489,7 @@ static void __bba_recv_init()
 	bba_out8(BBA_NCRA,BBA_NCRA_SR);
 	bba_out8(BBA_GCA,BBA_GCA_ARXERRB);
 }
-
+/*
 static u32 __bba_link_postrxsub1()
 {
 	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
@@ -498,15 +504,16 @@ static u32 __bba_link_postrxsub1()
 	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_postrxsub1(rx interrupt close)\n"));
 	return ERR_OK;
 }
-
+*/
 static u32 __bba_link_postrxsub0()
 {
 	u32 len;
 	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
 
+	priv->state = ERR_TXPENDING;
 	if(!__linkstate()) {
 		LWIP_ERROR(("__bba_link_postrxsub0(error link state)\n"));
-		priv->state = ERR_OK;
+		priv->state = ERR_IF;
 		return ERR_ABRT;
 	}
 
@@ -524,8 +531,12 @@ static u32 __bba_link_postrxsub0()
 
 	bba_select();
 	bba_outsregister(BBA_WRTXFIFOD);
-	bba_outsdmadata(cur_rcv_postbuffer,cur_rcv_postdmalen,__bba_link_postrxsub1);
+	bba_outsdmadata(cur_rcv_postbuffer,cur_rcv_postdmalen,NULL);
+	bba_sync();
+	if(cur_rcv_postimmlen) bba_outsdata(cur_rcv_postbuffer+cur_rcv_postdmalen,cur_rcv_postimmlen);
+	bba_deselect();
 
+	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)));		//&~BBA_NCRA_ST0
 	return ERR_TXPENDING;
 }
 
@@ -553,6 +564,7 @@ static err_t __bba_post_rxtx(struct pbuf *p)
 	struct pbuf *tmp,*q = NULL;
 	struct eth_hdr *ethhdr = NULL;
 	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
+	const s32 hlen = sizeof(struct eth_hdr);
 
 	if(p) {
 		ethhdr = p->payload;
@@ -561,7 +573,7 @@ static err_t __bba_post_rxtx(struct pbuf *p)
 				LWIP_DEBUGF(NETIF_DEBUG,("__bba_post_send: passing packet up to IP layer\n"));
 
 				q = etharp_ip_input(gc_netif,p);
-				pbuf_header(p,-14);
+				pbuf_header(p,-(hlen));
 				gc_netif->input(p, gc_netif);
 				break;
 			case ETHTYPE_ARP:
@@ -578,22 +590,23 @@ static err_t __bba_post_rxtx(struct pbuf *p)
 
 
 		if(q!=NULL) {
-			LWIP_DEBUGF(NETIF_DEBUG,("__bba_post_send: q!=NULL\n"));
-			buf = cur_rcv_postbuffer;
-			priv->state = ERR_TXPENDING;
-			for(tmp=q;tmp!=NULL;tmp=tmp->next) {
-				memcpy(buf,tmp->payload,tmp->len);
-				buf += tmp->len;
-			}
+			LWIP_DEBUGF(NETIF_DEBUG,("__bba_post_send: q!=NULL\,q->tot_en=%dn",q->tot_len));
+			if(q->tot_len<=BBA_TX_MAX_PACKET_SIZE) {
+				buf = cur_rcv_postbuffer;
+				for(tmp=q;tmp!=NULL;tmp=tmp->next) {
+					memcpy(buf,tmp->payload,tmp->len);
+					buf += tmp->len;
+				}
 
-			cur_rcv_postlen = q->tot_len;
-			ret = __bba_link_postrxsub0();
+				cur_rcv_postlen = q->tot_len;
+				ret = __bba_link_postrxsub0();
+			}
 			pbuf_free(q);
 		}
 	}
 	return ret;
 }
-
+/*
 static u32 __bba_link_txsub1()
 {
 	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
@@ -607,19 +620,19 @@ static u32 __bba_link_txsub1()
 	EXI_Unlock(EXI_CHANNEL_0);
 	return ERR_OK;
 }
-
+*/
 static u32 __bba_link_txsub0()
 {
 	u32 level,len;
 	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
 
 	_CPU_ISR_Disable(level);
+	priv->state = ERR_TXPENDING;
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,__bba_link_txsub0)==0) {
 		LWIP_ERROR(("__bba_link_txsub0(exi allready locked)\n"));
 		_CPU_ISR_Restore(level);
 		return ERR_OK;
 	}
-	priv->state = ERR_TXPENDING;
 	_CPU_ISR_Restore(level);
 
 	if(!__linkstate()) {
@@ -643,23 +656,24 @@ static u32 __bba_link_txsub0()
 
 	bba_select();
 	bba_outsregister(BBA_WRTXFIFOD);
-	bba_outsdmadata(cur_snd_buffer,cur_snd_dmalen,__bba_link_txsub1);
+	bba_outsdmadata(cur_snd_buffer,cur_snd_dmalen,NULL);
+	bba_sync();
+	if(cur_snd_immlen) bba_outsdata(cur_snd_buffer+cur_snd_dmalen,cur_snd_immlen);
+	bba_deselect();
 
+	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)));		//&~BBA_NCRA_ST0
+	EXI_Unlock(EXI_CHANNEL_0);
 	return ERR_OK;
 }
 
 static err_t __bba_link_tx(struct netif *dev,struct pbuf *p)
 {
-	u32 level;
 	struct pbuf *tmp;
 	struct bba_priv *priv = (struct bba_priv*)dev->state;
 
-	_CPU_ISR_Disable(level);
-	__bba_tx_stop(priv);
 	if(p->tot_len>BBA_TX_MAX_PACKET_SIZE) {
 		LWIP_ERROR(("__bba_link_tx(%d,%p) pkt_size\n",p->tot_len,LWP_GetSelf()));
 		__bba_tx_wake(priv);
-		_CPU_ISR_Restore(level);
 		return ERR_PKTSIZE;
 	}
 
@@ -670,16 +684,17 @@ static err_t __bba_link_tx(struct netif *dev,struct pbuf *p)
 		memcpy(cur_snd_buffer+cur_snd_len,tmp->payload,tmp->len);
 		cur_snd_len += tmp->len;
 	}
-	_CPU_ISR_Restore(level);
-
 	return __bba_link_txsub0();
 }
 
 static err_t bba_start_tx(struct netif *dev,struct pbuf *p,struct ip_addr *ipaddr)
 {
 	err_t ret = ERR_OK;
+	struct bba_priv *priv = (struct bba_priv*)dev->state;
 
 	LWIP_DEBUGF(NETIF_DEBUG,("bba_start_tx(%p)\n",LWP_GetSelf()));
+
+	__bba_tx_stop(priv);
 
 	p = etharp_output(dev,ipaddr,p);
 	if(p) ret = __bba_link_tx(dev,p);
@@ -710,7 +725,7 @@ static u32 __bba_rx_err(u8 status)
 	
 	return errors;
 }
-
+/*
 static u32 __bba_link_rxbuffer1()
 {
 	u32 len,ret = ERR_OK;
@@ -796,33 +811,32 @@ static u32 __bba_link_rxsub0(u32 pos)
 	
 	return ERR_OK;
 }
-
+*/
 static u32 __bba_link_rx()
 {
-	u32 top,pos,pkt_status,size,ret;
+	u32 rcv_len,len;
+	u32 top,pos,pkt_status,size;
+	u8 *rcv_buf0,*rcv_buf1,*pc;
+	struct pbuf *tmp,*p = NULL;
 
-	cur_rcv_len0 = 0;
-	cur_rcv_len1 = 0;
-	
 	while(rrp!=rwp) {
 		LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_rx(%04x,%04x)\n",rrp,rwp));
-		bba_ins(rrp<<8,&cur_descr,sizeof(cur_descr));
-		le32_to_cpus((u32*)&cur_descr);
+		bba_ins(rrp<<8,(void*)(&cur_descr),sizeof(struct bba_descr));
+		le32_to_cpus((u32*)((void*)(&cur_descr)));
 		
 		size = cur_descr.packet_len - 4;
 		pkt_status = cur_descr.status;
 		if(size>(BBA_RX_MAX_PACKET_SIZE+4) || (pkt_status&(BBA_RX_STATUS_RERR|BBA_RX_STATUS_FAE))) {
 			LWIP_ERROR(("__bba_link_rx(size>BBA_RX_MAX_PACKET_SIZE || (pkt_status&(BBA_RX_STATUS_RERR|BBA_RX_STATUS_FAE))\n"));
 			__bba_rx_err(pkt_status);
-
-			bba_out8(BBA_IR,BBA_IR_RI);
-			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
-			EXI_Unlock(EXI_CHANNEL_0);
 			return ERR_PKTSIZE;
 		}
 
+		cur_rcv_len0 = 0;
+		cur_rcv_len1 = 0;
 		pos = (rrp<<8)+4;
 		top = (BBA_INIT_RHBP+1)<<8;
+		LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_rx(%04x,%04x,%d)\n",pos,top,size));
 		if((pos+size)<top) {
 			cur_rcv_len0 = size;
 			cur_rcv_len1 = 0;
@@ -831,16 +845,66 @@ static u32 __bba_link_rx()
 			cur_rcv_len1 = size - cur_rcv_len0;
 		}
 		
-		ret = __bba_link_rxsub0(pos);
-		return ret;
+		rcv_len = (cur_rcv_len0+31)&~31;
+		DCInvalidateRange(cur_rcv_buffer0,cur_rcv_len0);
+		bba_select();
+		bba_insregister(pos);
+		bba_insdmadata(cur_rcv_buffer0,rcv_len,NULL);
+		bba_sync();
+		bba_deselect();
+		if(cur_rcv_len1>0) {
+			rrp = BBA_INIT_RRP;
+			rcv_len = (cur_rcv_len1+31)&~31;
+			DCInvalidateRange(cur_rcv_buffer1,cur_rcv_len1);
+			bba_select();
+			bba_insregister((rrp<<8));
+			bba_insdmadata(cur_rcv_buffer1,rcv_len,NULL);
+			bba_sync();
+			bba_deselect();
+		}
+
+		rcv_buf0 = cur_rcv_buffer0;
+		rcv_buf1 = cur_rcv_buffer1;
+		p = pbuf_alloc(PBUF_LINK,(cur_rcv_len0+cur_rcv_len1),PBUF_POOL);
+		for(tmp=p;tmp!=NULL;tmp=tmp->next) {
+			pc = tmp->payload;
+			len = tmp->len;
+			if(cur_rcv_len0>0 && cur_rcv_len0>=len) {
+				memcpy(pc,rcv_buf0,len);
+				cur_rcv_len0 -= len;
+				rcv_buf0 += len;
+				continue;
+			} 
+			if(cur_rcv_len0>0 && cur_rcv_len0<len) {
+				memcpy(pc,rcv_buf0,cur_rcv_len0);
+				pc += cur_rcv_len0;
+				len -= cur_rcv_len0;
+				cur_rcv_len0 = 0;
+			}
+			if(len>0) {
+				if(!cur_rcv_len0 && (cur_rcv_len1>0 && cur_rcv_len1>=len)) {
+					memcpy(pc,rcv_buf1,len);
+					cur_rcv_len1 -= len;
+					rcv_buf1 += len;
+					continue;
+				} 
+				if(!cur_rcv_len0 && (cur_rcv_len1>0 && cur_rcv_len1<len)) {
+					memcpy(pc,rcv_buf1,cur_rcv_len1);
+					pc += cur_rcv_len1;
+					len -= cur_rcv_len1;
+					cur_rcv_len1 = 0;
+				}
+			}
+		}
+		bba_out12(BBA_RRP,cur_descr.next_packet_ptr);
+
+		rwp = bba_in12(BBA_RWP);
+		rrp = bba_in12(BBA_RRP);
+		
+		__bba_post_rxtx(p);	
 	}
-	bba_out12(BBA_RRP,rwp);
 
 	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_rx(rx interrupt close)\n"));
-	bba_out8(BBA_IR,BBA_IR_RI);
-	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
-	EXI_Unlock(EXI_CHANNEL_0);
-
 	return ERR_OK;
 }
 
@@ -873,7 +937,7 @@ static inline void bba_interrupt(struct netif *dev)
 	}
 	if(status&BBA_IR_RI) {
 		bba_start_rx();
-		return;
+		bba_out8(BBA_IR,BBA_IR_RI);
 	}
 	if(status&BBA_IR_REI) {
 		__bba_rx_err(bba_in8(BBA_LRPS));
@@ -898,8 +962,11 @@ static inline void bba_interrupt(struct netif *dev)
 	}
 	if(status&BBA_IR_RBFI) {
 		bba_start_rx();
-		return;
+		bba_out8(BBA_IR,BBA_IR_RBFI);
 	}
+
+	LWIP_DEBUGF(NETIF_DEBUG,("bba_interrupt(exit)\n"));
+
 	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
 	EXI_Unlock(EXI_CHANNEL_0);
 }
@@ -927,7 +994,7 @@ static err_t __bba_init(struct netif *dev)
 	bba_out8(0x5b, (bba_in8(0x5b)&~0x80));
 	bba_out8(0x5e, 0x01);
 	bba_out8(0x5c, (bba_in8(0x5c)|0x04));
-
+	
 	bba_out8(BBA_NCRB,0x00);
 
 	__bba_recv_init();

@@ -113,8 +113,11 @@ static void _cpu_print_stack(void *pc,void *lr,void *r1)
 	if(!p) __asm__ __volatile__("mr %0,%%r1" : "=r"(p));
 
 	for(i=0;i<CPU_STACK_TRACE_DEPTH-1 && p->up;p=p->up,i++) {
-		if(i%5) printf("--> ");
-		else printf("\n\n");
+		if(i%4) printf("--> ");
+		else {
+			if(i>0) printf("-->\n");
+			else printf("\n");
+		}
 
 		switch(i) {
 			case 0:
