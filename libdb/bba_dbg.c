@@ -224,14 +224,14 @@ static __inline__ void bba_cmd_insnosel(u32 reg,void *val,u32 len)
 	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_READ);
 }
 
-static __inline__ void bba_cmd_ins(u32 reg,void *val,u32 len)
+static void bba_cmd_ins(u32 reg,void *val,u32 len)
 {
 	bba_select();
 	bba_cmd_insnosel(reg,val,len);
 	bba_deselect();
 }
 
-static inline void bba_cmd_outsnosel(u32 reg,void *val,u32 len)
+static __inline__ void bba_cmd_outsnosel(u32 reg,void *val,u32 len)
 {
 	u16 req;
 	req = (reg<<8)|0x4000;
@@ -609,50 +609,47 @@ static u32 bba_calc_response(struct bba_priv *priv,u32 val)
 
 static u32 bba_poll(u16 *pstatus)
 {
-	u8 status = 0;
-	u32 ret;
-	s64 start,now;
+	u8 status;
+	u32 ret,level;
 
 	ret = 0;
+	status = 0;
 	*pstatus = 0;
-	start = now = gettime();
-	while(diff_msec(start,now)<10) {
-		if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==1) {
-			status = bba_cmd_in8(0x03);
-			bba_cmd_out8(0x02,BBA_CMD_IRMASKALL);
-			if(status) {
-				if(status&0x80) {
-					bba_cmd_out8(0x03,0x80);
-					bba_interrupt(pstatus);
-				}
-				if(status&0x40) {
-					bba_cmd_out8(0x03, 0x40);
-					__bba_init(&bba_device);
-				}
-				if(status&0x20) {
-					bba_cmd_out8(0x03, 0x20);
-				}
-				if(status&0x10) {
-					u32 response,challange;
-					bba_cmd_out8(0x05,bba_device.acstart);
-					bba_cmd_ins(0x08,&challange,sizeof(challange));
-					response = bba_calc_response(&bba_device,challange);
-					bba_cmd_outs(0x09,&response,sizeof(response));
-					bba_cmd_out8(0x03, 0x10);
-				}
-				if(status&0x08) {
-					bba_cmd_out8(0x03, 0x08);
-				}
-				*pstatus |= status;
-				ret = 1;
+	_CPU_ISR_Disable(level);
+	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==1) {
+		status = bba_cmd_in8(0x03);
+		bba_cmd_out8(0x02,BBA_CMD_IRMASKALL);
+		if(status) {
+			if(status&0x80) {
+				bba_cmd_out8(0x03,0x80);
+				bba_interrupt(pstatus);
 			}
-			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
-			EXI_Unlock(EXI_CHANNEL_0);
-			if(ret) break;
-
-			now = gettime();
+			if(status&0x40) {
+				bba_cmd_out8(0x03, 0x40);
+				__bba_init(&bba_device);
+			}
+			if(status&0x20) {
+				bba_cmd_out8(0x03, 0x20);
+			}
+			if(status&0x10) {
+				u32 response,challange;
+				bba_cmd_out8(0x05,bba_device.acstart);
+				bba_cmd_ins(0x08,&challange,sizeof(challange));
+				response = bba_calc_response(&bba_device,challange);
+				bba_cmd_outs(0x09,&response,sizeof(response));
+				bba_cmd_out8(0x03, 0x10);
+			}
+			if(status&0x08) {
+				bba_cmd_out8(0x03, 0x08);
+			}
+			*pstatus |= status;
+			ret = 1;
 		}
+		bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+		EXI_Unlock(EXI_CHANNEL_0);
 	}
+	_CPU_ISR_Restore(level);
+	
 	return ret;
 }
 

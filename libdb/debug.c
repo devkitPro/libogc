@@ -13,6 +13,7 @@
 #include "network.h"
 #include "debug.h"
 #include "video.h"
+#include "ogcsys.h"
 #include "bba_dbg.h"
 #include "uIP/uip.h"
 #include "uIP/uip_arp.h"
@@ -27,7 +28,6 @@
 #define BUFMAX			2048		//we take the same as in ppc-stub.c
 #define TCPBUFMAX		32768		//we take the same as in ppc-stub.c
 
-#define BPCODE		0x7d821008
 #define STR_BPCODE	"7d821008"
 
 #define BUF ((struct uip_eth_hdr *)&uip_buf[0])
@@ -75,15 +75,17 @@ static struct bp_entry {
 } bp_entries[GEKKO_MAX_BP];
 
 static u32 dbg_initialized = 0;
+static u32 dbg_connected = DBG_NORMAL;
 static u32 dbg_instep = 0;
 static u32 dbg_active = 0;
 static u32 dbg_started = 0;
-static s32 dbg_arptime = 0;
-static u32 dbg_arptimercalled = 0;
+static s64 dbg_arptime = 0;
+static s64 dbg_tcptime = 0;
 static u32 dbg_port = -1;
 static s32 dbg_currthr = -1;
-static u32 rx_len,tx_sentlen;
-static u32 rx_pos,tx_pos;
+static u32 rx_pos = 0;
+static u32 tx_pos = 0;
+static s32 rx_len = 0;
 static u8 rx_buffer[TCPBUFMAX];
 static u8 tx_buffer[TCPBUFMAX];
 
@@ -95,6 +97,7 @@ static void* debugger(void*);
 
 extern long long gettime();
 extern u32 diff_sec(long long start,long long end);
+extern u32 diff_msec(long long start,long long end);
 extern void __lwp_getthreadlist(lwp_obj** thrs);
 extern frame_context* __lwp_getthrcontext();
 extern u32 __lwp_getcurrentid();
@@ -307,25 +310,27 @@ static void poll()
 {
 	u32 i;
 	s64 now;
-
-	if(!dbg_arptime) dbg_arptime = gettime();
 	
+	if(!dbg_arptime) dbg_arptime = gettime();
+	if(!dbg_tcptime) dbg_tcptime = gettime();
+
 	now = gettime();
 	uip_len = bba_read();
 	if(uip_len==0) {
-		for(i=0;i<UIP_CONNS;i++) {
-			uip_periodic(i);
-			if(uip_len>0) {
-				uip_arp_out();
-				bba_send();
+		if(diff_msec(dbg_tcptime,now)>=500) {
+			for(i=0;i<UIP_CONNS;i++) {
+				uip_periodic(i);
+				if(uip_len>0) {
+					uip_arp_out();
+					bba_send();
+				}
 			}
+			dbg_tcptime = gettime();
 		}
-		if(diff_sec(dbg_arptime,now)>=10 && !dbg_arptimercalled) {
+		if(diff_sec(dbg_arptime,now)>=10) {
 			uip_arp_timer();
 			dbg_arptime = gettime();
-			dbg_arptimercalled = 1;
 		}
-		return;
 	} else {
 		if(BUF->type==HTONS(UIP_ETHTYPE_IP)) {
 			uip_arp_ipin();
@@ -339,58 +344,26 @@ static void poll()
 			if(uip_len>0) bba_send();
 		}
 	}
-	dbg_arptimercalled = 0;
-}
-
-static void acked()
-{
-	if((tx_pos-tx_sentlen)>0) memmove(tx_buffer,tx_buffer+tx_sentlen,(tx_pos-tx_sentlen));
-	tx_pos -= tx_sentlen;
-	tx_sentlen = 0;
-}
-
-static void senddata()
-{
-	if(tx_sentlen>0 || !tx_pos) return;
-
-	tx_sentlen = tx_pos;
-	if(tx_sentlen>uip_mss()) tx_sentlen = uip_mss();
-	uip_send(tx_buffer,tx_sentlen);
-}
-
-void DEBUG_Init(u32 port)
-{
-	if(dbg_port!=-1) return;
-	dbg_port = port;
-
-	bba_init();
-	uip_init();
-	uip_arp_init();
-	uip_listen((u16_t)dbg_port);
-
-	if(LWP_CreateThread(&hdebugger,debugger,NULL,debug_stack,STACKSIZE,20)!=-1) {
-		__exception_load(EX_PRG,debug_handler_start,(debug_handler_end-debug_handler_start),debug_handler_patch);
-		__exception_load(EX_TRACE,debug_handler_start,(debug_handler_end-debug_handler_start),debug_handler_patch);
-		dbg_initialized = 1;
-	}
 }
 
 static s32 getdbgchar()
 {
-	s32 ch;
-	
-	poll();
+	u32 level;
+	s32 ch = -1;
 
-	ch = -1;
+	if(!rx_len) poll();
+
+	_CPU_ISR_Disable(level);
 	if(rx_len>0) {
-		ch = rx_buffer[0];
-		memmove(rx_buffer,rx_buffer+1,rx_len-1);
+//		printf("%d,%d ",rx_len,rx_pos);
+		ch = rx_buffer[rx_pos++];
 		rx_len--;
 	}
+	_CPU_ISR_Restore(level);
 	return ch;
 }
 
-static void putdbgchar(s32 ch)
+static void __putdbgchar(s32 ch)
 {
 	u32 level;
 
@@ -402,10 +375,121 @@ static void putdbgchar(s32 ch)
 	_CPU_ISR_Restore(level);
 }
 
+static void putdbgchar(s32 ch)
+{
+	__putdbgchar(ch);
+}
+
 static void putdbgstr(const char *str)
 {
-	while(str && *str!='\0') putdbgchar(*str++);
+	while(str && *str!='\0') __putdbgchar(*str++);
 }
+
+static void acked(struct debugger_state *state)
+{
+//	printf("acked: %d\n",state->tx_sendlen);
+	if((tx_pos-state->tx_sendlen)>0) {
+		tx_pos -= state->tx_sendlen;
+		memmove(tx_buffer,tx_buffer+state->tx_sendlen,tx_pos);
+	} else
+		tx_pos = 0;
+	state->tx_sendlen = 0;
+//	printf("acked: %d,%d\n",tx_pos,state->tx_sendlen);
+}
+
+static void senddata(struct debugger_state *state)
+{
+	u8 *tx_ptr;
+
+	if(state->tx_sendlen>0 || !tx_pos) return;
+
+	tx_ptr = (u8*)uip_appdata;
+	state->tx_sendlen = tx_pos;
+	if(state->tx_sendlen>uip_mss()) state->tx_sendlen = uip_mss();
+
+	uip_len = state->tx_sendlen;
+	memcpy(tx_ptr,tx_buffer,uip_len+1);
+//	printf("tx:%s %d,%d\n",tx_ptr,tx_pos,state->tx_sendlen);
+	uip_send(tx_ptr,uip_len);
+}
+
+static void newdata()
+{
+	u8 ch;
+	u8 *rx_ptr;
+	u32 i;
+	u8 chksum;
+	u8 xmitcsum;
+	u8 nib;
+
+	i = 0;
+	rx_len = 0;
+	rx_pos = 0;
+	rx_ptr = (u8*)uip_appdata;
+//	printf("%d\n",uip_datalen());
+	while(i<uip_datalen()) {
+		ch = rx_ptr[i++];
+		rx_buffer[rx_len++] = ch;
+		if((ch&0x7f)=='$') {
+			chksum = 0;
+			xmitcsum = -1;
+			while(i<uip_datalen()) {
+				ch = rx_ptr[i++];
+				rx_buffer[rx_len++] = ch;
+
+				ch &= 0x7f;
+				if(ch=='#') break;
+
+				chksum += ch;
+			}
+			if(ch=='#') {
+				nib = rx_ptr[i++];
+				rx_buffer[rx_len++] = nib;
+				xmitcsum = hex(nib&0x7f)<<4;
+				nib = rx_ptr[i++];
+				rx_buffer[rx_len++] = nib;
+				xmitcsum |= hex(nib&0x7f);
+				
+				if(xmitcsum==chksum) {
+					putdbgchar('+');
+					if(rx_buffer[3]==':') {
+						putdbgchar(rx_buffer[1]);
+						putdbgchar(rx_buffer[2]);
+					}
+					break;
+				} else {
+					putdbgchar('-');
+					rx_len = 0;
+				}
+			}
+		}
+	}
+	rx_buffer[rx_len] = 0;
+//	printf("%s,%d\n",rx_buffer,rx_len);
+}
+
+void DEBUG_Init(u32 port)
+{
+	if(!dbg_initialized) {
+		dbg_initialized = 1;
+		dbg_port = port;
+
+		rx_pos = tx_pos = rx_len = 0;
+		memset(rx_buffer,0,TCPBUFMAX);
+		memset(tx_buffer,0,TCPBUFMAX);
+
+		bba_init();
+		uip_init();
+		uip_arp_init();
+		uip_listen((u16_t)dbg_port);
+
+		__exception_load(EX_DSI,debug_handler_start,(debug_handler_end-debug_handler_start),debug_handler_patch);
+		__exception_load(EX_PRG,debug_handler_start,(debug_handler_end-debug_handler_start),debug_handler_patch);
+		__exception_load(EX_TRACE,debug_handler_start,(debug_handler_end-debug_handler_start),debug_handler_patch);
+		LWP_CreateThread(&hdebugger,debugger,NULL,debug_stack,STACKSIZE,20);
+	}
+}
+
 
 static u32 get_packet(u8 *buffer)
 {
@@ -440,13 +524,9 @@ static u32 get_packet(u8 *buffer)
 				if((nib=getdbgchar())==-1) return 0;
 				xmitcsum |= hex(nib&0x7f);
 
-				if(chksum!=xmitcsum) putdbgchar('-');
+				if(chksum!=xmitcsum) return 0;
 				else {
-					putdbgchar('+');
 					if(buffer[2]==':') {
-						putdbgchar(buffer[0]);
-						putdbgchar(buffer[1]);
-						
 						cnt = strlen(buffer);
 						for(i=3;i<=cnt;i++)
 							buffer[i-3] = buffer[i];
@@ -465,6 +545,7 @@ static u32 put_packet(u8 *buffer)
 	u32 cnt,i,recv;
 	u8 ch,out[1024];
 
+//	printf("put_packet()\n");
 	do {
 		out[0] = '$';
 
@@ -497,15 +578,15 @@ static void handle_query()
 
 	__lwp_getthreadlist(&threads);
 	if(remcomInBuffer[1]=='C') 
-		sprintf(remcomOutBuffer,"QC%04x",((lwp_cntrl*)threads[dbg_currthr].thethread)->id);
+		sprintf(remcomOutBuffer,"QC%04x",threads[dbg_currthr].thethread.id);
 	else if(strncmp(&remcomInBuffer[2],"ThreadInfo",10)==0) {
 		ptr = remcomOutBuffer;
 		if(remcomInBuffer[1]=='f') {
 			*ptr = 'm';
 			for(i=0;i<1024;i++) {
-				if(threads && threads[i].lwp_id!=-1 && threads[i].thethread) {
+				if(threads && threads[i].lwp_id!=-1) {
 					ptr++;
-					ptr = mem2hex((u8*)&((lwp_cntrl*)threads[i].thethread)->id,ptr,4);
+					ptr = mem2hex((u8*)&threads[i].thethread.id,ptr,4);
 					*ptr =  ',';
 				}
 			}
@@ -602,17 +683,23 @@ void c_debug_handler(frame_context *ctx)
 					handle_query();
 					break;
 				case 'k':
-				case 'c':
 				case 'D':
+					dbg_connected = DBG_CLOSE;
 					ctx->SRR1 &= ~MSR_SE;
 					dbg_instep = 0;
 					dbg_active = 0;
 					mtmsr(msr);
 					return;
+				case 'c':
+					ctx->SRR1 &= ~MSR_SE;
+					dbg_instep = 0;
+					dbg_active = 1;
+					mtmsr(msr);
+					return;
 				case 's':
 					ctx->SRR1 |= MSR_SE; 
 					dbg_instep = 1;
-					dbg_active = 0;
+					dbg_active = 1;
 					mtmsr(msr);
 					return;
 				case 'T':
@@ -647,20 +734,42 @@ static void* debugger(void *arg)
 {
 	u32 addr,len,res;
 	s32 thrid;
+	u32 sigval;
 	u8 *ptr;
 	frame_context *ctx = NULL;
 
+	ctx = &_thr_executing->context;
 	dbg_currthr = _thr_executing->id;
-	while(1) {
-		VIDEO_WaitVSync();
+	sigval = computeSignal(EX_PRG);
+/*	
+	ptr = remcomOutBuffer;
+	*ptr++ = 'T';
+	*ptr++ = hexchars[sigval>>4];
+	*ptr++ = hexchars[sigval&0x0f];
+	*ptr++ = hexchars[PC_REGNUM>>4];
+	*ptr++ = hexchars[PC_REGNUM&0x0f];
+	*ptr++ = ':';
+	ptr = mem2hex((u8*)&ctx->LR,ptr,4);
+	*ptr++ = ';';
+	*ptr++ = hexchars[SP_REGNUM>>4];
+	*ptr++ = hexchars[SP_REGNUM&0x0f];
+	*ptr++ = ':';
+	ptr = mem2hex((u8*)&ctx->GPR[1],ptr,4);
+	*ptr++ = ';';
+	*ptr++ = 0;
 
+	put_packet(remcomOutBuffer);
+*/
+	while(1) {
+		//VIDEO_WaitVSync();
 		remcomOutBuffer[0] = 0;
-		if(get_packet(remcomInBuffer)) {
+		if(get_packet(remcomInBuffer)
+			&& !dbg_active) {
 			switch(remcomInBuffer[0]) {
 				case '?':
 					remcomOutBuffer[0] = 'S';
-					remcomOutBuffer[1] = hexchars[EX_PRG>>4];
-					remcomOutBuffer[2] = hexchars[EX_PRG&0x0f];
+					remcomOutBuffer[1] = hexchars[sigval>>4];
+					remcomOutBuffer[2] = hexchars[sigval&0x0f];
 					remcomOutBuffer[3] = 0;
 					break;
 				case 'H':
@@ -669,8 +778,12 @@ static void* debugger(void *arg)
 					ctx = __lwp_getthrcontext(dbg_currthr);
 					strcpy(remcomOutBuffer,"OK");
 					break;
-				case 'c':
 				case 'k':
+				case 'D':
+					dbg_connected = DBG_CLOSE;
+					dbg_instep = 0;
+					continue;
+				case 'c':
 					dbg_instep = 0;
 					continue;
 				case 'g':
@@ -726,36 +839,46 @@ static void* debugger(void *arg)
 
 void debugger_appcall()
 {
+	u32 level;
 	struct debugger_state *dbg_state;
-
 	//printf("debugger_appcall()\n");
 
 	if(uip_conn->lport==HTONS(dbg_port)) {
 		//printf("debugger_appcall(%d)\n",uip_conn->lport);
 		dbg_state = (struct debugger_state*)uip_conn->appstate;
 		if(uip_connected()) {
+			printf("uip_connected\n");
+			_CPU_ISR_Disable(level);
+			dbg_connected = DBG_CONNECTED;
 			dbg_state->state = DBG_CONNECTED;
-			dbg_state->alive = 0;
-			rx_len = rx_pos = 0;
-			tx_sentlen = tx_pos = 0;
-			memset(rx_buffer,0,TCPBUFMAX);
-			memset(tx_buffer,0,TCPBUFMAX);
+			dbg_state->tx_sendlen = 0;
+			_CPU_ISR_Restore(level);
+			return;
+		}
+		if(dbg_connected==DBG_CLOSE) {
+			uip_close();
 			return;
 		}
 		if(uip_acked()) {
-			acked();
+			acked(dbg_state);
 		}
 		if(uip_newdata() && dbg_state->state==DBG_CONNECTED) {
-			if((rx_len+uip_datalen())<=TCPBUFMAX) {
-				memcpy(rx_buffer+rx_len,(void*)uip_appdata,uip_datalen());
-				rx_len += uip_datalen();
-			}
+			newdata();
+		}
+		if(uip_closed() || uip_aborted()) {
+			_CPU_ISR_Disable(level);
+			dbg_connected = DBG_CLOSED;
+			dbg_state->state = DBG_CLOSED;
+			rx_pos = tx_pos = rx_len = 0;
+			memset(rx_buffer,0,TCPBUFMAX);
+			memset(tx_buffer,0,TCPBUFMAX);
+			_CPU_ISR_Restore(level);
 		}
 
 		if(uip_rexmit() || uip_newdata() || uip_acked()) {
-			senddata();
+			senddata(dbg_state);
 		} else if(uip_poll()) {
-			senddata();
+			senddata(dbg_state);
 		}
 	}
 }
