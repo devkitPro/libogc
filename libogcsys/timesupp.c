@@ -166,7 +166,7 @@ unsigned int _DEFUN(nanosleep,(tb),
 
 	timeout = __lwp_wd_calc_ticks(tb);
 	__lwp_thread_setstate(_thr_executing,LWP_STATES_DELAYING|LWP_STATES_INTERRUPTIBLE_BY_SIGNAL);
-	__lwp_wd_initialize(&_thr_executing->timer,__lwp_thread_delayended,_thr_executing->own);
+	__lwp_wd_initialize(&_thr_executing->timer,__lwp_thread_delayended,_thr_executing);
 	__lwp_wd_insert_ticks(&_thr_executing->timer,timeout);
 
 	__lwp_thread_dispatchenable();

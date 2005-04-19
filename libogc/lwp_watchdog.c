@@ -23,14 +23,17 @@ static void __lwp_wd_settimer(wd_cntrl *wd)
 	s64 int_max = INT_MAX;
 	s64 delta_interval = (s64)wd->delta_interval;
 #ifdef _LWPWD_DEBUG
-	printf("__lwp_wd_settimer(%lld)\n",delta_interval);
+	printf("__lwp_wd_settimer(%p,%lld)\n",wd,delta_interval);
 #endif
 	now = gettime();
 	diff = diff_ticks(now,wd->start_time);
 	delta_interval -= diff;
+#ifdef _LWPWD_DEBUG
+	printf("__lwp_wd_settimer(%lld,%lld,%lld)\n",wd->start_time,now,delta_interval);
+#endif
 	if(0<=-(delta_interval)) {
 #ifdef _LWPWD_DEBUG
-		printf("0<(min_ticks-delta_interval): __lwp_wd_settimer(0)\n");
+		printf("0<=-(min_ticks-delta_interval(%lld)):  __lwp_wd_settimer(0)\n",diff);
 #endif
 		wd->delta_interval = 0;
 		mtdec(0);

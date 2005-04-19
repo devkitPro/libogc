@@ -10,6 +10,7 @@
 #include "lwp_watchdog.h"
 #include "lwp_wkspace.h"
 
+#define LWP_MAXPRIORITIES		256
 #define LWP_MAXTHREADS			1024
 
 /* new one */
@@ -21,14 +22,14 @@ lwp_cntrl *_thr_executing = NULL;
 lwp_cntrl *_thr_heir = NULL;
 lwp_cntrl *_thr_allocated_fp = NULL;
 
-lwp_queue _lwp_thr_ready[256];
+lwp_queue _lwp_thr_ready[LWP_MAXPRIORITIES];
 
 volatile boolean _context_switch_want;
 vu32 _thread_dispatch_disable_level;
 
 void **__lwp_thr_libc_reent = NULL;
 
-static lwp_obj _lwp_objects[1024];
+static lwp_obj _lwp_objects[LWP_MAXTHREADS];
 
 extern void _cpu_context_switch(void *,void *);
 extern void _cpu_context_save(void *);
@@ -129,11 +130,14 @@ static inline u32 __lwp_msr_getlevel()
 
 void __lwp_thread_delayended(void *arg)
 {
-	lwp_obj *obj = (lwp_obj*)arg;
-	if(!obj) return;
+	lwp_cntrl *thethread = (lwp_cntrl*)arg;
+#ifdef _LWPTHREADS_DEBUG
+	printf("__lwp_thread_delayended(%p)\n",thethread);
+#endif
+	if(!thethread) return;
 	
 	__lwp_thread_dispatchdisable();
-	__lwp_thread_unblock(&obj->thethread);
+	__lwp_thread_unblock(thethread);
 	__lwp_thread_dispatchunnest();
 }
 
@@ -230,6 +234,8 @@ void __lwp_thread_freelwp(lwp_cntrl *thethread)
 	_CPU_ISR_Disable(level);
 	idx = thethread->id;
 	_lwp_objects[idx].lwp_id = -1;
+	_lwp_objects[idx].thethread.id = -1;
+	_lwp_objects[idx].thethread.own = NULL;
 	_CPU_ISR_Restore(level);
 }
 
@@ -565,8 +571,7 @@ u32 __lwp_thread_init(lwp_cntrl *thethread,void *stack_area,u32 stack_size,u32 p
 #ifdef _LWPTHREADS_DEBUG
 	printf("__lwp_thread_init(%p,%p,%d,%d,%d)\n",thethread,stack_area,stack_size,prio,isr_level);
 #endif
-	thethread->id = -1;
-	thethread->own = NULL;
+
 	if(!stack_area) {
 		if(!__lwp_stack_isenough(stack_size))
 			act_stack_size = CPU_MINIMUM_STACK_SIZE;
@@ -622,8 +627,6 @@ void __lwp_thread_close(lwp_cntrl *thethread)
 		*(void**)p->wait.ret_arg = value_ptr;
 	}
 	__lwp_thread_freelwp(thethread);
-	thethread->own = NULL;
-	thethread->id = -1;
 	_CPU_ISR_Restore(level);
 
 	__libc_delete_hook(_thr_executing,thethread);
@@ -707,7 +710,7 @@ u32 __lwp_sys_init()
 	_thr_heir = NULL;
 	_thr_allocated_fp = NULL;
 
-	for(index=0;index<1024;index++) {
+	for(index=0;index<LWP_MAXTHREADS;index++) {
 		_lwp_objects[index].lwp_id = -1;
 	}
 	for(index=0;index<=LWP_PRIO_MAX;index++)
