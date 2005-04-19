@@ -111,8 +111,9 @@
 #define   BBA_NWAYS_10TXF	 (1<<6)
 #define   BBA_NWAYS_10TXH	 (1<<7)
 
-#define BBA_GCA 0x32		/* GMAC Configuration A Register, RW, 00h */
-#define   BBA_GCA_ARXERRB    (1<<3)	/* ARXERRB, Accept RX packet with error */
+#define BBA_GCA 0x32			/* GMAC Configuration A Register, RW, 00h */
+#define   BBA_GCA_ARXERRB		(1<<3)	/* ARXERRB, Accept RX packet with error */
+#define   BBA_GCA_TXFIFOCNTEN   (1<<6)	/* TX FIFO cnt enable */
 
 #define BBA_MISC 0x3d		/* MISC Control Register 1, RW, 3ch */
 #define   BBA_MISC_BURSTDMA  (1<<0)
@@ -151,7 +152,7 @@
 #define BBA_TX_STATUS_TERR    (1<<7)
 
 #define BBA_INIT_TLBP	0x00
-#define BBA_INIT_BP		0x06
+#define BBA_INIT_BP		0x01
 #define BBA_INIT_RHBP	0x0f
 #define BBA_INIT_RWP	BBA_INIT_BP
 #define BBA_INIT_RRP	BBA_INIT_BP
@@ -230,6 +231,10 @@ extern void udelay(int us);
 #define bba_out12(reg,val)	do { \
 									bba_out8((reg),((val)&0xff)); \
 									bba_out8(((reg)+1),(((val)&0x0f00)>>8)); \
+							} while(0)
+#define bba_out16(reg,val)	do { \
+									bba_out8((reg),((val)&0xff)); \
+									bba_out8(((reg)+1),(((val)&0xff00)>>8)); \
 							} while(0)
 
 static void bba_cmd_ins(u32 reg,void *val,u32 len);
