@@ -223,12 +223,8 @@ s32 card_initFAT(s32 drv_no)
 
 	fat_bytes = tot_clusters*2;
 	_fat1StartSect[drv_no] = _sdInfo[drv_no].smbr.partition_entries[0].start_lba_sector+_sdInfo[drv_no].spbr.sbpb.reserved_sects;
-	_fat1Sectors[drv_no] = fat_bytes/_sdInfo[drv_no].spbr.sbpb.bytes_per_sect;		//holds the count of FAT sectors, is recalculated 
-																					//and should match the sects_in_fat entry of the bpb
-	if(_fat1Sectors[drv_no]!=_sdInfo[drv_no].spbr.sbpb.sects_in_fat) {
-		card_freeBuffer(fat_buf);
-		return CARDIO_ERROR_INCORRECTFAT;
-	}
+	_fat1Sectors[drv_no] = _sdInfo[drv_no].spbr.sbpb.sects_in_fat;
+	
 #ifdef _CARDFAT_DEBUG
 	printf("_fat1StartSect[%d] = %d\n",drv_no,_fat1StartSect[drv_no]);
 	printf("_fat1Sectors[%d] = %d\n",drv_no,_fat1Sectors[drv_no]);
