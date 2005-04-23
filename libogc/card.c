@@ -266,16 +266,17 @@ static s32 __card_getfilenum(card_block *card,const char *filename,s32 *fileno)
 	u32 i = 0;
 	struct card_direntry *entries = NULL;
 	struct card_dir *dirblock = NULL;
-#ifdef _CARD_DEBUG
+//#ifdef _CARD_DEBUG
 	printf("__card_getfilenum(%p,%s)\n",card,filename);
-#endif
+//#endif
 	if(!card->attached) return CARD_ERROR_NOCARD;
 	dirblock = __card_getdirblock(card);
 
+	printf("__card_getfilenum(%s,%s)\n",card_gamecode,card_company);
 	entries = dirblock->entries;
 	for(i=0;i<CARD_MAXFILES;i++) {
 		if(entries[i].gamecode[0]!=0xff) {
-			if(memcmp(entries[i].filename,filename,CARD_FILENAMELEN)==0
+			if(strnicmp(entries[i].filename,filename,strlen(filename))==0
 				&& (card_gamecode[0]!=0xff && memcmp(entries[i].gamecode,card_gamecode,4)==0)
 				&& (card_company[0]!=0xff && memcmp(entries[i].company,card_company,2)==0)) {
 				*fileno = i;
