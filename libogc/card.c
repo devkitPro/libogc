@@ -61,7 +61,7 @@ struct card_direntry {
 	u32 commentaddr;
 } __attribute__((packed));
 
-struct card_dir {
+struct card_dat {			// dir allocation table
 	struct card_direntry entries[CARD_MAXFILES];
 };
 
@@ -102,7 +102,7 @@ typedef struct _card_block {
 	u32 transfer_cnt;
 	u16 curr_fileblock;
 	card_file *curr_file;
-	struct card_dir *curr_dir;
+	struct card_dat *curr_dir;
 	struct card_bat *curr_fat;
 	void *workarea;
 	void *cmd_usr_buf;
@@ -251,7 +251,7 @@ static s32 __card_getcntrlblock(s32 chn,card_block **card)
 	return ret;
 }
 
-static __inline__ struct card_dir* __card_getdirblock(card_block *card)
+static __inline__ struct card_dat* __card_getdirblock(card_block *card)
 {
 	return card->curr_dir;
 }
@@ -265,7 +265,7 @@ static s32 __card_getfilenum(card_block *card,const char *filename,s32 *fileno)
 {
 	u32 i = 0;
 	struct card_direntry *entries = NULL;
-	struct card_dir *dirblock = NULL;
+	struct card_dat *dirblock = NULL;
 #ifdef _CARD_DEBUG
 	printf("__card_getfilenum(%p,%s)\n",card,filename);
 #endif
@@ -293,7 +293,7 @@ static s32 __card_seek(card_file *file,s32 len,s32 offset,card_block **rcard)
 	s32 i,entry_len;
 	card_block *card = NULL;
 	struct card_direntry *entry = NULL;
-	struct card_dir *dirblock = NULL;
+	struct card_dat *dirblock = NULL;
 	struct card_bat *fatblock = NULL;
 #ifdef _CARD_DEBUG
 	printf("__card_seek(%d,%p,%d,%d)\n",file->filenum,file,len,offset);
@@ -351,7 +351,7 @@ static u32 __card_checkdir(card_block *card,u32 *currdir)
 	u32 dir,bad,bad_dir;
 	u16 chksum0,chksum1;
 	struct card_dircntrl *dircntrl[2];
-	struct card_dir *dirblock[2];
+	struct card_dat *dirblock[2];
 #ifdef _CARD_DEBUG
 	printf("__card_checkdir(%p,%p)\n",card,currdir);
 #endif
@@ -954,7 +954,7 @@ static void __write_callback(s32 chn,s32 result)
 	cardcallback cb = NULL;
 	card_file *file = NULL;
 	struct card_bat *fatblock = NULL;
-	struct card_dir *dirblock = NULL;
+	struct card_dat *dirblock = NULL;
 	struct card_direntry *entry = NULL;
 	card_block *card = &cardmap[chn];
 #ifdef _CARD_DEBUG
@@ -1347,7 +1347,7 @@ static void __card_dirwritecallback(s32 chn,s32 result)
 {
 	s32 ret;
 	cardcallback cb = NULL;
-	struct card_dir *dir1,*dir2;
+	struct card_dat *dir1,*dir2;
 	card_block *card = &cardmap[chn];
 #ifdef _CARD_DEBUG
 	printf("__card_dirwritecallback(%d,%d)\n",chn,result);
@@ -1556,7 +1556,7 @@ static void __card_direrasecallback(s32 chn,s32 result)
 {
 	s32 ret;
 	cardcallback cb = NULL;
-	struct card_dir *dirblock = NULL;
+	struct card_dat *dirblock = NULL;
 	card_block *card = &cardmap[chn];
 #ifdef _CARD_DEBUG
 	printf("__card_direrasecallback(%d,%d)\n",chn,result);
@@ -1581,7 +1581,7 @@ static void __card_createfatcallback(s32 chn,s32 result)
 	cardcallback cb = NULL;
 	card_file *file = NULL;
 	struct card_direntry *entry = NULL;
-	struct card_dir *dirblock = NULL;
+	struct card_dat *dirblock = NULL;
 	card_block *card = &cardmap[chn];
 #ifdef _CARD_DEBUG
 	printf("__card_createfatcallback(%d,%d)\n",chn,result);
@@ -2318,7 +2318,7 @@ s32 CARD_ReadAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback 
 {
 	s32 ret;
 	cardcallback cb = NULL;
-	struct card_dir *dirblock = NULL;
+	struct card_dat *dirblock = NULL;
 	card_block *card = NULL;
 
 	if(len<=0 || (len&0x1ff) || (offset>0 && (offset&0x1ff))) return CARD_ERROR_FATAL_ERROR;
@@ -2390,7 +2390,7 @@ s32 CARD_CreateAsync(s32 chn,const char *filename,u32 size,card_file *file,cardc
 	cardcallback cb = NULL;
 	card_block *card = NULL;
 	struct card_bat *fatblock = NULL;
-	struct card_dir *dirblock = NULL;
+	struct card_dat *dirblock = NULL;
 	struct card_direntry *entry = NULL;
 #ifdef _CARD_DEBUG
 	printf("CARD_CreateAsync(%d,%s,%d,%p,%p)\n",chn,filename,size,file,callback);
@@ -2456,7 +2456,7 @@ s32 CARD_Create(s32 chn,const char *filename,u32 size,card_file *file)
 s32 CARD_Open(s32 chn,const char *filename,card_file *file)
 {
 	s32 ret,fileno;
-	struct card_dir *dirblock = NULL;
+	struct card_dat *dirblock = NULL;
 	card_block *card = NULL;
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
@@ -2475,6 +2475,7 @@ s32 CARD_Open(s32 chn,const char *filename,card_file *file)
 	file->chn = chn;
 	file->filenum = fileno;
 	file->offset = 0;
+	file->len = dirblock->entries[fileno].length*card->sector_size;
 	file->iblock = dirblock->entries[fileno].block;	
 
 	__card_putcntrlblock(card,CARD_ERROR_READY);
@@ -2500,7 +2501,7 @@ s32 CARD_DeleteAsync(s32 chn,const char *filename,cardcallback callback)
 	s32 ret,fileno;
 	cardcallback cb = NULL;
 	card_block *card = NULL;
-	struct card_dir *dirblock = NULL;
+	struct card_dat *dirblock = NULL;
 	struct card_direntry *entry = NULL;
 #ifdef _CARD_DEBUG
 	printf("CARD_DeleteAsync(%d,%s,%p)\n",chn,filename,callback);
@@ -2571,7 +2572,7 @@ s32 CARD_GetErrorCode(s32 chn)
 s32 __card_findnext(card_dir *dir) 
 { 
 	s32 ret; 
-	struct card_dir *dirblock = NULL; 
+	struct card_dat *dirblock = NULL; 
 	struct card_direntry *entries = NULL; 
 	card_block *card = NULL; 
 
