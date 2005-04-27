@@ -325,9 +325,9 @@ static inline void bba_insdata(void *val,u32 len)
 {
 	u32 recv_len = ((len+31)&~31);
 
+	DCInvalidateRange(val,len);
 	EXI_Dma(EXI_CHANNEL_0,val,recv_len,EXI_READ,NULL);
 	EXI_Sync(EXI_CHANNEL_0);
-	DCInvalidateRange(val,recv_len);
 }	
 
 

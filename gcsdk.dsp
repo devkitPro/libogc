@@ -771,6 +771,50 @@ SOURCE=.\lockstubs\lock_supp_stub.c
 SOURCE=.\lockstubs\malloc_lock_stub.c
 # End Source File
 # End Group
+# Begin Group "libsamplerate.c"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\libsamplerate\common.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libsamplerate\fastest_coeffs.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libsamplerate\float_cast.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libsamplerate\high_qual_coeffs.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libsamplerate\mid_qual_coeffs.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libsamplerate\samplerate.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libsamplerate\samplerate.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libsamplerate\src_linear.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libsamplerate\src_sinc.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libsamplerate\src_zoh.c
+# End Source File
+# End Group
 # End Group
 # Begin Group "Header Files"
 

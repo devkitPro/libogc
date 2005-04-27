@@ -387,20 +387,21 @@ static void putdbgstr(const char *str)
 
 static void acked(struct debugger_state *state)
 {
-//	printf("acked: %d\n",state->tx_sendlen);
+	printf("acked: %d\n",state->tx_sendlen);
 	if((tx_pos-state->tx_sendlen)>0) {
 		tx_pos -= state->tx_sendlen;
 		memmove(tx_buffer,tx_buffer+state->tx_sendlen,tx_pos);
 	} else
 		tx_pos = 0;
 	state->tx_sendlen = 0;
-//	printf("acked: %d,%d\n",tx_pos,state->tx_sendlen);
+	printf("acked: %d,%d\n",tx_pos,state->tx_sendlen);
 }
 
 static void senddata(struct debugger_state *state)
 {
 	u8 *tx_ptr;
 
+	uip_len = 0;
 	if(state->tx_sendlen>0 || !tx_pos) return;
 
 	tx_ptr = (u8*)uip_appdata;
@@ -409,7 +410,7 @@ static void senddata(struct debugger_state *state)
 
 	uip_len = state->tx_sendlen;
 	memcpy(tx_ptr,tx_buffer,uip_len+1);
-//	printf("tx:%s %d,%d\n",tx_ptr,tx_pos,state->tx_sendlen);
+	printf("tx:%s %d,%d\n",tx_ptr,tx_pos,state->tx_sendlen);
 	uip_send(tx_ptr,uip_len);
 }
 
@@ -417,55 +418,53 @@ static void newdata()
 {
 	u8 ch;
 	u8 *rx_ptr;
-	u32 i;
+	u32 i,j,cnt;
 	u8 chksum;
 	u8 xmitcsum;
-	u8 nib;
 
 	i = 0;
 	rx_len = 0;
 	rx_pos = 0;
 	rx_ptr = (u8*)uip_appdata;
-//	printf("%d\n",uip_datalen());
+	printf("%d\n",uip_datalen());
 	while(i<uip_datalen()) {
 		ch = rx_ptr[i++];
-		rx_buffer[rx_len++] = ch;
 		if((ch&0x7f)=='$') {
 			chksum = 0;
 			xmitcsum = -1;
 			while(i<uip_datalen()) {
 				ch = rx_ptr[i++];
-				rx_buffer[rx_len++] = ch;
 
 				ch &= 0x7f;
 				if(ch=='#') break;
 
 				chksum += ch;
+				remcomInBuffer[rx_len++] = ch;
 			}
 			if(ch=='#') {
-				nib = rx_ptr[i++];
-				rx_buffer[rx_len++] = nib;
-				xmitcsum = hex(nib&0x7f)<<4;
-				nib = rx_ptr[i++];
-				rx_buffer[rx_len++] = nib;
-				xmitcsum |= hex(nib&0x7f);
+				xmitcsum = hex((rx_ptr[i++]&0x7f))<<4;
+				xmitcsum |= hex((rx_ptr[i++]&0x7f));
 				
 				if(xmitcsum==chksum) {
 					putdbgchar('+');
-					if(rx_buffer[3]==':') {
-						putdbgchar(rx_buffer[1]);
-						putdbgchar(rx_buffer[2]);
+					if(remcomInBuffer[2]==':') {
+						putdbgchar(remcomInBuffer[0]);
+						putdbgchar(remcomInBuffer[1]);
+
+						cnt = strlen(remcomInBuffer);
+						for(j=0;j<cnt;j++)
+							remcomInBuffer[j-3] = remcomInBuffer[j];
 					}
 					break;
 				} else {
 					putdbgchar('-');
 					rx_len = 0;
+					remcomInBuffer[rx_len] = 0;
 				}
 			}
 		}
 	}
-	rx_buffer[rx_len] = 0;
-//	printf("%s,%d\n",rx_buffer,rx_len);
+	printf("%s,%d\n",remcomInBuffer,rx_len);
 }
 
 void DEBUG_Init(u32 port)
@@ -545,8 +544,8 @@ static u32 put_packet(u8 *buffer)
 	u32 cnt,i,recv;
 	u8 ch,out[1024];
 
-//	printf("put_packet()\n");
-	do {
+	printf("put_packet()\n");
+//	do {
 		out[0] = '$';
 
 		i = 1;
@@ -563,8 +562,8 @@ static u32 put_packet(u8 *buffer)
 		out[i] = '\0';
 		putdbgstr(out);
 		
-		while((recv=getdbgchar())==-1);
-	} while((recv&0x7f)!='+');
+	//	while((recv=getdbgchar())==-1);
+	//} while((recv&0x7f)!='+');
 	return cnt;
 }
 
@@ -574,7 +573,7 @@ static void handle_query()
 	u8 *ptr;
 	lwp_obj *threads = NULL;
 
-//	printf("%s\n",remcomInBuffer);
+	printf("%s\n",remcomInBuffer);
 
 	__lwp_getthreadlist(&threads);
 	if(remcomInBuffer[1]=='C') 
@@ -598,14 +597,100 @@ static void handle_query()
 		sprintf(remcomOutBuffer,"Text=%08x;Data=%08x;Bss=%08x",((u32)__text_fstart-(u32)__text_fstart),((u32)__data_fstart-(u32)__text_fstart),((u32)__bss_fstart-(u32)__text_fstart));
 }
 
+static s32 handle_tcpstream(s32 sigval,frame_context *p_dbgthread)
+{
+	u8* ptr;
+	s32 thrid,res;
+	u32 addr,len;
+	u32 except_thr;
+	frame_context *pctx;
+
+	except_thr = __lwp_getcurrentid();
+	remcomOutBuffer[0] = 0;
+
+	poll();
+
+	if(remcomInBuffer[0]!=0) {
+		switch(remcomInBuffer[0]) {
+			case '?':
+				remcomOutBuffer[0] = 'S';
+				remcomOutBuffer[1] = hexchars[sigval>>4];
+				remcomOutBuffer[2] = hexchars[sigval&0x0f];
+				remcomOutBuffer[3] = 0;
+				break;
+			case 'H':
+				if(remcomInBuffer[2]=='-') dbg_currthr = except_thr;
+				else dbg_currthr = strtoul(remcomInBuffer+2,0,16);
+				if(dbg_currthr==except_thr) pctx = p_dbgthread;
+				else pctx = __lwp_getthrcontext(dbg_currthr);
+				strcpy(remcomOutBuffer,"OK");
+				break;
+			case 'g':
+				ptr = remcomOutBuffer;
+				ptr = mem2hex((u8*)pctx->GPR,ptr,32*4);
+				ptr = mem2hex((u8*)pctx->FPR,ptr,32*8);
+				if(pctx==p_dbgthread) 
+					ptr = mem2hex((u8*)&pctx->SRR0,ptr,4);
+				else 
+					ptr = mem2hex((u8*)&pctx->LR,ptr,4);
+				ptr = mem2hex((u8*)&pctx->MSR,ptr,4);
+				ptr = mem2hex((u8*)&pctx->CR,ptr,4);
+				ptr = mem2hex((u8*)&pctx->LR,ptr,4);
+				ptr = mem2hex((u8*)&pctx->CTR,ptr,4);
+				ptr = mem2hex((u8*)&pctx->XER,ptr,4);
+				break;
+			case 'm':
+				ptr = &remcomInBuffer[1];
+				if(hexToInt(&ptr,&addr) && (addr&0xC0000000) 
+					&& *ptr++==',' && hexToInt(&ptr,&len)) {
+					if(mem2hex((u8*)addr,remcomOutBuffer,len)) break;
+					strcpy(remcomOutBuffer,"E03");
+				} else
+					strcpy(remcomOutBuffer,"E01");
+				break;
+			case 'q':
+				handle_query();
+				break;
+			case 'k':
+			case 'D':
+			case 'c':
+			case 's':
+				return 0;
+			case 'T':
+				ptr = &remcomInBuffer[1];
+				hexToInt(&ptr,&thrid);
+				if(__lwp_is_threadactive(thrid)) strcpy(remcomOutBuffer,"OK");
+				else strcpy(remcomOutBuffer,"E01");
+				break;
+			case 'z':
+			case 'Z':
+				if(remcomInBuffer[1]!='0') {
+					strcpy(remcomOutBuffer,"E01");
+					break;
+				}
+
+				ptr = remcomInBuffer+3;
+				hexToInt(&ptr,&addr);
+
+				res =  0;
+				if(remcomInBuffer[0]=='Z') res = insert_bp((u8*)addr);
+				else remove_bp((u8*)addr);
+
+				strcpy(remcomOutBuffer,"OK");
+				break;
+		}
+		put_packet(remcomOutBuffer);
+	}
+}
+
+
 void c_debug_handler(frame_context *ctx)
 {
 	u8* ptr;
-	s32 thrid;
+	s32 thrid,ret;
 	u32 addr,len,msr;
 	u32 sigval,res;
 	u32 except_thr;
-	frame_context *pctx = ctx;
 
 	if(dbg_active) return;
 
@@ -637,6 +722,19 @@ void c_debug_handler(frame_context *ctx)
 	
 	put_packet(remcomOutBuffer);
 	
+	while(1) {
+		ret = handle_tcpstream(sigval,ctx);
+		if(!ret) {
+			dbg_connected = DBG_CLOSE;
+			ctx->SRR1 &= ~MSR_SE;
+			dbg_instep = 0;
+			dbg_active = 0;
+			mtmsr(msr);
+			break;
+		}
+	}
+	return;
+/*
 	except_thr = __lwp_getcurrentid();
 	while(1) {
 		remcomOutBuffer[0] = 0;
@@ -728,6 +826,7 @@ void c_debug_handler(frame_context *ctx)
 			put_packet(remcomOutBuffer);
 		}
 	}
+*/
 }
 
 static void* debugger(void *arg)
@@ -853,7 +952,7 @@ void debugger_appcall()
 			dbg_state->state = DBG_CONNECTED;
 			dbg_state->tx_sendlen = 0;
 			_CPU_ISR_Restore(level);
-			return;
+			//return;
 		}
 		if(dbg_connected==DBG_CLOSE) {
 			uip_close();

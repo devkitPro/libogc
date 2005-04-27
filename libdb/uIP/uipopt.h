@@ -50,7 +50,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uipopt.h,v 1.5 2005-04-19 18:23:24 shagkur Exp $
+ * $Id: uipopt.h,v 1.6 2005-04-27 16:43:51 shagkur Exp $
  *
  */
 
@@ -446,7 +446,7 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_LOGGING     0
+#define UIP_LOGGING     1
 
 /**
  * Print out a uIP log message.
