@@ -4,22 +4,19 @@
 PREFIX	:=	powerpc-gekko
 #---------------------------------------------------------------------------------
 
-
-
 CC		:=	$(PREFIX)-gcc
 CXX		:=	$(PREFIX)-g++
 AS		:=	$(PREFIX)-as
 AR		:=	$(PREFIX)-ar
 LD		:=	$(PREFIX)-ld
-OBJCOPY	:=	$(PREFIX)-objcopy
+OBJCOPY		:=	$(PREFIX)-objcopy
 
-BUILD	:=	build
+BUILD		:=	build
 
 GETPATH		:=	$(CC) -v 2>&1 | sed -n -e 's/Reading specs from //p' | sed -e 's/\/lib.*//'
 INSTALLPATH	:=	$(shell $(GETPATH))
 GCC_VERSION	:=	$(shell $(CC) -dumpversion)
-DATESTRING	:=	$(shell date +%Y)$(shell date +%m)$(shell date +%d)
-
+DATESTRING	:=      $(shell date +%Y)$(shell date +%m)$(shell date +%d)
 
 #---------------------------------------------------------------------------------
 ifneq ($(BUILD),$(notdir $(CURDIR)))
@@ -31,6 +28,7 @@ export LWIPDIR		:= $(BASEDIR)/lwip
 export OGCDIR		:= $(BASEDIR)/libogc
 export MODDIR		:= $(BASEDIR)/libmodplay
 export MADDIR		:= $(BASEDIR)/libmad
+export SAMPLEDIR	:= $(BASEDIR)/libsamplerate
 export DBDIR		:= $(BASEDIR)/libdb
 export SDCARDDIR	:= $(BASEDIR)/libsdcard
 export GCSYSDIR		:= $(BASEDIR)/libogcsys
@@ -72,6 +70,7 @@ VPATH :=	$(LWIPDIR)				\
 			$(OGCDIR)			\
 			$(MODDIR)			\
 			$(MADDIR)			\
+			$(SAMPLEDIR)			\
 			$(DBDIR)			\
 			$(DBDIR)/uIP		\
 			$(SDCARDDIR)			\
@@ -80,7 +79,7 @@ VPATH :=	$(LWIPDIR)				\
 
 
 #---------------------------------------------------------------------------------
-LWIPOBJ	:=	network.o netio.o gcif.o lib_arch.o		\
+LWIPOBJ		:=	network.o netio.o gcif.o lib_arch.o		\
 			inet.o mem.o dhcp.o raw.o		\
 			memp.o netif.o pbuf.o stats.o	\
 			sys.o tcp.o tcp_in.o tcp_out.o	\
@@ -88,7 +87,7 @@ LWIPOBJ	:=	network.o netio.o gcif.o lib_arch.o		\
 			ip_addr.o etharp.o loopif.o
 
 #---------------------------------------------------------------------------------
-OGCOBJ	:=	lwp_priority.o lwp_queue.o lwp_threadq.o lwp_threads.o lwp_sema.o	\
+OGCOBJ		:=	lwp_priority.o lwp_queue.o lwp_threadq.o lwp_threads.o lwp_sema.o	\
 			lwp_messages.o lwp.o lwp_handler.o lwp_stack.o lwp_mutex.o 	\
 			lwp_watchdog.o lwp_wkspace.o sys_state.o \
 			exception_handler.o exception.o irq.o irq_handler.o semaphore.o \
@@ -99,27 +98,27 @@ OGCOBJ	:=	lwp_priority.o lwp_queue.o lwp_threadq.o lwp_threads.o lwp_sema.o	\
 			depackrnc1.o dsp.o si.o tdf.o ogc_crt0.o
 
 #---------------------------------------------------------------------------------
-MODOBJ	:=	freqtab.o mixer.o modplay.o semitonetab.o gcmodplay.o
+MODOBJ		:=	freqtab.o mixer.o modplay.o semitonetab.o gcmodplay.o
 
 #---------------------------------------------------------------------------------
-MADOBJ	:=	bit.o decoder.o fixed.o frame.o huffman.o \
+MADOBJ		:=	bit.o decoder.o fixed.o frame.o huffman.o \
 			layer12.o layer3.o stream.o synth.o timer.o \
-			version.o mp3player.o
+			version.o mp3player.o samplerate.o src_sinc.o src_linear.o src_zoh.o
 
 #---------------------------------------------------------------------------------
-DBOBJ	:=	debug_handler.o debug.o bba_dbg.o uip_arp.o uip_arch.o uip.o 
+DBOBJ		:=	debug_handler.o debug.o bba_dbg.o uip_arp.o uip_arch.o uip.o 
 
 #---------------------------------------------------------------------------------
 SDCARDOBJ	:=	sdcard.o sdcardio.o card_fat.o card_buf.o card_io.o card_uni.o
 
 #---------------------------------------------------------------------------------
 GCSYSOBJ	:=	newlibc.o sbrk.o open.o write.o close.o \
-				getpid.o kill.o isatty.o fstat.o read.o \
-				lseek.o sleep.o usleep.o timesupp.o \
-				console.o console_font.o \
-				console_font_8x8.o iosupp.o netio_fake.o \
-				stdin_fake.o sdcardio_fake.o flock_supp.o \
-				lock_supp.o dvd_supp.o malloc_lock.o
+			getpid.o kill.o isatty.o fstat.o read.o \
+			lseek.o sleep.o usleep.o timesupp.o \
+			console.o console_font.o \
+			console_font_8x8.o iosupp.o netio_fake.o \
+			stdin_fake.o sdcardio_fake.o flock_supp.o \
+			lock_supp.o dvd_supp.o malloc_lock.o
 				
 STUBSOBJ	:=	malloc_lock_stub.o flock_supp_stub.o lock_supp_stub.o gcn_crt0.o
 
@@ -206,11 +205,10 @@ install:
 #---------------------------------------------------------------------------------
 dist:
 #---------------------------------------------------------------------------------
-	@tar	--exclude=*CVS* --exclude=*build* --exclude=*deps* \
+	@tar    --exclude=*CVS* --exclude=*build* --exclude=*deps* \
 			--exclude=*.bz2  --exclude=*include* --exclude=*lib/* \
 			-cvjf libogc-src-$(DATESTRING).tar.bz2 *
 	@tar -cvjf libogc-$(DATESTRING).tar.bz2 include lib license.txt
-
 #---------------------------------------------------------------------------------
 libs: $(OGCLIB).a $(BBALIB).a $(MODLIB).a $(MADLIB).a $(DBLIB).a $(SDCARDLIB).a $(GCSYSLIB).a $(STUBSLIB).a
 #---------------------------------------------------------------------------------

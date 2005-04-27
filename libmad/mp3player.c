@@ -1,198 +1,318 @@
+/***************************************************************************
+ *   Low Level MAD Library Implementation for the GameCube                 *
+ *   By Daniel "nForce" Bloemendal                                         *
+ *   nForce@Sympatico.ca                                                   *
+ ***************************************************************************/
+
+#include <mad.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <lwp.h>
+#include <pad.h>
 #include <limits.h>
-#include <gccore.h>
+#include <system.h>
 #include <ogcsys.h>
-#include <mad.h>
+#include <samplerate.h>
+#include <malloc.h>
 
-#define STACKSIZE			(8192*4)
-#define INPUT_BUFFER_SIZE	(5*8192)
-#define OUTPUT_BUFFER_SIZE	8192
+#define STACKSIZE ( 3 * 8192 )
 
-static u32 curr_audio = 0;
-static u32 first_frame = 1;
-static u32 thr_running = FALSE;
-static boolean mp3_playing = FALSE;
-static u8 InputBuffer[INPUT_BUFFER_SIZE+MAD_BUFFER_GUARD];
-static u8 OutputBuffer[2][OUTPUT_BUFFER_SIZE] ATTRIBUTE_ALIGN(32);
+#define INPUT_BUFFER_SIZE ( 16 * 8192 )
+#define OUTPUT_BUFFER_SIZE ( 8 * 8192 )
+#define OUTPUT_BUFFER_PADDING ( OUTPUT_BUFFER_SIZE )
+#define OUTPUT_BUFFER_PADDED ( OUTPUT_BUFFER_SIZE + OUTPUT_BUFFER_PADDING )
 
-static u8 streamplay_stack[STACKSIZE];
-static lwp_t hstreamplay;
-static lwpq_t streamplay_queue;
-static void* streamplay(void*);
+static unsigned char * InputBuffer;
+static unsigned char OutputBuffer[2][( OUTPUT_BUFFER_PADDED )] __attribute__ ( ( aligned ( 32 ) ) );
+static const unsigned char * OutputBufferEnd[] = { ( OutputBuffer[0] + OUTPUT_BUFFER_SIZE ), ( OutputBuffer[1] + OUTPUT_BUFFER_SIZE ) };
+static float * UpsampleInput; static float * UpsampleOutput; SRC_DATA * USData; double AISampleRate;
+static unsigned short CurrentBuffer; static unsigned char * pOutput;
 
-static struct mad_stream Stream;
-static struct mad_frame Frame;
-static struct mad_synth Synth;
-static mad_timer_t Timer;
+static bool MP3Playing = false;
 
-static s16 fixed_to_short(mad_fixed_t Fixed);
-static void dma_callback();
+static void AllocateMemory ();
+static void DeallocateMemory ();
+static void * StreamPlay ( void * );
+static u8 StreamPlay_Stack[STACKSIZE];
+static lwp_t hStreamPlay;
+static lwpq_t thQueue;
 
-struct _mp3source
+static signed short FixedToShort ( mad_fixed_t Fixed );
+static void Resample ( struct mad_pcm * FrameInfo );
+
+static void DataTransferCallback ();
+
+static unsigned int DSPSampleRate ( unsigned int Input );
+
+struct MP3Source
 {
-	const void * mp3stream;
-	u32 len;
-} mp3source;
+	const void * MP3Stream;
+	u32 Length;
+};
 
-void MP3Player_Init()
+int MP3Player_Play ( const void * MP3Stream, u32 Length )
 {
-	AUDIO_Init(NULL);
-	AUDIO_SetDSPSampleRate(AI_SAMPLERATE_48KHZ);
+	unsigned int Result = 0;
 
-	LWP_InitQueue(&streamplay_queue);
+	struct MP3Source * Source = malloc ( sizeof  ( struct MP3Source ) );
+	Source->MP3Stream = MP3Stream;
+	Source->Length = Length;
+
+	if ( ! LWP_CreateThread ( & hStreamPlay, StreamPlay, Source, StreamPlay_Stack, STACKSIZE, 150 ) )
+	{
+		Result = -1;
+	}
+
+	return Result;
 }
 
-s32 MP3Player_Play(const void *mp3stream, u32 len)
+bool MP3Player_IsPlaying ()
 {
-	if(thr_running==TRUE) return -1;
-	
-	mp3source.mp3stream = mp3stream;
-	mp3source.len = len;
-	
-	mp3_playing = TRUE;
-	AUDIO_RegisterDMACallback(dma_callback);
-	if(LWP_CreateThread(&hstreamplay,streamplay,NULL,streamplay_stack,STACKSIZE,80)!=-1) return 0;
-
-	return -1;
+	return MP3Playing;
 }
 
-void MP3Player_Stop()
+static void * StreamPlay ( void * Music )
 {
-	if(!mp3_playing) return;
+	if ( MP3Playing ) { return 0; }
 
-	AUDIO_StopDMA();
-	AUDIO_RegisterDMACallback(NULL);
+	MP3Playing = true;
 
-	mp3_playing = FALSE;
-	LWP_WakeThread(streamplay_queue);
-	LWP_JoinThread(hstreamplay,NULL);
-}
+	struct MP3Source * Source = ( struct MP3Source * ) Music;
+	const void * MP3Stream = Source->MP3Stream;
+	u32 Length = Source->Length;
 
-static void* streamplay(void *arg)
-{
-	u32 len;
-	u8 *pOutput;
-	void *pGuard;
-	const void *curr_streampos;
+	free ( Source );
 
-	thr_running = TRUE;
-	curr_audio = 0;
-	first_frame = 1;
+	AllocateMemory ();
 
-restart:
-	curr_streampos = mp3source.mp3stream;
-	len = mp3source.len;
+	struct mad_stream Stream;
+	struct mad_frame Frame;
+	struct mad_synth Synth;
+	mad_timer_t Timer;
 
-	mad_stream_init(&Stream);
-	mad_frame_init(&Frame);
-	mad_synth_init(&Synth);
-	mad_timer_reset(&Timer);
+	const void * pStream = MP3Stream;
+	void * pGuard;
+	CurrentBuffer = 0;
+	pOutput = OutputBuffer[CurrentBuffer];
+	unsigned short FirstTransfer = 1;
 
-	while(mp3_playing==TRUE) {
-		if(Stream.buffer==NULL || Stream.error==MAD_ERROR_BUFLEN) {
+	LWP_InitQueue ( & thQueue );
+	AUDIO_Init ( NULL );
+	AUDIO_SetDSPSampleRate ( AI_SAMPLERATE_48KHZ );
+	AUDIO_RegisterDMACallback ( DataTransferCallback );
+
+	AISampleRate = DSPSampleRate ( AUDIO_GetDSPSampleRate () );
+
+	memset ( OutputBuffer[0], 0, ( OUTPUT_BUFFER_PADDED ) );
+	DCFlushRange ( OutputBuffer[0], ( OUTPUT_BUFFER_PADDED ) );
+	memset ( OutputBuffer[1], 0, ( OUTPUT_BUFFER_PADDED ) );
+	DCFlushRange ( OutputBuffer[1], ( OUTPUT_BUFFER_PADDED ) );
+
+	mad_stream_init ( & Stream );
+	mad_frame_init ( & Frame );
+	mad_synth_init ( & Synth );
+	mad_timer_reset ( & Timer );
+
+	while ( true )
+	{
+		if ( Stream.buffer == NULL || Stream.error == MAD_ERROR_BUFLEN )
+		{
 			size_t ReadSize, Remaining;
-			u32 Offset;
-			u8 *ReadStart;
+			unsigned int Offset;
+			unsigned char * ReadStart;
 
-			if(Stream.next_frame!=NULL) {
+			if ( Stream.next_frame != NULL )
+			{
 				Remaining = Stream.bufend - Stream.next_frame;
-				memmove(InputBuffer, Stream.next_frame, Remaining );
+				memmove ( InputBuffer, Stream.next_frame, Remaining );
 				ReadStart = InputBuffer + Remaining;
 				ReadSize = INPUT_BUFFER_SIZE - Remaining;
-			} else {
+			}
+			else
+			{
 				ReadSize = INPUT_BUFFER_SIZE;
 				ReadStart = InputBuffer;
 				Remaining = 0;
 			}
 
 
-			Offset = (curr_streampos - mp3source.mp3stream);
-			if((Offset+ReadSize)>len) ReadSize = len - Offset;
-			if(ReadSize<=0) {
-				mad_synth_finish(&Synth);
-				mad_frame_finish(&Frame);
-				mad_stream_finish(&Stream);
-				goto restart;
+			Offset = ( pStream - MP3Stream );
+
+			if ( ( Offset + ReadSize ) > Length )
+			{
+				ReadSize = Length - Offset;
 			}
 
-			memcpy(ReadStart,curr_streampos,ReadSize);
-			curr_streampos += ReadSize;
+			if ( ReadSize <= 0 )
+			{
+				break;
+			}
 
-			if((len-(Offset+ReadSize))==0) {
+			memcpy ( ReadStart, pStream, ReadSize );
+
+			pStream = pStream + ReadSize;
+
+			if ( ( Length - ( Offset + ReadSize ) ) == 0 )
+			{
 				pGuard = ReadStart + ReadSize;
-				memset(pGuard,0,MAD_BUFFER_GUARD);
+				memset ( pGuard, 0, MAD_BUFFER_GUARD );
 				ReadSize += MAD_BUFFER_GUARD;
 			}
 
-			mad_stream_buffer(&Stream,InputBuffer,ReadSize+Remaining);
+			mad_stream_buffer ( & Stream, InputBuffer, ReadSize + Remaining );
 			Stream.error = 0;
 		}
 
-		if(mad_frame_decode(&Frame,&Stream)) {
-			if (MAD_RECOVERABLE(Stream.error)) continue;
-			else {
-				if(Stream.error==MAD_ERROR_BUFLEN) continue;
-				else break;
+		if ( mad_frame_decode ( & Frame, & Stream ) )
+		{
+			if ( MAD_RECOVERABLE ( Stream.error ) )
+			{
+				continue;
+			}
+			else
+			{
+				if ( Stream.error == MAD_ERROR_BUFLEN )
+				{
+					continue;
+				}
+				else
+				{
+					break;
+				}
 			}
 		}
 
-		mad_timer_add(&Timer,Frame.header.duration);
-		mad_synth_frame(&Synth,&Frame);
+		mad_timer_add ( & Timer, Frame.header.duration );
 
-		u32 n;
-		s16 Sample;
-		pOutput = OutputBuffer[curr_audio];
+		mad_synth_frame ( & Synth, & Frame );
+
+		unsigned int n; signed short Sample;
+
 		for ( n = 0; n < Synth.pcm.length; n++ )
 		{
-			Sample = fixed_to_short(Synth.pcm.samples[0][n]);
-			*(pOutput++) = Sample>>8;
-			*(pOutput++) = Sample&0xff;
+			Sample = FixedToShort ( Synth.pcm.samples[0][n] );
+
+			* ( pOutput++ ) = Sample >> 8;
+			* ( pOutput++ ) = Sample & 0xff;
+
+			if ( MAD_NCHANNELS ( & Frame.header ) == 2 )
+			{
+				Sample = FixedToShort ( Synth.pcm.samples[1][n] );
+			}
+
+			* ( pOutput++ ) = Sample >> 8;
+			* ( pOutput++ ) = Sample & 0xff;
 			
-			Sample = fixed_to_short(Synth.pcm.samples[1][n]);
-			*(pOutput++) = Sample>>8;
-			*(pOutput++) = Sample&0xff;
+			if ( pOutput == OutputBufferEnd[CurrentBuffer] )
+			{
+				//Resample ( & Synth.pcm );
+				DCFlushRange ( OutputBuffer[CurrentBuffer], OUTPUT_BUFFER_SIZE );
+
+				if ( FirstTransfer )
+				{
+					FirstTransfer = 0;
+
+					AUDIO_InitDMA ( ( unsigned int ) OutputBuffer[CurrentBuffer], OUTPUT_BUFFER_SIZE );
+					AUDIO_StartDMA ();
+				}
+
+				LWP_SleepThread ( thQueue );
+			}
 		}
-		DCFlushRange(OutputBuffer[curr_audio],Synth.pcm.length<<2);
-		if(first_frame) {
-			first_frame = 0;
-			AUDIO_InitDMA((u32)OutputBuffer[curr_audio],Synth.pcm.length<<2);
-			AUDIO_StartDMA ();
-			curr_audio ^= 1;
-			continue;
-		}
-		LWP_SleepThread(streamplay_queue);
 	}
 
-	mad_synth_finish(&Synth);
-	mad_frame_finish(&Frame);
-	mad_stream_finish(&Stream);
+	mad_synth_finish ( & Synth );
+	mad_frame_finish ( & Frame );
+	mad_stream_finish ( & Stream );
 
-	AUDIO_StopDMA();
-	AUDIO_RegisterDMACallback(NULL);
-	
-	mp3_playing = FALSE;
-	thr_running = FALSE;
-	
+        AUDIO_StopDMA ();
+	AUDIO_RegisterDMACallback ( NULL );
+	LWP_CloseQueue ( thQueue );
+
+	DeallocateMemory ();
+
+	MP3Playing = false;
+
 	return 0;
 }
 
-static s16 fixed_to_short(mad_fixed_t Fixed)
+void AllocateMemory ()
 {
-	if(Fixed>=MAD_F_ONE) return (SHRT_MAX);
-	if(Fixed<=-MAD_F_ONE)return (-SHRT_MAX);
+	InputBuffer = memalign ( 32, ( sizeof ( unsigned char ) * ( INPUT_BUFFER_SIZE + MAD_BUFFER_GUARD ) ) );
+	UpsampleInput = memalign ( 32, ( sizeof ( float ) * OUTPUT_BUFFER_SIZE ) );
+	UpsampleOutput = memalign ( 32, ( sizeof ( float ) * OUTPUT_BUFFER_SIZE ) );
+	USData = malloc ( sizeof ( SRC_DATA ) );
 
-	Fixed = Fixed>>(MAD_F_FRACBITS-15);
-	return ((s16)Fixed);
+	memset ( USData, 0, sizeof ( SRC_DATA ) );
+	USData->data_in = UpsampleInput;
+	USData->data_out = UpsampleOutput;
+	USData->input_frames = ( OUTPUT_BUFFER_SIZE / 2 );
+	USData->output_frames = USData->input_frames;
+	USData->end_of_input = 0;
 }
 
-static void dma_callback()
+void DeallocateMemory ()
 {
-	AUDIO_StopDMA();
-	AUDIO_InitDMA((u32)OutputBuffer[curr_audio], Synth.pcm.length<<2);
+	free ( InputBuffer );
+	free ( UpsampleInput );
+	free ( UpsampleOutput );
+	free ( USData );
+}
+
+static signed short FixedToShort ( mad_fixed_t Fixed )
+{
+	if ( Fixed >= MAD_F_ONE )
+	{
+		return ( SHRT_MAX );
+	}
+	if ( Fixed <= - MAD_F_ONE )
+	{
+		return ( - SHRT_MAX );
+	}
+
+	Fixed = Fixed >> ( MAD_F_FRACBITS - 15 );
+	return ( ( signed short ) Fixed );
+}
+
+static void Resample ( struct mad_pcm * FrameInfo )
+{
+	/*
+		Resamping for some reason gives corrupted or rather bad output at the momment.
+		This is something that I would definately like to fix in the near future!
+		One thing I would like to try is to reverse the endian for the upsampling.
+		For the rest things seem to work and with the above buffer sizes upsampling does not
+		consume too much time.
+	*/
+
+	src_short_to_float_array ( ( short * ) OutputBuffer[CurrentBuffer], UpsampleInput, OUTPUT_BUFFER_SIZE );
+
+	USData->src_ratio = ( AISampleRate / ( ( double ) FrameInfo->samplerate ) );
+	src_simple ( USData, SRC_SINC_FASTEST, 2 );
+
+	src_float_to_short_array ( UpsampleOutput, ( short * ) OutputBuffer[CurrentBuffer], OUTPUT_BUFFER_SIZE );
+}
+
+static void DataTransferCallback ()
+{
+	AUDIO_StopDMA ();
+	AUDIO_InitDMA ( ( unsigned int ) OutputBuffer[CurrentBuffer], OUTPUT_BUFFER_SIZE );
 	AUDIO_StartDMA ();
 
-	curr_audio ^= 1;
-	LWP_WakeThread(streamplay_queue);
+	CurrentBuffer ^= 1;
+	pOutput = OutputBuffer[CurrentBuffer];
+
+	LWP_WakeThread ( thQueue );
+}
+
+unsigned int DSPSampleRate ( unsigned int Input )
+{
+	if ( ! Input )
+	{
+		return 32000;
+	}
+	else
+	{
+		return 48000;
+	}
 }
