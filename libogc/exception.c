@@ -7,6 +7,8 @@
 #include "irq.h"
 #include "context.h"
 
+#include "system.h"
+
 #include "pad.h"
 #include "libogcsys/console.h"
 //#define _EXC_DEBUG
@@ -165,11 +167,17 @@ void c_default_exceptionhandler(frame_context *pCtx)
 
 	PADStatus pads[PAD_CHANMAX];
 
-	while(1) {
-		PAD_Read(pads);
-		if(pads[PAD_CHAN0].button&PAD_BUTTON_START) {
-			void (*reload)() = (void(*)())0x80001800;
-			reload();
+	while ( 1 )
+	{
+		PAD_Read ( pads );
+		if ( pads[PAD_CHAN0].button & PAD_BUTTON_START )
+		{
+			void ( * Reload ) () = ( void ( * ) () ) 0x80001800;
+			Reload ();
+		}
+		if ( pads[PAD_CHAN0].button & PAD_BUTTON_A )
+		{
+			SYS_RESTART;
 		}
 	}
 }
