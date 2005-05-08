@@ -95,6 +95,8 @@ default_exceptionhandler_transfer:
 	stwu	sp,-EXCEPTION_FRAME_END(sp)		//now we're able to adjust the stackpointer with it's cached address
 	mtlr	r5								//move passed handler func adress to LR
 
+	EXCEPTION_PROLOG
+
 	stmw r6,GPR6_OFFSET(sp)
 
 	addi	r3,sp,0x08
@@ -134,6 +136,8 @@ fpu_exception_handler:
 	mtctr	r5
 	lwz		r5,XER_OFFSET(sp)
 	mtxer	r5
+
+	EXCEPTION_EPILOG
 
 	lmw		r6,GPR6_OFFSET(sp)
 	lwz		toc,GPR2_OFFSET(sp)

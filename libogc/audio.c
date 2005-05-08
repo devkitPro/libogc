@@ -128,7 +128,7 @@ AISCallback AUDIO_RegisterStreamCallback(AISCallback callback)
 
 void AUDIO_Init(u8 *stack)
 {
-	u32 busfreq = *(u32*)0x800000F8;
+	u32 busfreq = 162000000;
 
 	if(!__AIInitFlag) {
 		bound_32KHz = (u64)((((busfreq>>2)/125000)*31524)/8000)<<32;

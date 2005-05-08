@@ -706,7 +706,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	s32 i,re0,re1,addr;
 	u32 tmem_even,tmem_odd;
 	u32 divis,res;
-	u32 divid = *(u32*)0x800000F8;
+	u32 divid = 162000000;
 	GXTexRegion *region = NULL;
 	GXTlutRegion *tregion = NULL;
 

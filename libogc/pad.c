@@ -11,6 +11,8 @@
 
 //#define _PAD_DEBUG
 
+#define PAD_PRODPADS		6
+
 #define _SHIFTL(v, s, w)	\
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
 #define _SHIFTR(v, s, w)	\
@@ -369,7 +371,7 @@ static void __pad_doreset()
 u32 PAD_Init()
 {
 	u32 chan;
-	u16 *pprodpads = (u16*)0x800030e0;
+	u16 prodpads = PAD_PRODPADS;
 #ifdef _PAD_DEBUG
 	printf("PAD_Init()\n");
 #endif
@@ -382,7 +384,7 @@ u32 PAD_Init()
 
 	chan = 0;
 	while(chan<4) {
-		__pad_cmdprobedevice[chan] = 0x4d000000|(chan<<22)|_SHIFTL(pprodpads[0],8,14);
+		__pad_cmdprobedevice[chan] = 0x4d000000|(chan<<22)|_SHIFTL(prodpads,8,14);
 		chan++;
 	}
 

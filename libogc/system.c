@@ -177,7 +177,7 @@ static void __lowmem_init()
 
 	*((u16*)(ram_start+0x30E0))	= 6; // production pads
 
-	DCFlushRange(ram_start, 0x100);
+	DCFlushRangeNoSync(ram_start, 0x100);
 
 	SYS_SetArenaLo((void*)__ArenaLo);
 	SYS_SetArenaHi((void*)__ArenaHi);
@@ -189,8 +189,8 @@ static void __lowmem_init()
 static void __memprotect_init()
 {
 	u32 level;
-	u32 realmem = *((u32*)0x80000028);
-	u32 simmem = *((u32*)0x800000F0);
+	u32 realmem = SYSMEM_SIZE;
+	u32 simmem = SYSMEM_SIZE;
 
 	_CPU_ISR_Disable(level);
 

@@ -35,12 +35,6 @@ _start:
 	sub		r5,r5,r3
 	bl		memset
 
-	//do a cache flush of whole main ram
-	lis		r3,0x8000
-	lis		r4,0x017f
-	ori		r4,r4,0xffff
-	bl		__flush_cache
-
 	lis		r0,0
 	stw		r0,0(sp)
 	stwu	sp,-64(sp)
@@ -300,6 +294,7 @@ SystemInit:
 	# Disable interrupts!
 	mfmsr   r3
 	rlwinm  r4,r3,0,17,15
+	rlwinm  r4,r4,0,26,24
 	mtmsr   r4
 
 	# Clear various SPR's
@@ -332,20 +327,13 @@ SystemInit:
 	mtlr    r0
 	blr
 
-__flush_cache:
-	lis		r5, 0xFFFF
-	ori		r5, r5, 0xFFF1
-	and		r5, r5, r3
-	subf	r3, r5, r3
-	add		r4, r4, r3
-1:
-	dcbst	r0, r5
-	sync
-	icbi	r0, r5
-	addic	r5, r5, 8
-	subic.	r4, r4, 8
-	bge		1b
-	isync
+	.globl video_line
+video_line:
+	mulli	r5,r3,640
+	lis		r3,0xC0F0
+	mtctr	r5
+1:	stwu	r4,4(r3)
+	bdnz	1b
 	blr
 
 	.section .data
