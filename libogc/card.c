@@ -275,9 +275,9 @@ static s32 __card_getfilenum(card_block *card,const char *filename,s32 *fileno)
 	entries = dirblock->entries;
 	for(i=0;i<CARD_MAXFILES;i++) {
 		if(entries[i].gamecode[0]!=0xff) {
-			if(strnicmp(entries[i].filename,filename,strlen(filename))==0
-				&& (card_gamecode[0]!=0xff && memcmp(entries[i].gamecode,card_gamecode,4)==0)
-				&& (card_company[0]!=0xff && memcmp(entries[i].company,card_company,2)==0)) {
+			if(strnicmp(entries[i].filename,filename,strlen(filename))==0) {
+				if((card_gamecode[0]!=0xff && memcmp(entries[i].gamecode,card_gamecode,4)!=0)
+					|| (card_company[0]!=0xff && memcmp(entries[i].company,card_company,2)!=0)) continue;
 				*fileno = i;
 				break;
 			}
