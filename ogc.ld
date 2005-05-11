@@ -265,6 +265,7 @@ SECTIONS
 	PROVIDE (edata = .);
 	data_mem_size = . - data_mem_start;
 
+	. = ALIGN(32);
 	bss_mem_start = .;
 	.sbss      :
 	{

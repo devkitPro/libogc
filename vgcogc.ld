@@ -89,6 +89,8 @@ SECTIONS
   PROVIDE (_etext = .);
   PROVIDE (etext = .);
   text_mem_size = . - text_mem_start;
+
+  . = ALIGN(32);
   data_mem_start = .;
   .rodata   : { *(.rodata) *(.rodata.*) *(.gnu.linkonce.r.*) }
   .rodata1   : { *(.rodata1) }
@@ -169,6 +171,7 @@ SECTIONS
   data_mem_size = . - data_mem_start;
   .textlen = . - base_address;
 
+  . = ALIGN(32);
   bss_mem_start = .;
   .sbss      :
   {
@@ -184,7 +187,10 @@ SECTIONS
     PROVIDE (___sbss_end = .);
 	__sbss_end = .;
   }
-  .bss       :
+ 
+ . = ALIGN(32);
+ 
+ .bss       :
   {
 	__bss_start = .;
     PROVIDE (__bss_start = .);
@@ -196,11 +202,11 @@ SECTIONS
    /* Align here to ensure that the .bss section occupies space up to
       _end.  Align after .bss to ensure correct alignment even if the
       .bss section disappears because there are no input sections.  */
-   . = ALIGN(32 / 8);
+   . = ALIGN(32);
     PROVIDE (__bss_end = .);
 	__bss_end = .;
   }
-  . = ALIGN(32 / 8);
+  . = ALIGN(32);
   bss_mem_size = . - bss_mem_start;
 
   /* calculate file addresses */
