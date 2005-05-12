@@ -151,31 +151,30 @@ static void __lowmem_init()
 
 	memset(ram_start, 0, 0x100);
 
+/*	this block doesn't need to be set either
 	// 0..f  game-info
 	strcpy(ram_start, "GPOP8P");        // PSO
 	*((u32*)(ram_start+8))		= 1;
 	*((u32*)(ram_start+0x1C))	= 0xc2339f3d;   // DVD magic word
-
+*/
 	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"
 	*((u32*)(ram_start+0x24))	= 1;            // version
 	*((u32*)(ram_start+0x28))	= SYSMEM_SIZE; // memory size
-		// retail.
+	// retail.
 	*((u32*)(ram_start+0x2C))	= 1 + ((*(u32*)0xCC00302c)>>28);
-
 	*((u32*)(ram_start+0x30))	= (u32)__ArenaLo;						// ArenaLo (guess: low-watermark of memory, aligned on a 32b boundary)
 	*((u32*)(ram_start+0x34))	= (u32)__ArenaHi;						// ArenaHi (guess: hi-watermark of memory)
-	*((u32*)(ram_start+0x38))	= 0; // 0x817fe8c0; // FST location in ram
-	*((u32*)(ram_start+0x3C))	= 0; // 0x2026e; // FST max length ?
 
-	*((u32*)(ram_start+0xCC))	= 1; // video mode
+	//this we don't overwrite coz it may have been set by IPL or other application pre-run.
+	//*((u32*)(ram_start+0xCC))	= 1; // video mode
 
 	*((u32*)(ram_start+0xEC))	= (u32)__ArenaHi; // top of memory?
 	*((u32*)(ram_start+0xF0))	= SYSMEM_SIZE; // simulated memory size
-	//	*((u32*)(ram_start+0xF4))	= 0x817fc8c0; // debug pointer.. not used
 	*((u32*)(ram_start+0xF8))	= 162000000;  // bus speed: 162 MHz
 	*((u32*)(ram_start+0xFC))	= 486000000;  // cpu speed: 486 Mhz
-
-	*((u16*)(ram_start+0x30E0))	= 6; // production pads
+	
+	// me thinks no need to set this.
+	//*((u16*)(ram_start+0x30E0))	= 6; // production pads
 
 	DCFlushRangeNoSync(ram_start, 0x100);
 
@@ -486,17 +485,12 @@ static void __dsp_bootstrap()
 static void decode_szp(void *src,void *dest)
 {
 	u32 i,k,link;
-	u8 *ptr8,*dest8,*tmp;
-	u16 *ptr16;
-	u32 *ptr32;
+	u8 *dest8,*tmp;
 	u32 loff,coff,roff;
-	u32 size,cnt,cmask;
+	u32 size,cnt,cmask,bcnt;
 	yay0header *header;
 
 	dest8 = (u8*)dest;
-	ptr8 = (u8*)src;
-	ptr16 = (u16*)src;
-	ptr32 = (u32*)src;
 	header = (yay0header*)src;
 	size = header->dec_size;
 	loff = header->links_offset;
@@ -505,25 +499,26 @@ static void decode_szp(void *src,void *dest)
 	roff = sizeof(yay0header);
 	cmask = 0;
 	cnt = 0;
+	bcnt = 0;
 
-	loff /= sizeof(u16);
-	roff /= sizeof(u32);
 	do {
-		if(!cmask) {
-			cmask = ptr32[roff];
-			roff++;
+		if(!bcnt) {
+			cmask = *(u32*)(src+roff);
+			roff += 4;
+			bcnt = 32;
 		}
 		
 		if(cmask&0x80000000) {
-			dest8[cnt++] = ptr8[coff++];
+			dest8[cnt++] = *(u8*)(src+coff);
+			coff++;
 		} else {
-			link = ptr16[loff];
-			loff++;
+			link = *(u16*)(src+loff);
+			loff += 2;
 			
-			tmp = dest8+cnt-((link&0x0fff)+1);
+			tmp = dest8+(cnt-(link&0x0fff)-1);
 			k = link>>12;
 			if(k==0) {
-				k = ptr8[coff]+18;
+				k = (*(u8*)(src+coff))+18;
 				coff++;
 			} else k += 2;
 
@@ -532,6 +527,7 @@ static void decode_szp(void *src,void *dest)
 			}
 		}
 		cmask <<= 1;
+		bcnt--;
 	} while(cnt<size);
 }
 
