@@ -7,8 +7,10 @@
    extern "C" {
 #endif /* __cplusplus */
 
-int MP3Player_Play ( const void * MP3Stream, u32 Length );
-bool MP3Player_IsPlaying ();
+void MP3Player_Init();
+s32 MP3Player_Play(const void *MP3Stream,u32 Length);
+void MP3Player_Stop();
+BOOL MP3Player_IsPlaying();
 
 #ifdef __cplusplus
    }

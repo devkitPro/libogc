@@ -101,9 +101,9 @@ OGCOBJ		:=	lwp_priority.o lwp_queue.o lwp_threadq.o lwp_threads.o lwp_sema.o	\
 MODOBJ		:=	freqtab.o mixer.o modplay.o semitonetab.o gcmodplay.o
 
 #---------------------------------------------------------------------------------
-MADOBJ		:=	bit.o decoder.o fixed.o frame.o huffman.o \
+MADOBJ		:=	mp3player.o bit.o decoder.o fixed.o frame.o huffman.o \
 			layer12.o layer3.o stream.o synth.o timer.o \
-			version.o mp3player.o samplerate.o src_sinc.o src_linear.o src_zoh.o
+			version.o
 
 #---------------------------------------------------------------------------------
 DBOBJ		:=	debug_handler.o debug.o bba_dbg.o uip_arp.o uip_arch.o uip.o 

@@ -3,12 +3,28 @@
 
 #include <gctypes.h>
 
+#define	GQR0			912
+#define	GQR1			913
+#define	GQR2			914
+#define	GQR3			915
+#define	GQR4			916
+#define	GQR5			917
+#define	GQR6			918
+#define	GQR7			919
+
+#define GQR_TYPEF32		0
+#define GQR_TYPEU8		4
+#define GQR_TYPEU16		5
+#define GQR_TYPES8		6
+#define GQR_TYPES16		7
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #ifdef GEKKO
 
+// does a default init
 static inline void CAST_Init()
 {
 	__asm__ __volatile__ (
@@ -28,10 +44,20 @@ static inline void CAST_Init()
 	);
 }
 
-#define castu82f32(in,out)		({asm volatile("psq_l	%0,0(%1),1,2" : "=f"(*(out)) : "b" (in));})
-#define castu162f32(in,out)		({asm volatile("psq_l	%0,0(%1),1,3" : "=f"(*(out)) : "b" (in));})
-#define casts82f32(in,out)		({asm volatile("psq_l	%0,0(%1),1,4" : "=f"(*(out)) : "b" (in));})
-#define casts162f32(in,out)		({asm volatile("psq_l	%0,0(%1),1,5" : "=f"(*(out)) : "b" (in));})
+#define __stringify(rn)					#rn					
+#define CAST_SetGQR(_reg,_type,_scale)														\
+{																							\
+	register u32 _val = (((_scale&0x3f)<<24)|(_type<<16)|((_scale&0x3f)<<8)|(_type));		\
+	asm volatile (																			\
+		"mtspr	"__stringify(_reg) ",%0\n"													\
+		: : "r"(_val)																		\
+	);																						\
+}
+
+#define castu82f32(in,out)		({asm volatile("psq_l	%0,0(%1),1,2" : "=f"(*(out)) : "b"(in));})
+#define castu162f32(in,out)		({asm volatile("psq_l	%0,0(%1),1,3" : "=f"(*(out)) : "b"(in));})
+#define casts82f32(in,out)		({asm volatile("psq_l	%0,0(%1),1,4" : "=f"(*(out)) : "b"(in));})
+#define casts162f32(in,out)		({asm volatile("psq_l	%0,0(%1),1,5" : "=f"(*(out)) : "b"(in));})
 
 #define castf322u8(in,out)		({asm volatile("psq_st	%1,0(%0),1,2" :: "b"(out),"f" (*(in)) : "memory");})
 #define castf322u16(in,out)		({asm volatile("psq_st	%1,0(%0),1,3" :: "b"(out),"f" (*(in)) : "memory");})
