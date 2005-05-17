@@ -59,11 +59,11 @@
 #define CARD_ANIM_BOUNCE			0x04
 #define CARD_ANIM_MASK				0x04
 
-#define CARD_SPEED_END				0
-#define CARD_SPEED_FAST				1
-#define CARD_SPEED_MIDDLE			2
-#define CARD_SPEED_SLOW				3
-#define CARD_SPEED_MASK				3
+#define CARD_SPEED_END				0x00
+#define CARD_SPEED_FAST				0x01
+#define CARD_SPEED_MIDDLE			0x02
+#define CARD_SPEED_SLOW				0x03
+#define CARD_SPEED_MASK				0x03
 
 #ifdef __cplusplus
    extern "C" {
@@ -104,6 +104,15 @@ typedef struct _card_stat {
 	u32 offset_data;
 } card_stat;
 
+#define CARD_GetBannerFmt(stat)         (((stat)->banner_fmt)&CARD_BANNER_MASK)
+#define CARD_SetBannerFmt(stat,fmt)		((stat)->banner_fmt = (u8)(((stat)->banner_fmt&~CARD_BANNER_MASK)|(fmt)))
+#define CARD_GetIconFmt(stat,n)			(((stat)->icon_fmt>>(2*(n)))&CARD_ICON_MASK)
+#define CARD_SetIconFmt(stat,n,fmt)		((stat)->icon_fmt = (u16)(((stat)->icon_fmt&~(CARD_ICON_MASK<<(2*(n))))|((fmt)<<(2*(n)))))
+#define CARD_GetIconSpeed(stat,n)		(((stat)->icon_speed>>(2*(n)))&~CARD_SPEED_MASK);
+#define CARD_SetIconSpeed(stat,n,speed)	((stat)->icon_speed = (u16)(((stat)->icon_fmt&~(CARD_SPEED_MASK<<(2*(n))))|((speed)<<(2*(n)))))
+#define CARD_SetIconAddr(stat,addr)		((stat)->icon_addr = (u32)(addr))
+#define CARD_SetCommentAddr(stat,addr)	((stat)->comment_addr = (u32)(addr))
+
 typedef void (*cardcallback)(s32 chan,s32 result);
 
 /*new api*/
@@ -128,6 +137,8 @@ s32 CARD_FindFirst(s32 chn, card_dir *dir, bool ShowAllFlag);
 s32 CARD_FindNext(card_dir *dir); 
 s32 CARD_GetSectorSize(s32 chn,u32 *sector_size);
 s32 CARD_GetStatus(s32 chn,s32 fileno,card_stat *stats);
+s32 CARD_SetStatus(s32 chn,s32 fileno,card_stat *stats);
+s32 CARD_SetStatusAsync(s32 chn,s32 fileno,card_stat *stats,cardcallback callback);
 
 #ifdef __cplusplus
    }
