@@ -199,6 +199,7 @@ static __inline__ s16 FixedToShort(mad_fixed_t Fixed)
 	return((signed short)Fixed);
 }
 
+#define FRAC		65536
 #define FRACSHIFT	16
 
 typedef union {
@@ -209,6 +210,7 @@ typedef union {
 	u32 adword;
 } dword;
 
+/* Simple Linear Interpolation */
 static s32 Resample(struct mad_pcm *Pcm,u8 *pOutput,u32 stereo)
 {
 	u32 len; 
