@@ -38,25 +38,32 @@
 #define CARD_ATTRIB_NOMOVE			0x10
 
 /* Banner & Icon Attributes */
-#define CARD_BANNER_NONE			0
-#define CARD_BANNER_CI				1
-#define CARD_BANNER_RGB				2
 #define CARD_BANNER_W				96
 #define CARD_BANNER_H				32
 
+#define CARD_BANNER_NONE			0x00
+#define CARD_BANNER_CI				0x01
+#define CARD_BANNER_RGB				0x02
+#define CARD_BANNER_MASK			0x03
+
 #define CARD_MAXICONS				8
-#define CARD_ICON_NONE				0
-#define CARD_ICON_CI				1
-#define CARD_ICON_RGB				2
-#define CARD_ICON_LOOP				0
-#define CARD_ICON_BOUNCE			4
 #define CARD_ICON_W					32
 #define CARD_ICON_H					32
 
+#define CARD_ICON_NONE				0x00
+#define CARD_ICON_CI				0x01
+#define CARD_ICON_RGB				0x02
+#define CARD_ICON_MASK				0x03
+
+#define CARD_ANIM_LOOP				0x00
+#define CARD_ANIM_BOUNCE			0x04
+#define CARD_ANIM_MASK				0x04
+
 #define CARD_SPEED_END				0
-#define CARD_SPEED_4				1
-#define CARD_SPEED_8				2
-#define CARD_SPEED_12				3
+#define CARD_SPEED_FAST				1
+#define CARD_SPEED_MIDDLE			2
+#define CARD_SPEED_SLOW				3
+#define CARD_SPEED_MASK				3
 
 #ifdef __cplusplus
    extern "C" {
@@ -78,6 +85,24 @@ typedef struct _card_dir {
       u8 company[3];
       bool showall;
 } card_dir; 
+
+typedef struct _card_stat {
+	u8 filename[CARD_FILENAMELEN];
+	u32 len;
+	u32 time;		//time since 1970 in seconds
+	u8 gamecode[4];
+	u8 company[2];
+	u8 banner_fmt;
+	u32 icon_addr;
+	u16 icon_fmt;
+	u16 icon_speed;
+	u32 comment_addr;
+	u32 offset_banner;
+	u32 offset_banner_tlut;
+	u32 offset_icon[CARD_MAXICONS];
+	u32 offset_icon_tlut;
+	u32 offset_data;
+} card_stat;
 
 typedef void (*cardcallback)(s32 chan,s32 result);
 
@@ -102,6 +127,7 @@ s32 CARD_GetErrorCode(s32 chn);
 s32 CARD_FindFirst(s32 chn, card_dir *dir, bool ShowAllFlag); 
 s32 CARD_FindNext(card_dir *dir); 
 s32 CARD_GetSectorSize(s32 chn,u32 *sector_size);
+s32 CARD_GetStatus(s32 chn,s32 fileno,card_stat *stats);
 
 #ifdef __cplusplus
    }

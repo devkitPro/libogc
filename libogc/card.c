@@ -261,6 +261,24 @@ static __inline__ struct card_bat* __card_getbatblock(card_block *card)
 	return card->curr_fat;
 }
 
+static void __card_updateiconoffsets(struct card_direntry *entry,card_stat *stats)
+{
+	s32 i;
+
+	if(entry->iconaddr==-1) {
+		stats->banner_fmt = 0;
+		stats->icon_fmt = 0;
+		stats->icon_speed = 0;
+	}
+	
+	if((entry->bannerfmt&CARD_BANNER_MASK)!=CARD_BANNER_RGB) {
+
+	}
+	while(i<CARD_MAXICONS) {
+		i++;
+	}
+}
+
 static s32 __card_getfilenum(card_block *card,const char *filename,s32 *fileno)
 {
 	u32 i = 0;
@@ -2636,5 +2654,35 @@ s32 CARD_GetSectorSize(s32 chn,u32 *sector_size)
 	*sector_size = card->sector_size;
 	ret = __card_putcntrlblock(card,CARD_ERROR_READY); 
 
+	return ret;
+}
+
+s32 CARD_GetStatus(s32 chn,s32 fileno,card_stat *stats)
+{
+	s32 ret; 
+	card_block *card = NULL;
+	struct card_dat *dirblock = NULL;
+	struct card_direntry *entry = NULL;
+
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD; 
+	if((ret=__card_getcntrlblock(chn,&card))<0) return ret; 
+	
+	dirblock = __card_getdirblock(card);
+	if(dirblock) {
+		entry = &dirblock->entries[fileno];
+		memcpy(stats->gamecode,entry->gamecode,4);
+		memcpy(stats->company,entry->company,2);
+		memcpy(stats->filename,entry->filename,CARD_FILENAMELEN);
+		stats->len = entry->length*card->sector_size;
+		stats->time = entry->lastmodified;
+		stats->banner_fmt = entry->bannerfmt;
+		stats->icon_addr = entry->iconaddr;
+		stats->icon_fmt = entry->iconfmt;
+		stats->icon_speed = entry->iconspeed;
+		stats->comment_addr = entry->commentaddr;
+		__card_updateiconoffsets(entry,stats);
+	}
+
+	ret = __card_putcntrlblock(card,CARD_ERROR_READY);
 	return ret;
 }
