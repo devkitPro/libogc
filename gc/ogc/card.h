@@ -10,7 +10,7 @@
 #define CARD_WORKAREA				(5*8*1024)
 #define CARD_READSIZE				512
 #define CARD_FILENAMELEN			32
-#define CARD_MAXFILES				127
+#define CARD_MAXFILES				128
 
 /* Errors */
 #define CARD_ERROR_UNLOCKED			1
@@ -139,6 +139,9 @@ s32 CARD_GetSectorSize(s32 chn,u32 *sector_size);
 s32 CARD_GetStatus(s32 chn,s32 fileno,card_stat *stats);
 s32 CARD_SetStatus(s32 chn,s32 fileno,card_stat *stats);
 s32 CARD_SetStatusAsync(s32 chn,s32 fileno,card_stat *stats,cardcallback callback);
+s32 CARD_GetAttributes(s32 chn,s32 fileno,u8 *attr);
+s32 CARD_SetAttributes(s32 chn,s32 fileno,u8 attr);
+s32 CARD_SetAttributesAsync(s32 chn,s32 fileno,u8 attr,cardcallback callback);
 
 #ifdef __cplusplus
    }

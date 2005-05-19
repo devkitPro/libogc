@@ -261,6 +261,32 @@ static __inline__ struct card_bat* __card_getbatblock(card_block *card)
 	return card->curr_fat;
 }
 
+static s32 __card_sync(s32 chn)
+{
+	s32 ret;
+	u32 level;
+	card_block *card = &cardmap[chn];
+
+	_CPU_ISR_Disable(level);
+	while((ret=CARD_GetErrorCode(chn))==CARD_ERROR_BUSY) {
+		LWP_SleepThread(card->wait_sync_queue);
+	}
+	_CPU_ISR_Restore(level);
+	return ret;
+}
+
+static void __card_synccallback(s32 chn,s32 result)
+{
+	u32 level;
+	card_block *card = &cardmap[chn];
+#ifdef _CARD_DEBUG
+	printf("__card_synccallback(%d,%d,%d)\n",chn,result,card->result);
+#endif
+	_CPU_ISR_Disable(level);
+	LWP_WakeThread(card->wait_sync_queue);
+	_CPU_ISR_Restore(level);
+}
+
 static void __card_updateiconoffsets(struct card_direntry *entry,card_stat *stats)
 {
 	s32 i,isci;
@@ -314,6 +340,96 @@ static void __card_updateiconoffsets(struct card_direntry *entry,card_stat *stat
 		stats->offset_icon_tlut = -1;
 
 	stats->offset_data = iconaddr;
+}
+
+static s32 __card_getstatusex(s32 chn,s32 fileno,struct card_direntry *entry)
+{
+	s32 ret;
+	card_block *card = NULL;
+	struct card_dat *dirblock = NULL;
+	
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD; 
+	if(fileno<0 || fileno>=CARD_MAXFILES) return CARD_ERROR_FATAL_ERROR;
+	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
+	
+	ret = CARD_ERROR_BROKEN;
+	dirblock = __card_getdirblock(card);
+	if(dirblock) {
+		ret = CARD_ERROR_READY;
+		memcpy(entry,&dirblock->entries[fileno],sizeof(struct card_direntry));
+	}
+	return __card_putcntrlblock(card,ret);
+}
+
+static s32 __card_setstatusexasync(s32 chn,s32 fileno,struct card_direntry *entry,cardcallback callback)
+{
+	s32 ret,i,bend;
+	card_block *card = NULL;
+	struct card_dat *dirblock = NULL;
+	struct card_direntry *entries = NULL;
+	
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD; 
+	if(fileno<0 || fileno>=CARD_MAXFILES) return CARD_ERROR_FATAL_ERROR;
+	if(entry->filename[0]==0xff || entry->filename[0]==0) return CARD_ERROR_FATAL_ERROR;
+	if(entry->iconaddr!=-1 && entry->iconaddr>CARD_READSIZE) return CARD_ERROR_FATAL_ERROR;
+	if(entry->commentaddr!=-1 && entry->commentaddr>8128) return CARD_ERROR_FATAL_ERROR;
+	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
+
+	ret = CARD_ERROR_BROKEN;
+	dirblock = __card_getdirblock(card);
+	if(dirblock) {
+		i = 0; bend = 0;
+		ret = CARD_ERROR_READY;
+		entries = dirblock->entries;
+		while(i<CARD_FILENAMELEN) {
+			if(bend || entry->filename[i]==0) {
+				entry->filename[i] = 0;
+				bend = 1;
+			}
+			i++;
+		}
+
+		if(memcmp(entries[fileno].filename,entry->filename,CARD_FILENAMELEN)
+			|| memcmp(entries[fileno].gamecode,entry->gamecode,4)
+			|| memcmp(entries[fileno].company,entry->company,2)) {
+			i = 0;
+			while(i<CARD_MAXFILES) {
+				if(i!=fileno && entries[i].gamecode[0]!=0xff
+					&& memcmp(entries[i].filename,entry->filename,CARD_FILENAMELEN)==0
+					&& memcmp(entries[i].gamecode,entry->gamecode,4)==0
+					&& memcmp(entries[i].company,entry->company,2)==0) {
+					return __card_putcntrlblock(card,CARD_ERROR_EXIST);
+				}
+				i++;
+			}
+			memcpy(entries[fileno].filename,entry->filename,CARD_FILENAMELEN);
+			memcpy(entries[fileno].gamecode,entry->gamecode,4);
+			memcpy(entries[fileno].company,entry->company,2);
+		}
+		
+		entries[fileno].permission = entry->permission;
+		entries[fileno].copytimes = entry->copytimes;
+		entries[fileno].bannerfmt = entry->bannerfmt;
+		entries[fileno].lastmodified = entry->lastmodified;
+		entries[fileno].iconaddr = entry->iconaddr;
+		entries[fileno].iconfmt = entry->iconfmt;
+		entries[fileno].iconspeed = entry->iconspeed;
+		entries[fileno].iconaddr = entry->iconaddr;
+		entries[fileno].commentaddr = entry->commentaddr;
+
+		if((ret=__card_updatedir(chn,callback))>=0) return ret;
+	}
+	return __card_putcntrlblock(card,ret);
+}
+
+static s32 __card_setstatusex(s32 chn,s32 fileno,struct card_direntry *entry)
+{
+	s32 ret;
+
+	if((ret=__card_setstatusexasync(chn,fileno,entry,__card_synccallback))>=0) {
+		ret = __card_sync(chn);
+	}
+	return ret;
 }
 
 static s32 __card_getfilenum(card_block *card,const char *filename,s32 *fileno)
@@ -646,18 +762,6 @@ static u32 __card_unlockedhandler(u32 chn,u32 dev)
 	return CARD_ERROR_UNLOCKED;
 }
 
-static void __card_synccallback(s32 chn,s32 result)
-{
-	u32 level;
-	card_block *card = &cardmap[chn];
-#ifdef _CARD_DEBUG
-	printf("__card_synccallback(%d,%d,%d)\n",chn,result,card->result);
-#endif
-	_CPU_ISR_Disable(level);
-	LWP_WakeThread(card->wait_sync_queue);
-	_CPU_ISR_Restore(level);
-}
-
 static s32 __card_readstatus(s32 chn,u8 *pstatus)
 {
 	u8 val[2];
@@ -858,20 +962,6 @@ static void __setuptimeout(card_block *card)
 		tb.tv_nsec = 100*TB_NSPERMS;
 		SYS_SetAlarm(&card->timeout_svc,&tb,__timeouthandler);
 	}
-}
-
-static s32 __card_sync(s32 chn)
-{
-	s32 ret;
-	u32 level;
-	card_block *card = &cardmap[chn];
-
-	_CPU_ISR_Disable(level);
-	while((ret=CARD_GetErrorCode(chn))==CARD_ERROR_BUSY) {
-		LWP_SleepThread(card->wait_sync_queue);
-	}
-	_CPU_ISR_Restore(level);
-	return ret;
 }
 
 static s32 __retry(s32 chn)
@@ -2761,6 +2851,39 @@ s32 CARD_SetStatus(s32 chn,s32 fileno,card_stat *stats)
 	s32 ret;
 
 	if((ret=CARD_SetStatusAsync(chn,fileno,stats,__card_synccallback))>=0) {
+		ret = __card_sync(chn);
+	}
+	return ret;
+}
+
+s32 CARD_GetAttributes(s32 chn,s32 fileno,u8 *attr)
+{
+	s32 ret;
+	struct card_direntry entry;
+
+	if((ret=__card_getstatusex(chn,fileno,&entry))==CARD_ERROR_READY) {
+		*attr = entry.permission;
+	}
+	return ret;
+}
+
+s32 CARD_SetAttributesAsync(s32 chn,s32 fileno,u8 attr,cardcallback callback)
+{
+	s32 ret;
+	struct card_direntry entry;
+
+	if((ret=__card_getstatusex(chn,fileno,&entry))>=0) {
+		entry.permission = attr;
+		ret = __card_setstatusex(chn,fileno,&entry);
+	}
+	return ret;
+}
+
+s32 CARD_SetAttributes(s32 chn,s32 fileno,u8 attr)
+{
+	s32 ret;
+
+	if((ret=CARD_SetAttributesAsync(chn,fileno,attr,__card_synccallback))>=0) {
 		ret = __card_sync(chn);
 	}
 	return ret;
