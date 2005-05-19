@@ -755,3 +755,11 @@ void __ext_irq_handler(u32 nIrq,void *pCtx)
 	printf("__ext_irq_handler(%p)\n",exi->CallbackEXT);
 #endif
 }
+
+
+/* EXI UART stuff */
+static s32 __probebarnacle(s32 chn,s32 dev,void *rev)
+{
+	if(chn!=EXI_CHANNEL_2 && dev==EXI_DEVICE_0)
+	return 0;
+}
