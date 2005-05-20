@@ -50,6 +50,11 @@ typedef struct _exibus_priv {
 static exibus_priv eximap[EXI_MAX_CHANNELS];
 static s64 last_exi_idtime[EXI_MAX_CHANNELS];
 
+static u32 exi_uart_chan = EXI_CHANNEL_0;
+static u32 exi_uart_dev = EXI_DEVICE_0;
+static u32 exi_uart_barnacle_enabled = 0;
+static u32 exi_uart_enabled = 0;
+
 static void __exi_irq_handler(u32,void *);
 static void __tc_irq_handler(u32,void *);
 static void __ext_irq_handler(u32,void *);
@@ -758,8 +763,115 @@ void __ext_irq_handler(u32 nIrq,void *pCtx)
 
 
 /* EXI UART stuff */
-static s32 __probebarnacle(s32 chn,s32 dev,void *rev)
+static s32 __probebarnacle(s32 chn,u32 dev,u32 *rev)
 {
-	if(chn!=EXI_CHANNEL_2 && dev==EXI_DEVICE_0)
-	return 0;
+	u32 ret,reg;
+
+	if(chn!=EXI_CHANNEL_2 && dev==EXI_DEVICE_0) {
+		if(EXI_Attach(chn,NULL)==0) return 0;
+	}
+
+	ret = 0;
+	if(EXI_Lock(chn,dev,NULL)==1) {
+		if(EXI_Select(chn,dev,EXI_SPEED1MHZ)==1) {
+			reg = 0x20011300;
+			if(EXI_Imm(chn,&reg,sizeof(u32),EXI_WRITE,NULL)==0) ret |= 0x0001;
+			if(EXI_Sync(chn)==0) ret |= 0x0002;
+			if(EXI_Imm(chn,rev,sizeof(u32),EXI_READ,NULL)==0) ret |= 0x0004;
+			if(EXI_Sync(chn)==0) ret |= 0x0008;
+			if(EXI_Deselect(chn)==0) ret |= 0x0010;
+			
+		}
+		EXI_Unlock(chn);
+	}
+	
+	if(chn!=EXI_CHANNEL_2 && dev==EXI_DEVICE_0) EXI_Detach(chn);
+
+	if(ret) return 0;
+	if((*rev+0x00010000)==0xffff) return 0;
+	
+	return 1;
+}
+
+static s32 __queuelength()
+{
+	u32 reg;
+	u8 len = 0;
+
+	if(EXI_Select(exi_uart_chan,exi_uart_dev,EXI_SPEED8MHZ)==0) return -1;
+
+	reg = 0x20010000;
+	EXI_Imm(exi_uart_chan,&reg,sizeof(u32),EXI_WRITE,NULL);
+	EXI_Sync(exi_uart_chan);
+	EXI_Imm(exi_uart_chan,&len,sizeof(u8),EXI_READ,NULL);
+	EXI_Sync(exi_uart_chan);
+
+	EXI_Deselect(exi_uart_chan);
+
+	return (16-len);
+}
+
+void __SYS_EnableBarnacle(s32 chn,u32 dev)
+{
+	u32 id,rev;
+
+	if(EXI_GetID(chn,dev,&id)==0) return;
+
+	if(id==0x01020000 || id==0x0004 || id==0x80000010 || id==0x80000008
+		|| id==0x80000004 || id==0xffff || id==0x80000020 || id==0x0020
+		|| id==0x0010 || id==0x0008 || id==0x01010000 || id==0x04040404
+		|| id==0x04021000 || id==0x03010000 || id==0x02020000 
+		|| id==0x04020300 || id==0x04020200 || id==0x04130000
+		|| id==0x04120000 || id==0x04060000 || id==0x04220000) return;
+
+	if(__probebarnacle(chn,dev,&rev)==0) return;
+
+	
+	exi_uart_chan = chn;
+	exi_uart_dev = dev;
+	exi_uart_barnacle_enabled = 0xa5ff005a;
+	exi_uart_enabled = 0xa5ff005a;
+}
+
+s32 WriteUARTN(void *buf,u32 len)
+{
+	u8 *ptr;
+	u32 reg;
+	s32 ret,err;
+
+	if((exi_uart_enabled-0x5a010000)!=0x005a) return 2;
+	if(EXI_Lock(exi_uart_chan,exi_uart_dev,NULL)==0) return 0;
+
+	ptr = buf;
+	while((ptr-(u8*)buf)<len) {
+		if(*ptr=='\n') *ptr = '\r';
+		ptr++;
+	}
+
+	ret = 0;
+	while(len) {
+		if((err=__queuelength())<0) {
+			ret = 3;
+			break;
+		} else if(err>=12 || err>=len) {
+			if(EXI_Select(exi_uart_chan,exi_uart_dev,EXI_SPEED8MHZ)==0) {
+				ret = 3;
+				break;
+			}
+			
+			reg = 0xa0010000;
+			EXI_Imm(exi_uart_chan,&reg,sizeof(u32),EXI_WRITE,NULL);
+			EXI_Sync(exi_uart_chan);
+
+			while(err!=0 && len!=0) {
+				if(err==0x0004){
+				}
+			}
+			
+		}
+		EXI_Deselect(exi_uart_chan);
+	}
+
+	EXI_Unlock(exi_uart_chan);
+	return ret;
 }
