@@ -833,13 +833,24 @@ void __SYS_EnableBarnacle(s32 chn,u32 dev)
 	exi_uart_enabled = 0xa5ff005a;
 }
 
+s32 InitializeUART()
+{
+	if((exi_uart_enabled+0x5a010000)==0x005a) return 0;
+
+	exi_uart_chan = EXI_CHANNEL_0;
+	exi_uart_dev = EXI_DEVICE_1;
+
+	exi_uart_enabled = 0xa5ff005a;
+	return 0;
+}
+
 s32 WriteUARTN(void *buf,u32 len)
 {
 	u8 *ptr;
 	u32 reg;
-	s32 ret,err;
+	s32 ret,qlen,cnt;
 
-	if((exi_uart_enabled-0x5a010000)!=0x005a) return 2;
+	if((exi_uart_enabled+0x5a010000)!=0x005a) return 2;
 	if(EXI_Lock(exi_uart_chan,exi_uart_dev,NULL)==0) return 0;
 
 	ptr = buf;
@@ -849,11 +860,12 @@ s32 WriteUARTN(void *buf,u32 len)
 	}
 
 	ret = 0;
+	ptr = buf;
 	while(len) {
-		if((err=__queuelength())<0) {
+		if((qlen=__queuelength())<0) {
 			ret = 3;
 			break;
-		} else if(err>=12 || err>=len) {
+		} else if(qlen>=12 || qlen>=len) {
 			if(EXI_Select(exi_uart_chan,exi_uart_dev,EXI_SPEED8MHZ)==0) {
 				ret = 3;
 				break;
@@ -863,8 +875,16 @@ s32 WriteUARTN(void *buf,u32 len)
 			EXI_Imm(exi_uart_chan,&reg,sizeof(u32),EXI_WRITE,NULL);
 			EXI_Sync(exi_uart_chan);
 
-			while(err!=0 && len!=0) {
-				if(err==0x0004){
+			while(qlen>0 && len>0) {
+				cnt = 4;
+				if(qlen>=0x0004) {
+					if(len<4) cnt = len;
+					if(qlen<len) break;
+					
+					EXI_Imm(exi_uart_chan,ptr,cnt,EXI_WRITE,NULL);
+					EXI_Sync(exi_uart_chan);
+					qlen -= cnt;
+					len -= cnt;
 				}
 			}
 			
