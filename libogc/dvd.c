@@ -80,6 +80,9 @@ static u32 __dvd_pausingflag = 0;
 static s64 __dvd_lastresetend = 0;
 static u32 __dvd_ready = 0;
 static u32 __dvd_resumefromhere = 0;
+static u32 __dvd_fatalerror = 0;
+static u32 __dvd_lasterror = 0;
+static u32 __dvd_internalretries = 0;
 static u32 __dvd_lastlen;
 static u32 __dvd_nextcmdnum;
 static u32 __dvd_workaround;
@@ -208,6 +211,7 @@ static u8 __dvd_patchcode8_new[] = {
 
 	99
 };
+
 /*
 static u8 __dvd_patchcode6[] = {
 	 0,	0x00,0x00,0x85,0x02,
@@ -316,11 +320,20 @@ static vu32* const _diReg = (u32*)0xCC006000;
 
 static u8 __dvd_unlockcmd$221[12] = {0xff,0x01,'M','A','T','S','H','I','T','A',0x02,0x00};
 static u8 __dvd_unlockcmd$222[12] = {0xff,0x00,'D','V','D','-','G','A','M','E',0x03,0x00};
+static u32 __dvd_errortable[] = {
+	0x00000000, 0x00023a00, 0x00062800, 0x00030200,
+	0x00031100, 0x00052000, 0x00052001, 0x00052100,
+	0x00052400, 0x00052401, 0x00052402, 0x000B5A01,
+	0x00056300, 0x00020401, 0x00020400, 0x00040800,
+	0x00100007, 0x00000000
+};
 
 void __dvd_stategettingerror();
 void __dvd_statecoverclosed();
 void __dvd_stateready();
 void __dvd_statemotorstopped();
+void __dvd_statetimeout();
+void __dvd_stategotoretry();
 void __dvd_stateerror(s32 result);
 void __dvd_statecoverclosed_cmd(dvdcmdblk *block);
 void __dvd_statebusy(dvdcmdblk *block);
@@ -418,6 +431,40 @@ static void __dvd_timeouthandler(sysalarm *alarm)
 	__MaskIrq(IRQMASK(IRQ_PI_DI));
 	cb = __dvd_callback;
 	if(cb) cb(0x10);
+}
+
+static void __dvd_storeerror(u32 errorcode)
+{
+	
+}
+
+static s32 __dvd_categorizeerror(u32 errorcode)
+{
+	if((errorcode-0x20000)==0x0400) {
+		__dvd_lasterror = errorcode;
+		return 1;
+	}
+
+	errorcode &= 0x00ffffff;
+	if((errorcode-0x60000)==0x2800 
+		|| (errorcode-0x20000)==0x3a00 
+		|| (errorcode-0xb0000)==0x5a01) return 0;
+
+	__dvd_internalretries++;
+	if(__dvd_internalretries==2) {
+		if(__dvd_lasterror==errorcode) {
+			__dvd_lasterror = errorcode;
+			return 1;
+		}
+		__dvd_lasterror = errorcode;
+		return 2;
+	}
+	
+	__dvd_lasterror = errorcode;
+	if((errorcode-0x30000)!=0x1100) {
+		if(__dvd_executing->cmd!=0x0005) return 3;
+	}
+	return 2;
 }
 
 static void __SetupTimeoutAlarm(const struct timespec *tp)
@@ -530,6 +577,13 @@ static void __dvd_stateerrorcb(s32 result)
 #ifdef _DVD_DEBUG
 	printf("__dvd_stateerrorcb(%d)\n",result);
 #endif
+	if(result==0x0010) {
+		__dvd_executing->state = -1;
+		__dvd_statetimeout();
+		return;
+	}
+
+	__dvd_fatalerror = 1;
 	block = __dvd_executing;
 	__dvd_executing = &__dvd_dummycmdblk;
 	if(block->cb) block->cb(-1,block);
@@ -542,10 +596,16 @@ static void __dvd_stateerrorcb(s32 result)
 
 static void __dvd_stategettingerrorcb(s32 result)
 {
-	u32 val;
+	s32 ret;
+	u32 val,tmp,cnclpt;
 #ifdef _DVD_DEBUG
 	printf("__dvd_stategettingerrorcb(%d)\n",result);
 #endif
+	if(result==0x0010) {
+		__dvd_executing->state = -1;
+		__dvd_statetimeout();
+		return;
+	}
 	if(result&0x0002) {
 		__dvd_executing->state = -1;
 		__dvd_stateerror(0x01234567);
@@ -553,6 +613,24 @@ static void __dvd_stategettingerrorcb(s32 result)
 	}
 	if(result==0x0001) {
 		val = _diReg[8];
+		if((ret=__dvd_categorizeerror(val))==1) {
+			__dvd_executing->state = -1;
+			__dvd_stateerror(val);
+			return;
+		} else if(ret==2 || ret==3) cnclpt = 0;
+		else {
+			tmp = val&0xff000000;
+			if(!(tmp-0x01000000)) cnclpt = 4;
+			else if(!(tmp-0x02000000)) cnclpt = 6;
+			else if(!(tmp-0x03000000)) cnclpt = 3;
+			else cnclpt = 5;
+		}
+		if(__dvd_checkcancel(cnclpt)) return;
+		
+		if(ret==2) {
+			__dvd_stateerror(val);
+			
+		}
 		__dvd_executing->state = -1;
 		__dvd_stateerror(val);
 		return;
@@ -713,12 +791,38 @@ static void __dvd_statecoverclosedcb(s32 result)
 {
 	if(result==0x0010) {
 		__dvd_executing->state = -1;
+		__dvd_statetimeout();
 	}
 	
 }
 
 static void __dvd_statecheckid1cb(s32 result)
 {
+}
+
+static void __dvd_stategotoretrycb(s32 result)
+{
+	if(result==0x0010) {
+		__dvd_executing->state = -1;
+		__dvd_statetimeout();
+		return;
+	}
+	if(result&0x0002) {
+		__dvd_executing->state = -1;
+		__dvd_stateerror(0x01234567);
+		return;
+	}
+	if(result==0x0001) {
+		__dvd_internalretries = 0;
+		if(__dvd_currcmd==0x0004 || __dvd_currcmd==0x0005
+			|| __dvd_currcmd==0x000d || __dvd_currcmd==0x000f) {
+			__dvd_resetrequired = 1;
+			if(__dvd_checkcancel(2)) return;
+
+			__dvd_executing->state = 11;
+			__dvd_statemotorstopped();
+		}
+	}
 }
 
 static void __dvd_alarmhandler(sysalarm *alarm)
@@ -1025,6 +1129,11 @@ void __dvd_stateready()
 	__dvd_executing = __dvd_popwaitingqueue();
 	__dvd_currcmd = __dvd_executing->cmd;
 	
+	if(__dvd_resumefromhere) {
+		if(__dvd_resumefromhere<7) {
+		}
+		__dvd_resumefromhere = 0;
+	}
 	__dvd_executing->state = 1;
 	__dvd_statebusy(__dvd_executing);
 }
@@ -1063,6 +1172,7 @@ void __dvd_statemotorstopped()
 
 void __dvd_stateerror(s32 result)
 {
+	__dvd_storeerror(result);
 	DVD_LowStopMotor(__dvd_stateerrorcb);
 }
 
@@ -1083,6 +1193,19 @@ void __dvd_statecheckid()
 		}
 	}
 }
+
+void __dvd_statetimeout()
+{
+	__dvd_storeerror(0x01234568);
+	DVD_Reset();
+	__dvd_stateerrorcb(0);
+}
+
+void __dvd_stategotoretry()
+{
+	DVD_LowStopMotor(__dvd_stategotoretrycb);
+}
+
 s32 __issuecommand(s32 prio,dvdcmdblk *block)
 {
 	s32 ret;
