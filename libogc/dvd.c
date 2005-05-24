@@ -355,6 +355,36 @@ extern u32 diff_msec(unsigned long long start,unsigned long long end);
 extern long long gettime();
 extern void __MaskIrq(u32);
 extern void __UnmaskIrq(u32);
+extern syssramex* __SYS_LockSramEx();
+extern u32 __SYS_UnlockSramEx(u32 write);
+
+static u8 err2num(u32 errorcode)
+{
+	u32 i;
+
+	i=0;
+	while(i<18) {
+		if(errorcode==__dvd_errortable[i]) return i;
+		i++;
+	}
+	if(errorcode<0x00100000 || errorcode>0x00100008) return 29;
+	
+	return 17;
+}
+
+static u8 convert(u32 errorcode)
+{
+	u8 err,err_num;
+
+	if((errorcode-0x01230000)==0x4567) return 255;
+	else if((errorcode-0x01230000)==0x4568) return 254;
+
+	err = _SHIFTR(errorcode,24,8);
+	err_num = err2num((errorcode&0x00ffffff));
+	if(err>0x06) err = 0x06;
+
+	return err_num+(err*30);
+}
 
 static void __dvd_clearwaitingqueue()
 {
@@ -435,7 +465,13 @@ static void __dvd_timeouthandler(sysalarm *alarm)
 
 static void __dvd_storeerror(u32 errorcode)
 {
-	
+	u8 err;
+	syssramex *ptr;
+
+	err = convert(errorcode);
+	ptr = __SYS_LockSramEx();
+	ptr->dvderr_code = err;
+	__SYS_UnlockSramEx(1);
 }
 
 static s32 __dvd_categorizeerror(u32 errorcode)
