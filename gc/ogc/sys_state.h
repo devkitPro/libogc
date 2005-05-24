@@ -16,7 +16,9 @@ extern "C" {
 
 extern u32 _sys_state_curr;
 
+#ifdef LIBOGC_INTERNAL
 #include <libogc/sys_state.inl>
+#endif
 
 #ifdef __cplusplus
 	}

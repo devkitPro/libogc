@@ -65,7 +65,9 @@ static __inline__ u32 __lwp_mutex_seize_irq_trylock(lwp_mutex *,u32 *);
 		} \
 	} while(0)
 
+#ifdef LIBOGC_INTERNAL
 #include <libogc/lwp_mutex.inl>
+#endif
 
 #ifdef __cplusplus
 	}

@@ -37,7 +37,9 @@
 extern "C" {
 #endif
 
+#ifdef LIBOGC_INTERNAL
 #include <libogc/lwp_states.inl>
+#endif
 	
 #ifdef __cplusplus
 	}

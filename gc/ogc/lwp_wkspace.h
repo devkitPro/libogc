@@ -40,7 +40,9 @@ void __lwp_wkspace_init(u32 size);
 void* __lwp_wkspace_allocate(u32 size);
 void __lwp_wkspace_free(void *ptr);
 
+#ifdef LIBOGC_INTERNAL
 #include <libogc/lwp_wkspace.inl>
+#endif
 
 #ifdef __cplusplus
 	}

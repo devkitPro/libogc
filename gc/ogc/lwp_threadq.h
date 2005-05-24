@@ -28,7 +28,9 @@ void __lwp_threadqueue_extractfifo(lwp_thrqueue *,lwp_cntrl *);
 void __lwp_threadqueue_extractpriority(lwp_thrqueue *,lwp_cntrl *);
 u32 __lwp_threadqueue_extractproxy(lwp_cntrl *);
 
+#ifdef LIBOGC_INTERNAL
 #include <libogc/lwp_threadq.inl>
+#endif
 
 #ifdef __cplusplus
 	}

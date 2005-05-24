@@ -78,7 +78,9 @@ u32 __lwp_wd_remove(wd_cntrl *);
 void __lwp_wd_tickle(lwp_queue *);
 void __lwp_wd_adjust(lwp_queue *,u32,u64);
 
+#ifdef LIBOGC_INTERNAL
 #include <libogc/lwp_watchdog.inl>
+#endif
 
 #ifdef __cplusplus
 	}
