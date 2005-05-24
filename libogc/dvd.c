@@ -83,6 +83,7 @@ static u32 __dvd_resumefromhere = 0;
 static u32 __dvd_fatalerror = 0;
 static u32 __dvd_lasterror = 0;
 static u32 __dvd_internalretries = 0;
+static u32 __dvd_autofinishing = 0;
 static u32 __dvd_lastlen;
 static u32 __dvd_nextcmdnum;
 static u32 __dvd_workaround;
@@ -474,7 +475,7 @@ static void __dvd_storeerror(u32 errorcode)
 	__SYS_UnlockSramEx(1);
 }
 
-static s32 __dvd_categorizeerror(u32 errorcode)
+static u32 __dvd_categorizeerror(u32 errorcode)
 {
 	if((errorcode-0x20000)==0x0400) {
 		__dvd_lasterror = errorcode;
@@ -607,6 +608,38 @@ static s32 __dvd_checkcancel(u32 cancelpt)
 	return 0;
 }
 
+static void __dvd_unrecoverederrorretrycb(s32 result)
+{
+	u32 val;
+
+	if(result==0x0010) {
+		__dvd_executing->state = -1;
+		__dvd_statetimeout();
+		return;
+	}
+
+	__dvd_executing->state = -1;
+	if(result&0x0002) __dvd_stateerror(0x01234567);
+	else {
+		val = _diReg[8];
+		__dvd_stateerror(val);
+	}
+}
+
+static void __dvd_unrecoverederrorcb(s32 result)
+{
+	if(result==0x0010) {
+		__dvd_executing->state = -1;
+		__dvd_statetimeout();
+		return;
+	}
+	if(result&0x0001) {
+		__dvd_stategotoretry();
+		return;
+	}
+	if(!(result==0x0002)) DVD_LowRequestError(__dvd_unrecoverederrorretrycb);
+}
+
 static void __dvd_stateerrorcb(s32 result)
 {
 	dvdcmdblk *block;
@@ -655,17 +688,23 @@ static void __dvd_stategettingerrorcb(s32 result)
 			return;
 		} else if(ret==2 || ret==3) cnclpt = 0;
 		else {
-			tmp = val&0xff000000;
-			if(!(tmp-0x01000000)) cnclpt = 4;
-			else if(!(tmp-0x02000000)) cnclpt = 6;
-			else if(!(tmp-0x03000000)) cnclpt = 3;
+			tmp = _SHIFTR(val,24,8);
+			if(tmp==0x01) cnclpt = 4;
+			else if(tmp==0x02) cnclpt = 6;
+			else if(tmp==0x03) cnclpt = 3;
 			else cnclpt = 5;
 		}
 		if(__dvd_checkcancel(cnclpt)) return;
 		
 		if(ret==2) {
-			__dvd_stateerror(val);
-			
+			__dvd_storeerror(val);
+			__dvd_stategotoretry();
+			return;
+		}
+		
+		if((val&0x00ffffff)==0x00031100) {
+			DVD_LowSeek(__dvd_executing->offset,__dvd_unrecoverederrorcb);
+			return;
 		}
 		__dvd_executing->state = -1;
 		__dvd_stateerror(val);
@@ -691,6 +730,7 @@ static void __dvd_statebusycb(s32 result)
 			return;
 		}
 		if(result==0x0001) {
+			__dvd_internalretries = 0;
 			if(__dvd_currcmd==0x000f) __dvd_resetrequired = 1;
 			if(__dvd_checkcancel(7)) return;
 
@@ -717,6 +757,9 @@ static void __dvd_statebusycb(s32 result)
 		return;
 	}
 	if(result&0x0001) {
+		__dvd_internalretries = 0;
+		if(__dvd_checkcancel(0)) return;
+		
 		if(__dvd_currcmd==0x0001 || __dvd_currcmd==0x0004
 			|| __dvd_currcmd==0x0005 || __dvd_currcmd==0x000e) {
 #ifdef _DVD_DEBUG
@@ -756,8 +799,18 @@ static void __dvd_statebusycb(s32 result)
 					__dvd_stateready();
 					return;
 				}
-				
+				__dvd_autofinishing = 0;
+				__dvd_executing->currtxsize = 1;
+				DVD_LowAudioStream(0,__dvd_executing->len,__dvd_executing->offset,__dvd_statebusycb);
+				return;
 			}
+
+			block = __dvd_executing;
+			__dvd_executing = &__dvd_dummycmdblk;
+			block->state = 0;
+			if(block->cb) block->cb(0,block);
+			__dvd_stateready();
+			return;
 		}
 
 		block = __dvd_executing;
@@ -776,19 +829,20 @@ static void __dvd_statebusycb(s32 result)
 			__dvd_stateerror(0x01234567);
 			return;
 		}
-		if(__dvd_currcmd==0x0001 || __dvd_currcmd==0x0004
-			|| __dvd_currcmd==0x0005 || __dvd_currcmd==0x000e) {
-			if(__dvd_executing->txdsize!=__dvd_executing->len) {
-				__dvd_stategettingerror();
-				return;			
-			}
-			block = __dvd_executing;
-			__dvd_executing = &__dvd_dummycmdblk;
-			block->state = 0;
-			if(block->cb) block->cb(block->txdsize,block);
-			__dvd_stateready();
+		if((__dvd_currcmd==0x0001 || __dvd_currcmd==0x0004
+			|| __dvd_currcmd==0x0005 || __dvd_currcmd==0x000e)
+			&& __dvd_executing->txdsize==__dvd_executing->len) {
+				if(__dvd_checkcancel(0)) return;
+				
+				block = __dvd_executing;
+				__dvd_executing = &__dvd_dummycmdblk;
+				block->state = 0;
+				if(block->cb) block->cb(block->txdsize,block);
+				__dvd_stateready();
+				return;
 		}
 	}
+	__dvd_stategettingerror();
 }
 
 static void __dvd_inquirysyncb(s32 result,dvdcmdblk *block)
@@ -1129,6 +1183,7 @@ void __dvd_statebusy(dvdcmdblk *block)
 
 	switch(block->cmd) {
 		case 1:					//Read(Sector)
+		case 4:
 			_diReg[1] = _diReg[1];
 			len = block->len-block->txdsize;
 			if(len<0x80000) block->currtxsize = len;
@@ -1139,15 +1194,60 @@ void __dvd_statebusy(dvdcmdblk *block)
 			_diReg[1] = _diReg[1];
 			DVD_LowSeek(block->offset,__dvd_statebusycb);
 			return;
+		case 3:
+		case 15:
+			DVD_LowStopMotor(__dvd_statebusycb);
+			return;
 		case 5:					//ReadDiskID
 			_diReg[1] = _diReg[1];
 			block->currtxsize = DVD_DISKIDSIZE;
 			DVD_LowReadId(block->buf,__dvd_statebusycb);
 			return;
+		case 6:
+			_diReg[1] = _diReg[1];
+			if(__dvd_autofinishing) {
+				__dvd_executing->currtxsize = 0;
+				DVD_LowRequestAudioStatus(0,__dvd_statebusycb);
+			} else {
+				__dvd_executing->currtxsize = 1;
+				DVD_LowAudioStream(0,__dvd_executing->len,__dvd_executing->offset,__dvd_statebusycb);
+			}
+			return;
+		case 7:
+			_diReg[1] = _diReg[1];
+			DVD_LowAudioStream(0x00010000,0,0,__dvd_statebusycb);
+			return;
+		case 8:
+			_diReg[1] = _diReg[1];
+			__dvd_autofinishing = 1;
+			DVD_LowAudioStream(0,0,0,__dvd_statebusycb);
+			return;
+		case 9:
+			_diReg[1] = _diReg[1];
+			DVD_LowRequestAudioStatus(0,__dvd_statebusycb);
+			return;
+		case 10:
+			_diReg[1] = _diReg[1];
+			DVD_LowRequestAudioStatus(0x00010000,__dvd_statebusycb);
+			return;
+		case 11:
+			_diReg[1] = _diReg[1];
+			DVD_LowRequestAudioStatus(0x00020000,__dvd_statebusycb);
+			return;
+		case 12:
+			_diReg[1] = _diReg[1];
+			DVD_LowRequestAudioStatus(0x00030000,__dvd_statebusycb);
+			return;
+		case 13:
+			_diReg[1] = _diReg[1];
+			DVD_LowAudioBufferConfig(__dvd_executing->offset,__dvd_executing->len,__dvd_statebusycb);
+			return;
 		case 14:				//Inquiry
 			_diReg[1] = _diReg[1];
 			block->currtxsize = 0x20;
 			DVD_LowInquiry(block->buf,__dvd_statebusycb);
+			return;
+		default:
 			return;
 	}
 }
@@ -1463,7 +1563,7 @@ s32 DVD_LowRequestAudioStatus(u32 subcmd,dvdcallbacklow cb)
 	__dvd_callback = cb;
 	__dvd_stopnextint = 0;
 
-	_diReg[2] = DVD_AUDIOSTATUS;
+	_diReg[2] = DVD_AUDIOSTATUS|subcmd;
 	_diReg[7] = DVD_DI_START;
 	
 	tb.tv_sec = 10;
