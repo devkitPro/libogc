@@ -12,15 +12,15 @@ Include Sub Directories=1
 [Open Files]
 Open File0=
 Active File Display Mode=-1
-Open File Pos0=1471
+Open File Pos0=301
 Open File Line0=0
-Open File Window Pos0=0,1,-1,-1,-4,-23,132,132,1005,572
-Open File1=C:\DOCUME~1\DAVEMN~1.000\LOCALS~1\Temp\Rar$DI54.140\manual.txt
-Open File Pos1=0
-Open File Line1=0
-Active File Index=4
-Open File Window Pos1=0,1,-1,-1,-4,-23,154,154,1031,598
-Open File2=C:\projects\devkitPro\gcdspsuite\gcdspsuite.sln
+Open File Window Pos0=2,3,-1,-1,-4,-23,66,66,940,506
+Open File1=C:\projects\devkitPro\examples\nds\Complex2D\Makefile
+Open File Pos1=3216
+Open File Line1=2038
+Active File Index=0
+Open File Window Pos1=0,1,-1,-1,-4,-23,88,88,966,532
+Open File2=
 Open File Pos2=0
 Open File Line2=0
 Open File Window Pos2=0,1,-1,-1,-4,-23,176,176,1053,620
@@ -46,7 +46,7 @@ Open File Line7=6584
 Open File Window Pos7=0,1,-1,-1,-4,-23,176,176,1078,545
 Open File8=
 [File View]
-Current Select=Project Files
+Current Select=Project Files\
 Scroll Position=0
 [Group]
 0=

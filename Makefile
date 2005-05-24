@@ -1,4 +1,11 @@
+#---------------------------------------------------------------------------------
 .SUFFIXES:
+#---------------------------------------------------------------------------------
+ifeq ($(strip $(DEVKITPPC)),)
+$(error "Please set DEVKITPPC in your environment. export DEVKITPPC=<path to>devkitPPC)
+endif
+
+export PATH	:=	$(DEVKITPPC)/bin:$(PATH)
 
 #---------------------------------------------------------------------------------
 PREFIX	:=	powerpc-gekko
@@ -13,10 +20,10 @@ OBJCOPY		:=	$(PREFIX)-objcopy
 
 BUILD		:=	build
 
-GETPATH		:=	$(CC) -v 2>&1 | sed -n -e 's/Reading specs from //p' | sed -e 's/\/lib.*//'
-INSTALLPATH	:=	$(shell $(GETPATH))
-GCC_VERSION	:=	$(shell $(CC) -dumpversion)
-DATESTRING	:=      $(shell date +%Y)$(shell date +%m)$(shell date +%d)
+SPECS		:=	$(shell $(DEVKITPPC)/bin/$(CC) -v 2>&1)
+INSTALLPATH	:=	$(shell echo $(SPECS) | sed -n -e 's/Reading specs from //p' | sed -e 's/\/bin.*//')
+GCC_VERSION	:=	$(shell $(DEVKITPPC)/bin/$(CC) -dumpversion)
+DATESTRING	:=	$(shell date +%Y)$(shell date +%m)$(shell date +%d)
 
 #---------------------------------------------------------------------------------
 ifneq ($(BUILD),$(notdir $(CURDIR)))
