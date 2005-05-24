@@ -57,7 +57,7 @@ INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/modplay -I$(BASEDIR)/gc/mad -I$(BASEDIR)/gc/sdcard
 
 MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -ffunction-sections -fdata-sections
-CFLAGS		:= -DGAMECUBE -O2 $(MACHDEP) -Wall $(INCLUDES)
+CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -O2 $(MACHDEP) -Wall $(INCLUDES)
 LDFLAGS		:=
 
 #---------------------------------------------------------------------------------
