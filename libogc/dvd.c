@@ -84,6 +84,7 @@ static u32 __dvd_fatalerror = 0;
 static u32 __dvd_lasterror = 0;
 static u32 __dvd_internalretries = 0;
 static u32 __dvd_autofinishing = 0;
+static u32 __dvd_cancellasterror = 0;
 static u32 __dvd_lastlen;
 static u32 __dvd_nextcmdnum;
 static u32 __dvd_workaround;
@@ -93,6 +94,7 @@ static u32 __dvd_currcmd;
 static lwpq_t __dvd_wait_queue;
 static sysalarm __dvd_timeoutalarm;
 static sysalarm __dvd_resetalarm;
+static dvdcmdblk __dvd_block$15;
 static dvdcmdblk __dvd_dummycmdblk;
 static dvddiskid __dvd_tmpid0 ATTRIBUTE_ALIGN(32);
 static dvddrvinfo __dvd_driveinfo ATTRIBUTE_ALIGN(32);
@@ -350,6 +352,7 @@ s32 DVD_LowAudioStream(u32 subcmd,u32 len,u32 offset,dvdcallbacklow cb);
 s32 DVD_LowAudioBufferConfig(s32 enable,u32 size,dvdcallbacklow cb);
 s32 DVD_LowRequestAudioStatus(u32 subcmd,dvdcallbacklow cb);
 s32 DVD_ReadAbsAsyncPrio(dvdcmdblk *block,void *buf,u32 len,u32 offset,dvdcbcallback cb,s32 prio);
+s32 DVD_ReadDiskID(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb);
 
 extern void udelay(int us);
 extern u32 diff_msec(unsigned long long start,unsigned long long end);
@@ -1254,6 +1257,7 @@ void __dvd_statebusy(dvdcmdblk *block)
 
 void __dvd_stateready()
 {
+	dvdcmdblk *block;
 #ifdef _DVD_DEBUG
 	printf("__dvd_stateready()\n");
 #endif
@@ -1263,12 +1267,56 @@ void __dvd_stateready()
 	}
 
 	__dvd_executing = __dvd_popwaitingqueue();
+	
+	if(__dvd_fatalerror) {
+		__dvd_executing->state = -1;
+		block = __dvd_executing;
+		__dvd_executing = &__dvd_dummycmdblk;
+		if(block->cb) block->cb(-1,block);
+		__dvd_stateready();
+		return;
+	}
+	
 	__dvd_currcmd = __dvd_executing->cmd;
 	
 	if(__dvd_resumefromhere) {
-		if(__dvd_resumefromhere<7) {
+		if(__dvd_resumefromhere<=7) {
+			switch(__dvd_resumefromhere) {
+				case 1:
+					__dvd_executing->state = 6;
+					__dvd_statemotorstopped();
+					break;
+				case 2:
+					__dvd_executing->state = 11;
+					__dvd_statemotorstopped();
+					break;
+				case 3:
+					__dvd_executing->state = 4;
+					__dvd_statemotorstopped();
+					break;
+				case 4:
+					__dvd_executing->state = 5;
+					__dvd_statemotorstopped();
+					break;
+				case 5:
+					__dvd_executing->state = -1;
+					__dvd_stateerror(__dvd_cancellasterror);
+					break;
+				case 6:
+					__dvd_executing->state = 3;
+					__dvd_statecoverclosed();
+					break;
+				case 7:
+					__dvd_executing->state = 7;
+					__dvd_statemotorstopped();
+					break;
+				default:
+					break;
+					
+			}
 		}
 		__dvd_resumefromhere = 0;
+		return;
 	}
 	__dvd_executing->state = 1;
 	__dvd_statebusy(__dvd_executing);
@@ -1573,6 +1621,23 @@ s32 DVD_LowRequestAudioStatus(u32 subcmd,dvdcallbacklow cb)
 	return 1;
 }
 
+s32 DVD_ReadDiskID(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb)
+{
+#ifdef _DVD_DEBUG
+	printf("DVD_ReadDiskID(%p,%p)\n",block,id);
+#endif
+	if(!block || !id) return 0;
+
+	block->cmd = 0x0005;
+	block->buf = id;
+	block->len = 0x0020;
+	block->offset = 0;
+	block->txdsize = 0;
+	block->cb = cb;
+
+	return __issuecommand(2,block);
+}
+
 s32 DVD_ReadAbsAsyncPrio(dvdcmdblk *block,void *buf,u32 len,u32 offset,dvdcbcallback cb,s32 prio)
 {
 #ifdef _DVD_DEBUG
@@ -1632,44 +1697,6 @@ s32 DVD_Inquiry(dvdcmdblk *block,dvddrvinfo *info)
 		else if(state==10) ret = -3;
 		else LWP_SleepThread(__dvd_wait_queue);
 	} while(state!=0 && state!=-1 && state!=10);
-	_CPU_ISR_Restore(level);
-	return ret;
-}
-
-s32 DVD_ReadIDAsync(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb)
-{
-#ifdef _DVD_DEBUG
-	printf("DVD_ReadIDAsync(%p,%p)\n",block,id);
-#endif
-	if(!block || !id) return 0;
-
-	block->cmd = 0x0005;
-	block->buf = id;
-	block->len = 0x0020;
-	block->offset = 0;
-	block->txdsize = 0;
-	block->cb = cb;
-
-	return __issuecommand(2,block);
-}
-
-s32 DVD_ReadID(dvdcmdblk *block,dvddiskid *id)
-{
-	u32 level;
-	s32 state,ret;
-#ifdef _DVD_DEBUG
-	printf("DVD_ReadID(%p,%p)\n",block,id);
-#endif
-	ret = DVD_ReadIDAsync(block,id,__dvd_readdiskidsynccb);
-	if(!ret) return -1;
-
-	_CPU_ISR_Disable(level);
-	do {
-		state = block->state;
-		if(state==0) ret = block->txdsize;
-		else if(state==-1) ret = -1;
-		else LWP_SleepThread(__dvd_wait_queue);
-	} while(state!=0 && state!=-1);
 	_CPU_ISR_Restore(level);
 	return ret;
 }
@@ -1767,6 +1794,37 @@ s32 DVD_StopStreamAtEnd(dvdcmdblk *block)
 	} while(state!=0 && state!=-1 && state!=10);
 	_CPU_ISR_Restore(level);
 	
+	return ret;
+}
+
+s32 DVD_GetCmdBlockStatus(dvdcmdblk *block)
+{
+	u32 level;
+	s32 ret = -1;
+
+	_CPU_ISR_Disable(level);
+	if(block) {
+		if((ret=block->state)==0x0003) ret = 1;
+	}
+	_CPU_ISR_Restore(level);
+	return ret;
+}
+
+s32 DVD_GetDriveStatus()
+{
+	s32 ret;
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	if(__dvd_fatalerror) ret = -1;
+	else {
+		if(__dvd_pausingflag) ret = 8;
+		else {
+			if(!__dvd_executing || __dvd_executing==&__dvd_dummycmdblk) ret = 0;
+			else ret = DVD_GetCmdBlockStatus(__dvd_executing);
+		}
+	}
+	_CPU_ISR_Restore(level);
 	return ret;
 }
 
@@ -1897,6 +1955,18 @@ void DVD_DumpFirmware(void *buf)
 	memcpy(buf,fw_buffer,0x20000);
 }
 #endif
+
+void callback(s32 result,dvdcmdblk *block)
+{
+}
+
+s32 DVD_Mount(dvdcmdblk *block)
+{
+	
+	DVD_Reset();
+	DVD_ReadDiskID(&__dvd_block$15,&__dvd_tmpid0,callback);
+	
+}
 
 dvddiskid* DVD_GetCurrentDiskID()
 {
