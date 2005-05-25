@@ -669,7 +669,7 @@ static void __dvd_stateerrorcb(s32 result)
 static void __dvd_stategettingerrorcb(s32 result)
 {
 	s32 ret;
-	u32 val,tmp,cnclpt;
+	u32 val,err,cnclpt;
 #ifdef _DVD_DEBUG
 	printf("__dvd_stategettingerrorcb(%d)\n",result);
 #endif
@@ -685,16 +685,16 @@ static void __dvd_stategettingerrorcb(s32 result)
 	}
 	if(result==0x0001) {
 		val = _diReg[8];
+		err = _SHIFTR(val,24,8);
 		if((ret=__dvd_categorizeerror(val))==1) {
 			__dvd_executing->state = -1;
 			__dvd_stateerror(val);
 			return;
 		} else if(ret==2 || ret==3) cnclpt = 0;
 		else {
-			tmp = _SHIFTR(val,24,8);
-			if(tmp==0x01) cnclpt = 4;
-			else if(tmp==0x02) cnclpt = 6;
-			else if(tmp==0x03) cnclpt = 3;
+			if(err==0x01) cnclpt = 4;
+			else if(err==0x02) cnclpt = 6;
+			else if(err==0x03) cnclpt = 3;
 			else cnclpt = 5;
 		}
 		if(__dvd_checkcancel(cnclpt)) return;
@@ -703,14 +703,29 @@ static void __dvd_stategettingerrorcb(s32 result)
 			__dvd_storeerror(val);
 			__dvd_stategotoretry();
 			return;
-		}
-		
-		if((val&0x00ffffff)==0x00031100) {
-			DVD_LowSeek(__dvd_executing->offset,__dvd_unrecoverederrorcb);
+		} else if(ret==3) {
+			if((val&0x00ffffff)==0x00031100) {
+				DVD_LowSeek(__dvd_executing->offset,__dvd_unrecoverederrorcb);
+				return;
+			} else {
+				__dvd_laststate(__dvd_executing);
+				return;
+			}
+		} else if(err==0x01) {
+			__dvd_executing->state = 5;
+			__dvd_statemotorstopped();
+			return;
+		} else if(err==0x02) {
+			__dvd_executing->state = 3;
+			__dvd_statecoverclosed();
+			return;
+		} else if(err==0x03) {
+			__dvd_executing->state = 4;
+			__dvd_statemotorstopped();
 			return;
 		}
 		__dvd_executing->state = -1;
-		__dvd_stateerror(val);
+		__dvd_stateerror(0x01234567);
 		return;
 	}
 }
