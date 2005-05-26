@@ -900,8 +900,16 @@ static void __dvd_statecoverclosedcb(s32 result)
 	if(result==0x0010) {
 		__dvd_executing->state = -1;
 		__dvd_statetimeout();
+		return;
 	}
 	
+	if(!(result&0x0006)) {
+		__dvd_internalretries = 0;
+		__dvd_statecheckid();
+		return;
+	}
+
+	if(result==0x0002) __dvd_stategettingerror();
 }
 
 static void __dvd_statecheckid1cb(s32 result)
