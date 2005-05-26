@@ -101,6 +101,11 @@
 #define   BBA_NWAYC_ANS_RA   (1<<3)	/* ANS, Restart Autonegotiation */
 #define   BBA_NWAYC_LTE      (1<<7)	/* LTE, Link Test Enable */
 
+#define	BBA_HALF_100		 (BBA_NWAYC_PS100)
+#define	BBA_FULL_100		 (BBA_NWAYC_PS100|BBA_NWAYC_FD)
+#define	BBA_HALF_10 		 (BBA_NWAYC_ANE)
+#define	BBA_FULL_10 		 (BBA_NWAYC_FD)
+
 #define BBA_NWAYS 0x31
 #define   BBA_NWAYS_LS10	 (1<<0)
 #define   BBA_NWAYS_LS100	 (1<<1)
@@ -434,12 +439,31 @@ static __inline__ u32 __linkstate()
 	u8 nways = 0;
 
 	nways = bba_in8(BBA_NWAYS);
-	if(nways&BBA_NWAYS_LS10 || nways&BBA_NWAYS_LS100) return 1;
+	if(nways&0xf0 && (nways&BBA_NWAYS_LS10 || nways&BBA_NWAYS_LS100)) return 1;
 	return 0;
 }
 
-static u32 __bba_getlink_state_async()
+static u8 __set_linkstate(u8 mode)
 {
+	u32 ret;
+	u8 bba_speed;
+	
+	bba_speed = (bba_in8(BBA_NWAYC)&0xf0);
+	bba_out8(BBA_NWAYC,(bba_speed|mode));
+
+	do {
+		ret = __linkstate();
+		if(ret) break;
+
+		udelay(20000);
+	} while(!ret);
+
+	return (bba_in8(BBA_NWAYC)&0x07);
+}
+
+static u32 __bba_set_linkstate()
+{
+	u8 speed;
 	u32 level,ret;
 
 
@@ -451,7 +475,15 @@ static u32 __bba_getlink_state_async()
 	}
 	_CPU_ISR_Restore(level);
 
-	ret = __linkstate();
+	ret = 0;
+	if((speed=__set_linkstate(BBA_FULL_100))==BBA_FULL_100) ret = 1;
+	else if((speed=__set_linkstate(BBA_HALF_100))==BBA_HALF_100) ret = 1;
+	else if((speed=__set_linkstate(BBA_FULL_10))==BBA_FULL_10) ret = 1;
+	else {
+		speed = __set_linkstate(BBA_HALF_10);
+		ret = 1;
+	}
+
 	EXI_Unlock(EXI_CHANNEL_0);
 	return ret;
 }
@@ -983,6 +1015,7 @@ static err_t __bba_init(struct netif *dev)
 	if(!priv) return ERR_IF;
 
 	LWIP_DEBUGF(NETIF_DEBUG,("initializing BBA...\n"));
+	bba_cmd_out8(0x02,BBA_CMD_IRMASKALL);
 	
 	__bba_reset();
 
@@ -1167,28 +1200,33 @@ err_t bba_init(struct netif *dev)
 	
 	__bba_exi_wait();
 
-	ret = bba_probe(dev);
-	if(ret!=ERR_OK) {
-		EXI_Unlock(EXI_CHANNEL_0);
-		return ret;
-	}
 	LWIP_DEBUGF(NETIF_DEBUG, ("bba_init(call EXI_RegisterEXICallback())\n"));
 	EXI_RegisterEXICallback(EXI_CHANNEL_2,bba_event_handler);
 
-	EXI_Unlock(EXI_CHANNEL_0);
+	ret = bba_probe(dev);
+	if(ret!=ERR_OK) {
+		EXI_RegisterEXICallback(EXI_CHANNEL_2,NULL);
+		EXI_Unlock(EXI_CHANNEL_0);
+		return ret;
+	}
 
+	EXI_Unlock(EXI_CHANNEL_0);
+/*
 	do {
 		udelay(20000);
 		LWIP_DEBUGF(NETIF_DEBUG, ("bba_init(wait link state)\n"));
 	} while(!__bba_getlink_state_async());
 
 	etharp_init();
-
-	tb.tv_sec = ARP_TMR_INTERVAL/TB_MSPERSEC;
-	tb.tv_nsec = 0;
-	net_arp_ticks = __lwp_wd_calc_ticks(&tb);
-	__lwp_wd_initialize(&arp_time_cntrl,__arp_timer,NULL);
-	__lwp_wd_insert_ticks(&arp_time_cntrl,net_arp_ticks);
-
-	return ERR_OK;
+*/
+	ret = ERR_IF;
+	if(__bba_set_linkstate()) {
+		ret = ERR_OK;
+		tb.tv_sec = ARP_TMR_INTERVAL/TB_MSPERSEC;
+		tb.tv_nsec = 0;
+		net_arp_ticks = __lwp_wd_calc_ticks(&tb);
+		__lwp_wd_initialize(&arp_time_cntrl,__arp_timer,NULL);
+		__lwp_wd_insert_ticks(&arp_time_cntrl,net_arp_ticks);
+	}
+	return ret;
 }
