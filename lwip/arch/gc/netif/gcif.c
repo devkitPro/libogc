@@ -1211,22 +1211,18 @@ err_t bba_init(struct netif *dev)
 	}
 
 	EXI_Unlock(EXI_CHANNEL_0);
-/*
-	do {
-		udelay(20000);
-		LWIP_DEBUGF(NETIF_DEBUG, ("bba_init(wait link state)\n"));
-	} while(!__bba_getlink_state_async());
 
-	etharp_init();
-*/
 	ret = ERR_IF;
 	if(__bba_set_linkstate()) {
-		ret = ERR_OK;
+		etharp_init();
+
 		tb.tv_sec = ARP_TMR_INTERVAL/TB_MSPERSEC;
 		tb.tv_nsec = 0;
 		net_arp_ticks = __lwp_wd_calc_ticks(&tb);
 		__lwp_wd_initialize(&arp_time_cntrl,__arp_timer,NULL);
 		__lwp_wd_insert_ticks(&arp_time_cntrl,net_arp_ticks);
+
+		ret = ERR_OK;
 	}
 	return ret;
 }
