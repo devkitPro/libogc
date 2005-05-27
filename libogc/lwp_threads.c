@@ -213,6 +213,10 @@ static void __lwp_thread_handler()
 lwp_cntrl* __lwp_thread_alloclwp()
 {
 	s32 i;
+	u32 level;
+	lwp_cntrl *ret = NULL;
+
+	_CPU_ISR_Disable(level);
 
 	i=0;
 	while(i<LWP_MAXTHREADS && _lwp_objects[i].lwp_id!=-1) i++;
@@ -220,9 +224,11 @@ lwp_cntrl* __lwp_thread_alloclwp()
 		_lwp_objects[i].thethread.id = i;
 		_lwp_objects[i].lwp_id = i;
 		_lwp_objects[i].thethread.own = &_lwp_objects[i];
-		return &_lwp_objects[i].thethread;
+		ret = &_lwp_objects[i].thethread;
 	}
-	return NULL;
+
+	_CPU_ISR_Restore(level);
+	return ret;
 }
 
 void __lwp_thread_freelwp(lwp_cntrl *thethread)
