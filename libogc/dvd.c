@@ -11,7 +11,7 @@
 #include "system.h"
 #include "dvd.h"
 
-#define _DVD_DEBUG
+//#define _DVD_DEBUG
 
 #define DVD_BRK				(1<<0)
 #define DVD_DE_MSK			(1<<1)
@@ -331,6 +331,7 @@ static u32 __dvd_errortable[] = {
 	0x00100007, 0x00000000
 };
 
+void __dvd_statecheckid();
 void __dvd_stategettingerror();
 void __dvd_statecoverclosed();
 void __dvd_stateready();

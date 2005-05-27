@@ -647,11 +647,14 @@ static err_t netconn_write(struct netconn *conn,void *dataptr,u32 size,u8 copy)
 	struct api_msg *msg;
 	u16 len;
 
+	LWIP_DEBUGF(API_LIB_DEBUG, ("netconn_write(%d)\n",conn->err));
+
 	if(conn==NULL) return ERR_VAL;
 	if(conn->err!=ERR_OK) return conn->err;
 	
-	if(conn->sem==NULL)
+	if(conn->sem==NULL) {
 		if(LWP_SemInit(&conn->sem,0,1)==-1) return ERR_MEM;
+	}
 
 	if((msg=(struct api_msg*)malloc(sizeof(struct api_msg)))==NULL) return (conn->err = ERR_MEM);
 	
@@ -663,8 +666,8 @@ static err_t netconn_write(struct netconn *conn,void *dataptr,u32 size,u8 copy)
 		msg->msg.msg.w.copy = copy;
 		if(conn->type==NETCONN_TCP) {
 			if(tcp_sndbuf(conn->pcb.tcp)==0) {
-				LWP_SemWait(conn->sem);
 				LWIP_DEBUGF(API_LIB_DEBUG, ("netconn_write: tcp_sndbuf = 0,err = %d\n", conn->err));
+				LWP_SemWait(conn->sem);
 				if(conn->err!=ERR_OK) break;
 			}
 			if(size>tcp_sndbuf(conn->pcb.tcp))
@@ -679,9 +682,11 @@ static err_t netconn_write(struct netconn *conn,void *dataptr,u32 size,u8 copy)
 		apimsg_post(msg);
 		MQ_Receive(conn->mbox,(mqmsg)&dummy,MQ_MSG_BLOCK);
 		if(conn->err==ERR_OK) {
+			LWIP_DEBUGF(API_LIB_DEBUG, ("netconn_write: %d bytes written\n",len));
 			dataptr = (void*)((char*)dataptr+len);
 			size -= len;
 		} else if(conn->err==ERR_MEM) {
+			LWIP_DEBUGF(API_LIB_DEBUG, ("netconn_write: mem err\n"));
 			conn->err = ERR_OK;
 			LWP_SemWait(conn->sem);
 		} else {
@@ -1862,7 +1867,7 @@ s32 net_send(s32 s,void *data,u32 len,u32 flags)
 			netbuf_delete(buf);
 			break;
 		case NETCONN_TCP:
-			err = netconn_write(sock->conn,data,len,NETCONN_COPY);
+			err = netconn_write(sock->conn,data,len,NETCONN_NOCOPY);
 			break;
 		default:
 			err = ERR_ARG;

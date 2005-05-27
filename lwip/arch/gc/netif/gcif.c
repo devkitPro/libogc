@@ -439,7 +439,7 @@ static __inline__ u32 __linkstate()
 	u8 nways = 0;
 
 	nways = bba_in8(BBA_NWAYS);
-	if(nways&0xf0 && (nways&BBA_NWAYS_LS10 || nways&BBA_NWAYS_LS100)) return 1;
+	if(nways&BBA_NWAYS_LS10 || nways&BBA_NWAYS_LS100) return nways;
 	return 0;
 }
 
@@ -453,8 +453,7 @@ static u8 __set_linkstate(u8 mode)
 
 	do {
 		ret = __linkstate();
-		if(ret) break;
-
+		if(ret && ret&0xf0 && !(ret&(BBA_NWAYS_ANCLPT|BBA_NWAYS_LPNWAY))) break;
 		udelay(20000);
 	} while(!ret);
 
@@ -469,7 +468,7 @@ static u32 __bba_set_linkstate()
 
 	_CPU_ISR_Disable(level);
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==0) {
-		LWIP_ERROR(("__bba_getlink_state_async(exi allready locked)\n"));
+		LWIP_ERROR(("__bba_set_linkstate(exi allready locked)\n"));
 		_CPU_ISR_Restore(level);
 		return 0;
 	}
@@ -573,7 +572,7 @@ static u32 __bba_link_postrxsub0()
 	if(cur_rcv_postimmlen) bba_outsdata(cur_rcv_postbuffer+cur_rcv_postdmalen,cur_rcv_postimmlen);
 	bba_deselect();
 
-	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)));		//&~BBA_NCRA_ST0
+	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)&~BBA_NCRA_ST0)|BBA_NCRA_ST1));		//&~BBA_NCRA_ST0
 	return ERR_TXPENDING;
 }
 
@@ -607,7 +606,7 @@ static err_t __bba_post_rxtx(struct pbuf *p)
 		ethhdr = p->payload;
 		switch(htons(ethhdr->type)) {
 			case ETHTYPE_IP:
-				LWIP_DEBUGF(NETIF_DEBUG,("__bba_post_send: passing packet up to IP layer\n"));
+				LWIP_DEBUGF(NETIF_DEBUG,("__bba_post_rxtx: passing packet up to IP layer\n"));
 
 				q = etharp_ip_input(gc_netif,p);
 				pbuf_header(p,-(hlen));
@@ -615,7 +614,7 @@ static err_t __bba_post_rxtx(struct pbuf *p)
 				break;
 			case ETHTYPE_ARP:
 				/* pass p to ARP module, get ARP reply or ARP queued packet */
-				LWIP_DEBUGF(NETIF_DEBUG,("__bba_post_send: passing packet up to ARP layer\n"));
+				LWIP_DEBUGF(NETIF_DEBUG,("__bba_post_rxtx: passing packet up to ARP layer\n"));
 				q = etharp_arp_input(gc_netif, priv->ethaddr, p);
 				break;
 			/* unsupported Ethernet packet type */
@@ -627,7 +626,7 @@ static err_t __bba_post_rxtx(struct pbuf *p)
 
 
 		if(q!=NULL) {
-			LWIP_DEBUGF(NETIF_DEBUG,("__bba_post_send: q!=NULL\,q->tot_en=%dn",q->tot_len));
+			LWIP_DEBUGF(NETIF_DEBUG,("__bba_post_rxtx: q!=NULL,q->tot_len=%d\n",q->tot_len));
 			if(q->tot_len<=BBA_TX_MAX_PACKET_SIZE) {
 				buf = cur_rcv_postbuffer;
 				for(tmp=q;tmp!=NULL;tmp=tmp->next) {
@@ -698,7 +697,7 @@ static u32 __bba_link_txsub0()
 	if(cur_snd_immlen) bba_outsdata(cur_snd_buffer+cur_snd_dmalen,cur_snd_immlen);
 	bba_deselect();
 
-	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)));		//&~BBA_NCRA_ST0
+	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)&~BBA_NCRA_ST0)|BBA_NCRA_ST1));		//&~BBA_NCRA_ST0
 	EXI_Unlock(EXI_CHANNEL_0);
 	return ERR_OK;
 }
