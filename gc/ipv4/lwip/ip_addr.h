@@ -46,11 +46,25 @@ PACK_STRUCT_END
 #  include "arch/epstruct.h"
 #endif
 
+#ifdef PACK_STRUCT_USE_INCLUDES
+#  include "arch/bpstruct.h"
+#endif
+PACK_STRUCT_BEGIN
+struct ip_addr2 {
+  PACK_STRUCT_FIELD(u16_t addrw[2]);
+} PACK_STRUCT_STRUCT;
+PACK_STRUCT_END
+#ifdef PACK_STRUCT_USE_INCLUDES
+#  include "arch/epstruct.h"
+#endif
+
 /* For compatibility with BSD code */
 #define HAVE_IN_ADDR
 struct in_addr {
   u32_t s_addr;
 };
+
+struct netif;
 
 extern const struct ip_addr ip_addr_any;
 extern const struct ip_addr ip_addr_broadcast;
@@ -103,8 +117,16 @@ extern const struct ip_addr ip_addr_broadcast;
 
 #define ip_addr_set(dest, src) (dest)->addr = \
                                ((src) == NULL? 0:\
-                               ((struct ip_addr *)src)->addr)
-#define ip_addr_maskcmp(addr1, addr2, mask) (((addr1)->addr & \
+                               (src)->addr)
+/**
+ * Determine if two address are on the same network.
+ *
+ * @arg addr1 IP address 1
+ * @arg addr2 IP address 2
+ * @arg mask network identifier mask
+ * @return !0 if the network identifiers of both address match
+ */
+#define ip_addr_netcmp(addr1, addr2, mask) (((addr1)->addr & \
                                               (mask)->addr) == \
                                              ((addr2)->addr & \
                                               (mask)->addr))
@@ -112,10 +134,7 @@ extern const struct ip_addr ip_addr_broadcast;
 
 #define ip_addr_isany(addr1) ((addr1) == NULL || (addr1)->addr == 0)
 
-#define ip_addr_isbroadcast(addr1, mask) (((((addr1)->addr) & ~((mask)->addr)) == \
-           (0xffffffff & ~((mask)->addr))) || \
-                                         ((addr1)->addr == 0xffffffff) || \
-                                         ((addr1)->addr == 0x00000000))
+u8_t ip_addr_isbroadcast(struct ip_addr *, struct netif *);
 
 #define ip_addr_ismulticast(addr1) (((addr1)->addr & ntohl(0xf0000000)) == ntohl(0xe0000000))
 

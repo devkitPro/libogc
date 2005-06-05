@@ -42,15 +42,17 @@
  *
  */
 
+#include <string.h>
+
 #include "lwip/opt.h"
 
 #include "lwip/def.h"
 #include "lwip/memp.h"
 #include "lwip/inet.h"
+#include "lwip/ip_addr.h"
 #include "lwip/netif.h"
 #include "lwip/udp.h"
 #include "lwip/icmp.h"
-#include "lwip/ip_addr.h"
 
 #include "lwip/stats.h"
 
@@ -134,10 +136,10 @@ udp_input(struct pbuf *p, struct netif *inp)
  again_1:
   
   /* Iterate through the UDP pcb list for a fully matching pcb */
-  for(pcb = pcb_temp; pcb != NULL; pcb = pcb->next) {
+  for (pcb = pcb_temp; pcb != NULL; pcb = pcb->next) {
 #else  /* SO_REUSE */ 
   /* Iterate through the UDP pcb list for a fully matching pcb */
-  for(pcb = udp_pcbs; pcb != NULL; pcb = pcb->next) {
+  for (pcb = udp_pcbs; pcb != NULL; pcb = pcb->next) {
 #endif  /* SO_REUSE */ 
     /* print the PCB local and remote address */
     LWIP_DEBUGF(UDP_DEBUG, ("pcb (%u.%u.%u.%u, %u) --- (%u.%u.%u.%u, %u)\n",
@@ -159,7 +161,7 @@ udp_input(struct pbuf *p, struct netif *inp)
        /* PCB local IP address matches UDP destination IP address? */
         ip_addr_cmp(&(pcb->local_ip), &(iphdr->dest)))) {
 #if SO_REUSE
-      if(pcb->so_options & SOF_REUSEPORT) {
+      if (pcb->so_options & SOF_REUSEPORT) {
         if(reuse) {
           /* We processed one PCB already */
           LWIP_DEBUGF(UDP_DEBUG, ("udp_input: second or later PCB and SOF_REUSEPORT set.\n"));
@@ -173,7 +175,7 @@ udp_input(struct pbuf *p, struct netif *inp)
         p->ref++;
         LWIP_DEBUGF(UDP_DEBUG, ("udp_input: reference counter on PBUF set to %i\n", p->ref));
       } else {
-        if(reuse) {
+        if (reuse) {
           /* We processed one PCB already */
           LWIP_DEBUGF(UDP_DEBUG, ("udp_input: second or later PCB but SOF_REUSEPORT not set !\n"));
         }
@@ -192,9 +194,9 @@ udp_input(struct pbuf *p, struct netif *inp)
     
   again_2:
 
-    for(pcb = pcb_temp; pcb != NULL; pcb = pcb->next) {
+    for (pcb = pcb_temp; pcb != NULL; pcb = pcb->next) {
 #else  /* SO_REUSE */ 
-    for(pcb = udp_pcbs; pcb != NULL; pcb = pcb->next) {
+    for (pcb = udp_pcbs; pcb != NULL; pcb = pcb->next) {
 #endif  /* SO_REUSE */ 
       LWIP_DEBUGF(UDP_DEBUG, ("pcb (%u.%u.%u.%u, %u) --- (%u.%u.%u.%u, %u)\n",
         ip4_addr1(&pcb->local_ip), ip4_addr2(&pcb->local_ip),
@@ -210,8 +212,8 @@ udp_input(struct pbuf *p, struct netif *inp)
         /* ...matching interface address? */
         ip_addr_cmp(&(pcb->local_ip), &(iphdr->dest)))) {
 #if SO_REUSE
-        if(pcb->so_options & SOF_REUSEPORT) {
-          if(reuse) {
+        if (pcb->so_options & SOF_REUSEPORT) {
+          if (reuse) {
             /* We processed one PCB already */
             LWIP_DEBUGF(UDP_DEBUG, ("udp_input: second or later PCB and SOF_REUSEPORT set.\n"));
           } else {
@@ -224,7 +226,7 @@ udp_input(struct pbuf *p, struct netif *inp)
           p->ref++;
           LWIP_DEBUGF(UDP_DEBUG, ("udp_input: reference counter on PBUF set to %i\n", p->ref));
         } else {
-          if(reuse) {
+          if (reuse) {
             /* We processed one PCB already */
             LWIP_DEBUGF(UDP_DEBUG, ("udp_input: second or later PCB but SOF_REUSEPORT not set !\n"));
           }
@@ -246,6 +248,7 @@ udp_input(struct pbuf *p, struct netif *inp)
     if (IPH_PROTO(iphdr) == IP_PROTO_UDPLITE) {
 #endif /* IPv4 */
       /* Do the UDP Lite checksum */
+#if CHECKSUM_CHECK_UDP
       if (inet_chksum_pseudo(p, (struct ip_addr *)&(iphdr->src),
          (struct ip_addr *)&(iphdr->dest),
          IP_PROTO_UDPLITE, ntohs(udphdr->len)) != 0) {
@@ -256,7 +259,9 @@ udp_input(struct pbuf *p, struct netif *inp)
   pbuf_free(p);
   goto end;
       }
+#endif
     } else {
+#if CHECKSUM_CHECK_UDP
       if (udphdr->chksum != 0) {
   if (inet_chksum_pseudo(p, (struct ip_addr *)&(iphdr->src),
        (struct ip_addr *)&(iphdr->dest),
@@ -270,6 +275,7 @@ udp_input(struct pbuf *p, struct netif *inp)
     goto end;
   }
       }
+#endif
     }
     pbuf_header(p, -UDP_HLEN);
     if (pcb != NULL) {
@@ -307,8 +313,8 @@ udp_input(struct pbuf *p, struct netif *inp)
       /* No match was found, send ICMP destination port unreachable unless
       destination address was broadcast/multicast. */
 
-      if (!ip_addr_isbroadcast(&iphdr->dest, &inp->netmask) &&
-   !ip_addr_ismulticast(&iphdr->dest)) {
+      if (!ip_addr_isbroadcast(&iphdr->dest, inp) &&
+          !ip_addr_ismulticast(&iphdr->dest)) {
 
   /* adjust pbuf pointer */
   p->payload = iphdr;
@@ -350,9 +356,10 @@ udp_sendto(struct udp_pcb *pcb, struct pbuf *p,
   struct ip_addr *dst_ip, u16_t dst_port)
 {
   err_t err;
+  /* temporary space for current PCB remote address */
   struct ip_addr pcb_remote_ip;
   u16_t pcb_remote_port;
-  /* remember remote peer address of PCB */
+  /* remember current remote peer address of PCB */
   pcb_remote_ip.addr = pcb->remote_ip.addr;
   pcb_remote_port = pcb->remote_port;
   /* copy packet destination address to PCB remote peer address */
@@ -360,7 +367,7 @@ udp_sendto(struct udp_pcb *pcb, struct pbuf *p,
   pcb->remote_port = dst_port;
   /* send to the packet destination address */
   err = udp_send(pcb, p);
-  /* reset PCB remote peer address */
+  /* restore PCB remote peer address */
   pcb->remote_ip.addr = pcb_remote_ip.addr;
   pcb->remote_port = pcb_remote_port;
   return err;
@@ -427,7 +434,9 @@ udp_send(struct udp_pcb *pcb, struct pbuf *p)
   udphdr->chksum = 0x0000; 
 
   /* find the outgoing network interface for this packet */
-  if ((netif = ip_route(&(pcb->remote_ip))) == NULL) {
+  netif = ip_route(&(pcb->remote_ip));
+  /* no outgoing network interface could be found? */
+  if (netif == NULL) {
     LWIP_DEBUGF(UDP_DEBUG | 1, ("udp_send: No route to 0x%lx\n", pcb->remote_ip.addr));
     UDP_STATS_INC(udp.rterr);
     return ERR_RTE;
@@ -449,10 +458,14 @@ udp_send(struct udp_pcb *pcb, struct pbuf *p)
     /* set UDP message length in UDP header */
     udphdr->len = htons(pcb->chksum_len);
     /* calculate checksum */
+#if CHECKSUM_GEN_UDP
     udphdr->chksum = inet_chksum_pseudo(q, src_ip, &(pcb->remote_ip),
           IP_PROTO_UDP, pcb->chksum_len);
     /* chksum zero must become 0xffff, as zero means 'no checksum' */
     if (udphdr->chksum == 0x0000) udphdr->chksum = 0xffff;
+#else
+    udphdr->chksum = 0x0000;
+#endif
     /* output to IP */
     LWIP_DEBUGF(UDP_DEBUG, ("udp_send: ip_output_if (,,,,IP_PROTO_UDPLITE,)\n"));
     err = ip_output_if (q, src_ip, &pcb->remote_ip, pcb->ttl, pcb->tos, IP_PROTO_UDPLITE, netif);    
@@ -461,11 +474,15 @@ udp_send(struct udp_pcb *pcb, struct pbuf *p)
     LWIP_DEBUGF(UDP_DEBUG, ("udp_send: UDP packet length %u\n", q->tot_len));
     udphdr->len = htons(q->tot_len);
     /* calculate checksum */
+#if CHECKSUM_GEN_UDP
     if ((pcb->flags & UDP_FLAGS_NOCHKSUM) == 0) {
       udphdr->chksum = inet_chksum_pseudo(q, src_ip, &pcb->remote_ip, IP_PROTO_UDP, q->tot_len);
       /* chksum zero must become 0xffff, as zero means 'no checksum' */
       if (udphdr->chksum == 0x0000) udphdr->chksum = 0xffff;
     }
+#else
+    udphdr->chksum = 0x0000;
+#endif
     LWIP_DEBUGF(UDP_DEBUG, ("udp_send: UDP checksum 0x%04x\n", udphdr->chksum));
     LWIP_DEBUGF(UDP_DEBUG, ("udp_send: ip_output_if (,,,,IP_PROTO_UDP,)\n"));
     /* output to IP */

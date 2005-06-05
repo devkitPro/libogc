@@ -205,10 +205,20 @@ struct linger {
           unsigned char fd_bits [(FD_SETSIZE+7)/8];
         } fd_set;
 
+/* 
+ * only define this in sockets.c so it does not interfere
+ * with other projects namespaces where timeval is present
+ */ 
+#ifndef LWIP_TIMEVAL_PRIVATE
+#define LWIP_TIMEVAL_PRIVATE 1
+#endif
+
+#if LWIP_TIMEVAL_PRIVATE
   struct timeval {
     long    tv_sec;         /* seconds */
     long    tv_usec;        /* and microseconds */
   };
+#endif
 
 #endif
 

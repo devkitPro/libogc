@@ -1,3 +1,10 @@
+/* @file
+ *
+ * This is the IP layer implementation for incoming and outgoing IP traffic.
+ * 
+ * @see ip_frag.c
+ *
+ */
 /*
  * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
  * All rights reserved.
@@ -30,17 +37,7 @@
  *
  */
 
-
-
-/* ip.c
- *
- * This is the code for the IP layer.
- *
- */
-
-
 #include "lwip/opt.h"
-
 
 #include "lwip/def.h"
 #include "lwip/mem.h"
@@ -63,18 +60,17 @@
 #endif /* LWIP_DHCP */
 
 
-/* ip_init:
- *
+/**
  * Initializes the IP layer.
  */
 
 void
 ip_init(void)
 {
+  /* no initializations as of yet */
 }
 
-/* ip_route:
- *
+/**
  * Finds the appropriate network interface for a given IP address. It
  * searches the list of network interfaces linearly. A match is found
  * if the masked IP address of the network interface equals the masked
@@ -89,7 +85,7 @@ ip_route(struct ip_addr *dest)
   /* iterate through netifs */
   for(netif = netif_list; netif != NULL; netif = netif->next) {
     /* network mask matches? */
-    if (ip_addr_maskcmp(dest, &(netif->ip_addr), &(netif->netmask))) {
+    if (ip_addr_netcmp(dest, &(netif->ip_addr), &(netif->netmask))) {
       /* return netif on which to forward IP packet */
       return netif;
     }
@@ -99,14 +95,13 @@ ip_route(struct ip_addr *dest)
 }
 #if IP_FORWARD
 
-/* ip_forward:
- *
+/**
  * Forwards an IP packet. It finds an appropriate route for the
  * packet, decrements the TTL value of the packet, adjusts the
  * checksum and outputs the packet on the appropriate interface.
  */
 
-static void
+static struct netif *
 ip_forward(struct pbuf *p, struct ip_hdr *iphdr, struct netif *inp)
 {
   struct netif *netif;
@@ -118,14 +113,14 @@ ip_forward(struct pbuf *p, struct ip_hdr *iphdr, struct netif *inp)
     LWIP_DEBUGF(IP_DEBUG, ("ip_forward: no forwarding route for 0x%lx found\n",
                       iphdr->dest.addr));
     snmp_inc_ipnoroutes();
-    return;
+    return (struct netif *)NULL;
   }
   /* Do not forward packets onto the same network interface on which
-     they arrived. */
+   * they arrived. */
   if (netif == inp) {
     LWIP_DEBUGF(IP_DEBUG, ("ip_forward: not bouncing packets back on incoming interface.\n"));
     snmp_inc_ipnoroutes();
-    return;
+    return (struct netif *)NULL;
   }
 
   /* decrement TTL */
@@ -137,7 +132,7 @@ ip_forward(struct pbuf *p, struct ip_hdr *iphdr, struct netif *inp)
       icmp_time_exceeded(p, ICMP_TE_TTL);
       snmp_inc_icmpouttimeexcds();
     }
-    return;
+    return (struct netif *)NULL;
   }
 
   /* Incrementally update the IP checksum. */
@@ -157,11 +152,11 @@ ip_forward(struct pbuf *p, struct ip_hdr *iphdr, struct netif *inp)
   PERF_STOP("ip_forward");
   /* transmit pbuf on chosen interface */
   netif->output(netif, p, (struct ip_addr *)&(iphdr->dest));
+  return netif;
 }
 #endif /* IP_FORWARD */
 
-/* ip_input:
- *
+/**
  * This function is called by the network interface device driver when
  * an IP packet is received. The function does the basic checks of the
  * IP header such as packet size being at least larger than the header
@@ -169,13 +164,16 @@ ip_forward(struct pbuf *p, struct ip_hdr *iphdr, struct netif *inp)
  * forwarded (using ip_forward). The IP checksum is always checked.
  *
  * Finally, the packet is sent to the upper layer protocol input function.
+ * 
+ * 
+ * 
  */
 
 err_t
 ip_input(struct pbuf *p, struct netif *inp) {
-  static struct ip_hdr *iphdr;
-  static struct netif *netif;
-  static u16_t iphdrlen;
+  struct ip_hdr *iphdr;
+  struct netif *netif;
+  u16_t iphdrlen;
 
   IP_STATS_INC(ip.recv);
   snmp_inc_ipinreceives();
@@ -209,6 +207,7 @@ ip_input(struct pbuf *p, struct netif *inp) {
   }
 
   /* verify checksum */
+#if CHECKSUM_CHECK_IP
   if (inet_chksum(iphdr, iphdrlen) != 0) {
 
     LWIP_DEBUGF(IP_DEBUG | 2, ("Checksum (0x%x) failed, IP packet dropped.\n", inet_chksum(iphdr, iphdrlen)));
@@ -219,41 +218,40 @@ ip_input(struct pbuf *p, struct netif *inp) {
     snmp_inc_ipindiscards();
     return ERR_OK;
   }
+#endif
 
   /* Trim pbuf. This should have been done at the netif layer,
-     but we'll do it anyway just to be sure that its done. */
+   * but we'll do it anyway just to be sure that its done. */
   pbuf_realloc(p, ntohs(IPH_LEN(iphdr)));
 
-  /* is this packet for us? */
-  for(netif = netif_list; netif != NULL; netif = netif->next) {
+  /* match packet against an interface, i.e. is this packet for us? */
+  for (netif = netif_list; netif != NULL; netif = netif->next) {
 
     LWIP_DEBUGF(IP_DEBUG, ("ip_input: iphdr->dest 0x%lx netif->ip_addr 0x%lx (0x%lx, 0x%lx, 0x%lx)\n",
-                      iphdr->dest.addr, netif->ip_addr.addr,
-                      iphdr->dest.addr & netif->netmask.addr,
-                      netif->ip_addr.addr & netif->netmask.addr,
-                      iphdr->dest.addr & ~(netif->netmask.addr)));
+      iphdr->dest.addr, netif->ip_addr.addr,
+      iphdr->dest.addr & netif->netmask.addr,
+      netif->ip_addr.addr & netif->netmask.addr,
+      iphdr->dest.addr & ~(netif->netmask.addr)));
 
-    /* interface configured? */
-    if (!ip_addr_isany(&(netif->ip_addr)))
+    /* interface is up and configured? */
+    if ((netif_is_up(netif)) && (!ip_addr_isany(&(netif->ip_addr))))
     {
       /* unicast to this interface address? */
       if (ip_addr_cmp(&(iphdr->dest), &(netif->ip_addr)) ||
-        /* or broadcast matching this interface network address? */
-        (ip_addr_isbroadcast(&(iphdr->dest), &(netif->netmask)) &&
-         ip_addr_maskcmp(&(iphdr->dest), &(netif->ip_addr), &(netif->netmask))) ||
-         /* or restricted broadcast? */
-         ip_addr_cmp(&(iphdr->dest), IP_ADDR_BROADCAST)) {
-         LWIP_DEBUGF(IP_DEBUG, ("ip_input: packet accepted on interface %c%c\n",
-                       netif->name[0], netif->name[1]));
-         /* break out of for loop */
-         break;
+         /* or broadcast on this interface network address? */
+         ip_addr_isbroadcast(&(iphdr->dest), netif)) {
+        LWIP_DEBUGF(IP_DEBUG, ("ip_input: packet accepted on interface %c%c\n",
+          netif->name[0], netif->name[1]));
+        /* break out of for loop */
+        break;
       }
     }
   }
 #if LWIP_DHCP
   /* Pass DHCP messages regardless of destination address. DHCP traffic is addressed
-     using link layer addressing (such as Ethernet MAC) so we must not filter on IP.
-     According to RFC 1542 section 3.1.1, referred by RFC 2131). */
+   * using link layer addressing (such as Ethernet MAC) so we must not filter on IP.
+   * According to RFC 1542 section 3.1.1, referred by RFC 2131).
+   */
   if (netif == NULL) {
     /* remote port is DHCP server? */
     if (IPH_PROTO(iphdr) == IP_PROTO_UDP) {
@@ -266,13 +264,13 @@ ip_input(struct pbuf *p, struct netif *inp) {
     }
   }
 #endif /* LWIP_DHCP */
-        /* packet not for us? */
+  /* packet not for us? */
   if (netif == NULL) {
     /* packet not for us, route or discard */
     LWIP_DEBUGF(IP_DEBUG | DBG_TRACE | 1, ("ip_input: packet not for us.\n"));
 #if IP_FORWARD
     /* non-broadcast packet? */
-    if (!ip_addr_isbroadcast(&(iphdr->dest), &(inp->netmask))) {
+    if (!ip_addr_isbroadcast(&(iphdr->dest), inp)) {
       /* try to forward IP packet on (other) interfaces */
       ip_forward(p, iphdr, inp);
     }
@@ -284,30 +282,30 @@ ip_input(struct pbuf *p, struct netif *inp) {
     pbuf_free(p);
     return ERR_OK;
   }
-
-#if IP_REASSEMBLY
+  /* packet consists of multiple fragments? */
   if ((IPH_OFFSET(iphdr) & htons(IP_OFFMASK | IP_MF)) != 0) {
+#if IP_REASSEMBLY /* packet fragment reassembly code present? */
     LWIP_DEBUGF(IP_DEBUG, ("IP packet is a fragment (id=0x%04x tot_len=%u len=%u MF=%u offset=%u), calling ip_reass()\n",
       ntohs(IPH_ID(iphdr)), p->tot_len, ntohs(IPH_LEN(iphdr)), !!(IPH_OFFSET(iphdr) & htons(IP_MF)), (ntohs(IPH_OFFSET(iphdr)) & IP_OFFMASK)*8));
+    /* reassemble the packet*/
     p = ip_reass(p);
+    /* packet not fully reassembled yet? */
     if (p == NULL) {
       return ERR_OK;
     }
     iphdr = p->payload;
-  }
-#else /* IP_REASSEMBLY */
-  if ((IPH_OFFSET(iphdr) & htons(IP_OFFMASK | IP_MF)) != 0) {
+#else /* IP_REASSEMBLY == 0, no packet fragment reassembly code present */
     pbuf_free(p);
     LWIP_DEBUGF(IP_DEBUG | 2, ("IP packet dropped since it was fragmented (0x%x) (while IP_REASSEMBLY == 0).\n",
-                  ntohs(IPH_OFFSET(iphdr))));
+      ntohs(IPH_OFFSET(iphdr))));
     IP_STATS_INC(ip.opterr);
     IP_STATS_INC(ip.drop);
     snmp_inc_ipunknownprotos();
     return ERR_OK;
-  }
 #endif /* IP_REASSEMBLY */
+  }
 
-#if IP_OPTIONS == 0
+#if IP_OPTIONS == 0 /* no support for IP options in the IP header? */
   if (iphdrlen > IP_HLEN) {
     LWIP_DEBUGF(IP_DEBUG | 2, ("IP packet dropped since there were IP options (while IP_OPTIONS == 0).\n"));
     pbuf_free(p);
@@ -324,7 +322,8 @@ ip_input(struct pbuf *p, struct netif *inp) {
   LWIP_DEBUGF(IP_DEBUG, ("ip_input: p->len %d p->tot_len %d\n", p->len, p->tot_len));
 
 #if LWIP_RAW
-  if (!raw_input(p, inp)) {
+  /* raw input did not eat the packet? */
+  if (raw_input(p, inp) == 0) {
 #endif /* LWIP_RAW */
 
   switch (IPH_PROTO(iphdr)) {
@@ -347,8 +346,8 @@ ip_input(struct pbuf *p, struct netif *inp) {
     break;
   default:
     /* send ICMP destination protocol unreachable unless is was a broadcast */
-    if (!ip_addr_isbroadcast(&(iphdr->dest), &(inp->netmask)) &&
-       !ip_addr_ismulticast(&(iphdr->dest))) {
+    if (!ip_addr_isbroadcast(&(iphdr->dest), inp) &&
+        !ip_addr_ismulticast(&(iphdr->dest))) {
       p->payload = iphdr;
       icmp_dest_unreach(p, ICMP_DUR_PROTO);
     }
@@ -359,7 +358,6 @@ ip_input(struct pbuf *p, struct netif *inp) {
     IP_STATS_INC(ip.proterr);
     IP_STATS_INC(ip.drop);
     snmp_inc_ipunknownprotos();
-
   }
 #if LWIP_RAW
   } /* LWIP_RAW */
@@ -367,9 +365,7 @@ ip_input(struct pbuf *p, struct netif *inp) {
   return ERR_OK;
 }
 
-
-/* ip_output_if:
- *
+/**
  * Sends an IP packet on a network interface. This function constructs
  * the IP header and calculates the IP header checksum. If the source
  * IP address is NULL, the IP address of the outgoing network
@@ -381,8 +377,8 @@ ip_output_if(struct pbuf *p, struct ip_addr *src, struct ip_addr *dest,
              u8_t ttl, u8_t tos,
              u8_t proto, struct netif *netif)
 {
-  static struct ip_hdr *iphdr;
-  static u16_t ip_id = 0;
+  struct ip_hdr *iphdr;
+  u16_t ip_id = 0;
 
   snmp_inc_ipoutrequests();
 
@@ -415,7 +411,9 @@ ip_output_if(struct pbuf *p, struct ip_addr *src, struct ip_addr *dest,
     }
 
     IPH_CHKSUM_SET(iphdr, 0);
+#if CHECKSUM_GEN_IP
     IPH_CHKSUM_SET(iphdr, inet_chksum(iphdr, IP_HLEN));
+#endif
   } else {
     iphdr = p->payload;
     dest = &(iphdr->dest);
@@ -437,8 +435,7 @@ ip_output_if(struct pbuf *p, struct ip_addr *src, struct ip_addr *dest,
   return netif->output(netif, p, dest);
 }
 
-/* ip_output:
- *
+/**
  * Simple interface to ip_output_if. It finds the outgoing network
  * interface and calls upon ip_output_if to do the actual work.
  */
@@ -489,17 +486,17 @@ ip_debug_print(struct pbuf *p)
                     IPH_PROTO(iphdr),
                     ntohs(IPH_CHKSUM(iphdr))));
   LWIP_DEBUGF(IP_DEBUG, ("+-------------------------------+\n"));
-  LWIP_DEBUGF(IP_DEBUG, ("|  %3ld  |  %3ld  |  %3ld  |  %3ld  | (src)\n",
-                    ntohl(iphdr->src.addr) >> 24 & 0xff,
-                    ntohl(iphdr->src.addr) >> 16 & 0xff,
-                    ntohl(iphdr->src.addr) >> 8 & 0xff,
-                    ntohl(iphdr->src.addr) & 0xff));
+  LWIP_DEBUGF(IP_DEBUG, ("|  %3u  |  %3u  |  %3u  |  %3u  | (src)\n",
+                    ip4_addr1(&iphdr->src),
+                    ip4_addr2(&iphdr->src),
+                    ip4_addr3(&iphdr->src),
+                    ip4_addr4(&iphdr->src)));
   LWIP_DEBUGF(IP_DEBUG, ("+-------------------------------+\n"));
-  LWIP_DEBUGF(IP_DEBUG, ("|  %3ld  |  %3ld  |  %3ld  |  %3ld  | (dest)\n",
-                    ntohl(iphdr->dest.addr) >> 24 & 0xff,
-                    ntohl(iphdr->dest.addr) >> 16 & 0xff,
-                    ntohl(iphdr->dest.addr) >> 8 & 0xff,
-                    ntohl(iphdr->dest.addr) & 0xff));
+  LWIP_DEBUGF(IP_DEBUG, ("|  %3u  |  %3u  |  %3u  |  %3u  | (dest)\n",
+                    ip4_addr1(&iphdr->dest),
+                    ip4_addr2(&iphdr->dest),
+                    ip4_addr3(&iphdr->dest),
+                    ip4_addr4(&iphdr->dest)));
   LWIP_DEBUGF(IP_DEBUG, ("+-------------------------------+\n"));
 }
 #endif /* IP_DEBUG */

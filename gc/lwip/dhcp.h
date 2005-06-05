@@ -43,6 +43,10 @@ struct dhcp
   struct ip_addr offered_sn_mask;
   struct ip_addr offered_gw_addr;
   struct ip_addr offered_bc_addr;
+#define DHCP_MAX_DNS 2
+  u32_t dns_count; /* actual number of DNS servers obtained */
+  struct ip_addr offered_dns_addr[DHCP_MAX_DNS]; /* DNS server addresses */
+ 
   u32_t offered_t0_lease; /* lease period (in seconds) */
   u32_t offered_t1_renew; /* recommended renew time (usually 50% of lease period) */
   u32_t offered_t2_rebind; /* recommended rebind time (usually 66% of lease period)  */
@@ -70,10 +74,10 @@ struct dhcp_msg
   PACK_STRUCT_FIELD(u32_t xid);
   PACK_STRUCT_FIELD(u16_t secs);
   PACK_STRUCT_FIELD(u16_t flags);
-  PACK_STRUCT_FIELD(u32_t ciaddr);
-  PACK_STRUCT_FIELD(u32_t yiaddr);
-  PACK_STRUCT_FIELD(u32_t siaddr);
-  PACK_STRUCT_FIELD(u32_t giaddr);
+  PACK_STRUCT_FIELD(struct ip_addr ciaddr);
+  PACK_STRUCT_FIELD(struct ip_addr yiaddr);
+  PACK_STRUCT_FIELD(struct ip_addr siaddr);
+  PACK_STRUCT_FIELD(struct ip_addr giaddr);
 #define DHCP_CHADDR_LEN 16U
   PACK_STRUCT_FIELD(u8_t chaddr[DHCP_CHADDR_LEN]);
 #define DHCP_SNAME_LEN 64U
@@ -82,8 +86,12 @@ struct dhcp_msg
   PACK_STRUCT_FIELD(u8_t file[DHCP_FILE_LEN]);
   PACK_STRUCT_FIELD(u32_t cookie);
 #define DHCP_MIN_OPTIONS_LEN 68U
+/** make sure user does not configure this too small */
+#if ((defined(DHCP_OPTIONS_LEN)) && (DHCP_OPTIONS_LEN < DHCP_MIN_OPTIONS_LEN))
+#  undef DHCP_OPTIONS_LEN
+#endif
 /** allow this to be configured in lwipopts.h, but not too small */
-#if ((!defined(DHCP_OPTIONS_LEN)) || (DHCP_OPTIONS_LEN < DHCP_MIN_OPTIONS_LEN))
+#if (!defined(DHCP_OPTIONS_LEN))
 /** set this to be sufficient for your options in outgoing DHCP msgs */
 #  define DHCP_OPTIONS_LEN DHCP_MIN_OPTIONS_LEN
 #endif
@@ -96,11 +104,13 @@ PACK_STRUCT_END
 
 /** start DHCP configuration */
 err_t dhcp_start(struct netif *netif);
+/** enforce early lease renewal (not needed normally)*/
+err_t dhcp_renew(struct netif *netif);
+/** release the DHCP lease, usually called before dhcp_stop()*/
+err_t dhcp_release(struct netif *netif);
 /** stop DHCP configuration */
 void dhcp_stop(struct netif *netif);
-/** enforce lease renewal */
-err_t dhcp_renew(struct netif *netif);
-/** inform server of our IP address */
+/** inform server of our manual IP address */
 void dhcp_inform(struct netif *netif);
 
 /** if enabled, check whether the offered IP address is not in use, using ARP */
@@ -174,7 +184,8 @@ void dhcp_fine_tmr(void);
 /** BootP options */
 #define DHCP_OPTION_PAD 0
 #define DHCP_OPTION_SUBNET_MASK 1 /* RFC 2132 3.3 */
-#define DHCP_OPTION_ROUTER 3 
+#define DHCP_OPTION_ROUTER 3
+#define DHCP_OPTION_DNS_SERVER 6 
 #define DHCP_OPTION_HOSTNAME 12
 #define DHCP_OPTION_IP_TTL 23
 #define DHCP_OPTION_MTU 26

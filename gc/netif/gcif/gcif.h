@@ -38,5 +38,6 @@ extern inline void cpu_to_be32s(u32 *a) {*a = cpu_to_be32(*a);}
 
 
 err_t bba_init(struct netif *);
+void bba_process(struct pbuf *p,struct netif *dev);
 
 #endif

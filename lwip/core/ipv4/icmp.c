@@ -72,9 +72,9 @@ icmp_input(struct pbuf *p, struct netif *inp)
   code = *(((u8_t *)p->payload)+1);
   switch (type) {
   case ICMP_ECHO:
-    if (ip_addr_isbroadcast(&iphdr->dest, &inp->netmask) ||
-       ip_addr_ismulticast(&iphdr->dest)) {
-      LWIP_DEBUGF(ICMP_DEBUG, ("Smurf.\n"));
+    /* broadcast or multicast destination address? */
+    if (ip_addr_isbroadcast(&iphdr->dest, inp) || ip_addr_ismulticast(&iphdr->dest)) {
+      LWIP_DEBUGF(ICMP_DEBUG, ("icmp_input: Not echoing to multicast or broadcast pings\n"));
       ICMP_STATS_INC(icmp.err);
       pbuf_free(p);
       return;

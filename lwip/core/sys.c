@@ -108,6 +108,7 @@ sys_sem_wait(sys_sem_t sem)
 
   /*  while (sys_arch_sem_wait(sem, 1000) == 0);
       return;*/
+
  again:
 
   timeouts = sys_arch_timeouts();

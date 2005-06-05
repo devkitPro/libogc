@@ -11,12 +11,15 @@
  * list. This is called a "pbuf chain".
  *
  * Multiple packets may be queued, also using this singly linked list.
- * This is called a "packet queue". So, a packet queue consists of one
- * or more pbuf chains, each of which consist of one or more pbufs.
+ * This is called a "packet queue".
+ * 
+ * So, a packet queue consists of one or more pbuf chains, each of
+ * which consist of one or more pbufs. Currently, queues are only
+ * supported in a limited section of lwIP, this is the etharp queueing
+ * code. Outside of this section no packet queues are supported yet.
+ * 
  * The differences between a pbuf chain and a packet queue are very
- * subtle. Currently, queues are only supported in a limited section
- * of lwIP, this is the etharp queueing code. Outside of this section
- * no packet queues are supported as of yet.
+ * precise but subtle. 
  *
  * The last pbuf of a packet has a ->tot_len field that equals the
  * ->len field. It can be found by traversing the list. If the last
@@ -76,7 +79,7 @@ static u8_t pbuf_pool_memory[(PBUF_POOL_SIZE * MEM_ALIGN_SIZE(PBUF_POOL_BUFSIZE 
 
 #if !SYS_LIGHTWEIGHT_PROT
 static volatile u8_t pbuf_pool_free_lock, pbuf_pool_alloc_lock;
-static sys_sem_t pbuf_pool_free_sem;
+static sem_t pbuf_pool_free_sem;
 #endif
 
 static struct pbuf *pbuf_pool = NULL;
@@ -125,7 +128,7 @@ pbuf_init(void)
 #if !SYS_LIGHTWEIGHT_PROT
   pbuf_pool_alloc_lock = 0;
   pbuf_pool_free_lock = 0;
-  pbuf_pool_free_sem = sys_sem_new(1);
+  LWP_SemInit(&pbuf_pool_free_sem,1,1);
 #endif
 }
 
@@ -180,7 +183,7 @@ pbuf_pool_alloc(void)
 
 
 /**
- * Allocates a pbuf.
+ * Allocates a pbuf of the given type (possibly a chain for PBUF_POOL type).
  *
  * The actual memory allocated for the pbuf is determined by the
  * layer at which the pbuf is allocated and the requested size
@@ -214,7 +217,7 @@ pbuf_alloc(pbuf_layer l, u16_t length, pbuf_flag flag)
   struct pbuf *p, *q, *r;
   u16_t offset;
   s32_t rem_len; /* remaining length */
-  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 3, ("pbuf_alloc(length=%u)\n", length));
+  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE, ("pbuf_alloc(length=%u)\n", length));
 
   /* determine header offset */
   offset = 0;
@@ -242,7 +245,7 @@ pbuf_alloc(pbuf_layer l, u16_t length, pbuf_flag flag)
   case PBUF_POOL:
     /* allocate head of pbuf chain into p */
     p = pbuf_pool_alloc();
-    LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 3, ("pbuf_alloc: allocated pbuf %p\n", (void *)p));
+    LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE, ("pbuf_alloc: allocated pbuf %p\n", (void *)p));
     if (p == NULL) {
 #if PBUF_STATS
       ++lwip_stats.pbuf.err;
@@ -303,7 +306,7 @@ pbuf_alloc(pbuf_layer l, u16_t length, pbuf_flag flag)
     break;
   case PBUF_RAM:
     /* If pbuf is to be allocated in RAM, allocate memory for it. */
-    p = mem_malloc(MEM_ALIGN_SIZE(sizeof(struct pbuf) + length + offset));
+    p = mem_malloc(MEM_ALIGN_SIZE(sizeof(struct pbuf) + offset) + MEM_ALIGN_SIZE(length));
     if (p == NULL) {
       return NULL;
     }
@@ -316,7 +319,7 @@ pbuf_alloc(pbuf_layer l, u16_t length, pbuf_flag flag)
     LWIP_ASSERT("pbuf_alloc: pbuf->payload properly aligned",
            ((mem_ptr_t)p->payload % MEM_ALIGNMENT) == 0);
     break;
-  /* pbuf references existing (static constant) ROM payload? */
+  /* pbuf references existing (non-volatile static constant) ROM payload? */
   case PBUF_ROM:
   /* pbuf references existing (externally allocated) RAM payload? */
   case PBUF_REF:
@@ -338,7 +341,7 @@ pbuf_alloc(pbuf_layer l, u16_t length, pbuf_flag flag)
   }
   /* set reference count */
   p->ref = 1;
-  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 3, ("pbuf_alloc(length=%u) == %p\n", length, (void *)p));
+  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE, ("pbuf_alloc(length=%u) == %p\n", length, (void *)p));
   return p;
 }
 
@@ -364,9 +367,9 @@ pbuf_alloc(pbuf_layer l, u16_t length, pbuf_flag flag)
                                } while (0)
 #else /* SYS_LIGHTWEIGHT_PROT */
 #define PBUF_POOL_FREE(p)  do {                                         \
-                             sys_sem_wait(pbuf_pool_free_sem);          \
+                             LWP_SemWait(pbuf_pool_free_sem);          \
                              PBUF_POOL_FAST_FREE(p);                    \
-                             sys_sem_signal(pbuf_pool_free_sem);        \
+                             LWP_SemPost(pbuf_pool_free_sem);        \
                            } while (0)
 #endif /* SYS_LIGHTWEIGHT_PROT */
 
@@ -450,76 +453,82 @@ pbuf_realloc(struct pbuf *p, u16_t new_len)
  *
  * The ->payload, ->tot_len and ->len fields are adjusted.
  *
- * @param hdr_size Number of bytes to increment header size which
+ * @param hdr_size_inc Number of bytes to increment header size which
  * increases the size of the pbuf. New space is on the front.
  * (Using a negative value decreases the header size.)
+ * If hdr_size_inc is 0, this function does nothing and returns succesful.
  *
  * PBUF_ROM and PBUF_REF type buffers cannot have their sizes increased, so
  * the call will fail. A check is made that the increase in header size does
  * not move the payload pointer in front of the start of the buffer.
- * @return 1 on failure, 0 on success.
+ * @return non-zero on failure, zero on success.
  *
- * @note May not be called on a packet queue.
  */
 u8_t
-pbuf_header(struct pbuf *p, s16_t header_size)
+pbuf_header(struct pbuf *p, s16_t header_size_increment)
 {
   void *payload;
 
+  LWIP_ASSERT("p != NULL", p != NULL);
+  if ((header_size_increment == 0) || (p == NULL)) return 0;
+ 
   /* remember current payload pointer */
   payload = p->payload;
 
   /* pbuf types containing payloads? */
   if (p->flags == PBUF_FLAG_RAM || p->flags == PBUF_FLAG_POOL) {
     /* set new payload pointer */
-    p->payload = (u8_t *)p->payload - header_size;
+    p->payload = (u8_t *)p->payload - header_size_increment;
     /* boundary check fails? */
     if ((u8_t *)p->payload < (u8_t *)p + sizeof(struct pbuf)) {
-      LWIP_DEBUGF( PBUF_DEBUG | 2, ("pbuf_header: failed as %p < %p\n",
-        (u8_t *)p->payload,
-        (u8_t *)p + sizeof(struct pbuf)) );\
+      LWIP_DEBUGF( PBUF_DEBUG | 2, ("pbuf_header: failed as %p < %p (not enough space for new header size)\n",
+        (void *)p->payload,
+        (void *)(p + 1)));\
       /* restore old payload pointer */
       p->payload = payload;
       /* bail out unsuccesfully */
       return 1;
     }
-  /* pbuf types refering to payloads? */
+  /* pbuf types refering to external payloads? */
   } else if (p->flags == PBUF_FLAG_REF || p->flags == PBUF_FLAG_ROM) {
     /* hide a header in the payload? */
-    if ((header_size < 0) && (header_size - p->len <= 0)) {
+    if ((header_size_increment < 0) && (header_size_increment - p->len <= 0)) {
       /* increase payload pointer */
-      p->payload = (u8_t *)p->payload - header_size;
+      p->payload = (u8_t *)p->payload - header_size_increment;
     } else {
       /* cannot expand payload to front (yet!)
        * bail out unsuccesfully */
       return 1;
     }
   }
-  LWIP_DEBUGF( PBUF_DEBUG, ("pbuf_header: old %p new %p (%d)\n", (void *)payload, (void *)p->payload, header_size) );
   /* modify pbuf length fields */
-  p->len += header_size;
-  p->tot_len += header_size;
+  p->len += header_size_increment;
+  p->tot_len += header_size_increment;
+
+  LWIP_DEBUGF( PBUF_DEBUG, ("pbuf_header: old %p new %p (%d)\n",
+    (void *)payload, (void *)p->payload, header_size_increment));
 
   return 0;
 }
 
 /**
- * Dereference a pbuf (chain) and deallocate any no-longer-used
- * pbufs at the head of this chain.
+ * Dereference a pbuf chain or queue and deallocate any no-longer-used
+ * pbufs at the head of this chain or queue.
  *
- * Decrements the pbuf reference count. If it reaches
- * zero, the pbuf is deallocated.
+ * Decrements the pbuf reference count. If it reaches zero, the pbuf is
+ * deallocated.
  *
  * For a pbuf chain, this is repeated for each pbuf in the chain,
- * up to a pbuf which has a non-zero reference count after
- * decrementing. (This might de-allocate the whole chain.)
+ * up to the first pbuf which has a non-zero reference count after
+ * decrementing. So, when all reference counts are one, the whole
+ * chain is free'd.
  *
  * @param pbuf The pbuf (chain) to be dereferenced.
  *
  * @return the number of pbufs that were de-allocated
  * from the head of the chain.
  *
- * @note MUST NOT be called on a packet queue.
+ * @note MUST NOT be called on a packet queue (Not verified to work yet).
  * @note the reference counter of a pbuf equals the number of pointers
  * that refer to the pbuf (or into the pbuf).
  *
@@ -542,11 +551,13 @@ pbuf_free(struct pbuf *p)
   u8_t count;
   SYS_ARCH_DECL_PROTECT(old_level);
 
+  LWIP_ASSERT("p != NULL", p != NULL);
+  /* if assertions are disabled, proceed with debug output */
   if (p == NULL) {
     LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 2, ("pbuf_free(p == NULL) was called.\n"));
     return 0;
   }
-  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 3, ("pbuf_free(%p)\n", (void *)p));
+  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE, ("pbuf_free(%p)\n", (void *)p));
 
   PERF_START;
 
@@ -570,13 +581,13 @@ pbuf_free(struct pbuf *p)
     if (p->ref == 0) {
       /* remember next pbuf in chain for next iteration */
       q = p->next;
-      LWIP_DEBUGF( PBUF_DEBUG | 2, ("pbuf_free: deallocating %p\n", (void *)p));
+      LWIP_DEBUGF( PBUF_DEBUG | DBG_TRACE, ("pbuf_free: deallocating %p\n", (void *)p));
       /* is this a pbuf from the pool? */
       if (p->flags == PBUF_FLAG_POOL) {
         p->len = p->tot_len = PBUF_POOL_BUFSIZE;
         p->payload = (void *)((u8_t *)p + sizeof(struct pbuf));
         PBUF_POOL_FREE(p);
-      /* a ROM or RAM referencing pbuf */
+      /* is this a ROM or RAM referencing pbuf? */
       } else if (p->flags == PBUF_FLAG_ROM || p->flags == PBUF_FLAG_REF) {
         memp_free(MEMP_PBUF, p);
       /* p->flags == PBUF_FLAG_RAM */
@@ -589,8 +600,8 @@ pbuf_free(struct pbuf *p)
     /* p->ref > 0, this pbuf is still referenced to */
     /* (and so the remaining pbufs in chain as well) */
     } else {
-      LWIP_DEBUGF( PBUF_DEBUG | 2, ("pbuf_free: %p has ref %u, ending here.\n", (void *)p, (unsigned int)p->ref));
-      /* stop walking through chain */
+      LWIP_DEBUGF( PBUF_DEBUG | DBG_TRACE, ("pbuf_free: %p has ref %u, ending here.\n", (void *)p, (unsigned int)p->ref));
+      /* stop walking through the chain */
       p = NULL;
     }
   }
@@ -653,8 +664,8 @@ pbuf_cat(struct pbuf *h, struct pbuf *t)
 {
   struct pbuf *p;
 
-  LWIP_ASSERT("h != NULL", h != NULL);
-  LWIP_ASSERT("t != NULL", t != NULL);
+  LWIP_ASSERT("h != NULL (programmer violates API)", h != NULL);
+  LWIP_ASSERT("t != NULL (programmer violates API)", t != NULL);
   if ((h == NULL) || (t == NULL)) return;
 
   /* proceed to last pbuf of chain */
@@ -664,10 +675,14 @@ pbuf_cat(struct pbuf *h, struct pbuf *t)
   }
   /* { p is last pbuf of first h chain, p->next == NULL } */
   LWIP_ASSERT("p->tot_len == p->len (of last pbuf in chain)", p->tot_len == p->len);
+  LWIP_ASSERT("p->next == NULL", p->next == NULL);
   /* add total length of second chain to last pbuf total of first chain */
   p->tot_len += t->tot_len;
   /* chain last pbuf of head (p) with first of tail (t) */
   p->next = t;
+  /* p->next now references t, but the caller will drop its reference to t,
+   * so netto there is no change to the reference count of t.
+   */
 }
 
 /**
@@ -695,8 +710,8 @@ pbuf_chain(struct pbuf *h, struct pbuf *t)
   LWIP_DEBUGF(PBUF_DEBUG | DBG_FRESH | 2, ("pbuf_chain: %p references %p\n", (void *)h, (void *)t));
 }
 
-/* For packet queueing. Note that queued packets must be dequeued first
- * before calling any pbuf functions. */
+/* For packet queueing. Note that queued packets MUST be dequeued first
+ * using pbuf_dequeue() before calling other pbuf_() functions. */
 #if ARP_QUEUEING
 /**
  * Add a packet to the end of a queue.
@@ -704,15 +719,22 @@ pbuf_chain(struct pbuf *h, struct pbuf *t)
  * @param q pointer to first packet on the queue
  * @param n packet to be queued
  *
+ * Both packets MUST be given, and must be different.
  */
 void
 pbuf_queue(struct pbuf *p, struct pbuf *n)
 {
-  LWIP_ASSERT("p != NULL", p != NULL);
-  LWIP_ASSERT("n != NULL", n != NULL);
-
-  if ((p == NULL) || (n == NULL))
+#if PBUF_DEBUG /* remember head of queue */
+  struct pbuf *q = p;
+#endif
+  /* programmer stupidity checks */
+  LWIP_ASSERT("p == NULL in pbuf_queue: this indicates a programmer error\n", p != NULL);
+  LWIP_ASSERT("n == NULL in pbuf_queue: this indicates a programmer error\n", n != NULL);
+  LWIP_ASSERT("p == n in pbuf_queue: this indicates a programmer error\n", p != n);
+  if ((p == NULL) || (n == NULL) || (p == n)){
+    LWIP_DEBUGF(PBUF_DEBUG | DBG_HALT | 3, ("pbuf_queue: programmer argument error\n"));
     return;
+  }
 
   /* iterate through all packets on queue */
   while (p->next != NULL) {
@@ -720,25 +742,39 @@ pbuf_queue(struct pbuf *p, struct pbuf *n)
 #if PBUF_DEBUG
     /* iterate through all pbufs in packet */
     while (p->tot_len != p->len) {
+      /* make sure invariant condition holds */
+      LWIP_ASSERT("p->len < p->tot_len", p->len < p->tot_len);
       /* make sure each packet is complete */
       LWIP_ASSERT("p->next != NULL", p->next != NULL);
       p = p->next;
+      /* { p->tot_len == p->len => p is last pbuf of a packet } */
     }
-#endif
-    /* now p->tot_len == p->len */
+    /* { p is last pbuf of a packet } */
     /* proceed to next packet on queue */
-    p = p->next;
+#endif
+    /* proceed to next pbuf */
+    if (p->next != NULL) p = p->next;
   }
+  /* { p->tot_len == p->len and p->next == NULL } ==>
+   * { p is last pbuf of last packet on queue } */
   /* chain last pbuf of queue with n */
   p->next = n;
-  /* n is now referenced to one more time */
+  /* n is now referenced to by the (packet p in the) queue */
   pbuf_ref(n);
-  LWIP_DEBUGF(PBUF_DEBUG | DBG_FRESH | 2, ("pbuf_queue: referencing queued packet %p\n", (void *)n));
+#if PBUF_DEBUG
+  LWIP_DEBUGF(PBUF_DEBUG | DBG_FRESH | 2,
+    ("pbuf_queue: newly queued packet %p sits after packet %p in queue %p\n",
+    (void *)n, (void *)p, (void *)q));
+#endif
 }
 
 /**
  * Remove a packet from the head of a queue.
  *
+ * The caller MUST reference the remainder of the queue (as returned). The
+ * caller MUST NOT call pbuf_ref() as it implicitly takes over the reference
+ * from p.
+ * 
  * @param p pointer to first packet on the queue which will be dequeued.
  * @return first packet on the remaining queue (NULL if no further packets).
  *
@@ -749,19 +785,28 @@ pbuf_dequeue(struct pbuf *p)
   struct pbuf *q;
   LWIP_ASSERT("p != NULL", p != NULL);
 
-  /* iterate through all pbufs in packet */
+  /* iterate through all pbufs in packet p */
   while (p->tot_len != p->len) {
+    /* make sure invariant condition holds */
+    LWIP_ASSERT("p->len < p->tot_len", p->len < p->tot_len);
     /* make sure each packet is complete */
     LWIP_ASSERT("p->next != NULL", p->next != NULL);
     p = p->next;
   }
-  /* remember next packet on queue */
+  /* { p->tot_len == p->len } => p is the last pbuf of the first packet */
+  /* remember next packet on queue in q */
   q = p->next;
-  /* dequeue p from queue */
+  /* dequeue packet p from queue */
   p->next = NULL;
-  /* q is now referenced to one less time */
-  pbuf_free(q);
-  LWIP_DEBUGF(PBUF_DEBUG | DBG_FRESH | 2, ("pbuf_dequeue: dereferencing remaining queue %p\n", (void *)q));
+  /* any next packet on queue? */
+  if (q != NULL) {
+    /* although q is no longer referenced by p, it MUST be referenced by
+     * the caller, who is maintaining this packet queue. So, we do not call
+     * pbuf_free(q) here, resulting in an implicit pbuf_ref(q) for the caller. */
+    LWIP_DEBUGF(PBUF_DEBUG | DBG_FRESH | 2, ("pbuf_dequeue: first remaining packet on queue is %p\n", (void *)q));
+  } else {
+    LWIP_DEBUGF(PBUF_DEBUG | DBG_FRESH | 2, ("pbuf_dequeue: no further packets on queue\n"));
+  }
   return q;
 }
 #endif
@@ -779,7 +824,7 @@ pbuf_dequeue(struct pbuf *p)
  *
  * @note You MUST explicitly use p = pbuf_take(p);
  * The pbuf you give as argument, may have been replaced
- * by pbuf_take()!
+ * by a (differently located) copy through pbuf_take()!
  *
  * @note Any replaced pbufs will be freed through pbuf_free().
  * This may deallocate them if they become no longer referenced.
@@ -793,7 +838,7 @@ pbuf_take(struct pbuf *p)
 {
   struct pbuf *q , *prev, *head;
   LWIP_ASSERT("pbuf_take: p != NULL\n", p != NULL);
-  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 3, ("pbuf_take(%p)\n", (void*)p));
+  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE, ("pbuf_take(%p)\n", (void*)p));
 
   prev = NULL;
   head = p;
@@ -807,7 +852,9 @@ pbuf_take(struct pbuf *p)
       /* PBUF_POOL buffers are faster if we can use them */
       if (p->len <= PBUF_POOL_BUFSIZE) {
         q = pbuf_alloc(PBUF_RAW, p->len, PBUF_POOL);
-        if (q == NULL) LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 2, ("pbuf_take: Could not allocate PBUF_POOL\n"));
+        if (q == NULL) {
+          LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 2, ("pbuf_take: Could not allocate PBUF_POOL\n"));
+        }
       } else {
         /* no replacement pbuf yet */
         q = NULL;
@@ -816,7 +863,9 @@ pbuf_take(struct pbuf *p)
       /* no (large enough) PBUF_POOL was available? retry with PBUF_RAM */
       if (q == NULL) {
         q = pbuf_alloc(PBUF_RAW, p->len, PBUF_RAM);
-        if (q == NULL) LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 2, ("pbuf_take: Could not allocate PBUF_RAM\n"));
+        if (q == NULL) {
+          LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 2, ("pbuf_take: Could not allocate PBUF_RAM\n"));
+        }
       }
       /* replacement pbuf could be allocated? */
       if (q != NULL)
@@ -899,8 +948,10 @@ pbuf_dechain(struct pbuf *p)
     /* q is no longer referenced by p, free it */
     LWIP_DEBUGF(PBUF_DEBUG | DBG_STATE, ("pbuf_dechain: unreferencing %p\n", (void *)q));
     tail_gone = pbuf_free(q);
-    if (tail_gone > 0) LWIP_DEBUGF(PBUF_DEBUG | DBG_STATE,
-      ("pbuf_dechain: deallocated %p (as it is no longer referenced)\n", (void *)q));
+    if (tail_gone > 0) {
+      LWIP_DEBUGF(PBUF_DEBUG | DBG_STATE,
+                  ("pbuf_dechain: deallocated %p (as it is no longer referenced)\n", (void *)q));
+    }
     /* return remaining tail or NULL if deallocated */
   }
   /* assert tot_len invariant: (p->tot_len == p->len + (p->next? p->next->tot_len: 0) */

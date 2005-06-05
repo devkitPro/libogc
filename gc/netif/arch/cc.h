@@ -30,7 +30,7 @@
  * 
  * Author: Adam Dunkels <adam@sics.se>
  *
- * $Id: cc.h,v 1.2 2004-09-02 08:04:25 shagkur Exp $
+ * $Id: cc.h,v 1.3 2005-06-05 18:32:45 shagkur Exp $
  */
 #ifndef __ARCH_CC_H__
 #define __ARCH_CC_H__
@@ -55,7 +55,7 @@ typedef u32		mem_ptr_t;
 #define PACK_STRUCT_BEGIN
 #define PACK_STRUCT_END
 
-#define LWIP_PLATFORM_ASSERT(x) { printf(x); abort(); }
+#define LWIP_PLATFORM_ASSERT(x) { printf(x); }
 #define LWIP_PLATFORM_DIAG(x) printf x
 
 #define SYS_ARCH_DECL_PROTECT(lev) u32 lev

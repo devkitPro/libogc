@@ -63,7 +63,7 @@ static const u16_t memp_sizes[MEMP_MAX] = {
   sizeof(struct netbuf),
   sizeof(struct netconn),
   sizeof(struct api_msg),
-  sizeof(struct tcpip_msg),
+  sizeof(struct net_msg),
   sizeof(struct sys_timeout)
 };
 
@@ -109,7 +109,7 @@ static u8_t memp_memory[(MEMP_NUM_PBUF *
        MEM_ALIGN_SIZE(sizeof(struct api_msg) +
           sizeof(struct memp)) +
       MEMP_NUM_TCPIP_MSG *
-       MEM_ALIGN_SIZE(sizeof(struct tcpip_msg) +
+       MEM_ALIGN_SIZE(sizeof(struct net_msg) +
           sizeof(struct memp)) +
       MEMP_NUM_SYS_TIMEOUT *
        MEM_ALIGN_SIZE(sizeof(struct sys_timeout) +
@@ -117,7 +117,7 @@ static u8_t memp_memory[(MEMP_NUM_PBUF *
 
 
 #if !SYS_LIGHTWEIGHT_PROT
-static sem_t memp_sem;
+static sem_t mutex;
 #endif
 
 #if MEMP_SANITY_CHECK
@@ -177,7 +177,7 @@ memp_init(void)
   }
 
 #if !SYS_LIGHTWEIGHT_PROT
-  LWP_SemInit(&memp_sem,1,1)==-1);
+  LWP_SemInit(&mutex,1,1);
 #endif
 
   
@@ -197,7 +197,7 @@ memp_malloc(memp_t type)
 #if SYS_LIGHTWEIGHT_PROT
   SYS_ARCH_PROTECT(old_level);
 #else /* SYS_LIGHTWEIGHT_PROT */  
-  LWP_SemWait(memp_sem);
+  LWP_SemWait(mutex);
 #endif /* SYS_LIGHTWEIGHT_PROT */  
 
   memp = memp_tab[type];
@@ -214,7 +214,7 @@ memp_malloc(memp_t type)
 #if SYS_LIGHTWEIGHT_PROT
     SYS_ARCH_UNPROTECT(old_level);
 #else /* SYS_LIGHTWEIGHT_PROT */
-    LWP_SemPost(memp_sem);
+    LWP_SemPost(mutex);
 #endif /* SYS_LIGHTWEIGHT_PROT */  
     LWIP_ASSERT("memp_malloc: memp properly aligned",
      ((mem_ptr_t)MEM_ALIGN((u8_t *)memp + sizeof(struct memp)) % MEM_ALIGNMENT) == 0);
@@ -229,7 +229,7 @@ memp_malloc(memp_t type)
 #if SYS_LIGHTWEIGHT_PROT
   SYS_ARCH_UNPROTECT(old_level);
 #else /* SYS_LIGHTWEIGHT_PROT */
-    LWP_SemPost(memp_sem);
+  LWP_SemPost(mutex);
 #endif /* SYS_LIGHTWEIGHT_PROT */  
     return NULL;
   }
@@ -251,7 +251,7 @@ memp_free(memp_t type, void *mem)
 #if SYS_LIGHTWEIGHT_PROT
     SYS_ARCH_PROTECT(old_level);
 #else /* SYS_LIGHTWEIGHT_PROT */  
-  LWP_SemWait(memp_sem);
+  LWP_SemPost(mutex);
 #endif /* SYS_LIGHTWEIGHT_PROT */  
 
 #if MEMP_STATS
@@ -268,7 +268,7 @@ memp_free(memp_t type, void *mem)
 #if SYS_LIGHTWEIGHT_PROT
   SYS_ARCH_UNPROTECT(old_level);
 #else /* SYS_LIGHTWEIGHT_PROT */
-    LWP_SemPost(memp_sem);
+  LWP_SemPost(mutex);
 #endif /* SYS_LIGHTWEIGHT_PROT */  
 }
 

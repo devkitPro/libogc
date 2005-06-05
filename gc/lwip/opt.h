@@ -146,10 +146,10 @@ a lot of data that needs to be copied, this should be set high. */
 #endif
 
 /* PBUF_LINK_HLEN: the number of bytes that should be allocated for a
-   link level header. */
+   link level header. Defaults to 14 for Ethernet. */
 
 #ifndef PBUF_LINK_HLEN
-#define PBUF_LINK_HLEN                  0
+#define PBUF_LINK_HLEN                  14
 #endif
 
 
@@ -163,26 +163,28 @@ a lot of data that needs to be copied, this should be set high. */
 
 /**
  * If enabled, outgoing packets are queued during hardware address
- * resolution. The etharp.c implementation queues 1 packet only.
+ * resolution.
+ *
+ * This feature has not stabilized yet. Single-packet queueing is
+ * believed to be stable, multi-packet queueing is believed to
+ * clash with the TCP segment queueing.
+ * 
+ * As multi-packet-queueing is currently disabled, enabling this
+ * _should_ work, but we need your testing feedback on lwip-users.
+ *
  */
 #ifndef ARP_QUEUEING
 #define ARP_QUEUEING                    1
 #endif
-/** If enabled, the first packet queued will not be overwritten by
- * later packets. If disabled, later packets overwrite early packets
- * in the queue. Default is disabled, which is recommended. 
- */
-#ifndef ARP_QUEUE_FIRST
-#define ARP_QUEUE_FIRST                 0
+
+/* This option is deprecated */
+#ifdef ETHARP_QUEUE_FIRST
+#error ETHARP_QUEUE_FIRST option is deprecated. Remove it from your lwipopts.h.
 #endif
-/**
- * If defined to 1, cache entries are updated or added for every kind of ARP traffic
- * or broadcast IP traffic. Recommended for routers.
- * If defined to 0, only existing cache entries are updated. Entries are added when
- * lwIP is sending to them. Recommended for embedded devices.
- */
-#ifndef ETHARP_ALWAYS_INSERT
-#define ETHARP_ALWAYS_INSERT            1
+
+/* This option is removed to comply with the ARP standard */
+#ifdef ETHARP_ALWAYS_INSERT
+#error ETHARP_ALWAYS_INSERT option is deprecated. Remove it from your lwipopts.h.
 #endif
 
 /* ---------- IP options ---------- */
@@ -345,7 +347,7 @@ a lot of data that needs to be copied, this should be set high. */
 /* ---------- Socket Options ---------- */
 /* Enable SO_REUSEADDR and SO_REUSEPORT options */ 
 #ifndef SO_REUSE
-# define SO_REUSE 1
+# define SO_REUSE 0
 #endif                                                                        
 
 
@@ -508,6 +510,31 @@ a lot of data that needs to be copied, this should be set high. */
 
 #endif /* PPP_SUPPORT */
 
+/* checksum options - set to zero for hardware checksum support */
+
+#ifndef CHECKSUM_GEN_IP
+#define CHECKSUM_GEN_IP                 1
+#endif
+ 
+#ifndef CHECKSUM_GEN_UDP
+#define CHECKSUM_GEN_UDP                1
+#endif
+ 
+#ifndef CHECKSUM_GEN_TCP
+#define CHECKSUM_GEN_TCP                1
+#endif
+ 
+#ifndef CHECKSUM_CHECK_IP
+#define CHECKSUM_CHECK_IP               1
+#endif
+ 
+#ifndef CHECKSUM_CHECK_UDP
+#define CHECKSUM_CHECK_UDP              1
+#endif
+
+#ifndef CHECKSUM_CHECK_TCP
+#define CHECKSUM_CHECK_TCP              1
+#endif
 
 /* Debugging options all default to off */
 

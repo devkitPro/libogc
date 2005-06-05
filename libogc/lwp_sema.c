@@ -43,7 +43,7 @@ void __lwp_sema_freesema(lwp_sema *sem)
 void __lwp_sema_init()
 {
 	s32 i;
-	for(i=0;i<LWP_MAXSEMAS;i++) _sema_objects[i].sem_id = -1
+	for(i=0;i<LWP_MAXSEMAS;i++) _sema_objects[i].sem_id = -1;
 }
 
 void __lwp_sema_initialize(lwp_sema *sema,lwp_semattr *attrs,u32 init_count)

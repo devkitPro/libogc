@@ -21,6 +21,9 @@
 #include <lwip/udp.h>
 #include <lwip/tcp.h>
 #include <lwip/dhcp.h>
+#include <lwip/api.h>
+#include <lwip/api_msg.h>
+#include <lwip/tcpip.h>
 #include <netif/etharp.h>
 #include <netif/loopif.h>
 #include <netif/gcif/gcif.h>
@@ -30,121 +33,9 @@
 
 //#define _NET_DEBUG
 
-#define STACKSIZE		16384
+#define STACKSIZE		32768
 #define MQBOX_SIZE		1024
-#define NUM_SOCKETS		16
-
-#define NETCONN_NOCOPY	0x00
-#define NETCONN_COPY	0x01
-
-enum netmsq_type {
-	NETMSG_API,
-	NETMSG_INPUT,
-	NETMSG_CALLBACK
-};
-
-enum apimsg_type {
-	APIMSG_NEWCONN,
-	APIMSG_DELCONN,
-	APIMSG_BIND,
-	APIMSG_CONNECT,
-	APIMSG_DISCONNECT,
-	APIMSG_LISTEN,
-	APIMSG_ACCEPT,
-	APIMSG_SEND,
-	APIMSG_RECV,
-	APIMSG_WRITE,
-	APIMSG_CLOSE,
-	APIMSG_MAX
-};
-
-enum netconn_type {
-	NETCONN_TCP,
-	NETCONN_UDP,
-	NETCONN_UDPLITE,
-	NETCONN_UDPNOCHKSUM,
-	NETCONN_RAW
-};
-
-enum netconn_state {
-	NETCONN_NONE,
-	NETCONN_WRITE,
-	NETCONN_ACCEPT,
-	NETCONN_RECV,
-	NETCONN_CONNECT,
-	NETCONN_CLOSE
-};
-
-enum netconn_evt {
-	NETCONN_EVTRCVPLUS,
-	NETCONN_EVTRCVMINUS,
-	NETCONN_EVTSENDPLUS,
-	NETCONN_EVTSENDMINUS
-};
-
-struct netbuf {
-	struct pbuf *p,*ptr;
-	struct ip_addr *fromaddr;
-	u16 fromport;
-	err_t err;
-};
-
-struct netconn {
-	enum netconn_type type;
-	enum netconn_state state;
-	union {
-		struct tcp_pcb *tcp;
-		struct udp_pcb *udp;
-		struct raw_pcb *raw;
-	} pcb;
-	err_t err;
-	sem_t sem;
-	mq_box_t mbox;
-	mq_box_t recvmbox;
-	mq_box_t acceptmbox;
-	u16 recvavail;
-	s32 socket;
-	void (*callback)(struct netconn *,enum netconn_evt,u32);
-};
-
-struct apimsg_msg {
-	struct netconn *conn;
-	enum netconn_type type;
-	union {
-		struct pbuf *p;
-		struct {
-			struct ip_addr *ipaddr;
-			u16 port;
-		} bc;
-		struct {
-			void *dataptr;
-			u32 len;
-			u8 copy;
-		} w;
-		mq_box_t mbox;
-		u16 len;
-	} msg;
-};
-
-struct api_msg {
-	enum apimsg_type type;
-	struct apimsg_msg msg;
-};
-
-struct net_msg {
-	enum netmsq_type type;
-	union {
-		struct api_msg *apimsg;
-		struct {
-			struct pbuf *p;
-			struct netif *net;
-		} inp;
-		struct {
-			void (*f)(void *);
-			void *ctx;
-		} cb;
-	} msg;
-};
+#define NUM_SOCKETS		MEMP_NUM_NETCONN
 
 struct netsocket {
 	struct netconn *conn;
@@ -163,6 +54,9 @@ struct netselect_cb {
 };
 
 typedef void (*apimsg_decode)(struct apimsg_msg *);
+
+lwpq_t tqtmr;
+vu32 tmr_flag = 0;
 
 static u32 g_netinitiated = 0;
 static u32 tcpiplayer_inited = 0;
@@ -184,6 +78,9 @@ static mq_box_t netthread_mbox = NULL;
 
 static lwp_t hnet_thread;
 static u8 netthread_stack[STACKSIZE];
+
+static lwp_t htmr_thread;
+static u8 tmrthread_stack[16384];
 
 static u32 tcp_timer_active = 0;
 
@@ -243,22 +140,25 @@ static void* net_thread(void *);
 /* low level stuff */
 static void __dhcpcoarse_timer(void *arg)
 {
-	dhcp_coarse_tmr();
+	tmr_flag |= 0x08;
+	LWP_WakeThread(tqtmr);
 	__lwp_wd_insert_ticks(&dhcp_coarsetimer_cntrl,net_dhcpcoarse_ticks);
 }
 
 static void __dhcpfine_timer(void *arg)
 {
-	dhcp_fine_tmr();
+	tmr_flag |= 0x04;
+	LWP_WakeThread(tqtmr);
 	__lwp_wd_insert_ticks(&dhcp_finetimer_cntrl,net_dhcpfine_ticks);
 }
 
 static void __tcp_timer(void *arg)
 {
 #ifdef _NET_DEBUG
-	printf("__tcp_timer()\n");
+	printf("__tcp_timer(%d,%p,%p)\n",tcp_timer_active,tcp_active_pcbs,tcp_tw_pcbs);
 #endif
-	tcp_tmr();
+	tmr_flag |= 0x02;
+	LWP_WakeThread(tqtmr);
 	if (tcp_active_pcbs || tcp_tw_pcbs) {
 		__lwp_wd_insert_ticks(&tcp_timer_cntrl,net_tcp_ticks);
 	} else
@@ -317,7 +217,7 @@ static struct netbuf* netbuf_new()
 {
 	struct netbuf *buf = NULL;
 
-	buf = (struct netbuf*)malloc(sizeof(struct netbuf));
+	buf = memp_malloc(MEMP_NETBUF);
 	if(buf) {
 		buf->p = NULL;
 		buf->ptr = NULL;
@@ -329,7 +229,7 @@ static void netbuf_delete(struct netbuf *buf)
 {
 	if(buf!=NULL) {
 		if(buf->p!=NULL) pbuf_free(buf->p);
-		free(buf);
+		memp_free(MEMP_NETBUF,buf);
 	}
 }
 
@@ -376,7 +276,7 @@ static struct netconn* netconn_new_with_proto_and_callback(enum netconn_type t,u
 	struct netconn *conn;
 	struct api_msg *msg;
 	
-	conn = (struct netconn*)malloc(sizeof(struct netconn));
+	conn = memp_malloc(MEMP_NETCONN);
 	if(!conn) return NULL;
 
 	conn->err = ERR_OK;
@@ -386,7 +286,7 @@ static struct netconn* netconn_new_with_proto_and_callback(enum netconn_type t,u
 	conn->mbox = NULL;
 	MQ_Init(&conn->mbox,MQBOX_SIZE);
 	if(!conn->mbox) {
-		free(conn);
+		memp_free(MEMP_NETCONN,conn);
 		return NULL;
 	}
 
@@ -398,10 +298,10 @@ static struct netconn* netconn_new_with_proto_and_callback(enum netconn_type t,u
 	conn->callback = cb;
 	conn->recvavail = 0;
 	
-	msg = (struct api_msg*)malloc(sizeof(struct api_msg));
+	msg = memp_malloc(MEMP_API_MSG);
 	if(!msg) {
 		MQ_Close(conn->mbox);
-		free(conn);
+		memp_free(MEMP_NETCONN,conn);
 		return NULL;
 	}
 	
@@ -410,11 +310,11 @@ static struct netconn* netconn_new_with_proto_and_callback(enum netconn_type t,u
 	msg->msg.conn = conn;
 	apimsg_post(msg);
 	MQ_Receive(conn->mbox,(mqmsg)&dummy,MQ_MSG_BLOCK);
-	free(msg);
+	memp_free(MEMP_API_MSG,msg);
 	
 	if(conn->err!=ERR_OK) {
 		MQ_Close(conn->mbox);
-		free(conn);
+		memp_free(MEMP_NETCONN,conn);
 		return NULL;
 	}
 	return conn;
@@ -428,14 +328,14 @@ static err_t netconn_delete(struct netconn *conn)
 
 	if(!conn) return ERR_OK;
 
-	msg = (struct api_msg*)malloc(sizeof(struct api_msg));
+	msg = memp_malloc(MEMP_API_MSG);
 	if(!msg) return ERR_MEM;
 
 	msg->type = APIMSG_DELCONN;
 	msg->msg.conn = conn;
 	apimsg_post(msg);
 	MQ_Receive(conn->mbox,(mqmsg)&dummy,MQ_MSG_BLOCK);
-	free(msg);
+	memp_free(MEMP_API_MSG,msg);
 
 	if(conn->recvmbox) {
 		while(MQ_Receive(conn->recvmbox,&mem,MQ_MSG_NOBLOCK)==TRUE) {
@@ -463,7 +363,7 @@ static err_t netconn_delete(struct netconn *conn)
 		conn->sem = NULL;
 	}
 	
-	free(conn);
+	memp_free(MEMP_NETCONN,conn);
 	return ERR_OK;
 }
 
@@ -513,7 +413,7 @@ static err_t netconn_bind(struct netconn *conn,struct ip_addr *addr,u16 port)
 		if(MQ_Init(&conn->recvmbox,MQBOX_SIZE)!=MQ_ERROR_SUCCESSFUL) return ERR_MEM;
 	}
 	
-	if((msg=(struct api_msg*)malloc(sizeof(struct api_msg)))==NULL)
+	if((msg=memp_malloc(MEMP_API_MSG))==NULL)
 		return (conn->err = ERR_MEM);
 
 	msg->type = APIMSG_BIND;
@@ -522,7 +422,7 @@ static err_t netconn_bind(struct netconn *conn,struct ip_addr *addr,u16 port)
 	msg->msg.msg.bc.port = port;
 	apimsg_post(msg);
 	MQ_Receive(conn->mbox,(mqmsg)&dummy,MQ_MSG_BLOCK);
-	free(msg);
+	memp_free(MEMP_API_MSG,msg);
 	return conn->err;
 }
 
@@ -537,12 +437,12 @@ static err_t netconn_listen(struct netconn *conn)
 		if(conn->acceptmbox==NULL) return ERR_MEM;
 	}
 
-	if((msg=(struct api_msg*)malloc(sizeof(struct api_msg)))==NULL) return (conn->err = ERR_MEM);
+	if((msg=memp_malloc(MEMP_API_MSG))==NULL) return (conn->err = ERR_MEM);
 	msg->type = APIMSG_LISTEN;
 	msg->msg.conn = conn;
 	apimsg_post(msg);
 	MQ_Receive(conn->mbox,(mqmsg)&dummy,MQ_MSG_BLOCK);
-	free(msg);
+	memp_free(MEMP_API_MSG,msg);
 	return conn->err;
 }
 
@@ -567,7 +467,7 @@ static struct netbuf* netconn_recv(struct netconn *conn)
 			return NULL;
 		}
 		
-		buf = (struct netbuf*)malloc(sizeof(struct netbuf));
+		buf = memp_malloc(MEMP_NETBUF);
 		if(buf==NULL) {
 			conn->err = ERR_MEM;
 			return NULL;
@@ -584,7 +484,7 @@ static struct netbuf* netconn_recv(struct netconn *conn)
 			(*conn->callback)(conn,NETCONN_EVTRCVMINUS,len);
 		
 		if(p==NULL) {
-			free(buf);
+			memp_free(MEMP_NETBUF,buf);
 			MQ_Close(conn->recvmbox);
 			conn->recvmbox = NULL;
 			return NULL;
@@ -595,7 +495,7 @@ static struct netbuf* netconn_recv(struct netconn *conn)
 		buf->fromport = 0;
 		buf->fromaddr = NULL;
 
-		if((msg=(struct api_msg*)malloc(sizeof(struct api_msg)))==NULL) {
+		if((msg=memp_malloc(MEMP_API_MSG))==NULL) {
 			conn->err = ERR_MEM;
 			return buf;
 		}
@@ -609,7 +509,7 @@ static struct netbuf* netconn_recv(struct netconn *conn)
 		
 		apimsg_post(msg);
 		MQ_Receive(conn->mbox,(mqmsg)&dummy,MQ_MSG_BLOCK);
-		free(msg);
+		memp_free(MEMP_API_MSG,msg);
 	} else {
 		MQ_Receive(conn->recvmbox,(mqmsg)&buf,MQ_MSG_BLOCK);
 		conn->recvavail -= buf->p->tot_len;
@@ -628,7 +528,7 @@ static err_t netconn_send(struct netconn *conn,struct netbuf *buf)
 
 	if(conn==NULL) return ERR_VAL;
 	if(conn->err!=ERR_OK) return conn->err;
-	if((msg=(struct api_msg*)malloc(sizeof(struct api_msg)))==NULL) return (conn->err = ERR_MEM);
+	if((msg=memp_malloc(MEMP_API_MSG))==NULL) return (conn->err = ERR_MEM);
 
 	LWIP_DEBUGF(API_LIB_DEBUG, ("netconn_send: sending %d bytes\n", buf->p->tot_len));
 	msg->type = APIMSG_SEND;
@@ -637,26 +537,30 @@ static err_t netconn_send(struct netconn *conn,struct netbuf *buf)
 	apimsg_post(msg);
 	
 	MQ_Receive(conn->mbox,(mqmsg)&dummy,MQ_MSG_BLOCK);
-	free(msg);
+	memp_free(MEMP_API_MSG,msg);
 	return conn->err;
 }
 
 static err_t netconn_write(struct netconn *conn,void *dataptr,u32 size,u8 copy)
 {
-	u32 dummy;
+	u32 dummy,loc_sem;
 	struct api_msg *msg;
-	u16 len;
+	u16 len,snd_buf;
+	sem_t sem;
+	
 
 	LWIP_DEBUGF(API_LIB_DEBUG, ("netconn_write(%d)\n",conn->err));
 
 	if(conn==NULL) return ERR_VAL;
 	if(conn->err!=ERR_OK) return conn->err;
 	
+	loc_sem = 0;
 	if(conn->sem==NULL) {
+		loc_sem = 1;
 		if(LWP_SemInit(&conn->sem,0,1)==-1) return ERR_MEM;
 	}
 
-	if((msg=(struct api_msg*)malloc(sizeof(struct api_msg)))==NULL) return (conn->err = ERR_MEM);
+	if((msg=memp_malloc(MEMP_API_MSG))==NULL) return (conn->err = ERR_MEM);
 	
 	msg->type = APIMSG_WRITE;
 	msg->msg.conn = conn;
@@ -665,13 +569,13 @@ static err_t netconn_write(struct netconn *conn,void *dataptr,u32 size,u8 copy)
 		msg->msg.msg.w.dataptr = dataptr;
 		msg->msg.msg.w.copy = copy;
 		if(conn->type==NETCONN_TCP) {
-			if(tcp_sndbuf(conn->pcb.tcp)==0) {
-				LWIP_DEBUGF(API_LIB_DEBUG, ("netconn_write: tcp_sndbuf = 0,err = %d\n", conn->err));
+			while((snd_buf=tcp_sndbuf(conn->pcb.tcp))==0) {
+				LWIP_DEBUGF(API_LIB_DEBUG|2,("netconn_write: tcp_sndbuf = 0,err = %d\n", conn->err));
 				LWP_SemWait(conn->sem);
 				if(conn->err!=ERR_OK) break;
 			}
-			if(size>tcp_sndbuf(conn->pcb.tcp))
-				len = tcp_sndbuf(conn->pcb.tcp);
+			if(size>snd_buf)
+				len = snd_buf;
 			else
 				len = size;
 		} else
@@ -686,19 +590,19 @@ static err_t netconn_write(struct netconn *conn,void *dataptr,u32 size,u8 copy)
 			dataptr = (void*)((char*)dataptr+len);
 			size -= len;
 		} else if(conn->err==ERR_MEM) {
-			LWIP_DEBUGF(API_LIB_DEBUG, ("netconn_write: mem err\n"));
+			LWIP_DEBUGF(API_LIB_DEBUG|2,("netconn_write: mem err\n"));
 			conn->err = ERR_OK;
 			LWP_SemWait(conn->sem);
 		} else {
-			LWIP_DEBUGF(API_LIB_DEBUG, ("netconn_write: err = %d\n", conn->err));
+			LWIP_DEBUGF(API_LIB_DEBUG|2,("netconn_write: err = %d\n", conn->err));
 			break;
 		}
 	}
-	free(msg);
+	memp_free(MEMP_API_MSG,msg);
 	conn->state = NETCONN_NONE;
-	if(conn->sem!=NULL) {
-		LWP_SemDestroy(conn->sem);
+	if((sem=conn->sem)!=NULL && loc_sem) {
 		conn->sem =NULL;
+		LWP_SemDestroy(sem);
 	}
 
 	return conn->err;
@@ -715,7 +619,7 @@ static err_t netconn_connect(struct netconn *conn,struct ip_addr *addr,u16 port)
 		if(!conn->recvmbox) return ERR_MEM;
 	}
 
-	if((msg=(struct api_msg*)malloc(sizeof(struct api_msg)))==NULL) return ERR_MEM;
+	if((msg=memp_malloc(MEMP_API_MSG))==NULL) return ERR_MEM;
 	
 	msg->type = APIMSG_CONNECT;
 	msg->msg.conn = conn;
@@ -723,7 +627,7 @@ static err_t netconn_connect(struct netconn *conn,struct ip_addr *addr,u16 port)
 	msg->msg.msg.bc.port = port;
 	apimsg_post(msg);
 	MQ_Receive(conn->mbox,(mqmsg)&dummy,MQ_MSG_BLOCK);
-	free(msg);
+	memp_free(MEMP_API_MSG,msg);
 	return conn->err;
 }
 
@@ -733,18 +637,18 @@ static err_t netconn_disconnect(struct netconn *conn)
 	struct api_msg *msg;
 	
 	if(conn==NULL) return ERR_VAL;
-	if((msg=(struct api_msg*)malloc(sizeof(struct api_msg)))==NULL) return ERR_MEM;
+	if((msg=memp_malloc(MEMP_API_MSG))==NULL) return ERR_MEM;
 
 	msg->type = APIMSG_DISCONNECT;
 	msg->msg.conn = conn;
 	apimsg_post(msg);
 	MQ_Receive(conn->mbox,(mqmsg)&dummy,MQ_MSG_BLOCK);
-	free(msg);
+	memp_free(MEMP_API_MSG,msg);
 	return conn->err;
 }
 
 /* api msg part */
-static s32 recv_raw(void *arg,struct raw_pcb *pcb,struct pbuf *p,struct ip_addr *addr)
+static u8_t recv_raw(void *arg,struct raw_pcb *pcb,struct pbuf *p,struct ip_addr *addr)
 {
 	struct netbuf *buf;
 	struct netconn *conn = (struct netconn*)arg;
@@ -752,7 +656,7 @@ static s32 recv_raw(void *arg,struct raw_pcb *pcb,struct pbuf *p,struct ip_addr 
 	if(!conn) return 0;
 
 	if(conn->recvmbox) {
-		if(!(buf=(struct netbuf*)malloc(sizeof(struct netbuf)))) return 0;
+		if((buf=memp_malloc(MEMP_NETBUF))==NULL) return 0;
 
 		pbuf_ref(p);
 		buf->p = p;
@@ -779,7 +683,7 @@ static void recv_udp(void *arg,struct udp_pcb *pcb,struct pbuf *p,struct ip_addr
 	}
 
 	if(conn->recvmbox) {
-		buf = (struct netbuf*)malloc(sizeof(struct netbuf));
+		buf = memp_malloc(MEMP_NETBUF);
 		if(!buf) {
 			pbuf_free(p);
 			return;
@@ -801,6 +705,8 @@ static err_t recv_tcp(void *arg,struct tcp_pcb *pcb,struct pbuf *p,err_t err)
 {
 	u16 len;
 	struct netconn *conn = (struct netconn*)arg;
+
+	LWIP_DEBUGF(API_MSG_DEBUG, ("api_msg: recv_tcp(%p,%p,%p,%d)\n",arg,pcb,p,err));
 
 	if(conn==NULL) {
 		pbuf_free(p);
@@ -852,7 +758,7 @@ static err_t poll_tcp(void *arg,struct tcp_pcb *pcb)
 	struct netconn *conn = (struct netconn*)arg;
 
 	LWIP_DEBUGF(API_MSG_DEBUG, ("api_msg: poll_tcp\n"));
-	if(conn && conn->sem && (conn->type==NETCONN_WRITE || conn->type==NETCONN_CLOSE))
+	if(conn && conn->sem && (conn->state==NETCONN_WRITE || conn->state==NETCONN_CLOSE))
 		LWP_SemPost(conn->sem);
 	
 	return ERR_OK;
@@ -891,7 +797,7 @@ static err_t accept_func(void *arg,struct tcp_pcb *newpcb,err_t err)
 #ifdef _NET_DEUG
 	printf("accept_func() enter\n\n");
 #endif
-	newconn = (struct netconn*)malloc(sizeof(struct netconn));
+	newconn = memp_malloc(MEMP_NETCONN);
 	if(newconn==NULL) return ERR_MEM;
 
 	newconn->type = NETCONN_TCP;
@@ -900,21 +806,21 @@ static err_t accept_func(void *arg,struct tcp_pcb *newpcb,err_t err)
 
 	MQ_Init(&newconn->recvmbox,MQBOX_SIZE);
 	if(newconn->recvmbox==NULL) {
-		free(newconn);
+		memp_free(MEMP_NETCONN,newconn);
 		return ERR_MEM;
 	}
 
 	MQ_Init(&newconn->mbox,MQBOX_SIZE);
 	if(newconn->mbox==NULL) {
 		MQ_Close(newconn->recvmbox);
-		free(newconn);
+		memp_free(MEMP_NETCONN,newconn);
 		return ERR_MEM;
 	}
 	
 	if(LWP_SemInit(&newconn->sem,0,1)==-1) {
 		MQ_Close(newconn->recvmbox);
 		MQ_Close(newconn->mbox);
-		free(newconn);
+		memp_free(MEMP_NETCONN,newconn);
 		return ERR_MEM;
 	}
 	
@@ -1337,7 +1243,9 @@ static void apimsg_post(struct api_msg *msg)
 /* tcpip thread part */
 static err_t net_input(struct pbuf *p,struct netif *inp)
 {
-	struct net_msg *msg = (struct net_msg*)malloc(sizeof(struct net_msg));
+	struct net_msg *msg = memp_malloc(MEMP_TCPIP_MSG);
+			   
+	LWIP_DEBUGF(NETIF_DEBUG, ("net_input(%p,%p)\n", p,inp));
 
 	if(msg==NULL) {
 		LWIP_ERROR(("net_input: msg out of memory.\n"));
@@ -1354,10 +1262,10 @@ static err_t net_input(struct pbuf *p,struct netif *inp)
 
 static void net_apimsg(struct api_msg *apimsg)
 {
-	struct net_msg *msg = (struct net_msg*)malloc(sizeof(struct net_msg));
+	struct net_msg *msg = memp_malloc(MEMP_TCPIP_MSG);
 
 	if(msg==NULL) {
-		free(apimsg);
+		memp_free(MEMP_API_MSG,apimsg);
 		return;
 	}
 
@@ -1368,7 +1276,7 @@ static void net_apimsg(struct api_msg *apimsg)
 
 static err_t net_callback(void (*f)(void *),void *ctx)
 {
-	struct net_msg *msg = (struct net_msg*)malloc(sizeof(struct net_msg));
+	struct net_msg *msg = memp_malloc(MEMP_TCPIP_MSG);
 
 	if(msg==NULL)
 		return ERR_MEM;
@@ -1378,6 +1286,40 @@ static err_t net_callback(void (*f)(void *),void *ctx)
 	msg->msg.cb.ctx = ctx;
 	MQ_Send(netthread_mbox,&msg,MQ_MSG_BLOCK);
 	return ERR_OK;
+}
+
+static void* tmr_thread(void *arg)
+{
+	u32 level;
+	u32 tmrflag;
+
+
+	while(1) {
+		_CPU_ISR_Disable(level);
+		while(!tmr_flag)
+			LWP_SleepThread(tqtmr);
+		tmrflag = tmr_flag;
+		tmr_flag = 0;
+		_CPU_ISR_Restore(level);
+
+		if(tmrflag&0x01) {
+			LWIP_DEBUGF(TCPIP_DEBUG|1,("etharp_tmr()\n"));
+			etharp_tmr();
+		}
+		if(tmrflag&0x02) {
+			LWIP_DEBUGF(TCPIP_DEBUG|1,("tcp_tmr()\n"));
+			tcp_tmr();
+		}
+		if(tmrflag&0x04) {
+			LWIP_DEBUGF(TCPIP_DEBUG|1,("dhcp_fine_tmr()\n"));
+			dhcp_fine_tmr();
+		}
+		if(tmrflag&0x08) {
+			LWIP_DEBUGF(TCPIP_DEBUG|1,("dhcp_coarse_tmr()\n"));
+			dhcp_coarse_tmr();
+		}
+	}
+	return 0;
 }
 
 static void* net_thread(void *arg)
@@ -1397,9 +1339,8 @@ static void* net_thread(void *arg)
 	
 	LWP_SemPost(sem);
 	
-#ifdef _NET_DEBUG
-	printf("net_thread(%p)\n",arg);
-#endif
+	LWIP_DEBUGF(TCPIP_DEBUG, ("net_thread(%p)\n",arg));
+
 	while(1) {
 		MQ_Receive(netthread_mbox,(mqmsg)&msg,MQ_MSG_BLOCK);
 		switch(msg->type) {
@@ -1409,7 +1350,7 @@ static void* net_thread(void *arg)
 				break;
 			case NETMSG_INPUT:
 			    LWIP_DEBUGF(TCPIP_DEBUG, ("net_thread: IP packet %p\n", (void *)msg));
-				ip_input(msg->msg.inp.p,msg->msg.inp.net);
+				bba_process(msg->msg.inp.p,msg->msg.inp.net);
 				break;
 			case NETMSG_CALLBACK:
 			    LWIP_DEBUGF(TCPIP_DEBUG, ("net_thread: CALLBACK %p\n", (void *)msg));
@@ -1418,7 +1359,7 @@ static void* net_thread(void *arg)
 			default:
 				break;
 		}
-		free(msg);
+		memp_free(MEMP_TCPIP_MSG,msg);
 	}
 }
 
@@ -1429,7 +1370,7 @@ static s32 alloc_socket(struct netconn *conn)
 	
 	LWP_SemWait(netsocket_sem);
 	
-	for(i=0;i<64;i++) {
+	for(i=0;i<NUM_SOCKETS;i++) {
 		if(!sockets[i].conn) {
 			sockets[i].conn = conn;
 			sockets[i].lastdata = NULL;
@@ -1538,6 +1479,14 @@ s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 	pbuf_init();
 	netif_init();
 
+	// init tcpip thread message box
+	MQ_Init(&netthread_mbox,MQBOX_SIZE);
+	if(!netthread_mbox) return -1;
+
+	// init timer thread
+	LWP_InitQueue(&tqtmr);
+	if(LWP_CreateThread(&htmr_thread,tmr_thread,NULL,tmrthread_stack,16384,220)==-1) return -1;
+
 	// setup interface 
 	gw.addr = 0;
 	loc_ip.addr = 0;
@@ -1553,6 +1502,7 @@ s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 
 	pnet = netif_add(&g_hNetIF,&loc_ip, &netmask, &gw, NULL, bba_init, net_input);
 	if(pnet) {
+		netif_set_up(pnet);
 		netif_set_default(pnet);
 #if (LWIP_DHCP)
 		if(use_dhcp==TRUE) {
@@ -1591,29 +1541,26 @@ s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 
 s32 net_init()
 {
-	s32 ret = -1;
 	sem_t sem;
 
 	if(tcpiplayer_inited) return 0;
 
 	if(LWP_SemInit(&netsocket_sem,1,1)==-1) return -1;
 	if(LWP_SemInit(&sockselect_sem,1,1)==-1) return -1;
+	if(LWP_SemInit(&sem,0,1)==-1) return -1;
 
-	MQ_Init(&netthread_mbox,MQBOX_SIZE);
-	if(!netthread_mbox) return -1;
-
-	if(LWP_SemInit(&sem,0,1)==-1) {
-		MQ_Close(netthread_mbox);
-		return -1;
-	}
-
-	if((ret=LWP_CreateThread(&hnet_thread,net_thread,sem,netthread_stack,STACKSIZE,220))!=-1) {
-		LWP_SemWait(sem);
+	if(LWP_CreateThread(&hnet_thread,net_thread,sem,netthread_stack,STACKSIZE,220)==-1) {
+		LWP_SemDestroy(netsocket_sem);
+		LWP_SemDestroy(sockselect_sem);
 		LWP_SemDestroy(sem);
-		tcpiplayer_inited = 1;
-		ret = 0;
+		return 0;
 	}
-	return ret;
+	LWP_SemWait(sem);
+	LWP_SemDestroy(sem);
+
+	tcpiplayer_inited = 1;
+	
+	return 1;
 }
 
 s32 net_socket(u32 domain,u32 type,u32 protocol)
@@ -1867,7 +1814,7 @@ s32 net_send(s32 s,void *data,u32 len,u32 flags)
 			netbuf_delete(buf);
 			break;
 		case NETCONN_TCP:
-			err = netconn_write(sock->conn,data,len,NETCONN_NOCOPY);
+			err = netconn_write(sock->conn,data,len,NETCONN_COPY);
 			break;
 		default:
 			err = ERR_ARG;

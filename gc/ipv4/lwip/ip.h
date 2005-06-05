@@ -40,7 +40,6 @@
 
 #include "lwip/err.h"
 
-struct netif;
 
 void ip_init(void);
 struct netif *ip_route(struct ip_addr *dest);
@@ -128,7 +127,7 @@ PACK_STRUCT_END
 
 #define IPH_V(hdr)  (ntohs((hdr)->_v_hl_tos) >> 12)
 #define IPH_HL(hdr) ((ntohs((hdr)->_v_hl_tos) >> 8) & 0x0f)
-#define IPH_TOS(hdr) (htons((ntohs((hdr)->_v_hl_tos) & 0xff)))
+#define IPH_TOS(hdr) (ntohs((hdr)->_v_hl_tos) & 0xff)
 #define IPH_LEN(hdr) ((hdr)->_len)
 #define IPH_ID(hdr) ((hdr)->_id)
 #define IPH_OFFSET(hdr) ((hdr)->_offset)

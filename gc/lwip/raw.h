@@ -46,7 +46,7 @@ struct raw_pcb {
 
   u16_t protocol;
 
-  int (* recv)(void *arg, struct raw_pcb *pcb, struct pbuf *p,
+  u8_t (* recv)(void *arg, struct raw_pcb *pcb, struct pbuf *p,
     struct ip_addr *addr);
   void *recv_arg;
 };
@@ -59,15 +59,15 @@ err_t            raw_bind       (struct raw_pcb *pcb, struct ip_addr *ipaddr);
 err_t            raw_connect    (struct raw_pcb *pcb, struct ip_addr *ipaddr);
 
 void             raw_recv       (struct raw_pcb *pcb,
-                                 int (* recv)(void *arg, struct raw_pcb *pcb,
+                                 u8_t (* recv)(void *arg, struct raw_pcb *pcb,
                                               struct pbuf *p,
                                               struct ip_addr *addr),
                                  void *recv_arg);
-err_t            raw_send_to    (struct raw_pcb *pcb, struct pbuf *p, struct ip_addr *ipaddr);
+err_t            raw_sendto    (struct raw_pcb *pcb, struct pbuf *p, struct ip_addr *ipaddr);
 err_t            raw_send       (struct raw_pcb *pcb, struct pbuf *p);
 
 /* The following functions are the lower layer interface to RAW. */
-int              raw_input      (struct pbuf *p, struct netif *inp);
+u8_t              raw_input      (struct pbuf *p, struct netif *inp);
 void             raw_init       (void);
 
 

@@ -68,7 +68,6 @@ netif_add(struct netif *netif, struct ip_addr *ipaddr, struct ip_addr *netmask,
   err_t (* input)(struct pbuf *p, struct netif *netif))
 {
   static int netifnum = 0;
-
   
 #if LWIP_DHCP
   /* netif not under DHCP control by default */
@@ -198,12 +197,20 @@ netif_set_ipaddr(struct netif *netif, struct ip_addr *ipaddr)
   }
 #endif
   ip_addr_set(&(netif->ip_addr), ipaddr);
+#if 0 /* only allowed for Ethernet interfaces TODO: how can we check? */
+  /** For Ethernet network interfaces, we would like to send a
+   *  "gratuitous ARP"; this is an ARP packet sent by a node in order
+   *  to spontaneously cause other nodes to update an entry in their
+   *  ARP cache. From RFC 3220 "IP Mobility Support for IPv4" section 4.6.
+   */ 
+  etharp_query(netif, ipaddr, NULL);
+#endif
   LWIP_DEBUGF(NETIF_DEBUG | DBG_TRACE | DBG_STATE | 3, ("netif: IP address of interface %c%c set to %u.%u.%u.%u\n",
     netif->name[0], netif->name[1],
-    (unsigned int)(ntohl(netif->ip_addr.addr) >> 24 & 0xff),
-    (unsigned int)(ntohl(netif->ip_addr.addr) >> 16 & 0xff),
-    (unsigned int)(ntohl(netif->ip_addr.addr) >> 8 & 0xff),
-    (unsigned int)(ntohl(netif->ip_addr.addr) & 0xff)));
+    ip4_addr1(&netif->ip_addr),
+    ip4_addr2(&netif->ip_addr),
+    ip4_addr3(&netif->ip_addr),
+    ip4_addr4(&netif->ip_addr)));
 }
 
 void
@@ -211,11 +218,11 @@ netif_set_gw(struct netif *netif, struct ip_addr *gw)
 {
   ip_addr_set(&(netif->gw), gw);
   LWIP_DEBUGF(NETIF_DEBUG | DBG_TRACE | DBG_STATE | 3, ("netif: GW address of interface %c%c set to %u.%u.%u.%u\n",
-           netif->name[0], netif->name[1],
-           (unsigned int)(ntohl(netif->gw.addr) >> 24 & 0xff),
-           (unsigned int)(ntohl(netif->gw.addr) >> 16 & 0xff),
-           (unsigned int)(ntohl(netif->gw.addr) >> 8 & 0xff),
-           (unsigned int)(ntohl(netif->gw.addr) & 0xff)));
+    netif->name[0], netif->name[1],
+    ip4_addr1(&netif->gw),
+    ip4_addr2(&netif->gw),
+    ip4_addr3(&netif->gw),
+    ip4_addr4(&netif->gw)));
 }
 
 void
@@ -223,11 +230,11 @@ netif_set_netmask(struct netif *netif, struct ip_addr *netmask)
 {
   ip_addr_set(&(netif->netmask), netmask);
   LWIP_DEBUGF(NETIF_DEBUG | DBG_TRACE | DBG_STATE | 3, ("netif: netmask of interface %c%c set to %u.%u.%u.%u\n",
-           netif->name[0], netif->name[1],
-           (unsigned int)(ntohl(netif->netmask.addr) >> 24 & 0xff),
-           (unsigned int)(ntohl(netif->netmask.addr) >> 16 & 0xff),
-           (unsigned int)(ntohl(netif->netmask.addr) >> 8 & 0xff),
-           (unsigned int)(ntohl(netif->netmask.addr) & 0xff)));
+    netif->name[0], netif->name[1],
+    ip4_addr1(&netif->netmask),
+    ip4_addr2(&netif->netmask),
+    ip4_addr3(&netif->netmask),
+    ip4_addr4(&netif->netmask)));
 }
 
 void
@@ -236,6 +243,41 @@ netif_set_default(struct netif *netif)
   netif_default = netif;
   LWIP_DEBUGF(NETIF_DEBUG, ("netif: setting default interface %c%c\n",
            netif ? netif->name[0] : '\'', netif ? netif->name[1] : '\''));
+}
+
+/**
+ * Bring an interface up, available for processing
+ * traffic.
+ * 
+ * @note: Enabling DHCP on a down interface will make it come
+ * up once configured.
+ * 
+ * @see dhcp_start()
+ */ 
+void netif_set_up(struct netif *netif)
+{
+  netif->flags |= NETIF_FLAG_UP;
+}
+
+/**
+ * Ask if an interface is up
+ */ 
+u8_t netif_is_up(struct netif *netif)
+{
+  return (netif->flags & NETIF_FLAG_UP)?1:0;
+}
+
+/**
+ * Bring an interface down, disabling any traffic processing.
+ *
+ * @note: Enabling DHCP on a down interface will make it come
+ * up once configured.
+ * 
+ * @see dhcp_start()
+ */ 
+void netif_set_down(struct netif *netif)
+{
+  netif->flags &= ~NETIF_FLAG_UP;
 }
 
 void

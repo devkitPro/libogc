@@ -32,7 +32,41 @@
 
 #include "lwip/ip_addr.h"
 #include "lwip/inet.h"
+#include "lwip/netif.h"
 
 /* used by IP_ADDR_ANY and IP_ADDR_BROADCAST in ip_addr.h */
 const struct ip_addr ip_addr_any = { 0x00000000UL };
 const struct ip_addr ip_addr_broadcast = { 0xffffffffUL };
+
+/* Determine if an address is a broadcast address on a network interface 
+ * 
+ * @param addr address to be checked
+ * @param netif the network interface against which the address is checked
+ * @return returns non-zero if the address is a broadcast address
+ *
+ */
+
+u8_t ip_addr_isbroadcast(struct ip_addr *addr, struct netif *netif)
+{
+  /* all ones (broadcast) or all zeroes (old skool broadcast) */
+  if ((addr->addr == ip_addr_broadcast.addr) ||
+      (addr->addr == ip_addr_any.addr))
+    return 1;
+  /* no broadcast support on this network interface? */
+  else if ((netif->flags & NETIF_FLAG_BROADCAST) == 0)
+    /* the given address cannot be a broadcast address
+     * nor can we check against any broadcast addresses */
+    return 0;
+  /* address matches network interface address exactly? => no broadcast */
+  else if (addr->addr == netif->ip_addr.addr)
+    return 0;
+  /*  on the same (sub) network... */
+  else if (ip_addr_netcmp(addr, &(netif->ip_addr), &(netif->netmask))
+         /* ...and host identifier bits are all ones? =>... */
+          && ((addr->addr & ~netif->netmask.addr) ==
+           (ip_addr_broadcast.addr & ~netif->netmask.addr)))
+    /* => network broadcast address */
+    return 1;
+  else
+    return 0;
+}

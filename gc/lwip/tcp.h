@@ -105,6 +105,7 @@ void             tcp_input   (struct pbuf *p, struct netif *inp);
 /* Used within the TCP code only: */
 err_t            tcp_output  (struct tcp_pcb *pcb);
 void             tcp_rexmit  (struct tcp_pcb *pcb);
+void             tcp_rexmit_rto  (struct tcp_pcb *pcb);
 
 
 
@@ -112,7 +113,11 @@ void             tcp_rexmit  (struct tcp_pcb *pcb);
 #define TCP_SEQ_LEQ(a,b)    ((s32_t)((a)-(b)) <= 0)
 #define TCP_SEQ_GT(a,b)     ((s32_t)((a)-(b)) > 0)
 #define TCP_SEQ_GEQ(a,b)    ((s32_t)((a)-(b)) >= 0)
-
+/* is b<=a<=c? */
+#if 0 /* see bug #10548 */
+#define TCP_SEQ_BETWEEN(a,b,c) ((c)-(b) >= (a)-(b))
+#endif
+#define TCP_SEQ_BETWEEN(a,b,c) (TCP_SEQ_GEQ(a,b) && TCP_SEQ_LEQ(a,c))
 #define TCP_FIN 0x01U
 #define TCP_SYN 0x02U
 #define TCP_RST 0x04U
@@ -208,18 +213,13 @@ enum tcp_state {
   TIME_WAIT   = 10
 };
 
-
 /* the TCP protocol control block */
 struct tcp_pcb {
-/* Common members of all PCB types */
+/** common PCB members */
   IP_PCB;
-
-/* Protocol specific PCB members */
-
-  struct tcp_pcb *next;   /* for the linked list */
-
-  enum tcp_state state;   /* TCP state */
-
+/** protocol specific PCB members */
+  struct tcp_pcb *next; /* for the linked list */
+  enum tcp_state state; /* TCP state */
   u8_t prio;
   void *callback_arg;
 
@@ -235,7 +235,7 @@ struct tcp_pcb {
 #define TF_GOT_FIN   (u8_t)0x20U   /* Connection was closed by the remote end. */
 #define TF_NODELAY   (u8_t)0x40U   /* Disable Nagle algorithm */
 
-  /* receiver varables */
+  /* receiver variables */
   u32_t rcv_nxt;   /* next seqno expected */
   u16_t rcv_wnd;   /* receiver window */
   
@@ -248,10 +248,10 @@ struct tcp_pcb {
   
   u16_t mss;   /* maximum segment size */
   
-  /* RTT estimation variables. */
-  u16_t rttest; /* RTT estimate in 500ms ticks */
+  /* RTT (round trip time) estimation variables */
+  u32_t rttest; /* RTT estimate in 500ms ticks */
   u32_t rtseq;  /* sequence number being timed */
-  s16_t sa, sv;
+  s16_t sa, sv; /* @todo document this */
 
   u16_t rto;    /* retransmission time-out */
   u8_t nrtx;    /* number of retransmissions */
@@ -375,7 +375,7 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb,
 #define TCP_EVENT_RECV(pcb,p,err,ret) \
                         if((pcb)->recv != NULL) \
                         { ret = (pcb)->recv((pcb)->callback_arg,(pcb),(p),(err)); } else { \
-            pbuf_free(p); }
+                          if (p) pbuf_free(p); }
 #define TCP_EVENT_CONNECTED(pcb,err,ret) \
                         if((pcb)->connected != NULL) \
                         (ret = (pcb)->connected((pcb)->callback_arg,(pcb),(err)))
@@ -387,7 +387,7 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb,
                         (errf)((arg),(err))
 #endif /* LWIP_EVENT_API */
 
-/* This structure is used to repressent TCP segments when queued. */
+/* This structure represents a TCP segment on the unsent and unacked queues */
 struct tcp_seg {
   struct tcp_seg *next;    /* used when putting segements on a queue */
   struct pbuf *p;          /* buffer containing data + TCP header */

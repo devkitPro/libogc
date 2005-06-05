@@ -46,10 +46,21 @@
 #include "lwip/def.h"
 #include "lwip/inet.h"
 
+#include "lwip/sys.h"
 
+/* This is a reference implementation of the checksum algorithm
 
+ - it may not work on all architectures, and all processors, particularly
+   if they have issues with alignment and 16 bit access.
+
+ - in this case you will need to port it to your architecture and 
+   #define LWIP_CHKSUM <your_checksum_routine> 
+   in your sys_arch.h
+*/
+#ifndef LWIP_CHKSUM
+#define LWIP_CHKSUM lwip_standard_chksum
 static u16_t
-lwip_chksum(void *dataptr, int len)
+lwip_standard_chksum(void *dataptr, int len)
 {
   u32_t acc;
 
@@ -75,6 +86,7 @@ lwip_chksum(void *dataptr, int len)
 
   return (u16_t)acc;
 }
+#endif
 
 /* inet_chksum_pseudo:
  *
@@ -96,7 +108,7 @@ inet_chksum_pseudo(struct pbuf *p,
   for(q = p; q != NULL; q = q->next) {
     LWIP_DEBUGF(INET_DEBUG, ("inet_chksum_pseudo(): checksumming pbuf %p (has next %p) \n",
       (void *)q, (void *)q->next));
-    acc += lwip_chksum(q->payload, q->len);
+    acc += LWIP_CHKSUM(q->payload, q->len);
     /*LWIP_DEBUGF(INET_DEBUG, ("inet_chksum_pseudo(): unwrapped lwip_chksum()=%lx \n", acc));*/
     while (acc >> 16) {
       acc = (acc & 0xffffUL) + (acc >> 16);
@@ -122,7 +134,7 @@ inet_chksum_pseudo(struct pbuf *p,
     acc = (acc & 0xffffUL) + (acc >> 16);
   }
   LWIP_DEBUGF(INET_DEBUG, ("inet_chksum_pseudo(): pbuf chain lwip_chksum()=%lx\n", acc));
-  return ~(acc & 0xffffUL);
+  return (u16_t)~(acc & 0xffffUL);
 }
 
 /* inet_chksum:
@@ -136,11 +148,11 @@ inet_chksum(void *dataptr, u16_t len)
 {
   u32_t acc;
 
-  acc = lwip_chksum(dataptr, len);
+  acc = LWIP_CHKSUM(dataptr, len);
   while (acc >> 16) {
     acc = (acc & 0xffff) + (acc >> 16);
   }
-  return ~(acc & 0xffff);
+  return (u16_t)~(acc & 0xffff);
 }
 
 u16_t
@@ -153,7 +165,7 @@ inet_chksum_pbuf(struct pbuf *p)
   acc = 0;
   swapped = 0;
   for(q = p; q != NULL; q = q->next) {
-    acc += lwip_chksum(q->payload, q->len);
+    acc += LWIP_CHKSUM(q->payload, q->len);
     while (acc >> 16) {
       acc = (acc & 0xffffUL) + (acc >> 16);
     }
@@ -166,7 +178,7 @@ inet_chksum_pbuf(struct pbuf *p)
   if (swapped) {
     acc = ((acc & 0x00ffUL) << 8) | ((acc & 0xff00UL) >> 8);
   }
-  return ~(acc & 0xffffUL);
+  return (u16_t)~(acc & 0xffffUL);
 }
 
 /* Here for now until needed in other places in lwIP */
@@ -232,12 +244,12 @@ inet_chksum_pbuf(struct pbuf *p)
                  base = 8;
          }
          for (;;) {
-             if (isascii(c) && isdigit(c)) {
-                 val = (val * base) + (c - '0');
+             if (isdigit(c)) {
+                 val = (val * base) + (int)(c - '0');
                  c = *++cp;
-             } else if (base == 16 && isascii(c) && isxdigit(c)) {
+             } else if (base == 16 && isxdigit(c)) {
                  val = (val << 4) |
-                     (c + 10 - (islower(c) ? 'a' : 'A'));
+                     (int)(c + 10 - (islower(c) ? 'a' : 'A'));
                  c = *++cp;
              } else
              break;
@@ -306,7 +318,7 @@ char *inet_ntoa(struct in_addr addr)
   u32_t s_addr = addr.s_addr;
   char inv[3];
   char *rp;
-  char *ap;
+  u8_t *ap;
   u8_t rem;
   u8_t n;
   u8_t i;
