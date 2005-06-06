@@ -22,7 +22,7 @@
 //#define _BBA_DEBUG
 
 #define IFNAME0		'e'
-#define IFNAME1		'n'
+#define IFNAME1		'0'
 
 #define GCIF_TX_TQ				8
 #define GCIF_EXI_TQ				9
@@ -185,6 +185,7 @@ struct bba_priv {
 	u8 revid;
 	u16 devid;
 	u8 acstart;
+	lwpq_t tq_xmit;
 	volatile err_t state;
 	struct eth_addr *ethaddr;
 };
@@ -193,7 +194,6 @@ static u64 net_arp_ticks = 0;
 static wd_cntrl arp_time_cntrl;
 
 static lwpq_t wait_exi_queue;
-static lwpq_t wait_tx_queue;
 
 static struct netif *gc_netif = NULL;
 
@@ -403,7 +403,7 @@ static u32 __bba_tx_wake(struct bba_priv *priv)
 	_CPU_ISR_Disable(level);
 	if(priv->state==ERR_TXPENDING) {
 		priv->state = ERR_OK;
-		LWP_WakeThread(wait_tx_queue);
+		LWP_WakeThread(priv->tq_xmit);
 	}
 	_CPU_ISR_Restore(level);
 	return 1;
@@ -416,7 +416,7 @@ static u32 __bba_tx_stop(struct bba_priv *priv)
 	_CPU_ISR_Disable(level);
 	while(priv->state==ERR_TXPENDING) {
 		LWIP_DEBUGF(NETIF_DEBUG,("__bba_tx_stop(pending tx)\n"));
-		LWP_SleepThread(wait_tx_queue);
+		LWP_SleepThread(priv->tq_xmit);
 	}
 	priv->state = ERR_TXPENDING;
 	_CPU_ISR_Restore(level);
@@ -437,12 +437,12 @@ static u8 __set_linkstate(u8 mode)
 	u32 ret;
 	u8 bba_speed;
 	
+	udelay(10000);
 	bba_speed = (bba_in8(BBA_NWAYC)&0xf0);
-	usleep(2000);
-	bba_out8(BBA_NWAYC,(bba_speed|mode));
+	bba_out8(BBA_NWAYC,(bba_speed|mode|0x08));
 
 	do {
-		usleep(2000);
+		udelay(500);
 		ret = __linkstate()&0xf0;
 		if(ret) break;
 	} while(!ret);
@@ -455,8 +455,6 @@ static u32 __bba_set_linkstate()
 	u8 speed;
 	u32 ret;
 
-	__bba_exi_wait();
-	
 	ret = 0;
 	if((speed=__set_linkstate(BBA_FULL_100))==BBA_NWAYS_100TXF) ret = 1;
 	else if((speed=__set_linkstate(BBA_HALF_100))==BBA_NWAYS_100TXH) ret = 1;
@@ -465,8 +463,7 @@ static u32 __bba_set_linkstate()
 		speed = __set_linkstate(BBA_HALF_10);
 		ret = 1;
 	}
-
-	EXI_Unlock(EXI_CHANNEL_0);
+	LWIP_DEBUGF(NETIF_DEBUG,("netif: linespeed set %02x\n",speed));
 	return ret;
 }
 
@@ -611,9 +608,9 @@ static err_t __bba_link_tx(struct netif *dev,struct pbuf *p)
 	return ERR_OK;
 }
 
-static err_t bba_start_tx(struct netif *dev,struct pbuf *p,struct ip_addr *ipaddr)
+static err_t __bba_start_tx(struct netif *dev,struct pbuf *p,struct ip_addr *ipaddr)
 {
-	LWIP_DEBUGF(NETIF_DEBUG,("bba_start_tx(%p)\n",LWP_GetSelf()));
+	LWIP_DEBUGF(NETIF_DEBUG,("__bba_start_tx(%p)\n",LWP_GetSelf()));
 	return etharp_output(dev,ipaddr,p);
 }
 
@@ -636,7 +633,7 @@ static u32 __bba_rx_err(u8 status)
 	return errors;
 }
 
-static err_t bba_start_rx()
+static err_t bba_start_rx(struct netif *dev)
 {
 	u32 rcv_len,len;
 	u32 top,pos,pkt_status,size;
@@ -726,7 +723,7 @@ static err_t bba_start_rx()
 					}
 				}
 			}
-			gc_netif->input(p,gc_netif);
+			dev->input(p,dev);
 		}
 		bba_out12(BBA_RRP,cur_descr.next_packet_ptr);
 
@@ -753,7 +750,7 @@ static inline void bba_interrupt(struct netif *dev)
 		bba_out8(BBA_IR,BBA_IR_FRAGI);
 	}
 	if(status&BBA_IR_RI) {
-		bba_start_rx();
+		bba_start_rx(dev);
 		bba_out8(BBA_IR,BBA_IR_RI);
 	}
 	if(status&BBA_IR_REI) {
@@ -778,14 +775,12 @@ static inline void bba_interrupt(struct netif *dev)
 		bba_out8(BBA_IR,BBA_IR_BUSEI);
 	}
 	if(status&BBA_IR_RBFI) {
-		bba_start_rx();
+		bba_start_rx(dev);
 		bba_out8(BBA_IR,BBA_IR_RBFI);
 	}
 
 	LWIP_DEBUGF(NETIF_DEBUG,("bba_interrupt(exit)\n"));
 
-	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
-	EXI_Unlock(EXI_CHANNEL_0);
 }
 
 static err_t __bba_init(struct netif *dev)
@@ -814,7 +809,7 @@ static err_t __bba_init(struct netif *dev)
 	bba_out8(0x5c, (bba_in8(0x5c)|0x04));
 	
 	bba_out8(BBA_NCRB,0x00);
-
+	
 	__bba_recv_init();
 	
 	bba_out8(BBA_IR,0xFF);
@@ -884,7 +879,7 @@ static u32 bba_event_handler(u32 nChn,u32 nDev)
 	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;
 
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,bba_event_handler)==0) {
-		LWIP_DEBUGF(NETIF_DEBUG|2,("bba_event_handler(exi locked)\n"));
+		LWIP_DEBUGF(NETIF_DEBUG|1,("bba_event_handler(exi locked)\n"));
 		return 1;
 	}
 
@@ -897,6 +892,8 @@ static u32 bba_event_handler(u32 nChn,u32 nDev)
 		LWIP_DEBUGF(NETIF_DEBUG,("bba_event_handler(bba_interrupt(%02x))\n",status));
 		bba_cmd_out8(0x03,0x80);
 		bba_interrupt(gc_netif);
+		bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+		EXI_Unlock(EXI_CHANNEL_0);
 		return 1;
 	}
 	if(status&0x40) {
@@ -936,6 +933,8 @@ static u32 bba_event_handler(u32 nChn,u32 nDev)
 	}
 	LWIP_ERROR(("GCIF - EXI - ?? %02x\n", status));
 	bba_interrupt(gc_netif);
+	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+	EXI_Unlock(EXI_CHANNEL_0);
 	return 1;
 }
 
@@ -950,32 +949,6 @@ err_t bba_init(struct netif *dev)
 {
 	err_t ret;
 	struct timespec tb;
-	struct bba_priv *priv;
-
-	LWIP_DEBUGF(NETIF_DEBUG, ("bba_init()\n"));
-
-	priv = mem_malloc(sizeof(struct bba_priv));
-	if(!priv) {
-		LWIP_ERROR(("bba_init: out of memory for bba_priv\n"));
-		return ERR_MEM;
-	}
-
-	dev->name[0] = IFNAME0;
-	dev->name[1] = IFNAME1;
-	dev->output = bba_start_tx;
-	dev->linkoutput = __bba_link_tx;
-	dev->state = priv;
-	dev->mtu = BBA_TX_MAX_PACKET_SIZE;
-	dev->flags = NETIF_FLAG_BROADCAST;
-	dev->hwaddr_len = 6;
-
-	priv->ethaddr = (struct eth_addr*)&(dev->hwaddr[0]);
-	priv->state = ERR_OK;
-	
-	gc_netif = dev;
-
-	LWP_InitQueue(&wait_exi_queue);
-	LWP_InitQueue(&wait_tx_queue);	
 
 	_siReg[15] = (_siReg[15]&~0x0001);
 	
@@ -991,10 +964,10 @@ err_t bba_init(struct netif *dev)
 		return ret;
 	}
 
+	ret = __bba_set_linkstate();
 	EXI_Unlock(EXI_CHANNEL_0);
 
-	ret = ERR_IF;
-	if(__bba_set_linkstate()) {
+	if(ret) {
 		etharp_init();
 
 		tb.tv_sec = ARP_TMR_INTERVAL/TB_MSPERSEC;
@@ -1005,6 +978,37 @@ err_t bba_init(struct netif *dev)
 
 		dev->flags |= NETIF_FLAG_LINK_UP;
 		ret = ERR_OK;
-	}
+	} else
+		ret = ERR_IF;
 	return ret;
+}
+
+dev_s bba_create(struct netif *dev)
+{
+	struct bba_priv *priv = NULL;
+
+	LWIP_DEBUGF(NETIF_DEBUG, ("bba_create()\n"));
+
+	priv = (struct bba_priv*)mem_malloc(sizeof(struct bba_priv));
+	if(!priv) {
+		LWIP_ERROR(("bba_create: out of memory for bba_priv\n"));
+		return NULL;
+	}
+
+	LWP_InitQueue(&priv->tq_xmit);
+	LWP_InitQueue(&wait_exi_queue);
+
+	dev->name[0] = IFNAME0;
+	dev->name[1] = IFNAME1;
+	dev->output = __bba_start_tx;
+	dev->linkoutput = __bba_link_tx;
+	dev->mtu = BBA_TX_MAX_PACKET_SIZE;
+	dev->flags = NETIF_FLAG_BROADCAST;
+	dev->hwaddr_len = 6;
+
+	priv->ethaddr = (struct eth_addr*)&(dev->hwaddr[0]);
+	priv->state = ERR_OK;
+	
+	gc_netif = dev;
+	return priv;
 }

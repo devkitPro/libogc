@@ -36,7 +36,9 @@ extern inline void cpu_to_be32s(u32 *a) {*a = cpu_to_be32(*a);}
 #define be16_to_cpus(x) cpu_to_be16s(x)
 #define be32_to_cpus(x) cpu_to_be32s(x)
 
+typedef void* dev_s;
 
+dev_s bba_create(struct netif *);
 err_t bba_init(struct netif *);
 void bba_process(struct pbuf *p,struct netif *dev);
 

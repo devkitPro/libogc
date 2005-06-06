@@ -212,7 +212,7 @@ a lot of data that needs to be copied, this should be set high. */
 #define SLIP_DEBUG                      DBG_OFF
 #define DHCP_DEBUG                      DBG_OFF
 
-#define DBG_MIN_LEVEL                   DBG_LEVEL_SERIOUS
+#define DBG_MIN_LEVEL                   DBG_LEVEL_WARNING
 #endif
 
 

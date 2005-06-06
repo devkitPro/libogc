@@ -1464,6 +1464,7 @@ s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 	struct ip_addr loc_ip, netmask, gw;
 	struct netif *pnet;
 	struct timespec tb;
+	dev_s hbba = NULL;
 
 	if(g_netinitiated) return 0;
 	g_netinitiated = 1;
@@ -1487,7 +1488,7 @@ s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 	LWP_InitQueue(&tqtmr);
 	if(LWP_CreateThread(&htmr_thread,tmr_thread,NULL,tmrthread_stack,16384,220)==-1) return -1;
 
-	// setup interface 
+	// create & setup interface 
 	gw.addr = 0;
 	loc_ip.addr = 0;
 	netmask.addr = 0;
@@ -1500,7 +1501,8 @@ s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 			return -1;
 	}
 
-	pnet = netif_add(&g_hNetIF,&loc_ip, &netmask, &gw, NULL, bba_init, net_input);
+	hbba = bba_create(&g_hNetIF);
+	pnet = netif_add(&g_hNetIF,&loc_ip, &netmask, &gw, hbba, bba_init, net_input);
 	if(pnet) {
 		netif_set_up(pnet);
 		netif_set_default(pnet);
