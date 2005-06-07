@@ -65,6 +65,7 @@ void DVD_StartNormal();
 void DVD_StartNormalAsync(dvdcbcallback cb);
 void DVD_StartUnlocked(dvdcbcallback swapcb);
 void DVD_StartUnlockedAsync(dvdcbcallback swapcb,dvdcbcallback cb);
+s32 DVD_Mount(dvdcmdblk *block);
 s32 DVD_GetDriveStatus();
 s32 DVD_GetCmdBlockStatus(dvdcmdblk *block);
 s32 DVD_Inquiry(dvdcmdblk *block,dvddrvinfo *info);
