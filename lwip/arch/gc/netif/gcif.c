@@ -450,7 +450,7 @@ static u8 __set_linkstate(u8 mode)
 	return ret;
 }
 
-static u32 __bba_set_linkstate()
+static u32 __bba_set_linkstateasync()
 {
 	u8 speed;
 	u32 ret;
@@ -464,6 +464,37 @@ static u32 __bba_set_linkstate()
 		ret = 1;
 	}
 	LWIP_DEBUGF(NETIF_DEBUG,("netif: linespeed set %02x\n",speed));
+	return ret;
+}
+
+static u32 __bba_set_linkstate()
+{
+	u32 ret;
+
+	__bba_exi_wait();
+	ret = __bba_set_linkstateasync();
+	EXI_Unlock(EXI_CHANNEL_0);
+	return ret;
+}
+
+static u32 __bba_get_linkstateasync()
+{
+	u32 ret;
+
+	do {
+		udelay(500);
+		ret = __linkstate()&0xf0;
+		if(ret) break;
+	} while(!ret);
+}
+
+static u32 __bba_get_linkstate()
+{
+	u32 ret;
+
+	__bba_exi_wait();
+	ret = __bba_get_linkstateasync();
+	EXI_Unlock(EXI_CHANNEL_0);
 	return ret;
 }
 
@@ -489,6 +520,9 @@ static void __bba_reset()
 	udelay(10000);
 	bba_out8(BBA_NCRA,BBA_NCRA_RESET);
 	bba_out8(BBA_NCRA,0x00);
+	bba_out8(BBA_MISC,0x00);
+	udelay(40000);
+	bba_out8(BBA_MISC,0x10);
 }
 
 static void __bba_recv_init()
@@ -963,8 +997,7 @@ err_t bba_init(struct netif *dev)
 		EXI_Unlock(EXI_CHANNEL_0);
 		return ret;
 	}
-
-	ret = __bba_set_linkstate();
+	ret = __bba_set_linkstateasync();
 	EXI_Unlock(EXI_CHANNEL_0);
 
 	if(ret) {

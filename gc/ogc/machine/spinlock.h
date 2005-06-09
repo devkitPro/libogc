@@ -2,6 +2,7 @@
 #define __SPINLOCK_H__
 
 #include <gctypes.h>
+#include <lwp_threads.h>
 
 typedef struct {
 	vu32 lock;
@@ -10,7 +11,6 @@ typedef struct {
 #define SPIN_LOCK_UNLOCKED		(spinlock_t){0}
 
 #define spin_lock_init(x)		do { *(x) = SPIN_LOCK_UNLOCKED; }while(0)
-
 
 static __inline__ u32 _test_and_set(u32 *atomic)
 {
@@ -77,12 +77,12 @@ static __inline__ void spin_lock(spinlock_t *lock)
         : "cr0", "memory");
 }
 
-static __inline__ void spin_lock_irqsave(spinlock_t *lock,u32 *isr_level)
+static __inline__ void spin_lock_irqsave(spinlock_t *lock,register u32 isr_level)
 {
         register u32 tmp;
-		register u32 isrlevel = *isr_level;
 
-		_CPU_ISR_Disable(isrlevel);
+		_CPU_ISR_Disable(isr_level);
+		__lwp_thread_dispatchdisable();
 		
         __asm__ __volatile__(
 	   "b       1f                      # spin_lock\n\
@@ -98,8 +98,6 @@ static __inline__ void spin_lock_irqsave(spinlock_t *lock,u32 *isr_level)
         : "=&r"(tmp)
         : "r"(&lock->lock), "r"(1)
         : "cr0", "memory");
-
-		*isr_level = isrlevel;
 }
 
 static __inline__ void spin_unlock(spinlock_t *lock)
@@ -108,16 +106,15 @@ static __inline__ void spin_unlock(spinlock_t *lock)
         lock->lock = 0;
 }
 
-static __inline__ void spin_unlock_irqrestore(spinlock_t *lock,u32 *isr_level)
+static __inline__ void spin_unlock_irqrestore(spinlock_t *lock,register u32 isr_level)
 {
-		register u32 isrlevel = *isr_level;
-        __asm__ __volatile__(
-			"eieio             # spin_unlock"
-			: : :"memory");
-        lock->lock = 0;
+    __asm__ __volatile__(
+		"eieio             # spin_unlock"
+		: : :"memory");
+    lock->lock = 0;
 
-		_CPU_ISR_Restore(isrlevel);
-		*isr_level = isrlevel;
+	_CPU_ISR_Restore(isr_level);
+	__lwp_thread_dispatchenable();
 }
 
 typedef struct {
