@@ -56,7 +56,7 @@ int _DEFUN (_open_r, (r, file, flags, mode),
 	handle = -1;
 	if(dev!=-1 && devoptab_list[dev]->open_r) {
 		fd = devoptab_list[dev]->open_r(r,lfile,flags,mode);
-		if(fd!=-1) handle = _SHIFTL(dev,16,16)|(fd&0xffff);
+		if(fd!=-1) handle = _SHIFTL(dev,12,4)|(fd&0x0fff);
 	}
 
 	return handle;
