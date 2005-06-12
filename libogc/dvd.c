@@ -951,14 +951,6 @@ static void __dvd_statebusycb(s32 result)
 			__dvd_stateready();
 			return;
 		}
-		if(__dvd_currcmd==0x0010) {
-			block = __dvd_executing;
-			__dvd_executing = &__dvd_dummycmdblk;
-			block->state = 0x10;
-			if(block->cb) block->cb(0x10,block);
-			__dvd_stateready();
-			return;
-		}
 
 		block = __dvd_executing;
 		__dvd_executing = &__dvd_dummycmdblk;
@@ -2165,11 +2157,11 @@ void DVD_Reset()
 void callback(s32 result,dvdcmdblk *block)
 {
 	printf("callback(%d)\n",result);
-	if(result==0x10) {
+	if(result==0x00) {
 		DVD_ReadDiskID(block,&__dvd_tmpid0,callback);
 		return;
 	}
-	else if(result==0x20) {
+	else if(result>0x00) {
 		memcpy(__dvd_diskID,&__dvd_tmpid0,DVD_DISKIDSIZE);
 	} else if(result==-4) {
 		DVD_SpinUpDriveAsync(block,callback);
