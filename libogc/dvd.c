@@ -813,7 +813,7 @@ static void __dvd_stategettingerrorcb(s32 result)
 				// disable the extensions iff they're enabled and we were trying to read the disc ID
 				if(__dvd_executing->cmd==0x05) {
 					__dvd_lasterror = 0;
-					__dvd_extensionsenabled ^= 1;
+					__dvd_extensionsenabled = FALSE;
 					DVD_LowSpinUpDrive(__dvd_stateretrycb);
 					return;
 				}
@@ -1478,6 +1478,7 @@ void __dvd_statecoverclosed()
 		if(blk->cb) blk->cb(-4,blk);
 		__dvd_stateready();
 	} else {
+		__dvd_extensionsenabled = TRUE;
 		DVD_LowSpinUpDrive(__dvd_statecoverclosed_spinupcb);
 	}
 }
@@ -1537,12 +1538,15 @@ void __dvd_statecheckid()
 		DCInvalidateRange(&__dvd_tmpid0,DVD_DISKIDSIZE);
 		__dvd_laststate = __dvd_statecheckid2;
 		__dvd_statecheckid2(__dvd_executing);
+		return;
 	}
 	if(__dvd_currcmd==0x0010) {
 		blk = __dvd_executing;
+		blk->state = 0;
 		__dvd_executing = &__dvd_dummycmdblk;
 		if(blk->cb) blk->cb(0,blk);
 		__dvd_stateready();
+		return;
 	}
 	__dvd_statebusy(__dvd_executing);
 }
@@ -2156,7 +2160,9 @@ void DVD_Reset()
 
 void callback(s32 result,dvdcmdblk *block)
 {
+#ifdef _DVD_DEBUG
 	printf("callback(%d)\n",result);
+#endif
 	if(result==0x00) {
 		DVD_ReadDiskID(block,&__dvd_tmpid0,callback);
 		return;

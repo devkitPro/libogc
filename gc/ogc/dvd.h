@@ -65,6 +65,8 @@ void DVD_Pause();
 s32 DVD_Mount();
 s32 DVD_GetDriveStatus();
 s32 DVD_GetCmdBlockStatus(dvdcmdblk *block);
+s32 DVD_SpinUpDrive(dvdcmdblk *block);
+s32 DVD_SpinUpDriveAsync(dvdcmdblk *block,dvdcbcallback cb);
 s32 DVD_Inquiry(dvdcmdblk *block,dvddrvinfo *info);
 s32 DVD_InquiryAsync(dvdcmdblk *block,dvddrvinfo *info,dvdcbcallback cb);
 s32 DVD_ReadPrio(dvdfileinfo *info,void *buf,u32 len,u32 offset,s32 prio);
@@ -72,6 +74,7 @@ s32 DVD_SeekPrio(dvdfileinfo *info,u32 offset,s32 prio);
 s32 DVD_CancelAllAsync(dvdcbcallback cb);
 s32 DVD_StopStreamAtEndAsync(dvdcmdblk *block,dvdcbcallback cb);
 s32 DVD_StopStreamAtEnd(dvdcmdblk *block);
+s32 DVD_ReadDiskID(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb);
 dvddiskid* DVD_GetCurrentDiskID();
 
 #ifdef __cplusplus
