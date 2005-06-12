@@ -156,6 +156,9 @@
 #define BBA_TX_STATUS_OWN     (1<<7)
 #define BBA_TX_STATUS_TERR    (1<<7)
 
+#define BBA_SI_ACTRL	0x5c
+#define BBA_SI_STATUS	0x5d
+
 #define BBA_INIT_TLBP	0x00
 #define BBA_INIT_BP		0x01
 #define BBA_INIT_RHBP	0x0f
@@ -484,7 +487,7 @@ static void __bba_recv_init()
 
 	bba_out8(BBA_GCA,BBA_GCA_ARXERRB);
 	bba_out8(BBA_NCRA,BBA_NCRA_SR);
-	bba_out8(0x5c,0x22);
+	bba_out8(BBA_SI_ACTRL,0x22);
 }
 
 static u32 __bba_tx_err(u8 status)
