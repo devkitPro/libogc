@@ -1258,6 +1258,10 @@ SOURCE=.\gc\sdcard.h
 # End Group
 # Begin Source File
 
+SOURCE=.\gcbogc.ld
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc.dox
 # End Source File
 # Begin Source File
