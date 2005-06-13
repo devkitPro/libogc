@@ -138,6 +138,7 @@ static dvdcallbacklow __dvd_resetcovercb = NULL;
 static dvdcallbacklow __dvd_finalunlockcb = NULL;
 static dvdcallbacklow __dvd_sud_finalcb = NULL;
 static dvdcbcallback __dvd_cancelcallback = NULL;
+static dvdcbcallback __dvd_mountusrcb = NULL;
 static dvdstatecb __dvd_laststate = NULL;
 static dvdcmdblk *__dvd_executing = NULL;
 static dvddiskid *__dvd_diskID = (dvddiskid*)0x80000000;
@@ -984,7 +985,12 @@ static void __dvd_statebusycb(s32 result)
 	__dvd_stategettingerror();
 }
 
-static void __dvd_inquirysyncb(s32 result,dvdcmdblk *block)
+static void __dvd_mountsynccb(s32 result,dvdcmdblk *block)
+{
+	LWP_WakeThread(__dvd_wait_queue);
+}
+
+static void __dvd_inquirysynccb(s32 result,dvdcmdblk *block)
 {
 	LWP_WakeThread(__dvd_wait_queue);
 }
@@ -1548,6 +1554,14 @@ void __dvd_statecheckid()
 		__dvd_stateready();
 		return;
 	}
+	if(__dvd_currcmd!=0x0005 && memcmp(__dvd_diskID,&__dvd_tmpid0,DVD_DISKIDSIZE)) {
+		blk = __dvd_executing;
+		blk->state = -1;
+		__dvd_executing = &__dvd_dummycmdblk;
+		if(blk->cb) blk->cb(-1,blk);
+		if(__dvd_mountusrcb) __dvd_mountusrcb(-1,blk);
+		return;
+	}
 	__dvd_statebusy(__dvd_executing);
 }
 
@@ -1959,7 +1973,7 @@ s32 DVD_Inquiry(dvdcmdblk *block,dvddrvinfo *info)
 #ifdef _DVD_DEBUG
 	printf("DVD_Inquiry(%p,%p)\n",block,info);
 #endif
-	ret = DVD_InquiryAsync(block,info,__dvd_inquirysyncb);
+	ret = DVD_InquiryAsync(block,info,__dvd_inquirysynccb);
 	if(!ret) return -1;
 
 	_CPU_ISR_Disable(level);
@@ -2169,11 +2183,21 @@ void callback(s32 result,dvdcmdblk *block)
 	}
 	else if(result>0x00) {
 		memcpy(__dvd_diskID,&__dvd_tmpid0,DVD_DISKIDSIZE);
+		if(__dvd_mountusrcb) __dvd_mountusrcb(result,block);
+		return;
 	} else if(result==-4) {
 		DVD_SpinUpDriveAsync(block,callback);
 		return;
 	}
-	LWP_WakeThread(__dvd_wait_queue);
+}
+
+s32 DVD_MountAsync(dvdcmdblk *block,dvdcbcallback cb)
+{
+#ifdef _DVD_DEBUG
+	printf("DVD_MountAsync()\n");
+#endif
+	__dvd_mountusrcb = cb;
+	return DVD_SpinUpDriveAsync(block,callback);
 }
 
 s32 DVD_Mount()
@@ -2184,7 +2208,8 @@ s32 DVD_Mount()
 #ifdef _DVD_DEBUG
 	printf("DVD_Mount()\n");
 #endif
-	DVD_SpinUpDriveAsync(&__dvd_block$15,callback);
+	ret = DVD_MountAsync(&__dvd_block$15,__dvd_mountsynccb);
+	if(!ret) return -1;
 	
 	_CPU_ISR_Disable(level);
 	do {
@@ -2194,6 +2219,7 @@ s32 DVD_Mount()
 		else if(state==10) ret = -3;
 		else LWP_SleepThread(__dvd_wait_queue);
 	} while(state!=0 && state!=-1 && state!=10);
+	__dvd_mountusrcb = NULL;		//set to zero coz this is only used to sync for this function.
 	_CPU_ISR_Restore(level);
 
 	return ret;

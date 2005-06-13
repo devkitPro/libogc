@@ -64,6 +64,7 @@ void DVD_Pause();
 
 s32 DVD_Mount();
 s32 DVD_GetDriveStatus();
+s32 DVD_MountAsync(dvdcmdblk *block,dvdcbcallback cb);
 s32 DVD_GetCmdBlockStatus(dvdcmdblk *block);
 s32 DVD_SpinUpDrive(dvdcmdblk *block);
 s32 DVD_SpinUpDriveAsync(dvdcmdblk *block,dvdcbcallback cb);
