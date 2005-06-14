@@ -50,6 +50,8 @@ typedef struct _exibus_priv {
 static exibus_priv eximap[EXI_MAX_CHANNELS];
 static s64 last_exi_idtime[EXI_MAX_CHANNELS];
 
+static u32 exi_id_serport1 = 0;
+
 static u32 exi_uart_chan = EXI_CHANNEL_0;
 static u32 exi_uart_dev = EXI_DEVICE_0;
 static u32 exi_uart_barnacle_enabled = 0;
@@ -636,24 +638,17 @@ u32 EXI_ProbeEx(u32 nChn)
 	return 0;
 }
 
-u32 EXI_ProbeReset()
+void EXI_ProbeReset()
 {
-	u32 nID;
-
 	last_exi_idtime[0] = 0;
 	last_exi_idtime[1] = 0;
 
-	eximap[0].exi_id = 0;
 	eximap[0].exi_idtime = 0;
-	eximap[1].exi_id = 0;
 	eximap[1].exi_idtime = 0;
-	eximap[2].exi_id = 0;
-	eximap[2].exi_idtime = 0;
 	
 	__exi_probe(0);
 	__exi_probe(1);
-
-	return EXI_GetID(EXI_CHANNEL_0,EXI_DEVICE_2,&nID);
+	EXI_GetID(EXI_CHANNEL_0,EXI_DEVICE_2,&exi_id_serport1);
 }
 
 void __exi_init()
