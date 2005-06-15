@@ -395,6 +395,7 @@ u32 EXI_Sync(u32 nChn)
 u32 EXI_Imm(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 {
 	u32 level;
+	u32 value,i;
 	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
 	printf("EXI_Imm(%d,%p,%d,%d,%p)\n",nChn,pData,nLen,nMode,tc_cb);
@@ -415,7 +416,10 @@ u32 EXI_Imm(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 	
 	exi->imm_buff = pData;
 	exi->imm_len = nLen;
-	if(nMode!=EXI_READ) _exiReg[nChn*5+4] = *(u32*)pData;
+	if(nMode!=EXI_READ) {
+		for(i=0,value=0;i<nLen;i++) value |= (((char*)pData)[i])<<((3-i)*8);
+		_exiReg[nChn*5+4] = value;
+	}
 	if(nMode==EXI_WRITE) exi->imm_len = 0;
 
 	_exiReg[nChn*5+3] = (((nLen-1)&0x03)<<4)|((nMode&0x03)<<2)|0x01;
