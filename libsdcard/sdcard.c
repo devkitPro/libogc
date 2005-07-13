@@ -140,10 +140,10 @@ s32 SDCARD_SeekFile(sd_file *pfile,s32 offset,u32 whence)
 			else ifile->pos = 0;
 		} else if(whence==SDCARD_SEEK_CUR) {
 			len = offset+ifile->pos;
-			if(len>0 && len<ifile->size) ifile->pos += offset;
+			if(len>0 && len<ifile->size) ifile->pos = len;
 		} else if(whence==SDCARD_SEEK_END) {
 			len = ifile->size+offset;
-			if(len>0 && len<ifile->size) ifile->pos += offset;
+			if(len>0 && len<ifile->size) ifile->pos = len;
 		} else
 			return SDCARD_ERROR_EOF;
 
