@@ -64,7 +64,7 @@ INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/modplay -I$(BASEDIR)/gc/mad -I$(BASEDIR)/gc/sdcard
 
 MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -ffunction-sections -fdata-sections
-CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -O2 $(MACHDEP) -Wall $(INCLUDES)
+CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -g -O1 $(MACHDEP) -Wall $(INCLUDES)
 LDFLAGS		:=
 
 #---------------------------------------------------------------------------------
@@ -113,7 +113,8 @@ MADOBJ		:=	mp3player.o bit.o decoder.o fixed.o frame.o huffman.o \
 			version.o
 
 #---------------------------------------------------------------------------------
-DBOBJ		:=	debug_handler.o debug.o bba_dbg.o uip_arp.o uip_arch.o uip.o 
+DBOBJ		:=	uip_ip.o uip_tcp.o uip_pbuf.o uip_netif.o uip_arp.o uip_arch.o \
+				uip_icmp.o memb.o bba.o tcpip.o debug.o debug_handler.o
 
 #---------------------------------------------------------------------------------
 SDCARDOBJ	:=	sdcard.o sdcardio.o card_fat.o card_buf.o card_io.o card_uni.o
@@ -164,6 +165,7 @@ STUBSOBJ	:=	malloc_lock_stub.o flock_supp_stub.o lock_supp_stub.o gcn_crt0.o
 all:
 #---------------------------------------------------------------------------------
 	@[ -d $(LIBDIR) ] || mkdir -p $(LIBDIR)
+	@[ -d $(INCDIR) ] || mkdir -p $(INCDIR)
 	@[ -d $(DEPSDIR) ] || mkdir -p $(DEPSDIR)
 	@[ -d $(BUILDDIR) ] || mkdir -p $(BUILDDIR)
 	@make libs -C $(BUILDDIR) -f $(CURDIR)/Makefile
@@ -226,6 +228,8 @@ clean:
 #---------------------------------------------------------------------------------
 	rm -fr $(BUILDDIR)
 	rm -fr $(DEPSDIR)
+	rm -fr $(LIBDIR)
+	rm -fr $(INCDIR)
 	rm -f *.map
 
 -include $(DEPSDIR)/*.d

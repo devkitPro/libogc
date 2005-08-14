@@ -547,7 +547,27 @@ SOURCE=.\libmad\version.c
 # PROP Default_Filter ""
 # Begin Source File
 
-SOURCE=.\libdb\uIP\uip.c
+SOURCE=.\libdb\uIP\bba.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\bba.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\memb.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\memb.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uip\tcpip.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uip\tcpip.h
 # End Source File
 # Begin Source File
 
@@ -571,17 +591,49 @@ SOURCE=.\libdb\uIP\uip_arp.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\libdb\uIP\uip_icmp.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip_icmp.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip_ip.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip_ip.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip_netif.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip_netif.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip_pbuf.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip_pbuf.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip_tcp.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\uip_tcp.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\libdb\uip\uipopt.h
 # End Source File
 # End Group
-# Begin Source File
-
-SOURCE=.\libdb\bba_dbg.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libdb\bba_dbg.h
-# End Source File
 # Begin Source File
 
 SOURCE=.\libdb\debug.c
