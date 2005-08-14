@@ -49,7 +49,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arch.h,v 1.1 2005-03-10 15:39:14 shagkur Exp $
+ * $Id: uip_arch.h,v 1.2 2005-08-14 11:51:13 shagkur Exp $
  *
  */
 
@@ -58,25 +58,32 @@
 
 #include "uip.h"
 
-/**
- * Carry out a 32-bit addition.
- *
- * Because not all architectures for which uIP is intended has native
- * 32-bit arithmetic, uIP uses an external C function for doing the
- * required 32-bit additions in the TCP protocol processing. This
- * function should add the two arguments and place the result in the
- * global variable uip_acc32.
- *
- * \note The 32-bit integer pointed to by the op32 parameter and the
- * result in the uip_acc32 variable are in network byte order (big
- * endian).
- *
- * \param op32 A pointer to a 4-byte array representing a 32-bit
- * integer in network byte order (big endian).
- *
- * \param op16 A 16-bit integer in host byte order.
- */
-void uip_add32(u8_t *op32, u16_t op16);
+#define UIP_MIN(x,y)			(x)<(y)?(x):(y)
+
+#define MEM_ALIGNMENT			4
+#define MEM_ALIGN(mem)			((void*)(((u32_t)(mem)+MEM_ALIGNMENT-1)&~(u32_t)(MEM_ALIGNMENT-1)))
+#define MEM_ALIGN_SIZE(size)	(((size)+MEM_ALIGNMENT-1)&~(u32_t)(MEM_ALIGNMENT-1))
+
+#define PACK_STRUCT_STRUCT		__attribute__((packed))
+#define PACK_STRUCT_FIELD(x)	x __attribute__((packed))
+#define PACK_STRUCT_BEGIN
+#define PACK_STRUCT_END
+
+#ifndef htons
+#define htons(x) (x)
+#endif
+#ifndef ntohs
+#define ntohs(x) (x)
+#endif
+#ifndef htonl
+#define htonl(x) (x)
+#endif
+#ifndef ntohl
+#define ntohl(x) (x)
+#endif
+
+struct uip_pbuf;
+struct uip_ip_addr;
 
 /**
  * Calculate the Internet checksum over a buffer.
@@ -97,7 +104,7 @@ void uip_add32(u8_t *op32, u16_t op16);
  *
  * \return The Internet checksum of the buffer.
  */
-u16_t uip_chksum(u16_t *buf, u16_t len);
+u16_t uip_chksum(u16_t *buf, u32_t len);
 
 /**
  * Calculate the IP header checksum of the packet header in uip_buf.
@@ -108,7 +115,9 @@ u16_t uip_chksum(u16_t *buf, u16_t len);
  * \return The IP header checksum of the IP header in the uip_buf
  * buffer.
  */
-u16_t uip_ipchksum(void);
+u16_t uip_ipchksum(void *dataptr,u16_t len);
+
+u16_t uip_ipchksum_pbuf(struct uip_pbuf *p);
 
 /**
  * Calculate the TCP checksum of the packet in uip_buf and uip_appdata.
@@ -123,7 +132,12 @@ u16_t uip_ipchksum(void);
  * \return The TCP checksum of the TCP segment in uip_buf and pointed
  * to by uip_appdata.
  */
-u16_t uip_tcpchksum(void);
+u16_t uip_chksum_pseudo(struct uip_pbuf *p,struct uip_ip_addr *src,struct uip_ip_addr *dst,u8_t proto,u16_t proto_len);
+
+
+extern void tcpip_tmr_needed();
+#define tcp_tmr_needed		tcpip_tmr_needed
+
 
 /** @} */
 

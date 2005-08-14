@@ -50,7 +50,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uipopt.h,v 1.6 2005-04-27 16:43:51 shagkur Exp $
+ * $Id: uipopt.h,v 1.7 2005-08-14 11:51:13 shagkur Exp $
  *
  */
 
@@ -58,6 +58,8 @@
 #define __UIPOPT_H__
 
 #include <gctypes.h>
+#include <stdlib.h>
+#include <string.h>
 
 /*------------------------------------------------------------------------------*/
 /**
@@ -74,12 +76,44 @@
 typedef u8 u8_t;
 
 /**
+ * The 8-bit signed data type.
+ *
+ * This may have to be tweaked for your particular compiler. "unsigned
+ * char" works for most compilers.
+ */
+typedef s8 s8_t;
+
+/**
  * The 16-bit unsigned data type.
  *
  * This may have to be tweaked for your particular compiler. "unsigned
  * short" works for most compilers.
  */
 typedef u16 u16_t;
+
+/**
+ * The 16-bit signed data type.
+ *
+ * This may have to be tweaked for your particular compiler. "unsigned
+ * short" works for most compilers.
+ */
+typedef s16 s16_t;
+
+/**
+ * The 32-bit signed data type.
+ *
+ * This may have to be tweaked for your particular compiler. "unsigned
+ * short" works for most compilers.
+ */
+typedef s32 s32_t;
+
+/**
+ * The 32-bit unsigned data type.
+ *
+ * This may have to be tweaked for your particular compiler. "unsigned
+ * short" works for most compilers.
+ */
+typedef u32 u32_t;
 
 /**
  * The statistics data type.
@@ -213,7 +247,9 @@ typedef u16 uip_stats_t;
  *
  * This should normally not be changed.
  */
-#define UIP_TTL         255
+#define UIP_TCP_TTL         255
+
+#define UIP_TCP				1
 
 /**
  * Turn on support for IP packet reassembly.
@@ -235,7 +271,7 @@ typedef u16 uip_stats_t;
  * buffer before it is dropped.
  *
  */
-#define UIP_REASS_MAXAGE 40
+#define UIP_REASS_MAXAGE 30
 
 /** @} */
 
@@ -279,7 +315,7 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_UDP_APPCALL  udp_appcall
+//#define UIP_UDP_APPCALL		((void*0)
 
 /** @} */
 /*------------------------------------------------------------------------------*/
@@ -298,7 +334,7 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_ACTIVE_OPEN 1
+#define UIP_ACTIVE_OPEN				1
 
 /**
  * The maximum number of simultaneously open TCP connections.
@@ -309,7 +345,7 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_CONNS       10
+#define UIP_TCP_PCBS				64
 
 /**
  * The maximum number of simultaneously listening TCP ports.
@@ -318,7 +354,7 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_LISTENPORTS 10
+#define UIP_LISTEN_TCP_PCBS			8
 
 /**
  * The size of the advertised receiver's window.
@@ -329,8 +365,16 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_RECEIVE_WINDOW   32768
+#define UIP_TCPIP_SOCKS				32
 
+#define UIP_TCP_SEGS				128
+
+#define UIP_TCP_WND					(16*1024)
+
+#define UIP_TCP_SND_BUF				(32*1024)
+
+#define UIP_TCP_SND_QUEUELEN		(4*UIP_TCP_SND_BUF/UIP_TCP_MSS)
+	
 /**
  * Determines if support for TCP urgent data notification should be
  * compiled in.
@@ -340,14 +384,14 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_URGDATA      1
+#define UIP_URGDATA				1
 
 /**
  * The initial retransmission timeout counted in timer pulses.
  *
  * This should not be changed.
  */
-#define UIP_RTO         3
+#define UIP_RTO					3
 
 /**
  * The maximum number of times a segment should be retransmitted
@@ -355,7 +399,7 @@ typedef u16 uip_stats_t;
  *
  * This should not be changed.
  */
-#define UIP_MAXRTX      8
+#define UIP_MAXRTX				12
 
 /**
  * The maximum number of times a SYN segment should be retransmitted
@@ -364,14 +408,14 @@ typedef u16 uip_stats_t;
  *
  * This should not need to be changed.
  */
-#define UIP_MAXSYNRTX      3
+#define UIP_MAXSYNRTX			4
 
 /**
  * The TCP maximum segment size.
  *
  * This is should not be to set to more than UIP_BUFSIZE - UIP_LLH_LEN - 40.
  */
-#define UIP_TCP_MSS     (UIP_BUFSIZE - UIP_LLH_LEN - 40)
+#define UIP_TCP_MSS				(1476)
 
 /**
  * How long a connection should stay in the TIME_WAIT state.
@@ -379,7 +423,7 @@ typedef u16 uip_stats_t;
  * This configiration option has no real implication, and it should be
  * left untouched.
  */ 
-#define UIP_TIME_WAIT_TIMEOUT 120
+#define UIP_TIME_WAIT_TIMEOUT	120
 
 
 /** @} */
@@ -425,8 +469,12 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_BUFSIZE     1536
+#define UIP_BUFSIZE			1536
 
+#define UIP_PBUF_POOL_NUM	128
+#define UIP_PBUF_ROM_NUM	128
+
+#define UIP_PBUF_SIZE		2048
 
 /**
  * Determines if statistics support should be compiled in.
@@ -446,7 +494,7 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_LOGGING     1
+#define UIP_LOGGING     0
 
 /**
  * Print out a uIP log message.
@@ -454,7 +502,7 @@ typedef u16 uip_stats_t;
  * This function must be implemented by the module that uses uIP, and
  * is called by uIP whenever a log message is generated.
  */
-void uip_log(char *msg);
+void uip_log(const char *filename,int line_nb,char *msg);
 
 /**
  * The link level header length.
@@ -465,9 +513,9 @@ void uip_log(char *msg);
  *
  * \hideinitializer
  */
-#define UIP_LLH_LEN     14
+#define UIP_LL_HLEN     16
 
-
+#define UIP_TCPIP_HLEN	40
 /** @} */
 /*------------------------------------------------------------------------------*/
 /**
@@ -554,6 +602,5 @@ struct httpd_state {
    used. If you don't use the example web server, you should change
    this. */
 
-#include "../bba_dbg.h"
 
 #endif /* __UIPOPT_H__ */

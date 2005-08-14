@@ -5,7 +5,13 @@
 #include "processor.h"
 #include "exi.h"
 #include "cache.h"
-#include "uIP/uip_arp.h"
+#include "bba.h"
+#include "uip_pbuf.h"
+#include "uip_netif.h"
+#include "uip_arp.h"
+
+#define IFNAME0					'e'
+#define IFNAME1					't'
 
 #define BBA_MINPKTSIZE			60
 
@@ -134,12 +140,14 @@
 #define BBA_RX_MAX_PACKET_SIZE 1536	/* 6 pages * 256 bytes */
 
 #define BBA_INIT_TLBP	0x00
-#define BBA_INIT_BP	0x01
+#define BBA_INIT_BP		0x01
 #define BBA_INIT_RHBP	0x0f
 #define BBA_INIT_RWP	BBA_INIT_BP
 #define BBA_INIT_RRP	BBA_INIT_BP
 
 #define BBA_NAPI_WEIGHT 16
+
+#define RX_BUFFERS		16
 
 #define cpu_to_be16(x) (x)
 #define cpu_to_be32(x) (x)
@@ -170,7 +178,8 @@ struct bba_priv {
 	u8 revid;
 	u16 devid;
 	u8 acstart;
-	struct uip_eth_addr ethaddr;
+	s8_t state;
+	struct uip_eth_addr *ethaddr;
 };
 
 #define X(a,b)  b,a
@@ -193,13 +202,28 @@ struct bba_descr {
 									bba_out8((reg)+1,((val)&0x0f00)>>8); \
 							} while(0)
 
+#if UIP_LOGGING == 1
+#include <stdio.h>
+#define UIP_LOG(m) uip_log(__FILE__,__LINE__,m)
+#else
+#define UIP_LOG(m)
+#endif /* UIP_LOGGING == 1 */
+
+#if UIP_STATISTICS == 1
+struct uip_stats uip_stat;
+#define UIP_STAT(s) s
+#else
+#define UIP_STAT(s)
+#endif /* UIP_STATISTICS == 1 */
+
+static s64 bba_arp_tmr = 0;
+
+static struct uip_pbuf *bba_recv_pbufs = NULL;
+static struct uip_netif *bba_netif = NULL;
 static struct bba_priv bba_device;
 static struct bba_descr cur_descr;
 
-static u32 rxd_size;
-static u8 rx_buffer0[BBA_RX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
-static u8 rx_buffer1[BBA_RX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
-static u8 tx_buffer[BBA_RX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
+static u8 rx_buffer[BBA_RX_MAX_PACKET_SIZE];
 
 static vu32* const _siReg = (u32*)0xCC006400;
 
@@ -208,7 +232,7 @@ static void bba_cmd_outs(u32 reg,void *val,u32 len);
 static void bba_ins(u32 reg,void *val,u32 len);
 static void bba_outs(u32 reg,void *val,u32 len);
 
-static u32 bba_poll(u16 *pstatus);
+static u32 bba_devpoll(u16 *pstatus);
 
 extern void udelay(int us);
 extern u32 diff_msec(long long start,long long end);
@@ -323,11 +347,7 @@ static inline void bba_insregister(u32 reg)
 
 static inline void bba_insdata(void *val,u32 len)
 {
-	u32 recv_len = ((len+31)&~31);
-
-	DCInvalidateRange(val,len);
-	EXI_Dma(EXI_CHANNEL_0,val,recv_len,EXI_READ,NULL);
-	EXI_Sync(EXI_CHANNEL_0);
+	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_READ);
 }	
 
 
@@ -341,16 +361,7 @@ static inline void bba_outsregister(u32 reg)
 
 static inline void bba_outsdata(void *val,u32 len)
 {
-	u32 dma_len = len&~0x1f;
-	u32 imm_len = len&0x1f;
-
-	if(dma_len>0) {
-		DCStoreRange(val,dma_len);
-		EXI_Dma(EXI_CHANNEL_0,val,dma_len,EXI_WRITE,NULL);
-		EXI_Sync(EXI_CHANNEL_0);
-
-	}
-	EXI_ImmEx(EXI_CHANNEL_0,val+dma_len,imm_len,EXI_WRITE);
+	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_WRITE);
 }
 
 static __inline__ u32 __linkstate()
@@ -406,7 +417,7 @@ static void __bba_reset()
 
 static void __bba_recv_init()
 {
-	bba_out8(BBA_NCRB,(BBA_NCRB_AB|BBA_NCRB_CA));
+	bba_out8(BBA_NCRB,(BBA_NCRB_PR|BBA_NCRB_CA|BBA_NCRB_AB));
 	bba_out8(BBA_MISC2,(BBA_MISC2_AUTORCVR));
 
 	bba_out12(BBA_TLBP, BBA_INIT_TLBP);
@@ -415,56 +426,95 @@ static void __bba_recv_init()
 	bba_out12(BBA_RRP,BBA_INIT_RRP);
 	bba_out12(BBA_RHBP,BBA_INIT_RHBP);
 
-	bba_out8(BBA_NCRA,BBA_NCRA_SR);
 	bba_out8(BBA_GCA,BBA_GCA_ARXERRB);
+	bba_out8(BBA_NCRA,BBA_NCRA_SR);
 }
 
-static void bba_start_rx()
+static s8_t bba_start_rx(struct uip_netif *dev)
 {
-	u16 rwp,rrp;
+	u8 *ptr;
+	u16 rwp,rrp,rxcnt;
 	u32 size,pkt_status,pos,top;
-	void *rx;
+	struct uip_pbuf *p,*q;
 
-	rx = rx_buffer0;
+	rxcnt = 0;
 	rwp = bba_in12(BBA_RWP);
 	rrp = bba_in12(BBA_RRP);
 	while(rrp!=rwp) {
-		bba_ins(rrp<<8,&cur_descr,sizeof(cur_descr));
-		le32_to_cpus((u32*)&cur_descr);
+		bba_ins(rrp<<8,(void*)(&cur_descr),sizeof(struct bba_descr));
+		le32_to_cpus((u32*)((void*)(&cur_descr)));
 
 		size = cur_descr.packet_len - 4;
 		pkt_status = cur_descr.status;
 		if(size>(BBA_RX_MAX_PACKET_SIZE+4) || (pkt_status&(BBA_RX_STATUS_RERR|BBA_RX_STATUS_FAE))) {
-			return;
+			return UIP_ERR_PKTSIZE;
 		}
 
+		ptr = rx_buffer;
 		pos = (rrp<<8)+4;
 		top = (BBA_INIT_RHBP+1)<<8;
 		
 		bba_select();
 		bba_insregister(pos);
 		if((pos+size)<top) {
-			bba_insdata(rx,size);
+			bba_insdata(ptr,size);
 		} else {
-			u32 chunk = top-size;
+			u32 chunk = top-pos;
 			
-			bba_insdata(rx,chunk);
+			bba_insdata(ptr,chunk);
 			bba_deselect();
 
 			rrp = BBA_INIT_RRP;
 			bba_select();
 			bba_insregister(rrp<<8);
-			bba_insdata(rx_buffer1,(size-chunk));
-			memcpy(rx+chunk,rx_buffer1,size-chunk);
+			bba_insdata(ptr+chunk,(size-chunk));
 		}
 		bba_deselect();
-
-		rx += size;
-		rxd_size += size;
-		bba_out12(BBA_RRP,cur_descr.next_packet_ptr);
 		
+		ptr = rx_buffer;
+		p = uip_pbuf_alloc(UIP_PBUF_LINK,size,UIP_PBUF_POOL);
+		if(p) {
+			for(q=p;q!=NULL;q=q->next) {
+				memcpy(q->payload,ptr,q->len);
+				ptr += q->len;
+			}
+
+			if(bba_recv_pbufs==NULL) {
+				uip_pbuf_ref(p);
+				bba_recv_pbufs = p;
+			}
+			else uip_pbuf_queue(bba_recv_pbufs,p);
+
+			rxcnt++;
+		}
+		bba_out12(BBA_RRP,cur_descr.next_packet_ptr);
 		rwp = bba_in12(BBA_RWP);
 		rrp = bba_in12(BBA_RRP);
+	}
+	return UIP_ERR_OK;
+}
+
+static void bba_process(struct uip_pbuf *p,struct uip_netif *dev)
+{
+	struct uip_eth_hdr *ethhdr = NULL;
+	struct bba_priv *priv = (struct bba_priv*)dev->state;
+	const s32 ethhlen = sizeof(struct uip_eth_hdr);
+
+	if(p) {
+		ethhdr = p->payload;
+		switch(htons(ethhdr->type)) {
+			case UIP_ETHTYPE_IP:
+				uip_arp_ipin(dev,p);
+				uip_pbuf_header(p,-(ethhlen));
+				dev->input(p,dev);
+				break;
+			case UIP_ETHTYPE_ARP:
+				uip_arp_arpin(dev,priv->ethaddr,p);
+				break;
+			default:
+				uip_pbuf_free(p);
+				break;
+		}
 	}
 }
 
@@ -481,7 +531,7 @@ static inline void bba_interrupt(u16 *pstatus)
 		bba_out8(BBA_IR,BBA_IR_FRAGI);
 	}
 	if(status&BBA_IR_RI) {
-		bba_start_rx();
+		bba_start_rx(bba_netif);
 		bba_out8(BBA_IR,BBA_IR_RI);
 	}
 	if(status&BBA_IR_REI) {
@@ -500,38 +550,39 @@ static inline void bba_interrupt(u16 *pstatus)
 		bba_out8(BBA_IR,BBA_IR_BUSEI);
 	}
 	if(status&BBA_IR_RBFI) {
-		bba_start_rx();
+		bba_start_rx(bba_netif);
 		bba_out8(BBA_IR,BBA_IR_RBFI);
 	}
 	*pstatus |= (status<<8);
 }
 
-static s32 bba_dochallengeresponse()
+static s8_t bba_dochallengeresponse()
 {
 	u16 status;
+	s32 cnt;
 	
 	/* as we do not have interrupts we've to poll the irqs */
-	bba_poll(&status);
-	if(status&0x0010) bba_poll(&status);
-	else return -1;
-	if(!(status&0x0008)) return -1;
-
-	return 0;
+	cnt = 0;
+	do {
+		bba_devpoll(&status);
+		cnt++;
+	} while(cnt<10 && !(status&0x0008));
+	
+	if(cnt>=10) return UIP_ERR_IF;
+	return UIP_ERR_OK;
 }
 
-static s32 __bba_init(struct bba_priv *dev)
+static s8_t __bba_init(struct uip_netif *dev)
 {
-	if(!dev) return -1;
+	struct bba_priv *priv = (struct bba_priv*)dev->state;
+	if(!priv) return UIP_ERR_IF;
 
 	__bba_reset();
 
-	bba_ins(BBA_NAFR_PAR0,dev->ethaddr.addr, 6);
-	uip_setethaddr(dev->ethaddr);
-
-	dev->revid = bba_cmd_in8(0x01);
+	priv->revid = bba_cmd_in8(0x01);
 	
-	bba_cmd_outs(0x04,&dev->devid,2);
-	bba_cmd_out8(0x05,dev->acstart);
+	bba_cmd_outs(0x04,&priv->devid,2);
+	bba_cmd_out8(0x05,priv->acstart);
 
 	bba_out8(0x5b, (bba_in8(0x5b)&~0x80));
 	bba_out8(0x5e, 0x01);
@@ -539,30 +590,33 @@ static s32 __bba_init(struct bba_priv *dev)
 
 	__bba_recv_init();
 	
+	bba_ins(BBA_NAFR_PAR0,priv->ethaddr->addr, 6);
+
 	bba_out8(BBA_IR,0xFF);
 	bba_out8(BBA_IMR,0xFF&~BBA_IMR_FIFOEIM);
 
 	bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
 
-	return 1;
+	return UIP_ERR_OK;
 }
 
-static s32 bba_init_one(struct bba_priv *dev)
+static s8_t bba_init_one(struct uip_netif *dev)
 {
 	s32 ret;
+	struct bba_priv *priv = (struct bba_priv*)dev->state;
 
-	if(!dev) return -1;
+	if(!priv) return UIP_ERR_IF;
 
-	dev->revid = 0x00;
-	dev->devid = 0xD107;
-	dev->acstart = 0x4E;
+	priv->revid = 0x00;
+	priv->devid = 0xD107;
+	priv->acstart = 0x4E;
 	
 	ret = __bba_init(dev);
 	
 	return ret;
 }
 
-static s32 bba_probe(struct bba_priv *dev)
+static s8_t bba_probe(struct uip_netif *dev)
 {
 	s32 ret;
 	u32 cid;
@@ -581,9 +635,11 @@ static s32 bba_probe(struct bba_priv *dev)
 	return ret;
 }
 
-static u32 bba_calc_response(struct bba_priv *priv,u32 val)
+static u32 bba_calc_response(struct uip_netif *dev,u32 val)
 {
 	u8 revid_0, revid_eth_0, revid_eth_1;
+	struct bba_priv *priv = (struct bba_priv*)dev->state;
+
 	revid_0 = priv->revid;
 	revid_eth_0 = _SHIFTR(priv->devid,8,8);
 	revid_eth_1 = priv->devid&0xff;
@@ -607,10 +663,17 @@ static u32 bba_calc_response(struct bba_priv *priv,u32 val)
 	return ((c0 << 24) | (c1 << 16) | (c2 << 8) | c3);
 }
 
-static u32 bba_poll(u16 *pstatus)
+static u32 bba_devpoll(u16 *pstatus)
 {
 	u8 status;
 	u32 ret,level;
+	s64 now;
+
+	now = gettime();
+	if(diff_msec(bba_arp_tmr,now)>=UIP_ARP_TMRINTERVAL) {
+		uip_arp_timer();
+		bba_arp_tmr = gettime();
+	}
 
 	ret = 0;
 	status = 0;
@@ -626,7 +689,7 @@ static u32 bba_poll(u16 *pstatus)
 			}
 			if(status&0x40) {
 				bba_cmd_out8(0x03, 0x40);
-				__bba_init(&bba_device);
+				__bba_init(bba_netif);
 			}
 			if(status&0x20) {
 				bba_cmd_out8(0x03, 0x20);
@@ -635,7 +698,7 @@ static u32 bba_poll(u16 *pstatus)
 				u32 response,challange;
 				bba_cmd_out8(0x05,bba_device.acstart);
 				bba_cmd_ins(0x08,&challange,sizeof(challange));
-				response = bba_calc_response(&bba_device,challange);
+				response = bba_calc_response(bba_netif,challange);
 				bba_cmd_outs(0x09,&response,sizeof(response));
 				bba_cmd_out8(0x03, 0x10);
 			}
@@ -653,70 +716,121 @@ static u32 bba_poll(u16 *pstatus)
 	return ret;
 }
 
-void bba_init()
+static s8_t __bba_start_tx(struct uip_netif *dev,struct uip_pbuf *p,struct uip_ip_addr *ipaddr)
 {
-	s32 ret;
-
-	_siReg[15] = (_siReg[15]&~0x0001);
-
-	ret = bba_probe(&bba_device);
-	if(ret<0) return;
-
-	ret = bba_dochallengeresponse();
-	if(ret<0) return;
-
-	do {
-		udelay(20000);
-	} while(!__bba_getlink_state_async());
+	return uip_arp_out(dev,ipaddr,p);
 }
 
-u32 bba_send()
+static s8_t __bba_link_tx(struct uip_netif *dev,struct uip_pbuf *p)
 {
-	u32 i,len,level;
-
+	u8 pad[60];
+	u32 level,len;
+	struct uip_pbuf *tmp;
+	
 	_CPU_ISR_Disable(level);
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==0) {
 		_CPU_ISR_Restore(level);
-		return 0;
+		return UIP_ERR_IF;
 	}
+
+	if(p->tot_len>BBA_TX_MAX_PACKET_SIZE) {
+		UIP_LOG("__bba_link_tx: packet dropped due to big buffer.\n");
+		EXI_Unlock(EXI_CHANNEL_0);
+		_CPU_ISR_Restore(level);
+		return UIP_ERR_PKTSIZE;
+	}
+	
 	if(!__linkstate()) {
 		EXI_Unlock(EXI_CHANNEL_0);
 		_CPU_ISR_Restore(level);
-		return 0;
+		return UIP_ERR_ABRT;
 	}
 
-	memset(tx_buffer,0,UIP_BUFSIZE);
-
-	len = uip_len;
-	for(i=0;i<UIP_LLH_LEN+40;i++) tx_buffer[i] = uip_buf[i];
-	for(;i<len;i++) tx_buffer[i] = uip_appdata[i-(UIP_LLH_LEN+40)];
-	
 	while((bba_in8(BBA_NCRA)&(BBA_NCRA_ST0|BBA_NCRA_ST1)));
 
+	len = p->tot_len;
 	bba_out12(BBA_TXFIFOCNT,len);
-	if(len<BBA_MINPKTSIZE) len = BBA_MINPKTSIZE;
-	DCStoreRange(tx_buffer,len);
 
 	bba_select();
 	bba_outsregister(BBA_WRTXFIFOD);
-	bba_outsdata(tx_buffer,len);
+	for(tmp=p;tmp!=NULL;tmp=tmp->next) {
+		bba_outsdata(tmp->payload,tmp->len);
+	}
+	if(len<BBA_MINPKTSIZE) {
+		len = (BBA_MINPKTSIZE-len);
+		memset(pad,0,BBA_MINPKTSIZE);
+		bba_outsdata(pad,len);
+	}
 	bba_deselect();
 
 	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)));		//&~BBA_NCRA_ST0
 	EXI_Unlock(EXI_CHANNEL_0);
 
 	_CPU_ISR_Restore(level);
-	return len;
+	return UIP_ERR_OK;
 }
 
-u32 bba_read()
+s8_t bba_init(struct uip_netif *dev)
+{
+	s8_t ret;
+	s32_t cnt;
+
+	_siReg[15] = (_siReg[15]&~0x0001);
+
+	ret = bba_probe(dev);
+	if(ret<0) return ret;
+	
+	ret = bba_dochallengeresponse();
+	if(ret<0) return ret;
+
+	cnt = 0;
+	do {
+		udelay(20000);
+		cnt++;
+	} while((ret=__bba_getlink_state_async())==0 && cnt<250);
+	if(!ret) return UIP_ERR_IF;
+
+	uip_netif_setup(dev);
+	uip_arp_init();
+	
+	bba_recv_pbufs = NULL;
+	bba_arp_tmr = gettime();
+	
+	return UIP_ERR_OK;
+}
+
+dev_s bba_create(struct uip_netif *dev)
+{
+	dev->name[0] = IFNAME0;
+	dev->name[1] = IFNAME1;
+	
+	dev->output = __bba_start_tx;
+	dev->linkoutput = __bba_link_tx;
+	dev->mtu = BBA_TX_MAX_PACKET_SIZE;
+	dev->flags = UIP_NETIF_FLAG_BROADCAST;
+	dev->hwaddr_len = 6;
+	
+	bba_device.ethaddr = (struct uip_eth_addr*)dev->hwaddr;
+	bba_device.state = UIP_ERR_OK;
+
+	bba_netif = dev;
+	return &bba_device;
+}
+
+void bba_poll(struct uip_netif *dev)
 {
 	u16 status;
+	struct uip_pbuf *p;
+
+	bba_devpoll(&status);
 	
-	rxd_size = 0;
-	bba_poll(&status);
-	if(status&0x0280) {
-		memcpy(uip_buf,rx_buffer0,rxd_size);
+	p = bba_recv_pbufs;
+	if(p) {
+		bba_recv_pbufs = uip_pbuf_dequeue(p);
+		bba_process(p,dev);
+		uip_pbuf_free(p);
+
+		udelay(1250);
 	}
-	return rxd_size;
+	
 }

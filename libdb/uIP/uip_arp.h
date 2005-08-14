@@ -45,7 +45,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.h,v 1.1 2005-03-10 15:39:14 shagkur Exp $
+ * $Id: uip_arp.h,v 1.2 2005-08-14 11:51:13 shagkur Exp $
  *
  */
 
@@ -53,30 +53,59 @@
 #define __UIP_ARP_H__
 
 #include "uip.h"
+#include "uip_arch.h"
 
-
-/**
- * Representation of a 48-bit Ethernet address.
- */
-struct uip_eth_addr {
-  u8_t addr[6];
-};
-
-extern struct uip_eth_addr uip_ethaddr;
-
-/**
- * The Ethernet header. 
- */
-struct uip_eth_hdr {
-  struct uip_eth_addr dest;
-  struct uip_eth_addr src;
-  u16_t type;
-};
+#define UIP_ARP_TMRINTERVAL 5000
 
 #define UIP_ETHTYPE_ARP 0x0806
 #define UIP_ETHTYPE_IP  0x0800
 #define UIP_ETHTYPE_IP6 0x86dd 
+/**
+ * Representation of a 48-bit Ethernet address.
+ */
+PACK_STRUCT_BEGIN
+struct uip_eth_addr {
+  PACK_STRUCT_FIELD(u8_t addr[6]);
+} PACK_STRUCT_STRUCT;
+PACK_STRUCT_END
 
+/**
+ * The Ethernet header. 
+ */
+PACK_STRUCT_BEGIN
+struct uip_eth_hdr {
+  PACK_STRUCT_FIELD(struct uip_eth_addr dest);
+  PACK_STRUCT_FIELD(struct uip_eth_addr src);
+  PACK_STRUCT_FIELD(u16_t type);
+} PACK_STRUCT_STRUCT;
+PACK_STRUCT_END
+
+PACK_STRUCT_BEGIN
+struct uip_arp_hdr {
+  PACK_STRUCT_FIELD(struct uip_eth_hdr ethhdr);
+  PACK_STRUCT_FIELD(u16_t hwtype);
+  PACK_STRUCT_FIELD(u16_t protocol);
+  PACK_STRUCT_FIELD(u16_t _hwlen_protolen);
+  PACK_STRUCT_FIELD(u16_t opcode);
+  PACK_STRUCT_FIELD(struct uip_eth_addr shwaddr);
+  PACK_STRUCT_FIELD(struct uip_ip_addr2 sipaddr);
+  PACK_STRUCT_FIELD(struct uip_eth_addr dhwaddr);
+  PACK_STRUCT_FIELD(struct uip_ip_addr2 dipaddr);
+} PACK_STRUCT_STRUCT;
+PACK_STRUCT_END
+
+PACK_STRUCT_BEGIN
+struct uip_ethip_hdr {
+  PACK_STRUCT_FIELD(struct uip_eth_hdr ethhdr);
+  PACK_STRUCT_FIELD(struct uip_ip_hdr ip);
+} PACK_STRUCT_STRUCT;
+PACK_STRUCT_END
+
+
+extern struct uip_eth_addr uip_ethaddr;
+
+struct uip_pbuf;
+struct uip_netif;
 
 /* The uip_arp_init() function must be called before any of the other
    ARP functions. */
@@ -87,7 +116,7 @@ void uip_arp_init(void);
    inserts a new mapping if none exists. The function assumes that an
    IP packet with an Ethernet header is present in the uip_buf buffer
    and that the length of the packet is in the uip_len variable. */
-void uip_arp_ipin(void);
+void uip_arp_ipin(struct uip_netif *netif,struct uip_pbuf *p);
 
 /* The uip_arp_arpin() should be called when an ARP packet is received
    by the Ethernet driver. This function also assumes that the
@@ -95,7 +124,7 @@ void uip_arp_ipin(void);
    uip_arp_arpin() function returns, the contents of the uip_buf
    buffer should be sent out on the Ethernet if the uip_len variable
    is > 0. */
-void uip_arp_arpin(void);
+void uip_arp_arpin(struct uip_netif *netif,struct uip_eth_addr *ethaddr,struct uip_pbuf *p);
 
 /* The uip_arp_out() function should be called when an IP packet
    should be sent out on the Ethernet. This function creates an
@@ -107,95 +136,16 @@ void uip_arp_arpin(void);
    request and we rely on TCP to retransmit the packet that was
    overwritten. In any case, the uip_len variable holds the length of
    the Ethernet frame that should be transmitted. */
-void uip_arp_out(void);
+s8_t uip_arp_out(struct uip_netif *netif,struct uip_ip_addr *ipaddr,struct uip_pbuf *q);
 
 /* The uip_arp_timer() function should be called every ten seconds. It
    is responsible for flushing old entries in the ARP table. */
 void uip_arp_timer(void);
 
-/** @} */
+s8_t uip_arp_arpquery(struct uip_netif *netif,struct uip_ip_addr *ipaddr,struct uip_pbuf *q);
 
-/**
- * \addtogroup uipconffunc
- * @{
- */
+s8_t uip_arp_arprequest(struct uip_netif *netif,struct uip_ip_addr *ipaddr);
 
-/**
- * Set the default router's IP address.
- *
- * \param addr A pointer to a 4-byte array containing the IP address
- * of the default router.
- *
- * \hideinitializer
- */
-#define uip_setdraddr(addr) do { uip_arp_draddr[0] = addr[0]; \
-                                 uip_arp_draddr[1] = addr[1]; } while(0)
-
-/**
- * Set the netmask.
- *
- * \param addr A pointer to a 4-byte array containing the IP address
- * of the netmask.
- *
- * \hideinitializer
- */
-#define uip_setnetmask(addr) do { uip_arp_netmask[0] = addr[0]; \
-                                  uip_arp_netmask[1] = addr[1]; } while(0)
-
-
-/**
- * Get the default router's IP address.
- *
- * \param addr A pointer to a 4-byte array that will be filled in with
- * the IP address of the default router.
- *
- * \hideinitializer
- */
-#define uip_getdraddr(addr) do { addr[0] = uip_arp_draddr[0]; \
-                                 addr[1] = uip_arp_draddr[1]; } while(0)
-
-/**
- * Get the netmask.
- *
- * \param addr A pointer to a 4-byte array that will be filled in with
- * the value of the netmask.
- *
- * \hideinitializer
- */
-#define uip_getnetmask(addr) do { addr[0] = uip_arp_netmask[0]; \
-                                  addr[1] = uip_arp_netmask[1]; } while(0)
-
-
-/**
- * Specifiy the Ethernet MAC address.
- *
- * The ARP code needs to know the MAC address of the Ethernet card in
- * order to be able to respond to ARP queries and to generate working
- * Ethernet headers.
- *
- * \note This macro only specifies the Ethernet MAC address to the ARP
- * code. It cannot be used to change the MAC address of the Ethernet
- * card.
- *
- * \param eaddr A pointer to a struct uip_eth_addr containing the
- * Ethernet MAC address of the Ethernet card.
- *
- * \hideinitializer
- */
-#define uip_setethaddr(eaddr) do {uip_ethaddr.addr[0] = eaddr.addr[0]; \
-                              uip_ethaddr.addr[1] = eaddr.addr[1];\
-                              uip_ethaddr.addr[2] = eaddr.addr[2];\
-                              uip_ethaddr.addr[3] = eaddr.addr[3];\
-                              uip_ethaddr.addr[4] = eaddr.addr[4];\
-                              uip_ethaddr.addr[5] = eaddr.addr[5];} while(0)
-
-/** @} */
-
-/**
- * \internal Internal variables that are set using the macros
- * uip_setdraddr and uip_setnetmask.
- */
-extern u16_t uip_arp_draddr[2], uip_arp_netmask[2];
 #endif /* __UIP_ARP_H__ */
 
 

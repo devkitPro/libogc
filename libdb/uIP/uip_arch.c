@@ -28,118 +28,93 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arch.c,v 1.1 2005-03-10 15:39:14 shagkur Exp $
+ * $Id: uip_arch.c,v 1.2 2005-08-14 11:51:13 shagkur Exp $
  *
  */
 
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
 #include "uip.h"
 #include "uip_arch.h"
+#include "uip_ip.h"
+#include "uip_tcp.h"
+#include "uip_pbuf.h"
 
-#define BUF ((uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
-#define IP_PROTO_TCP    6
 
 /*-----------------------------------------------------------------------------------*/
-void
-uip_add32(u8_t *op32, u16_t op16)
+u16_t uip_chksum(u16_t *sdata, u32_t len)
 {
+  u32_t acc;
   
-  uip_acc32[3] = op32[3] + (op16 & 0xff);
-  uip_acc32[2] = op32[2] + (op16 >> 8);
-  uip_acc32[1] = op32[1];
-  uip_acc32[0] = op32[0];
-  
-  if(uip_acc32[2] < (op16 >> 8)) {
-    ++uip_acc32[1];    
-    if(uip_acc32[1] == 0) {
-      ++uip_acc32[0];
-    }
-  }
-  
-  
-  if(uip_acc32[3] < (op16 & 0xff)) {
-    ++uip_acc32[2];  
-    if(uip_acc32[2] == 0) {
-      ++uip_acc32[1];    
-      if(uip_acc32[1] == 0) {
-	++uip_acc32[0];
-      }
-    }
-  }
-}
-/*-----------------------------------------------------------------------------------*/
-u16_t
-uip_chksum(u16_t *sdata, u16_t len)
-{
-  u16_t acc;
-  
-  for(acc = 0; len > 1; len -= 2) {
-    acc += *sdata;
-    if(acc < *sdata) {
-      /* Overflow, so we add the carry to acc (i.e., increase by
-         one). */
-      ++acc;
-    }
-    ++sdata;
+  for(acc = 0;len > 1;len -= 2) {
+    acc += *sdata++;
   }
 
   /* add up any odd byte */
-  if(len == 1) {
-    acc += htons(((u16_t)(*(u8_t *)sdata)) << 8);
-    if(acc < htons(((u16_t)(*(u8_t *)sdata)) << 8)) {
-      ++acc;
-    }
+  if(len==1) {
+    acc += htons((u16_t)((((u8_t *)sdata)[0]&0xff)<<8));
   }
+  while(acc>>16) acc = (acc&0xffffUL)+(acc>>16);
 
-  return acc;
+  return (u16_t)acc;
+}
+
+/*-----------------------------------------------------------------------------------*/
+u16_t uip_chksum_pseudo(struct uip_pbuf *p,struct uip_ip_addr *src,struct uip_ip_addr *dst,u8_t proto,u16_t proto_len)
+{
+	u32_t acc,len,rem;
+	struct uip_pbuf *q;
+	u8_t swapped;
+
+	acc = 0;
+	swapped = 0;
+
+	rem = proto_len;
+	for(q=p;q!=NULL && rem>0;q=q->next) {
+		len = (rem>q->len)?q->len:rem;
+		acc += uip_chksum(q->payload,len);
+		rem -= len;
+	}
+	
+	acc += (src->addr&0xffffUL);
+	acc += ((src->addr>>16)&0xffffUL);
+	acc += (dst->addr&0xffffUL);
+	acc += ((dst->addr>>16)&0xffffUL);
+	acc += (u32_t)htons(proto);
+	acc += (u32_t)htons(proto_len);
+
+	while(acc>>16) acc = (acc&0xffffUL)+(acc>>16);
+	
+	return (u16_t)~(acc&0xffffUL);
 }
 /*-----------------------------------------------------------------------------------*/
 u16_t
-uip_ipchksum(void)
+uip_ipchksum(void *dataptr,u16_t len)
 {
-  return uip_chksum((u16_t *)&uip_buf[UIP_LLH_LEN], 20);
+  return ~(uip_chksum(dataptr,len));
 }
-/*-----------------------------------------------------------------------------------*/
-u16_t
-uip_tcpchksum(void)
+
+u16_t uip_ipchksum_pbuf(struct uip_pbuf *p)
 {
-  u16_t hsum, sum;
+  u32_t acc;
+  struct uip_pbuf *q;
+  u8_t swapped;
 
+  acc = 0;
+  swapped = 0;
+  for(q = p; q != NULL; q = q->next) {
+	acc += uip_chksum(q->payload,q->len);
+  }
+  while(acc>>16) acc = (acc&0xffffUL)+(acc>>16);
   
-  /* Compute the checksum of the TCP header. */
-  hsum = uip_chksum((u16_t *)&uip_buf[20 + UIP_LLH_LEN], 20);
-
-  /* Compute the checksum of the data in the TCP packet and add it to
-     the TCP header checksum. */
-  sum = uip_chksum((u16_t *)uip_appdata,
-		   (u16_t)(((((u16_t)(BUF->len[0]) << 8) + BUF->len[1]) - 40)));
-
-  if((sum += hsum) < hsum) {
-    ++sum;
-  }
-  
-  if((sum += BUF->srcipaddr[0]) < BUF->srcipaddr[0]) {
-    ++sum;
-  }
-  if((sum += BUF->srcipaddr[1]) < BUF->srcipaddr[1]) {
-    ++sum;
-  }
-  if((sum += BUF->destipaddr[0]) < BUF->destipaddr[0]) {
-    ++sum;
-  }
-  if((sum += BUF->destipaddr[1]) < BUF->destipaddr[1]) {
-    ++sum;
-  }
-  if((sum += (u16_t)htons((u16_t)IP_PROTO_TCP)) < (u16_t)htons((u16_t)IP_PROTO_TCP)) {
-    ++sum;
-  }
-
-  hsum = (u16_t)htons((((u16_t)(BUF->len[0]) << 8) + BUF->len[1]) - 20);
-  
-  if((sum += hsum) < hsum) {
-    ++sum;
-  }
-  
-  return sum;
+  return (u16_t)~(acc & 0xffffUL);
 }
+
+void uip_log(const char *filename,int line_nb,char *msg)
+{
+	printf("%s(%d):\n%s\n",filename,line_nb,msg);
+}
+
 /*-----------------------------------------------------------------------------------*/
