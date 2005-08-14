@@ -133,7 +133,6 @@ static s8_t tcpip_accept_func(void *arg,struct uip_tcp_pcb *newpcb,s8_t err)
 	}
 	
 	newsock = tcpip_getsocket(s);
-	newsock->flags |= UIP_TF_NODELAY;
 	
 	ptr = tcpip_accepted_sockets;
 	while(ptr && ptr->next) ptr = ptr->next;
