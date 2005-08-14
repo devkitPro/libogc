@@ -74,6 +74,10 @@ static struct bp_entry {
 static u32 fault_jmp_buf[100];
 static struct bp_entry *p_bpentries = NULL;
 
+const char *dbg_local_ip = "192.168.1.1";
+const char *dbg_netmask = "255.255.255.0";
+const char *dbg_gw = "192.168.1.0";
+
 void __breakinst();
 
 extern void __lwp_getthreadlist(lwp_obj** thrs);
@@ -99,10 +103,10 @@ void DEBUG_Init(u16 port)
 	uip_pbuf_init();
 	tcpip_init();
 	uip_netif_init();
-	
-	IP4_ADDR(&local_ip,192,168,1,3);
-	IP4_ADDR(&netmask,255,255,255,0);
-	IP4_ADDR(&gw,192,168,1,1);
+
+	local_ip.addr = uip_ipaddr(dbg_local_ip);
+	netmask.addr = uip_ipaddr(dbg_netmask);
+	gw.addr = uip_ipaddr(dbg_gw);
 
 	hbba = bba_create(&g_netif);
 	pnet = uip_netif_add(&g_netif,&local_ip,&netmask,&gw,hbba,bba_init,uip_ipinput);

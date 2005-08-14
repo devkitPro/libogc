@@ -9,8 +9,12 @@
 	extern "C" {
 #endif
 
+extern const char *dbg_local_ip;
+extern const char *dbg_netmask;
+extern const char *dbg_gw;
+
 void _break();	
-void DEBUG_Init(u32 port);
+void DEBUG_Init(u16 port);
 
 #ifdef __cplusplus
 	}

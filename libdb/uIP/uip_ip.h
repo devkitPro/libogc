@@ -3,6 +3,9 @@
 
 #include "uip.h"
 
+#define UIP_INADDR_NONE			((u32_t) 0xffffffff)  /* 255.255.255.255 */
+#define UIP_INADDR_LOOPBACK		((u32_t) 0x7f000001)  /* 127.0.0.1 */
+
 #define UIP_IPH_V(hdr)  (ntohs((hdr)->_v_hl_tos) >> 12)
 #define UIP_IPH_HL(hdr) ((ntohs((hdr)->_v_hl_tos) >> 8) & 0x0f)
 #define UIP_IPH_TOS(hdr) (ntohs((hdr)->_v_hl_tos) & 0xff)
@@ -60,6 +63,13 @@
 
 #define ip_addr_isbroadcast			uip_ipaddr_isbroadcast
 
+#ifndef HAVE_IN_ADDR
+#define HAVE_IN_ADDR
+struct in_addr {
+  u32 s_addr;
+};
+#endif
+
 /* The IP Address */
 PACK_STRUCT_BEGIN
 struct uip_ip_addr {
@@ -101,9 +111,13 @@ PACK_STRUCT_END
 	
 struct uip_pbuf;
 struct uip_netif;
+struct ip_addr;
+
 
 void uip_ipinit();
 
+u32_t uip_ipaddr(const u8_t *cp);
+s32_t uip_ipaton(const u8_t *cp,struct in_addr *addr);
 s8_t uip_ipinput(struct uip_pbuf *p,struct uip_netif *inp);
 s8_t uip_ipoutput(struct uip_pbuf *p,struct uip_ip_addr *src,struct uip_ip_addr *dst,u8_t ttl,u8_t tos,u8_t proto);
 s8_t uip_ipoutput_if(struct uip_pbuf *p,struct uip_ip_addr *src,struct uip_ip_addr *dst,u8_t ttl,u8_t tos,u8_t proto,struct uip_netif *netif);

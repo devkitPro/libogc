@@ -18,6 +18,7 @@
 #endif
 
 #ifndef HAVE_IN_ADDR
+#define HAVE_IN_ADDR
 struct in_addr {
   u32 s_addr;
 };
