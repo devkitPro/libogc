@@ -74,10 +74,6 @@ static struct bp_entry {
 static u32 fault_jmp_buf[100];
 static struct bp_entry *p_bpentries = NULL;
 
-const char *dbg_local_ip = "192.168.1.1";
-const char *dbg_netmask = "255.255.255.0";
-const char *dbg_gw = "192.168.1.0";
-
 void __breakinst();
 
 extern void __lwp_getthreadlist(lwp_obj** thrs);
