@@ -38,6 +38,7 @@ struct sockaddr {
 };
 
 void tcpip_init();
+void tcpip_close(s32_t s);
 s32_t tcpip_socket();
 s32_t tcpip_listen(s32_t s,u32_t backlog);
 s32_t tcpip_bind(s32_t s,struct sockaddr *name,socklen_t *namelen);

@@ -36,15 +36,12 @@ static s32 dbg_active = 0;
 static s32 dbg_instep = 0;
 static s32 dbg_initialized = 0;
 
-static s32 dbg_sock = -1;
+static s32 dbg_datasock = -1;
+static s32 dbg_listensock = -1;
 static struct uip_netif g_netif;
 
 static u8 remcomInBuffer[BUFMAX];
 static u8 remcomOutBuffer[BUFMAX];
-
-static lwp_t hdebugger;
-static u8 debug_stack[STACKSIZE];
-static void* debugger(void*);
 
 static const u8 hexchars[]="0123456789abcdef";
 
@@ -112,19 +109,24 @@ void DEBUG_Init(u16 port)
 	if(pnet) {
 		uip_netif_setdefault(pnet);
 
-		dbg_sock = tcpip_socket();
-		if(dbg_sock<0) return ;
+		dbg_listensock = tcpip_socket();
+		if(dbg_listensock<0) return ;
 
 		name.sin_addr.s_addr = INADDR_ANY;
 		name.sin_port = htons(port);
 		name.sin_family = AF_INET;
 
-		if(tcpip_bind(dbg_sock,(struct sockaddr*)&name,&namelen)<0) return;
-		if(tcpip_listen(dbg_sock,1)<0) return;
-		if((dbg_sock=tcpip_accept(dbg_sock))<0) return;
+		if(tcpip_bind(dbg_listensock,(struct sockaddr*)&name,&namelen)<0){
+			tcpip_close(dbg_listensock);
+			dbg_listensock = -1;
+			return;
+		}
+		if(tcpip_listen(dbg_listensock,1)<0) {
+			tcpip_close(dbg_listensock);
+			dbg_listensock = -1;
+			return;
+		}
 
-		if(LWP_CreateThread(&hdebugger,debugger,NULL,debug_stack,STACKSIZE,20)<0) return;
-		
 		__exception_load(EX_DSI,debug_handler_start,(debug_handler_end-debug_handler_start),debug_handler_patch);
 		__exception_load(EX_PRG,debug_handler_start,(debug_handler_end-debug_handler_start),debug_handler_patch);
 		__exception_load(EX_TRACE,debug_handler_start,(debug_handler_end-debug_handler_start),debug_handler_patch);
@@ -315,20 +317,24 @@ u32 remove_bp(u8 *mem)
 static u8 getdbgchar()
 {
 	u8 ch = 0xff;
-	s32 len;
+	s32 len = 0;
 
-	len = tcpip_read(dbg_sock,&ch,1);
+	if(dbg_datasock>=0)
+		len = tcpip_read(dbg_datasock,&ch,1);
+
 	return (len>0)?ch:0xff;
 }
 
 static void putdbgchar(u8 ch)
 {
-	tcpip_write(dbg_sock,&ch,1);
+	if(dbg_datasock>=0)
+		tcpip_write(dbg_datasock,&ch,1);
 }
 
 static void putdbgstr(const u8 *str)
 {
-	tcpip_write(dbg_sock,str,strlen(str));
+	if(dbg_datasock>=0)
+		tcpip_write(dbg_datasock,str,strlen(str));
 }
 
 static void getpacket(u8 *buffer)
@@ -407,7 +413,7 @@ static void putpacket(const u8 *buffer)
 
 static void handle_query()
 {
-	u32 i;
+	u32 i,id;
 	u8 *ptr;
 	lwp_obj *threads = NULL;
 
@@ -423,7 +429,8 @@ static void handle_query()
 			for(i=0;i<1024;i++) {
 				if(threads && threads[i].lwp_id!=-1) {
 					ptr++;
-					ptr = mem2hex((u8*)&threads[i].thethread.id,ptr,4);
+					id = threads[i].thethread.id+1;
+					ptr = mem2hex((u8*)&id,ptr,4);
 					*ptr =  ',';
 				}
 			}
@@ -435,93 +442,6 @@ static void handle_query()
 		sprintf(remcomOutBuffer,"Text=%08x;Data=%08x;Bss=%08x",((u32)__text_fstart-(u32)__text_fstart),((u32)__data_fstart-(u32)__text_fstart),((u32)__bss_fstart-(u32)__text_fstart));
 }
 
-static void* debugger(void *arg)
-{
-	u8 *ptr;
-	s32 thrid;
-	u32 sigval;
-	u32 addr,len,res;
-	frame_context *ctx = NULL;
-	
-	dbg_currthr = _thr_executing->id;
-	ctx = &_thr_executing->context;
-	sigval = computeSignal(EX_PRG);
-	
-	while(1) {
-		if(!dbg_active) {
-			remcomOutBuffer[0] = 0;
-			getpacket(remcomInBuffer);
-			//printf("remcomInBuffer: %s\n",remcomInBuffer);
-			switch(remcomInBuffer[0]) {
-				case '?':
-					remcomOutBuffer[0] = 'S';
-					remcomOutBuffer[1] = hexchars[sigval>>4];
-					remcomOutBuffer[2] = hexchars[sigval&0x0f];
-					remcomOutBuffer[3] = 0;
-					break;
-				case 'H':
-					if(remcomInBuffer[2]=='-') dbg_currthr = __lwp_getcurrentid();
-					else dbg_currthr = strtoul(remcomInBuffer+2,0,16);
-					ctx = __lwp_getthrcontext(dbg_currthr);
-					strcpy(remcomOutBuffer,"OK");
-					break;
-				case 'c':
-				case 'k':
-				case 'D':
-					dbg_instep = 0;
-					continue;
-					
-				case 'g':
-					ptr = remcomOutBuffer;
-					ptr = mem2hex((u8*)ctx->GPR,ptr,32*4);
-					ptr = mem2hex((u8*)ctx->FPR,ptr,32*8);
-					ptr = mem2hex((u8*)&ctx->LR,ptr,4);
-					ptr = mem2hex((u8*)&ctx->MSR,ptr,4);
-					ptr = mem2hex((u8*)&ctx->CR,ptr,4);
-					ptr = mem2hex((u8*)&ctx->LR,ptr,4);
-					ptr = mem2hex((u8*)&ctx->CTR,ptr,4);
-					ptr = mem2hex((u8*)&ctx->XER,ptr,4);
-					break;
-				case 'm':
-					ptr = &remcomInBuffer[1];
-					if(hexToInt(&ptr,&addr) && *ptr++==',' && hexToInt(&ptr,&len)) {
-						if(mem2hex((u8*)addr,remcomOutBuffer,len)) break;
-						strcpy(remcomOutBuffer,"E03");
-					} else
-						strcpy(remcomOutBuffer,"E01");
-					break;
-				case 'q':
-					handle_query();
-					break;
-				case 'T':
-					ptr = &remcomInBuffer[1];
-					hexToInt(&ptr,&thrid);
-					if(__lwp_is_threadactive(thrid)) strcpy(remcomOutBuffer,"OK");
-					else strcpy(remcomOutBuffer,"E01");
-					break;
-				case 'z':
-				case 'Z':
-					if(remcomInBuffer[1]!='0') {
-						strcpy(remcomOutBuffer,"ERROR");
-						break;
-					}
-
-					ptr = remcomInBuffer+3;
-					hexToInt(&ptr,&addr);
-
-					res =  0;
-					if(remcomInBuffer[0]=='Z') res = insert_bp((u8*)addr);
-					else remove_bp((u8*)addr);
-
-					strcpy(remcomOutBuffer,"OK");
-					break;
-			}
-			putpacket(remcomOutBuffer);
-		}
-	}
-	return 0;
-}
-
 void c_debug_handler(frame_context *ctx)
 {
 	u8* ptr;
@@ -531,14 +451,19 @@ void c_debug_handler(frame_context *ctx)
 	u32 except_thr;
 	frame_context *pctx = NULL;
 
-	dbg_active = 1;
 	msr = mfmsr();
 	mtmsr(msr&~MSR_EE);
 
 	if(ctx->SRR0==(u32)__breakinst) ctx->SRR0 += 4;
 	
+	if(dbg_listensock>=0 && (dbg_datasock<0 || dbg_active==0))
+		dbg_datasock = tcpip_accept(dbg_listensock);
+	if(dbg_datasock<0) return;
+	
 	sigval = computeSignal(ctx->EXCPT_Number);
 	
+	dbg_active = 1;
+
 	ptr = remcomOutBuffer;
 	*ptr++ = 'T';
 	*ptr++ = hexchars[sigval>>4];
@@ -573,7 +498,7 @@ void c_debug_handler(frame_context *ctx)
 				break;
 			case 'H':
 				if(remcomInBuffer[2]=='-') dbg_currthr = except_thr;
-				else dbg_currthr = strtoul(remcomInBuffer+2,0,16);
+				else dbg_currthr = strtoul(remcomInBuffer+2,0,16)-1;
 				if(dbg_currthr!=except_thr) pctx = __lwp_getthrcontext(dbg_currthr);
 				else pctx = ctx;
 				strcpy(remcomOutBuffer,"OK");
@@ -610,6 +535,8 @@ void c_debug_handler(frame_context *ctx)
 				dbg_instep = 0;
 				dbg_active = 0;
 				mtmsr(msr);
+				tcpip_close(dbg_datasock);
+				dbg_datasock = -1;
 				return;
 			case 'c':
 				ctx->SRR1 &= ~MSR_SE;
@@ -626,7 +553,7 @@ void c_debug_handler(frame_context *ctx)
 			case 'T':
 				ptr = &remcomInBuffer[1];
 				hexToInt(&ptr,&thrid);
-				if(__lwp_is_threadactive(thrid)) strcpy(remcomOutBuffer,"OK");
+				if(__lwp_is_threadactive(thrid-1)) strcpy(remcomOutBuffer,"OK");
 				else strcpy(remcomOutBuffer,"E01");
 				break;
 			case 'z':

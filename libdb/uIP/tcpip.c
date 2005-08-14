@@ -320,3 +320,14 @@ s32_t tcpip_write(s32_t s,const void *buffer,u32_t len)
 	}
 	return UIP_ERR_OK;
 }
+
+void tcpip_close(s32_t s)
+{
+	struct tcpip_sock *sock;
+
+	sock = tcpip_getsocket(s);
+	if(sock==NULL) return;
+
+	uip_tcp_close(sock->pcb);
+	sock->pcb = NULL;
+}
