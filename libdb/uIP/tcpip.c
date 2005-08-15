@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "asm.h"
+#include "processor.h"
 
 #include "uip_ip.h"
 #include "uip_arp.h"

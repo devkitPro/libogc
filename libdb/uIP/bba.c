@@ -232,7 +232,7 @@ static void bba_cmd_outs(u32 reg,void *val,u32 len);
 static void bba_ins(u32 reg,void *val,u32 len);
 static void bba_outs(u32 reg,void *val,u32 len);
 
-static u32 bba_devpoll(u16 *pstatus);
+static void bba_devpoll(u16 *pstatus);
 
 extern void udelay(int us);
 extern u32 diff_msec(long long start,long long end);
@@ -663,7 +663,7 @@ static u32 bba_calc_response(struct uip_netif *dev,u32 val)
 	return ((c0 << 24) | (c1 << 16) | (c2 << 8) | c3);
 }
 
-static u32 bba_devpoll(u16 *pstatus)
+static void bba_devpoll(u16 *pstatus)
 {
 	u8 status;
 	u32 ret,level;
@@ -682,38 +682,61 @@ static u32 bba_devpoll(u16 *pstatus)
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==1) {
 		status = bba_cmd_in8(0x03);
 		bba_cmd_out8(0x02,BBA_CMD_IRMASKALL);
-		if(status) {
-			if(status&0x80) {
-				bba_cmd_out8(0x03,0x80);
-				bba_interrupt(pstatus);
-			}
-			if(status&0x40) {
-				bba_cmd_out8(0x03, 0x40);
-				__bba_init(bba_netif);
-			}
-			if(status&0x20) {
-				bba_cmd_out8(0x03, 0x20);
-			}
-			if(status&0x10) {
-				u32 response,challange;
-				bba_cmd_out8(0x05,bba_device.acstart);
-				bba_cmd_ins(0x08,&challange,sizeof(challange));
-				response = bba_calc_response(bba_netif,challange);
-				bba_cmd_outs(0x09,&response,sizeof(response));
-				bba_cmd_out8(0x03, 0x10);
-			}
-			if(status&0x08) {
-				bba_cmd_out8(0x03, 0x08);
-			}
+		if(status&0x80) {
 			*pstatus |= status;
-			ret = 1;
+			bba_cmd_out8(0x03,0x80);
+			bba_interrupt(pstatus);
+			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+			EXI_Unlock(EXI_CHANNEL_0);
+			_CPU_ISR_Restore(level);
+			return;
 		}
+		if(status&0x40) {
+			*pstatus |= status;
+			bba_cmd_out8(0x03, 0x40);
+			__bba_init(bba_netif);
+			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+			EXI_Unlock(EXI_CHANNEL_0);
+			_CPU_ISR_Restore(level);
+			return;
+		}
+		if(status&0x20) {
+			*pstatus |= status;
+			bba_cmd_out8(0x03, 0x20);
+			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+			EXI_Unlock(EXI_CHANNEL_0);
+			_CPU_ISR_Restore(level);
+			return;
+		}
+		if(status&0x10) {
+			u32 response,challange;
+
+			*pstatus |= status;
+			bba_cmd_out8(0x05,bba_device.acstart);
+			bba_cmd_ins(0x08,&challange,sizeof(challange));
+			response = bba_calc_response(bba_netif,challange);
+			bba_cmd_outs(0x09,&response,sizeof(response));
+			bba_cmd_out8(0x03, 0x10);
+			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+			EXI_Unlock(EXI_CHANNEL_0);
+			_CPU_ISR_Restore(level);
+			return;
+		}
+		if(status&0x08) {
+			*pstatus |= status;
+			bba_cmd_out8(0x03, 0x08);
+			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+			EXI_Unlock(EXI_CHANNEL_0);
+			_CPU_ISR_Restore(level);
+			return;
+		}
+
+		*pstatus |= status;
+		bba_interrupt(pstatus);
 		bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
 		EXI_Unlock(EXI_CHANNEL_0);
 	}
 	_CPU_ISR_Restore(level);
-	
-	return ret;
 }
 
 static s8_t __bba_start_tx(struct uip_netif *dev,struct uip_pbuf *p,struct uip_ip_addr *ipaddr)
