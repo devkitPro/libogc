@@ -1432,12 +1432,14 @@ static void uip_tcpreceive(struct uip_tcp_pcb *pcb)
 				}
 			}
 		} else {
-			if(!UIP_TCP_SEQ_BETWEEN(uip_seqno,pcb->rcv_nxt,pcb->rcv_nxt+pcb->rcv_wnd-1))
+			if(!UIP_TCP_SEQ_BETWEEN(uip_seqno,pcb->rcv_nxt,pcb->rcv_nxt+pcb->rcv_wnd-1)) {
 				uip_tcp_acknow(pcb);
 			}
+		}
 	} else {
-		if(!UIP_TCP_SEQ_BETWEEN(uip_seqno,pcb->rcv_nxt,pcb->rcv_nxt+pcb->rcv_wnd-1))
+		if(!UIP_TCP_SEQ_BETWEEN(uip_seqno,pcb->rcv_nxt,pcb->rcv_nxt+pcb->rcv_wnd-1)) {
 			uip_tcp_acknow(pcb);
+		}
 	}
 }
 
