@@ -50,7 +50,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uipopt.h,v 1.7 2005-08-14 11:51:13 shagkur Exp $
+ * $Id: uipopt.h,v 1.8 2005-08-16 07:32:37 shagkur Exp $
  *
  */
 
@@ -474,7 +474,7 @@ typedef u16 uip_stats_t;
 #define UIP_PBUF_POOL_NUM	128
 #define UIP_PBUF_ROM_NUM	128
 
-#define UIP_PBUF_SIZE		2048
+#define UIP_PBUF_SIZE		1536
 
 /**
  * Determines if statistics support should be compiled in.

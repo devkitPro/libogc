@@ -168,7 +168,6 @@
 
 #define BBA_TX_MAX_PACKET_SIZE (1518)									/* 6 pages * 256 bytes */
 #define BBA_RX_MAX_PACKET_SIZE (1536)									/* n pages * 256 bytes */
-#define BBA_MAX_PACKETBUF_SIZE BBA_RX_MAX_PACKET_SIZE
 
 #define BBA_NAPI_WEIGHT 16
 
@@ -204,9 +203,9 @@ static struct netif *gc_netif = NULL;
 static vu32* const _siReg = (u32*)0xCC006400;
 static const struct eth_addr ethbroadcast = {{0xffU,0xffU,0xffU,0xffU,0xffU,0xffU}};
 
-static u8 cur_rcv_buffer0[BBA_MAX_PACKETBUF_SIZE] ATTRIBUTE_ALIGN(32);
-static u8 cur_rcv_buffer1[BBA_MAX_PACKETBUF_SIZE] ATTRIBUTE_ALIGN(32);
-static u8 cur_snd_buffer[BBA_MAX_PACKETBUF_SIZE] ATTRIBUTE_ALIGN(32);
+static u8 cur_rcv_buffer0[BBA_RX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
+static u8 cur_rcv_buffer1[BBA_RX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
+static u8 cur_snd_buffer[BBA_TX_MAX_PACKET_SIZE] ATTRIBUTE_ALIGN(32);
 static u32 cur_snd_dmalen = 0;
 static u32 cur_snd_immlen = 0;
 static u32 cur_snd_len = 0;
@@ -675,7 +674,7 @@ static err_t bba_start_rx(struct netif *dev)
 
 		rcv_buf0 = cur_rcv_buffer0;
 		rcv_buf1 = cur_rcv_buffer1;
-		p = pbuf_alloc(PBUF_LINK,(cur_rcv_len0+cur_rcv_len1),PBUF_POOL);
+		p = pbuf_alloc(PBUF_RAW,(cur_rcv_len0+cur_rcv_len1),PBUF_POOL);
 		if(p) {
 			for(tmp=p;tmp!=NULL;tmp=tmp->next) {
 				pc = tmp->payload;
@@ -893,16 +892,16 @@ static u32 bba_event_handler(u32 nChn,u32 nDev)
 
 	if(status&0x80) {
 		LWIP_DEBUGF(NETIF_DEBUG,("bba_event_handler(bba_interrupt(%02x))\n",status));
-		bba_cmd_out8(0x03,0x80);
 		bba_interrupt(gc_netif);
+		bba_cmd_out8(0x03,0x80);
 		bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
 		EXI_Unlock(EXI_CHANNEL_0);
 		return 1;
 	}
 	if(status&0x40) {
 		LWIP_ERROR(("bba_event_handler(bba_reset(%02x))\n",status));
-		bba_cmd_out8(0x03, 0x40);
 		__bba_init(gc_netif);
+		bba_cmd_out8(0x03, 0x40);
 		bba_cmd_out8(0x02, BBA_CMD_IRMASKNONE);
 		EXI_Unlock(EXI_CHANNEL_0);
 		return 1;

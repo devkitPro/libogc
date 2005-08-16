@@ -6,6 +6,7 @@
 #include "exi.h"
 #include "cache.h"
 #include "bba.h"
+#include "memb.h"
 #include "uip_pbuf.h"
 #include "uip_netif.h"
 #include "uip_arp.h"
@@ -182,6 +183,11 @@ struct bba_priv {
 	struct uip_eth_addr *ethaddr;
 };
 
+struct bba_recv_queue {
+	struct bba_recv_queue *next;
+	struct uip_pbuf *p;
+};
+
 #define X(a,b)  b,a
 struct bba_descr {
 	u32 X(X(next_packet_ptr:12, packet_len:12), status:8);
@@ -218,7 +224,7 @@ struct uip_stats uip_stat;
 
 static s64 bba_arp_tmr = 0;
 
-static struct uip_pbuf *bba_recv_pbufs = NULL;
+static struct bba_recv_queue *bba_recv_list = NULL;
 static struct uip_netif *bba_netif = NULL;
 static struct bba_priv bba_device;
 static struct bba_descr cur_descr;
@@ -238,6 +244,8 @@ extern void udelay(int us);
 extern u32 diff_msec(long long start,long long end);
 extern u32 diff_usec(long long start,long long end);
 extern long long gettime();
+
+MEMB(bba_recv_bufs,sizeof(struct bba_recv_queue),16);
 
 static __inline__ void bba_cmd_insnosel(u32 reg,void *val,u32 len)
 {
@@ -436,6 +444,7 @@ static s8_t bba_start_rx(struct uip_netif *dev)
 	u16 rwp,rrp,rxcnt;
 	u32 size,pkt_status,pos,top;
 	struct uip_pbuf *p,*q;
+	struct bba_recv_queue *rbuf,*ubuf = NULL;
 
 	rxcnt = 0;
 	rwp = bba_in12(BBA_RWP);
@@ -472,19 +481,26 @@ static s8_t bba_start_rx(struct uip_netif *dev)
 		bba_deselect();
 		
 		ptr = rx_buffer;
-		p = uip_pbuf_alloc(UIP_PBUF_LINK,size,UIP_PBUF_POOL);
+		p = uip_pbuf_alloc(UIP_PBUF_RAW,size,UIP_PBUF_POOL);
 		if(p) {
 			for(q=p;q!=NULL;q=q->next) {
 				memcpy(q->payload,ptr,q->len);
 				ptr += q->len;
 			}
 
-			if(bba_recv_pbufs==NULL) {
-				uip_pbuf_ref(p);
-				bba_recv_pbufs = p;
+			rbuf = memb_alloc(&bba_recv_bufs);
+			if(rbuf) {
+				rbuf->p = p;
+				rbuf->next = NULL;
 			}
-			else uip_pbuf_queue(bba_recv_pbufs,p);
-
+			
+			if(ubuf==NULL) {
+				for(ubuf=bba_recv_list;ubuf!=NULL && ubuf->next!=NULL;ubuf=ubuf->next);
+				if(ubuf==NULL) bba_recv_list = ubuf = rbuf;
+				else ubuf->next = rbuf;
+			} else
+				ubuf->next = rbuf;
+			ubuf = rbuf;
 			rxcnt++;
 		}
 		bba_out12(BBA_RRP,cur_descr.next_packet_ptr);
@@ -526,7 +542,6 @@ static inline void bba_interrupt(u16 *pstatus)
 	imr = bba_in8(BBA_IMR);
 	status = ir&imr;
 
-
 	if(status&BBA_IR_FRAGI) {
 		bba_out8(BBA_IR,BBA_IR_FRAGI);
 	}
@@ -553,7 +568,7 @@ static inline void bba_interrupt(u16 *pstatus)
 		bba_start_rx(bba_netif);
 		bba_out8(BBA_IR,BBA_IR_RBFI);
 	}
-	*pstatus |= (status<<8);
+	*pstatus |= status;
 }
 
 static s8_t bba_dochallengeresponse()
@@ -564,9 +579,10 @@ static s8_t bba_dochallengeresponse()
 	/* as we do not have interrupts we've to poll the irqs */
 	cnt = 0;
 	do {
-		bba_devpoll(&status);
 		cnt++;
-	} while(cnt<10 && !(status&0x0008));
+		bba_devpoll(&status);
+		if(status==0x1000) cnt = 0;
+	} while(cnt<10 && !(status&0x0800));
 	
 	if(cnt>=10) return UIP_ERR_IF;
 	return UIP_ERR_OK;
@@ -681,59 +697,61 @@ static void bba_devpoll(u16 *pstatus)
 	_CPU_ISR_Disable(level);
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==1) {
 		status = bba_cmd_in8(0x03);
-		bba_cmd_out8(0x02,BBA_CMD_IRMASKALL);
-		if(status&0x80) {
-			*pstatus |= status;
-			bba_cmd_out8(0x03,0x80);
+		if(status) {
+			bba_cmd_out8(0x02,BBA_CMD_IRMASKALL);
+			if(status&0x80) {
+				*pstatus |= (status<<8);
+				bba_interrupt(pstatus);
+				bba_cmd_out8(0x03,0x80);
+				bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+				EXI_Unlock(EXI_CHANNEL_0);
+				_CPU_ISR_Restore(level);
+				return;
+			}
+			if(status&0x40) {
+				*pstatus |= (status<<8);
+				__bba_init(bba_netif);
+				bba_cmd_out8(0x03, 0x40);
+				bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+				EXI_Unlock(EXI_CHANNEL_0);
+				_CPU_ISR_Restore(level);
+				return;
+			}
+			if(status&0x20) {
+				*pstatus |= (status<<8);
+				bba_cmd_out8(0x03, 0x20);
+				bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+				EXI_Unlock(EXI_CHANNEL_0);
+				_CPU_ISR_Restore(level);
+				return;
+			}
+			if(status&0x10) {
+				u32 response,challange;
+
+				*pstatus |= (status<<8);
+				bba_cmd_out8(0x05,bba_device.acstart);
+				bba_cmd_ins(0x08,&challange,sizeof(challange));
+				response = bba_calc_response(bba_netif,challange);
+				bba_cmd_outs(0x09,&response,sizeof(response));
+				bba_cmd_out8(0x03, 0x10);
+				bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+				EXI_Unlock(EXI_CHANNEL_0);
+				_CPU_ISR_Restore(level);
+				return;
+			}
+			if(status&0x08) {
+				*pstatus |= (status<<8);
+				bba_cmd_out8(0x03, 0x08);
+				bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
+				EXI_Unlock(EXI_CHANNEL_0);
+				_CPU_ISR_Restore(level);
+				return;
+			}
+
+			*pstatus |= (status<<8);
 			bba_interrupt(pstatus);
 			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
-			EXI_Unlock(EXI_CHANNEL_0);
-			_CPU_ISR_Restore(level);
-			return;
 		}
-		if(status&0x40) {
-			*pstatus |= status;
-			bba_cmd_out8(0x03, 0x40);
-			__bba_init(bba_netif);
-			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
-			EXI_Unlock(EXI_CHANNEL_0);
-			_CPU_ISR_Restore(level);
-			return;
-		}
-		if(status&0x20) {
-			*pstatus |= status;
-			bba_cmd_out8(0x03, 0x20);
-			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
-			EXI_Unlock(EXI_CHANNEL_0);
-			_CPU_ISR_Restore(level);
-			return;
-		}
-		if(status&0x10) {
-			u32 response,challange;
-
-			*pstatus |= status;
-			bba_cmd_out8(0x05,bba_device.acstart);
-			bba_cmd_ins(0x08,&challange,sizeof(challange));
-			response = bba_calc_response(bba_netif,challange);
-			bba_cmd_outs(0x09,&response,sizeof(response));
-			bba_cmd_out8(0x03, 0x10);
-			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
-			EXI_Unlock(EXI_CHANNEL_0);
-			_CPU_ISR_Restore(level);
-			return;
-		}
-		if(status&0x08) {
-			*pstatus |= status;
-			bba_cmd_out8(0x03, 0x08);
-			bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
-			EXI_Unlock(EXI_CHANNEL_0);
-			_CPU_ISR_Restore(level);
-			return;
-		}
-
-		*pstatus |= status;
-		bba_interrupt(pstatus);
-		bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
 		EXI_Unlock(EXI_CHANNEL_0);
 	}
 	_CPU_ISR_Restore(level);
@@ -786,7 +804,7 @@ static s8_t __bba_link_tx(struct uip_netif *dev,struct uip_pbuf *p)
 	}
 	bba_deselect();
 
-	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)|BBA_NCRA_ST1)));		//&~BBA_NCRA_ST0
+	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)&~BBA_NCRA_ST0)|BBA_NCRA_ST1));		//&~BBA_NCRA_ST0
 	EXI_Unlock(EXI_CHANNEL_0);
 
 	_CPU_ISR_Restore(level);
@@ -816,7 +834,7 @@ s8_t bba_init(struct uip_netif *dev)
 	uip_netif_setup(dev);
 	uip_arp_init();
 	
-	bba_recv_pbufs = NULL;
+	bba_recv_list = NULL;
 	bba_arp_tmr = gettime();
 	
 	return UIP_ERR_OK;
@@ -824,6 +842,8 @@ s8_t bba_init(struct uip_netif *dev)
 
 dev_s bba_create(struct uip_netif *dev)
 {
+	memb_init(&bba_recv_bufs);
+
 	dev->name[0] = IFNAME0;
 	dev->name[1] = IFNAME1;
 	
@@ -844,16 +864,22 @@ void bba_poll(struct uip_netif *dev)
 {
 	u16 status;
 	struct uip_pbuf *p;
+	struct bba_recv_queue *rbuf;
 
 	bba_devpoll(&status);
 	
-	p = bba_recv_pbufs;
-	if(p) {
-		bba_recv_pbufs = uip_pbuf_dequeue(p);
-		bba_process(p,dev);
-		uip_pbuf_free(p);
+	rbuf = bba_recv_list;
+	if(rbuf) {
+		bba_recv_list = rbuf->next;
+		p = rbuf->p;
+		rbuf->p = NULL;
+		rbuf->next = NULL;
 
-		udelay(1250);
+		bba_process(p,dev);
+		memb_free(&bba_recv_bufs,rbuf);
+
+		udelay(500);
+
 	}
 	
 }
