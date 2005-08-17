@@ -54,7 +54,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.c,v 1.2 2005-08-14 11:51:13 shagkur Exp $
+ * $Id: uip_arp.c,v 1.3 2005-08-17 14:21:30 shagkur Exp $
  *
  */
 
@@ -417,7 +417,7 @@ s8_t uip_arp_arprequest(struct uip_netif *netif,struct uip_ip_addr *ipaddr)
 	struct uip_pbuf *p;
 	struct uip_eth_addr *srcaddr = (struct uip_eth_addr*)netif->hwaddr;
 
-	p = uip_pbuf_alloc(UIP_PBUF_LINK,sizeof(struct uip_arp_hdr),UIP_PBUF_POOL);
+	p = uip_pbuf_alloc(UIP_PBUF_LINK,sizeof(struct uip_arp_hdr),UIP_PBUF_RAM);
 	if(p==NULL) return err;
 
 	hdr = p->payload;

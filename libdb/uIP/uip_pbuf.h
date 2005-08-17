@@ -5,9 +5,10 @@
 
 /* Definitions for the pbuf flag field. These are NOT the flags that
  * are passed to pbuf_alloc(). */
-#define UIP_PBUF_FLAG_ROM   0x00U    /* Flags that pbuf data is stored in ROM */
-#define UIP_PBUF_FLAG_POOL  0x01U    /* Flags that the pbuf comes from the pbuf pool */
-#define UIP_PBUF_FLAG_REF   0x02U    /* Flags thet the pbuf payload refers to RAM */
+#define UIP_PBUF_FLAG_RAM   0x00U    /* Flags that pbuf data is stored in RAM */
+#define UIP_PBUF_FLAG_ROM   0x01U    /* Flags that pbuf data is stored in ROM */
+#define UIP_PBUF_FLAG_POOL  0x02U    /* Flags that the pbuf comes from the pbuf pool */
+#define UIP_PBUF_FLAG_REF   0x04U    /* Flags thet the pbuf payload refers to RAM */
 
 typedef enum {
 	UIP_PBUF_TRANSPORT,
@@ -18,6 +19,7 @@ typedef enum {
 
 typedef enum {
 	UIP_PBUF_POOL,
+	UIP_PBUF_RAM,
 	UIP_PBUF_ROM,
 	UIP_PBUF_REF
 } uip_pbuf_flag;

@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "memb.h"
+#include "memr.h"
 #include "uip_pbuf.h"
 
 #if UIP_LOGGING == 1
@@ -82,6 +83,15 @@ struct uip_pbuf* uip_pbuf_alloc(uip_pbuf_layer layer,u16_t len,uip_pbuf_flag fla
 				r = q;
 			}
 			break;
+		case UIP_PBUF_RAM:
+			p = memr_malloc(MEM_ALIGN_SIZE(sizeof(struct uip_pbuf)+offset)+MEM_ALIGN_SIZE(len));
+			if(p==NULL) return NULL;
+
+			p->payload = MEM_ALIGN((u8_t*)p+sizeof(struct uip_pbuf)+offset);
+			p->len = p->tot_len = len;
+			p->next = NULL;
+			p->flags = UIP_PBUF_FLAG_RAM;
+			break;
 		case UIP_PBUF_ROM:
 		case UIP_PBUF_REF:
 			p = memb_alloc(&uip_rom_pbufs);
@@ -117,6 +127,8 @@ u8_t uip_pbuf_free(struct uip_pbuf *p)
 				memb_free(&uip_pool_pbufs,p);
 			} else if(p->flags==UIP_PBUF_FLAG_ROM || p->flags==UIP_PBUF_FLAG_REF) {
 				memb_free(&uip_rom_pbufs,p);
+			} else {
+				memr_free(p);
 			}
 			cnt++;
 			p = q;
@@ -143,6 +155,9 @@ void uip_pbuf_realloc(struct uip_pbuf *p,u16_t new_len)
 		q = q->next;
 	}
 
+	if(q->flags==UIP_PBUF_FLAG_RAM && rem_len!=q->len)
+		memr_realloc(q,(u8_t*)q->payload-(u8_t*)q+rem_len);
+	
 	q->len = rem_len;
 	q->tot_len = q->len;
 
@@ -158,7 +173,7 @@ u8_t uip_pbuf_header(struct uip_pbuf *p,s16_t hdr_size_inc)
 
 
 	payload = p->payload;
-	if(p->flags==UIP_PBUF_FLAG_POOL) {
+	if(p->flags==UIP_PBUF_FLAG_POOL || p->flags==UIP_PBUF_FLAG_RAM) {
 		p->payload = (u8_t*)p->payload-hdr_size_inc;
 		if((u8_t*)p->payload<(u8_t*)p+sizeof(struct uip_pbuf)) {
 			p->payload = payload;

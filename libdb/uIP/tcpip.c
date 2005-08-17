@@ -180,7 +180,7 @@ void tcpip_tmr_needed()
 void tcpip_init()
 {
 	uip_tcp_init();
-	memset(tcpip_socks,0,(UIP_TCPIP_SOCKS*sizeof(struct tcpip_sock)));
+	uip_memset(tcpip_socks,0,(UIP_TCPIP_SOCKS*sizeof(struct tcpip_sock)));
 }
 
 s32_t tcpip_socket()
@@ -257,7 +257,7 @@ s32_t tcpip_accept(s32_t s)
 
 s32_t tcpip_read(s32_t s,void *buffer,u32_t len)
 {
-	u32_t off,copy,i;
+	u32_t off,copy;
 	u8_t *ptr;
 	struct uip_pbuf *p;
 	struct tcpip_sock *sock;
@@ -278,7 +278,7 @@ s32_t tcpip_read(s32_t s,void *buffer,u32_t len)
 			if(len>p->len-sock->lastoffset) copy = (p->len-sock->lastoffset);
 			else copy = len;
 		
-			for(i=0;i<copy;i++) ptr[off+i] = ((u8_t*)p->payload)[sock->lastoffset+i];
+			uip_memcpy(ptr+off,(u8_t*)p->payload+sock->lastoffset,copy);
 
 			off += copy;
 			len -= copy;

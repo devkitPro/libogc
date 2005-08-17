@@ -563,6 +563,14 @@ SOURCE=.\libdb\uIP\memb.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\libdb\uIP\memr.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\uIP\memr.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\libdb\uip\tcpip.c
 # End Source File
 # Begin Source File

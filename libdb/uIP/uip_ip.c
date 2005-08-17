@@ -25,7 +25,7 @@ struct uip_stats uip_stat;
 const struct uip_ip_addr ipaddr_any = { 0x0000000UL };
 const struct uip_ip_addr ipaddr_broadcast = { 0xffffffffUL };
 
-#if UIP_REASSEMBLY
+#if UIP_IP_REASSEMBLY
 
 #define UIP_REASS_FLAG_LASTFRAG		0x01
 #define UIP_REASS_BUFSIZE			5760
@@ -43,13 +43,12 @@ extern s64 gettime();
 static struct uip_pbuf* uip_copyfrom_pbuf(struct uip_pbuf *p,u16_t *offset,u8_t *buffer,u16_t len)
 {
 	u16_t l;
-	u32_t i;
 
 	p->payload = (u8_t*)p->payload+(*offset);
 	p->len -= (*offset);
 	while(len) {
 		l = len<p->len?len:p->len;
-		memcpy(buffer,p->payload,l);
+		uip_memcpy(buffer,p->payload,l);
 		buffer += l;
 		len -= l;
 		if(len) p = p->next;
@@ -71,12 +70,12 @@ static struct uip_pbuf* uip_ipreass(struct uip_pbuf *p)
   iphdr = (struct uip_ip_hdr*)uip_reassbuf;
   fraghdr = (struct uip_ip_hdr*)p->payload;
   if(uip_reasstmr == 0) {
-    memcpy(iphdr, fraghdr, UIP_IP_HLEN);
+    uip_memcpy(iphdr, fraghdr, UIP_IP_HLEN);
     uip_reasstmr = UIP_REASS_MAXAGE;
     uip_reassflags = 0;
 	uip_reasstime = gettime();
     /* Clear the bitmap. */
-    memset(uip_reassbitmap, sizeof(uip_reassbitmap), 0);
+    uip_memset(uip_reassbitmap, sizeof(uip_reassbitmap), 0);
   }
 
   /* Check if the incoming fragment matches the one currently present
@@ -173,7 +172,7 @@ static struct uip_pbuf* uip_ipreass(struct uip_pbuf *p)
 	  
 	  i = 0;
 	  for(q=p;q!=NULL;q=q->next) {
-		  memcpy(q->payload,&uip_reassbuf[i],((q->len>(uip_reasslen-i))?(uip_reasslen-i):q->len));
+		  uip_memcpy(q->payload,&uip_reassbuf[i],((q->len>(uip_reasslen-i))?(uip_reasslen-i):q->len));
 		  i += q->len;
 	  }
       return p;
@@ -184,7 +183,65 @@ static struct uip_pbuf* uip_ipreass(struct uip_pbuf *p)
   uip_pbuf_free(p);
   return NULL;
 }
-#endif /* UIP_REASSEMBL */
+#endif /* UIP_IP_REASSEMBLY */
+
+#if UIP_IP_FRAG
+#define MAX_MTU			1500
+static u8_t buf[MEM_ALIGN_SIZE(MAX_MTU)];
+
+s8_t uip_ipfrag(struct uip_pbuf *p,struct uip_netif *netif,struct uip_ip_addr *ipaddr)
+{
+	struct uip_pbuf *rambuf;
+	struct uip_pbuf *header;
+	struct uip_ip_hdr *iphdr;
+	u16_t left,cop,ofo,omf,last,tmp;
+	u16_t mtu = netif->mtu;
+	u16_t poff = UIP_IP_HLEN;
+	u16_t nfb = 0;
+	
+	rambuf = uip_pbuf_alloc(UIP_PBUF_LINK,0,UIP_PBUF_REF);
+	rambuf->tot_len = rambuf->len = mtu;
+	rambuf->payload = MEM_ALIGN(buf);
+	
+	iphdr = rambuf->payload;
+	uip_memcpy(iphdr,p->payload,UIP_IP_HLEN);
+
+	tmp = ntohs(UIP_IPH_OFFSET(iphdr));
+	ofo = tmp&UIP_IP_OFFMASK;
+	omf = tmp&UIP_IP_MF;
+
+	left = p->tot_len - UIP_IP_HLEN;
+	while(left) {
+		last = (left<=(mtu-UIP_IP_HLEN));
+		
+		ofo += nfb;
+		tmp = omf|(UIP_IP_OFFMASK&ofo);
+		
+		if(!last) tmp |= UIP_IP_MF;
+		UIP_IPH_OFFSET_SET(iphdr,htons(tmp));
+
+		nfb = (mtu - UIP_IP_HLEN)/8;
+		cop = last?left:nfb*8;
+
+		p = uip_copyfrom_pbuf(p,&poff,(u8_t*)iphdr+UIP_IP_HLEN,cop);
+		
+		UIP_IPH_LEN_SET(iphdr,htons(cop+UIP_IP_HLEN));
+		UIP_IPH_CHKSUM_SET(iphdr,0);
+		UIP_IPH_CHKSUM_SET(iphdr,uip_ipchksum(iphdr,UIP_IP_HLEN));
+
+		if(last) uip_pbuf_realloc(rambuf,left+UIP_IP_HLEN);
+
+		header = uip_pbuf_alloc(UIP_PBUF_LINK,0,UIP_PBUF_RAM);
+		uip_pbuf_chain(header,rambuf);
+		netif->output(netif,header,ipaddr);
+		uip_pbuf_free(header);
+
+		left -= cop;
+	}
+	uip_pbuf_free(rambuf);
+	return UIP_ERR_OK;
+}
+#endif /* UIP_IP_FRAG */
 
 struct uip_netif* uip_iproute(struct uip_ip_addr *dst)
 {
@@ -259,12 +316,13 @@ s8_t uip_ipinput(struct uip_pbuf *p,struct uip_netif *inp)
 	}
 	
 	if((UIP_IPH_OFFSET(iphdr)&htons(UIP_IP_OFFMASK|UIP_IP_MF))!=0) {
-#if UIP_REASSEMBLY
+#if UIP_IP_REASSEMBLY
 		p = uip_ipreass(p);
 		if(p==NULL) return UIP_ERR_OK;
 
 		iphdr = (struct uip_ip_hdr*)p->payload;
 #else
+		uip_pbuf_free(p);
 	    UIP_STAT(++uip_stat.ip.drop);
 		UIP_LOG("ip: fragment dropped.\n");
 		return 0;
@@ -315,7 +373,10 @@ s8_t uip_ipoutput_if(struct uip_pbuf *p,struct uip_ip_addr *src,struct uip_ip_ad
 		iphdr = p->payload;
 		dst = &iphdr->dst;
 	}
-	
+#if UIP_IP_FRAG
+	if(netif->mtu && p->tot_len>netif->mtu)
+		return uip_ipfrag(p,netif,dst);
+#endif
 	return netif->output(netif,p,dst);
 }
 

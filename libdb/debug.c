@@ -15,6 +15,7 @@
 #include "debug.h"
 
 #include "uip/bba.h"
+#include "uip/memr.h"
 #include "uip/tcpip.h"
 #include "uip/uip_ip.h"
 #include "uip/uip_arp.h"
@@ -95,10 +96,12 @@ void DEBUG_Init(u16 port)
 	struct sockaddr_in name;
 	socklen_t namelen = sizeof(struct sockaddr);
 
+	memr_init();
 	uip_ipinit();
 	uip_pbuf_init();
-	tcpip_init();
 	uip_netif_init();
+
+	tcpip_init();
 
 	local_ip.addr = uip_ipaddr(dbg_local_ip);
 	netmask.addr = uip_ipaddr(dbg_netmask);

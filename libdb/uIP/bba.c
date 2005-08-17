@@ -434,7 +434,7 @@ static s8_t bba_start_rx(struct uip_netif *dev)
 {
 	u8 *ptr;
 	u16 rwp,rrp,rxcnt;
-	u32 i,j,size,pkt_status,pos,top,copy;
+	u32 j,size,pkt_status,pos,top,copy;
 	struct uip_pbuf *p,*q;
 
 	rxcnt = 0;
@@ -476,8 +476,7 @@ static s8_t bba_start_rx(struct uip_netif *dev)
 		if(p) {
 			for(q=p,j=0;q!=NULL && size>0;q=q->next) {
 				copy = (size>q->len)?q->len:size;
-				for(i=0;i<copy;i++) 
-					((u8_t*)q->payload)[i] = ptr[j++];
+				uip_memcpy(q->payload,ptr,copy);
 				
 				ptr += copy;
 				size -= copy;

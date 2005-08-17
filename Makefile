@@ -114,7 +114,7 @@ MADOBJ		:=	mp3player.o bit.o decoder.o fixed.o frame.o huffman.o \
 
 #---------------------------------------------------------------------------------
 DBOBJ		:=	uip_ip.o uip_tcp.o uip_pbuf.o uip_netif.o uip_arp.o uip_arch.o \
-				uip_icmp.o memb.o bba.o tcpip.o debug.o debug_handler.o
+				uip_icmp.o memb.o memr.o bba.o tcpip.o debug.o debug_handler.o
 
 #---------------------------------------------------------------------------------
 SDCARDOBJ	:=	sdcard.o sdcardio.o card_fat.o card_buf.o card_io.o card_uni.o

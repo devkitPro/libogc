@@ -1,11 +1,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "uip.h"
 #include "memb.h"
 
 void memb_init(struct memb_blks *blk)
 {
-	memset(blk->mem,0,(blk->size+1)*blk->num);
+	uip_memset(blk->mem,0,(blk->size+1)*blk->num);
 }
 
 void* memb_alloc(struct memb_blks *blk)

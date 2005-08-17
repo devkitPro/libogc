@@ -28,7 +28,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arch.c,v 1.3 2005-08-17 07:39:34 shagkur Exp $
+ * $Id: uip_arch.c,v 1.4 2005-08-17 14:21:30 shagkur Exp $
  *
  */
 
@@ -114,35 +114,20 @@ u16_t uip_ipchksum_pbuf(struct uip_pbuf *p)
 
 void uip_memcpy(void *dest,const void *src,s32_t len)
 {
-	s32_t i,k;
-	u32_t copy,rem;
+	u8_t *dest0 = (u8_t*)dest;
+	u8_t *src0 = (u8_t*)src;
 
-	copy = len/sizeof(u32_t);
-	rem = len%sizeof(u32_t);
-
-	for(i=0,k=0;i<copy;i++,k += 4) {
-		((u32_t*)dest)[i] = ((u32_t*)src)[i];
-	}
-
-	for(i=0;i<rem;i++) {
-		((u8_t*)dest)[k+i] = ((u8_t*)src)[k+i];
+	while(len--) {
+		*dest0++ = *src0++;
 	}
 }
 
-void uip_memset(void *dest,s32_t data,s32_t len)
+void uip_memset(void *dest,s32_t c,s32_t len)
 {
-	s32_t i,k;
-	u32_t fill,rem;
+	u8_t *dest0 = (u8_t*)dest;
 
-	fill = len/sizeof(u32_t);
-	rem = len%sizeof(u32_t);
-
-	for(i=0,k=0;i<fill;i++,k += 4) {
-		((u32_t*)dest)[i] = data;
-	}
-
-	for(i=0;i<rem;i++) {
-		((u8_t*)dest)[k+i] = ((u8_t*)data)[3-i];
+	while(len--) {
+		*dest0++ = (s8_t)c;
 	}
 }
 
