@@ -569,7 +569,7 @@ static err_t netconn_write(struct netconn *conn,void *dataptr,u32 size,u8 copy)
 		msg->msg.msg.w.dataptr = dataptr;
 		msg->msg.msg.w.copy = copy;
 		if(conn->type==NETCONN_TCP) {
-			while((snd_buf=tcp_sndbuf(conn->pcb.tcp))==0) {
+			while((snd_buf=tcp_sndbuf(conn->pcb.tcp))<=16) {
 				LWIP_DEBUGF(API_LIB_DEBUG|2,("netconn_write: tcp_sndbuf = 0,err = %d\n", conn->err));
 				LWP_SemWait(conn->sem);
 				if(conn->err!=ERR_OK) break;

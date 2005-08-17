@@ -27,7 +27,7 @@ void* memb_alloc(struct memb_blks *blk)
 u8 memb_free(struct memb_blks *blk,void *ptr)
 {
 	s32 i;
-	u8 *ptr2,*p = (u8*)ptr;
+	u8 *ptr2;
 
 	ptr2 = blk->mem;
 	for(i=0;i<blk->num;i++) {

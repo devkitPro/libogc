@@ -50,7 +50,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uipopt.h,v 1.8 2005-08-16 07:32:37 shagkur Exp $
+ * $Id: uipopt.h,v 1.9 2005-08-17 06:55:19 shagkur Exp $
  *
  */
 
@@ -122,118 +122,6 @@ typedef u32 u32_t;
  * to count.
  */
 typedef u16 uip_stats_t;
-
-/** @} */
-
-/*------------------------------------------------------------------------------*/
-
-/**
- * \defgroup uipoptstaticconf Static configuration options
- * @{
- *
- * These configuration options can be used for setting the IP address
- * settings statically, but only if UIP_FIXEDADDR is set to 1. The
- * configuration options for a specific node includes IP address,
- * netmask and default router as well as the Ethernet address. The
- * netmask, default router and Ethernet address are appliciable only
- * if uIP should be run over Ethernet.
- *
- * All of these should be changed to suit your project.
-*/
-
-/**
- * Determines if uIP should use a fixed IP address or not.
- *
- * If uIP should use a fixed IP address, the settings are set in the
- * uipopt.h file. If not, the macros uip_sethostaddr(),
- * uip_setdraddr() and uip_setnetmask() should be used instead.
- *
- * \hideinitializer
- */
-#define UIP_FIXEDADDR    1
-
-/**
- * Ping IP address asignment.
- *
- * uIP uses a "ping" packets for setting its own IP address if this
- * option is set. If so, uIP will start with an empty IP address and
- * the destination IP address of the first incoming "ping" (ICMP echo)
- * packet will be used for setting the hosts IP address.
- *
- * \note This works only if UIP_FIXEDADDR is 0.
- *
- * \hideinitializer
- */
-#define UIP_PINGADDRCONF 0
-
-#define UIP_IPADDR0     192 /**< The first octet of the IP address of
-			       this uIP node, if UIP_FIXEDADDR is
-			       1. \hideinitializer */
-#define UIP_IPADDR1     168 /**< The second octet of the IP address of
-			       this uIP node, if UIP_FIXEDADDR is
-			       1. \hideinitializer */
-#define UIP_IPADDR2     1   /**< The third octet of the IP address of
-			       this uIP node, if UIP_FIXEDADDR is
-			       1. \hideinitializer */
-#define UIP_IPADDR3     3   /**< The fourth octet of the IP address of
-			       this uIP node, if UIP_FIXEDADDR is
-			       1. \hideinitializer */
-
-#define UIP_NETMASK0    255 /**< The first octet of the netmask of
-			       this uIP node, if UIP_FIXEDADDR is
-			       1. \hideinitializer */
-#define UIP_NETMASK1    255 /**< The second octet of the netmask of
-			       this uIP node, if UIP_FIXEDADDR is
-			       1. \hideinitializer */
-#define UIP_NETMASK2    255 /**< The third octet of the netmask of
-			       this uIP node, if UIP_FIXEDADDR is
-			       1. \hideinitializer */
-#define UIP_NETMASK3    0   /**< The fourth octet of the netmask of
-			       this uIP node, if UIP_FIXEDADDR is
-			       1. \hideinitializer */
-
-#define UIP_DRIPADDR0   192 /**< The first octet of the IP address of
-			       the default router, if UIP_FIXEDADDR is
-			       1. \hideinitializer */
-#define UIP_DRIPADDR1   168 /**< The second octet of the IP address of
-			       the default router, if UIP_FIXEDADDR is
-			       1. \hideinitializer */
-#define UIP_DRIPADDR2   1   /**< The third octet of the IP address of
-			       the default router, if UIP_FIXEDADDR is
-			       1. \hideinitializer */
-#define UIP_DRIPADDR3   1   /**< The fourth octet of the IP address of
-			       the default router, if UIP_FIXEDADDR is
-			       1. \hideinitializer */
-
-/**
- * Specifies if the uIP ARP module should be compiled with a fixed
- * Ethernet MAC address or not.
- *
- * If this configuration option is 0, the macro uip_setethaddr() can
- * be used to specify the Ethernet address at run-time.
- *
- * \hideinitializer
- */
-#define UIP_FIXEDETHADDR 0
-
-#define UIP_ETHADDR0    0x00  /**< The first octet of the Ethernet
-				 address if UIP_FIXEDETHADDR is
-				 1. \hideinitializer */
-#define UIP_ETHADDR1    0xbd  /**< The second octet of the Ethernet
-				 address if UIP_FIXEDETHADDR is
-				 1. \hideinitializer */
-#define UIP_ETHADDR2    0x3b  /**< The third octet of the Ethernet
-				 address if UIP_FIXEDETHADDR is
-				 1. \hideinitializer */
-#define UIP_ETHADDR3    0x33  /**< The fourth octet of the Ethernet
-				 address if UIP_FIXEDETHADDR is
-				 1. \hideinitializer */
-#define UIP_ETHADDR4    0x05  /**< The fifth octet of the Ethernet
-				 address if UIP_FIXEDETHADDR is
-				 1. \hideinitializer */
-#define UIP_ETHADDR5    0x71  /**< The sixth octet of the Ethernet
-				 address if UIP_FIXEDETHADDR is
-				 1. \hideinitializer */
 
 /** @} */
 /*------------------------------------------------------------------------------*/
@@ -369,9 +257,9 @@ typedef u16 uip_stats_t;
 
 #define UIP_TCP_SEGS				128
 
-#define UIP_TCP_WND					(16*1024)
+#define UIP_TCP_WND					(2*1024)
 
-#define UIP_TCP_SND_BUF				(32*1024)
+#define UIP_TCP_SND_BUF				(8*1024)
 
 #define UIP_TCP_SND_QUEUELEN		(4*UIP_TCP_SND_BUF/UIP_TCP_MSS)
 	
@@ -469,12 +357,11 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_BUFSIZE			1536
+#define UIP_PBUF_POOL_NUM			128
+#define UIP_PBUF_POOL_BUFSIZE		1024
 
-#define UIP_PBUF_POOL_NUM	128
-#define UIP_PBUF_ROM_NUM	128
+#define UIP_PBUF_ROM_NUM			128
 
-#define UIP_PBUF_SIZE		1536
 
 /**
  * Determines if statistics support should be compiled in.

@@ -18,8 +18,8 @@ struct uip_stats uip_stat;
 #define UIP_STAT(s)
 #endif /* UIP_STATISTICS == 1 */
 
-MEMB(uip_pool_pbufs,MEM_ALIGN_SIZE(sizeof(struct uip_pbuf)+UIP_PBUF_SIZE),UIP_PBUF_POOL_NUM);
-MEMB(uip_rom_pbufs,MEM_ALIGN_SIZE(sizeof(struct uip_pbuf)),UIP_PBUF_ROM_NUM);
+MEMB(uip_pool_pbufs,MEM_ALIGN_SIZE(sizeof(struct uip_pbuf)+UIP_PBUF_POOL_BUFSIZE),UIP_PBUF_POOL_NUM);
+MEMB(uip_rom_pbufs,sizeof(struct uip_pbuf),UIP_PBUF_ROM_NUM);
 
 void uip_pbuf_init()
 {
@@ -57,7 +57,7 @@ struct uip_pbuf* uip_pbuf_alloc(uip_pbuf_layer layer,u16_t len,uip_pbuf_flag fla
 			p->next = NULL;
 			p->payload = MEM_ALIGN((void*)((u8_t*)p+(sizeof(struct uip_pbuf)+offset)));
 			p->tot_len = len;
-			p->len = (len>(UIP_PBUF_SIZE-offset)?(UIP_PBUF_SIZE-offset):len);
+			p->len = (len>(UIP_PBUF_POOL_BUFSIZE-offset)?(UIP_PBUF_POOL_BUFSIZE-offset):len);
 			p->flags = UIP_PBUF_FLAG_POOL;
 			p->ref = 1;
 
@@ -73,7 +73,7 @@ struct uip_pbuf* uip_pbuf_alloc(uip_pbuf_layer layer,u16_t len,uip_pbuf_flag fla
 				q->next = NULL;
 				r->next = q;
 				q->tot_len = rem_len;
-				q->len = (rem_len>UIP_PBUF_SIZE?UIP_PBUF_SIZE:rem_len);
+				q->len = (rem_len>UIP_PBUF_POOL_BUFSIZE?UIP_PBUF_POOL_BUFSIZE:rem_len);
 				q->payload = (void*)((u8_t*)q+sizeof(struct uip_pbuf));
 				q->flags = UIP_PBUF_FLAG_POOL;
 				q->ref = 1;

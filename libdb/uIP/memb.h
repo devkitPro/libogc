@@ -4,7 +4,7 @@
 #include <gctypes.h>
 
 #define MEMB(name,size,num)										\
-	static u8 memb_mem_##name[MEM_ALIGN_SIZE(size)*num];		\
+	static u8 memb_mem_##name[(size+1)*num];		\
 	static struct memb_blks name = {size,num,memb_mem_##name}
 
 struct memb_blks {

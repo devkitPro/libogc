@@ -113,6 +113,7 @@ static s8_t tcpip_recved(void *arg,struct uip_tcp_pcb *pcb,struct uip_pbuf *p,s8
 	} else
 		len = 1;
 
+//	udelay(20);
 	uip_tcp_recved(pcb,len);
 
 	return UIP_ERR_OK;
@@ -135,6 +136,7 @@ static s8_t tcpip_accept_func(void *arg,struct uip_tcp_pcb *newpcb,s8_t err)
 	}
 	
 	newsock = tcpip_getsocket(s);
+	newsock->pcb->flags |= UIP_TF_NODELAY;
 	
 	ptr = tcpip_accepted_sockets;
 	while(ptr && ptr->next) ptr = ptr->next;
@@ -303,7 +305,7 @@ s32_t tcpip_write(s32_t s,const void *buffer,u32_t len)
 	if(!sock) return -1;
 
 	while(len>0) {
-		while((snd_buf=uip_tcp_sndbuf(sock->pcb))==0) {
+		while((snd_buf=uip_tcp_sndbuf(sock->pcb))<=16) {
 			__tcpip_poll();
 		}
 		

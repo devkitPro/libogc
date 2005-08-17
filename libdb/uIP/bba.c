@@ -6,7 +6,6 @@
 #include "exi.h"
 #include "cache.h"
 #include "bba.h"
-#include "memb.h"
 #include "uip_pbuf.h"
 #include "uip_netif.h"
 #include "uip_arp.h"
@@ -183,11 +182,6 @@ struct bba_priv {
 	struct uip_eth_addr *ethaddr;
 };
 
-struct bba_recv_queue {
-	struct bba_recv_queue *next;
-	struct uip_pbuf *p;
-};
-
 #define X(a,b)  b,a
 struct bba_descr {
 	u32 X(X(next_packet_ptr:12, packet_len:12), status:8);
@@ -224,7 +218,7 @@ struct uip_stats uip_stat;
 
 static s64 bba_arp_tmr = 0;
 
-static struct bba_recv_queue *bba_recv_list = NULL;
+static struct uip_pbuf *bba_recv_pbufs = NULL;
 static struct uip_netif *bba_netif = NULL;
 static struct bba_priv bba_device;
 static struct bba_descr cur_descr;
@@ -244,8 +238,6 @@ extern void udelay(int us);
 extern u32 diff_msec(long long start,long long end);
 extern u32 diff_usec(long long start,long long end);
 extern long long gettime();
-
-MEMB(bba_recv_bufs,sizeof(struct bba_recv_queue),16);
 
 static __inline__ void bba_cmd_insnosel(u32 reg,void *val,u32 len)
 {
@@ -442,9 +434,8 @@ static s8_t bba_start_rx(struct uip_netif *dev)
 {
 	u8 *ptr;
 	u16 rwp,rrp,rxcnt;
-	u32 size,pkt_status,pos,top;
+	u32 i,j,size,pkt_status,pos,top,copy;
 	struct uip_pbuf *p,*q;
-	struct bba_recv_queue *rbuf,*ubuf = NULL;
 
 	rxcnt = 0;
 	rwp = bba_in12(BBA_RWP);
@@ -483,24 +474,18 @@ static s8_t bba_start_rx(struct uip_netif *dev)
 		ptr = rx_buffer;
 		p = uip_pbuf_alloc(UIP_PBUF_RAW,size,UIP_PBUF_POOL);
 		if(p) {
-			for(q=p;q!=NULL;q=q->next) {
-				memcpy(q->payload,ptr,q->len);
-				ptr += q->len;
+			for(q=p,j=0;q!=NULL && size>0;q=q->next) {
+				copy = (size>q->len)?q->len:size;
+				for(i=0;i<copy;i++) 
+					((u8_t*)q->payload)[i] = ptr[j++];
+				
+				ptr += copy;
+				size -= copy;
 			}
 
-			rbuf = memb_alloc(&bba_recv_bufs);
-			if(rbuf) {
-				rbuf->p = p;
-				rbuf->next = NULL;
-			}
-			
-			if(ubuf==NULL) {
-				for(ubuf=bba_recv_list;ubuf!=NULL && ubuf->next!=NULL;ubuf=ubuf->next);
-				if(ubuf==NULL) bba_recv_list = ubuf = rbuf;
-				else ubuf->next = rbuf;
-			} else
-				ubuf->next = rbuf;
-			ubuf = rbuf;
+			if(bba_recv_pbufs==NULL) bba_recv_pbufs = p;
+			else uip_pbuf_chain(bba_recv_pbufs,p);
+
 			rxcnt++;
 		}
 		bba_out12(BBA_RRP,cur_descr.next_packet_ptr);
@@ -834,7 +819,7 @@ s8_t bba_init(struct uip_netif *dev)
 	uip_netif_setup(dev);
 	uip_arp_init();
 	
-	bba_recv_list = NULL;
+	bba_recv_pbufs = NULL;
 	bba_arp_tmr = gettime();
 	
 	return UIP_ERR_OK;
@@ -842,14 +827,12 @@ s8_t bba_init(struct uip_netif *dev)
 
 dev_s bba_create(struct uip_netif *dev)
 {
-	memb_init(&bba_recv_bufs);
-
 	dev->name[0] = IFNAME0;
 	dev->name[1] = IFNAME1;
 	
 	dev->output = __bba_start_tx;
 	dev->linkoutput = __bba_link_tx;
-	dev->mtu = BBA_TX_MAX_PACKET_SIZE;
+	dev->mtu = 1500;
 	dev->flags = UIP_NETIF_FLAG_BROADCAST;
 	dev->hwaddr_len = 6;
 	
@@ -864,22 +847,13 @@ void bba_poll(struct uip_netif *dev)
 {
 	u16 status;
 	struct uip_pbuf *p;
-	struct bba_recv_queue *rbuf;
 
 	bba_devpoll(&status);
 	
-	rbuf = bba_recv_list;
-	if(rbuf) {
-		bba_recv_list = rbuf->next;
-		p = rbuf->p;
-		rbuf->p = NULL;
-		rbuf->next = NULL;
-
+	p = bba_recv_pbufs;
+	if(p) {
+		bba_recv_pbufs = uip_pbuf_dechain(p);
 		bba_process(p,dev);
-		memb_free(&bba_recv_bufs,rbuf);
-
-		udelay(500);
-
 	}
 	
 }
