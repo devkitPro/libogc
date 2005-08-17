@@ -49,7 +49,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arch.h,v 1.2 2005-08-14 11:51:13 shagkur Exp $
+ * $Id: uip_arch.h,v 1.3 2005-08-17 07:39:34 shagkur Exp $
  *
  */
 
@@ -134,6 +134,10 @@ u16_t uip_ipchksum_pbuf(struct uip_pbuf *p);
  */
 u16_t uip_chksum_pseudo(struct uip_pbuf *p,struct uip_ip_addr *src,struct uip_ip_addr *dst,u8_t proto,u16_t proto_len);
 
+
+void uip_memcpy(void *dest,const void *src,s32_t len);
+
+void uip_memset(void *dest,s32_t data,s32_t len);
 
 extern void tcpip_tmr_needed();
 #define tcp_tmr_needed		tcpip_tmr_needed

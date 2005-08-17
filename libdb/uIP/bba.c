@@ -784,7 +784,6 @@ static s8_t __bba_link_tx(struct uip_netif *dev,struct uip_pbuf *p)
 	}
 	if(len<BBA_MINPKTSIZE) {
 		len = (BBA_MINPKTSIZE-len);
-		memset(pad,0,BBA_MINPKTSIZE);
 		bba_outsdata(pad,len);
 	}
 	bba_deselect();

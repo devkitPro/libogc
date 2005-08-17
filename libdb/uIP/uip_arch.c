@@ -28,7 +28,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arch.c,v 1.2 2005-08-14 11:51:13 shagkur Exp $
+ * $Id: uip_arch.c,v 1.3 2005-08-17 07:39:34 shagkur Exp $
  *
  */
 
@@ -110,6 +110,40 @@ u16_t uip_ipchksum_pbuf(struct uip_pbuf *p)
   while(acc>>16) acc = (acc&0xffffUL)+(acc>>16);
   
   return (u16_t)~(acc & 0xffffUL);
+}
+
+void uip_memcpy(void *dest,const void *src,s32_t len)
+{
+	s32_t i,k;
+	u32_t copy,rem;
+
+	copy = len/sizeof(u32_t);
+	rem = len%sizeof(u32_t);
+
+	for(i=0,k=0;i<copy;i++,k += 4) {
+		((u32_t*)dest)[i] = ((u32_t*)src)[i];
+	}
+
+	for(i=0;i<rem;i++) {
+		((u8_t*)dest)[k+i] = ((u8_t*)src)[k+i];
+	}
+}
+
+void uip_memset(void *dest,s32_t data,s32_t len)
+{
+	s32_t i,k;
+	u32_t fill,rem;
+
+	fill = len/sizeof(u32_t);
+	rem = len%sizeof(u32_t);
+
+	for(i=0,k=0;i<fill;i++,k += 4) {
+		((u32_t*)dest)[i] = data;
+	}
+
+	for(i=0;i<rem;i++) {
+		((u8_t*)dest)[k+i] = ((u8_t*)data)[3-i];
+	}
 }
 
 void uip_log(const char *filename,int line_nb,char *msg)
