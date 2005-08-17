@@ -1003,7 +1003,7 @@ dev_s bba_create(struct netif *dev)
 	dev->name[1] = IFNAME1;
 	dev->output = __bba_start_tx;
 	dev->linkoutput = __bba_link_tx;
-	dev->mtu = BBA_TX_MAX_PACKET_SIZE;
+	dev->mtu = 1500;
 	dev->flags = NETIF_FLAG_BROADCAST;
 	dev->hwaddr_len = 6;
 
