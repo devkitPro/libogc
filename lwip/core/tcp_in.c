@@ -955,7 +955,6 @@ tcp_receive(struct tcp_pcb *pcb)
       if(TCP_SEQ_LT(seqno, pcb->rcv_nxt)){
         /* the whole segment is < rcv_nxt */
         /* must be a duplicate of a packet that has already been correctly handled */
-        
         LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_receive: duplicate seqno %lu\n", seqno));
         tcp_ack_now(pcb);
       }
