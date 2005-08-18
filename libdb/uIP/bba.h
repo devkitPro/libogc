@@ -5,10 +5,10 @@
 
 struct uip_netif;
 
-typedef void* dev_s;
+typedef void* uipdev_s;
 
-dev_s bba_create(struct uip_netif *dev);
-s8_t bba_init(struct uip_netif *dev);
-void bba_poll(struct uip_netif *dev);
+uipdev_s uip_bba_create(struct uip_netif *dev);
+s8_t uip_bba_init(struct uip_netif *dev);
+void uip_bba_poll(struct uip_netif *dev);
 
 #endif

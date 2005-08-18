@@ -118,7 +118,7 @@ s8_t uip_tcpenqueue(struct uip_tcp_pcb *pcb,void *arg,u16_t len,u8_t flags,u8_t 
 			}
 
 			++queue_len;
-			if(ptr!=NULL) uip_memcpy(seg->p->payload,ptr,seglen);
+			if(ptr!=NULL) UIP_MEMCPY(seg->p->payload,ptr,seglen);
 
 			seg->dataptr = seg->p->payload;
 		} else {
@@ -161,7 +161,7 @@ s8_t uip_tcpenqueue(struct uip_tcp_pcb *pcb,void *arg,u16_t len,u8_t flags,u8_t 
 		if(optdata==NULL) UIP_TCPH_HDRLEN_SET(seg->tcphdr,5);
 		else {
 			UIP_TCPH_HDRLEN_SET(seg->tcphdr,(5+(optlen/4)));
-			uip_memcpy(seg->dataptr,optdata,optlen);
+			UIP_MEMCPY(seg->dataptr,optdata,optlen);
 		}
 		left -= seglen;
 		seqno += seglen;
@@ -470,7 +470,7 @@ struct uip_tcp_pcb* uip_tcp_pcballoc(u8_t prio)
 
 	pcb = memb_alloc(&uip_tcp_pcbs);
 	if(pcb!=NULL) {
-		uip_memset(pcb,0,sizeof(struct uip_tcp_pcb));
+		UIP_MEMSET(pcb,0,sizeof(struct uip_tcp_pcb));
 		pcb->prio = UIP_TCP_PRIO_NORMAL;
 		pcb->snd_buf = UIP_TCP_SND_BUF;
 		pcb->snd_queuelen = 0;
@@ -904,7 +904,7 @@ struct uip_tcpseg* uip_tcpseg_copy(struct uip_tcpseg *seg)
 	cseg = memb_alloc(&uip_tcp_segs);
 	if(cseg==NULL) return NULL;
 
-	uip_memcpy(cseg,seg,sizeof(struct uip_tcpseg));
+	UIP_MEMCPY(cseg,seg,sizeof(struct uip_tcpseg));
 	uip_pbuf_ref(cseg->p);
 
 	return cseg;

@@ -113,9 +113,7 @@ static s8_t tcpip_recved(void *arg,struct uip_tcp_pcb *pcb,struct uip_pbuf *p,s8
 	} else
 		len = 1;
 
-//	udelay(20);
 	uip_tcp_recved(pcb,len);
-
 	return UIP_ERR_OK;
 }
 
@@ -158,7 +156,7 @@ static void __tcpip_poll()
 
 	if(uip_netif_default==NULL) return;
 
-	bba_poll(uip_netif_default);
+	uip_bba_poll(uip_netif_default);
 	
 	if(tcpip_time && (uip_tcp_active_pcbs || uip_tcp_tw_pcbs)) {
 		now = gettime();
@@ -180,7 +178,7 @@ void tcpip_tmr_needed()
 void tcpip_init()
 {
 	uip_tcp_init();
-	uip_memset(tcpip_socks,0,(UIP_TCPIP_SOCKS*sizeof(struct tcpip_sock)));
+	UIP_MEMSET(tcpip_socks,0,(UIP_TCPIP_SOCKS*sizeof(struct tcpip_sock)));
 }
 
 s32_t tcpip_socket()
@@ -278,7 +276,7 @@ s32_t tcpip_read(s32_t s,void *buffer,u32_t len)
 			if(len>p->len-sock->lastoffset) copy = (p->len-sock->lastoffset);
 			else copy = len;
 		
-			uip_memcpy(ptr+off,(u8_t*)p->payload+sock->lastoffset,copy);
+			UIP_MEMCPY(ptr+off,(u8_t*)p->payload+sock->lastoffset,copy);
 
 			off += copy;
 			len -= copy;
@@ -305,9 +303,10 @@ s32_t tcpip_write(s32_t s,const void *buffer,u32_t len)
 	if(!sock) return -1;
 
 	while(len>0) {
-		while((snd_buf=uip_tcp_sndbuf(sock->pcb))<=16) {
+		do {
 			__tcpip_poll();
-		}
+			snd_buf = uip_tcp_sndbuf(sock->pcb);
+		} while(snd_buf<=16);
 		
 		if(len>snd_buf) copy = snd_buf;
 		else copy = len;

@@ -68,11 +68,10 @@ static struct hard_trap_info {
 
 static struct bp_entry {
 	u8 *mem;
-	u32 val;
+	u8 val[8];
 	struct bp_entry *next;
 } bp_entries[GEKKO_MAX_BP];
 
-static u32 fault_jmp_buf[100];
 static struct bp_entry *p_bpentries = NULL;
 
 void __breakinst();
@@ -90,7 +89,7 @@ extern u8 debug_handler_start[],debug_handler_end[],debug_handler_patch[];
 
 void DEBUG_Init(u16 port)
 {
-	dev_s hbba;
+	uipdev_s hbba;
 	struct uip_ip_addr local_ip,netmask,gw;
 	struct uip_netif *pnet ;
 	struct sockaddr_in name;
@@ -107,8 +106,8 @@ void DEBUG_Init(u16 port)
 	netmask.addr = uip_ipaddr(dbg_netmask);
 	gw.addr = uip_ipaddr(dbg_gw);
 
-	hbba = bba_create(&g_netif);
-	pnet = uip_netif_add(&g_netif,&local_ip,&netmask,&gw,hbba,bba_init,uip_ipinput);
+	hbba = uip_bba_create(&g_netif);
+	pnet = uip_netif_add(&g_netif,&local_ip,&netmask,&gw,hbba,uip_bba_init,uip_ipinput);
 	if(pnet) {
 		uip_netif_setdefault(pnet);
 
@@ -138,27 +137,6 @@ void DEBUG_Init(u16 port)
 	}
 }
 
-static u32 gdb_setjmp(u32 *buf)
-{
-	asm ("mflr 0; stw 0,0(%0);"
-		 "stw 1,4(%0); stw 2,8(%0);"
-		 "mfcr 0; stw 0,12(%0);"
-		 "stmw 13,16(%0)"
-		 : : "r" (buf));
-	return 0;
-}
-
-static void gdb_longjmp(u32 *buf,u32 val)
-{
-	if (val == 0)
-		val = 1;
-	asm ("lmw 13,16(%0);"
-		 "lwz 0,12(%0); mtcrf 0x38,0;"
-		 "lwz 0,0(%0); lwz 1,4(%0); lwz 2,8(%0);"
-		 "mtlr 0; mr 3,%1"
-		 : : "r" (buf), "r" (val));
-}
-
 static s32 hex(u8 ch)
 {
 	if (ch >= 'a' && ch <= 'f')
@@ -176,33 +154,31 @@ static u8* mem2hex(u8 *mem, u8 *buf, u32 count)
 	u16 tmp_s;
 	u32 tmp_l;
 	
-	if(gdb_setjmp(fault_jmp_buf)==0) {
-		if ((count==2) && (((s32)mem&1)==0)) {
-			tmp_s = *(u16*)mem;
-			mem += 2;
-			*buf++ = hexchars[(tmp_s>>12)& 0xf];
-			*buf++ = hexchars[(tmp_s>>8)&0xf];
-			*buf++ = hexchars[(tmp_s>>4)&0xf];
-			*buf++ = hexchars[tmp_s&0xf];
+	if ((count==2) && (((s32)mem&1)==0)) {
+		tmp_s = *(u16*)mem;
+		mem += 2;
+		*buf++ = hexchars[(tmp_s>>12)& 0xf];
+		*buf++ = hexchars[(tmp_s>>8)&0xf];
+		*buf++ = hexchars[(tmp_s>>4)&0xf];
+		*buf++ = hexchars[tmp_s&0xf];
 
-		} else if((count==4) && (((s32)mem&3)==0)) {
-			tmp_l = *(u32*)mem;
-			mem += 4;
-			*buf++ = hexchars[(tmp_l>>28)&0xf];
-			*buf++ = hexchars[(tmp_l>>24)&0xf];
-			*buf++ = hexchars[(tmp_l>>20)&0xf];
-			*buf++ = hexchars[(tmp_l>>16)&0xf];
-			*buf++ = hexchars[(tmp_l>>12)&0xf];
-			*buf++ = hexchars[(tmp_l>>8)&0xf];
-			*buf++ = hexchars[(tmp_l>>4)&0xf];
-			*buf++ = hexchars[tmp_l & 0xf];
+	} else if((count==4) && (((s32)mem&3)==0)) {
+		tmp_l = *(u32*)mem;
+		mem += 4;
+		*buf++ = hexchars[(tmp_l>>28)&0xf];
+		*buf++ = hexchars[(tmp_l>>24)&0xf];
+		*buf++ = hexchars[(tmp_l>>20)&0xf];
+		*buf++ = hexchars[(tmp_l>>16)&0xf];
+		*buf++ = hexchars[(tmp_l>>12)&0xf];
+		*buf++ = hexchars[(tmp_l>>8)&0xf];
+		*buf++ = hexchars[(tmp_l>>4)&0xf];
+		*buf++ = hexchars[tmp_l & 0xf];
 
-		} else {
-			while (count-- > 0) {
-				ch = *mem++;
-				*buf++ = hexchars[ch >> 4];
-				*buf++ = hexchars[ch & 0xf];
-			}
+	} else {
+		while (count-- > 0) {
+			ch = *mem++;
+			*buf++ = hexchars[ch >> 4];
+			*buf++ = hexchars[ch & 0xf];
 		}
 	}
 	*buf = 0;
@@ -214,15 +190,14 @@ static s8* hex2mem(u8 *buf, u8 *mem, u32 count)
 	s32 i;
 	u8 ch;
 
-	if(gdb_setjmp(fault_jmp_buf)==0) {
-		for (i=0; i<count; i++) {
-			ch = hex(*buf++) << 4;
-			ch |= hex(*buf++);
-			*mem++ = ch;
-		}
-		DCFlushRangeNoSync(mem, count);
-		ICInvalidateRange(mem,count);
+	for (i=0; i<count; i++) {
+		ch = hex(*buf++) << 4;
+		ch |= hex(*buf++);
+		*mem++ = ch;
 	}
+	DCFlushRangeNoSync(mem, count);
+	ICInvalidateRange(mem,count);
+
 	return mem;
 }
 
@@ -233,18 +208,17 @@ static s32 hexToInt(u8 **ptr, u32 *intValue)
 
 	*intValue = 0;
 
-	if(gdb_setjmp(fault_jmp_buf)==0) {
-		while (**ptr) {
-			hexValue = hex(**ptr);
-			if (hexValue < 0)
-					break;
+	while (**ptr) {
+		hexValue = hex(**ptr);
+		if (hexValue < 0)
+				break;
 
-			*intValue = (*intValue << 4) | hexValue;
-			numChars ++;
+		*intValue = (*intValue << 4) | hexValue;
+		numChars ++;
 
-			(*ptr)++;
-		}
+		(*ptr)++;
 	}
+
 	return (numChars);
 }
 
@@ -259,14 +233,9 @@ static s32 computeSignal(s32 excpt)
 
 u32 insert_bp(u8 *mem)
 {
-	u8 buf[10];
-	u32 i,old;
+	u32 i;
 	struct bp_entry *p;
 
-	if(!mem2hex(mem,buf,4)) return EINVAL;
-	if(!hex2mem(STR_BPCODE,mem,4)) return EINVAL;
-
-	old = strtoul(buf,0,16);
 	for(p=p_bpentries;p;p=p->next) {
 		if(p->mem == mem) return EINVAL;
 	}
@@ -275,8 +244,10 @@ u32 insert_bp(u8 *mem)
 	}
 	if(i==GEKKO_MAX_BP) return EINVAL;
 	
+	if(!mem2hex(mem,bp_entries[i].val,4)) return EINVAL;
+	if(!hex2mem(STR_BPCODE,mem,4)) return EINVAL;
+
 	bp_entries[i].mem = mem;
-	bp_entries[i].val = old;
 	bp_entries[i].next = p_bpentries;
 	p_bpentries = &bp_entries[i];
 
@@ -291,7 +262,6 @@ u32 remove_bp(u8 *mem)
 {
 	struct bp_entry *e = p_bpentries;
 	struct bp_entry *f = NULL;
-	s8 buf[10];
 
 	if(!e) return EINVAL;
 	if(e->mem==mem) {
@@ -308,8 +278,7 @@ u32 remove_bp(u8 *mem)
 	}
 	if(!f) return EINVAL;
 
-	sprintf(buf,"%08x",f->val);
-	hex2mem(buf,f->mem,4);
+	hex2mem(f->val,f->mem,4);
 	ICFlashInvalidate();
 	DCFlushRangeNoSync((void*)f->mem,4);
 	ICInvalidateRange((void*)f->mem,4);
@@ -424,7 +393,7 @@ static void handle_query()
 
 	__lwp_getthreadlist(&threads);
 	if(remcomInBuffer[1]=='C') 
-		sprintf(remcomOutBuffer,"QC%04x",threads[dbg_currthr].thethread.id);
+		sprintf(remcomOutBuffer,"QC%04x",threads[dbg_currthr].thethread.id+1);
 	else if(strncmp(&remcomInBuffer[2],"ThreadInfo",10)==0) {
 		ptr = remcomOutBuffer;
 		if(remcomInBuffer[1]=='f') {
@@ -448,7 +417,7 @@ static void handle_query()
 void c_debug_handler(frame_context *ctx)
 {
 	u8* ptr;
-	s32 thrid,ret;
+	s32 thrid;
 	u32 addr,len,msr;
 	u32 sigval,res;
 	u32 except_thr;
@@ -491,7 +460,6 @@ void c_debug_handler(frame_context *ctx)
 	while(1) {
 		remcomOutBuffer[0] = 0;
 		getpacket(remcomInBuffer);
-		//printf("remcomInBuffer: %s\n",remcomInBuffer);
 		switch(remcomInBuffer[0]) {
 			case '?':
 				remcomOutBuffer[0] = 'S';

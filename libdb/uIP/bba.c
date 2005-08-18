@@ -476,7 +476,7 @@ static s8_t bba_start_rx(struct uip_netif *dev)
 		if(p) {
 			for(q=p,j=0;q!=NULL && size>0;q=q->next) {
 				copy = (size>q->len)?q->len:size;
-				uip_memcpy(q->payload,ptr,copy);
+				UIP_MEMCPY(q->payload,ptr,copy);
 				
 				ptr += copy;
 				size -= copy;
@@ -794,7 +794,7 @@ static s8_t __bba_link_tx(struct uip_netif *dev,struct uip_pbuf *p)
 	return UIP_ERR_OK;
 }
 
-s8_t bba_init(struct uip_netif *dev)
+s8_t uip_bba_init(struct uip_netif *dev)
 {
 	s8_t ret;
 	s32_t cnt;
@@ -823,7 +823,7 @@ s8_t bba_init(struct uip_netif *dev)
 	return UIP_ERR_OK;
 }
 
-dev_s bba_create(struct uip_netif *dev)
+uipdev_s uip_bba_create(struct uip_netif *dev)
 {
 	dev->name[0] = IFNAME0;
 	dev->name[1] = IFNAME1;
@@ -841,7 +841,7 @@ dev_s bba_create(struct uip_netif *dev)
 	return &bba_device;
 }
 
-void bba_poll(struct uip_netif *dev)
+void uip_bba_poll(struct uip_netif *dev)
 {
 	u16 status;
 	struct uip_pbuf *p;

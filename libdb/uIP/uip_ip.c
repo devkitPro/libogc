@@ -48,7 +48,7 @@ static struct uip_pbuf* uip_copyfrom_pbuf(struct uip_pbuf *p,u16_t *offset,u8_t 
 	p->len -= (*offset);
 	while(len) {
 		l = len<p->len?len:p->len;
-		uip_memcpy(buffer,p->payload,l);
+		UIP_MEMCPY(buffer,p->payload,l);
 		buffer += l;
 		len -= l;
 		if(len) p = p->next;
@@ -70,12 +70,12 @@ static struct uip_pbuf* uip_ipreass(struct uip_pbuf *p)
   iphdr = (struct uip_ip_hdr*)uip_reassbuf;
   fraghdr = (struct uip_ip_hdr*)p->payload;
   if(uip_reasstmr == 0) {
-    uip_memcpy(iphdr, fraghdr, UIP_IP_HLEN);
+    UIP_MEMCPY(iphdr, fraghdr, UIP_IP_HLEN);
     uip_reasstmr = UIP_REASS_MAXAGE;
     uip_reassflags = 0;
 	uip_reasstime = gettime();
     /* Clear the bitmap. */
-    uip_memset(uip_reassbitmap, sizeof(uip_reassbitmap), 0);
+    UIP_MEMSET(uip_reassbitmap, 0,sizeof(uip_reassbitmap));
   }
 
   /* Check if the incoming fragment matches the one currently present
@@ -172,7 +172,7 @@ static struct uip_pbuf* uip_ipreass(struct uip_pbuf *p)
 	  
 	  i = 0;
 	  for(q=p;q!=NULL;q=q->next) {
-		  uip_memcpy(q->payload,&uip_reassbuf[i],((q->len>(uip_reasslen-i))?(uip_reasslen-i):q->len));
+		  UIP_MEMCPY(q->payload,&uip_reassbuf[i],((q->len>(uip_reasslen-i))?(uip_reasslen-i):q->len));
 		  i += q->len;
 	  }
       return p;
@@ -204,7 +204,7 @@ s8_t uip_ipfrag(struct uip_pbuf *p,struct uip_netif *netif,struct uip_ip_addr *i
 	rambuf->payload = MEM_ALIGN(buf);
 	
 	iphdr = rambuf->payload;
-	uip_memcpy(iphdr,p->payload,UIP_IP_HLEN);
+	UIP_MEMCPY(iphdr,p->payload,UIP_IP_HLEN);
 
 	tmp = ntohs(UIP_IPH_OFFSET(iphdr));
 	ofo = tmp&UIP_IP_OFFMASK;

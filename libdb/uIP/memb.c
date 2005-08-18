@@ -6,21 +6,21 @@
 
 void memb_init(struct memb_blks *blk)
 {
-	uip_memset(blk->mem,0,(blk->size+1)*blk->num);
+	UIP_MEMSET(blk->mem,0,(blk->size+sizeof(u32))*blk->num);
 }
 
 void* memb_alloc(struct memb_blks *blk)
 {
 	s32 i;
-	u8 *ptr;
+	u32 *ptr;
 	
-	ptr = blk->mem;
+	ptr = (u32*)blk->mem;
 	for(i=0;i<blk->num;i++) {
 		if(*ptr==0) {
 			++(*ptr);
 			return (void*)(ptr+1);
 		}
-		ptr += (blk->size+1);
+		ptr = (u32*)(u8*)ptr+(blk->size+sizeof(u32));
 	}
 	return NULL;
 }
@@ -28,19 +28,21 @@ void* memb_alloc(struct memb_blks *blk)
 u8 memb_free(struct memb_blks *blk,void *ptr)
 {
 	s32 i;
-	u8 *ptr2;
+	u32 *ptr2,*ptr1;
 
-	ptr2 = blk->mem;
+	ptr1 = ptr;
+	ptr2 = (u32*)blk->mem;
 	for(i=0;i<blk->num;i++) {
-		if(ptr2==(ptr - 1)) {
+		if(ptr2==(ptr1 - 1)) {
 			return --(*ptr2);
 		}
-		ptr2 += (blk->size+1);
+		ptr2 = (u32*)(u8*)ptr2+(blk->size+sizeof(u32));
 	}
 	return -1;
 }
 
 u8 memb_ref(struct memb_blks *blk,void *ptr)
 {
-	return ++(*(((u8*)ptr) - 1));
+	u32 *pref = ptr-sizeof(u32);
+	return ++(*pref);
 }

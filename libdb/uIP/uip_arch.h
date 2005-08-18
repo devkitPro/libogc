@@ -49,7 +49,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arch.h,v 1.4 2005-08-17 14:21:30 shagkur Exp $
+ * $Id: uip_arch.h,v 1.5 2005-08-18 06:31:44 shagkur Exp $
  *
  */
 
@@ -135,13 +135,36 @@ u16_t uip_ipchksum_pbuf(struct uip_pbuf *p);
 u16_t uip_chksum_pseudo(struct uip_pbuf *p,struct uip_ip_addr *src,struct uip_ip_addr *dst,u8_t proto,u16_t proto_len);
 
 
-void uip_memcpy(void *dest,const void *src,s32_t len);
-
-void uip_memset(void *dest,s32_t c,s32_t len);
 
 extern void tcpip_tmr_needed();
 #define tcp_tmr_needed		tcpip_tmr_needed
 
+#if UIP_LIBC_MEMFUNCREPLACE
+static __inline__ void uip_memcpy(void *dest,const void *src,s32_t len)
+{
+	u8_t *dest0 = (u8_t*)dest;
+	u8_t *src0 = (u8_t*)src;
+
+	while(len--) {
+		*dest0++ = *src0++;
+	}
+}
+
+static __inline__ void uip_memset(void *dest,s32_t c,s32_t len)
+{
+	u8_t *dest0 = (u8_t*)dest;
+
+	while(len--) {
+		*dest0++ = (s8_t)c;
+	}
+}
+
+#define UIP_MEMCPY				uip_memcpy
+#define UIP_MEMSET				uip_memset
+#else
+#define UIP_MEMCPY				memcpy
+#define UIP_MEMSET				memset
+#endif
 
 /** @} */
 

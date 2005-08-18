@@ -91,7 +91,7 @@ void uip_icpm_destunreach(struct uip_pbuf *p,enum uip_icmp_dur_type t)
 	UIP_ICMPH_TYPE_SET(idur,UIP_ICMP_DUR);
 	UIP_ICMPH_CODE_SET(idur,t);
 
-	uip_memcpy((u8_t*)q->payload+sizeof(struct uip_icmp_dur_hdr),p->payload,UIP_IP_HLEN+8);
+	UIP_MEMCPY((u8_t*)q->payload+sizeof(struct uip_icmp_dur_hdr),p->payload,UIP_IP_HLEN+8);
 	
 	idur->chksum = 0;
 	idur->chksum = uip_ipchksum(idur,q->len);

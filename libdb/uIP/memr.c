@@ -41,7 +41,7 @@ void memr_init()
 {
 	struct mem *rmem;
 
-	uip_memset(ram_block,0,UIP_MEM_SIZE);
+	UIP_MEMSET(ram_block,0,UIP_MEM_SIZE);
 	rmem = (struct mem*)ram_block;
 	rmem->next = UIP_MEM_SIZE;
 	rmem->prev = 0;
@@ -139,7 +139,7 @@ void* memr_reallocm(void *ptr,u32 newsize)
 	nmem = memr_malloc(newsize);
 	if(nmem==NULL) return memr_realloc(ptr,newsize);
 
-	uip_memcpy(nmem,ptr,newsize);
+	UIP_MEMCPY(nmem,ptr,newsize);
 	memr_free(ptr);
 
 	return nmem;
