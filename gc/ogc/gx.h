@@ -19,6 +19,13 @@
 #define GX_PERSPECTIVE		0
 #define GX_ORTHOGRAPHIC		1
 
+#define GX_MT_NULL			0
+#define GX_MT_XF_FLUSH		1
+#define GX_MT_DL_SAVE_CTX	2
+
+#define GX_XF_FLUSH_NONE	0
+#define GX_XF_FLUSH_SAFE	1
+
 /* chan id */
 #define GX_COLOR0			0
 #define GX_COLOR1			1
@@ -840,12 +847,15 @@ void GX_InitFifoBase(GXFifoObj *fifo,void *base,u32 size);
 void GX_InitFifoLimits(GXFifoObj *fifo,u32 hiwatermark,u32 lowatermark);
 void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr);
 void GX_SetCPUFifo(GXFifoObj *fifo);
+void GX_SaveCPUFifo(GXFifoObj *fifo);
 void GX_SetGPFifo(GXFifoObj *fifo);
+GXFifoObj* GX_GetCPUFifo();
 GXDrawDoneCallback GX_SetDrawDoneCallback(GXDrawDoneCallback cb);
 GXDrawSyncCallback GX_SetDrawSyncCallback(GXDrawSyncCallback cb);
 GXBreakPtCallback GX_SetBreakPtCallback(GXBreakPtCallback cb);
 
 void GX_Flush();
+void GX_SetMisc(u32 token,u32 value);
 void GX_SetDrawDone();
 void GX_WaitDrawDone();
 void GX_SetDrawSync(u16 token);
@@ -869,6 +879,9 @@ void GX_SetVtxDesc(u8 attr,u8 type);
 
 void GX_Begin(u8 primitve,u8 vtxfmt,u16 vtxcnt);
 void GX_End();
+void GX_BeginDispList(void *list,u32 size);
+void GX_CallDispList(void *list,u32 nbytes);
+u32 GX_EndDispList();
 
 void GX_MatrixIndex1x8(u8 index);
 

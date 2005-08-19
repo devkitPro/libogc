@@ -64,6 +64,17 @@
 #define BLACK			{0,0,0,0}
 #define WHITE			{255,255,255,255}
 
+struct __gxfifo {
+	u32 buf_start;
+	u32 buf_end;
+	u32 size;
+	u32 hi_mark;
+	u32 lo_mark;
+	u32 rd_ptr;
+	u32 wt_ptr;
+	u32 rdwt_dst;
+} __attribute__((packed));
+
 static void *_gxcurrbp = NULL;
 static lwp_t _gxcurrentlwp = NULL;
 
@@ -73,11 +84,12 @@ static u8 _cpgplinked = 0;
 static u16 _gxgpstatus = 0;
 static u32 _gxoverflowsuspend = 0;
 static u32 _gxoverflowcount = 0;
-static u32 _gpfifo = 0;
-static u32 _cpufifo = 0;
 static u32 _gxfinished = 0;
 static lwpq_t _gxwaitfinish;
 
+static struct __gxfifo *_gpfifo = NULL;
+static struct __gxfifo *_cpufifo = NULL;
+static GXFifoObj *_gxoldcpufifo = NULL;
 static GXBreakPtCallback breakPtCB = NULL;
 static GXDrawDoneCallback drawDoneCB = NULL;
 static GXDrawSyncCallback tokenCB = NULL;
@@ -98,6 +110,9 @@ static u8 _gxteximg1ids[8] = {0x8C,0x8D,0x8E,0x8F,0xAC,0xAD,0xAE,0xAF};
 static u8 _gxteximg2ids[8] = {0x90,0x91,0x92,0x93,0xB0,0xB1,0xB2,0xB3};
 static u8 _gxteximg3ids[8] = {0x94,0x95,0x96,0x97,0xB4,0xB5,0xB6,0xB7};
 static u8 _gxtextlutids[8] = {0x98,0x99,0x9A,0x9B,0xB8,0xB9,0xBA,0xBB};
+
+struct __gxfifo _gx_dl_fifo;
+u8 _gx_saved_data[0x800];
 
 extern u8 __gxregs[];
 static u32 *_gx = (u32*)__gxregs;
@@ -153,6 +168,28 @@ static void __GX_FifoReadDisable()
 {
 	((u16*)_gx)[0] = (((u16*)_gx)[0]&~0x01)|0;
 	_cpReg[1] = ((u16*)_gx)[0];
+}
+
+static void __GX_SaveCPUFifoAux(struct __gxfifo *fifo)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	GX_Flush();
+	
+	fifo->buf_start = (u32)MEM_PHYSICAL_TO_K0(_piReg[0x03]);
+	fifo->buf_end = (u32)MEM_PHYSICAL_TO_K0(_piReg[0x04]);
+	fifo->wt_ptr = (u32)MEM_PHYSICAL_TO_K0((_piReg[0x05]&~0x04000000));
+
+	if(_cpgplinked) {
+		fifo->rd_ptr = (_SHIFTL(_cpReg[29],16,16)|(_cpReg[28]&0xffff));
+		fifo->rdwt_dst = (_SHIFTL(_cpReg[25],16,16)|(_cpReg[24]&0xffff));
+	} else {
+		fifo->rdwt_dst = (fifo->wt_ptr - fifo->rd_ptr);
+		if(fifo->rdwt_dst<0) fifo->rdwt_dst = (fifo->rdwt_dst + fifo->size);
+	}
+	
+	_CPU_ISR_Restore(level);
 }
 
 static void __GXOverflowHandler()
@@ -487,22 +524,22 @@ static void __GX_XfVtxSpecs()
 	u32 nrms,texs,cols;
 
 	cols = 0;
-	if(_gx[0x05]&0x6000) cols++;
-	if(_gx[0x05]&0x18000) cols++;
+	if(_gx[0x06]&0x6000) cols++;
+	if(_gx[0x06]&0x18000) cols++;
 
 	nrms = 0;
-	if(_gx[0x07]==1) nrms = 1;
-	else if(_gx[0x07]==2) nrms = 2;
+	if(_gx[0x08]==1) nrms = 1;
+	else if(_gx[0x08]==2) nrms = 2;
 	
 	texs = 0;
-	if(_gx[0x06]&0x3) texs++;
-	if(_gx[0x06]&0xc) texs++;
-	if(_gx[0x06]&0x30) texs++;
-	if(_gx[0x06]&0xc0) texs++;
-	if(_gx[0x06]&0x300) texs++;
-	if(_gx[0x06]&0xc00) texs++;
-	if(_gx[0x06]&0x3000) texs++;
-	if(_gx[0x06]&0xc000) texs++;
+	if(_gx[0x07]&0x3) texs++;
+	if(_gx[0x07]&0xc) texs++;
+	if(_gx[0x07]&0x30) texs++;
+	if(_gx[0x07]&0xc0) texs++;
+	if(_gx[0x07]&0x300) texs++;
+	if(_gx[0x07]&0xc00) texs++;
+	if(_gx[0x07]&0x3000) texs++;
+	if(_gx[0x07]&0xc000) texs++;
 	
 	xfvtxspecs = (_SHIFTL(texs,4,4))|(_SHIFTL(nrms,2,2))|(cols&0x3);
 	GX_LOAD_XF_REG(0x1008,xfvtxspecs);
@@ -511,23 +548,52 @@ static void __GX_XfVtxSpecs()
 static void __GX_SetMatrixIndex(u32 mtx)
 {
 	if(mtx<5) {
-		GX_LOAD_CP_REG(0x30,_gx[0x02]);
-		GX_LOAD_XF_REG(0x1018,_gx[0x02]);
+		GX_LOAD_CP_REG(0x30,_gx[0x03]);
+		GX_LOAD_XF_REG(0x1018,_gx[0x03]);
 	} else {
-		GX_LOAD_CP_REG(0x40,_gx[0x03]);
-		GX_LOAD_XF_REG(0x1019,_gx[0x03]);
+		GX_LOAD_CP_REG(0x40,_gx[0x04]);
+		GX_LOAD_XF_REG(0x1019,_gx[0x04]);
 	}
 }
 
 static void __GX_SendFlushPrim()
 {
-	
+	u32 tmp,tmp2,cnt;
+
+	tmp = ((u16*)_gx)[2]*((u16*)_gx)[3];
+
+	FIFO_PUTU8(0x98);
+	FIFO_PUTU16(((u16*)_gx)[2]);
+
+	tmp2 = (tmp+3)/4;
+	if(tmp>0) {
+		cnt = tmp2/8;
+		while(cnt) {
+			FIFO_PUTU32(0);
+			FIFO_PUTU32(0);
+			FIFO_PUTU32(0);
+			FIFO_PUTU32(0);
+			FIFO_PUTU32(0);
+			FIFO_PUTU32(0);
+			FIFO_PUTU32(0);
+			FIFO_PUTU32(0);
+			cnt--;
+		}
+		tmp2 &= 0x0007;
+		if(tmp2) {
+			while(tmp2) {
+				FIFO_PUTU32(0);
+				tmp2--;
+			}
+		}
+	}
+	((u16*)_gx)[1] = 1;
 }
 
 static void __GX_SetVCD()
 {
-	GX_LOAD_CP_REG(0x50,_gx[0x05]);
-	GX_LOAD_CP_REG(0x60,_gx[0x06]);
+	GX_LOAD_CP_REG(0x50,_gx[0x06]);
+	GX_LOAD_CP_REG(0x60,_gx[0x07]);
 	__GX_XfVtxSpecs();
 }
 
@@ -538,13 +604,13 @@ static void __GX_SetVAT()
 
 	for(i=0;i<8;i++) {
 		setvtx = (1<<i);
-		if(_gx[0x01]&setvtx) {
+		if(_gx[0x02]&setvtx) {
 			GX_LOAD_CP_REG((0x70|(i&7)),_gx[0x10+i]);
 			GX_LOAD_CP_REG((0x80|(i&7)),_gx[0x18+i]);
 			GX_LOAD_CP_REG((0x90|(i&7)),_gx[0x20+i]);
 		}
 	}
-	_gx[0x01] = 0;
+	_gx[0x02] = 0;
 }
 
 static void __SetSURegs(u8 texmap,u8 texcoord)
@@ -605,7 +671,7 @@ static void __GX_SetSUTexRegs()
 		}
 
 		texcm = _SHIFTL(1,texcoord,1); 
-		if(!(_gx[0x04]&texcm))
+		if(!(_gx[0x05]&texcm))
 			__SetSURegs(texmap,texcoord);
 	}
 
@@ -619,7 +685,7 @@ static void __GX_SetSUTexRegs()
 		
 		tevm = _SHIFTL(1,i,1);
 		texcm = _SHIFTL(1,texcoord,1);
-		if(texmap!=0xff && (_gx[0x09]&tevm) && !(_gx[0x04]&texcm)) {
+		if(texmap!=0xff && (_gx[0x0a]&tevm) && !(_gx[0x05]&texcm)) {
 			__SetSURegs(texmap,texcoord);
 		}
 	}
@@ -668,22 +734,22 @@ static void __GX_UpdateBPMask()
 
 static void __GX_SetDirtyState()
 {
-	if(_gx[0x08]&0x0001) {
+	if(_gx[0x09]&0x0001) {
 		__GX_SetSUTexRegs();
 	}
-	if(_gx[0x08]&0x0002) {
+	if(_gx[0x09]&0x0002) {
 		__GX_UpdateBPMask();
 	}
-	if(_gx[0x08]&0x0004) {
+	if(_gx[0x09]&0x0004) {
 		__GX_SetGenMode();
 	}
-	if(_gx[0x08]&0x0008) {
+	if(_gx[0x09]&0x0008) {
 		__GX_SetVCD();
 	}
-	if(_gx[0x08]&0x0010) {
+	if(_gx[0x09]&0x0010) {
 		__GX_SetVAT();
 	}
-	_gx[0x08] = 0;
+	_gx[0x09] = 0;
 }
 
 static u32 __GX_GetNumXfbLines(u16 efbHeight,u32 yscale)
@@ -719,9 +785,11 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	__GX_PEInit();
 	EnableWriteGatherPipe();
 	
+	_gx[0x00] = 0;
 	_gx[0x01] = 0;
 	_gx[0x02] = 0;
 	_gx[0x03] = 0;
+	_gx[0x04] = 0;
 
 	_gx[0xaf] = 0xff;
 	_gx[0xaf] = (_gx[0xaf]&~0xff000000)|(_SHIFTL(0x0f,24,8));
@@ -737,8 +805,11 @@ GXFifoObj* GX_Init(void *base,u32 size)
 		re0 += 2; re1 += 2; i++;
 	}
 	
-	_gx[0x04] = 0;
-	_gx[0x08] = 0;
+	_gx[0x05] = 0;
+	_gx[0x09] = 0;
+
+	((u8*)_gx)[0x371] = 1;
+	((u8*)_gx)[0x372] = 0;
 	
 	_gx[0xa8] = (_gx[0xa8]&~0xff000000)|(_SHIFTL(0x20,24,8));
 	_gx[0xa9] = (_gx[0xa9]&~0xff000000)|(_SHIFTL(0x21,24,8));
@@ -787,10 +858,10 @@ GXFifoObj* GX_Init(void *base,u32 size)
 		re0++; i++;
 	}
 
-	_gx[0x09] = 0;
-	_gx[0x0a] = GX_PERF0_NONE;
-	_gx[0x0b] = GX_PERF1_NONE;
-	_gx[0x0c] = 0;
+	_gx[0x0a] = 0;
+	_gx[0x0b] = GX_PERF0_NONE;
+	_gx[0x0c] = GX_PERF1_NONE;
+	_gx[0x0d] = 0;
 
 	i=0;
 	while(i<8) {
@@ -848,12 +919,14 @@ GXFifoObj* GX_Init(void *base,u32 size)
 
 void GX_InitFifoBase(GXFifoObj *fifo,void *base,u32 size)
 {
-	if(!fifo || size<GX_FIFO_MINSIZE || (u32)fifo==_cpufifo || (u32)fifo==_gpfifo) return;
+	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
 
-	((u32*)fifo->pad)[0] = (u32)base;
-	((u32*)fifo->pad)[1] = (u32)base + size - 4;
-	((u32*)fifo->pad)[2] = size;
-	((u32*)fifo->pad)[7] = 0;
+	if(!ptr || size<GX_FIFO_MINSIZE || ptr==_cpufifo || ptr==_gpfifo) return;
+
+	ptr->buf_start = (u32)base;
+	ptr->buf_end = (u32)base + size - 4;
+	ptr->size = size;
+	ptr->rdwt_dst = 0;
 
 	GX_InitFifoLimits(fifo,(size-GX_FIFO_HIWATERMARK),((size>>1)&0x7fffffe0));
 	GX_InitFifoPtrs(fifo,base,base);
@@ -861,23 +934,26 @@ void GX_InitFifoBase(GXFifoObj *fifo,void *base,u32 size)
 
 void GX_InitFifoLimits(GXFifoObj *fifo,u32 hiwatermark,u32 lowatermark)
 {
-	((u32*)fifo->pad)[3] = hiwatermark;
-	((u32*)fifo->pad)[4] = lowatermark;
+	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
+	
+	ptr->hi_mark = hiwatermark;
+	ptr->lo_mark = lowatermark;
 }
 
 void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr)
 {
 	u32 level;
 	s32 rdwt_dst;
+	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
 
 	_CPU_ISR_Disable(level);
-	rdwt_dst =  wt_ptr-rd_ptr;	
-	((u32*)fifo->pad)[5] = (u32)rd_ptr;
-	((u32*)fifo->pad)[6] = (u32)wt_ptr;
-	((u32*)fifo->pad)[7] = rdwt_dst;
+	rdwt_dst =  wt_ptr-rd_ptr;
+	ptr->rd_ptr = (u32)rd_ptr;
+	ptr->wt_ptr = (u32)wt_ptr;
+	ptr->rdwt_dst = rdwt_dst;
 	if(rdwt_dst<0) {
-		rdwt_dst +=  ((u32*)fifo->pad)[2];
-		((u32*)fifo->pad)[7] = (u32)rdwt_dst;
+		rdwt_dst += ptr->size;
+		ptr->rd_ptr = rdwt_dst;
 	}
 	_CPU_ISR_Restore(level);
 }
@@ -885,13 +961,14 @@ void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr)
 void GX_SetCPUFifo(GXFifoObj *fifo)
 {
 	u32 level;
+	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
 	
 	_CPU_ISR_Disable(level);
-	_cpufifo = (u32)fifo;
+	_cpufifo = ptr;
 	if(_cpufifo==_gpfifo) {
-		_piReg[3] = ((u32*)fifo->pad)[0]&~0xC0000000;
-		_piReg[4] = ((u32*)fifo->pad)[1]&~0xC0000000;
-		_piReg[5] = ((u32*)fifo->pad)[6]&~0xC0000000;
+		_piReg[3] = (ptr->buf_start&~0xC0000000);
+		_piReg[4] = (ptr->buf_end&~0xC0000000);
+		_piReg[5] = (ptr->wt_ptr&~0xC0000000);
 		_cpgplinked = (_cpgplinked&~1)|1;
 
 		__GX_WriteFifoIntReset(GX_TRUE,GX_TRUE);
@@ -907,49 +984,55 @@ void GX_SetCPUFifo(GXFifoObj *fifo)
 	}
 	__GX_WriteFifoIntEnable(GX_DISABLE,GX_DISABLE);
 
-	_piReg[3] = ((u32*)fifo->pad)[0]&~0xC0000000;
-	_piReg[4] = ((u32*)fifo->pad)[1]&~0xC0000000;
-	_piReg[5] = ((u32*)fifo->pad)[6]&~0xC0000000;
+	_piReg[3] = (ptr->buf_start&~0xC0000000);
+	_piReg[4] = (ptr->buf_end&~0xC0000000);
+	_piReg[5] = (ptr->wt_ptr&~0xC0000000);
 	_CPU_ISR_Restore(level);
+}
+
+GXFifoObj* GX_GetCPUFifo()
+{
+	return (GXFifoObj*)_cpufifo;
 }
 
 void GX_SetGPFifo(GXFifoObj *fifo)
 {
 	u32 level;
+	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
 
 	_CPU_ISR_Disable(level);
 	__GX_FifoReadDisable();
 	__GX_WriteFifoIntEnable(GX_DISABLE,GX_DISABLE);
 	
-	_gpfifo = (u32)fifo;
+	_gpfifo = ptr;
 	
 	/* setup fifo base */
-	_cpReg[16] = _SHIFTL((((u32*)fifo->pad)[0]&~0xC0000000),0,16);
-	_cpReg[17] = _SHIFTR((((u32*)fifo->pad)[0]&~0xC0000000),16,16);
+	_cpReg[16] = _SHIFTL((ptr->buf_start&~0xC0000000),0,16);
+	_cpReg[17] = _SHIFTR((ptr->buf_start&~0xC0000000),16,16);
 	
 	/* setup fifo end */
-	_cpReg[18] = _SHIFTL((((u32*)fifo->pad)[1]&~0xC0000000),0,16);
-	_cpReg[19] = _SHIFTR((((u32*)fifo->pad)[1]&~0xC0000000),16,16);
+	_cpReg[18] = _SHIFTL((ptr->buf_end&~0xC0000000),0,16);
+	_cpReg[19] = _SHIFTR((ptr->buf_end&~0xC0000000),16,16);
 	
 	/* setup hiwater mark */
-	_cpReg[20] = _SHIFTL(((u32*)fifo->pad)[3],0,16);
-	_cpReg[21] = _SHIFTR(((u32*)fifo->pad)[3],16,16);
+	_cpReg[20] = _SHIFTL(ptr->hi_mark,0,16);
+	_cpReg[21] = _SHIFTR(ptr->hi_mark,16,16);
 	
 	/* setup lowater mark */
-	_cpReg[22] = _SHIFTL(((u32*)fifo->pad)[4],0,16);
-	_cpReg[23] = _SHIFTR(((u32*)fifo->pad)[4],16,16);
+	_cpReg[22] = _SHIFTL(ptr->lo_mark,0,16);
+	_cpReg[23] = _SHIFTR(ptr->lo_mark,16,16);
 	
 	/* setup rd<->wd dist */
-	_cpReg[24] = _SHIFTL(((u32*)fifo->pad)[7],0,16);
-	_cpReg[25] = _SHIFTR(((u32*)fifo->pad)[7],16,16);
+	_cpReg[24] = _SHIFTL(ptr->rdwt_dst,0,16);
+	_cpReg[25] = _SHIFTR(ptr->rdwt_dst,16,16);
 	
 	/* setup wt ptr */
-	_cpReg[26] = _SHIFTL((((u32*)fifo->pad)[6]&~0xC0000000),0,16);
-	_cpReg[27] = _SHIFTR((((u32*)fifo->pad)[6]&~0xC0000000),16,16);
+	_cpReg[26] = _SHIFTL((ptr->wt_ptr&~0xC0000000),0,16);
+	_cpReg[27] = _SHIFTR((ptr->wt_ptr&~0xC0000000),16,16);
 	
 	/* setup rd ptr */
-	_cpReg[28] = _SHIFTL((((u32*)fifo->pad)[5]&~0xC0000000),0,16);
-	_cpReg[29] = _SHIFTR((((u32*)fifo->pad)[5]&~0xC0000000),16,16);
+	_cpReg[28] = _SHIFTL((ptr->rd_ptr&~0xC0000000),0,16);
+	_cpReg[29] = _SHIFTR((ptr->rd_ptr&~0xC0000000),16,16);
 
 	if(_cpufifo==_gpfifo) {
 		_cpgplinked = 1;
@@ -965,11 +1048,17 @@ void GX_SetGPFifo(GXFifoObj *fifo)
 	_CPU_ISR_Restore(level);
 }
 
+void GX_SaveCPUFifo(GXFifoObj *fifo)
+{
+	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
+	__GX_SaveCPUFifoAux(ptr);
+}
+
 void GX_Flush()
 {
 	s32 i;
 
-	if(_gx[0x08]) __GX_SetDirtyState();
+	if(_gx[0x09]) __GX_SetDirtyState();
 	for (i=0; i<8; ++i)
 		FIFO_PUTU32(0);
 	ppcsync();
@@ -1079,6 +1168,25 @@ void GX_PixModeSync()
 void GX_TexModeSync()
 {
 	GX_LOAD_BP_REG(0x63000000);
+}
+
+void GX_SetMisc(u32 token,u32 value)
+{
+	u32 cnt;
+
+	if(token==GX_MT_XF_FLUSH) {
+		((u16*)_gx)[2] = value;
+		cnt = cntlzw(((u16*)_gx)[2]);
+		((u16*)_gx)[0] = _SHIFTR(cnt,5,16);
+
+		((u16*)_gx)[1] = 1;
+		if(!((u16*)_gx)[2]) return;
+
+		_gx[0x09] |= 0x0008;
+	} else if(token==GX_MT_DL_SAVE_CTX) {
+		((u8*)_gx)[0x371] = (value&0xff);
+	}
+	return;
 }
 
 void GX_SetViewportJitter(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ,u32 field)
@@ -1445,6 +1553,66 @@ void GX_ClearBoundingBox()
 	GX_LOAD_BP_REG(0x560003ff);
 }
 
+void GX_BeginDispList(void *list,u32 size)
+{
+	GXFifoObj *curr_fifo;
+
+	curr_fifo = GX_GetCPUFifo();
+	if(_gx[0x09]) 
+		__GX_SetDirtyState();
+
+	if(((u8*)_gx)[0x371]) 
+		memcpy(_gx_saved_data,_gx,1272);
+
+	_gx_dl_fifo.buf_start = (u32)list;
+	_gx_dl_fifo.buf_end = (u32)list + size - 4;
+	_gx_dl_fifo.size = size;
+
+	_gx_dl_fifo.rd_ptr = (u32)list;
+	_gx_dl_fifo.wt_ptr = (u32)list;
+	_gx_dl_fifo.rdwt_dst = 0;
+	
+	((u8*)_gx)[0x372] = 1;
+
+	GX_SaveCPUFifo(curr_fifo);
+	_gxoldcpufifo = curr_fifo;
+
+	GX_SetGPFifo((GXFifoObj*)&_gx_dl_fifo);
+}
+
+u32 GX_EndDispList()
+{
+	u32 level;
+	
+	if(_gx[0x09])
+		__GX_SetDirtyState();
+
+	__GX_SaveCPUFifoAux(&_gx_dl_fifo);
+	GX_SetCPUFifo(_gxoldcpufifo);
+
+	_SHIFTR(_piReg[5],26,1);
+	if(((u8*)_gx)[0x371]) {
+		_CPU_ISR_Disable(level);
+		memcpy(_gx,_gx_saved_data,1272);
+		_CPU_ISR_Restore(level);
+	}
+
+	((u8*)_gx)[0x372] = 0;
+}
+
+void GX_CallDispList(void *list,u32 nbytes)
+{
+	if(_gx[0x09]) 
+		__GX_SetDirtyState();
+
+	if(!_gx[0x00])
+		__GX_SendFlushPrim();
+	
+	FIFO_PUTU8(0x40);			//call displaylist
+	FIFO_PUTU32(MEM_VIRTUAL_TO_PHYSICAL(list));
+	FIFO_PUTU32(nbytes);
+}
+
 void GX_SetChanCtrl(s32 channel,u8 enable,u8 ambsrc,u8 matsrc,u8 litmask,u8 diff_fn,u8 attn_fn)
 {
 	u32 difffn = (attn_fn==GX_AF_SPEC)?GX_DF_NONE:diff_fn;
@@ -1527,75 +1695,75 @@ void GX_SetVtxDesc(u8 attr,u8 type)
 {
 	switch(attr) {
 		case GX_VA_PTNMTXIDX:
-			_gx[0x05] = (_gx[0x05]&~0x1)|(type&0x1);
+			_gx[0x06] = (_gx[0x06]&~0x1)|(type&0x1);
 			break;
 		case GX_VA_TEX0MTXIDX:
-			_gx[0x05] = (_gx[0x05]&~0x2)|(_SHIFTL(type,1,1));
+			_gx[0x06] = (_gx[0x06]&~0x2)|(_SHIFTL(type,1,1));
 			break;
 		case GX_VA_TEX1MTXIDX:
-			_gx[0x05] = (_gx[0x05]&~0x4)|(_SHIFTL(type,2,1));
+			_gx[0x06] = (_gx[0x06]&~0x4)|(_SHIFTL(type,2,1));
 			break;
 		case GX_VA_TEX2MTXIDX:
-			_gx[0x05] = (_gx[0x05]&~0x8)|(_SHIFTL(type,3,1));
+			_gx[0x06] = (_gx[0x06]&~0x8)|(_SHIFTL(type,3,1));
 			break;
 		case GX_VA_TEX3MTXIDX:
-			_gx[0x05] = (_gx[0x05]&~0x10)|(_SHIFTL(type,4,1));
+			_gx[0x06] = (_gx[0x06]&~0x10)|(_SHIFTL(type,4,1));
 			break;
 		case GX_VA_TEX4MTXIDX:
-			_gx[0x05] = (_gx[0x05]&~0x20)|(_SHIFTL(type,5,1));
+			_gx[0x06] = (_gx[0x06]&~0x20)|(_SHIFTL(type,5,1));
 			break;
 		case GX_VA_TEX5MTXIDX:
-			_gx[0x05] = (_gx[0x05]&~0x40)|(_SHIFTL(type,6,1));
+			_gx[0x06] = (_gx[0x06]&~0x40)|(_SHIFTL(type,6,1));
 			break;
 		case GX_VA_TEX6MTXIDX:
-			_gx[0x05] = (_gx[0x05]&~0x80)|(_SHIFTL(type,7,1));
+			_gx[0x06] = (_gx[0x06]&~0x80)|(_SHIFTL(type,7,1));
 			break;
 		case GX_VA_TEX7MTXIDX:
-			_gx[0x05] = (_gx[0x05]&~0x100)|(_SHIFTL(type,8,1));
+			_gx[0x06] = (_gx[0x06]&~0x100)|(_SHIFTL(type,8,1));
 			break;
 		case GX_VA_POS:
-			_gx[0x05] = (_gx[0x05]&~0x600)|(_SHIFTL(type,9,2));
+			_gx[0x06] = (_gx[0x06]&~0x600)|(_SHIFTL(type,9,2));
 			break;
 		case GX_VA_NRM:
-			_gx[0x05] = (_gx[0x05]&~0x1800)|(_SHIFTL(type,11,2));
-			_gx[0x07] = 1;
+			_gx[0x06] = (_gx[0x06]&~0x1800)|(_SHIFTL(type,11,2));
+			_gx[0x08] = 1;
 			break;
 		case GX_VA_NBT:
-			_gx[0x05] = (_gx[0x05]&~0x1800)|(_SHIFTL(type,11,2));
-			_gx[0x07] = 2;
+			_gx[0x06] = (_gx[0x06]&~0x1800)|(_SHIFTL(type,11,2));
+			_gx[0x08] = 2;
 			break;
 		case GX_VA_CLR0:
-			_gx[0x05] = (_gx[0x05]&~0x6000)|(_SHIFTL(type,13,2));
+			_gx[0x06] = (_gx[0x06]&~0x6000)|(_SHIFTL(type,13,2));
 			break;
 		case GX_VA_CLR1:
-			_gx[0x05] = (_gx[0x05]&~0x18000)|(_SHIFTL(type,15,2));
+			_gx[0x06] = (_gx[0x06]&~0x18000)|(_SHIFTL(type,15,2));
 			break;
 		case GX_VA_TEX0:
-			_gx[0x06] = (_gx[0x06]&~0x3)|(type&0x3);
+			_gx[0x07] = (_gx[0x07]&~0x3)|(type&0x3);
 			break;
 		case GX_VA_TEX1:
-			_gx[0x06] = (_gx[0x06]&~0xc)|(_SHIFTL(type,2,2));
+			_gx[0x07] = (_gx[0x07]&~0xc)|(_SHIFTL(type,2,2));
 			break;
 		case GX_VA_TEX2:
-			_gx[0x06] = (_gx[0x06]&~0x30)|(_SHIFTL(type,4,2));
+			_gx[0x07] = (_gx[0x07]&~0x30)|(_SHIFTL(type,4,2));
 			break;
 		case GX_VA_TEX3:
-			_gx[0x06] = (_gx[0x06]&~0xc0)|(_SHIFTL(type,6,2));
+			_gx[0x07] = (_gx[0x07]&~0xc0)|(_SHIFTL(type,6,2));
 			break;
 		case GX_VA_TEX4:
-			_gx[0x06] = (_gx[0x06]&~0x300)|(_SHIFTL(type,8,2));
+			_gx[0x07] = (_gx[0x07]&~0x300)|(_SHIFTL(type,8,2));
 			break;
 		case GX_VA_TEX5:
-			_gx[0x06] = (_gx[0x06]&~0xc00)|(_SHIFTL(type,10,2));
+			_gx[0x07] = (_gx[0x07]&~0xc00)|(_SHIFTL(type,10,2));
 			break;
 		case GX_VA_TEX6:
-			_gx[0x06] = (_gx[0x06]&~0x3000)|(_SHIFTL(type,12,2));
+			_gx[0x07] = (_gx[0x07]&~0x3000)|(_SHIFTL(type,12,2));
 			break;
 		case GX_VA_TEX7:
-			_gx[0x06] = (_gx[0x06]&~0xc000)|(_SHIFTL(type,14,2));
+			_gx[0x07] = (_gx[0x07]&~0xc000)|(_SHIFTL(type,14,2));
 			break;
 	}
-	_gx[0x08] |= 0x0008;
+	_gx[0x09] |= 0x0008;
 }
 
 void GX_SetVtxAttrFmt(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac)
@@ -1687,15 +1855,20 @@ void GX_SetVtxAttrFmt(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac)
 		if(frac)
 			_gx[vat0] = (_gx[vat0]&~0x40000000)|0x40000000;
 	}
-	_gx[0x01] |= (1<<vtxfmt);
-	_gx[0x08] |= 0x0010;
+	_gx[0x02] |= (1<<vtxfmt);
+	_gx[0x09] |= 0x0010;
 }
 
 void GX_Begin(u8 primitve,u8 vtxfmt,u16 vtxcnt)
 {
 	u8 reg = primitve|(vtxfmt&7);
 	
-	if(_gx[0x08]) __GX_SetDirtyState();
+	if(_gx[0x09]) 
+		__GX_SetDirtyState();
+
+	if(!_gx[0x00])
+		__GX_SendFlushPrim();
+
 	FIFO_PUTU8(reg);
 	FIFO_PUTU16(vtxcnt);
 }
@@ -1996,28 +2169,28 @@ void GX_SetTexCoordGen2(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc,u32 no
 		if(tgen_src>=GX_TG_TEX0 && tgen_src<=GX_TG_TEX7) {
 			switch(tgen_src) {
 				case GX_TG_TEX0:
-					_gx[0x02] = (_gx[0x02]&~0xfc0)|(_SHIFTL(mtxsrc,6,6));
-					break;
-				case GX_TG_TEX1:
-					_gx[0x02] = (_gx[0x02]&~0x3f000)|(_SHIFTL(mtxsrc,12,6));
-					break;
-				case GX_TG_TEX2:
-					_gx[0x02] = (_gx[0x02]&~0xfc0000)|(_SHIFTL(mtxsrc,18,6));
-					break;
-				case GX_TG_TEX3:
-					_gx[0x02] = (_gx[0x02]&~0x3f000000)|(_SHIFTL(mtxsrc,24,6));
-					break;
-				case GX_TG_TEX4:
-					_gx[0x03] = (_gx[0x03]&~0x3f)|(mtxsrc&0x3f);
-					break;
-				case GX_TG_TEX5:
 					_gx[0x03] = (_gx[0x03]&~0xfc0)|(_SHIFTL(mtxsrc,6,6));
 					break;
-				case GX_TG_TEX6:
+				case GX_TG_TEX1:
 					_gx[0x03] = (_gx[0x03]&~0x3f000)|(_SHIFTL(mtxsrc,12,6));
 					break;
-				case GX_TG_TEX7:
+				case GX_TG_TEX2:
 					_gx[0x03] = (_gx[0x03]&~0xfc0000)|(_SHIFTL(mtxsrc,18,6));
+					break;
+				case GX_TG_TEX3:
+					_gx[0x03] = (_gx[0x03]&~0x3f000000)|(_SHIFTL(mtxsrc,24,6));
+					break;
+				case GX_TG_TEX4:
+					_gx[0x04] = (_gx[0x04]&~0x3f)|(mtxsrc&0x3f);
+					break;
+				case GX_TG_TEX5:
+					_gx[0x04] = (_gx[0x04]&~0xfc0)|(_SHIFTL(mtxsrc,6,6));
+					break;
+				case GX_TG_TEX6:
+					_gx[0x04] = (_gx[0x04]&~0x3f000)|(_SHIFTL(mtxsrc,12,6));
+					break;
+				case GX_TG_TEX7:
+					_gx[0x04] = (_gx[0x04]&~0xfc0000)|(_SHIFTL(mtxsrc,18,6));
 					break;
 			}
 		}
@@ -2181,7 +2354,7 @@ void GX_LoadTexMtxIdx(u16 mtxidx,u32 texidx,u8 type)
 
 void GX_SetCurrentMtx(u32 mtx)
 {
-	_gx[0x02] = (_gx[0x02]&~0x3f)|(mtx&0x3f);
+	_gx[0x03] = (_gx[0x03]&~0x3f)|(mtx&0x3f);
 	__GX_SetMatrixIndex(0);
 }
 
@@ -2189,7 +2362,7 @@ void GX_SetNumTexGens(u32 nr)
 {
 	_gx[0xac] = (_gx[0xac]&~0xf)|(nr&0xf);
 	GX_LOAD_XF_REG(0x0000103f,(_gx[0xac]&0xf));
-	_gx[0x08] |= 0x0004;
+	_gx[0x09] |= 0x0004;
 }
 
 void GX_InvVtxCache()
@@ -2526,7 +2699,7 @@ void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid)
 	_gx[0x40+mapid] = obj->val[2];
 	_gx[0x50+mapid] = obj->val[0];
 	
-	_gx[0x08] |= 0x0001;
+	_gx[0x09] |= 0x0001;
 }
 
 void GX_PreloadEntireTex(GXTexObj *obj,GXTexRegion *region)
@@ -2597,7 +2770,7 @@ void GX_SetTexCoorScaleManually(u8 texcoord,u8 enable,u16 ss,u16 ts)
 {
 	u32 regA,regB;
 
-	_gx[0x04] = (_gx[0x04]&~(_SHIFTL(1,texcoord,1)))|(_SHIFTL(enable,texcoord,1));
+	_gx[0x05] = (_gx[0x05]&~(_SHIFTL(1,texcoord,1)))|(_SHIFTL(enable,texcoord,1));
 	if(!enable) return;
 
 	regA = 0xa0+(texcoord&0x7);
@@ -2620,7 +2793,7 @@ void GX_SetTexCoordCylWrap(u8 texcoord,u8 s_enable,u8 t_enable)
 	_gx[regA] = (_gx[regA]&~0x20000)|(_SHIFTL(s_enable,17,1));
 	_gx[regB] = (_gx[regB]&~0x20000)|(_SHIFTL(t_enable,17,1));
 
-	if(!(_gx[0x04]&(_SHIFTL(1,texcoord,1)))) return;
+	if(!(_gx[0x05]&(_SHIFTL(1,texcoord,1)))) return;
 	
 	GX_LOAD_BP_REG(_gx[regA]);
 	GX_LOAD_BP_REG(_gx[regB]);
@@ -2636,7 +2809,7 @@ void GX_SetTexCoordBias(u8 texcoord,u8 s_enable,u8 t_enable)
 	_gx[regA] = (_gx[regA]&~0x10000)|(_SHIFTL(s_enable,16,1));
 	_gx[regB] = (_gx[regB]&~0x10000)|(_SHIFTL(t_enable,16,1));
 
-	if(!(_gx[0x04]&(_SHIFTL(1,texcoord,1)))) return;
+	if(!(_gx[0x05]&(_SHIFTL(1,texcoord,1)))) return;
 	
 	GX_LOAD_BP_REG(_gx[regA]);
 	GX_LOAD_BP_REG(_gx[regB]);
@@ -2674,9 +2847,10 @@ void GX_SetBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op)
 
 void GX_ClearVtxDesc()
 {
-	_gx[0x07] = 0;
-	_gx[0x05] = _gx[0x06] = 0;
-	_gx[0x08] |= 0x0008;
+	_gx[0x08] = 0;
+	_gx[0x00] = ((_gx[0x00]&~0x0600)|0x0200);
+	_gx[0x06] = _gx[0x07] = 0;
+	_gx[0x09] |= 0x0008;
 }
 
 void GX_SetLineWidth(u8 width,u8 fmt)
@@ -2807,7 +2981,7 @@ void GX_SetCullMode(u8 mode)
     static u8 cm2hw[] = { 0, 2, 1, 3 };
 	
 	_gx[0xac] = (_gx[0xac]&~0xC000)|(_SHIFTL(cm2hw[mode],14,2));
-	_gx[0x08] |= 0x0004;
+	_gx[0x09] |= 0x0004;
 }
 
 void GX_SetCoPlanar(u8 enable)
@@ -2859,7 +3033,7 @@ void GX_SetNumChans(u8 num)
 {
 	_gx[0xac] = (_gx[0xac]&~0x70)|(_SHIFTL(num,4,3));
 	GX_LOAD_XF_REG(0x1009,(num&3));
-	_gx[0x08] |= 0x0004;
+	_gx[0x09] |= 0x0004;
 }
 
 void GX_SetTevOrder(u8 tevstage,u8 texcoord,u32 texmap,u8 color)
@@ -2874,10 +3048,10 @@ void GX_SetTevOrder(u8 tevstage,u8 texcoord,u32 texmap,u8 color)
 	if(texm>=GX_MAX_TEXMAP) texm = 0;
 	if(texcoord>=GX_MAXCOORD) {
 		texc = 0;
-		_gx[0x09] &= ~(_SHIFTL(1,tevstage,1));
+		_gx[0x0a] &= ~(_SHIFTL(1,tevstage,1));
 	} else {
 		texc = texcoord;
-		_gx[0x09] |= (_SHIFTL(1,tevstage,1));
+		_gx[0x0a] |= (_SHIFTL(1,tevstage,1));
 	}
 
 	if(tevstage&1) {
@@ -2904,13 +3078,13 @@ void GX_SetTevOrder(u8 tevstage,u8 texcoord,u32 texmap,u8 color)
 		_gx[reg] = (_gx[reg]&~0x40)|(_SHIFTL(tmp,6,1));
 	}
 	GX_LOAD_BP_REG(_gx[reg]);
-	_gx[0x08] |= 0x0001;
+	_gx[0x09] |= 0x0001;
 }
 
 void GX_SetNumTevStages(u8 num)
 {
 	_gx[0xac] = (_gx[0xac]&~0x3C00)|(_SHIFTL((num-1),10,4));
-	_gx[0x08] |= 0x0004;
+	_gx[0x09] |= 0x0004;
 }
 
 void GX_SetAlphaCompare(u8 comp0,u8 ref0,u8 aop,u8 comp1,u8 ref1)
@@ -2978,7 +3152,7 @@ void GX_SetTevDirect(u8 tevstage)
 void GX_SetNumIndStages(u8 nstages)
 {
 	_gx[0xac] = (_gx[0xac]&~0x70000)|(_SHIFTL(nstages,16,3));
-	_gx[0x08] |= 0x0006;
+	_gx[0x09] |= 0x0006;
 }
 
 void GX_SetIndTexCoordScale(u8 indtexid,u8 scale_s,u8 scale_t)
@@ -3080,7 +3254,7 @@ void GX_SetPixelFmt(u8 pix_fmt,u8 z_fmt)
 	_gx[0xbb] = (_gx[0xbb]&~0x7)|(realfmt[pix_fmt]&0x7);
 	_gx[0xbb] = (_gx[0xbb]&~0x38)|(_SHIFTL(z_fmt,3,3));
 	GX_LOAD_BP_REG(_gx[0xbb]);
-	_gx[0x08] |= 0x0004;
+	_gx[0x09] |= 0x0004;
 
 	if(pix_fmt==GX_PF_RGB565_Z16) ms_en = 1;
 	_gx[0xac] = (_gx[0xac]&~0x200)|(_SHIFTL(ms_en,9,1));
@@ -3222,7 +3396,7 @@ void GX_SetIndTexOrder(u8 indtexstage,u8 texcoord,u8 texmap)
 			break;
 	}
 	GX_LOAD_BP_REG(_gx[0xc2]);
-	_gx[0x08] |= 0x0003;
+	_gx[0x09] |= 0x0003;
 }
 
 void GX_InitLightPos(GXLightObj *lit_obj,f32 x,f32 y,f32 z)
@@ -3502,25 +3676,25 @@ void GX_InitLightSpot(GXLightObj *lit_obj,f32 cut_off,u8 spotfn)
 void GX_SetGPMetric(u32 perf0,u32 perf1)
 {
 	// check last setted perf0 counters
-	if(_gx[0x0a]>=GX_PERF0_TRIANGLES && _gx[0x0a]<GX_PERF0_QUAD_0CVG)
+	if(_gx[0x0b]>=GX_PERF0_TRIANGLES && _gx[0x0b]<GX_PERF0_QUAD_0CVG)
 		GX_LOAD_BP_REG(0x23000000);
-	else if(_gx[0x0a]>=GX_PERF0_QUAD_0CVG && _gx[0x0a]<GX_PERF0_CLOCKS)
+	else if(_gx[0x0b]>=GX_PERF0_QUAD_0CVG && _gx[0x0b]<GX_PERF0_CLOCKS)
 		GX_LOAD_BP_REG(0x24000000);
-	else if(_gx[0x0a]>=GX_PERF0_VERTICES && _gx[0x0a]<=GX_PERF0_CLOCKS)
+	else if(_gx[0x0b]>=GX_PERF0_VERTICES && _gx[0x0b]<=GX_PERF0_CLOCKS)
 		GX_LOAD_XF_REG(0x1006,0);
 
 	// check last setted perf1 counters
-	if(_gx[0x0b]>=GX_PERF1_VC_ELEMQ_FULL && _gx[0x0b]<GX_PERF1_FIFO_REQ) {
-		_gx[0x0c] = (_gx[0x0c]&~0xf0);
-		GX_LOAD_CP_REG(0x20,_gx[0x0c]);
-	} else if(_gx[0x0b]>=GX_PERF1_FIFO_REQ && _gx[0x0b]<GX_PERF1_CLOCKS) {
+	if(_gx[0x0c]>=GX_PERF1_VC_ELEMQ_FULL && _gx[0x0c]<GX_PERF1_FIFO_REQ) {
+		_gx[0x0d] = (_gx[0x0d]&~0xf0);
+		GX_LOAD_CP_REG(0x20,_gx[0x0d]);
+	} else if(_gx[0x0c]>=GX_PERF1_FIFO_REQ && _gx[0x0c]<GX_PERF1_CLOCKS) {
 		_cpReg[3] = 0;
-	} else if(_gx[0x0b]>=GX_PERF1_TEXELS && _gx[0x0b]<=GX_PERF1_CLOCKS) {
+	} else if(_gx[0x0c]>=GX_PERF1_TEXELS && _gx[0x0c]<=GX_PERF1_CLOCKS) {
 		GX_LOAD_BP_REG(0x67000000);
 	}
 
-	_gx[0x0a] = perf0;
-	switch(_gx[0x0a]) {
+	_gx[0x0b] = perf0;
+	switch(_gx[0x0b]) {
 		case GX_PERF0_CLOCKS:
 			GX_LOAD_XF_REG(0x1006,0x00000273);
 			break;
@@ -3630,8 +3804,8 @@ void GX_SetGPMetric(u32 perf0,u32 perf1)
 			break;
 	}
 
-	_gx[0x0b] = perf1;
-	switch(_gx[0x0b]) {
+	_gx[0x0c] = perf1;
+	switch(_gx[0x0c]) {
 		case GX_PERF1_CLOCKS:
 			GX_LOAD_BP_REG(0x67000042);
 			break;			
@@ -3663,36 +3837,36 @@ void GX_SetGPMetric(u32 perf0,u32 perf1)
 			GX_LOAD_BP_REG(0x67000211);
 			break;			
 		case GX_PERF1_VC_ELEMQ_FULL:
-			_gx[0x0c] = (_gx[0x0c]&~0xf0)|0x20;
-			GX_LOAD_CP_REG(0x20,_gx[0x0c]);
+			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x20;
+			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
 			break;			
 		case GX_PERF1_VC_MISSQ_FULL:
-			_gx[0x0c] = (_gx[0x0c]&~0xf0)|0x30;
-			GX_LOAD_CP_REG(0x20,_gx[0x0c]);
+			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x30;
+			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
 			break;			
 		case GX_PERF1_VC_MEMREQ_FULL:
-			_gx[0x0c] = (_gx[0x0c]&~0xf0)|0x40;
-			GX_LOAD_CP_REG(0x20,_gx[0x0c]);
+			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x40;
+			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
 			break;			
 		case GX_PERF1_VC_STATUS7:
-			_gx[0x0c] = (_gx[0x0c]&~0xf0)|0x50;
-			GX_LOAD_CP_REG(0x20,_gx[0x0c]);
+			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x50;
+			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
 			break;			
 		case GX_PERF1_VC_MISSREP_FULL:
-			_gx[0x0c] = (_gx[0x0c]&~0xf0)|0x60;
-			GX_LOAD_CP_REG(0x20,_gx[0x0c]);
+			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x60;
+			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
 			break;			
 		case GX_PERF1_VC_STREAMBUF_LOW:
-			_gx[0x0c] = (_gx[0x0c]&~0xf0)|0x70;
-			GX_LOAD_CP_REG(0x20,_gx[0x0c]);
+			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x70;
+			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
 			break;			
 		case GX_PERF1_VC_ALL_STALLS:
-			_gx[0x0c] = (_gx[0x0c]&~0xf0)|0x90;
-			GX_LOAD_CP_REG(0x20,_gx[0x0c]);
+			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x90;
+			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
 			break;			
 		case GX_PERF1_VERTICES:
-			_gx[0x0c] = (_gx[0x0c]&~0xf0)|0x80;
-			GX_LOAD_CP_REG(0x20,_gx[0x0c]);
+			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x80;
+			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
 			break;			
 		case GX_PERF1_FIFO_REQ:
 			_cpReg[3] = 2;
@@ -3780,10 +3954,10 @@ void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1)
 	reg4 = (_SHIFTL(_cpReg[39],16,16))|(_cpReg[38]&0xffff);
 
 	*cnt0 = 0;
-	if(_gx[0x0a]==GX_PERF0_CLIP_RATIO) {
+	if(_gx[0x0b]==GX_PERF0_CLIP_RATIO) {
 		tmp = reg2*1000;
 		*cnt0 = tmp/reg1;
-	} else if(_gx[0x0a]>=GX_PERF0_VERTICES && _gx[0x0a]<GX_PERF0_NONE) *cnt0 = reg1;
+	} else if(_gx[0x0b]>=GX_PERF0_VERTICES && _gx[0x0b]<GX_PERF0_NONE) *cnt0 = reg1;
 
 	//further implementation needed.....
 	// cnt1 fails....

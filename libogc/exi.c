@@ -417,7 +417,7 @@ u32 EXI_Imm(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 	exi->imm_buff = pData;
 	exi->imm_len = nLen;
 	if(nMode!=EXI_READ) {
-		for(i=0,value=0;i<nLen;i++) value |= (((char*)pData)[i])<<((3-i)*8);
+		for(i=0,value=0;i<nLen;i++) value |= (((u8*)pData)[i])<<((3-i)*8);
 		_exiReg[nChn*5+4] = value;
 	}
 	if(nMode==EXI_WRITE) exi->imm_len = 0;
