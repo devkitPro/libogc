@@ -431,6 +431,7 @@ void c_debug_handler(frame_context *ctx)
 	if(dbg_listensock>=0 && (dbg_datasock<0 || dbg_active==0))
 		dbg_datasock = tcpip_accept(dbg_listensock);
 	if(dbg_datasock<0) return;
+	else tcpip_starttimer(dbg_datasock);
 	
 	sigval = computeSignal(ctx->EXCPT_Number);
 	
@@ -514,12 +515,14 @@ void c_debug_handler(frame_context *ctx)
 				dbg_instep = 0;
 				dbg_active = 1;
 				mtmsr(msr);
+				tcpip_stoptimer(dbg_datasock);
 				return;
 			case 's':
 				ctx->SRR1 |= MSR_SE; 
 				dbg_instep = 1;
 				dbg_active = 1;
 				mtmsr(msr);
+				tcpip_stoptimer(dbg_datasock);
 				return;
 			case 'T':
 				ptr = &remcomInBuffer[1];

@@ -97,19 +97,19 @@ static s8_t tcpip_recved(void *arg,struct uip_tcp_pcb *pcb,struct uip_pbuf *p,s8
 	u16_t len;
 	struct tcpip_sock *sock = (struct tcpip_sock*)arg;
 
-//	printf("tcpip_recved(%s (%d/%d))\n",(u8_t*)p->payload,p->len,p->tot_len);
+	//printf("tcpip_recved(%s (%d/%d))\n",(u8_t*)p->payload,p->len,p->tot_len);
 	if(!sock) {
 		uip_pbuf_free(p);
 		return UIP_ERR_VAL;
 	}
 
 	if(p) {
+		len = p->tot_len;
 		if(sock->lastdata==NULL) {
 			sock->lastdata = p;
 		} else {
 			uip_pbuf_chain(sock->lastdata,p);
 		}
-		len = p->tot_len;
 	} else
 		len = 1;
 
@@ -152,6 +152,7 @@ static s8_t tcpip_accept_func(void *arg,struct uip_tcp_pcb *newpcb,s8_t err)
 
 static void __tcpip_poll()
 {
+	u32 diff;
 	s64 now;
 
 	if(uip_netif_default==NULL) return;
@@ -160,7 +161,8 @@ static void __tcpip_poll()
 	
 	if(tcpip_time && (uip_tcp_active_pcbs || uip_tcp_tw_pcbs)) {
 		now = gettime();
-		if(diff_msec(tcpip_time,now)>=UIP_TCP_TMR_INTERVAL) {
+		diff = diff_msec(tcpip_time,now);
+		if(diff>=UIP_TCP_TMR_INTERVAL) {
 			uip_tcp_tmr();
 			tcpip_time = gettime();
 		}
@@ -302,11 +304,10 @@ s32_t tcpip_write(s32_t s,const void *buffer,u32_t len)
 	sock = tcpip_getsocket(s);
 	if(!sock) return -1;
 
+//	printf("tcpip_write()\n");
 	while(len>0) {
-		do {
+		while((snd_buf=uip_tcp_sndbuf(sock->pcb))<=16)
 			__tcpip_poll();
-			snd_buf = uip_tcp_sndbuf(sock->pcb);
-		} while(snd_buf<=16);
 		
 		if(len>snd_buf) copy = snd_buf;
 		else copy = len;
@@ -315,8 +316,6 @@ s32_t tcpip_write(s32_t s,const void *buffer,u32_t len)
 		if(err==UIP_ERR_OK && (!sock->pcb->unacked || sock->pcb->flags&UIP_TF_NODELAY))
 			uip_tcpoutput(sock->pcb);
 		
-		__tcpip_poll();
-
 		buffer = buffer+copy;
 		len -= copy;
 	}
@@ -332,4 +331,26 @@ void tcpip_close(s32_t s)
 
 	uip_tcp_close(sock->pcb);
 	sock->pcb = NULL;
+}
+
+// does basically only stop the tcpip timer
+void tcpip_stoptimer(s32_t s)
+{
+	struct tcpip_sock *sock;
+
+	sock = tcpip_getsocket(s);
+	if(!sock) return;
+	
+	if(tcpip_time && sock->pcb && (uip_tcp_active_pcbs || uip_tcp_tw_pcbs)) tcpip_time = 0;
+}
+
+// does basically only restart the tcpip timer
+void tcpip_starttimer(s32_t s)
+{
+	struct tcpip_sock *sock;
+
+	sock = tcpip_getsocket(s);
+	if(!sock) return;
+	
+	if(tcpip_time==0 && sock->pcb && (uip_tcp_active_pcbs || uip_tcp_tw_pcbs)) tcpip_time = gettime();
 }

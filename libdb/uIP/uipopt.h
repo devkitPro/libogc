@@ -50,7 +50,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uipopt.h,v 1.11 2005-08-18 06:31:44 shagkur Exp $
+ * $Id: uipopt.h,v 1.12 2005-08-19 05:44:37 shagkur Exp $
  *
  */
 
@@ -259,11 +259,11 @@ typedef u16 uip_stats_t;
 
 #define UIP_TCP_SEGS				128
 
-#define UIP_TCP_WND					(4*1024)
+#define UIP_TCP_WND					(1500)
 
-#define UIP_TCP_SND_BUF				(8*1024)
+#define UIP_TCP_SND_BUF				(4*1024)
 
-#define UIP_TCP_SND_QUEUELEN		(8*UIP_TCP_SND_BUF/UIP_TCP_MSS)
+#define UIP_TCP_SND_QUEUELEN		(16*UIP_TCP_SND_BUF/UIP_TCP_MSS)
 	
 /**
  * Determines if support for TCP urgent data notification should be
@@ -385,7 +385,7 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_LOGGING     1
+#define UIP_LOGGING     0
 
 /**
  * Print out a uIP log message.

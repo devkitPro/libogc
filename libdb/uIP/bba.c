@@ -430,14 +430,37 @@ static void __bba_recv_init()
 	bba_out8(BBA_NCRA,BBA_NCRA_SR);
 }
 
+static void bba_process(struct uip_pbuf *p,struct uip_netif *dev)
+{
+	struct uip_eth_hdr *ethhdr = NULL;
+	struct bba_priv *priv = (struct bba_priv*)dev->state;
+	const s32 ethhlen = sizeof(struct uip_eth_hdr);
+
+	if(p) {
+		ethhdr = p->payload;
+		switch(htons(ethhdr->type)) {
+			case UIP_ETHTYPE_IP:
+				uip_arp_ipin(dev,p);
+				uip_pbuf_header(p,-(ethhlen));
+				dev->input(p,dev);
+				break;
+			case UIP_ETHTYPE_ARP:
+				uip_arp_arpin(dev,priv->ethaddr,p);
+				break;
+			default:
+				uip_pbuf_free(p);
+				break;
+		}
+	}
+}
+
 static s8_t bba_start_rx(struct uip_netif *dev)
 {
 	u8 *ptr;
-	u16 rwp,rrp,rxcnt;
+	u16 rwp,rrp;
 	u32 j,size,pkt_status,pos,top,copy;
 	struct uip_pbuf *p,*q;
 
-	rxcnt = 0;
 	rwp = bba_in12(BBA_RWP);
 	rrp = bba_in12(BBA_RRP);
 	while(rrp!=rwp) {
@@ -484,38 +507,12 @@ static s8_t bba_start_rx(struct uip_netif *dev)
 
 			if(bba_recv_pbufs==NULL) bba_recv_pbufs = p;
 			else uip_pbuf_chain(bba_recv_pbufs,p);
-
-			rxcnt++;
 		}
 		bba_out12(BBA_RRP,cur_descr.next_packet_ptr);
 		rwp = bba_in12(BBA_RWP);
 		rrp = bba_in12(BBA_RRP);
 	}
 	return UIP_ERR_OK;
-}
-
-static void bba_process(struct uip_pbuf *p,struct uip_netif *dev)
-{
-	struct uip_eth_hdr *ethhdr = NULL;
-	struct bba_priv *priv = (struct bba_priv*)dev->state;
-	const s32 ethhlen = sizeof(struct uip_eth_hdr);
-
-	if(p) {
-		ethhdr = p->payload;
-		switch(htons(ethhdr->type)) {
-			case UIP_ETHTYPE_IP:
-				uip_arp_ipin(dev,p);
-				uip_pbuf_header(p,-(ethhlen));
-				dev->input(p,dev);
-				break;
-			case UIP_ETHTYPE_ARP:
-				uip_arp_arpin(dev,priv->ethaddr,p);
-				break;
-			default:
-				uip_pbuf_free(p);
-				break;
-		}
-	}
 }
 
 static inline void bba_interrupt(u16 *pstatus)
@@ -848,10 +845,8 @@ void uip_bba_poll(struct uip_netif *dev)
 
 	bba_devpoll(&status);
 	
-	p = bba_recv_pbufs;
-	if(p) {
+	while((p=bba_recv_pbufs)!=NULL) {
 		bba_recv_pbufs = uip_pbuf_dechain(p);
 		bba_process(p,dev);
 	}
-	
 }

@@ -353,6 +353,7 @@ s8_t uip_tcpoutput(struct uip_tcp_pcb *pcb)
 
 	if(pcb->flags&UIP_TF_ACK_NOW &&
 		(seg==NULL || ntohl(seg->tcphdr->seqno)-pcb->lastack+seg->len>wnd)) {
+		//printf("uip_tcpout: ACK - seqno = %u, ackno = %u\n",pcb->snd_nxt,pcb->rcv_nxt);
 		p = uip_pbuf_alloc(UIP_PBUF_IP,UIP_TCP_HLEN,UIP_PBUF_RAM);
 		if(p==NULL) return UIP_ERR_BUF;
 
@@ -1323,6 +1324,7 @@ static void uip_tcpreceive(struct uip_tcp_pcb *pcb)
 		}
 
 		if(UIP_TCP_SEQ_BETWEEN(uip_seqno,pcb->rcv_nxt,pcb->rcv_nxt+pcb->rcv_wnd-1)) {
+			//printf("uip_tcpreceive: seqno = %u, rcv_nxt = %u, wnd = %u\n",uip_seqno,pcb->rcv_nxt,(pcb->rcv_nxt+pcb->rcv_wnd-1));
 			if(pcb->rcv_nxt==uip_seqno) {
 				if(pcb->ooseq!=NULL && UIP_TCP_SEQ_LEQ(pcb->ooseq->tcphdr->seqno,uip_seqno+uip_inseg.len)) {
 					uip_inseg.len = pcb->ooseq->tcphdr->seqno - uip_seqno;
@@ -1331,7 +1333,8 @@ static void uip_tcpreceive(struct uip_tcp_pcb *pcb)
 				
 				uip_tcplen = UIP_TCP_TCPLEN(&uip_inseg);
 				pcb->rcv_nxt += uip_tcplen;
-
+				//printf("uip_tcpreceive: uip_tcplen = %u, rcv_nxt = %u\n",uip_tcplen,pcb->rcv_nxt);
+				
 				if(pcb->rcv_wnd<uip_tcplen) pcb->rcv_wnd = 0;
 				else pcb->rcv_wnd -= uip_tcplen;
 
@@ -1368,7 +1371,9 @@ static void uip_tcpreceive(struct uip_tcp_pcb *pcb)
 					pcb->ooseq = cseg->next;
 					uip_tcpseg_free(cseg);
 				}
+				//printf("uip_tcpreceive: pcb->flags = %02x\n",pcb->flags);
 				uip_tcp_ack(pcb);
+				//printf("uip_tcpreceive: pcb->flags = %02x\n",pcb->flags);
 			} else {
 				UIP_LOG("uip_tcpreceive: packet out-of-sequence.");
 				uip_tcp_acknow(pcb);
