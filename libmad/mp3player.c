@@ -36,6 +36,8 @@ static u8 StreamPlay_Stack[STACKSIZE];
 static lwp_t hStreamPlay;
 static lwpq_t thQueue;
 
+static s32 (*mp3read)(void *,s32);
+
 static s16 FixedToShort(mad_fixed_t Fixed);
 static s32 Resample(struct mad_pcm *Pcm,u8 *pOutput,u32 stereo);
 static void DataTransferCallback();
@@ -45,7 +47,29 @@ struct MP3Source
 {
 	const void * MP3Stream;
 	u32 Length;
+	u32 Position;
 } mp3_source;
+
+static s32 mp3_ramread(void *buffer,s32 len)
+{
+	void *pGuard;
+	const void *pStream = mp3_source.MP3Stream + mp3_source.Position;
+
+	if((mp3_source.Position + len)>mp3_source.Length) {
+		len = mp3_source.Length - mp3_source.Position;
+	}
+	if(len<=0) return len;
+
+	memcpy(buffer,pStream,len);
+	mp3_source.Position += len;
+
+	if((mp3_source.Length - (mp3_source.Position + len))==0) {
+		pGuard = buffer + len;
+		memset(pGuard,0,MAD_BUFFER_GUARD);
+		len += MAD_BUFFER_GUARD;
+	}
+	return len;
+}
 
 void MP3Player_Init()
 {
@@ -62,6 +86,36 @@ s32 MP3Player_Play ( const void * MP3Stream, u32 Length )
 
 	mp3_source.MP3Stream = MP3Stream;
 	mp3_source.Length = Length;
+	mp3_source.Position = 0;
+
+	mp3read = mp3_ramread;
+
+	CurrentBuffer = 0;
+	FirstTransfer = 1;
+	memset(OutputBuffer[0],0,(OUTPUT_BUFFER_SIZE));
+	memset(OutputBuffer[1],0,(OUTPUT_BUFFER_SIZE));
+	DCFlushRange(OutputBuffer[0],(OUTPUT_BUFFER_SIZE));
+	DCFlushRange(OutputBuffer[1],(OUTPUT_BUFFER_SIZE));
+
+	while(thr_running);
+
+	MP3Playing = TRUE;
+	if(LWP_CreateThread(&hStreamPlay,StreamPlay,NULL,StreamPlay_Stack,STACKSIZE,80)<0) {
+		MP3Playing = FALSE;
+		return -1;
+	}
+
+	CurrentTXLen = OUTPUT_BUFFER_SIZE;
+	AUDIO_InitDMA((u32)OutputBuffer[CurrentBuffer],CurrentTXLen);
+	AUDIO_StartDMA();
+	return 0;
+}
+
+s32 MP3Player_PlayFile(s32 (*reader)(void *,s32))
+{
+	if(MP3Playing==TRUE) return -1;
+
+	mp3read = reader;
 
 	CurrentBuffer = 0;
 	FirstTransfer = 1;
@@ -105,9 +159,6 @@ BOOL MP3Player_IsPlaying()
 
 static void *StreamPlay(void *arg)
 {
-	u32 len;
-	void *pGuard;
-	const void *pStream;
 	struct mad_stream Stream;
 	struct mad_frame Frame;
 	struct mad_synth Synth;
@@ -125,13 +176,10 @@ static void *StreamPlay(void *arg)
 	mad_synth_init(&Synth);
 	mad_timer_reset(&Timer);
 
-	len = mp3_source.Length;
-	pStream = mp3_source.MP3Stream;
 	while(MP3Playing==TRUE) {
 		LWP_SleepThread(thQueue);
 		if(Stream.buffer==NULL || Stream.error==MAD_ERROR_BUFLEN) {
 			size_t ReadSize, Remaining;
-			u32 Offset;
 			u8 *ReadStart;
 
 			if(Stream.next_frame!=NULL) {
@@ -146,20 +194,7 @@ static void *StreamPlay(void *arg)
 			}
 
 
-			Offset = (pStream - mp3_source.MP3Stream);
-			if((Offset + ReadSize)>mp3_source.Length) {
-				ReadSize = mp3_source.Length - Offset;
-			}
-			if(ReadSize<=0) break;
-
-			memcpy(ReadStart,pStream,ReadSize);
-			pStream = pStream + ReadSize;
-
-			if((mp3_source.Length - (Offset + ReadSize))==0) {
-				pGuard = ReadStart + ReadSize;
-				memset(pGuard,0,MAD_BUFFER_GUARD);
-				ReadSize += MAD_BUFFER_GUARD;
-			}
+			if(mp3read(ReadStart,ReadSize)<=0) break;
 
 			mad_stream_buffer(&Stream,InputBuffer,(ReadSize + Remaining));
 			Stream.error = 0;

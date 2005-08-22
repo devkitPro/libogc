@@ -19,7 +19,7 @@ const devoptab_t dotab_net = {"stdnet",netio_open,netio_close,netio_write,netio_
 int netio_open(struct _reent *r,const char *path,int flags,int mode)
 {
 	char *cport = NULL;
-	int nport = -1,udp_sock = INVALID_SOCKET;
+	int optval = 1,nport = -1,udp_sock = INVALID_SOCKET;
 	struct sockaddr_in name;
 	socklen_t namelen = sizeof(struct sockaddr);
 
@@ -42,6 +42,8 @@ int netio_open(struct _reent *r,const char *path,int flags,int mode)
 		net_close(udp_sock);
 		return -1;
 	}
+	net_setsockopt(udp_sock,IPPROTO_TCP,TCP_NODELAY,&optval,sizeof(optval));
+
 	return udp_sock;
 }
 
