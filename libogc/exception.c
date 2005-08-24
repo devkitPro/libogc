@@ -41,7 +41,7 @@ static u32 exception_location[NUM_EXCEPTIONS] = {
 		0x00000900, 0x00000C00, 0x00000D00, 0x00000F00,
 		0x00001300, 0x00001400, 0x00001700 };
 
-static const s8 *exception_name[NUM_EXCEPTIONS] = {
+static const char *exception_name[NUM_EXCEPTIONS] = {
 		"System Reset", "Machine Check", "DSI", "ISI",
 		"Interrupt", "Alignment", "Program", "Floating Point",
 		"Decrementer", "System Call", "Trace", "Performance",

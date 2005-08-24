@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: stream.c,v 1.2 2004-09-02 08:04:42 shagkur Exp $
+ * $Id: stream.c,v 1.3 2005-08-24 23:12:47 wntrmute Exp $
  */
 
 # ifdef HAVE_CONFIG_H
@@ -126,7 +126,7 @@ s32 mad_stream_sync(struct mad_stream *stream)
  * NAME:	stream->errorstr()
  * DESCRIPTION:	return a string description of the current error condition
  */
-s8 const *mad_stream_errorstr(struct mad_stream const *stream)
+char const *mad_stream_errorstr(struct mad_stream const *stream)
 {
   switch (stream->error) {
   case MAD_ERROR_NONE:		 return "no error";
