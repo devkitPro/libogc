@@ -76,13 +76,13 @@ void __libc_wrapup()
 void _exit(int status)
 {
 	__libc_wrapup();
-	__lwp_stop_multitasking();
+	__lwp_stop_multitasking(NULL);
 	for(;;);
 }
 
 void exit(int status)
 {
 	__libc_wrapup();
-	__lwp_stop_multitasking();
+	__lwp_stop_multitasking(NULL);
 	for(;;);
 }

@@ -44,7 +44,7 @@ _start:
 	bl		__fini
 
 eloop:
-	bl __sdloader_boot
+//	bl __sdloader_boot
 	b eloop			# If the main function returns, which should never happen then just loop endlessly.
 
 InitGPRS:
@@ -79,8 +79,8 @@ InitGPRS:
 	li      r30,0
 	li      r31,0
 
-	lis		sp,__stack_addr@h		    # we take 0x8173FFF0 as the topmost starting point for our stack,this gives us ~128Kb Stack
-	ori		sp,sp,__stack_addr@l
+	lis		sp,__stack@h		    # we take 0x8173FFF0 as the topmost starting point for our stack,this gives us ~128Kb Stack
+	ori		sp,sp,__stack@l
 
 	lis     r2,_SDA2_BASE_@h
 	ori     r2,r2,_SDA2_BASE_@l  # Set the Small Data 2 (Read Only) base register.

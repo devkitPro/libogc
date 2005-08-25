@@ -43,7 +43,7 @@ int netio_open(struct _reent *r,const char *path,int flags,int mode)
 		return -1;
 	}
 	net_setsockopt(udp_sock,IPPROTO_TCP,TCP_NODELAY,&optval,sizeof(optval));
-
+	
 	return udp_sock;
 }
 

@@ -81,23 +81,22 @@ void __exception_init()
 	mtmsr(mfmsr()|MSR_RI);
 }
 
-void __excpetion_closeall()
-{
-	s32 i;
-	for(i=0;i<NUM_EXCEPTIONS;i++) {
-		void *pAdd = (void*)(0x80000000|exception_location[i]);
-		*(u32*)pAdd = 0x4C000064;
-		DCFlushRangeNoSync(pAdd,0x100);
-		ICInvalidateRange(pAdd,0x100);
-	}
-}
-
-void __excpetion_close(u32 except)
+void __exception_close(u32 except)
 {
 	void *pAdd = (void*)(0x80000000|exception_location[except]);
 	*(u32*)pAdd = 0x4C000064;
 	DCFlushRangeNoSync(pAdd,0x100);
 	ICInvalidateRange(pAdd,0x100);
+}
+
+void __exception_closeall()
+{
+	s32 i;
+	for(i=0;i<NUM_EXCEPTIONS;i++) {
+		__exception_close(i);
+	}
+	mtmsr(mfmsr()&~MSR_EE);
+	mtmsr(mfmsr()|(MSR_FP|MSR_RI));
 }
 
 void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*))

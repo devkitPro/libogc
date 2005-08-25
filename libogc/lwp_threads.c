@@ -29,6 +29,7 @@ vu32 _thread_dispatch_disable_level;
 
 void **__lwp_thr_libc_reent = NULL;
 
+static void (*__lwp_exit_func)() = NULL;
 static lwp_obj _lwp_objects[LWP_MAXTHREADS];
 
 extern void _cpu_context_switch(void *,void *);
@@ -678,6 +679,8 @@ void __lwp_start_multitasking()
 
 	_CPU_ISR_Disable(level);
 
+	__lwp_exit_func = NULL;
+
 	__sys_state_set(SYS_STATE_BEGIN_MT);
 	__sys_state_set(SYS_STATE_UP);
 
@@ -690,13 +693,27 @@ void __lwp_start_multitasking()
 	_cpu_context_switch((void*)&core_context,(void*)&_thr_heir->context);
 
 	_CPU_ISR_Restore(level);
+
+	if(__lwp_exit_func) {
+#ifdef _LWPTHREADS_DEBUG
+		printf("__lwp_start_multitasking(calling exit_func)\n");
+#endif
+		__lwp_exit_func();
+	}
 }
 
-void __lwp_stop_multitasking()
+void __lwp_stop_multitasking(void (*exit_func)())
 {
+	__lwp_exit_func = exit_func;
 	if(__sys_state_get()!=SYS_STATE_SHUTDOWN) {
 		__sys_state_set(SYS_STATE_SHUTDOWN);
 		_cpu_context_switch((void*)&_thr_executing->context,(void*)&core_context);
+	}
+	if(__lwp_exit_func) {
+#ifdef _LWPTHREADS_DEBUG
+		printf("__lwp_stop_multitasking(calling exit_func)\n");
+#endif
+		__lwp_exit_func();
 	}
 }
 
@@ -724,7 +741,7 @@ u32 __lwp_sys_init()
 	
 	__sys_state_set(SYS_STATE_BEFORE_MT);
 	
-	// create idle thread, is needed if all threads are locked on a queue
+	// create idle thread, is needed iff all threads are locked on a queue
 	_thr_idle = __lwp_thread_alloclwp();
 	__lwp_thread_init(_thr_idle,NULL,0,255,0,TRUE);
 	_thr_executing = _thr_heir = _thr_idle;

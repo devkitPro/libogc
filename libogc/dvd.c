@@ -1020,16 +1020,19 @@ static void __dvd_spinupdrivecb(s32 result)
 		if(!__dvd_interoperable) {
 			if(__dvd_mountstep==0x00) {
 				__dvd_mountstep++;
+				_diReg[1] = _diReg[1];
 				DVD_LowUnlockDrive(__dvd_spinupdrivecb);
 				return;
 			}
 			if(__dvd_mountstep==0x01) {
 				__dvd_mountstep++;
+				_diReg[1] = _diReg[1];
 				DVD_LowSpinMotor(DVD_SPINMOTOR_DOWN,__dvd_spinupdrivecb);
 				return;
 			}
 			if(__dvd_mountstep==0x02) {
 				__dvd_mountstep++;
+				_diReg[1] = _diReg[1];
 				DVD_LowInquiry(&__dvd_driveinfo,__dvd_spinupdrivecb);
 				return;
 			}
@@ -1044,24 +1047,28 @@ static void __dvd_spinupdrivecb(s32 result)
 
 		if(__dvd_mountstep==0x04) {
 			__dvd_mountstep++;
+			_diReg[1] = _diReg[1];
 			DVD_LowEnableExtensions(__dvd_extensionsenabled,__dvd_spinupdrivecb);
 			return;
 		}
 		if(__dvd_mountstep==0x05) {
 			__dvd_mountstep++;
+			_diReg[1] = _diReg[1];
 			DVD_LowUnlockDrive(__dvd_spinupdrivecb);
 			return;
 		}
 		if(__dvd_mountstep==0x06) {
 			__dvd_mountstep++;
+			_diReg[1] = _diReg[1];
 			DVD_LowSpinMotor(DVD_SPINMOTOR_UP,__dvd_spinupdrivecb);
 			return;
 		}
 		if(__dvd_mountstep==0x07) {
 			__dvd_mountstep++;
-			if(!__dvd_lasterror)
+			if(!__dvd_lasterror) {
+				_diReg[1] = _diReg[1];
 				DVD_LowSetStatus((_SHIFTL((DVD_STATUS_DISK_ID_NOT_READ+1),16,8)|0x00000300),__dvd_sud_finalcb);
-			else
+			} else
 				__dvd_sud_finalcb(result);
 			return;
 		}
@@ -1185,6 +1192,7 @@ static void __dvd_patchdrivecb(s32 result)
 			for(i=0;i<cmd;i++,nPos++) ((u8*)cmd_buf)[i] = __dvdpatchcode[nPos];
 			
 			stage = 0x0001;
+			_diReg[1] = _diReg[1];
 			_diReg[2] = 0xfe010100;
 			_diReg[3] = drv_address;
 			_diReg[4] = _SHIFTL(cmd,16,16);
@@ -1199,6 +1207,7 @@ static void __dvd_patchdrivecb(s32 result)
 #endif
 			stage = 0;
 			drv_address += cmd;
+			_diReg[1] = _diReg[1];
 			_diReg[2] = cmd_buf[0];
 			_diReg[3] = cmd_buf[1];
 			_diReg[4] = cmd_buf[2];
@@ -1221,6 +1230,7 @@ static void __dvd_unlockdrivecb(s32 result)
 	printf("__DVDUnlockDrive(%d)\n",result);
 #endif
 	__dvd_callback = __dvd_finalunlockcb;
+	_diReg[1] = _diReg[1];
 	for(i=0;i<3;i++) _diReg[2+i] = ((u32*)__dvd_unlockcmd$222)[i];
 	_diReg[7] = DVD_DI_START;
 }
@@ -1315,7 +1325,6 @@ void __dvd_statebusy(dvdcmdblk *block)
 			DVD_LowInquiry(block->buf,__dvd_statebusycb);
 			return;
 		case 16:
-			_diReg[1] = _diReg[1];
 			__dvd_lasterror = 0;
 			__dvd_extensionsenabled = TRUE;
 			DVD_LowSpinUpDrive(__dvd_statebusycb);
@@ -1530,9 +1539,6 @@ s32 DVD_LowUnlockDrive(dvdcallbacklow cb)
 	__dvd_callback = __dvd_unlockdrivecb;
 	__dvd_finalunlockcb = cb;
 	__dvd_stopnextint = 0;
-
-	_diReg[0] |= (DVD_TC_INT|DVD_DE_INT);
-	_diReg[1] = 0;
 
 	for(i=0;i<3;i++) _diReg[2+i] = ((u32*)__dvd_unlockcmd$221)[i];
 	_diReg[7] = DVD_DI_START;
