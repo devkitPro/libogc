@@ -184,3 +184,18 @@ __SystemInit:
 	mtlr    r0
 	blr
 
+	.globl __flush_cache
+__flush_cache:
+	lis		r5,-1
+	ori		r5,r5,0xfff1
+	and		r5,r5,r3
+	subf	r3,r5,r3
+	add		r4,r4,r3
+1:	dcbst	r0,r5
+	sync
+	icbi	r0,r5
+	addic	r5,r5,8
+	subic.	r4,r4,8
+	bge		1b
+	isync
+	blr
