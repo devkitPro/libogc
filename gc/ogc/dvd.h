@@ -77,6 +77,7 @@ s32 DVD_StopStreamAtEndAsync(dvdcmdblk *block,dvdcbcallback cb);
 s32 DVD_StopStreamAtEnd(dvdcmdblk *block);
 s32 DVD_ReadDiskID(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb);
 dvddiskid* DVD_GetCurrentDiskID();
+dvddrvinfo* DVD_GetDriveInfo();
 
 #ifdef __cplusplus
    }

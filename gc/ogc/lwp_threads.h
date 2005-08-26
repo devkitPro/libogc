@@ -83,7 +83,7 @@ u32 __lwp_thread_start(lwp_cntrl *,void* (*)(void*),void *);
 void __lwp_thread_exit(void *);
 void __lwp_thread_close(lwp_cntrl *);
 void __lwp_start_multitasking();
-void __lwp_stop_multitasking();
+void __lwp_stop_multitasking(void (*exit_func)());
 u32 __lwp_init();
 void __lwp_thread_freelwp(lwp_cntrl *);
 lwp_cntrl* __lwp_thread_alloclwp();

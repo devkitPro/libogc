@@ -1,42 +1,41 @@
-#include "asm.h"
+#include <asm.h>
 
 	.globl DCFlashInvalidate
 DCFlashInvalidate:
-	mfspr	r3,1008
+	mfspr	r3,HID0
 	ori		r3,r3,0x0400
-	mtspr	1008,r3
+	mtspr	HID0,r3
 	blr
 
 	.globl DCEnable
 DCEnable:
 	sync
-	mfspr	r3,1008
+	mfspr	r3,HID0
 	ori		r3,r3,0x4000
-	mtspr	1008,r3
+	mtspr	HID0,r3
 	blr
 
 	.globl DCDisable
 DCDisable:
 	sync
-	mfspr	r3,1008
+	mfspr	r3,HID0
 	rlwinm	r3,r3,0,18,16
-	mtspr	1008,r3
+	mtspr	HID0,r3
 	blr
 
 	.globl DCFreeze
 DCFreeze:
 	sync
-	mfspr	r3,1008
+	mfspr	r3,HID0
 	ori		r3,r3,0x1000
-	mtspr	1008,r3
+	mtspr	HID0,r3
 	blr
 
 	.globl DCUnfreeze
 DCUnfreeze:
-	sync
-	mfspr	r3,1008
+	mfspr	r3,HID0
 	rlwinm	r3,r3,0,20,18
-	mtspr	1008,r3
+	mtspr	HID0,r3
 	blr
 
 	.globl DCTouchLoad
@@ -206,41 +205,40 @@ ICInvalidateRange:
 
 	.globl ICFlashInvalidate
 ICFlashInvalidate:
-	mfspr	r3,1008
+	mfspr	r3,HID0
 	ori		r3,r3,0x0800
-	mtspr	1008,r3
+	mtspr	HID0,r3
 	blr
 
 	.globl ICEnable
 ICEnable:
-	sync
-	mfspr	r3,1008
+	isync
+	mfspr	r3,HID0
 	ori		r3,r3,0x8000
-	mtspr	1008,r3
+	mtspr	HID0,r3
 	blr
 
 	.globl ICDisable
 ICDisable:
-	sync
-	mfspr	r3,1008
+	isync
+	mfspr	r3,HID0
 	rlwinm	r3,r3,0,17,15
-	mtspr	1008,r3
+	mtspr	HID0,r3
 	blr
 
 	.globl ICFreeze
 ICFreeze:
-	sync
-	mfspr	r3,1008
+	isync
+	mfspr	r3,HID0
 	ori		r3,r3,0x2000
-	mtspr	1008,r3
+	mtspr	HID0,r3
 	blr
 
 	.globl ICUnfreeze
 ICUnfreeze:
-	sync
-	mfspr	r3,1008
+	mfspr	r3,HID0
 	rlwinm	r3,r3,0,19,17
-	mtspr	1008,r3
+	mtspr	HID0,r3
 	blr
 
 	.globl ICBlockInvalidate
@@ -251,6 +249,69 @@ ICBlockInvalidate:
 	.globl ICSync
 ICSync:
 	isync
+	blr
+
+	.globl L2Init
+L2Init:
+	mflr	r0
+	stw		r0,4(sp)
+	stwu	sp,-16(sp)
+	stw		r31,12(sp)
+	mfmsr	r3
+	mr		r31,r3
+	sync
+	li		r3,48
+	mtmsr	r3
+	sync
+	bl		L2Disable
+	bl		L2GlobalInvalidate
+	mr		r3,r31
+	mtmsr	r3
+	lwz		r0,20(sp)
+	lwz		r31,12(sp)
+	mtlr	r0
+	blr
+
+	.globl L2Enable
+L2Enable:
+	mfspr	r3,L2CR;
+	oris	r0,r3,0x8000
+	rlwinm	r3,r0,0,11,9
+	mtspr	L2CR,r3
+	blr
+
+	.globl L2Disable
+L2Disable:
+	sync
+	mfspr	r3,L2CR
+	clrlwi	r3,r3,1
+	mtspr	L2CR,r3
+	sync
+	blr
+
+	.globl L2GlobalInvalidate
+L2GlobalInvalidate:
+	mflr	r0
+	stw		r0,4(sp)
+	stwu	sp,-8(sp)
+	bl		L2Disable
+	mfspr	r3,L2CR
+	oris	r3,r3,0x0020
+	mtspr	L2CR,r3
+1:	mfspr	r3,L2CR
+	clrlwi	r0,r3,31
+	cmplwi	r0,0x0000
+	bne		1b
+	mfspr	r3,L2CR
+	rlwinm	r3,r3,0,11,9
+	mtspr	L2CR,r3
+2:	mfspr	r3,L2CR
+	clrlwi	r0,r3,31
+	cmplwi	r0,0x0000
+	bne		2b
+	lwz		r0,12(sp)
+	addi	sp,sp,8
+	mtlr	r0
 	blr
 
 	.globl __LCEnable

@@ -17,13 +17,16 @@
 
 	# Entry Point
 
+	.extern __PSInit
+	.extern __CacheInit
+	.extern __SystemInit
 	.globl _start
 _start:
-	bl		InitGPRS # Initialize the General Purpose Registers
-	bl		PSInit 	# Initialize Paired Singles
-	bl      FPRInit 	# Initialize the FPR's
-	bl      CacheInit 	# Initialize the system caches
-	bl      SystemInit # Initialize more cache aspects, clear a few SPR's, and disable interrupts.
+	bl		InitGPRS			# Initialize the General Purpose Registers
+	bl      FPRInit			 	# Initialize the FPR's
+	bl		__PSInit 			# Initialize Paired Singles
+	bl      __CacheInit 		# Initialize the system caches
+	bl      __SystemInit		# Initialize more cache aspects, clear a few SPR's, and disable interrupts.
 
 	.extern __sbss_start, __bss_end
 	# Clear the BSS section!
@@ -88,32 +91,6 @@ InitGPRS:
 	ori     r13,r13,_SDA_BASE_@l # Set the Small Data (Read\Write) base register.	
 	blr
 
-PSInit:
-	mfspr   r3,920 # (HID2)
-	oris    r3,r3, 0xA000
-	mtspr   920,r3 # (HID2)
-
-	# Set the Instruction Cache invalidation bit in HID0
-	mfspr   r3,1008
-	ori     r3,r3,0x0800
-	mtspr   1008,r3
-
-	sync
-
-	# Clear various Special Purpose Registers
-	li      r3,0
-	mtspr   912,r3
-	mtspr   913,r3
-	mtspr   914,r3
-	mtspr   915,r3
-	mtspr   916,r3
-	mtspr   917,r3
-	mtspr   918,r3
-	mtspr   919,r3
-
-	# Return 
-	blr
-
 FPRInit:
 	# Enable the Floating Point Registers
 	mfmsr   r3
@@ -157,174 +134,6 @@ FPRInit:
 	mtfsf   255,fr0
 
 	# Return
-	blr
-
-CacheInit:
-	mflr    r0
-	stw     r0, 4(sp)
-	stwu    sp, -16(sp)
-	stw     r31, 12(sp)
-	stw     r30, 8(sp)
-
-	mfspr   r3,1008 # (HID0)
-	rlwinm  r0,r3, 0, 16, 16
-	cmplwi  r0, 0x0000 # Check if the Instruction Cache has been enabled or not.
-	bne     ICEnabled
-
-	# If not, then enable it.
-	isync
-	mfspr   r3, 1008
-	ori     r3, r3, 0x8000
-	mtspr   1008, r3
-
-ICEnabled:
-	mfspr   r3, 1008 # bl       PPCMfhid0
-	rlwinm  r0, r3, 0, 17, 17
-	cmplwi  r0, 0x0000 # Check if the Data Cache has been enabled or not.
-	bne     DCEnabled
-	
-	# If not, then enable it.
-	sync
-	mfspr   r3, 1008
-	ori     r3, r3, 0x4000
-	mtspr   1008, r3
-	
-DCEnabled:
-	
-	mfspr   r3, 1017 # (L2CR)
-	clrrwi  r0, r3, 31 # Clear all of the bits except 31
-	cmplwi  r0, 0x0000
-	bne     L2GISkip # Skip the L2 Global Cache Invalidation process if it has already been done befor.
-
-	# Store the current state of the MSR in r30
-	mfmsr   r3
-	mr      r30,r3
-	
-	sync
-	
-	# Enable Instruction and Data Address Translation
-	li      r3, 48
-	mtmsr   r3
-
-	sync
-	sync
-
-	# Disable the L2 Global Cache.
-	mfspr   r3, 1017 # (L2CR
-	clrlwi  r3, r3, 1
-	mtspr   1017, r3 # (L2CR)
-	sync
-
-	# Invalidate the L2 Global Cache.
-	bl      L2GlobalInvalidate
-
-	# Restore the previous state of the MSR from r30
-	mr      r3, r30
-	mtmsr   r3
-
-	# Enable the L2 Global Cache and disable the L2 Data Only bit and the L2 Global Invalidate Bit.
-	mfspr   r3, 1017 # (L2CR)
-	oris    r0, r3, 0x8000
-	rlwinm  r3, r0, 0, 11, 9
-	mtspr   1017, r3 # (L2CR)
-
-
-L2GISkip:
-	# Restore the non-volatile registers to their previous values and return.
-	lwz     r0, 20(sp)
-	lwz     r31, 12(sp)
-	lwz     r30, 8(sp)
-	addi    sp, sp, 16
-	mtlr    r0
-	blr
-
-L2GlobalInvalidate:
-	mflr    r0
-	stw     r0, 4(sp)
-	stwu    sp, -16(sp)
-	stw     r31, 12(sp)
-	sync
-
-	# Disable the L2 Cache.
-	mfspr   r3, 1017  # bl       PPCMf1017
-	clrlwi  r3, r3, 1
-	mtspr   1017, r3 # bl       PPCMt1017
-
-	sync
-
-	# Initiate the L2 Cache Global Invalidation process.
-	mfspr   r3, 1017  # (L2CR)
-	oris    r3, r3, 0x0020
-	mtspr   1017, r3 # (L2CR)
-
-	# Wait until the L2 Cache Global Invalidation has been completed.
-L2GICheckComplete:
-	mfspr   r3, 1017 # (L2CR)
-	clrlwi  r0, r3, 31
-	cmplwi  r0, 0x0000
-	bne     L2GICheckComplete
-	
-	# Clear the L2 Data Only bit and the L2 Global Invalidate Bit.
-	mfspr   r3, 1017  # (L2CR)
-	rlwinm  r3, r3, 0, 11, 9
-	mtspr   1017, r3 # (L2CR)
-
-	# Wait until the L2 Cache Global Invalidation status bit signifies that it is ready.
-L2GDICheckComplete:
-	mfspr   r3, 1017  # (L2CR)
-	clrlwi  r0, r3, 31
-	cmplwi  r0, 0x0000
-	bne     L2GDICheckComplete
-
-	# Restore the non-volatile registers to their previous values and return.
-	lwz     r0, 20(sp)
-	lwz     r31, 12(sp)
-	addi    sp, sp, 16
-	mtlr    r0
-	blr
-
-SystemInit:
-	mflr    r0
-	stw     r0, 4(sp)
-	stwu    sp, -24(sp)
-	stw     r31, 20(sp)
-	stw     r30, 16(sp)
-	stw     r29, 12(sp)
-
-	# Disable interrupts!
-	mfmsr   r3
-	rlwinm  r4,r3,0,17,15
-	rlwinm  r4,r4,0,26,24
-	mtmsr   r4
-
-	# Clear various SPR's
-	li      r3,0
-	mtspr   952, r3
-	mtspr   956, r3
-	mtspr   953, r3
-	mtspr   954, r3
-	mtspr   957, r3
-	mtspr   958, r3
-
-	# Disable Speculative Bus Accesses to non-guarded space from both caches.
-	mfspr   r3, 1008 # (HID0)
-	ori     r3, r3, 0x0200
-	mtspr   1008, r3
-
-	# Set the Non-IEEE mode in the FPSCR
-	mtfsb1  29
-	
-	mfspr   r3,920 # (HID2)
-	rlwinm  r3, r3, 0, 2, 0
-	mtspr   920,r3 # (HID2)
-
-	# Restore the non-volatile registers to their previous values and return.
-	lwz     r0, 28(sp)
-	lwz     r31,20(sp)
-	lwz     r30,16(sp)
-	lwz     r29,12(sp)
-	addi    sp, sp, 24
-	mtlr    r0
 	blr
 
 	.globl video_line
