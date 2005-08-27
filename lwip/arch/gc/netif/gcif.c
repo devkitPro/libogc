@@ -952,7 +952,7 @@ err_t bba_init(struct netif *dev)
 	err_t ret;
 	struct timespec tb;
 
-	_siReg[15] = (_siReg[15]&~0x0001);
+	_siReg[15] = (_siReg[15]&~0x80000000);
 	
 	__bba_exi_wait();
 
