@@ -509,6 +509,16 @@ u32 PAD_Reset(u32 mask)
 	return 1;
 }
 
+s32 PAD_Recalibrate(u32 mask)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	
+	_CPU_ISR_Restore(level);
+	return 1;
+}
+
 void PAD_SetSpec(u32 spec)
 {
 	if(__pad_initialized) return;

@@ -133,6 +133,17 @@ static void __sys_alarmhandler(void *arg)
 	__lwp_thread_dispatchunnest();
 }
 
+static void __reset(u32 resetcode)
+{
+	__asm__ __volatile__ (
+		"mfspr 8,1008\n\
+		 ori   8,8,0x0008\n\
+		 mtspr 1008,8\n\
+		 isync\n\
+		 sync\n\
+		 nop\n"::);
+}
+
 static void __MEMInterruptHandler()
 {
 	_memReg[16] = 0;
@@ -151,30 +162,24 @@ static void __lowmem_init()
 
 	memset(ram_start, 0, 0x100);
 
-/*	this block doesn't need to be set either
-	// 0..f  game-info
-	strcpy(ram_start, "GPOP8P");        // PSO
-	*((u32*)(ram_start+8))		= 1;
-	*((u32*)(ram_start+0x1C))	= 0xc2339f3d;   // DVD magic word
-*/
 	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"
 	*((u32*)(ram_start+0x24))	= 1;            // version
 	*((u32*)(ram_start+0x28))	= SYSMEM_SIZE; // memory size
 	// retail.
 	*((u32*)(ram_start+0x2C))	= 1 + ((*(u32*)0xCC00302c)>>28);
-	*((u32*)(ram_start+0x30))	= (u32)__ArenaLo;						// ArenaLo (guess: low-watermark of memory, aligned on a 32b boundary)
-	*((u32*)(ram_start+0x34))	= (u32)__ArenaHi;						// ArenaHi (guess: hi-watermark of memory)
+	*((u32*)(ram_start+0x30))	= 0;						// ArenaLo (guess: low-watermark of memory, aligned on a 32b boundary)
+	*((u32*)(ram_start+0x34))	= 0x816ffff0;				// ArenaHi (guess: hi-watermark of memory)
 
-	//this we don't overwrite coz it may have been set by IPL or other application pre-run.
-	//*((u32*)(ram_start+0xCC))	= 1; // video mode
+	*((u32*)(ram_start+0x38))	= 0;
+	*((u32*)(ram_start+0x3C))	= 0;
 
-	*((u32*)(ram_start+0xEC))	= (u32)__ArenaHi; // top of memory?
-	*((u32*)(ram_start+0xF0))	= SYSMEM_SIZE; // simulated memory size
-	*((u32*)(ram_start+0xF8))	= 162000000;  // bus speed: 162 MHz
-	*((u32*)(ram_start+0xFC))	= 486000000;  // cpu speed: 486 Mhz
+	*((u32*)(ram_start+0xEC))	= 0x81800000;	//(u32)__ArenaHi;	// top of memory?
+	*((u32*)(ram_start+0xF0))	= SYSMEM_SIZE;		// simulated memory size
+	*((u32*)(ram_start+0xF4))	= 0;				// simulated memory size
+	*((u32*)(ram_start+0xF8))	= 162000000;		// bus speed: 162 MHz
+	*((u32*)(ram_start+0xFC))	= 486000000;		// cpu speed: 486 Mhz
 	
-	// me thinks no need to set this.
-	//*((u16*)(ram_start+0x30E0))	= 6; // production pads
+	*((u16*)(ram_start+0x30E0))	= 6; // production pads
 
 	DCFlushRangeNoSync(ram_start, 0x100);
 
@@ -482,6 +487,26 @@ static void __dsp_bootstrap()
 #endif
 }
 
+static void dsp_shutdown()
+{
+	u32 tick;
+
+	_dspReg[5] = (DSPCR_DSPRESET|DSPCR_HALT);
+	_dspReg[27] &= ~0x8000;
+	while(_dspReg[5]&0x400);
+	while(_dspReg[5]&0x200);
+
+	_dspReg[5] = (DSPCR_DSPRESET|DSPCR_DSPINT|DSPCR_ARINT|DSPCR_AIINT|DSPCR_HALT);
+	_dspReg[0] = 0;
+	while((_SHIFTL(_dspReg[2],16,16)|(_dspReg[3]&0xffff))&0x80000000);
+
+	tick = gettick();
+	while((gettick()-tick)<44);
+
+	_dspReg[5] |= DSPCR_RES;
+	while(_dspReg[5]&DSPCR_RES);
+}
+
 static void decode_szp(void *src,void *dest)
 {
 	u32 i,k,link;
@@ -677,6 +702,11 @@ void SYS_Init()
 	__MaskIrq(IRQMASK(IRQ_PI_RSW));
 
 	__lwp_start_multitasking();
+}
+
+void SYS_ResetSystem(s32 reset,u32 reste_code,s32 force_menu)
+{
+	__reset(0);
 }
 
 void SYS_SetArenaLo(void *newLo)

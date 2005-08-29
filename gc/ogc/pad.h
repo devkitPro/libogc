@@ -58,6 +58,7 @@ typedef struct _padstatus {
 u32 PAD_Init();
 u32 PAD_Read(PADStatus *status);
 u32 PAD_Reset(u32 mask);
+s32 PAD_Recalibrate(u32 mask);
 void PAD_ControlMotor(s32 chan,u32 cmd);
 void PAD_SetSpec(u32 spec);
 void PAD_ScanPads(u32 dummy);

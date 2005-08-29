@@ -115,7 +115,7 @@ __CacheInit:
 
 	bl		ICEnable
 ICEnabled:
-	mfspr   r3, 1008 # bl       PPCMfhid0
+	mfspr   r3, HID0 # bl       PPCMfhid0
 	rlwinm  r0, r3, 0, 17, 17
 	cmplwi  r0, 0x0000 # Check if the Data Cache has been enabled or not.
 	bne     DCEnabled

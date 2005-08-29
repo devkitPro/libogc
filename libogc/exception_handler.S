@@ -104,12 +104,12 @@ default_exceptionhandler_transfer:
 	
 	.global systemcall_handler_start,systemcall_handler_end
 systemcall_handler_start:
-	mfspr  r9,1008
+	mfspr  r9,HID0
 	ori    r10,r9,0x0008
-	mtspr  1008,r10
+	mtspr  HID0,r10
 	isync
 	sync
-	mtspr  1008,r9
+	mtspr  HID0,r9
 	rfi
 systemcall_handler_end:
 

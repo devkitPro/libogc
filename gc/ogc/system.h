@@ -119,6 +119,7 @@ u32 SYS_GetFontEncoding();
 u32 SYS_InitFont(sys_fontheader *font_header);
 void SYS_GetFontTexture(s32 c,void **image,s32 *xpos,s32 *ypos,s32 *width);
 void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width);
+void SYS_ResetSystem(s32 reset,u32 reste_code,s32 force_menu);
 
 #ifdef __cplusplus
    }
