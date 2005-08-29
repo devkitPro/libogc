@@ -97,6 +97,7 @@ extern void __libc_init(int);
 extern void __realmode(void*);
 extern void __config24Mb();
 extern void __config48Mb();
+extern void __reset(u32 reset_code);
 
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
@@ -133,15 +134,14 @@ static void __sys_alarmhandler(void *arg)
 	__lwp_thread_dispatchunnest();
 }
 
-static void __reset(u32 resetcode)
+static void __dohotreset(u32 resetcode)
 {
-	__asm__ __volatile__ (
-		"mfspr 8,1008\n\
-		 ori   8,8,0x0008\n\
-		 mtspr 1008,8\n\
-		 isync\n\
-		 sync\n\
-		 nop\n"::);
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	_viReg[1] = 0;
+	ICFlashInvalidate();
+	__reset(resetcode<<3);
 }
 
 static void __MEMInterruptHandler()
@@ -487,7 +487,7 @@ static void __dsp_bootstrap()
 #endif
 }
 
-static void dsp_shutdown()
+static void __dsp_shutdown()
 {
 	u32 tick;
 
@@ -706,7 +706,9 @@ void SYS_Init()
 
 void SYS_ResetSystem(s32 reset,u32 reste_code,s32 force_menu)
 {
-	__reset(0);
+	__lwp_thread_dispatchdisable();
+	
+	__dsp_shutdown();
 }
 
 void SYS_SetArenaLo(void *newLo)
