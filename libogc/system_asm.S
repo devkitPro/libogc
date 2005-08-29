@@ -199,3 +199,27 @@ __flush_cache:
 	bge		1b
 	isync
 	blr
+
+	.globl __reset
+__reset:
+	mfspr	r8,HID0
+	ori		r8,r8,0x0008
+	mtspr	HID0,r8
+	isync
+	sync
+	nop
+	mftb	r5
+1:	mftb	r6
+	subf	r7,r5,r6
+	cmplwi	r7,0x1124
+	blt		1b
+	nop
+	lis		r8,0xCC00
+	ori		r8,r8,0x3000
+	li		r4,3
+	stw		r4,36(r8)
+	stw		r4,36(r8)
+	nop
+2:	nop
+	b		2b
+	blr

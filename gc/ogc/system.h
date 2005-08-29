@@ -8,9 +8,9 @@
 
 #define R_RESET							*(vu32*)0xCC003024
 
-#define SYS_RESTART						R_RESET = 0x00000000
-#define SYS_HOTRESET					R_RESET = 0x00000001
-#define SYS_SHUTDOWN					R_RESET = 0x00000002
+#define SYS_RESTART						0
+#define SYS_HOTRESET					1
+#define SYS_SHUTDOWN					2
 
 #define SYS_PROTECTCHAN0				0
 #define SYS_PROTECTCHAN1				1

@@ -706,9 +706,19 @@ void SYS_Init()
 
 void SYS_ResetSystem(s32 reset,u32 reste_code,s32 force_menu)
 {
+	u32 level;
+
 	__lwp_thread_dispatchdisable();
-	
 	__dsp_shutdown();
+
+	if(reset==SYS_SHUTDOWN) {
+		
+	}
+	if(reset==SYS_HOTRESET && force_menu==TRUE) {
+		
+	}
+
+	_CPU_ISR_Disable(level);
 }
 
 void SYS_SetArenaLo(void *newLo)
