@@ -186,6 +186,13 @@ static s32 __card_updatedir(s32 chn,cardcallback callback);
 static s32 __card_write(s32 chn,u32 address,u32 block_len,void *buffer,cardcallback callback);
 static s32 __card_writepage(s32 chn,cardcallback callback);
 static s32 __card_sectorerase(s32 chn,u32 sector,cardcallback callback);
+static s32 __card_onreset(s32 final);
+
+static sys_resetinfo card_resetinfo = {
+	{},
+	__card_onreset,
+	127
+};
 
 extern unsigned long gettick();
 extern long long gettime();
@@ -197,6 +204,15 @@ extern u32 __SYS_UnlockSramEx(u32 write);
 static vu16* const _viReg = (u16*)0xCC002000;
 
 /* new api */
+static s32 __card_onreset(s32 final)
+{
+	if(final==FALSE) {
+		if(CARD_Unmount(CARD_SLOTA)==-1) return 0;
+		if(CARD_Unmount(CARD_SLOTB)==-1) return 0;
+	}
+	return 1;
+}
+
 static void __card_checksum(u16 *buff,u32 len,u16 *cs1,u16 *cs2)
 {
 	u32 i;
@@ -2362,6 +2378,7 @@ s32 CARD_Init(const char *gamecode,const char *company)
 		LWP_InitQueue(&cardmap[i].wait_sync_queue);
 		SYS_CreateAlarm(&cardmap[i].timeout_svc);
 	}
+	SYS_RegisterResetFunc(&card_resetinfo);
 	card_inited = 1;
 	_CPU_ISR_Restore(level);
 	return CARD_ERROR_READY;

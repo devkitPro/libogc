@@ -60,6 +60,7 @@ static u8 *sys_fontimage = NULL;
 static void *sys_fontarea = NULL;
 static sys_fontheader *sys_fontdata = NULL;
 
+static lwp_queue sys_reset_func_queue;
 static u32 system_initialized = 0;
 static sysalarm *system_alarm = NULL;
 
@@ -79,6 +80,7 @@ void SYS_SetArenaHi(void *newHi);
 void* SYS_GetArenaHi();
 void __SYS_ReadROM(void *buf,u32 len,u32 offset);
 
+static s32 __sram_sync();
 static u32 __sram_writecallback();
 
 extern u32 __lwp_sys_init();
@@ -102,9 +104,12 @@ extern void __reset(u32 reset_code);
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
 
+extern u32 __PADDisableRecalibration(s32 disable);
+
 extern void settime(long long);
 extern long long gettime();
 extern unsigned int gettick();
+extern unsigned int diff_usec(long long start,long long end);
 extern int clock_gettime(struct timespec *tp);
 extern void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
 
@@ -144,6 +149,34 @@ static void __dohotreset(u32 resetcode)
 	__reset(resetcode<<3);
 }
 
+static s32 __call_resetfuncs(s32 final)
+{
+	s32 ret;
+	sys_resetinfo *info;
+	lwp_queue *header = &sys_reset_func_queue;
+
+	ret = 1;
+	info = (sys_resetinfo*)header->first;
+	while(info!=NULL) {
+		if(info->func && info->func(final)==0) ret |= (ret<<1);
+		info = (sys_resetinfo*)info->node.next;
+	}
+	if(__sram_sync()==0) ret |= (ret<<1);
+
+	if(ret&~0x01) return 0;
+	return 1;
+}
+
+static void __doreboot(u32 resetcode,s32 force_menu)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	
+	*((u32*)0x817ffffc) = 0;
+	*((u32*)0x817ffff8) = 0;
+}
+
 static void __MEMInterruptHandler()
 {
 	_memReg[16] = 0;
@@ -151,8 +184,30 @@ static void __MEMInterruptHandler()
 
 static void __RSWHandler()
 {
-	if(__RSWCallback)
-		__RSWCallback();
+	s64 now;
+	resetcallback cb;
+	static u32 down = 0;
+	static u32 last_state = 0;
+	static s64 hold_down = 0;
+
+	hold_down = gettime();
+	do  {
+		now = gettime();
+		if(diff_usec(hold_down,now)>=100) break;
+	} while(!(_piReg[0]&0x10000));
+	
+	if(_piReg[0]&0x10000) {
+		down = 0;
+		last_state = 1;
+		__MaskIrq(IRQMASK(IRQ_PI_RSW));
+
+		
+		if(__RSWCallback) {
+			cb = __RSWCallback;
+			__RSWCallback = NULL;
+			cb();
+		}
+	}
 	_piReg[0] = 2;
 }
 
@@ -165,17 +220,9 @@ static void __lowmem_init()
 	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"
 	*((u32*)(ram_start+0x24))	= 1;            // version
 	*((u32*)(ram_start+0x28))	= SYSMEM_SIZE; // memory size
-	// retail.
 	*((u32*)(ram_start+0x2C))	= 1 + ((*(u32*)0xCC00302c)>>28);
-	*((u32*)(ram_start+0x30))	= 0;						// ArenaLo (guess: low-watermark of memory, aligned on a 32b boundary)
-	*((u32*)(ram_start+0x34))	= 0x816ffff0;				// ArenaHi (guess: hi-watermark of memory)
 
-	*((u32*)(ram_start+0x38))	= 0;
-	*((u32*)(ram_start+0x3C))	= 0;
-
-	*((u32*)(ram_start+0xEC))	= 0x81800000;	//(u32)__ArenaHi;	// top of memory?
 	*((u32*)(ram_start+0xF0))	= SYSMEM_SIZE;		// simulated memory size
-	*((u32*)(ram_start+0xF4))	= 0;				// simulated memory size
 	*((u32*)(ram_start+0xF8))	= 162000000;		// bus speed: 162 MHz
 	*((u32*)(ram_start+0xFC))	= 486000000;		// cpu speed: 486 Mhz
 	
@@ -331,6 +378,11 @@ static u32 __sram_writecallback()
 	if(sramcntrl.sync) sramcntrl.offset = 64;
 	
 	return 1;
+}
+
+static s32 __sram_sync()
+{
+	return sramcntrl.sync;
 }
 
 static void __sram_init()
@@ -693,6 +745,7 @@ void SYS_Init()
 	__memlock_init();
 	__timesystem_init();
 	__si_init();
+	__lwp_queue_init_empty(&sys_reset_func_queue);
 #ifdef SDLOADER_FIX
 	__SYS_SetBootTime();
 #endif
@@ -704,21 +757,54 @@ void SYS_Init()
 	__lwp_start_multitasking();
 }
 
-void SYS_ResetSystem(s32 reset,u32 reste_code,s32 force_menu)
+void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 {
-	u32 level;
+	u32 level,ret = 0;
 
 	__lwp_thread_dispatchdisable();
 	__dsp_shutdown();
 
 	if(reset==SYS_SHUTDOWN) {
-		
+		ret = __PADDisableRecalibration(TRUE);
 	}
+
+	while(__call_resetfuncs(FALSE)==0);
+	
 	if(reset==SYS_HOTRESET && force_menu==TRUE) {
 		
 	}
 
 	_CPU_ISR_Disable(level);
+	__call_resetfuncs(TRUE);
+	
+	LCDisable();
+	
+	if(reset==SYS_HOTRESET) {
+		__dohotreset(reset_code);
+	} else if(reset==SYS_RESTART) {
+		__doreboot(reset_code,force_menu);
+	}
+
+	memset((void*)0x80000040,0,140);
+	memset((void*)0x800000D4,0,20);
+	memset((void*)0x800000F4,0,4);
+	memset((void*)0x80003000,0,192);
+	memset((void*)0x800030C8,0,12);
+	memset((void*)0x800030E2,0,1);
+
+	__PADDisableRecalibration(ret);
+}
+
+void SYS_RegisterResetFunc(sys_resetinfo *info)
+{
+	u32 level;
+	sys_resetinfo *after;
+	lwp_queue *header = &sys_reset_func_queue;
+
+	_CPU_ISR_Disable(level);
+	for(after=(sys_resetinfo*)header->first;after->node.next!=NULL && info->prio>=after->prio;after=(sys_resetinfo*)after->node.next);
+	__lwp_queue_insertI(after->node.prev,&info->node);
+	_CPU_ISR_Restore(level);
 }
 
 void SYS_SetArenaLo(void *newLo)

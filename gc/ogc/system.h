@@ -4,6 +4,7 @@
 #include <gctypes.h>
 #include <gcutil.h>
 #include <time.h>
+#include <ogc/lwp_queue.h>
 #include "gx_struct.h"
 
 #define R_RESET							*(vu32*)0xCC003024
@@ -100,6 +101,14 @@ typedef struct _sys_fontheader {
 } __attribute__((packed)) sys_fontheader;
 
 typedef void (*resetcallback)(void);
+typedef s32 (*resetfunction)(s32 final);
+typedef struct _sys_resetinfo sys_resetinfo;
+
+struct _sys_resetinfo {
+	lwp_node node;
+	resetfunction func;
+	u32 prio;
+};
 
 void SYS_Init();
 void* SYS_AllocateFramebuffer(GXRModeObj *rmode);
@@ -119,7 +128,8 @@ u32 SYS_GetFontEncoding();
 u32 SYS_InitFont(sys_fontheader *font_header);
 void SYS_GetFontTexture(s32 c,void **image,s32 *xpos,s32 *ypos,s32 *width);
 void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width);
-void SYS_ResetSystem(s32 reset,u32 reste_code,s32 force_menu);
+void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu);
+void SYS_RegisterResetFunc(sys_resetinfo *info);
 
 #ifdef __cplusplus
    }
