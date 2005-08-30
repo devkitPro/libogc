@@ -1121,12 +1121,13 @@ void SYS_DumpPMC()
 
 void SYS_SetWirelessID(u32 chan,u32 id)
 {
-	u16 *ex_base,write;
-
+	u32 write;
+	syssramex *sram;
+	
 	write = 0;
-	ex_base = (u16*)__SYS_LockSramEx();
-	if(ex_base[14+chan]!=(u16)id) {
-		ex_base[14+chan] = id;
+	sram = __SYS_LockSramEx();
+	if(sram->wirelessPad_id[chan]!=(u16)id) {
+		sram->wirelessPad_id[chan] = (u16)id;
 		write = 1;
 	}
 	__SYS_UnlockSramEx(write);
@@ -1134,11 +1135,12 @@ void SYS_SetWirelessID(u32 chan,u32 id)
 
 u32 SYS_GetWirelessID(u32 chan)
 {
-	u16 *ex_base,id;
+	u16 id;
+	syssramex *sram;
 
 	id = 0;
-	ex_base = (u16*)__SYS_LockSramEx();
-	id = ex_base[14+chan];
+	sram = __SYS_LockSramEx();
+	id = sram->wirelessPad_id[chan];
 	__SYS_UnlockSramEx(0);
 	return id;
 }
