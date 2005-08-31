@@ -29,7 +29,6 @@ vu32 _thread_dispatch_disable_level;
 
 void **__lwp_thr_libc_reent = NULL;
 
-static void (*__lwp_exit_func)() = NULL;
 static lwp_obj _lwp_objects[LWP_MAXTHREADS];
 
 extern void _cpu_context_switch(void *,void *);
@@ -644,6 +643,24 @@ void __lwp_thread_close(lwp_cntrl *thethread)
 	__lwp_stack_free(thethread);
 }
 
+void __lwp_thread_closeall()
+{
+	u32 i,level,flag;
+	lwp_cntrl *ptr;
+
+
+	_CPU_ISR_Disable(level);
+	for(i=0;i<LWP_MAXPRIORITIES;i++) {
+		flag = 0;
+		while((ptr=(lwp_cntrl*)__lwp_queue_getI(&_lwp_thr_ready[i]))!=NULL) {
+			if(ptr==_thr_executing) flag = 1;
+			else __lwp_thread_close(ptr);
+		}
+		if(flag) __lwp_queue_appendI(&_lwp_thr_ready[i],&_thr_executing->node);
+	}
+	_CPU_ISR_Restore(level);
+}
+
 void __lwp_thread_exit(void *value_ptr)
 {
 	__lwp_thread_dispatchdisable();
@@ -679,8 +696,6 @@ void __lwp_start_multitasking()
 
 	_CPU_ISR_Disable(level);
 
-	__lwp_exit_func = NULL;
-
 	__sys_state_set(SYS_STATE_BEGIN_MT);
 	__sys_state_set(SYS_STATE_UP);
 
@@ -693,27 +708,13 @@ void __lwp_start_multitasking()
 	_cpu_context_switch((void*)&core_context,(void*)&_thr_heir->context);
 
 	_CPU_ISR_Restore(level);
-
-	if(__lwp_exit_func) {
-#ifdef _LWPTHREADS_DEBUG
-		printf("__lwp_start_multitasking(calling exit_func)\n");
-#endif
-		__lwp_exit_func();
-	}
 }
 
-void __lwp_stop_multitasking(void (*exit_func)())
+void __lwp_stop_multitasking()
 {
-	__lwp_exit_func = exit_func;
 	if(__sys_state_get()!=SYS_STATE_SHUTDOWN) {
 		__sys_state_set(SYS_STATE_SHUTDOWN);
 		_cpu_context_switch((void*)&_thr_executing->context,(void*)&core_context);
-	}
-	if(__lwp_exit_func) {
-#ifdef _LWPTHREADS_DEBUG
-		printf("__lwp_stop_multitasking(calling exit_func)\n");
-#endif
-		__lwp_exit_func();
 	}
 }
 

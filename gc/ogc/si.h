@@ -32,6 +32,9 @@ u32 SI_GetTypeAsync(s32 chan,SICallback cb);
 u32 SI_GetType(s32 chan);
 u32 SI_GetCommand(s32 chan);
 void SI_TransferCommands();
+u32 SI_RegisterPollingHandler(RDSTHandler handler);
+u32 SI_UnregisterPollingHandler(RDSTHandler handler);
+u32 SI_EnablePollingInterrupt(s32 enable);
 
 #ifdef __cplusplus
    }

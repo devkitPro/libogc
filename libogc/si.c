@@ -655,12 +655,11 @@ u32 SI_GetTypeAsync(s32 chan,SICallback cb)
 	type = SI_GetType(chan);
 	if(si_type[chan]&0x80) {
 		i=0;
-		while(i<4) {
+		for(i=0;i<4;i++) {
 			if(!typeCallback[chan][i] && typeCallback[chan][i]!=cb) {
 				typeCallback[chan][i] = cb;
 				break;
 			}
-			i++;
 		}
 		_CPU_ISR_Restore(level);
 		return type;
@@ -674,6 +673,77 @@ u32 SI_GetTypeAsync(s32 chan,SICallback cb)
 void SI_TransferCommands()
 {
 	_siReg[14] = 0x80000000;
+}
+
+u32 SI_RegisterPollingHandler(RDSTHandler handler)
+{
+	u32 level,i;
+
+	_CPU_ISR_Disable(level);
+
+	i = 0;
+	for(i=0;i<4;i++) {
+		if(rdstHandlers[i]==handler) {
+			_CPU_ISR_Restore(level);
+			return 1;		
+		}
+	}
+
+	for(i=0;i<4;i++) {
+		if(rdstHandlers[i]==NULL) {
+			rdstHandlers[i] = handler;
+			SI_EnablePollingInterrupt(TRUE);
+			_CPU_ISR_Restore(level);
+			return 1;		
+		}
+	}
+
+	_CPU_ISR_Restore(level);
+	return 0;
+}
+
+u32 SI_UnregisterPollingHandler(RDSTHandler handler)
+{
+	u32 level,i;
+
+	_CPU_ISR_Disable(level);
+	for(i=0;i<4;i++) {
+		if(rdstHandlers[i]==handler) {
+			rdstHandlers[i] = NULL;
+			for(i=0;i<4;i++) {
+				if(rdstHandlers[i]!=NULL) break;
+			}
+			if(i>=4) SI_EnablePollingInterrupt(FALSE);
+
+			_CPU_ISR_Restore(level);
+			return 1;
+		}
+	}
+	_CPU_ISR_Restore(level);
+	return 0;
+}
+
+u32 SI_EnablePollingInterrupt(s32 enable)
+{
+	u32 level,ret,val,i;
+
+	_CPU_ISR_Disable(level);
+
+	ret = 0;
+	val = _siReg[13];
+	if(val&0x08000000) ret = 1;
+
+	if(enable) {
+		val |= 0x0800;
+		for(i=0;i<4;i++) inputBufferVCount[i] = 0;
+	} else
+		val &= ~0x08000000;
+	
+	val &= 0x7ffffffe;
+	_siReg[13] = val;
+
+	_CPU_ISR_Restore(level);
+	return ret;
 }
 
 void __si_init()

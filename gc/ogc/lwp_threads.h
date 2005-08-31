@@ -69,6 +69,7 @@ extern void **__lwp_thr_libc_reent;
 
 void __thread_dispatch();
 void __lwp_thread_yield();
+void __lwp_thread_closeall();
 void __lwp_thread_setstate(lwp_cntrl *,u32);
 void __lwp_thread_clearstate(lwp_cntrl *,u32);
 void __lwp_thread_changepriority(lwp_cntrl *,u32,u32);
@@ -83,7 +84,7 @@ u32 __lwp_thread_start(lwp_cntrl *,void* (*)(void*),void *);
 void __lwp_thread_exit(void *);
 void __lwp_thread_close(lwp_cntrl *);
 void __lwp_start_multitasking();
-void __lwp_stop_multitasking(void (*exit_func)());
+void __lwp_stop_multitasking();
 u32 __lwp_init();
 void __lwp_thread_freelwp(lwp_cntrl *);
 lwp_cntrl* __lwp_thread_alloclwp();

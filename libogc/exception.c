@@ -176,7 +176,7 @@ void c_default_exceptionhandler(frame_context *pCtx)
 		}
 		if ( pads[PAD_CHAN0].button & PAD_BUTTON_A )
 		{
-			SYS_RESTART;
+			SYS_ResetSystem(SYS_HOTRESET,0,FALSE);
 		}
 	}
 }

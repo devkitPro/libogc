@@ -4,6 +4,7 @@
 #include <time.h>
 #include <irq.h>
 #include <video.h>
+#include <system.h>
 #include "asm.h"
 #include "processor.h"
 #include "si.h"
@@ -29,6 +30,7 @@ typedef struct _keyinput {
 
 typedef void (*SPECCallback)(u32,u32*,PADStatus*);
 
+static sampling_callback __pad_samplingcallback = NULL;
 static SPECCallback __pad_makestatus = NULL;
 static u32 __pad_initialized = 0;
 static u32 __pad_enabledbits = 0;
@@ -45,6 +47,8 @@ static u32 __pad_cmdreadorigin = 0x41000000;
 static u32 __pad_cmdcalibrate = 0x42000000;
 static u32 __pad_xpatchbits = 0xf0000000;
 
+static u32 __pad_recalibrated$207 = 0;
+
 static u32 __pad_type[PAD_CHANMAX];
 static s8 __pad_origin[PAD_CHANMAX][12];
 static u32 __pad_cmdprobedevice[PAD_CHANMAX];
@@ -60,9 +64,34 @@ extern u32 __PADFixBits;
 static void __pad_enable(u32 chan);
 static void __pad_disable(u32 chan);
 static void __pad_doreset();
+static s32 __pad_onreset(s32 final);
+
+static sys_resetinfo pad_resetinfo = {
+	{},
+	__pad_onreset,
+	127
+};
 
 extern void udelay(int);
 extern void __UnmaskIrq(u32);
+
+static s32 __pad_onreset(s32 final)
+{
+	u32 ret;
+
+	if(__pad_samplingcallback!=NULL) PAD_SetSamplingCallback(NULL);
+	
+	if(final==FALSE) {
+		ret = PAD_Sync();
+		if(__pad_recalibrated$207==0 && ret) {
+			__pad_recalibrated$207 = PAD_Recalibrate(0xf0000000);
+			return 0;
+		}
+		return ret;
+	}
+	__pad_recalibrated$207 = 0;
+	return 1;
+}
 
 static void SPEC0_MakeStatus(u32 chan,u32 *data,PADStatus *status)
 {
@@ -368,6 +397,10 @@ static void __pad_doreset()
 	SI_GetTypeAsync(__pad_resettingchan,__pad_typeandstatuscallback);
 }
 
+static void __pad_samplinghandler(u32 irq,void *ctx)
+{
+}
+
 u32 __PADDisableRecalibration(s32 disable)
 {
 	u32 level,ret;
@@ -407,6 +440,8 @@ u32 PAD_Init()
 	}
 
 	SI_RefreshSamplingRate();
+	SYS_RegisterResetFunc(&pad_resetinfo);
+	
 	return PAD_Reset(0xf0000000);
 }
 
@@ -527,7 +562,7 @@ u32 PAD_Reset(u32 mask)
 	return 1;
 }
 
-s32 PAD_Recalibrate(u32 mask)
+u32 PAD_Recalibrate(u32 mask)
 {
 	u32 level;
 
@@ -535,6 +570,16 @@ s32 PAD_Recalibrate(u32 mask)
 	
 	_CPU_ISR_Restore(level);
 	return 1;
+}
+
+u32 PAD_Sync()
+{
+	u32 ret = 0;
+
+	if(!__pad_resettingbits && __pad_resettingchan==32) {
+		if(SI_Busy()==0) ret = 1;
+	}
+	return ret;
 }
 
 void PAD_SetSpec(u32 spec)
@@ -570,6 +615,20 @@ void PAD_ControlMotor(s32 chan,u32 cmd)
 	_CPU_ISR_Restore(level);
 }
 
+sampling_callback PAD_SetSamplingCallback(sampling_callback cb)
+{
+	sampling_callback ret;
+
+	ret = __pad_samplingcallback;
+	__pad_samplingcallback = cb;
+	if(cb) {
+		SI_RegisterPollingHandler(__pad_samplinghandler);
+	} else {
+		SI_UnregisterPollingHandler(__pad_samplinghandler);
+	}
+
+	return ret;
+}
 
 void PAD_ScanPads(u32 dummy)
 {

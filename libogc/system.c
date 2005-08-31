@@ -628,6 +628,11 @@ u32 __SYS_UnlockSramEx(u32 write)
 	return __unlocksram(write,sizeof(syssram));
 }
 
+u32 __SYS_SyncSram()
+{
+	return __sram_sync();
+}
+
 void __SYS_ReadROM(void *buf,u32 len,u32 offset)
 {
 	u32 cpy_cnt;
@@ -760,6 +765,7 @@ void SYS_Init()
 void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 {
 	u32 level,ret = 0;
+	syssram *sram;
 
 	__lwp_thread_dispatchdisable();
 	__dsp_shutdown();
@@ -771,7 +777,10 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 	while(__call_resetfuncs(FALSE)==0);
 	
 	if(reset==SYS_HOTRESET && force_menu==TRUE) {
-		
+		sram = __SYS_LockSram();
+		sram->flags |= 0x40;
+		__SYS_UnlockSram(TRUE);
+		while(!__SYS_SyncSram());
 	}
 
 	_CPU_ISR_Disable(level);
@@ -782,8 +791,12 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 	if(reset==SYS_HOTRESET) {
 		__dohotreset(reset_code);
 	} else if(reset==SYS_RESTART) {
+		__lwp_thread_closeall();
+		__lwp_thread_dispatchunnest();
 		__doreboot(reset_code,force_menu);
 	}
+
+	__lwp_thread_closeall();
 
 	memset((void*)0x80000040,0,140);
 	memset((void*)0x800000D4,0,20);

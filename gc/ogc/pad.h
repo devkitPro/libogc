@@ -51,14 +51,16 @@ typedef struct _padstatus {
 	s8 err;
 } PADStatus;
 
+typedef void (*sampling_callback)(void);
 /*+----------------------------------------------------------------------------------------------+*/
 /*+----------------------------------------------------------------------------------------------+*/
 /*+----------------------------------------------------------------------------------------------+*/
 
 u32 PAD_Init();
+u32 PAD_Sync();
 u32 PAD_Read(PADStatus *status);
 u32 PAD_Reset(u32 mask);
-s32 PAD_Recalibrate(u32 mask);
+u32 PAD_Recalibrate(u32 mask);
 void PAD_ControlMotor(s32 chan,u32 cmd);
 void PAD_SetSpec(u32 spec);
 void PAD_ScanPads(u32 dummy);
@@ -69,6 +71,7 @@ s8 PAD_SubStickX(int pad);
 s8 PAD_SubStickY(int pad);
 s8 PAD_StickX(int pad);
 s8 PAD_StickY(int pad);
+sampling_callback PAD_SetSamplingCallback(sampling_callback cb);
 
 /*+----------------------------------------------------------------------------------------------+*/
 
