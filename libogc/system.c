@@ -82,6 +82,7 @@ void __SYS_ReadROM(void *buf,u32 len,u32 offset);
 
 static s32 __sram_sync();
 static u32 __sram_writecallback();
+static s32 __mem_onreset(s32 final);
 
 extern u32 __lwp_sys_init();
 extern void __heap_init();
@@ -129,6 +130,21 @@ static u32 _dsp_initcode[] =
 	0x16FD4348,0x002102FF,0x02FF02FF,0x02FF02FF,
 	0x02FF02FF,0x00000000,0x00000000,0x00000000
 };
+
+static sys_resetinfo mem_resetinfo = {
+	{},
+	__mem_onreset,
+	127
+};
+
+static s32 __mem_onreset(s32 final)
+{
+	if(final==TRUE) {
+		_memReg[8] = 255;
+		__UnmaskIrq(IM_MEM0|IM_MEM1|IM_MEM2|IM_MEM3);
+	}
+	return 1;
+}
 
 static void __sys_alarmhandler(void *arg)
 {
@@ -222,12 +238,12 @@ static void __lowmem_init()
 
 	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"
 	*((u32*)(ram_start+0x24))	= 1;            // version
-	*((u32*)(ram_start+0x28))	= SYSMEM_SIZE; // memory size
+	*((u32*)(ram_start+0x28))	= SYSMEM_SIZE;	// physical memory size
 	*((u32*)(ram_start+0x2C))	= 1 + ((*(u32*)0xCC00302c)>>28);
 
-	*((u32*)(ram_start+0xF0))	= SYSMEM_SIZE;		// simulated memory size
-	*((u32*)(ram_start+0xF8))	= 162000000;		// bus speed: 162 MHz
-	*((u32*)(ram_start+0xFC))	= 486000000;		// cpu speed: 486 Mhz
+	*((u32*)(ram_start+0xF0))	= SYSMEM_SIZE;	// simulated memory size
+	*((u32*)(ram_start+0xF8))	= 162000000;	// bus speed: 162 MHz
+	*((u32*)(ram_start+0xFC))	= 486000000;	// cpu speed: 486 Mhz
 	
 	*((u16*)(ram_start+0x30E0))	= 6; // production pads
 
@@ -259,6 +275,8 @@ static void __memprotect_init()
 	IRQ_Request(IRQ_MEM2,__MEMInterruptHandler,NULL);
 	IRQ_Request(IRQ_MEM3,__MEMInterruptHandler,NULL);
 	IRQ_Request(IRQ_MEMADDRESS,__MEMInterruptHandler,NULL);
+
+	SYS_RegisterResetFunc(&mem_resetinfo);
 	__UnmaskIrq(IRQMASK(IRQ_MEMADDRESS));		//only enable memaddress irq atm
 
 	if(simmem<=realmem && !(simmem-0x1800000)) _memReg[20] = 2;
