@@ -113,7 +113,10 @@ extern unsigned int diff_usec(long long start,long long end);
 extern int clock_gettime(struct timespec *tp);
 extern void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
 
+extern u8 __isIPL[];
 extern u8 __ArenaLo[],__ArenaHi[];
+
+static u32 __sys_inIPL = (u32)__isIPL;
 
 static u32 _dsp_initcode[] = 
 {
@@ -746,7 +749,10 @@ void SYS_Init()
 	__sram_init();
 	__lwp_sys_init();
 	__dsp_bootstrap();
-	__memprotect_init();
+
+	if(!__sys_inIPL) 
+		__memprotect_init();
+	
 	__memlock_init();
 	__timesystem_init();
 	__si_init();
