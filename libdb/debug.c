@@ -14,13 +14,13 @@
 #include "ogcsys.h"
 #include "debug.h"
 
-#include "uip/bba.h"
-#include "uip/memr.h"
-#include "uip/tcpip.h"
-#include "uip/uip_ip.h"
-#include "uip/uip_arp.h"
-#include "uip/uip_pbuf.h"
-#include "uip/uip_netif.h"
+#include "uIP/bba.h"
+#include "uIP/memr.h"
+#include "uIP/tcpip.h"
+#include "uIP/uip_ip.h"
+#include "uIP/uip_arp.h"
+#include "uIP/uip_pbuf.h"
+#include "uIP/uip_netif.h"
 
 #define GEKKO_MAX_BP	1024
 
