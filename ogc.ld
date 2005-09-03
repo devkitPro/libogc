@@ -349,6 +349,7 @@ SECTIONS
 	/* These must appear regardless of  .  */
 }
 
+__isIPL = 0;
 __stack_addr = (__bss_start + SIZEOF(.bss) + 0x10000 + 7) & (-8);
 __stack_end = (__bss_start + SIZEOF(.bss));
 __intrstack_addr = (__stack_addr + 0x2000);
@@ -360,6 +361,7 @@ __gxregs = (__ArenaHi + 31) & (-32);
 /* for backward compatibility with old crt0 */
 PROVIDE (__stack = (0x81700000));
 
+PROVIDE(__isIPL = __isIPL);
 PROVIDE(__text_start = text_mem_start);
 PROVIDE(__text_fstart = text_file_start);
 PROVIDE(__data_start = data_mem_start);
