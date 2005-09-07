@@ -1896,7 +1896,6 @@ s32 DVD_ReadAbsAsyncPrio(dvdcmdblk *block,void *buf,u32 len,u32 offset,dvdcbcall
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_ReadAbsAsyncPrio(%p,%p,%d,%d,%d)\n",block,buf,len,offset,prio);
-	printf("DVD_ReadAbsAsyncPrio(%p)\n",__dvd_waitingqueue[prio].first);
 #endif
 	block->cmd = 0x0001;
 	block->buf = buf;
@@ -1906,6 +1905,21 @@ s32 DVD_ReadAbsAsyncPrio(dvdcmdblk *block,void *buf,u32 len,u32 offset,dvdcbcall
 	block->cb = cb;
 
 	return __issuecommand(prio,block);
+}
+
+s32 DVD_ReadAbsAsyncForBS(dvdcmdblk *block,void *buf,u32 len,u32 offset,dvdcbcallback cb)
+{
+#ifdef _DVD_DEBUG
+	printf("DVD_ReadAbsAsyncForBS(%p,%p,%d,%d)\n",block,buf,len,offset);
+#endif
+	block->cmd = 0x0004;
+	block->buf = buf;
+	block->len = len;
+	block->offset = offset;
+	block->txdsize = 0;
+	block->cb = cb;
+
+	return __issuecommand(2,block);
 }
 
 s32 DVD_SeekAbsAsyncPrio(dvdcmdblk *block,u32 offset,dvdcbcallback cb,s32 prio)

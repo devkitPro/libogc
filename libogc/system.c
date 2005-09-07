@@ -114,6 +114,7 @@ extern unsigned int diff_usec(long long start,long long end);
 extern int clock_gettime(struct timespec *tp);
 extern void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
 
+extern u8 __text_start[];
 extern u8 __isIPL[];
 extern u8 __ArenaLo[],__ArenaHi[];
 
@@ -194,6 +195,7 @@ static void __doreboot(u32 resetcode,s32 force_menu)
 	
 	*((u32*)0x817ffffc) = 0;
 	*((u32*)0x817ffff8) = 0;
+	*((u32*)0x800030e2) = 1;
 }
 
 static void __MEMInterruptHandler()
@@ -233,8 +235,10 @@ static void __RSWHandler()
 static void __lowmem_init()
 {
 	void *ram_start = (void*)0x80000000;
+	void *ram_end = (void*)(0x80000000|SYSMEM_SIZE);
 
-	memset(ram_start, 0, 0x100);
+	memset(ram_start, 0, ((u32)__text_start-(u32)ram_start));
+	memset(__ArenaLo,0,((u32)ram_end-(u32)__ArenaLo));
 
 	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"
 	*((u32*)(ram_start+0x24))	= 1;            // version
@@ -246,14 +250,12 @@ static void __lowmem_init()
 	*((u32*)(ram_start+0xFC))	= 486000000;	// cpu speed: 486 Mhz
 	
 	*((u16*)(ram_start+0x30E0))	= 6; // production pads
+	*((u8*)(ram_start+0x30F2))	= 1; // boot stataus
 
 	DCFlushRangeNoSync(ram_start, 0x100);
 
 	SYS_SetArenaLo((void*)__ArenaLo);
 	SYS_SetArenaHi((void*)__ArenaHi);
-
-	//clear last 65kb mem
-	memset(__ArenaHi,0,65535);
 }
 
 static void __memprotect_init()
@@ -560,7 +562,7 @@ static void __dsp_bootstrap()
 #endif
 }
 
-static void __dsp_shutdown()
+void __dsp_shutdown()
 {
 	u32 tick;
 
@@ -755,6 +757,7 @@ void SYS_Init()
 
 	__lowmem_init();
 	__lwp_wkspace_init(KERNEL_HEAP);
+	__lwp_queue_init_empty(&sys_reset_func_queue);
 	__libc_init(1);
 	__sys_state_init();
 	__lwp_priority_init();
@@ -774,7 +777,6 @@ void SYS_Init()
 	__memlock_init();
 	__timesystem_init();
 	__si_init();
-	__lwp_queue_init_empty(&sys_reset_func_queue);
 #ifdef SDLOADER_FIX
 	__SYS_SetBootTime();
 #endif

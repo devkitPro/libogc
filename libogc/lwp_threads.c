@@ -29,6 +29,7 @@ vu32 _thread_dispatch_disable_level;
 
 void **__lwp_thr_libc_reent = NULL;
 
+static void (*_lwp_exitfunc)(void);
 static lwp_obj _lwp_objects[LWP_MAXTHREADS];
 
 extern void _cpu_context_switch(void *,void *);
@@ -696,6 +697,8 @@ void __lwp_start_multitasking()
 
 	_CPU_ISR_Disable(level);
 
+	_lwp_exitfunc = NULL;
+
 	__sys_state_set(SYS_STATE_BEGIN_MT);
 	__sys_state_set(SYS_STATE_UP);
 
@@ -707,11 +710,14 @@ void __lwp_start_multitasking()
 	//_cpu_context_restore_fp((void*)&_thr_heir->context);
 	_cpu_context_switch((void*)&core_context,(void*)&_thr_heir->context);
 
+	if(_lwp_exitfunc) _lwp_exitfunc();
+	
 	_CPU_ISR_Restore(level);
 }
 
-void __lwp_stop_multitasking()
+void __lwp_stop_multitasking(void (*exitfunc)())
 {
+	_lwp_exitfunc = exitfunc;
 	if(__sys_state_get()!=SYS_STATE_SHUTDOWN) {
 		__sys_state_set(SYS_STATE_SHUTDOWN);
 		_cpu_context_switch((void*)&_thr_executing->context,(void*)&core_context);
