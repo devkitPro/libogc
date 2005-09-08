@@ -15,7 +15,7 @@ OUTPUT_ARCH(powerpc:common);
 EXTERN(_start);
 ENTRY(_start);
 
-base_address = 0x81000000;
+base_address = 0x80003100;
 
 SECTIONS
 {

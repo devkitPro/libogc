@@ -236,8 +236,10 @@ static void __lowmem_init()
 {
 	void *ram_start = (void*)0x80000000;
 	void *ram_end = (void*)(0x80000000|SYSMEM_SIZE);
+	void *arena_start = (void*)0x80003000;
 
-	memset(ram_start, 0, ((u32)__text_start-(u32)ram_start));
+	memset(ram_start, 0, 0x100);
+	memset(arena_start, 0, ((u32)__text_start-(u32)arena_start));
 	memset(__ArenaLo,0,((u32)ram_end-(u32)__ArenaLo));
 
 	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"

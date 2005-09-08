@@ -137,8 +137,8 @@ static void _cpu_print_stack(void *pc,void *lr,void *r1)
 //just implement core for unrecoverable exceptions.
 void c_default_exceptionhandler(frame_context *pCtx)
 {
-//	VIDEO_SetFramebuffer(exception_xfb);
-//	__console_init(&exception_con,exception_xfb,20,20,640,574,1280);
+	VIDEO_SetFramebuffer(exception_xfb);
+	__console_init(&exception_con,exception_xfb,20,20,640,574,1280);
 
 	printf("Exception (%s) occured!\n", exception_name[pCtx->EXCPT_Number]);
 
