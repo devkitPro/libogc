@@ -1545,7 +1545,7 @@ s32 net_init()
 {
 	sem_t sem;
 
-	if(tcpiplayer_inited) return 0;
+	if(tcpiplayer_inited) return 1;
 
 	if(LWP_SemInit(&netsocket_sem,1,1)==-1) return -1;
 	if(LWP_SemInit(&sockselect_sem,1,1)==-1) return -1;
