@@ -437,13 +437,14 @@ static __inline__ u32 __linkstate()
 
 static u32 __bba_get_linkstateasync()
 {
-	u32 ret;
+	u32 ret,cnt;
 
+	cnt = 0;
 	do {
 		udelay(500);
 		ret = __linkstate()&0xf0;
 		if(ret) break;
-	} while(!ret);
+	} while(!ret && ++cnt<4000);
 	return ret;
 }
 
