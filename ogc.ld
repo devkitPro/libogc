@@ -172,6 +172,8 @@ SECTIONS
 	PROVIDE (__etext = .);
 	PROVIDE (_etext = .);
 	PROVIDE (etext = .);
+
+ 	. = ALIGN(32);
 	text_mem_size = . - text_mem_start;
 
 	. = ALIGN(32);
@@ -263,6 +265,8 @@ SECTIONS
 
 	_edata = .;
 	PROVIDE (edata = .);
+
+ 	. = ALIGN(32);
 	data_mem_size = . - data_mem_start;
 
 	. = ALIGN(32);
