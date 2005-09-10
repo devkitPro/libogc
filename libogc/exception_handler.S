@@ -112,6 +112,7 @@ systemcall_handler_start:
 	mtspr  HID0,r9
 	rfi
 systemcall_handler_end:
+	nop
 
 	.extern _cpu_context_save_fp,_cpu_context_restore_fp
 	.globl fpu_exception_handler

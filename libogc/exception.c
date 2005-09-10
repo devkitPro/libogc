@@ -55,6 +55,7 @@ void __exception_load(u32 nExc,void *data,u32 len,void *patch)
 		*(u32*)((u32)pAddr+(patch-data)) |= nExc;
 
 	DCFlushRangeNoSync(pAddr,len);
+	_sync();
 	ICInvalidateRange(pAddr,len);
 }
 
