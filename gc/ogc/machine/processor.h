@@ -6,6 +6,7 @@
 #define __stringify(rn)					#rn
 #define ATTRIBUTE_ALIGN(v)				__attribute__((aligned(v)))
 
+#define _sync() asm volatile("sync")
 #define ppcsync() asm volatile("sc")
 #define ppchalt() ({					\
 	asm volatile("sync");				\
