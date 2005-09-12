@@ -11,6 +11,10 @@
    extern "C" {
 #endif /* __cplusplus */
 
+extern GXRModeObj TVNtsc240Ds; 
+extern GXRModeObj TVNtsc240DsAa;
+extern GXRModeObj TVNtsc240Int; 
+extern GXRModeObj TVNtsc240IntAa;
 extern GXRModeObj TVNtsc480IntDf;
 extern GXRModeObj TVNtsc480IntAa;
 extern GXRModeObj TVMpal480IntDf;

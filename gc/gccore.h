@@ -27,13 +27,18 @@
 /*
  * Error returns
  */
-#define RNC_FILE_IS_NOT_RNC    -1
-#define RNC_HUF_DECODE_ERROR   -2
-#define RNC_FILE_SIZE_MISMATCH -3
-#define RNC_PACKED_CRC_ERROR   -4
-#define RNC_UNPACKED_CRC_ERROR -5
+#define RNC_FILE_IS_NOT_RNC				-1
+#define RNC_HUF_DECODE_ERROR			-2
+#define RNC_FILE_SIZE_MISMATCH			-3
+#define RNC_PACKED_CRC_ERROR			-4
+#define RNC_UNPACKED_CRC_ERROR			-5
 
-#define ATTRIBUTE_ALIGN(v)				__attribute__((aligned(v)))
+#ifndef ATTRIBUTE_ALIGN
+# define ATTRIBUTE_ALIGN(v)				__attribute__((aligned(v)))
+#endif
+#ifndef ATTRIBUTE_PAKED
+# define ATTRIBUTE_PAKED				__attribute__((packed))
+#endif
 
 #ifdef __cplusplus
    extern "C" {

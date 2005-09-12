@@ -3,6 +3,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <time.h>
+#include <gcutil.h>
 #include "asm.h"
 #include "processor.h"
 #include "system.h"
@@ -41,7 +42,7 @@ struct card_header {
 	u16 updated;
 	u16 chksum1;
 	u16 chksum2;
-} __attribute__((packed));
+} ATTRIBUTE_PAKED;
 
 struct card_direntry {
 	u8 gamecode[4];
@@ -59,7 +60,7 @@ struct card_direntry {
 	u16 length;
 	u16 pad_01;
 	u32 commentaddr;
-} __attribute__((packed));
+} ATTRIBUTE_PAKED;
 
 struct card_dat {			// dir allocation table
 	struct card_direntry entries[CARD_MAXFILES];
@@ -70,7 +71,7 @@ struct card_dircntrl {
 	u16 updated;
 	u16 chksum1;
 	u16 chksum2;
-} __attribute__((packed));
+} ATTRIBUTE_PAKED;
 
 struct card_bat {
 	u16 chksum1;
@@ -79,7 +80,7 @@ struct card_bat {
 	u16 freeblocks;
 	u16 lastalloc;
 	u16 fat[0xffb];
-} __attribute__((packed));
+} ATTRIBUTE_PAKED;
 
 typedef struct _card_block {
 	u8 cmd[9];

@@ -2,6 +2,7 @@
 #define __TDF_H__
 
 #include <gctypes.h>
+#include <gcutil.h>
 #include <gx.h>
 
 #ifdef __cplusplus

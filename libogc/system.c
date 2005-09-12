@@ -47,11 +47,11 @@ struct _sramcntrl {
 } sramcntrl ATTRIBUTE_ALIGN(32);
 
 typedef struct _yay0header {
-	unsigned int id;
-	unsigned int dec_size;
-	unsigned int links_offset;
-	unsigned int chunks_offset;
-} __attribute__((packed)) yay0header;
+	unsigned int id ATTRIBUTE_PAKED;
+	unsigned int dec_size ATTRIBUTE_PAKED;
+	unsigned int links_offset ATTRIBUTE_PAKED;
+	unsigned int chunks_offset ATTRIBUTE_PAKED;
+} yay0header;
 
 static u16 sys_fontenc = 0xffff;
 static u32 sys_fontcharsinsheet = 0;
@@ -177,7 +177,7 @@ static s32 __call_resetfuncs(s32 final)
 
 	ret = 1;
 	info = (sys_resetinfo*)header->first;
-	while(info!=NULL) {
+	while(info!=(sys_resetinfo*)__lwp_queue_tail(header)) {
 		if(info->func && info->func(final)==0) ret |= (ret<<1);
 		info = (sys_resetinfo*)info->node.next;
 	}
@@ -245,17 +245,22 @@ static void __lowmem_init()
 	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"
 	*((u32*)(ram_start+0x24))	= 1;            // version
 	*((u32*)(ram_start+0x28))	= SYSMEM_SIZE;	// physical memory size
-	*((u32*)(ram_start+0x2C))	= 1 + ((*(u32*)0xCC00302c)>>28);
+	*((u32*)(ram_start+0x2C))	= 3;//1 + ((*(u32*)0xCC00302c)>>28);
 
+	*((u32*)(ram_start+0x30))	= 0;
+	*((u32*)(ram_start+0x34))	= 0x816ffff0;
+
+	*((u32*)(ram_start+0xEC))	= (u32)ram_end;	// ram_end (??)
 	*((u32*)(ram_start+0xF0))	= SYSMEM_SIZE;	// simulated memory size
 	*((u32*)(ram_start+0xF8))	= 162000000;	// bus speed: 162 MHz
 	*((u32*)(ram_start+0xFC))	= 486000000;	// cpu speed: 486 Mhz
 	
 	*((u16*)(ram_start+0x30E0))	= 6; // production pads
-	*((u8*)(ram_start+0x30F2))	= 1; // boot stataus
+	*((u32*)(ram_start+0x30E4))	= 0xC0008000;
 
-	DCFlushRangeNoSync(ram_start, 0x100);
-
+	DCFlushRangeNoSync(ram_start, 0x3100);
+	_sync();
+	
 	SYS_SetArenaLo((void*)__ArenaLo);
 	SYS_SetArenaHi((void*)__ArenaHi);
 }

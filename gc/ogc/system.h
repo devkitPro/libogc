@@ -38,26 +38,26 @@
 #endif /* __cplusplus */
 
 typedef struct _syssram {
-	u16 checksum;
-	u16 checksum_inv;
-	u32 ead0;
-	u32 ead1;
-	u32 counter_bias;
-	s8 display_offsetH;
-	u8 ntd;
-	u8 lang;
-	u8 flags;
-} __attribute__((packed)) syssram;
+	u16 checksum ATTRIBUTE_PAKED;
+	u16 checksum_inv ATTRIBUTE_PAKED;
+	u32 ead0 ATTRIBUTE_PAKED;
+	u32 ead1 ATTRIBUTE_PAKED;
+	u32 counter_bias ATTRIBUTE_PAKED;
+	s8 display_offsetH ATTRIBUTE_PAKED;
+	u8 ntd ATTRIBUTE_PAKED;
+	u8 lang ATTRIBUTE_PAKED;
+	u8 flags ATTRIBUTE_PAKED;
+} syssram;
 
 typedef struct _syssramex {
-	u8 flash_id[2][12];
-	u32 wirelessKbd_id;
-	u16 wirelessPad_id[4];
-	u8 dvderr_code;
-	u8 __padding0;
-	u16 flashID_chksum[2];
-	u8 __padding1[4];
-} __attribute__((packed)) syssramex;
+	u8 flash_id[2][12] ATTRIBUTE_PAKED;
+	u32 wirelessKbd_id ATTRIBUTE_PAKED;
+	u16 wirelessPad_id[4] ATTRIBUTE_PAKED;
+	u8 dvderr_code ATTRIBUTE_PAKED;
+	u8 __padding0 ATTRIBUTE_PAKED;
+	u16 flashID_chksum[2] ATTRIBUTE_PAKED;
+	u8 __padding1[4] ATTRIBUTE_PAKED;
+} syssramex;
 
 typedef struct _sysalarm sysalarm;
 
@@ -75,30 +75,30 @@ struct _sysalarm {
 };
 
 typedef struct _sys_fontheader {
-	u16 font_type;
-	u16 first_char;
-	u16 last_char;
-	u16 inval_char;
-	u16 asc;
-	u16 desc;
-	u16 width;
-	u16 leading;
-    u16 cell_width;
-    u16 cell_height;
-    u32 sheet_size;
-    u16 sheet_format;
-    u16 sheet_column;
-    u16 sheet_row;
-    u16 sheet_width;
-    u16 sheet_height;
-    u16 width_table;
-    u32 sheet_image;
-    u32 sheet_fullsize;
-    u8  c0;
-    u8  c1;
-    u8  c2;
-    u8  c3;
-} __attribute__((packed)) sys_fontheader;
+	u16 font_type ATTRIBUTE_PAKED;
+	u16 first_char ATTRIBUTE_PAKED;
+	u16 last_char ATTRIBUTE_PAKED;
+	u16 inval_char ATTRIBUTE_PAKED;
+	u16 asc ATTRIBUTE_PAKED;
+	u16 desc ATTRIBUTE_PAKED;
+	u16 width ATTRIBUTE_PAKED;
+	u16 leading ATTRIBUTE_PAKED;
+    u16 cell_width ATTRIBUTE_PAKED;
+    u16 cell_height ATTRIBUTE_PAKED;
+    u32 sheet_size ATTRIBUTE_PAKED;
+    u16 sheet_format ATTRIBUTE_PAKED;
+    u16 sheet_column ATTRIBUTE_PAKED;
+    u16 sheet_row ATTRIBUTE_PAKED;
+    u16 sheet_width ATTRIBUTE_PAKED;
+    u16 sheet_height ATTRIBUTE_PAKED;
+    u16 width_table ATTRIBUTE_PAKED;
+    u32 sheet_image ATTRIBUTE_PAKED;
+    u32 sheet_fullsize ATTRIBUTE_PAKED;
+    u8  c0 ATTRIBUTE_PAKED;
+    u8  c1 ATTRIBUTE_PAKED;
+    u8  c2 ATTRIBUTE_PAKED;
+    u8  c3 ATTRIBUTE_PAKED;
+} sys_fontheader;
 
 typedef void (*resetcallback)(void);
 typedef s32 (*resetfunction)(s32 final);

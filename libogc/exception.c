@@ -87,6 +87,7 @@ void __exception_close(u32 except)
 	void *pAdd = (void*)(0x80000000|exception_location[except]);
 	*(u32*)pAdd = 0x4C000064;
 	DCFlushRangeNoSync(pAdd,0x100);
+	_sync();
 	ICInvalidateRange(pAdd,0x100);
 }
 
