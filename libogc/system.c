@@ -87,6 +87,7 @@ static s32 __mem_onreset(s32 final);
 extern u32 __lwp_sys_init();
 extern void __heap_init();
 extern void __exception_init();
+extern void __exception_closeall();
 extern void __systemcall_init();
 extern void __decrementer_init();
 extern void __exi_init();

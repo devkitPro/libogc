@@ -4,6 +4,7 @@
 #include "cache.h"
 #include "context.h"
 #include "processor.h"
+#include "lwp_threads.h"
 #include "irq.h"
 
 //#define _IRQ_DEBUG
@@ -23,7 +24,6 @@ struct irq_handler_s {
 
 static u64 spuriousIrq = 0;
 static u32 currIrqMask = 0;
-static u32 prevIrqMask = 0;
 static struct irq_handler_s g_IRQHandler[32];
 
 static vu32* const _piReg = (u32*)0xCC003000;
@@ -68,7 +68,7 @@ void c_irqdispatcher()
 	
 	intmask = 0;
 	if(cause&0x00000080) {		//Memory Interface
-		icause = _memReg[14]&_memReg[15];
+		icause = _memReg[15];
 		if(icause&0x00000001) {
 			intmask |= IRQMASK(IRQ_MEM0);
 		}
@@ -86,7 +86,7 @@ void c_irqdispatcher()
 		}
 	}
 	if(cause&0x00000040) {		//DSP
-		icause = _dspReg[5]&(_SHIFTR((_dspReg[5]&0x150),1,16));
+		icause = _dspReg[5];
 		if(icause&0x00000008){
 			intmask |= IRQMASK(IRQ_DSP_AI);
 		}
@@ -98,14 +98,14 @@ void c_irqdispatcher()
 		}
 	}
 	if(cause&0x00000020) {		//Streaming
-		icause = _aiReg[0]&(_SHIFTL((_aiReg[0]&0x04),1,16));
+		icause = _aiReg[0];
 		if(icause&0x00000008) {
 			intmask |= IRQMASK(IRQ_AI_AI);
 		}
 	}
 	if(cause&0x00000010) {		//EXI
 		//EXI 0
-		icause = _exiReg[0]&(_SHIFTL((_exiReg[0]&0x405),1,16));
+		icause = _exiReg[0];
 		if(icause&0x00000002) {
 			intmask |= IRQMASK(IRQ_EXI0_EXI);
 		}
@@ -116,7 +116,7 @@ void c_irqdispatcher()
 			intmask |= IRQMASK(IRQ_EXI0_EXT);
 		}
 		//EXI 1
-		icause = _exiReg[5]&(_SHIFTL((_exiReg[5]&0x405),1,16));
+		icause = _exiReg[5];
 		if(icause&0x00000002) {
 			intmask |= IRQMASK(IRQ_EXI1_EXI);
 		}
@@ -127,7 +127,7 @@ void c_irqdispatcher()
 			intmask |= IRQMASK(IRQ_EXI1_EXT);
 		}
 		//EXI 2
-		icause = _exiReg[10]&(_SHIFTL((_exiReg[10]&0x405),1,16));
+		icause = _exiReg[10];
 		if(icause&0x00000002) {
 			intmask |= IRQMASK(IRQ_EXI2_EXI);
 		}
@@ -166,23 +166,26 @@ void c_irqdispatcher()
 		intmask |= IRQMASK(IRQ_PI_ERROR);
 	}
 
-	i=0;
-	irq = 0;
-	while(i<(sizeof(_irqPrio)/sizeof(u32))) {
-		if((irq=(intmask&_irqPrio[i]))) {
-			irq = cntlzw(irq);
-			break;
+	mask = intmask&currIrqMask;
+	if(mask) {
+		i=0;
+		irq = 0;
+		while(i<(sizeof(_irqPrio)/sizeof(u32))) {
+			if((irq=(mask&_irqPrio[i]))) {
+				irq = cntlzw(irq);
+				break;
+			}
+			i++;
 		}
-		i++;
+
+		__lwp_thread_dispatchdisable();
+		if(g_IRQHandler[irq].pHndl) g_IRQHandler[irq].pHndl(irq,g_IRQHandler[irq].pCtx);
+		__lwp_thread_dispatchunnest();
 	}
-
-
 #ifdef _IRQ_DEBUG
 	printf("c_irqdispatcher(%08x,%d,%d,%d)\n",intmask,irq,__lwp_isr_in_progress(),_thread_dispatch_disable_level);
 #endif
 
-	if(g_IRQHandler[irq].pHndl)
-		g_IRQHandler[irq].pHndl(irq,g_IRQHandler[irq].pCtx);
 }
 
 void __SetInterrupts(u32 nMask)
@@ -190,19 +193,6 @@ void __SetInterrupts(u32 nMask)
 	u32 imask;
 	u32 piMask;
 
-	piMask = 0;
-	if(nMask&IM_PI_ERROR) {
-		piMask |= 0x00000001;
-	}
-	if(nMask&IM_PI_RSW) {
-		piMask |= 0x00000002;
-	}
-	if(nMask&IM_PI_DI) {
-		piMask |= 0x00000004;
-	}
-	if(nMask&IM_PI_SI) {
-		piMask |= 0x00000008;
-	}
 	if(nMask&IM_EXI) {
 		if(nMask&IM_EXI0) {
 			imask = _exiReg[0]&~0x2c0f;
@@ -250,25 +240,40 @@ void __SetInterrupts(u32 nMask)
 		_memReg[14] = (u16)imask;
 		piMask |= 0x00000080;
 	}
-	if(nMask&IM_PI_VI) {
-		piMask |= 0x00000100;
+	if(nMask&IM_PI) {
+		piMask = 0xf0;
+		if(nMask&IM_PI_ERROR) {
+			piMask |= 0x00000001;
+		}
+		if(nMask&IM_PI_RSW) {
+			piMask |= 0x00000002;
+		}
+		if(nMask&IM_PI_DI) {
+			piMask |= 0x00000004;
+		}
+		if(nMask&IM_PI_SI) {
+			piMask |= 0x00000008;
+		}
+		if(nMask&IM_PI_VI) {
+			piMask |= 0x00000100;
+		}
+		if(nMask&IM_PI_PETOKEN) {
+			piMask |= 0x00000200;
+		}
+		if(nMask&IM_PI_PEFINISH) {
+			piMask |= 0x00000400;
+		}
+		if(nMask&IM_PI_CP) {
+			piMask |= 0x00000800;
+		}
+		if(nMask&IM_PI_DEBUG) {
+			piMask |= 0x00001000;
+		}
+		if(nMask&IM_PI_HSP) {
+			piMask |= 0x00002000;
+		}
+		_piReg[1] = piMask;
 	}
-	if(nMask&IM_PI_PETOKEN) {
-		piMask |= 0x00000200;
-	}
-	if(nMask&IM_PI_PEFINISH) {
-		piMask |= 0x00000400;
-	}
-	if(nMask&IM_PI_CP) {
-		piMask |= 0x00000800;
-	}
-	if(nMask&IM_PI_DEBUG) {
-		piMask |= 0x00001000;
-	}
-	if(nMask&IM_PI_HSP) {
-		piMask |= 0x00002000;
-	}
-	_piReg[1] = piMask;
 }
 
 void __UnmaskIrq(u32 nMask)
@@ -309,14 +314,10 @@ void __irq_init()
 	
 	
 	currIrqMask = 0;
-	prevIrqMask = 0;
 	_piReg[1] = 0xf0;
 
 	__MaskIrq(0xffffffe0);
 	__irqhandler_init();
-
-	_piReg[0] = 1;
-	__UnmaskIrq(IRQMASK(IRQ_PI_ERROR));
 }
 
 raw_irq_handler_t* IRQ_Request(u32 nIrq,raw_irq_handler_t *pHndl,void *pCtx)
