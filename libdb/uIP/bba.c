@@ -796,7 +796,7 @@ s8_t uip_bba_init(struct uip_netif *dev)
 	s8_t ret;
 	s32_t cnt;
 
-	_siReg[15] = (_siReg[15]&~0x0001);
+	_siReg[15] = (_siReg[15]&~0x80000000);
 
 	ret = bba_probe(dev);
 	if(ret<0) return ret;
