@@ -431,7 +431,7 @@ static __inline__ u32 __linkstate()
 	u8 nways = 0;
 
 	nways = bba_in8(BBA_NWAYS);
-	if(nways&BBA_NWAYS_LS10 || nways&BBA_NWAYS_LS100) return nways;
+	if(nways&BBA_NWAYS_LS10 || nways&BBA_NWAYS_LS100) return 1;
 	return 0;
 }
 
@@ -442,8 +442,7 @@ static u32 __bba_get_linkstateasync()
 	cnt = 0;
 	do {
 		udelay(500);
-		ret = __linkstate()&0xf0;
-		if(ret) break;
+		ret = __linkstate();
 	} while(!ret && ++cnt<4000);
 	return ret;
 }
@@ -466,18 +465,15 @@ static void __bba_reset()
 {
 	bba_out8(0x60,0x00);
 	udelay(10000);
-	//bba_cmd_in8_slow(0x0F);
-	//udelay(10000);
+	bba_cmd_in8_slow(0x0F);
+	udelay(10000);
 	bba_out8(BBA_NCRA,BBA_NCRA_RESET);
-	udelay(100);
 	bba_out8(BBA_NCRA,0x00);
-	udelay(100);
 }
 
 static void __bba_recv_init()
 {
 	bba_out8(BBA_NCRB,(BBA_NCRB_PR|BBA_NCRB_CA|BBA_NCRB_2_PACKETS_PER_INT));
-	bba_out8(BBA_SI_ACTRL2,0x74);
 	bba_out8(BBA_RXINTT, 0x00);
 	bba_out8(BBA_RXINTT+1, 0x06); /* 0x0600 = 61us */
 
@@ -784,32 +780,14 @@ static err_t __bba_init(struct netif *dev)
 	bba_cmd_outs(0x04,&priv->devid,2);
 	bba_cmd_out8(0x05,priv->acstart);
 
-	/* Assume you are being started by something which has fucked NWAY!
-	   So reset to power on defaults for SIACTRL/SIACONN */
-	bba_out8(0x58, 0x80);
-	bba_out8(0x59, 0x00);
-	bba_out8(0x5a, 0x03);
-	bba_out8(0x5b, 0x83);
-	bba_out8(0x5c, 0x32);
-	bba_out8(0x5d, 0xfe);
-	bba_out8(0x5e, 0x1f);
-	bba_out8(0x5f, 0x1f);	
-	udelay(100);
-/* 
 	bba_out8(0x5b, (bba_in8(0x5b)&~0x80));
 	bba_out8(0x5e, 0x01);
 	bba_out8(0x5c, (bba_in8(0x5c)|0x04));
-*/	
+
 	bba_out8(BBA_NCRB,0x00);
 	
 	__bba_recv_init();
 
-	/* This doesn't set the speed anymore - it simple kicks off NWAY */
-	speed = bba_in8(BBA_NWAYC)&0xc0;
-	bba_out8(BBA_NWAYC,speed);
-	udelay(100);
-	bba_out8(BBA_NWAYC,(speed|0x04));
-	
 	bba_ins(BBA_NAFR_PAR0,priv->ethaddr->addr, 6);
 	LWIP_DEBUGF(NETIF_DEBUG,("MAC ADDRESS %02x:%02x:%02x:%02x:%02x:%02x\n", 
 		priv->ethaddr->addr[0], priv->ethaddr->addr[1], priv->ethaddr->addr[2], 
@@ -967,7 +945,6 @@ err_t bba_init(struct netif *dev)
 		return ret;
 	}
 	ret = __bba_get_linkstateasync();
-	EXI_Unlock(EXI_CHANNEL_0);
 
 	if(ret) {
 		etharp_init();
@@ -980,8 +957,12 @@ err_t bba_init(struct netif *dev)
 
 		dev->flags |= NETIF_FLAG_LINK_UP;
 		ret = ERR_OK;
-	} else
+	} else {
+		EXI_RegisterEXICallback(EXI_CHANNEL_2,NULL);
 		ret = ERR_IF;
+	}
+
+	EXI_Unlock(EXI_CHANNEL_0);
 	return ret;
 }
 
