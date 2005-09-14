@@ -178,9 +178,7 @@ void c_irqdispatcher()
 			i++;
 		}
 
-		__lwp_thread_dispatchdisable();
 		if(g_IRQHandler[irq].pHndl) g_IRQHandler[irq].pHndl(irq,g_IRQHandler[irq].pCtx);
-		__lwp_thread_dispatchunnest();
 	}
 #ifdef _IRQ_DEBUG
 	printf("c_irqdispatcher(%08x,%d,%d,%d)\n",intmask,irq,__lwp_isr_in_progress(),_thread_dispatch_disable_level);
@@ -198,28 +196,43 @@ void __SetInterrupts(u32 iMask,u32 nMask)
 		if(nMask&IM_EXI0_TC) imask |= 0x0004;
 		if(nMask&IM_EXI0_EXT) imask |= 0x0400;
 		_exiReg[0] = imask;
-	} else if(iMask&IM_EXI1) {
+		iMask &= ~IM_EXI0;
+	}
+	
+	if(iMask&IM_EXI1) {
 		imask = _exiReg[5]&~0x0c0f;
 		if(nMask&IM_EXI1_EXI) imask |= 0x0001;
 		if(nMask&IM_EXI1_TC) imask |= 0x0004;
 		if(nMask&IM_EXI1_EXT) imask |= 0x0400;
 		_exiReg[5] = imask;
-	} else if(iMask&IM_EXI2) {
+		iMask &= ~IM_EXI1;
+	}
+	
+	if(iMask&IM_EXI2) {
 		imask = _exiReg[10]&~0x000f;
 		if(nMask&IM_EXI2_EXI) imask |= 0x0001;
 		if(nMask&IM_EXI2_TC) imask |= 0x0004;
 		_exiReg[10] = imask;
-	} else if(iMask&IM_AI) {
+		iMask &= ~IM_EXI2;
+	}
+	
+	if(iMask&IM_AI) {
 		imask = _aiReg[0]&~0x2c;
 		if(nMask&IM_AI_AI) imask |= 0x0004;
 		_aiReg[0] = imask;
-	} else if(iMask&IM_DSP) {
+		iMask &= ~IM_AI;
+	}
+	
+	if(iMask&IM_DSP) {
 		imask = _dspReg[5]&~0x1f8;
 		if(nMask&IM_DSP_AI) imask |= 0x0010;
 		if(nMask&IM_DSP_ARAM) imask |= 0x0040;
 		if(nMask&IM_DSP_DSP) imask |= 0x0100;
 		_dspReg[5] = (u16)imask;
-	} else if(iMask&IM_MEM) {
+		iMask &= ~IM_DSP;
+	}
+	
+	if(iMask&IM_MEM) {
 		imask = 0;
 		if(nMask&IM_MEM0) imask |= 0x0001;
 		if(nMask&IM_MEM1) imask |= 0x0002;
@@ -227,7 +240,10 @@ void __SetInterrupts(u32 iMask,u32 nMask)
 		if(nMask&IM_MEM3) imask |= 0x0008;
 		if(nMask&IM_MEMADDRESS) imask |= 0x0010;
 		_memReg[14] = (u16)imask;
-	} else if(iMask&IM_PI) {
+		iMask &= ~IM_MEM;
+	}
+	
+	if(iMask&IM_PI) {
 		imask = 0xf0;
 		if(nMask&IM_PI_ERROR) {
 			imask |= 0x00000001;
@@ -260,6 +276,7 @@ void __SetInterrupts(u32 iMask,u32 nMask)
 			imask |= 0x00002000;
 		}
 		_piReg[1] = imask;
+		iMask &= ~IM_PI;
 	}
 }
 
@@ -302,7 +319,6 @@ void __irq_init()
 
 	mtspr(272,irqNestingLevel);
 	mtspr(273,intrStack);
-	
 	
 	currIrqMask = 0;
 	_piReg[1] = 0xf0;
