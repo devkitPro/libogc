@@ -152,8 +152,8 @@ void AUDIO_Init(u8 *stack)
 							// looks like 3.4 isn't picking up the use from the asm below
 		__CallbackStack = stack;
 
-		IRQ_Request(IRQ_AI_AI,__AISHandler,NULL);
-		__UnmaskIrq(IRQMASK(IRQ_AI_AI));
+		IRQ_Request(IRQ_AI,__AISHandler,NULL);
+		__UnmaskIrq(IRQMASK(IRQ_AI));
 
 		IRQ_Request(IRQ_DSP_AI,__AIDHandler,NULL);
 		__UnmaskIrq(IRQMASK(IRQ_DSP_AI));
