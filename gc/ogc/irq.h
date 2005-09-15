@@ -4,7 +4,7 @@
 #include <gctypes.h>
 #include "context.h"
 
-#define IM_NONE				 (0x00000000)
+#define IM_NONE				 (0xffffffff)
 #define IRQ_MEM0			 0
 #define IRQ_MEM1			 1
 #define IRQ_MEM2			 2
@@ -13,7 +13,7 @@
 #define IRQ_DSP_AI			 5
 #define IRQ_DSP_ARAM		 6
 #define IRQ_DSP_DSP			 7
-#define IRQ_AI_AI			 8
+#define IRQ_AI				 8
 #define IRQ_EXI0_EXI		 9
 #define IRQ_EXI0_TC			 10
 #define IRQ_EXI0_EXT		 11
@@ -48,8 +48,7 @@
 #define IM_DSP_DSP			 IRQMASK(IRQ_DSP_DSP)
 #define IM_DSP				 (IM_DSP_AI|IM_DSP_ARAM|IM_DSP_DSP)
 
-#define IM_AI_AI			 IRQMASK(IRQ_AI_AI)
-#define IM_AI				 (IRQ_AI_AI)
+#define IM_AI				IRQMASK(IRQ_AI)
 
 #define IM_EXI0_EXI			 IRQMASK(IRQ_EXI0_EXI)
 #define IM_EXI0_TC			 IRQMASK(IRQ_EXI0_TC)
