@@ -30,6 +30,8 @@
 #define DegToRad(a)   ( (a) *  0.01745329252f )
 #define RadToDeg(a)   ( (a) * 57.29577951f )
 
+#define guMtxRowCol(mt,row,col)		(mt[row][col])
+
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
@@ -56,6 +58,8 @@ void guLightOrtho(Mtx mt,f32 t,f32 b,f32 l,f32 r,f32 scaleS,f32 scaleT,f32 trans
 void guLightFrustum(Mtx mt,f32 t,f32 b,f32 l,f32 r,f32 n,f32 scaleS,f32 scaleT,f32 transS,f32 transT);
 
 void guLookAt(Mtx mt,Vector *camPos,Vector *camUp,Vector *target);
+
+void guVecHalfAngle(Vector *a,Vector *b,Vector *half);
 
 void c_guVecAdd(Vector *a,Vector *b,Vector *ab);
 void c_guVecSub(Vector *a,Vector *b,Vector *ab);

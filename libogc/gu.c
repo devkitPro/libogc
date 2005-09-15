@@ -590,3 +590,23 @@ f32 c_guVecDotProduct(Vector *a,Vector *b)
     return dot;
 }
 
+void guVecHalfAngle(Vector *a,Vector *b,Vector *half)
+{
+	Vector tmp1,tmp2,tmp3;
+
+	tmp1.x = -a->x;
+	tmp1.y = -a->y;
+	tmp1.z = -a->z;
+
+	tmp2.x = -b->x;
+	tmp2.y = -b->y;
+	tmp2.z = -b->z;
+
+	guVecNormalize(&tmp1);
+	guVecNormalize(&tmp2);
+
+	guVecAdd(&tmp1,&tmp2,&tmp3);
+	if(guVecDotProduct(&tmp3,&tmp3)>0.0f) guVecNormalize(&tmp3);
+
+	*half = tmp3;
+}
