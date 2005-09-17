@@ -14,34 +14,34 @@
 
 // texture header
 typedef struct _tdimgheader {
-	u16 height ATTRIBUTE_PAKED;
-	u16 width ATTRIBUTE_PAKED;
-	u32 fmt ATTRIBUTE_PAKED;
-	u32 data_offset ATTRIBUTE_PAKED;
-	u32 wraps ATTRIBUTE_PAKED;
-	u32 wrapt ATTRIBUTE_PAKED;
-	u32 minfilter ATTRIBUTE_PAKED;
-	u32 magfilter ATTRIBUTE_PAKED;
-	f32 lodbias ATTRIBUTE_PAKED;
-	u8 edgelod ATTRIBUTE_PAKED;
-	u8 minlod ATTRIBUTE_PAKED;
-	u8 maxlod ATTRIBUTE_PAKED;
-	u8 unpacked ATTRIBUTE_PAKED;
+	u16 height ATTRIBUTE_PACKED;
+	u16 width ATTRIBUTE_PACKED;
+	u32 fmt ATTRIBUTE_PACKED;
+	u32 data_offset ATTRIBUTE_PACKED;
+	u32 wraps ATTRIBUTE_PACKED;
+	u32 wrapt ATTRIBUTE_PACKED;
+	u32 minfilter ATTRIBUTE_PACKED;
+	u32 magfilter ATTRIBUTE_PACKED;
+	f32 lodbias ATTRIBUTE_PACKED;
+	u8 edgelod ATTRIBUTE_PACKED;
+	u8 minlod ATTRIBUTE_PACKED;
+	u8 maxlod ATTRIBUTE_PACKED;
+	u8 unpacked ATTRIBUTE_PACKED;
 } TDImgHeader;
 
 // texture palette header
 typedef struct _tdpalheader {
-	u16 nitems ATTRIBUTE_PAKED;
-	u8 unpacked ATTRIBUTE_PAKED;
-	u8 pad ATTRIBUTE_PAKED;
-	u32 fmt ATTRIBUTE_PAKED;
-	u32 data_offset ATTRIBUTE_PAKED;
+	u16 nitems ATTRIBUTE_PACKED;
+	u8 unpacked ATTRIBUTE_PACKED;
+	u8 pad ATTRIBUTE_PACKED;
+	u32 fmt ATTRIBUTE_PACKED;
+	u32 data_offset ATTRIBUTE_PACKED;
 } TDPalHeader;
 
 // texture descriptor
 typedef struct _tddesc {
-	TDImgHeader *imghead ATTRIBUTE_PAKED;
-	TDPalHeader *palhead ATTRIBUTE_PAKED;
+	TDImgHeader *imghead ATTRIBUTE_PACKED;
+	TDPalHeader *palhead ATTRIBUTE_PACKED;
 } TDDescHeader;
 
 static u32 TDF_GetTextureSize(u32 width,u32 height,u32 fmt)

@@ -73,7 +73,7 @@ struct __gxfifo {
 	u32 rd_ptr;
 	u32 wt_ptr;
 	u32 rdwt_dst;
-} ATTRIBUTE_PAKED;
+};
 
 static void *_gxcurrbp = NULL;
 static lwp_t _gxcurrentlwp = NULL;

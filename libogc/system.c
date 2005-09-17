@@ -47,10 +47,10 @@ struct _sramcntrl {
 } sramcntrl ATTRIBUTE_ALIGN(32);
 
 typedef struct _yay0header {
-	unsigned int id ATTRIBUTE_PAKED;
-	unsigned int dec_size ATTRIBUTE_PAKED;
-	unsigned int links_offset ATTRIBUTE_PAKED;
-	unsigned int chunks_offset ATTRIBUTE_PAKED;
+	unsigned int id ATTRIBUTE_PACKED;
+	unsigned int dec_size ATTRIBUTE_PACKED;
+	unsigned int links_offset ATTRIBUTE_PACKED;
+	unsigned int chunks_offset ATTRIBUTE_PACKED;
 } yay0header;
 
 static u16 sys_fontenc = 0xffff;

@@ -42,7 +42,7 @@ struct card_header {
 	u16 updated;
 	u16 chksum1;
 	u16 chksum2;
-} ATTRIBUTE_PAKED;
+} ATTRIBUTE_PACKED;
 
 struct card_direntry {
 	u8 gamecode[4];
@@ -60,7 +60,7 @@ struct card_direntry {
 	u16 length;
 	u16 pad_01;
 	u32 commentaddr;
-} ATTRIBUTE_PAKED;
+} ATTRIBUTE_PACKED;
 
 struct card_dat {			// dir allocation table
 	struct card_direntry entries[CARD_MAXFILES];
@@ -71,7 +71,7 @@ struct card_dircntrl {
 	u16 updated;
 	u16 chksum1;
 	u16 chksum2;
-} ATTRIBUTE_PAKED;
+} ATTRIBUTE_PACKED;
 
 struct card_bat {
 	u16 chksum1;
@@ -80,7 +80,7 @@ struct card_bat {
 	u16 freeblocks;
 	u16 lastalloc;
 	u16 fat[0xffb];
-} ATTRIBUTE_PAKED;
+} ATTRIBUTE_PACKED;
 
 typedef struct _card_block {
 	u8 cmd[9];
