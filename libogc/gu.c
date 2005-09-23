@@ -590,6 +590,38 @@ f32 c_guVecDotProduct(Vector *a,Vector *b)
     return dot;
 }
 
+void c_guQuatAdd(Quaternion *a,Quaternion *b,Quaternion *ab)
+{
+	ab->x = a->x + b->x;
+	ab->y = a->x + b->y;
+	ab->z = a->x + b->z;
+	ab->w = a->x + b->w;
+}
+
+void c_guQuatSub(Quaternion *a,Quaternion *b,Quaternion *ab)
+{
+	ab->x = a->x - b->x;
+	ab->y = a->x - b->y;
+	ab->z = a->x - b->z;
+	ab->w = a->x - b->w;
+}
+
+void c_guQuatMultiply(Quaternion *a,Quaternion *b,Quaternion *ab)
+{
+	Quaternion *r;
+	Quaternion ab_tmp;
+	
+	if(a==ab || b==ab) r = &ab_tmp;
+	else r = ab;
+	
+	r->w = a->w*b->w - a->x*b->x - a->y*b->y - a->z*b->z;
+	r->x = a->w*b->x + a->x*b->w + a->y*b->z + a->z*b->y;
+	r->y = a->w*b->y + a->y*b->w + a->z*b->x + a->x*b->z;
+	r->z = a->w*b->z + a->z*b->w + a->x*b->y + a->y*b->x;
+
+	if(r==&ab_tmp) *ab = ab_tmp;
+}
+
 void guVecHalfAngle(Vector *a,Vector *b,Vector *half)
 {
 	Vector tmp1,tmp2,tmp3;

@@ -82,8 +82,8 @@ InitGPRS:
 	li      r30,0
 	li      r31,0
 
-	lis		sp,__stack@h		    # we take 0x8173FFF0 as the topmost starting point for our stack,this gives us ~128Kb Stack
-	ori		sp,sp,__stack@l
+	lis		sp,__crt0stack@h		    # we take 0x8173FFF0 as the topmost starting point for our stack,this gives us ~128Kb Stack
+	ori		sp,sp,__crt0stack@l
 
 	lis     r2,_SDA2_BASE_@h
 	ori     r2,r2,_SDA2_BASE_@l  # Set the Small Data 2 (Read Only) base register.
@@ -144,6 +144,12 @@ video_line:
 1:	stwu	r4,4(r3)
 	bdnz	1b
 	blr
+
+	.section .sbss
+	.balign 8
+__crt0stack_end:
+	.space 0x2000
+__crt0stack:
 
 	.section .data
 	.balign	8

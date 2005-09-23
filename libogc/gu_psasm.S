@@ -581,6 +581,37 @@ ps_guVecMultiplySR:
     psq_st		fr13,8(r5),1,0      //  sore Z
 	blr
 
+	.globl ps_guQuatAdd
+	//r3 = a, r4 = b, r5 = ab
+ps_guQuatAdd:
+	psq_l		fr0,0(r3),0,0
+	psq_l		fr1,0(r4),0,0
+	ps_add		fr1,fr0,fr1
+	psq_st		fr1,0(r5),0,0
+	psq_l		fr0,8(r3),0,0
+	psq_l		fr1,8(r4),0,0
+	ps_add		fr1,fr0,fr1
+	psq_st		fr1,8(r5),0,0
+	blr
+
+	.globl ps_guQuatSub
+	//r3 = a, r4 = b, r5 = ab
+ps_guQuatSub:
+	psq_l		fr0,0(r3),0,0
+	psq_l		fr1,0(r4),0,0
+	ps_sub		fr1,fr0,fr1
+	psq_st		fr1,0(r5),0,0
+	psq_l		fr0,8(r3),0,0
+	psq_l		fr1,8(r4),0,0
+	ps_sub		fr1,fr0,fr1
+	psq_st		fr1,8(r5),0,0
+	blr
+
+	.globl ps_guQuatMultiply
+	//r3 = a, r4 = b, r5 = ab
+ps_guQuatMultiply:
+	blr
+
 	.section .data
 Unit01:
 	.float	0.0, 1.0

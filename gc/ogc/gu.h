@@ -40,6 +40,10 @@ typedef struct _vecf {
 	f32 x,y,z;
 } Vector;
 
+typedef struct _qrtn {
+	f32 x,y,z,w;
+} Quaternion;
+
 typedef f32	Mtx[3][4];
 typedef f32 (*MtxP)[4];
 typedef f32 ROMtx[4][3];
@@ -81,6 +85,15 @@ void ps_guVecMultiplySR(register Mtx mt,register Vector *src,register Vector *ds
 f32 ps_guVecDotProduct(register Vector *a,register Vector *b);
 #endif	//GEKKO
 
+void c_guQuatAdd(Quaternion *a,Quaternion *b,Quaternion *ab);
+void c_guQuatSub(Quaternion *a,Quaternion *b,Quaternion *ab);
+void c_guQuatMultiply(Quaternion *a,Quaternion *b,Quaternion *ab);
+
+#ifdef GEKKO
+void ps_guQuatAdd(register Quaternion *a,register Quaternion *b,register Quaternion *ab);
+void ps_guQuatSub(register Quaternion *a,register Quaternion *b,register Quaternion *ab);
+#endif
+
 void c_guMtxIdentity(Mtx mt);
 void c_guMtxCopy(Mtx src,Mtx dst);
 void c_guMtxConcat(Mtx a,Mtx b,Mtx ab);
@@ -113,6 +126,7 @@ void ps_guMtxReflect(register Mtx m,register Vector *p,register Vector *n);
 #endif	//GEKKO
 
 #ifdef MTX_USE_C
+
 #define guVecAdd				c_guVecAdd
 #define guVecSub				c_guVecSub
 #define guVecScale				c_guVecScale
@@ -121,6 +135,10 @@ void ps_guMtxReflect(register Mtx m,register Vector *p,register Vector *n);
 #define guVecCross				c_guVecCross
 #define guVecMultiplySR			c_guVecMultiplySR
 #define guVecDotProduct			c_guVecDotProduct
+
+#define guQuatAdd				c_guQuatAdd
+#define guQuatSub				c_guQuatSub
+#define guQuatMultiply			c_guQuatMultiply
 
 #define guMtxIdentity			c_guMtxIdentity
 #define guMtxCopy				c_guMtxCopy
@@ -135,7 +153,9 @@ void ps_guMtxReflect(register Mtx m,register Vector *p,register Vector *n);
 #define guMtxRotTrig			c_guMtxRotTrig
 #define guMtxRotAxisRad			c_guMtxRotAxisRad
 #define guMtxReflect			c_guMtxReflect
-#else //MTX_USE_PS
+
+#else //MTX_USE_C
+
 #define guVecAdd				ps_guVecAdd
 #define guVecSub				ps_guVecSub
 #define guVecScale				ps_guVecScale
@@ -144,6 +164,9 @@ void ps_guMtxReflect(register Mtx m,register Vector *p,register Vector *n);
 #define guVecCross				ps_guVecCross
 #define guVecMultiplySR			ps_guVecMultiplySR
 #define guVecDotProduct			ps_guVecDotProduct
+
+#define guQuatAdd				ps_guQuatAdd
+#define guQuatSub				ps_guQuatSub
 
 #define guMtxIdentity			ps_guMtxIdentity
 #define guMtxCopy				ps_guMtxCopy
@@ -158,7 +181,8 @@ void ps_guMtxReflect(register Mtx m,register Vector *p,register Vector *n);
 #define guMtxRotTrig			ps_guMtxRotTrig
 #define guMtxRotAxisRad			ps_guMtxRotAxisRad
 #define guMtxReflect			ps_guMtxReflect
-#endif
+
+#endif //MTX_USE_PS
 
 #define guMtxRotDeg(mt,axis,deg)		guMtxRotRad(mt,axis,DegToRad(deg))
 #define guMtxRotAxisDeg(mt,axis,deg)	guMtxRotAxisRad(mt,axis,DegToRad(deg))

@@ -266,7 +266,7 @@ __ArenaHi = (0x81700000);
 __gxregs = (__ArenaHi + 31) & (-32);
 
 /* for backward compatibility with old crt0 */
-PROVIDE (__stack = (0x812FFFE0));
+PROVIDE (__stack = (0x81700000));
 
 PROVIDE(__isIPL = __isIPL);
 PROVIDE(__text_start = text_mem_start);
