@@ -12,8 +12,13 @@ Include Sub Directories=1
 [Open Files]
 Open File0=
 Active File Display Mode=-1
+Open File Pos0=45248
+Open File Line0=45202
+Active File Index=0
+Open File Window Pos0=2,3,-1,-1,-4,-23,22,22,920,421
+Open File1=
 [File View]
-Current Select=Project Files\Makefile
+Current Select=Project Files\
 Scroll Position=0
 [Group]
 0=
