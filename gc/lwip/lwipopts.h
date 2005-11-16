@@ -105,17 +105,17 @@ a lot of data that needs to be copied, this should be set high. */
 #define TCP_QUEUE_OOSEQ         1
 
 /* TCP Maximum segment size. */
-#define TCP_MSS					1476
+#define TCP_MSS					1460
 
 /* TCP sender buffer space (bytes). */
-#define TCP_SND_BUF				(32*1024)
+#define TCP_SND_BUF				(32*TCP_MSS)
 
 /* TCP sender buffer space (pbufs). This must be at least = 2 *
    TCP_SND_BUF/TCP_MSS for things to work. */
-#define TCP_SND_QUEUELEN        (4 * TCP_SND_BUF/TCP_MSS)
+#define TCP_SND_QUEUELEN        (8*TCP_SND_BUF/TCP_MSS)
 
 /* TCP receive window. */
-#define TCP_WND                 (16*1024)
+#define TCP_WND                 (12*TCP_MSS)
 
 /* Maximum number of retransmissions of data segments. */
 #define TCP_MAXRTX              12
