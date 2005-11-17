@@ -14,7 +14,7 @@
 #include "exi.h"
 #include "card.h"
 
-//#define _CARD_DEBUG
+#define _CARD_DEBUG
 
 #define CARD_SYSAREA				5
 #define CARD_SYSDIR					0x2000
@@ -1925,14 +1925,14 @@ static s32 __card_domount(s32 chn)
 	}
 	if(card->mount_step==1) {
 		card->mount_step = 2;
-		if(__card_enableinterrupt(chn,1)<0) goto exit;
+		if((ret=__card_enableinterrupt(chn,1))<0) goto exit;
 		EXI_RegisterEXICallback(chn,__card_exihandler);
 		EXI_Unlock(chn);
 
 		DCInvalidateRange(card->workarea,0xA000);
 	}
 
-	if(__card_read(chn,(card->sector_size*(card->mount_step-2)),card->sector_size,card->workarea+((card->mount_step-2)<<13),__card_mountcallback)<0) goto exit;
+	if((ret=__card_read(chn,(card->sector_size*(card->mount_step-2)),card->sector_size,card->workarea+((card->mount_step-2)<<13),__card_mountcallback))<0) goto exit;
 	return ret;	
 	
 exit:
@@ -2456,7 +2456,7 @@ s32 CARD_Mount(s32 chn,void *workarea,cardcallback detach_cb)
 #ifdef _CARD_DEBUG
 	printf("CARD_Mount(%d,%p,%p)\n",chn,workarea,detach_cb);
 #endif
-	if((ret=CARD_MountAsync(chn,workarea,detach_cb,__card_synccallback)>=0)) {
+	if((ret=CARD_MountAsync(chn,workarea,detach_cb,__card_synccallback))>=0) {
 		ret = __card_sync(chn);
 	}
 	return ret;
@@ -2751,11 +2751,11 @@ s32 __card_findnext(card_dir *dir)
 			if ((dir->showall || memcmp(entries[dir->fileno].gamecode,card_gamecode,4)==0) 
 				&& (dir->showall || memcmp(entries[dir->fileno].company,card_company,2)==0)) { 
 				memcpy(dir->filename, entries[dir->fileno].filename, CARD_FILENAMELEN); 
-				dir->filename[CARD_FILENAMELEN] = 0; 
+				//dir->filename[CARD_FILENAMELEN] = 0; 
 				memcpy(dir->gamecode, entries[dir->fileno].gamecode, 4); 
-				dir->gamecode[4] = 0; 
+				//dir->gamecode[4] = 0; 
 				memcpy(dir->company, entries[dir->fileno].company, 2); 
-				dir->company[2] = 0; 
+				//dir->company[2] = 0; 
 
 				__card_putcntrlblock(card,CARD_ERROR_READY); 
 				return CARD_ERROR_READY; 
