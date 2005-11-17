@@ -128,6 +128,19 @@ void LWP_Reschedule(u32 prio)
 	_CPU_ISR_Restore(level);
 }
 
+s32 LWP_ThreadIsSuspended(lwp_t thethread)
+{
+	u32 level;
+	s32 state;
+
+	_CPU_ISR_Disable(level);
+    lwp_cntrl *lwp_thread = ( lwp_cntrl*)thethread;
+    state = __lwp_statesuspended(lwp_thread->cur_state) ? TRUE : FALSE;
+	_CPU_ISR_Restore(level);
+	return state;
+}
+
+
 s32 LWP_JoinThread(lwp_t thethread,void **value_ptr)
 {
 	u32 level;

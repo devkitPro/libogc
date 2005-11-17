@@ -14,7 +14,7 @@
 #include "exi.h"
 #include "card.h"
 
-#define _CARD_DEBUG
+//#define _CARD_DEBUG
 
 #define CARD_SYSAREA				5
 #define CARD_SYSDIR					0x2000

@@ -20,6 +20,7 @@ typedef void* lwpq_t;
 s32 LWP_CreateThread(lwp_t *thethread,void* (*entry)(void *),void *arg,void *stackbase,u32 stack_size,u8 prio);
 s32 LWP_SuspendThread(lwp_t thethread);
 s32 LWP_ResumeThread(lwp_t thethread);
+s32 LWP_ThreadIsSuspended(lwp_t thethread);
 lwp_t LWP_GetSelf();
 void LWP_SetThreadPriority(lwp_t thethread,u32 prio);
 void LWP_YieldThread();
