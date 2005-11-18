@@ -2390,6 +2390,11 @@ s32 CARD_Init(const char *gamecode,const char *company,boolean is_management)
 	return CARD_ERROR_READY;
 }
 
+s32 CARD_Probe(s32 chn)
+{
+	return EXI_Probe(chn);
+}
+
 s32 CARD_ProbeEx(s32 chn,s32 *mem_size,s32 *sect_size)
 {
 	s32 ret;
@@ -2429,8 +2434,10 @@ s32 CARD_ProbeEx(s32 chn,s32 *mem_size,s32 *sect_size)
 			if(!__card_iscard(card_id)) ret = CARD_ERROR_WRONGDEVICE;
 			else {
 				if(mem_size) *mem_size = card_id&0xFC;
-//				if(sect_size) *sect_size = 
-
+				if(sect_size) {
+					u32 idx = _ROTL(card_id,23)&0x1c;
+					*sect_size = card_sector_size[idx>>2];
+				}
 				ret = CARD_ERROR_READY; 
 			}
 		}
