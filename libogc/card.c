@@ -2390,6 +2390,56 @@ s32 CARD_Init(const char *gamecode,const char *company,boolean is_management)
 	return CARD_ERROR_READY;
 }
 
+s32 CARD_ProbeEx(s32 chn,s32 *mem_size,s32 *sect_size)
+{
+	s32 ret;
+	u32 level,card_id;
+	card_block *card = NULL;
+#ifdef _CARD_DEBUG
+	printf("CARD_ProbeEx(%d,%p,%p)\n",chn,mem_size,sect_size);
+#endif
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_FATAL_ERROR;
+	card = &cardmap[chn];
+
+	_CPU_ISR_Disable(level);
+	ret = EXI_ProbeEx(chn);
+	if(ret<=0) {
+		if(!ret) ret = CARD_ERROR_BUSY;
+		else ret = CARD_ERROR_NOCARD;
+		_CPU_ISR_Restore(level);
+		return ret;
+	}
+
+	if(card->attached) {
+		if(card->mount_step<1) {
+			_CPU_ISR_Restore(level);
+			return CARD_ERROR_BUSY;
+		}
+		if(mem_size) *mem_size = card->card_size;
+		if(sect_size) *sect_size = card->sector_size;
+
+		_CPU_ISR_Restore(level);
+		return CARD_ERROR_READY;
+	}
+
+	if(EXI_GetState(chn)&EXI_FLAG_ATTACH) ret = CARD_ERROR_WRONGDEVICE;
+	else {
+		ret = CARD_ERROR_BUSY;
+		if(EXI_GetID(chn,EXI_DEVICE_0,&card_id)) {
+			if(!__card_iscard(card_id)) ret = CARD_ERROR_WRONGDEVICE;
+			else {
+				if(mem_size) *mem_size = card_id&0xFC;
+//				if(sect_size) *sect_size = 
+
+				ret = CARD_ERROR_READY; 
+			}
+		}
+	}
+
+	_CPU_ISR_Restore(level);
+	return ret;
+}
+
 s32 CARD_MountAsync(s32 chn,void *workarea,cardcallback detach_cb,cardcallback attach_cb)
 {
 	s32 ret = CARD_ERROR_READY;
