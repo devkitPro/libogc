@@ -46,13 +46,7 @@
 #define DVD_MODEL06						0x20010608
 #define DVD_MODEL08						0x20020823
 #define DVD_MODEL08Q					0x20020831
-										
-#define DVD_SPINMOTOR_MASK				0x0000ff00
-#define DVD_SPINMOTOR_DOWN				0x00000000
-#define DVD_SPINMOTOR_UP				0x00000100
-#define DVD_SPINMOTOR_ACCEPT			0x00004000
-#define DVD_SPINMOTOR_CHECKDISK			0x00008000
-										
+																				
 /* drive status, status */				
 #define DVD_STATUS(s)					((u8)((s)>>24))
 										
@@ -128,6 +122,7 @@ static u32 __dvd_workaround;
 static u32 __dvd_workaroundseek;
 static u32 __dvd_lastcmdwasread;
 static u32 __dvd_currcmd;
+static u32 __dvd_motorcntrl;
 static lwpq_t __dvd_wait_queue;
 static sysalarm __dvd_timeoutalarm;
 static dvdcmdblk __dvd_block$15;
@@ -362,6 +357,7 @@ s32 DVD_LowSetStatus(u32 status,dvdcallbacklow cb);
 s32 DVD_LowUnlockDrive(dvdcallbacklow cb);
 s32 DVD_LowPatchDriveCode(dvdcallbacklow cb);
 s32 DVD_LowSpinUpDrive(dvdcallbacklow cb);
+s32 DVD_LowControlMotor(u32 mode,dvdcallbacklow cb);
 s32 DVD_ReadAbsAsyncPrio(dvdcmdblk *block,void *buf,u32 len,u32 offset,dvdcbcallback cb,s32 prio);
 s32 DVD_ReadDiskID(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb);
 
@@ -942,6 +938,11 @@ static void __dvd_spinupdrivesynccb(s32 result,dvdcmdblk *block)
 	LWP_WakeThread(__dvd_wait_queue);
 }
 
+static void __dvd_motorcntrlsynccb(s32 result,dvdcmdblk *block)
+{
+	LWP_WakeThread(__dvd_wait_queue);
+}
+
 static void __dvd_statemotorstoppedcb(s32 result)
 {
 #ifdef _DVD_DEBUG
@@ -1005,6 +1006,22 @@ static void __dvd_stategotoretrycb(s32 result)
 			__dvd_statemotorstopped();
 		}
 	}
+}
+
+static void __dvd_cntrldrivecb(s32 result)
+{
+#ifdef _DVD_DEBUG
+	printf("__dvd_cntrldrivecb(%d)\n",result);
+#endif
+	if(result==0x0010) {
+		__dvd_statetimeout();
+		return;
+	}
+	if(result==0x0001) {
+		DVD_LowSpinMotor(__dvd_motorcntrl,__dvd_sud_finalcb);
+		return;
+	}
+	__dvd_stategettingerror();
 }
 
 static void __dvd_spinupdrivecb(s32 result)
@@ -1256,7 +1273,7 @@ void __dvd_statebusy(dvdcmdblk *block)
 	printf("__dvd_statebusy(%p)\n",block);
 #endif
 	__dvd_laststate = __dvd_statebusy;
-	if(block->cmd>16) return;
+	if(block->cmd>17) return;
 
 	switch(block->cmd) {
 		case 1:					//Read(Sector)
@@ -1328,6 +1345,10 @@ void __dvd_statebusy(dvdcmdblk *block)
 			__dvd_lasterror = 0;
 			__dvd_extensionsenabled = TRUE;
 			DVD_LowSpinUpDrive(__dvd_statebusycb);
+			return;
+		case 17:
+			_diReg[1] = _diReg[1];
+			DVD_LowControlMotor(block->offset,__dvd_statebusycb);
 			return;
 		default:
 			return;
@@ -1501,7 +1522,7 @@ void __dvd_statecheckid()
 void __dvd_statetimeout()
 {
 	__dvd_storeerror(0x01234568);
-	DVD_Reset();
+	DVD_Reset(DVD_RESETSOFT);
 	__dvd_stateerrorcb(0);
 }
 
@@ -1623,6 +1644,20 @@ s32 DVD_LowSetStatus(u32 status,dvdcallbacklow cb)
 	_diReg[7] = DVD_DI_START;
 	
 	return 1;
+}
+
+s32 DVD_LowControlMotor(u32 mode,dvdcallbacklow cb)
+{
+#ifdef _DVD_DEBUG
+	printf("DVD_LowControlMotor(%08x)\n",mode);
+#endif
+	__dvd_stopnextint = 0;
+	__dvd_motorcntrl = mode;
+	__dvd_sud_finalcb = cb;
+	DVD_LowUnlockDrive(__dvd_cntrldrivecb);
+
+	return 1;
+
 }
 
 s32 DVD_LowSpinUpDrive(dvdcallbacklow cb)
@@ -1771,7 +1806,7 @@ s32 DVD_LowWaitCoverClose(dvdcallbacklow cb)
 	return 1;
 }
 
-void DVD_LowReset()
+void DVD_LowReset(u32 reset_mode)
 {
 	u32 val;
 #ifdef _DVD_DEBUG
@@ -1783,7 +1818,7 @@ void DVD_LowReset()
 
 	udelay(500);
 
-	val |= 0x0004;
+	if(reset_mode==DVD_RESETHARD) val |= 0x0004;
 	val |= 0x0001;
 	_piReg[9] = val;
 
@@ -2097,6 +2132,38 @@ s32 DVD_SpinUpDrive(dvdcmdblk *block)
 	return ret;
 }
 
+s32 DVD_ControlMotorAsync(u32 cmd,dvdcmdblk *block,dvdcbcallback cb)
+{
+#ifdef _DVD_DEBUG
+	printf("DVD_ControlMotorAsync(%d,%p,%p)\n",cmd,block,cb);
+#endif
+	block->cmd = 0x11;
+	block->cb = cb;
+	block->offset = cmd;
+	return __issuecommand(1,block);
+}
+
+s32 DVD_ControlMotor(u32 cmd,dvdcmdblk *block)
+{
+	s32 ret,state;
+	u32 level;
+#ifdef _DVD_DEBUG
+	printf("DVD_ControlMotor(%d,%p)\n",cmd,block);
+#endif
+	ret = DVD_ControlMotorAsync(cmd,block,__dvd_motorcntrlsynccb);
+
+	_CPU_ISR_Disable(level);
+	do {
+		state = block->state;
+		if(state==0 || state==-1) ret = -1;
+		else if(state==10) ret = block->txdsize;
+		else LWP_SleepThread(__dvd_wait_queue);
+	} while(state!=0 && state!=-1 && state!=10);
+	_CPU_ISR_Restore(level);
+
+	return ret;
+}
+
 s32 DVD_GetCmdBlockStatus(dvdcmdblk *block)
 {
 	u32 level;
@@ -2138,12 +2205,12 @@ void DVD_Pause()
 	_CPU_ISR_Restore(level);
 }
 
-void DVD_Reset()
+void DVD_Reset(u32 reset_mode)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_Reset()\n");
 #endif
-	DVD_LowReset();
+	DVD_LowReset(reset_mode);
 
 	_diReg[0] = (DVD_DE_MSK|DVD_TC_MSK|DVD_BRK_MSK);
 	_diReg[1] = _diReg[1];
@@ -2181,6 +2248,7 @@ s32 DVD_MountAsync(dvdcmdblk *block,dvdcbcallback cb)
 	printf("DVD_MountAsync()\n");
 #endif
 	__dvd_mountusrcb = cb;
+	DVD_Reset(DVD_RESETHARD);
 	return DVD_SpinUpDriveAsync(block,callback);
 }
 
@@ -2233,7 +2301,5 @@ void DVD_Init()
 		__UnmaskIrq(IRQMASK(IRQ_PI_DI));
 
 		LWP_InitQueue(&__dvd_wait_queue);
-		
-		DVD_Reset();
 	}
 }

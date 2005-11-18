@@ -4,6 +4,15 @@
 #include <gctypes.h>
 #include <ogc/lwp_queue.h>
 
+#define DVD_RESETHARD					0
+#define DVD_RESETSOFT					1
+
+#define DVD_SPINMOTOR_MASK				0x0000ff00
+#define DVD_SPINMOTOR_DOWN				0x00000000
+#define DVD_SPINMOTOR_UP				0x00000100
+#define DVD_SPINMOTOR_ACCEPT			0x00004000
+#define DVD_SPINMOTOR_CHECKDISK			0x00008000
+
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
@@ -59,12 +68,14 @@ struct _dvdfileinfo {
 };
 
 void DVD_Init();
-void DVD_Reset();
 void DVD_Pause();
+void DVD_Reset(u32 reset_mode);
 
 s32 DVD_Mount();
 s32 DVD_GetDriveStatus();
 s32 DVD_MountAsync(dvdcmdblk *block,dvdcbcallback cb);
+s32 DVD_ControlMotor(u32 cmd,dvdcmdblk *block);
+s32 DVD_ControlMotorAsync(u32 cmd,dvdcmdblk *block,dvdcbcallback cb);
 s32 DVD_GetCmdBlockStatus(dvdcmdblk *block);
 s32 DVD_SpinUpDrive(dvdcmdblk *block);
 s32 DVD_SpinUpDriveAsync(dvdcmdblk *block,dvdcbcallback cb);

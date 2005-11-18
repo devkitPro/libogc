@@ -116,7 +116,7 @@ typedef struct _card_stat {
 typedef void (*cardcallback)(s32 chan,s32 result);
 
 /*new api*/
-s32 CARD_Init(const char *gamecode,const char *company);
+s32 CARD_Init(const char *gamecode,const char *company,boolean is_management);
 s32 CARD_Mount(s32 chn,void *workarea,cardcallback detach_cb);
 s32 CARD_MountAsync(s32 chn,void *workarea,cardcallback detach_cb,cardcallback attach_cb);
 s32 CARD_Unmount(s32 chn);
