@@ -115,10 +115,38 @@ typedef struct _card_stat {
 
 typedef void (*cardcallback)(s32 chan,s32 result);
 
-/*new api*/
+
+/*! \fn s32 CARD_Init(const char *gamecode,const char *company,boolean is_management)
+\brief Performs the initialization of the memory card subsystem
+\param gamecode pointer to a 4byte long string to specify the vendors game code
+\param company pointer to a 2byte long string to specify the vendors company code
+\param is_management boolean flag to indicate whether to operate in manament mode or not
+
+\return >=0 on success, <0 on error
+*/
 s32 CARD_Init(const char *gamecode,const char *company,boolean is_management);
+
+
+/*! \fn s32 CARD_Probe(s32 chn)
+\brief Performs a check against the desired EXI channel if a device is inserted
+\param chn EXI channel index
+
+\return >=0 on success, <0 on error
+*/
 s32 CARD_Probe(s32 chn);
+
+
+/*! \fn s32 CARD_ProbeEx(s32 chn,s32 *mem_size,s32 *sect_size)
+\brief Performs a check against the desired EXI channel if a memory card is inserted or mounted
+\param chn EXI channel index
+\param mem_size pointer to a integer variable, ready to take the resulting value (this param is optional and can be NULL)
+\param sect_size pointer to a integer variable, ready to take the resulting value (this param is optional and can be NULL)
+
+\return >=0 on success, <0 on error
+*/
 s32 CARD_ProbeEx(s32 chn,s32 *mem_size,s32 *sect_size);
+
+
 s32 CARD_Mount(s32 chn,void *workarea,cardcallback detach_cb);
 s32 CARD_MountAsync(s32 chn,void *workarea,cardcallback detach_cb,cardcallback attach_cb);
 s32 CARD_Unmount(s32 chn);
