@@ -35,7 +35,7 @@
 #define microsecs_to_ticks(usec)	(((u64)(usec)*(TB_TIMER_CLOCK/125))/8)
 #define nanosecs_to_ticks(nsec)		(((u64)(nsec)*(TB_TIMER_CLOCK/125))/8000)
 
-#define diff_ticks(tick0,tick1)		((signed long long)tick0 - (signed long long)tick1)
+#define diff_ticks(tick0,tick1)		((u64)tick0<(u64)tick1?((u64)-1-(u64)tick1+(u64)tick0):((u64)tick0 - (u64)tick1))
 
 #define LWP_WD_INACTIVE				0
 #define LWP_WD_INSERTED				1

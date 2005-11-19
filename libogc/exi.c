@@ -43,12 +43,12 @@ typedef struct _exibus_priv {
 	u32 flags;
 	u32 lck_cnt;
 	u32 exi_id;
-	s64 exi_idtime;
+	u64 exi_idtime;
 	struct _lck_dev lck_dev[EXI_MAX_DEVICES];
 } exibus_priv;
 
 static exibus_priv eximap[EXI_MAX_CHANNELS];
-static s64 last_exi_idtime[EXI_MAX_CHANNELS];
+static u64 last_exi_idtime[EXI_MAX_CHANNELS];
 
 static u32 exi_id_serport1 = 0;
 
@@ -84,9 +84,9 @@ static __inline__ void __exi_clearirqs(u32 nChn,u32 nEXIIrq,u32 nTCIrq,u32 nEXTI
 
 static u32 __exi_probe(u32 nChn)
 {
-	s64 time;
+	u64 time;
 	u32 level,ret = 1;
-	s32 val;
+	u32 val;
 	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
 	printf("__exi_probe(%d)\n",nChn);
@@ -102,10 +102,10 @@ static u32 __exi_probe(u32 nChn)
 		if(_exiReg[nChn*5]&EXI_EXT_BIT) {
 			time = gettime();
 			if(last_exi_idtime[nChn]==0) last_exi_idtime[nChn] = time;
-			if((val=diff_usec(last_exi_idtime[nChn],time)+10)>=30) ret = 1;
-			else ret = 0;
+			if((val=diff_usec(last_exi_idtime[nChn],time)+10)<30) ret = 0;
+			else ret = 1;
 #ifdef _EXI_DEBUG
-			printf("val = %08x, last_exi_idtime[chn] = %08d%08d, ret = %d\n",val,(u32)(last_exi_idtime[nChn]>>32),(u32)last_exi_idtime[nChn],ret);
+			printf("val = %u, ret = %d, last_exi_idtime[chn] = %llu\n",val,ret,last_exi_idtime[nChn]);
 #endif
 			_CPU_ISR_Restore(level);
 			return ret;
@@ -505,7 +505,7 @@ static u32 __unlocked_handler(u32 nChn,u32 nDev)
 
 u32 EXI_GetID(u32 nChn,u32 nDev,u32 *nId)
 {
-	s64 idtime = 0;
+	u64 idtime = 0;
 	u32 ret,lck,reg,level;
 	exibus_priv *exi = &eximap[nChn];
 

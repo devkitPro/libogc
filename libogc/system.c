@@ -416,7 +416,7 @@ static s32 __sram_sync()
 	return sramcntrl.sync;
 }
 
-static void __sram_init()
+void __sram_init()
 {
 	sramcntrl.enabled = 0;
 	sramcntrl.locked = 0;

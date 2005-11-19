@@ -148,7 +148,7 @@ video_line:
 	.section .sbss
 	.balign 8
 __crt0stack_end:
-	.space 0x2000
+	.space 0x4000
 __crt0stack:
 
 	.section .data

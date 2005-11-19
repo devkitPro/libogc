@@ -122,56 +122,290 @@ typedef void (*cardcallback)(s32 chan,s32 result);
 \param company pointer to a 2byte long string to specify the vendors company code
 \param is_management boolean flag to indicate whether to operate in manament mode or not
 
-\return >=0 on success, <0 on error
+\return 0 on success, <0 on error
 */
 s32 CARD_Init(const char *gamecode,const char *company,boolean is_management);
 
 
 /*! \fn s32 CARD_Probe(s32 chn)
 \brief Performs a check against the desired EXI channel if a device is inserted
-\param chn EXI channel index
+\param chn CARD slot
 
-\return >=0 on success, <0 on error
+\return 0 on success, <0 on error
 */
 s32 CARD_Probe(s32 chn);
 
 
 /*! \fn s32 CARD_ProbeEx(s32 chn,s32 *mem_size,s32 *sect_size)
 \brief Performs a check against the desired EXI channel if a memory card is inserted or mounted
-\param chn EXI channel index
+\param chn CARD slot
 \param mem_size pointer to a integer variable, ready to take the resulting value (this param is optional and can be NULL)
 \param sect_size pointer to a integer variable, ready to take the resulting value (this param is optional and can be NULL)
 
-\return >=0 on success, <0 on error
+\return 0 on success, <0 on error
 */
 s32 CARD_ProbeEx(s32 chn,s32 *mem_size,s32 *sect_size);
 
 
+/*! \fn s32 CARD_Mount(s32 chn,void *workarea,cardcallback detach_cb)
+\brief Mounts the memory card in the slot CHN. Synchronous version.
+\param chn CARD slot
+\param workarea pointer to memory area to hold the cards system area. The startaddress of the workdarea should be aligned on a 32byte boundery
+\param detach_cb pointer to a callback function. This callback function will be called when the card is removed from the slot.
+
+\return 0 on success, <0 on error
+*/
 s32 CARD_Mount(s32 chn,void *workarea,cardcallback detach_cb);
+
+
+/*! \fn s32 CARD_MountAsync(s32 chn,void *workarea,cardcallback detach_cb,cardcallback attach_cb)
+\brief Mounts the memory card in the slot CHN. This function returns immediately. Asynchronous version.
+\param chn CARD slot
+\param workarea pointer to memory area to hold the cards system area. The startaddress of the workdarea should be aligned on a 32byte boundery
+\param detach_cb pointer to a callback function. This callback function will be called when the card is removed from the slot.
+\param attach_cb pointer to a callback function. This callback function will be called when the mount process has finished.
+
+\return >=0 on success, <0 on error
+*/
 s32 CARD_MountAsync(s32 chn,void *workarea,cardcallback detach_cb,cardcallback attach_cb);
+
+
+/*! \fn s32 CARD_Unmount(s32 chn)
+\brief Unmounts the memory card in the slot CHN and releases the EXI bus.
+\param chn CARD slot
+
+\return 0 on success, <0 on error
+*/
 s32 CARD_Unmount(s32 chn);
+
+
+/*! \fn s32 CARD_Read(card_file *file,void *buffer,u32 len,u32 offset)
+\brief Reads the data from the file into the buffer from the given offset with the given length. Synchronous version
+\param chn CARD slot
+\param buffer pointer to memory area read-in the data. The startaddress of the buffer should be aligned to a 32byte boundery.
+\param len length of data to read.
+\param offset offset into the file to read from.
+
+\return 0 on success, <0 on error
+*/
 s32 CARD_Read(card_file *file,void *buffer,u32 len,u32 offset);
+
+
+/*! \fn s32 CARD_ReadAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback callback)
+\brief Reads the data from the file into the buffer from the given offset with the given length. This function returns immediately. Asynchronous version
+\param chn CARD slot
+\param buffer pointer to memory area read-in the data. The startaddress of the buffer should be aligned to a 32byte boundery.
+\param len length of data to read.
+\param offset offset into the file to read from.
+\param callback pointer to a callback function. This callback will be called when the read process has finished.
+
+\return 0 on success, <0 on error
+*/
 s32 CARD_ReadAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback callback);
+
+
+/*! \fn s32 CARD_Open(s32 chn,const char *filename,card_file *file)
+\brief Opens the file with the given filename and fills in the fileinformations.
+\param chn CARD slot
+\param filename name of the file to open.
+\param file pointer to the card_file structure. It receives the fileinformations for later usage.
+
+\return 0 on success, <0 on error
+*/
 s32 CARD_Open(s32 chn,const char *filename,card_file *file);
+
+
+/*! \fn s32 CARD_Close(card_file *file)
+\brief Closes the file with the given card_file structure and releases the handle.
+\param card_file pointer to the card_file structure.
+
+\return 0 on success, <0 on error
+*/
 s32 CARD_Close(card_file *file);
+
+
+/*! \fn s32 CARD_Create(s32 chn,const char *filename,u32 size,card_file *file)
+\brief Creates a new file with the given filename and fills in the fileinformations. Synchronous version.
+\param chn CARD slot
+\param filename name of the file to create.
+\param size size of the newly created file.
+\param file pointer to the card_file structure. It receives the fileinformations for later usage.
+
+\return 0 on success, <0 on error
+*/
 s32 CARD_Create(s32 chn,const char *filename,u32 size,card_file *file);
+
+
+/*! \fn s32 CARD_CreateAsync(s32 chn,const char *filename,u32 size,card_file *file,cardcallback callback)
+\brief Creates a new file with the given filename and fills in the fileinformations. This function returns immediately. Asynchronous version.
+\param chn CARD slot
+\param filename name of the file to create.
+\param size size of the newly created file.
+\param file pointer to the card_file structure. It receives the fileinformations for later usage.
+\param callback pointer to a callback function. This callback will be called when the create process has finished.
+
+\return 0 on success, <0 on error
+*/
 s32 CARD_CreateAsync(s32 chn,const char *filename,u32 size,card_file *file,cardcallback callback);
+
+
+/*! \fn s32 CARD_Delete(s32 chn,const char *filename)
+\brief Deletes a file with the given filename. Synchronous version.
+\param chn CARD slot
+\param filename name of the file to delete.
+
+\return 0 on success, <0 on error
+*/
 s32 CARD_Delete(s32 chn,const char *filename);
+
+
+/*! \fn s32 CARD_DeleteAsync(s32 chn,const char *filename,cardcallback callback)
+\brief Deletes a file with the given filename. This function returns immediately. Asynchronous version.
+\param chn CARD slot
+\param filename name of the file to delete.
+\param callback pointer to a callback function. This callback will be called when the delete process has finished.
+
+\return 0 on success, <0 on error
+*/
 s32 CARD_DeleteAsync(s32 chn,const char *filename,cardcallback callback);
+
+
+/*! \fn s32 CARD_Write(card_file *file,void *buffer,u32 len,u32 offset)
+\brief Writes the data to the file from the buffer to the given offset with the given length. Synchronous version
+\param file pointer to the card_file structure which holds the fileinformations.
+\param buffer pointer to the memory area to read from. The startaddress of the buffer should be aligned on a 32byte boundery.
+\param len length of data to write.
+\param offset starting point in the file to start writing.
+
+\return 0 on success, <0 on error
+*/
 s32 CARD_Write(card_file *file,void *buffer,u32 len,u32 offset);
+
+
+/*! \fn s32 CARD_WriteAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback callback)
+\brief Writes the data to the file from the buffer to the given offset with the given length. This function returns immediately. Asynchronous version
+\param file pointer to the card_file structure which holds the fileinformations.
+\param buffer pointer to the memory area to read from. The startaddress of the buffer should be aligned on a 32byte boundery.
+\param len length of data to write.
+\param offset starting point in the file to start writing.
+\param callback pointer to a callback function. This callback will be called when the write process has finished.
+
+\return 0 on success, <0 on error
+*/
 s32 CARD_WriteAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback callback);
+
+
+/*! \fn s32 CARD_GetErrorCode(s32 chn)
+\brief Returns the result code from the last operation.
+\param chn CARD slot
+
+\return <=0 result of last operation
+*/
+s32 CARD_GetErrorCode(s32 chn);
+
+
+/*! \fn s32 CARD_FindFirst(s32 chn, card_dir *dir, bool ShowAllFlag)
+\brief Start to iterate thru the memory card's directory structure and returns the first directory entry.
+\param chn CARD slot
+\param dir pointer to card_dir structure to receive the result set.
+\param ShowAllFlag Whether to show all files of the memory card or only those which are identified by the company and gamecode string.
+
+\return 0 on success, <0 on error
+*/
+s32 CARD_FindFirst(s32 chn, card_dir *dir, bool ShowAllFlag);
+ 
+
+/*! \fn s32 CARD_FindNext(card_dir *dir)
+\brief Returns the next directory entry from the memory cards directory structure.
+\param dir pointer to card_dir structure to receive the result set.
+
+\return 0 on success, <0 on error
+*/
+s32 CARD_FindNext(card_dir *dir); 
+
+
+/*! \fn s32 CARD_GetSectorSize(s32 chn,u32 *sector_size)
+\brief Returns the next directory entry from the memory cards directory structure.
+\param chn CARD slot.
+\param sector_size pointer to receive the result.
+
+\return 0 on success, <0 on error
+*/
+s32 CARD_GetSectorSize(s32 chn,u32 *sector_size);
+
+
+/*! \fn s32 CARD_GetStatus(s32 chn,s32 fileno,card_stat *stats)
+\brief Get additional file statistic informations.
+\param chn CARD slot.
+\param fileno file index. returned by a previous call to CARD_Open().
+\param stats pointer to receive the result set.
+
+\return 0 on success, <0 on error
+*/
+s32 CARD_GetStatus(s32 chn,s32 fileno,card_stat *stats);
+
+
+/*! \fn s32 CARD_SetStatus(s32 chn,s32 fileno,card_stat *stats)
+\brief Set additional file statistic informations. Synchronous version.
+\param chn CARD slot.
+\param fileno file index. returned by a previous call to CARD_Open().
+\param stats pointer which holds the informations to set.
+
+\return 0 on success, <0 on error
+*/
+s32 CARD_SetStatus(s32 chn,s32 fileno,card_stat *stats);
+
+
+/*! \fn s32 CARD_SetStatusAsync(s32 chn,s32 fileno,card_stat *stats,cardcallback callback)
+\brief Set additional file statistic informations. This function returns immediately. Asynchronous version.
+\param chn CARD slot.
+\param fileno file index. returned by a previous call to CARD_Open().
+\param stats pointer which holds the informations to set.
+\param callback pointer to a callback function. This callback will be called when the setstatus process has finished.
+
+\return 0 on success, <0 on error
+*/
+s32 CARD_SetStatusAsync(s32 chn,s32 fileno,card_stat *stats,cardcallback callback);
+
+
+/*! \fn s32 CARD_GetAttributes(s32 chn,s32 fileno,u8 *attr)
+\brief Get additional file attributes. Synchronous version.
+\param chn CARD slot.
+\param fileno file index. returned by a previous call to CARD_Open().
+\param attr pointer to receive attribute value.
+
+\return 0 on success, <0 on error
+*/
+s32 CARD_GetAttributes(s32 chn,s32 fileno,u8 *attr);
+
+
+/*! \fn s32 CARD_SetAttributes(s32 chn,s32 fileno,u8 attr)
+\brief Set additional file attributes. Synchronous version.
+\param chn CARD slot.
+\param fileno file index. returned by a previous call to CARD_Open().
+\param attr attribute value to set.
+
+\return 0 on success, <0 on error
+*/
+s32 CARD_SetAttributes(s32 chn,s32 fileno,u8 attr);
+
+
+/*! \fn s32 CARD_SetAttributesAsync(s32 chn,s32 fileno,u8 attr,cardcallback callback)
+\brief Set additional file attributes. This function returns immediately. Asynchronous version.
+\param chn CARD slot.
+\param fileno file index. returned by a previous call to CARD_Open().
+\param attr attribute value to set.
+\param callback pointer to a callback function. This callback will be called when the setattributes process has finished.
+
+\return 0 on success, <0 on error
+*/
+s32 CARD_SetAttributesAsync(s32 chn,s32 fileno,u8 attr,cardcallback callback);
+
+/**
+ * Not finished functions
+*/
 s32 CARD_Format(s32 chn);
 s32 CARD_FormatAsync(s32 chn,cardcallback callback);
-s32 CARD_GetErrorCode(s32 chn);
-s32 CARD_FindFirst(s32 chn, card_dir *dir, bool ShowAllFlag); 
-s32 CARD_FindNext(card_dir *dir); 
-s32 CARD_GetSectorSize(s32 chn,u32 *sector_size);
-s32 CARD_GetStatus(s32 chn,s32 fileno,card_stat *stats);
-s32 CARD_SetStatus(s32 chn,s32 fileno,card_stat *stats);
-s32 CARD_SetStatusAsync(s32 chn,s32 fileno,card_stat *stats,cardcallback callback);
-s32 CARD_GetAttributes(s32 chn,s32 fileno,u8 *attr);
-s32 CARD_SetAttributes(s32 chn,s32 fileno,u8 attr);
-s32 CARD_SetAttributesAsync(s32 chn,s32 fileno,u8 attr,cardcallback callback);
 
 #ifdef __cplusplus
    }
