@@ -116,15 +116,14 @@ typedef struct _card_stat {
 typedef void (*cardcallback)(s32 chan,s32 result);
 
 
-/*! \fn s32 CARD_Init(const char *gamecode,const char *company,boolean is_management)
+/*! \fn s32 CARD_Init(const char *gamecode,const char *company)
 \brief Performs the initialization of the memory card subsystem
-\param gamecode pointer to a 4byte long string to specify the vendors game code
-\param company pointer to a 2byte long string to specify the vendors company code
-\param is_management boolean flag to indicate whether to operate in manament mode or not
+\param gamecode pointer to a 4byte long string to specify the vendors game code. May be NULL
+\param company pointer to a 2byte long string to specify the vendors company code. May be NULL
 
 \return 0 on success, <0 on error
 */
-s32 CARD_Init(const char *gamecode,const char *company,boolean is_management);
+s32 CARD_Init(const char *gamecode,const char *company);
 
 
 /*! \fn s32 CARD_Probe(s32 chn)
@@ -215,6 +214,16 @@ s32 CARD_ReadAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback 
 s32 CARD_Open(s32 chn,const char *filename,card_file *file);
 
 
+/*! \fn s32 CARD_OpenEntry(card_dir *entry,card_file *file)
+\brief Opens the file with the given filename and fills in the fileinformations.
+\param filename name of the file to open.
+\param file pointer to the card_file structure. It receives the fileinformations for later usage.
+
+\return 0 on success, <0 on error
+*/
+s32 CARD_OpenEntry(card_dir *entry,card_file *file);
+
+
 /*! \fn s32 CARD_Close(card_file *file)
 \brief Closes the file with the given card_file structure and releases the handle.
 \param card_file pointer to the card_file structure.
@@ -270,6 +279,25 @@ s32 CARD_Delete(s32 chn,const char *filename);
 s32 CARD_DeleteAsync(s32 chn,const char *filename,cardcallback callback);
 
 
+/*! \fn s32 CARD_DeleteEntry(card_dir *dir_entry)
+\brief Deletes a file with the given directory entry informations.
+\param dir_entry pointer to the card_dir structure which holds the informations for the delete operation.
+
+\return 0 on success, <0 on error
+*/
+s32 CARD_DeleteEntry(card_dir *dir_entry);
+
+
+/*! \fn s32 CARD_DeleteEntryAsync(card_dir *dir_entry,cardcallback callback)
+\brief Deletes a file with the given directory entry informations. This function returns immediately. Asynchronous version.
+\param dir_entry pointer to the card_dir structure which holds the informations for the delete operation.
+\param callback pointer to a callback function. This callback will be called when the delete process has finished.
+
+\return 0 on success, <0 on error
+*/
+s32 CARD_DeleteEntryAsync(card_dir *dir_entry,cardcallback callback);
+
+
 /*! \fn s32 CARD_Write(card_file *file,void *buffer,u32 len,u32 offset)
 \brief Writes the data to the file from the buffer to the given offset with the given length. Synchronous version
 \param file pointer to the card_file structure which holds the fileinformations.
@@ -304,15 +332,15 @@ s32 CARD_WriteAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback
 s32 CARD_GetErrorCode(s32 chn);
 
 
-/*! \fn s32 CARD_FindFirst(s32 chn, card_dir *dir, bool ShowAllFlag)
+/*! \fn s32 CARD_FindFirst(s32 chn, card_dir *dir, bool showall)
 \brief Start to iterate thru the memory card's directory structure and returns the first directory entry.
 \param chn CARD slot
 \param dir pointer to card_dir structure to receive the result set.
-\param ShowAllFlag Whether to show all files of the memory card or only those which are identified by the company and gamecode string.
+\param showall Whether to show all files of the memory card or only those which are identified by the company and gamecode string.
 
 \return 0 on success, <0 on error
 */
-s32 CARD_FindFirst(s32 chn, card_dir *dir, bool ShowAllFlag);
+s32 CARD_FindFirst(s32 chn, card_dir *dir, bool showall);
  
 
 /*! \fn s32 CARD_FindNext(card_dir *dir)
@@ -323,6 +351,18 @@ s32 CARD_FindFirst(s32 chn, card_dir *dir, bool ShowAllFlag);
 */
 s32 CARD_FindNext(card_dir *dir); 
 
+
+/*! \fn s32 CARD_GetDirectory(s32 chn, card_dir *dir_entries, s32 *count, bool showall)
+\brief Returns the directory entries. size of entries is max. 128.
+\param chn CARD slot
+\param dir pointer to card_dir structure to receive the result set.
+\param count pointer to an integer to receive the counted entries.
+\param showall Whether to show all files of the memory card or only those which are identified by the company and gamecode string.
+
+\return 0 on success, <0 on error
+*/
+s32 CARD_GetDirectory(s32 chn, card_dir *dir_entries, s32 *count, bool showall);
+ 
 
 /*! \fn s32 CARD_GetSectorSize(s32 chn,u32 *sector_size)
 \brief Returns the next directory entry from the memory cards directory structure.
