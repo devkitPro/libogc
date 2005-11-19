@@ -147,8 +147,8 @@ static u32 inputBufferVCount[4] = {0,0,0,0};
 static u32 inputBufferValid[4] = {0,0,0,0};
 static u32 inputBuffer[4][2] = {{0,0},{0,0},{0,0},{0,0}};
 static RDSTHandler rdstHandlers[4] = {NULL,NULL,NULL,NULL};
-static s64 typeTime[4] = {0,0,0,0};
-static s64 xferTime[4] = {0,0,0,0};
+static u64 typeTime[4] = {0,0,0,0};
+static u64 xferTime[4] = {0,0,0,0};
 static SICallback typeCallback[4][4] = {{NULL,NULL,NULL,NULL},
 										{NULL,NULL,NULL,NULL},
 										{NULL,NULL,NULL,NULL},
@@ -618,7 +618,7 @@ u32 SI_Transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb
 u32 SI_GetType(s32 chan)
 {
 	u32 level,type;
-	s64 time;
+	u64 time;
 #ifdef _SI_DEBUG
 	printf("SI_GetType(%d)\n",chan);
 #endif
