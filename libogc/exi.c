@@ -69,7 +69,7 @@ extern void __MaskIrq(u32);
 extern long long gettime();
 extern u32 diff_usec(long long start,long long end);
 
-static __inline__ void __exi_clearirqs(u32 nChn,u32 nEXIIrq,u32 nTCIrq,u32 nEXTIrq)
+static __inline__ void __exi_clearirqs(s32 nChn,u32 nEXIIrq,u32 nTCIrq,u32 nEXTIrq)
 {
 	u32 d;
 #ifdef _EXI_DEBUG
@@ -82,10 +82,11 @@ static __inline__ void __exi_clearirqs(u32 nChn,u32 nEXIIrq,u32 nTCIrq,u32 nEXTI
 	_exiReg[nChn*5] = d;
 }
 
-static u32 __exi_probe(u32 nChn)
+static s32 __exi_probe(s32 nChn)
 {
 	u64 time;
-	u32 level,ret = 1;
+	s32 ret = 1;
+	u32 level;
 	u32 val;
 	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
@@ -126,7 +127,7 @@ static u32 __exi_probe(u32 nChn)
 	return ret;
 }
 
-static inline void __exi_setinterrupts(u32 nChn,exibus_priv *exi)
+static inline void __exi_setinterrupts(s32 nChn,exibus_priv *exi)
 {
 	exibus_priv *pexi = &eximap[EXI_CHANNEL_2];
 #ifdef _EXI_DEBUG
@@ -145,9 +146,10 @@ static inline void __exi_setinterrupts(u32 nChn,exibus_priv *exi)
 	}
 }
 
-static u32 __exi_attach(u32 nChn,EXICallback ext_cb)
+static s32 __exi_attach(s32 nChn,EXICallback ext_cb)
 {
-	u32 level,ret;
+	s32 ret;
+	u32 level;
 	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
 	printf("__exi_attach(%d,%p)\n",nChn,ext_cb);
@@ -167,7 +169,7 @@ static u32 __exi_attach(u32 nChn,EXICallback ext_cb)
 	return ret;	
 }
 
-u32 EXI_Lock(u32 nChn,u32 nDev,EXICallback unlockCB)
+s32 EXI_Lock(s32 nChn,s32 nDev,EXICallback unlockCB)
 {
 	u32 level,i;
 	exibus_priv *exi = &eximap[nChn];
@@ -199,7 +201,7 @@ u32 EXI_Lock(u32 nChn,u32 nDev,EXICallback unlockCB)
 	return 1;
 }
 
-u32 EXI_Unlock(u32 nChn)
+s32 EXI_Unlock(s32 nChn)
 {
 	u32 level,dev;
 	EXICallback cb;
@@ -230,7 +232,7 @@ u32 EXI_Unlock(u32 nChn)
 	return 1;
 }
 
-u32 EXI_Select(u32 nChn,u32 nDev,u32 nFrq)
+s32 EXI_Select(s32 nChn,s32 nDev,s32 nFrq)
 {
 	u32 val;
 	u32 level;
@@ -278,9 +280,10 @@ u32 EXI_Select(u32 nChn,u32 nDev,u32 nFrq)
 	return 1;
 }
 
-u32 EXI_SelectSD(u32 nChn,u32 nDev,u32 nFrq)
+s32 EXI_SelectSD(s32 nChn,s32 nDev,s32 nFrq)
 {
-	u32 val,id,ret;
+	u32 val,id;
+	s32 ret;
 	u32 level;
 	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
@@ -329,7 +332,7 @@ u32 EXI_SelectSD(u32 nChn,u32 nDev,u32 nFrq)
 	return 1;
 }
 
-u32 EXI_Deselect(u32 nChn)
+s32 EXI_Deselect(s32 nChn)
 {
 	u32 val;
 	u32 level;
@@ -363,10 +366,11 @@ u32 EXI_Deselect(u32 nChn)
 	return 1;
 }
 
-u32 EXI_Sync(u32 nChn)
+s32 EXI_Sync(s32 nChn)
 {
 	u8 *buf;
-	u32 level,ret,i,cnt,val;
+	s32 ret;
+	u32 level,i,cnt,val;
 	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
 	printf("EXI_Sync(%d)\n",nChn);
@@ -392,7 +396,7 @@ u32 EXI_Sync(u32 nChn)
 	return ret;
 }
 
-u32 EXI_Imm(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
+s32 EXI_Imm(s32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 {
 	u32 level;
 	u32 value,i;
@@ -428,10 +432,11 @@ u32 EXI_Imm(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 	return 1;
 }
 
-u32 EXI_ImmEx(u32 nChn,void *pData,u32 nLen,u32 nMode)
+s32 EXI_ImmEx(s32 nChn,void *pData,u32 nLen,u32 nMode)
 {
 	u8 *buf = pData;
-	u32 tc,ret = 0;
+	u32 tc;
+	s32 ret = 0;
 #ifdef _EXI_DEBUG
 	printf("EXI_ImmEx(%d,%p,%d,%d)\n",nChn,pData,nLen,nMode);
 #endif
@@ -450,7 +455,7 @@ u32 EXI_ImmEx(u32 nChn,void *pData,u32 nLen,u32 nMode)
 	return ret;
 }
 
-u32 EXI_Dma(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
+s32 EXI_Dma(s32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 {
 	u32 level;
 	exibus_priv *exi = &eximap[nChn];
@@ -487,13 +492,13 @@ u32 EXI_Dma(u32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 	return 1;
 }
 
-u32 EXI_GetState(u32 nChn)
+s32 EXI_GetState(s32 nChn)
 {
 	exibus_priv *exi = &eximap[nChn];
 	return exi->flags;
 }
 
-static u32 __unlocked_handler(u32 nChn,u32 nDev)
+static s32 __unlocked_handler(s32 nChn,s32 nDev)
 {
 	u32 nId;
 #ifdef _EXI_DEBUG
@@ -503,10 +508,11 @@ static u32 __unlocked_handler(u32 nChn,u32 nDev)
 	return 1;
 }
 
-u32 EXI_GetID(u32 nChn,u32 nDev,u32 *nId)
+s32 EXI_GetID(s32 nChn,s32 nDev,u32 *nId)
 {
 	u64 idtime = 0;
-	u32 ret,lck,reg,level;
+	s32 ret,lck;
+	u32 reg,level;
 	exibus_priv *exi = &eximap[nChn];
 
 #ifdef _EXI_DEBUG
@@ -566,9 +572,10 @@ u32 EXI_GetID(u32 nChn,u32 nDev,u32 *nId)
 	return ret;
 }
 
-u32 EXI_Attach(u32 nChn,EXICallback ext_cb)
+s32 EXI_Attach(s32 nChn,EXICallback ext_cb)
 {
-	u32 level,ret;
+	s32 ret;
+	u32 level;
 	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
 	printf("EXI_Attach(%d)\n",nChn);
@@ -584,9 +591,10 @@ u32 EXI_Attach(u32 nChn,EXICallback ext_cb)
 	return ret;	
 }
 
-u32 EXI_Detach(u32 nChn)
+s32 EXI_Detach(s32 nChn)
 {
-	u32 level,ret = 1;
+	u32 level;
+	s32 ret = 1;
 	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
 	printf("EXI_Detach(%d)\n",nChn);
@@ -603,7 +611,7 @@ u32 EXI_Detach(u32 nChn)
 	return ret;
 }
 
-EXICallback EXI_RegisterEXICallback(u32 nChn,EXICallback exi_cb)
+EXICallback EXI_RegisterEXICallback(s32 nChn,EXICallback exi_cb)
 {
 	u32 level;
 	EXICallback old = NULL;
@@ -620,9 +628,10 @@ EXICallback EXI_RegisterEXICallback(u32 nChn,EXICallback exi_cb)
 	return old;
 }
 
-u32 EXI_Probe(u32 nChn)
+s32 EXI_Probe(s32 nChn)
 {
-	u32 id,ret;
+	s32 ret;
+	u32 id;
 	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
 	printf("EXI_Probe(%d)\n",nChn);
@@ -635,7 +644,7 @@ u32 EXI_Probe(u32 nChn)
 	return ret;
 }
 
-u32 EXI_ProbeEx(u32 nChn)
+s32 EXI_ProbeEx(s32 nChn)
 {
 	if(EXI_Probe(nChn)==1) return 1;
 	if(last_exi_idtime[nChn]==0) return -1;

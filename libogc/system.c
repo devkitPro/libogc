@@ -81,7 +81,7 @@ void* SYS_GetArenaHi();
 void __SYS_ReadROM(void *buf,u32 len,u32 offset);
 
 static s32 __sram_sync();
-static u32 __sram_writecallback();
+static s32 __sram_writecallback(s32 chn,s32 dev);
 static s32 __mem_onreset(s32 final);
 
 extern u32 __lwp_sys_init();
@@ -403,7 +403,7 @@ static u32 __sram_write(void *buffer,u32 loc,u32 len)
 	return 1;
 }
 
-static u32 __sram_writecallback()
+static s32 __sram_writecallback(s32 chn,s32 dev)
 {
 	sramcntrl.sync = __sram_write(sramcntrl.srambuf+sramcntrl.offset,sramcntrl.offset,(64-sramcntrl.offset));
 	if(sramcntrl.sync) sramcntrl.offset = 64;

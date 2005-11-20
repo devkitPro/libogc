@@ -356,7 +356,7 @@ static inline void bba_insdata(void *val,u32 len)
 	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_READ);
 }
 
-static inline void bba_insdmadata(void *val,u32 len,u32 (*dmasubrcv)())
+static inline void bba_insdmadata(void *val,u32 len,s32 (*dmasubrcv)(s32 chn,s32 dev))
 {
 	EXI_Dma(EXI_CHANNEL_0,val,len,EXI_READ,dmasubrcv);
 }
@@ -374,12 +374,12 @@ static inline void bba_outsdata(void *val,u32 len)
 	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_WRITE);
 }
 
-static inline void bba_outsdmadata(void *val,u32 len,u32 (*dmasubsnd)())
+static inline void bba_outsdmadata(void *val,u32 len,s32 (*dmasubsnd)(s32 chn,s32 dev))
 {
 	EXI_Dma(EXI_CHANNEL_0,val,len,EXI_WRITE,dmasubsnd);
 }
 
-static u32 __bba_exi_unlock()
+static s32 __bba_exi_unlock(s32 chn,s32 dev)
 {
 	LWP_WakeThread(wait_exi_queue);
 	return 1;
@@ -854,7 +854,7 @@ static u32 bba_calc_response(struct bba_priv *priv,u32 val)
 	return ((c0 << 24) | (c1 << 16) | (c2 << 8) | c3);
 }
 
-static u32 bba_event_handler(u32 nChn,u32 nDev)
+static s32 bba_event_handler(s32 nChn,s32 nDev)
 {
 	u8 status;
 	struct bba_priv *priv = (struct bba_priv*)gc_netif->state;

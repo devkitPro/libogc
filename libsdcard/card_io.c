@@ -169,7 +169,7 @@ static u32 __card_checktimeout(u32 startT,u32 timeout)
 	return 1;
 }
 
-static u32 __exi_unlock(u32 chn,u32 dev)
+static s32 __exi_unlock(s32 chn,s32 dev)
 {
 	u32 level;
 
@@ -192,7 +192,7 @@ static void __exi_wait(s32 drv_no)
 	_CPU_ISR_Restore(level);
 }
 
-static u32 __card_exthandler(u32 chn,u32 dev)
+static s32 __card_exthandler(s32 chn,s32 dev)
 {
 	card_doUnmount(chn);
 	card_ejectedCB(chn);
