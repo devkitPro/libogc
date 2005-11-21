@@ -18,7 +18,7 @@
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
 struct irq_handler_s {
-	raw_irq_handler_t *pHndl;
+	raw_irq_handler_t pHndl;
 	void *pCtx;
 };
 
@@ -330,22 +330,22 @@ void __irq_init()
 	__irqhandler_init();
 }
 
-raw_irq_handler_t* IRQ_Request(u32 nIrq,raw_irq_handler_t *pHndl,void *pCtx)
+raw_irq_handler_t IRQ_Request(u32 nIrq,raw_irq_handler_t pHndl,void *pCtx)
 {
 	u32 level;
 
-	raw_irq_handler_t *old = g_IRQHandler[nIrq].pHndl;
 	_CPU_ISR_Disable(level);
+	raw_irq_handler_t old = g_IRQHandler[nIrq].pHndl;
 	g_IRQHandler[nIrq].pHndl = pHndl;
 	g_IRQHandler[nIrq].pCtx = pCtx;
 	_CPU_ISR_Restore(level);
 	return old;
 }
 
-raw_irq_handler_t* IRQ_GetHandler(u32 nIrq)
+raw_irq_handler_t IRQ_GetHandler(u32 nIrq)
 {
 	u32 level;
-	raw_irq_handler_t *ret;
+	raw_irq_handler_t ret;
 
 	_CPU_ISR_Disable(level);
 	ret = g_IRQHandler[nIrq].pHndl;
@@ -353,12 +353,12 @@ raw_irq_handler_t* IRQ_GetHandler(u32 nIrq)
 	return ret;
 }
 
-raw_irq_handler_t* IRQ_Free(u32 nIrq)
+raw_irq_handler_t IRQ_Free(u32 nIrq)
 {
 	u32 level;
 
-	raw_irq_handler_t *old = g_IRQHandler[nIrq].pHndl;
 	_CPU_ISR_Disable(level);
+	raw_irq_handler_t old = g_IRQHandler[nIrq].pHndl;
 	g_IRQHandler[nIrq].pHndl = NULL;
 	g_IRQHandler[nIrq].pCtx = NULL;
 	_CPU_ISR_Restore(level);

@@ -1,22 +1,73 @@
 #include <stdlib.h>
 #include <errno.h>
+#include "asm.h"
 #include "mutex.h"
 #include "lwp_threadq.h"
 #include "lwp_wkspace.h"
 #include "cond.h"
 
+#define LWP_MAXCONDVARS			1024
+
 struct _cond {
-	u32 id;
-	mutex_t *mutex;
+	mutex_t mutex;
 	lwp_thrqueue wait_queue;
 };
 
-static u32 sys_condvarids = 0;
+struct _cond_obj {
+	u32 cond_id;
+	struct _cond cond;
+};
+
+static struct _cond_obj _cond_objects[LWP_MAXCONDVARS];
 
 extern int clock_gettime(struct timespec *tp);
 extern void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
 
-static u32 __lwp_cond_waitsupp(cond_t cond,mutex_t *mutex,u32 timeout,u8 timedout)
+static struct _cond* __lwp_cond_allochandle()
+{
+	s32 i;
+	u32 level;
+	struct _cond *ret = NULL;
+	
+	_CPU_ISR_Disable(level);
+
+	i = 0;
+	while(i<LWP_MAXCONDVARS && _cond_objects[i].cond_id!=-1) i++;
+	if(i<LWP_MAXCONDVARS) {
+		_cond_objects[i].cond_id = i;
+		ret = &_cond_objects[i].cond;
+	}
+
+	_CPU_ISR_Restore(level);
+	return ret;
+}
+
+static void __lwp_cond_freehandle(struct _cond *cond)
+{
+	s32 i;
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+
+	i = 0;
+	while(i<LWP_MAXCONDVARS && cond!=&_cond_objects[i].cond) i++;
+	if(i<LWP_MAXCONDVARS && _cond_objects[i].cond_id!=-1) {
+		_cond_objects[i].cond_id = -1;
+	}
+	_CPU_ISR_Restore(level);
+}
+
+void __lwp_cond_init()
+{
+	s32 i;
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	for(i=0;i<LWP_MAXCONDVARS;i++) _cond_objects[i].cond_id = -1;
+	_CPU_ISR_Restore(level);
+}
+
+static s32 __lwp_cond_waitsupp(cond_t cond,mutex_t mutex,u32 timeout,u8 timedout)
 {
 	u32 status,mstatus;
 	struct _cond *thecond = (struct _cond*)cond;
@@ -35,7 +86,7 @@ static u32 __lwp_cond_waitsupp(cond_t cond,mutex_t *mutex,u32 timeout,u8 timedou
 		__lwp_threadqueue_csenter(&thecond->wait_queue);
 		_thr_executing->wait.ret_code = 0;
 		_thr_executing->wait.queue = &thecond->wait_queue;
-		_thr_executing->wait.id = thecond->id;
+		_thr_executing->wait.id = (u32)thecond;
 		__lwp_threadqueue_enqueue(&thecond->wait_queue,timeout);
 		__lwp_thread_dispatchenable();
 		
@@ -53,7 +104,7 @@ static u32 __lwp_cond_waitsupp(cond_t cond,mutex_t *mutex,u32 timeout,u8 timedou
 	return status;
 }
 
-static u32 __lwp_cond_signalsupp(cond_t cond,u8 isbroadcast)
+static s32 __lwp_cond_signalsupp(cond_t cond,u8 isbroadcast)
 {
 	lwp_cntrl *thethread;
 	struct _cond *thecond = (struct _cond*)cond;
@@ -69,14 +120,14 @@ static u32 __lwp_cond_signalsupp(cond_t cond,u8 isbroadcast)
 	return 0;
 }
 
-u32 LWP_CondInit(cond_t *cond)
+s32 LWP_CondInit(cond_t *cond)
 {
 	struct _cond *ret;
 	
 	if(!cond) return -1;
 	
 	__lwp_thread_dispatchdisable();
-	ret = (struct _cond*)__lwp_wkspace_allocate(sizeof(struct _cond));
+	ret = __lwp_cond_allochandle();
 	if(!ret) {
 		__lwp_thread_dispatchenable();
 		return ENOMEM;
@@ -85,29 +136,28 @@ u32 LWP_CondInit(cond_t *cond)
 	ret->mutex = NULL;
 	__lwp_threadqueue_init(&ret->wait_queue,LWP_THREADQ_MODEFIFO,LWP_STATES_WAITING_FOR_CONDVAR,ETIMEDOUT);
 
-	ret->id = ++sys_condvarids;
-	*cond = (void*)ret;
+	*cond = (cond_t)ret;
 	__lwp_thread_dispatchenable();
 
 	return 0;
 }
 
-u32 LWP_CondWait(cond_t cond,mutex_t *mutex)
+s32 LWP_CondWait(cond_t cond,mutex_t mutex)
 {
 	return __lwp_cond_waitsupp(cond,mutex,LWP_THREADQ_NOTIMEOUT,FALSE);
 }
 
-u32 LWP_CondSignal(cond_t cond)
+s32 LWP_CondSignal(cond_t cond)
 {
 	return __lwp_cond_signalsupp(cond,FALSE);
 }
 
-u32 LWP_CondBroadcast(cond_t cond)
+s32 LWP_CondBroadcast(cond_t cond)
 {
 	return __lwp_cond_signalsupp(cond,TRUE);
 }
 
-u32 LWP_CondTimedWait(cond_t cond,mutex_t *mutex,const struct timespec *abstime)
+s32 LWP_CondTimedWait(cond_t cond,mutex_t mutex,const struct timespec *abstime)
 {
 	u64 timeout;
 	struct timespec curr_time;
@@ -122,7 +172,7 @@ u32 LWP_CondTimedWait(cond_t cond,mutex_t *mutex,const struct timespec *abstime)
 	return __lwp_cond_waitsupp(cond,mutex,timeout,timedout);
 }
 
-u32 LWP_CondDestroy(cond_t cond)
+s32 LWP_CondDestroy(cond_t cond)
 {
 	struct _cond *ptr = (struct _cond*)cond;
 	__lwp_thread_dispatchdisable();
@@ -130,7 +180,7 @@ u32 LWP_CondDestroy(cond_t cond)
 		__lwp_thread_dispatchenable();
 		return EBUSY;
 	}
-	__lwp_wkspace_free(ptr);
+	__lwp_cond_freehandle(ptr);
 	__lwp_thread_dispatchenable();
 	return 0;
 }

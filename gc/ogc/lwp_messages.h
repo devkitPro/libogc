@@ -57,6 +57,9 @@ typedef struct _mqcntrl {
 	lwp_queue inactive_msgs;
 } mq_cntrl;
 
+void __lwpmq_init();
+mq_cntrl* __lwpmq_allocmqueue();
+void __lwpmq_freemqueue(mq_cntrl *mqueue);
 u32 __lwpmq_initialize(mq_cntrl *,mq_attr *,u32,u32);
 void __lwpmq_close(mq_cntrl *,u32);
 u32 __lwpmq_seize(mq_cntrl *,u32,void *,u32 *,u32,u32);

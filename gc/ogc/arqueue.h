@@ -4,8 +4,8 @@
 #include <gctypes.h>
 #include "aram.h"
 
-#define ARQ_MRAMTOARAM			MRAMTOARAM
-#define ARQ_ARAMTOMRAM			ARAMTOMRAM
+#define ARQ_MRAMTOARAM			AR_MRAMTOARAM
+#define ARQ_ARAMTOMRAM			AR_ARAMTOMRAM
 
 #define ARQ_PRIO_LO				0
 #define ARQ_PRIO_HI				1

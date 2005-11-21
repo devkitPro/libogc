@@ -4,6 +4,59 @@
 #include "lwp_messages.h"
 #include "lwp_wkspace.h"
 
+#define LWP_MAXMESSAGEQ		1024
+
+struct _lwp_mqobj {
+	s32 mq_id;
+	mq_cntrl mqueue;
+};
+
+static struct _lwp_mqobj _mqueue_objects[LWP_MAXMESSAGEQ];
+
+mq_cntrl* __lwpmq_allocmqueue()
+{
+	s32 i;
+	u32 level;
+	mq_cntrl *ret = NULL;
+	
+	_CPU_ISR_Disable(level);
+
+	i = 0;
+	while(i<LWP_MAXMESSAGEQ && _mqueue_objects[i].mq_id!=-1) i++;
+	if(i<LWP_MAXMESSAGEQ) {
+		_mqueue_objects[i].mq_id = i;
+		ret = &_mqueue_objects[i].mqueue;
+	}
+
+	_CPU_ISR_Restore(level);
+	return ret;
+}
+
+void __lwpmq_freemqueue(mq_cntrl *mqueue)
+{
+	s32 i;
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+
+	i = 0;
+	while(i<LWP_MAXMESSAGEQ && mqueue!=&_mqueue_objects[i].mqueue) i++;
+	if(i<LWP_MAXMESSAGEQ && _mqueue_objects[i].mq_id!=-1) {
+		_mqueue_objects[i].mq_id = -1;
+	}
+	_CPU_ISR_Restore(level);
+}
+
+void __lwpmq_init()
+{
+	s32 i;
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	for(i=0;i<LWP_MAXMESSAGEQ;i++) _mqueue_objects[i].mq_id = -1;
+	_CPU_ISR_Restore(level);
+}
+
 void __lwpmq_msg_insert(mq_cntrl *mqueue,mq_buffercntrl *msg,u32 type)
 {
 	++mqueue->num_pendingmsgs;

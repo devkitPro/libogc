@@ -73,7 +73,7 @@ static void __dsp_inserttask(dsptask_t *task)
 
 static void __dsp_removetask(dsptask_t *task)
 {
-	task->flags = 0;
+	task->flags = DSPTASK_CLEARALL;
 	task->state = DSPTASK_DONE;
 	if(first_task==task) {
 		if(task->next) {

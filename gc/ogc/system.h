@@ -1,5 +1,41 @@
+/*-------------------------------------------------------------
+
+system.h -- System functions and initialization
+
+Copyright (C) 2004
+Michael Wiedenbauer (shagkur)
+Dave Murphy (WinterMute)
+
+This software is provided 'as-is', without any express or implied
+warranty.  In no event will the authors be held liable for any
+damages arising from the use of this software.
+
+Permission is granted to anyone to use this software for any
+purpose, including commercial applications, and to alter it and
+redistribute it freely, subject to the following restrictions:
+
+1.	The origin of this software must not be misrepresented; you
+must not claim that you wrote the original software. If you use
+this software in a product, an acknowledgment in the product
+documentation would be appreciated but is not required.
+
+2.	Altered source versions must be plainly marked as such, and
+must not be misrepresented as being the original software.
+
+3.	This notice may not be removed or altered from any source
+distribution.
+
+-------------------------------------------------------------*/
+
+
 #ifndef __SYSTEM_H__
 #define __SYSTEM_H__
+
+
+/*! \file system.h 
+\brief System functions and initialization
+
+*/ 
 
 #include <gctypes.h>
 #include <gcutil.h>
@@ -110,18 +146,78 @@ struct _sys_resetinfo {
 	u32 prio;
 };
 
+/*! \fn void SYS_Init()
+\deprecated Performs basic system initialization such as EXI init etc. This function is called from within the crt0 startup code.
+
+\return none
+*/
 void SYS_Init();
+
+
+/*! \fn void* SYS_AllocateFramebuffer(GXRModeObj *rmode)
+\brief Allocate cacheline aligned memory for the external framebuffer based on the rendermode object.
+\param[in] rmode pointer to the rendermode object
+
+\return pointer to the framebuffer's startadderss. NOTE: Address is aligned on a 32byte boundery!
+*/
 void* SYS_AllocateFramebuffer(GXRModeObj *rmode);
 void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl);
 resetcallback SYS_SetResetCallback(resetcallback cb);
 void SYS_StartPMC(u32 mcr0val,u32 mcr1val);
 void SYS_DumpPMC();
 void SYS_StopPMC();
+
+
+/*! \fn void SYS_CreateAlarm(sysalarm *alarm)
+\brief Create/initialize sysalarm structure
+\param[in] alarm pointer to a sysalarm structure to initialize/create.
+
+\return none
+*/
 void SYS_CreateAlarm(sysalarm *alarm);
+
+
+/*! \fn void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb)
+\brief Set the alarm parameters for a one-shot alarm, add to the list of alarms and start.
+\param[in] alarm pointer to a sysalarm struture to use.
+\param[in] tp pointer to timespec structure holding the time to fire the alarm
+\param[in] cb pointer to callback which is called when the alarm fires.
+
+\return none
+*/
 void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb);
+
+
+/*! \fn void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb)
+\brief Set the alarm parameters for a periodioc alarm, add to the list of alarms and start. The alarm and interval persists as long as SYS_CancelAlarm() isn't called.
+\param[in] alarm pointer to a sysalarm struture to use.
+\param[in] tp_start pointer to timespec structure holding the time to fire first time the alarm
+\param[in] tp_period pointer to timespec structure holding the interval for all following alarm triggers.
+\param[in] cb pointer to callback which is called when the alarm fires.
+
+\return none
+*/
 void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb);
+
+
+/*! \fn void SYS_RemoveAlarm(sysalarm *alarm)
+\brief Set the alarm parameters for a periodioc alarm and start. The alarm and interval persists as long as SYS_CancelAlarm() isn't called.
+\param[in] alarm pointer to a sysalarm structure to remove from the list.
+
+\return none
+*/
 void SYS_RemoveAlarm(sysalarm *alarm);
+
+
+/*! \fn void SYS_CancelAlarm(sysalarm *alarm)
+\brief Cancel the alarm, but do not remove from the list.
+\param[in] alarm pointer to a sysalarm structure to cancel.
+
+\return none
+*/
 void SYS_CancelAlarm(sysalarm *alarm);
+
+
 void SYS_SetWirelessID(u32 chan,u32 id);
 u32 SYS_GetWirelessID(u32 chan);
 u32 SYS_GetFontEncoding();

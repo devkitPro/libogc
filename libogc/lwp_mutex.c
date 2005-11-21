@@ -1,5 +1,58 @@
-#include <stdlib.h>
+#include "asm.h"
 #include "lwp_mutex.h"
+
+#define LWP_MAXMUTEXS		1024
+
+struct _lwp_mutexobj {
+	s32 mutex_id;
+	lwp_mutex mutex;
+};
+
+static struct _lwp_mutexobj _mutex_objects[LWP_MAXMUTEXS];
+
+lwp_mutex* __lwp_mutex_allocmutex()
+{
+	s32 i;
+	u32 level;
+	lwp_mutex *ret = NULL;
+	
+	_CPU_ISR_Disable(level);
+
+	i = 0;
+	while(i<LWP_MAXMUTEXS && _mutex_objects[i].mutex_id!=-1) i++;
+	if(i<LWP_MAXMUTEXS) {
+		_mutex_objects[i].mutex_id = i;
+		ret = &_mutex_objects[i].mutex;
+	}
+
+	_CPU_ISR_Restore(level);
+	return ret;
+}
+
+void __lwp_mutex_freemutex(lwp_mutex *mutex)
+{
+	s32 i;
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+
+	i = 0;
+	while(i<LWP_MAXMUTEXS && mutex!=&_mutex_objects[i].mutex) i++;
+	if(i<LWP_MAXMUTEXS && _mutex_objects[i].mutex_id!=-1) {
+		_mutex_objects[i].mutex_id = -1;
+	}
+	_CPU_ISR_Restore(level);
+}
+
+void __lwp_mutex_init()
+{
+	s32 i;
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	for(i=0;i<LWP_MAXMUTEXS;i++) _mutex_objects[i].mutex_id = -1;
+	_CPU_ISR_Restore(level);
+}
 
 void __lwp_mutex_initialize(lwp_mutex *mutex,lwp_mutex_attr *attrs,u32 init_lock)
 {

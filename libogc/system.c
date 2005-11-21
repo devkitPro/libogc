@@ -11,6 +11,9 @@
 #include "lwp_threads.h"
 #include "lwp_priority.h"
 #include "lwp_watchdog.h"
+#include "lwp_sema.h"
+#include "lwp_mutex.h"
+#include "lwp_messages.h"
 #include "lwp_wkspace.h"
 #include "system.h"
 
@@ -90,6 +93,7 @@ extern void __exception_init();
 extern void __exception_closeall();
 extern void __systemcall_init();
 extern void __decrementer_init();
+extern void __lwp_cond_init();
 extern void __exi_init();
 extern void __si_init();
 extern void __irq_init();
@@ -770,6 +774,10 @@ void SYS_Init()
 	__sys_state_init();
 	__lwp_priority_init();
 	__lwp_watchdog_init();
+	__lwp_sema_init();
+	__lwp_mutex_init();
+	__lwp_cond_init();
+	__lwpmq_init();
 	__exception_init();
 	__systemcall_init();
 	__decrementer_init();

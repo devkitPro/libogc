@@ -173,7 +173,7 @@ unsigned int _DEFUN(nanosleep,(tb),
 	return TB_SUCCESSFUL;
 }
 
-static u32 __time_exi_unlock()
+static s32 __time_exi_unlock(s32 chn,s32 dev)
 {
 	u32 level;
 
