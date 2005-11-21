@@ -1,6 +1,8 @@
 /*-------------------------------------------------------------
 
-system.h -- System functions and initialization
+$Id: system.h,v 1.23 2005-11-21 12:37:51 shagkur Exp $
+
+system.h -- OS functions and initialization
 
 Copyright (C) 2004
 Michael Wiedenbauer (shagkur)
@@ -25,6 +27,8 @@ must not be misrepresented as being the original software.
 3.	This notice may not be removed or altered from any source
 distribution.
 
+$Log: not supported by cvs2svn $
+
 -------------------------------------------------------------*/
 
 
@@ -33,7 +37,7 @@ distribution.
 
 
 /*! \file system.h 
-\brief System functions and initialization
+\brief OS functions and initialization
 
 */ 
 

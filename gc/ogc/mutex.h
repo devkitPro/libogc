@@ -1,5 +1,7 @@
 /*-------------------------------------------------------------
 
+$Id: mutex.h,v 1.6 2005-11-21 12:37:51 shagkur Exp $
+
 mutex.h -- Thread subsystem III
 
 Copyright (C) 2004
@@ -24,6 +26,8 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
+
+$Log: not supported by cvs2svn $
 
 -------------------------------------------------------------*/
 
