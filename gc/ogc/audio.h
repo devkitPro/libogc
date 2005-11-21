@@ -1,5 +1,7 @@
 /*-------------------------------------------------------------
 
+$Id: audio.h,v 1.4 2005-11-21 10:51:21 shagkur Exp $
+
 audio.h -- Audio subsystem
 
 Copyright (C) 2004
@@ -24,6 +26,8 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
+
+$Log: not supported by cvs2svn $
 
 -------------------------------------------------------------*/
 
