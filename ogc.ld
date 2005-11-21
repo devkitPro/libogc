@@ -162,21 +162,21 @@ SECTIONS
 		/* .gnu.warning sections are handled specially by elf32.em.  */
 		*(.gnu.warning)
 		*(.gnu.linkonce.t.*)
+		. = ALIGN(32);   /* REQUIRED. LD is flaky without it. */
 	} = 0
 
 	.fini      :
 	{
 		KEEP (*(.fini))
+		. = ALIGN(32);   /* REQUIRED. LD is flaky without it. */
 	} = 0
 	
 	PROVIDE (__etext = .);
 	PROVIDE (_etext = .);
 	PROVIDE (etext = .);
 
- 	. = ALIGN(32);
 	text_mem_size = . - text_mem_start;
 
-	. = ALIGN(32);
 	data_mem_start = .;
 	.rodata   : { *(.rodata) *(.rodata.*) *(.gnu.linkonce.r.*) }
 	.rodata1   : { *(.rodata1) }
@@ -204,6 +204,7 @@ SECTIONS
 		*(.data.*)
 		*(.gnu.linkonce.d.*)
 		SORT(CONSTRUCTORS)
+		. = ALIGN(32);   /* REQUIRED. LD is flaky without it. */
 	}
 
 	.data1   : { *(.data1) }
@@ -238,6 +239,7 @@ SECTIONS
 		KEEP (*(EXCLUDE_FILE (*crtend.o ) .ctors))
 		KEEP (*(SORT(.ctors.*)))
 		KEEP (*(.ctors))
+		. = ALIGN(32);   /* REQUIRED. LD is flaky without it. */
 	}
 
 	.dtors         :
@@ -246,6 +248,7 @@ SECTIONS
 		KEEP (*(EXCLUDE_FILE (*crtend.o ) .dtors))
 		KEEP (*(SORT(.dtors.*)))
 		KEEP (*(.dtors))
+		. = ALIGN(32);   /* REQUIRED. LD is flaky without it. */
 	}
 
 	.jcr            : { KEEP (*(.jcr)) }
@@ -261,15 +264,14 @@ SECTIONS
 		*(.sdata)
 		*(.sdata.*)
 		*(.gnu.linkonce.s.*)
+		. = ALIGN(32);   /* REQUIRED. LD is flaky without it. */
 	}
 
 	_edata = .;
 	PROVIDE (edata = .);
 
- 	. = ALIGN(32);
 	data_mem_size = . - data_mem_start;
 
-	. = ALIGN(32);
 	bss_mem_start = .;
 	.sbss      :
 	{
@@ -283,10 +285,9 @@ SECTIONS
 		*(.scommon)
 		PROVIDE (__sbss_end = .);
 		PROVIDE (___sbss_end = .);
+		. = ALIGN(32);   /* REQUIRED. LD is flaky without it. */
 		__sbss_end = .;
 	}
-
-	. = ALIGN(32);
 
 	.bss       :
 	{
@@ -307,7 +308,6 @@ SECTIONS
 		__bss_end = .;
 	}
  
- 	. = ALIGN(32);
  	bss_mem_size = . - bss_mem_start;
 
 	/* calculate file addresses */
