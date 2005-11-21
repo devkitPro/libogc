@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: cache.h,v 1.4 2005-11-21 12:14:01 shagkur Exp $
+$Id: cache.h,v 1.5 2005-11-21 13:57:47 shagkur Exp $
 
 cache.h -- Cache interface
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.4  2005/11/21 12:14:01  shagkur
+no message
+
 
 -------------------------------------------------------------*/
 
@@ -50,189 +53,235 @@ $Log: not supported by cvs2svn $
 #endif /* __cplusplus */
 
 
-/*! \fn void DCEnable()
-\brief Enable L1 data cache
-
-\return none
-*/
+/*! 
+ * \fn void DCEnable()
+ * \brief Enable L1 d-cache
+ *
+ * \return none
+ */
 void DCEnable();
 
 
-/*! \fn void DCDisable()
-\brief Disable L1 data cache
-
-\return none
-*/
+/*!
+ * \fn void DCDisable()
+ * \brief Disable L1 d-cache
+ *
+ * \return none
+ */
 void DCDisable();
 
 
-/*! \fn void DCFreeze()
-\brief Current contents of the L1 data cache are locked down and will not be cast out. Hits are still serviced, but misses go straight to L2 or 60x bus.  Most cache operations, such as DCFlushRange(), will still execute regardless of whether the cache is frozen.
-	   NOTE: In PowerPC architecture jargon, this feature is referred to as "locking" the data cache.  We use the word "freeze" to distinguish it from the locked cache and DMA features.
-
-\return none
-*/
+/*!
+ * \fn void DCFreeze()
+ * \brief Current contents of the L1 d-cache are locked down and will not be cast out.
+ *
+ *        Hits are still serviced, but misses go straight to L2 or 60x bus.  Most cache operations, such as DCFlushRange(), will still execute regardless of whether the cache is frozen.<br>
+ *	      <b><i>NOTE:</i></b> In PowerPC architecture jargon, this feature is referred to as "locking" the data cache.  We use the word "freeze" to distinguish it from the locked cache and DMA features.
+ *
+ * \return none
+ */
 void DCFreeze();
 
 
-/*! \fn void DCUnfreeze()
-\brief Undoes actions of DCFreeze(). Old cache blocks will now be cast out on subsequent L1 misses.
-	   NOTE: In PowerPC architecture jargon, this feature is referred to as "locking" the data cache.  We use the word "freeze" to distinguish it from the locked cache and DMA features.
-
-\return none
-*/
+/*!
+ * \fn void DCUnfreeze()
+ * \brief Undoes actions of DCFreeze().
+ *
+ *        Old cache blocks will now be cast out on subsequent L1 misses.<br>
+ * 	      <b><i>NOTE:</i></b> In PowerPC architecture jargon, this feature is referred to as "locking" the data cache.  We use the word "freeze" to distinguish it from the locked cache and DMA features.
+ *
+ * \return none
+ */
 void DCUnfreeze();
-
-
-/*! \fn void DCFlashInvalidate()
-\brief An invalidate operation is issued that marks the state of each data cache block as invalid without writing back modified cache blocks to memory. Cache access is blocked during this time.
-       Bus accesses to the cache are signaled as a miss during invalidate-all operations.
-
-\return none
-*/
+  
+ 
+/*! 
+ * \fn void DCFlashInvalidate()
+ * \brief Invalidate L1 d-cache.
+ *
+ *        An invalidate operation is issued that marks the state of each data cache block as invalid without writing back modified cache blocks to memory.<br>
+ *        Cache access is blocked during this time.Bus accesses to the cache are signaled as a miss during invalidate-all operations.
+ *
+ * \return none
+ */
 void DCFlashInvalidate();
 
 
-/*! \fn void DCInvalidateRange(void *startaddress,u32 len)
-\brief Invalidates a given range of the d-cache. If any part of the range hits in the d-cache, the corresponding block will be invalidated.
-\param[in] startaddress pointer to the startaddress of the memory range to invalidate. NOTE: Has to be aligned on a 32byte boundery
-\param[in] len length of the range to invalidate. NOTE: Should be a multiple of 32
-
-\return none
-*/
+/*! 
+ * \fn void DCInvalidateRange(void *startaddress,u32 len)
+ * \brief Invalidates a given range of the d-cache.
+ *
+ *        If any part of the range hits in the d-cache, the corresponding block will be invalidated.
+ * \param[in] startaddress pointer to the startaddress of the memory range to invalidate. <b><i>NOTE:</i></b> Has to be aligned on a 32byte boundery
+ * \param[in] len length of the range to invalidate. <b><i>NOTE:</i></b> Should be a multiple of 32
+ *
+ * \return none
+ */
 void DCInvalidateRange(void *startaddress,u32 len);
 
 
-/*! \fn void DCFlushRange(void *startaddress,u32 len)
-\brief Flushes a given range. If any part of the range hits in the d-cache the corresponding block will be flushed to main memory and invalidated.
-       This function invokes a "sync" after flushing the range. This means the function will stall until the CPU knows that the data has been writen to main memory
-\param[in] startaddress pointer to the startaddress of the memory range to flush. NOTE: Has to be aligned on a 32byte boundery
-\param[in] len length of range to be flushed. NOTE: Should be a multiple of 32
-
-\return none
-*/
+/*! 
+ * \fn void DCFlushRange(void *startaddress,u32 len)
+ * \brief Flushes a given range.
+ *
+ *        If any part of the range hits in the d-cache the corresponding block will be flushed to main memory and invalidated.<br>
+ *        <b><i>NOTE:</i></b> This function invokes a "sync" after flushing the range. This means the function will stall until the CPU knows that the data has been writen to main memory
+ * \param[in] startaddress pointer to the startaddress of the memory range to flush. <b><i>NOTE:</i></b> Has to be aligned on a 32byte boundery
+ * \param[in] len length of range to be flushed. <b><i>NOTE:</i></b> Should be a multiple of 32
+ *
+ *\return none
+ */
 void DCFlushRange(void *startaddress,u32 len);
 
-/*! \fn void DCStoreRange(void *startaddress,u32 len)
-\brief Ensures a range of memory is updated with any modified data in the cache.
-       This function invokes a "sync" after storing the range. This means the function will stall until the CPU knows that the data has been writen to main memory
-\param[in] startaddress pointer to the startaddress of the memory range to store. NOTE: Has to be aligned on a 32byte boundery
-\param[in] len length of the range to store. NOTE: Should be a multiple of 32
-
-\return none
-*/
+/*! 
+ * \fn void DCStoreRange(void *startaddress,u32 len)
+ * \brief Ensures a range of memory is updated with any modified data in the cache.
+ *
+ *        <b><i>NOTE:</i></b> This function invokes a "sync" after storing the range. This means the function will stall until the CPU knows that the data has been writen to main memory
+ * \param[in] startaddress pointer to the startaddress of the memory range to store. <b><i>NOTE:</i></b> Has to be aligned on a 32byte boundery
+ * \param[in] len length of the range to store. <b><i>NOTE:</i></b> Should be a multiple of 32
+ *
+ * \return none
+ */
 void DCStoreRange(void *startaddress,u32 len);
 
 
-/*! \fn void DCFlushRangeNoSync(void *startaddress,u32 len)
-\brief Flushes a given range. If any part of the range hits in the d-cache the corresponding block will be flushed to main memory and invalidated.
-       This routine does not perform a "sync" to ensure that the range has been flushed to memory.  That is, the cache blocks are sent to the bus interface unit for storage to main memory, but by the time this function returns, you are not guaranteed that the blocks have been written to memory
-\param[in] startaddress pointer to the startaddress of the memory range to flush. NOTE: Has to be aligned on a 32byte boundery
-\param[in] len length of range to be flushed. NOTE: Should be a multiple of 32
-
-\return none
-*/
+/*! 
+ * \fn void DCFlushRangeNoSync(void *startaddress,u32 len)
+ * \brief Flushes a given range. 
+ *
+ *        If any part of the range hits in the d-cache the corresponding block will be flushed to main memory and invalidated.<br>
+ *        <b><i>NOTE:</i></b> This routine does not perform a "sync" to ensure that the range has been flushed to memory.  That is, the cache blocks are sent to the bus interface unit for storage to main memory, but by the time this function returns, you are not guaranteed that the blocks have been written to memory
+ * \param[in] startaddress pointer to the startaddress of the memory range to flush. <b><i>NOTE:</i></b> Has to be aligned on a 32byte boundery
+ * \param[in] len length of range to be flushed. <b><i>NOTE:</i></b> Should be a multiple of 32
+ *
+ * \return none
+ */
 void DCFlushRangeNoSync(void *startaddress,u32 len);
 
 
-/*! \fn void DCStoreRangeNoSync(void *startaddress,u32 len)
-\brief Ensures a range of memory is updated with any modified data in the cache.
-       This routine does not perform a "sync" to ensure that the range has been flushed to memory.  That is, the cache blocks are sent to the bus interface unit for storage to main memory, but by the time this function returns, you are not guaranteed that the blocks have been written to memory
-\param[in] startaddress pointer to the startaddress of the memory range to store. NOTE: Has to be aligned on a 32byte boundery
-\param[in] len length of the range to store. NOTE: Should be a multiple of 32
-
-\return none
-*/
+/*! 
+ * \fn void DCStoreRangeNoSync(void *startaddress,u32 len)
+ * \brief Ensures a range of memory is updated with any modified data in the cache.
+ *
+ *        <b><i>NOTE:</i></b> This routine does not perform a "sync" to ensure that the range has been flushed to memory.  That is, the cache blocks are sent to the bus interface unit for storage to main memory, but by the time this function returns, you are not guaranteed that the blocks have been written to memory
+ * \param[in] startaddress pointer to the startaddress of the memory range to store. <b><i>NOTE:</i></b> Has to be aligned on a 32byte boundery
+ * \param[in] len length of the range to store. <b><i>NOTE:</i></b> Should be a multiple of 32
+ *
+ * \return none
+ */
 void DCStoreRangeNoSync(void *startaddress,u32 len);
 
 
-/*! \fn void DCZeroRange(void *startaddress,u32 len)
-\brief Loads a range of memory into cache and zeroes all the cache lines. 
-\param[in] startaddress pointer to the startaddress of the memory range to load/zero. NOTE: Has to be aligned on a 32byte boundery
-\param[in] len length of the range to load/zero. NOTE: Should be a multiple of 32
-
-\return none
-*/
+/*! 
+ * \fn void DCZeroRange(void *startaddress,u32 len)
+ * \brief Loads a range of memory into cache and zeroes all the cache lines. 
+ * \param[in] startaddress pointer to the startaddress of the memory range to load/zero. <b><i>NOTE:</i></b> Has to be aligned on a 32byte boundery
+ * \param[in] len length of the range to load/zero. <b><i>NOTE:</i></b> Should be a multiple of 32
+ *
+ * \return none
+ */
 void DCZeroRange(void *startaddress,u32 len);
 
 
-/*! \fn void DCTouchRange(void *startaddress,u32 len)
-\brief Loads a range of memory into cache.
-\param[in] startaddress pointer to the startaddress of the memory range to load. NOTE: Has to be aligned on a 32byte boundery
-\param[in] len length of the range to load. NOTE: Should be a multiple of 32
-
-\return none
-*/
+/*! 
+ * \fn void DCTouchRange(void *startaddress,u32 len)
+ * \brief Loads a range of memory into cache.
+ * \param[in] startaddress pointer to the startaddress of the memory range to load. <b><i>NOTE:</i></b> Has to be aligned on a 32byte boundery
+ * \param[in] len length of the range to load. <b><i>NOTE:</i></b> Should be a multiple of 32
+ *
+ * \return none
+ */
 void DCTouchRange(void *startaddress,u32 len);
 
 
-/*! \fn void ICSync()
-\brief Performs an instruction cache synchronization. This ensures that all instructions preceding this instruction have completed before this instruction completes.
-
-\return none
-*/
+/*! 
+ * \fn void ICSync()
+ * \brief Performs an instruction cache synchronization. 
+ *
+ *        This ensures that all instructions preceding this instruction have completed before this instruction completes.
+ *
+ * \return none
+ */
 void ICSync();
 
 
-/*! \fn void ICFlashInvalidate()
-\brief An invalidate operation is issued that marks the state of each instruction cache block as invalid without writing back modified cache blocks to memory. 
-       Cache access is blocked during this time. Bus accesses to the cache are signaled as a miss during invalidate-all operations.
-
-\return none
-*/
+/*! 
+ * \fn void ICFlashInvalidate()
+ * \brief Invalidate the L1 i-cache.
+ *
+ *        An invalidate operation is issued that marks the state of each instruction cache block as invalid without writing back modified cache blocks to memory.<br>
+ *        Cache access is blocked during this time. Bus accesses to the cache are signaled as a miss during invalidate-all operations.
+ *
+ * \return none
+ */
 void ICFlashInvalidate();
 
 
-/*! \fn void ICEnable()
-\brief Enable instruction cache
-
-\return none
-*/
+/*! 
+ * \fn void ICEnable()
+ * \brief Enable L1 i-cache
+ *
+ * \return none
+ */
 void ICEnable();
 
 
-/*! \fn void ICDisable()
-\brief Disable instruction cache
-
-\return none
-*/
+/*! 
+ * \fn void ICDisable()
+ * \brief Disable L1 i-cache
+ *
+ * \return none
+ */
 void ICDisable();
 
 
-/*! \fn void ICFreeze()
-\brief Current contents of the L1 instruction cache are locked down and will not be cast out. Hits are still serviced, but misses go straight to L2 or 60x bus.
-	   NOTE: In PowerPC architecture jargon, this feature is referred to as "locking" the data cache.  We use the word "freeze" to distinguish it from the locked cache and DMA features.
-
-\return none
-*/
+/*! 
+ * \fn void ICFreeze()
+ * \brief Current contents of the L1 i-cache are locked down and will not be cast out.
+ *
+ *        Hits are still serviced, but misses go straight to L2 or 60x bus.<br>
+ *	      <b><i>NOTE:</i></b> In PowerPC architecture jargon, this feature is referred to as "locking" the data cache.  We use the word "freeze" to distinguish it from the locked cache and DMA features.
+ *
+ * \return none
+ */
 void ICFreeze();
 
 
-/*! \fn void ICUnfreeze()
-\brief Undoes actions of ICFreeze(). Old cache blocks will now be cast out on subsequent L1 misses.
-	   NOTE: In PowerPC architecture jargon, this feature is referred to as "locking" the data cache.  We use the word "freeze" to distinguish it from the locked cache and DMA features.
-
-\return none
-*/
+/*! 
+ * \fn void ICUnfreeze()
+ * \brief Undoes actions of ICFreeze().
+ *
+ *        Old cache blocks will now be cast out on subsequent L1 misses.<br>
+ *	      <b><i>NOTE:</i></b> In PowerPC architecture jargon, this feature is referred to as "locking" the data cache.  We use the word "freeze" to distinguish it from the locked cache and DMA features.
+ *
+ * \return none
+ */
 void ICUnfreeze();
 
 
-/*! \fn void ICBlockInvalidate(void *startaddress)
-\brief Invalidates a block of the i-cache. If the block hits in the i-cache, the corresponding block will be invalidated.
-\param[in] startaddress pointer to the startaddress of the memory block to invalidate. NOTE: Has to be aligned on a 32byte boundery
-
-\return none
-*/
+/*! 
+ * \fn void ICBlockInvalidate(void *startaddress)
+ * \brief Invalidates a block in the i-cache. 
+ *
+ *        If the block hits in the i-cache, the corresponding block will be invalidated.
+ * \param[in] startaddress pointer to the startaddress of the memory block to invalidate. <b><i>NOTE:</i></b> Has to be aligned on a 32byte boundery
+ *
+ *\return none
+ */
 void ICBlockInvalidate(void *startaddress);
 
 
-/*! \fn void ICInvalidateRange(void *startaddress,u32 len)
-\brief Invalidate a range of the i-cache. If any part of the range hits in the i-cache, the corresponding block will be invalidated.
-\param[in] startaddress pointer to the startaddress of the memory range to invalidate. NOTE: Has to be aligned on a 32byte boundery
-\param[in] len length of the range to invalidate. NOTE: Should be a multiple of 32
-
-\return none
-*/
+/*! 
+ * \fn void ICInvalidateRange(void *startaddress,u32 len)
+ * \brief Invalidate a range in the L1 i-cache. 
+ *
+ *        If any part of the range hits in the i-cache, the corresponding block will be invalidated.
+ * \param[in] startaddress pointer to the startaddress of the memory range to invalidate. <b><i>NOTE:</i></b> Has to be aligned on a 32byte boundery
+ * \param[in] len length of the range to invalidate. <b><i>NOTE:</i></b> Should be a multiple of 32
+ *
+ * \return none
+ */
 void ICInvalidateRange(void *startaddress,u32 len);
 
 void LCEnable();
