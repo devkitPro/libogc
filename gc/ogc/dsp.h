@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: dsp.h,v 1.5 2005-11-21 12:13:45 shagkur Exp $
+$Id: dsp.h,v 1.6 2005-11-22 07:14:55 shagkur Exp $
 
 dsp.h -- DSP subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.5  2005/11/21 12:13:45  shagkur
+no message
+
 
 -------------------------------------------------------------*/
 
@@ -44,6 +47,7 @@ $Log: not supported by cvs2svn $
 
 /*! 
  * \addtogroup dsp_taskstate DSP task states
+ * \brief DSP task state indicating DSP task's current operation
  * @{
  */
 
@@ -59,6 +63,7 @@ $Log: not supported by cvs2svn $
 
 /*! 
  * \addtogroup dsp_taskflag DSP task flags
+ * \brief DSP task queue state flag indicating the task's current queue state. Multiple states are OR'd.
  * @{
  */
 
@@ -74,18 +79,25 @@ $Log: not supported by cvs2svn $
    extern "C" {
 #endif /* __cplusplus */
 
+
+/*! 
+\typedef struct _dsp_task dsptask_t
+\brief forward typdef to struct _dsp_task. This struture holds certain DSP task information for execution.
+*/
+typedef struct _dsp_task dsptask_t;
+
+
 /*! \typedef void (*DSPCallback)(void *task)
 \brief function pointer typedef for the user's DSP interrupt handler callback
 \param[in] task pointer to the dsp_task structure.
 */
-typedef void (*DSPCallback)(void *task);
+typedef void (*DSPCallback)(dsptask_t *task);
 
 
 /*! \typedef struct _dsp_task dsptask_t
-\brief struture to hold certain DSP task information.
-\param state current state of the task
+\param state current task \ref dsp_taskstate "state" set
 \param prio priority of the task
-\param flags processing flags of the task
+\param flags currnet task \ref dsp_taskflag "flag(s)" set. 
 \param init_vec initialization vector. depends on the DSP code to execute.
 \param resume_vec resume vector. depends on the DSP code to execute.
 \param iram_maddr main memory address of i-ram image. NOTE: Has to be aligned on a 32byte boundery!
@@ -101,7 +113,7 @@ typedef void (*DSPCallback)(void *task);
 \param next pointer to the next task in the doubly linked list.
 \param prev pointer to the previous task in the doubly linked list.
 */
-typedef struct _dsp_task {
+struct _dsp_task {
 	vu32 state;
 	vu32 prio;
 	vu32 flags;
@@ -124,7 +136,7 @@ typedef struct _dsp_task {
 
 	struct _dsp_task *next;
 	struct _dsp_task *prev;
-} dsptask_t;
+};
 
 
 /*! \fn void DSP_Init()
