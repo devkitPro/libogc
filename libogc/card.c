@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: card.c,v 1.51 2005-11-21 12:15:46 shagkur Exp $
+$Id: card.c,v 1.52 2005-11-22 07:18:13 shagkur Exp $
 
 card.c -- Memory card subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.51  2005/11/21 12:15:46  shagkur
+no message
+
 
 -------------------------------------------------------------*/
 
@@ -2151,7 +2154,7 @@ static s32 __card_readarrayunlock(s32 chn,u32 address,void *buffer,u32 len,u32 f
 	return ret;
 }
 
-static void __dsp_initcallback(void *task)
+static void __dsp_initcallback(dsptask_t *task)
 {
 	u32 chn;
 	card_block *card = NULL;
@@ -2173,7 +2176,7 @@ static void __dsp_initcallback(void *task)
 }
 
 static u8 tmp_buffer[64] ATTRIBUTE_ALIGN(32);
-static void __dsp_donecallback(void *task)
+static void __dsp_donecallback(dsptask_t *task)
 {
 
 	u8 status;
