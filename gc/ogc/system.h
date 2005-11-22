@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: system.h,v 1.23 2005-11-21 12:37:51 shagkur Exp $
+$Id: system.h,v 1.24 2005-11-22 07:15:22 shagkur Exp $
 
 system.h -- OS functions and initialization
 
@@ -28,6 +28,10 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.23  2005/11/21 12:37:51  shagkur
+Added copyright header(taken from libnds).
+Introduced RCS $Id: system.h,v 1.24 2005-11-22 07:15:22 shagkur Exp $ and $Log: not supported by cvs2svn $ token in project files.
+
 
 -------------------------------------------------------------*/
 
@@ -47,36 +51,86 @@ $Log: not supported by cvs2svn $
 #include <ogc/lwp_queue.h>
 #include "gx_struct.h"
 
-#define R_RESET							*(vu32*)0xCC003024
 
-#define SYS_RESTART						0
-#define SYS_HOTRESET					1
-#define SYS_SHUTDOWN					2
+/*!
+ * \addtogroup sys_resettypes OS reset types
+ * @{
+ */
 
-#define SYS_PROTECTCHAN0				0
-#define SYS_PROTECTCHAN1				1
-#define SYS_PROTECTCHAN2				2
-#define SYS_PROTECTCHAN3				3
-#define SYS_PROTECTCHANMAX				4
+#define SYS_RESTART						0			/*!< Reboot the gamecube, force, if necessary, to boot the IPL menu. Cold reset is issued */
+#define SYS_HOTRESET					1			/*!< Restart the application. Kind of softreset */
+#define SYS_SHUTDOWN					2			/*!< Shutdown the thread system, card management system etc. Leave current thread running and return to caller */
 
-#define SYS_PROTECTNONE					0x00000000
-#define SYS_PROTECTREAD					0x00000001		//OK to read
-#define SYS_PROTECTWRITE				0x00000002		//OK to write
-#define SYS_PROTECTRDWR					(SYS_PROTECTREAD|SYS_PROTECTWRITE)
+/*!
+ *@}
+ */
 
-#define MEM_VIRTUAL_TO_PHYSICAL(x)		(((u32)(x))&~0xC0000000)
 
-#define MEM_PHYSICAL_TO_K0(x)			(void*)((u32)(x)|0x80000000)
-#define MEM_PHYSICAL_TO_K1(x)			(void*)((u32)(x)|0xC0000000)
+/*!
+ * \addtogroup sys_mprotchans OS memory protection channels
+ * @{
+ */
 
-#define MEM_K0_TO_K1(x)					(void*)((u32)(x)|0x40000000)
-#define MEM_K1_TO_K0(x)					(void*)((u32)(x)&~0x40000000)
+#define SYS_PROTECTCHAN0				0			/*!< OS memory protection channel 0 */ 
+#define SYS_PROTECTCHAN1				1			/*!< OS memory protection channel 1 */
+#define SYS_PROTECTCHAN2				2			/*!< OS memory protection channel 2 */
+#define SYS_PROTECTCHAN3				3			/*!< OS memory protection channel 2 */
+#define SYS_PROTECTCHANMAX				4			/*!< _Termination */
+
+/*!
+ *@}
+ */
+
+
+/*!
+ * \addtogroup sys_mprotmodes OS memory protection modes
+ * @{
+ */
+
+#define SYS_PROTECTNONE					0x00000000		/*!< Read and write operations on protected region is granted */
+#define SYS_PROTECTREAD					0x00000001		/*!< Read from protected region is permitted */
+#define SYS_PROTECTWRITE				0x00000002		/*!< Write to protected region is permitted */
+#define SYS_PROTECTRDWR					(SYS_PROTECTREAD|SYS_PROTECTWRITE)	/*!< Read and write operations on protected region is permitted */
+
+/*!
+ *@}
+ */
+
+
+/*!
+ * \addtogroup sys_mcastmacros OS memory casting macros
+ * @{
+ */
+
+#define MEM_VIRTUAL_TO_PHYSICAL(x)		(((u32)(x))&~0xC0000000)			/*!< Cast virtual address to physical address, e.g. 0x8xxxxxxx -> 0x0xxxxxxx */
+#define MEM_PHYSICAL_TO_K0(x)			(void*)((u32)(x)|0x80000000)		/*!< Cast physical address to cached virtual address, e.g. 0x0xxxxxxx -> 0x8xxxxxxx */
+#define MEM_PHYSICAL_TO_K1(x)			(void*)((u32)(x)|0xC0000000)		/*!< Cast physical address to uncached virtual address, e.g. 0x0xxxxxxx -> 0xCxxxxxxx */
+#define MEM_K0_TO_K1(x)					(void*)((u32)(x)|0x40000000)		/*!< Cast cached virtual address to uncached virtual address, e.g. 0x8xxxxxxx -> 0xCxxxxxxx */
+#define MEM_K1_TO_K0(x)					(void*)((u32)(x)&~0x40000000)		/*!< Cast uncached virtual address to cached virtual address, e.g. 0xCxxxxxxx -> 0x8xxxxxxx */
+
+/*!
+ *@}
+ */
 
 
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
 
+
+/*!
+ * \typedef struct _syssram syssram
+ * \brief holds the stored configuration value from the system SRAM area
+ * \param checksum holds the block checksum.
+ * \param checksum_in holds the inverse block checksum
+ * \param ead0 unknown attribute
+ * \param ead1 unknown attribute
+ * \param counter_bias bias value for the realtime clock
+ * \param display_offsetH pixel offset for the VI
+ * \param ntd unknown attribute
+ * \param lang language of system
+ * \param flags device and operations flag
+ */
 typedef struct _syssram {
 	u16 checksum ATTRIBUTE_PACKED;
 	u16 checksum_inv ATTRIBUTE_PACKED;
@@ -89,6 +143,18 @@ typedef struct _syssram {
 	u8 flags ATTRIBUTE_PACKED;
 } syssram;
 
+
+/*!
+ * \typedef struct _syssramex syssramex
+ * \brief holds the stored configuration value from the extended SRAM area
+ * \param flash_id[2][12] 96bit memorycard unlock flash ID
+ * \param wirelessKbd_id Device ID of last connected wireless keyboard 
+ * \param wirelessPad_id[4] 16bit device ID of last connected pad.
+ * \param dvderr_code last non-recoverable error from DVD interface
+ * \param __padding0 padding
+ * \param flashID_chksum[2] 16bit checksum of unlock flash ID
+ * \param __padding1[4] padding
+ */
 typedef struct _syssramex {
 	u8 flash_id[2][12] ATTRIBUTE_PACKED;
 	u32 wirelessKbd_id ATTRIBUTE_PACKED;
@@ -158,13 +224,30 @@ struct _sys_resetinfo {
 void SYS_Init();
 
 
-/*! \fn void* SYS_AllocateFramebuffer(GXRModeObj *rmode)
-\brief Allocate cacheline aligned memory for the external framebuffer based on the rendermode object.
-\param[in] rmode pointer to the rendermode object
-
-\return pointer to the framebuffer's startadderss. NOTE: Address is aligned on a 32byte boundery!
-*/
+/*! 
+ * \fn void* SYS_AllocateFramebuffer(GXRModeObj *rmode)
+ * \brief Allocate cacheline aligned memory for the external framebuffer based on the rendermode object.
+ * \param[in] rmode pointer to the video/render mode configuration
+ *
+ * \return pointer to the framebuffer's startaddress. <b><i>NOTE:</i></b> Address returned is aligned to a 32byte boundery!
+ */
 void* SYS_AllocateFramebuffer(GXRModeObj *rmode);
+
+
+/*! 
+ * \fn s32 SYS_ConsoleInit(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidth,s32 conHeight)
+ * \brief Initialize stdout console
+ * \param[in] rmode pointer to the video/render mode configuration
+ * \param[in] conXOrigin starting pixel in X direction of the console output on the external framebuffer
+ * \param[in] conYOrigin starting pixel in Y direction of the console output on the external framebuffer
+ * \param[in] conWidth width of the console output 'window' to be drawn
+ * \param[in] conHeight height of the console output 'window' to be drawn
+ *
+ * \return 0 on success, <0 on error
+ */
+s32 SYS_ConsoleInit(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidth,s32 conHeight);
+
+
 void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl);
 resetcallback SYS_SetResetCallback(resetcallback cb);
 void SYS_StartPMC(u32 mcr0val,u32 mcr1val);

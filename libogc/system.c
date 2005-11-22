@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: system.c,v 1.56 2005-11-21 12:35:32 shagkur Exp $
+$Id: system.c,v 1.57 2005-11-22 07:18:36 shagkur Exp $
 
 system.c -- OS functions and initialization
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.56  2005/11/21 12:35:32  shagkur
+no message
+
 
 -------------------------------------------------------------*/
 
@@ -95,6 +98,7 @@ static u32 sys_fontcharsinsheet = 0;
 static u8 *sys_fontwidthtab = NULL;
 static u8 *sys_fontimage = NULL;
 static void *sys_fontarea = NULL;
+static void *sys_console = NULL;
 static sys_fontheader *sys_fontdata = NULL;
 
 static lwp_queue sys_reset_func_queue;
@@ -145,6 +149,8 @@ extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
 
 extern u32 __PADDisableRecalibration(s32 disable);
+
+extern void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_xres,int tgt_yres,int tgt_stride,int con_xres,int con_yres,int con_stride);
 
 extern void settime(long long);
 extern long long gettime();
@@ -297,7 +303,8 @@ static void __lowmem_init()
 	*((u16*)(ram_start+0x30E0))	= 6; // production pads
 	*((u32*)(ram_start+0x30E4))	= 0xC0008000;
 
-	DCFlushRangeNoSync(ram_start, 0x3100);
+	DCFlushRangeNoSync(ram_start, 0x100);
+	DCFlushRangeNoSync(arena_start, 0x100);
 	_sync();
 	
 	SYS_SetArenaLo((void*)__ArenaLo);
@@ -947,6 +954,18 @@ void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)
 void* SYS_AllocateFramebuffer(GXRModeObj *rmode)
 {
 	return memalign(32,VIDEO_PadFramebufferWidth(rmode->fbWidth)*rmode->xfbHeight*VI_DISPLAY_PIX_SZ);
+}
+
+s32 SYS_ConsoleInit(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidth,s32 conHeight)
+{
+	if(sys_console) return 0;
+
+	sys_console = malloc(conWidth*conHeight*VI_DISPLAY_PIX_SZ);
+	if(!sys_console) return -1;
+
+	__console_init_ex(sys_console,conXOrigin,conYOrigin,rmode->fbWidth,rmode->xfbHeight,rmode->fbWidth*VI_DISPLAY_PIX_SZ,conWidth,conHeight,conWidth*VI_DISPLAY_PIX_SZ);
+
+	return 0;
 }
 
 u32 SYS_GetFontEncoding()
