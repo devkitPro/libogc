@@ -4,10 +4,12 @@
 #include "iosupp.h"
 
 typedef struct _console_data_s {
-	unsigned char *framebuffer;
+	unsigned char *destbuffer;
 	unsigned char *font;
-	int xres,yres,stride;
+	int con_xres,con_yres,con_stride;
+	int tgt_xres,tgt_yres,tgt_stride;
 	int cursor_x,cursor_y;
+	int target_x,target_y;
 	int border_left,border_right,border_top,border_bottom;
 	int scrolled_lines;
 

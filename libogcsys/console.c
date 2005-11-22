@@ -8,6 +8,8 @@ extern int errno;
 #include "asm.h"
 #include "processor.h"
 #include "color.h"
+#include "cache.h"
+#include "video.h"
 
 #include "console.h"
 
@@ -25,18 +27,44 @@ int con_close(struct _reent *r,int fd);
 
 const devoptab_t dotab_stdout = {"stdout",con_open,con_close,con_write,con_read,NULL,NULL};
 
+static u32 do_xfb_copy = FALSE;
 static struct _console_data_s stdcon;
 static struct _console_data_s *curr_con = NULL;
 
 extern u8 console_font_8x8[];
 extern u8 console_font_8x16[];
 
+extern void *__VIDEO_GetNextFramebuffer();
+
+static void __console_viprecb(u32 retraceCnt)
+{
+	u32 ycnt,xcnt;
+	u8 *fb,*ptr;
+
+	do_xfb_copy = TRUE;
+		
+	fb = (u8*)__VIDEO_GetNextFramebuffer()+(curr_con->target_y*curr_con->tgt_stride+(curr_con->target_x*4));
+	ptr = curr_con->destbuffer;
+	DCFlushRange(ptr,curr_con->con_yres*curr_con->con_stride);
+	for(ycnt=0;ycnt<curr_con->con_yres;ycnt++) {
+		for(xcnt=0;xcnt<curr_con->con_stride;xcnt++) fb[xcnt] = ptr[xcnt];
+
+		fb += curr_con->tgt_stride;
+		ptr += curr_con->con_stride;
+	}
+
+	do_xfb_copy = FALSE;
+}
+
 static void __console_drawc(console_data_s *con,int xpos,int ypos,int c)
 {
+	if(do_xfb_copy==TRUE) return;
+
 	xpos >>= 1;
 	int ax, ay;
-	unsigned int *ptr = (unsigned int*)(con->framebuffer + con->stride * ypos + xpos * 4);
+	unsigned int *ptr = (unsigned int*)(con->destbuffer + con->con_stride * ypos + xpos * 4);
 	for (ay = 0; ay < FONT_YSIZE; ay++)
+	{
 #if FONT_XFACTOR == 2
 		for (ax = 0; ax < 8; ax++)
 		{
@@ -47,11 +75,11 @@ static void __console_drawc(console_data_s *con,int xpos,int ypos,int c)
 				color = con->background;
 #if FONT_YFACTOR == 2
 				// pixel doubling: we write u32
-			ptr[ay * 2 * con->stride/4 + ax] = color;
+			ptr[ay * 2 * con->con_stride/4 + ax] = color;
 				// line doubling
-			ptr[(ay * 2 +1) * con->stride/4 + ax] = color;
+			ptr[(ay * 2 +1) * con->con_stride/4 + ax] = color;
 #else
-			ptr[ay * con->stride/4 + ax] = color;
+			ptr[ay * con->con_stride/4 + ax] = color;
 #endif
 		}
 #else
@@ -67,9 +95,10 @@ static void __console_drawc(console_data_s *con,int xpos,int ypos,int c)
 				color[1] = con->foreground;
 			else
 				color[1] = con->background;
-			ptr[ay * con->stride/4 + ax] = (color[0] & 0xFFFF00FF) | (color[1] & 0x0000FF00);
+			ptr[ay * con->con_stride/4 + ax] = (color[0] & 0xFFFF00FF) | (color[1] & 0x0000FF00);
 		}
 #endif
+	}
 }
 
 void __console_init(console_data_s *con,void *framebuffer,int xstart,int ystart,int xres,int yres,int stride)
@@ -78,16 +107,16 @@ void __console_init(console_data_s *con,void *framebuffer,int xstart,int ystart,
 
 	_CPU_ISR_Disable(level);
 	
-	con->framebuffer = framebuffer;
-	con->xres = xres;
-	con->yres = yres;
+	con->destbuffer = framebuffer;
+	con->con_xres = con->tgt_xres = xres;
+	con->con_yres = con->tgt_yres = yres;
 	con->border_left = xstart;
 	con->border_top  = ystart;
-	con->border_right = con->xres;
-	con->border_bottom = con->yres;
-	con->stride = stride;
-	con->cursor_x = xstart;
-	con->cursor_y = ystart;
+	con->border_right = con->con_xres;
+	con->border_bottom = con->con_yres;
+	con->con_stride = con->tgt_stride = stride;
+	con->target_x = con->cursor_x = xstart;
+	con->target_y = con->cursor_y = ystart;
 	
 	con->font = console_font_8x16;
 	
@@ -96,13 +125,55 @@ void __console_init(console_data_s *con,void *framebuffer,int xstart,int ystart,
 	
 	con->scrolled_lines = 0;
 	
-	unsigned int c = (con->xres*con->yres)/2;
-	unsigned int *p = (unsigned int*)con->framebuffer;
+	unsigned int c = (con->con_xres*con->con_yres)/2;
+	unsigned int *p = (unsigned int*)con->destbuffer;
 	while(c--)
 		*p++ = con->background;
 
 	curr_con = con;
 
+	_CPU_ISR_Restore(level);
+}
+
+void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_xres,int tgt_yres,int tgt_stride,int con_xres,int con_yres,int con_stride)
+{
+	unsigned int level;
+	console_data_s *con = &stdcon;
+
+	_CPU_ISR_Disable(level);
+	
+	con->destbuffer = conbuffer;
+	con->target_x = tgt_xstart;
+	con->target_y = tgt_ystart;
+	con->tgt_xres = tgt_xres;
+	con->tgt_yres = tgt_yres;
+	con->con_xres = con_xres;
+	con->con_yres = con_yres;
+	con->tgt_stride = tgt_stride;
+	con->con_stride = con_stride;
+	con->cursor_x = 0;
+	con->cursor_y = 0;
+	con->border_left = 0;
+	con->border_top  = 0;
+	con->border_right = con->con_xres;
+	con->border_bottom = con->con_yres;
+
+	con->font = console_font_8x16;
+	
+	con->foreground = COLOR_WHITE;
+	con->background = COLOR_BLACK;
+	
+	con->scrolled_lines = 0;
+
+	unsigned int c = (con->con_xres*con->con_yres)/2;
+	unsigned int *p = (unsigned int*)con->destbuffer;
+	while(c--)
+		*p++ = con->background;
+
+	curr_con = con;
+
+	VIDEO_SetPreRetraceCallback(__console_viprecb);
+	
 	_CPU_ISR_Restore(level);
 }
 
@@ -155,12 +226,12 @@ int console_putc(console_data_s *con,int c)
 	}
 
 	if((con->cursor_y+FONT_YSIZE*FONT_YFACTOR)>=con->border_bottom) {
-		memcpy(con->framebuffer,
-			con->framebuffer+con->stride*(FONT_YSIZE*FONT_YFACTOR+FONT_YGAP),
-			con->stride*con->yres-FONT_YSIZE);
+		memcpy(con->destbuffer,
+			con->destbuffer+con->con_stride*(FONT_YSIZE*FONT_YFACTOR+FONT_YGAP),
+			con->con_stride*con->con_yres-FONT_YSIZE);
 
-		unsigned int cnt = (con->stride * (FONT_YSIZE * FONT_YFACTOR + FONT_YGAP))/4;
-		unsigned int *ptr = (unsigned int*)(con->framebuffer + con->stride * (con->yres - FONT_YSIZE));
+		unsigned int cnt = (con->con_stride * (FONT_YSIZE * FONT_YFACTOR + FONT_YGAP))/4;
+		unsigned int *ptr = (unsigned int*)(con->destbuffer + con->con_stride * (con->con_yres - FONT_YSIZE));
 		while(cnt--)
 			*ptr++ = con->background;
 		con->cursor_y -= FONT_YSIZE * FONT_YFACTOR + FONT_YGAP;
