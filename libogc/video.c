@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: video.c,v 1.41 2005-11-21 12:35:32 shagkur Exp $
+$Id: video.c,v 1.42 2005-11-22 07:19:15 shagkur Exp $
 
 video.c -- VIDEO subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.41  2005/11/21 12:35:32  shagkur
+no message
+
 
 -------------------------------------------------------------*/
 
@@ -1246,6 +1249,16 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 		postRetraceCB(retraceCount);
 
 	LWP_WakeThread(video_queue);
+}
+
+void* __VIDEO_GetNextFramebuffer()
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	void *ret = HorVer.bufAddr;
+	_CPU_ISR_Restore(level);
+	return ret;
 }
 
 void VIDEO_Init()
