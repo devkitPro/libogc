@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: arqmgr.h,v 1.3 2005-11-21 12:41:27 shagkur Exp $
+$Id: arqmgr.h,v 1.4 2005-11-22 13:55:31 shagkur Exp $
 
 arqmgr.h -- ARAM task queue management
 
@@ -28,6 +28,10 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.3  2005/11/21 12:41:27  shagkur
+- Added copyright header(taken from libnds).
+- Introduced RCS $Id: arqmgr.h,v 1.4 2005-11-22 13:55:31 shagkur Exp $ and $Log: not supported by cvs2svn $ token in project files.
+
 
 -------------------------------------------------------------*/
 
@@ -35,18 +39,50 @@ $Log: not supported by cvs2svn $
 #ifndef __ARQMGR_H__
 #define __ARQMGR_H__
 
-#include <gctypes.h>
 
-#define ARQM_STACKENTRIES		16
-#define ARQM_ZEROBYTES			256
+/*!
+ * \file arqmgr.h 
+ * \brief ARAM queue managemnt subsystem
+ *
+ */ 
+
+
+#include <gctypes.h>
 
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
 
+/*!
+ * \typedef void (*ARQMCallback)()
+ * \brief function pointer typedef for the user's callback when ARAM operation has completed
+ * \param none
+ */
 typedef void (*ARQMCallback)();
 
+
+/*!
+ * \fn void ARQM_Init(u32 arambase,u32 len)
+ * \brief Initialize the ARAM queue management system
+ *
+ * \param[in] arambase ARAM startaddress to take for the queue stack
+ * \param[in] len maximum amount of memory to be reserved from the ARAM for the queue management
+ *
+ * \return none
+ */
 void ARQM_Init(u32 arambase,u32 len);
+
+
+/*!
+ * \fn u32 ARQM_PushData(void *buff,u32 len,ARQMCallback tccb)
+ * \brief Initialize the ARAM queue management system
+ *
+ * \param[in] buff startaddress of buffer to be pushed onto the queue. <b><i>NOTE:</i></b> Has to be aligned on a 32byte boundery!
+ * \param[in] len length of data to be pushed onto the queue.
+ * \param[in] tccb user callback to be called when ARAM operation has completed.
+ *
+ * \return none
+ */
 u32 ARQM_PushData(void *buff,u32 len,ARQMCallback tccb);
 
 #ifdef __cplusplus
