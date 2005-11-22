@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: arqmgr.h,v 1.5 2005-11-22 13:56:56 shagkur Exp $
+$Id: arqmgr.h,v 1.6 2005-11-22 13:58:25 shagkur Exp $
 
 arqmgr.h -- ARAM task queue management
 
@@ -28,15 +28,6 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
-Revision 1.4  2005/11/22 13:55:31  shagkur
-- Added copyright header(taken from libnds).
-- Introduced RCS $Id: arqmgr.h,v 1.5 2005-11-22 13:56:56 shagkur Exp $ and $Log: not supported by cvs2svn $ token in project files.
-- stated doxygen styled documentation
-
-Revision 1.3  2005/11/21 12:41:27  shagkur
-- Added copyright header(taken from libnds).
-- Introduced RCS "$Id: arqmgr.h,v 1.5 2005-11-22 13:56:56 shagkur Exp $" and token "$Log: not supported by cvs2svn $" in project files.
-
 
 -------------------------------------------------------------*/
 
