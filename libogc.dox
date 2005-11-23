@@ -5,8 +5,8 @@
 #---------------------------------------------------------------------------
 PROJECT_NAME           = libOGC
 PROJECT_NUMBER         = 1.0
-OUTPUT_DIRECTORY       = E:/GameCube/source/libogc
-CREATE_SUBDIRS         = NO
+OUTPUT_DIRECTORY       = docs
+CREATE_SUBDIRS         = YES
 OUTPUT_LANGUAGE        = English
 USE_WINDOWS_ENCODING   = YES
 BRIEF_MEMBER_DESC      = YES
@@ -25,7 +25,7 @@ ABBREVIATE_BRIEF       = "The $name class" \
 ALWAYS_DETAILED_SEC    = NO
 INLINE_INHERITED_MEMB  = NO
 FULL_PATH_NAMES        = YES
-STRIP_FROM_PATH        = H://
+STRIP_FROM_PATH        = 
 STRIP_FROM_INC_PATH    = 
 SHORT_NAMES            = NO
 JAVADOC_AUTOBRIEF      = NO
@@ -82,23 +82,24 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = E:/GameCube/source/libogc/gc/ogc/video_types.h \
-                         E:/GameCube/source/libogc/gc/ogc/audio.h \
-                         E:/GameCube/source/libogc/gc/ogc/cache.h \
-                         E:/GameCube/source/libogc/gc/ogc/card.h \
-                         E:/GameCube/source/libogc/gc/ogc/cond.h \
-                         E:/GameCube/source/libogc/gc/ogc/dsp.h \
-                         E:/GameCube/source/libogc/gc/ogc/exi.h \
-                         E:/GameCube/source/libogc/gc/ogc/gx_struct.h \
-                         E:/GameCube/source/libogc/gc/ogc/irq.h \
-                         E:/GameCube/source/libogc/gc/ogc/lwp.h \
-                         E:/GameCube/source/libogc/gc/ogc/message.h \
-                         E:/GameCube/source/libogc/gc/ogc/mutex.h \
-                         E:/GameCube/source/libogc/gc/ogc/semaphore.h \
-                         E:/GameCube/source/libogc/gc/ogc/system.h \
-                         E:/GameCube/source/libogc/gc/ogc/video.h \
-                         E:/GameCube/source/libogc/gc/gccore.h \
-                         E:/GameCube/source/libogc/gc/ogc/arqmgr.h
+INPUT                  = gc/ogc/card.h \
+                         gc/ogc/exi.h \
+                         gc/ogc/audio.h \
+                         gc/ogc/lwp.h \
+                         gc/ogc/cache.h \
+                         gc/ogc/irq.h \
+                         gc/ogc/dsp.h \
+                         gc/ogc/message.h \
+                         gc/ogc/mutex.h \
+                         gc/ogc/semaphore.h \
+                         gc/ogc/video.h \
+                         gc/ogc/system.h \
+                         gc/ogc/aram.h \
+                         gc/ogc/cond.h \
+                         gc/gccore.h \
+                         gc/ogc/gx_struct.h \
+                         gc/ogc/video_types.h \
+                         gc/ogc/dvd.h
 FILE_PATTERNS          = *.c \
                          *.cc \
                          *.cxx \
@@ -157,7 +158,7 @@ IGNORE_PREFIX          =
 # configuration options related to the HTML output
 #---------------------------------------------------------------------------
 GENERATE_HTML          = YES
-HTML_OUTPUT            = E:/GameCube/source/libogc/docs
+HTML_OUTPUT            = html
 HTML_FILE_EXTENSION    = .html
 HTML_HEADER            = 
 HTML_FOOTER            = 
