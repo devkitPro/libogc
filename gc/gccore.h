@@ -79,25 +79,39 @@ distribution.
    extern "C" {
 #endif /* __cplusplus */
 
+	   
 /*!
- * \addtogroup ogccore OGC core library implementation
- * List of subsystems in the OGC core library:<br><br>
- * \ref aram.h "ARAM subsystem"<br>
- * \ref audio.h "AUDIO subsystem"<br>
- * \ref exi.h "EXI subsystem"<br>
- * \ref irq.h "IRQ subsystem"<br>
- * \ref dsp.h "DSP subsystem"<br>
- * \ref card.h "Memory card subsystem"<br>
- * \ref cache.h "Cache subsystem"<br>
- * \ref video.h "VIDEO subsystem"<br>
- * \ref system.h "OS functions and initialization"<br>
- * \ref lwp.h "Thread subsystem I"<br>
- * \ref message.h "Thread subsystem II"<br>
- * \ref mutex.h "Thread subsystem III"<br>
- * \ref semaphore.h "Thread subsystem IV"<br>
- * \ref cond.h "Thread subsystem V"<br>
+ * \mainpage
+ *
+ * - \subpage intro
+ * - \subpage api_doc
+ */
+	   
+
+/*!
+ * \page intro Introduction
+ * Welcome to the libOGC reference documentation.
  */
 
+/*!
+ * \page api_doc Detailed API description
+ *
+ * - \ref aram.h "ARAM subsystem"<br>
+ * - \ref audio.h "AUDIO subsystem"<br>
+ * - \ref exi.h "EXI subsystem"<br>
+ * - \ref irq.h "IRQ subsystem"<br>
+ * - \ref dsp.h "DSP subsystem"<br>
+ * - \ref card.h "Memory card subsystem"<br>
+ * - \ref cache.h "Cache subsystem"<br>
+ * - \ref video.h "VIDEO subsystem"<br>
+ * - \ref system.h "OS functions and initialization"<br>
+ * - \ref lwp.h "Thread subsystem I"<br>
+ * - \ref message.h "Thread subsystem II"<br>
+ * - \ref mutex.h "Thread subsystem III"<br>
+ * - \ref semaphore.h "Thread subsystem IV"<br>
+ * - \ref cond.h "Thread subsystem V"<br>
+ */
+	   
 s32 depackrnc1_ulen(void *packed);
 s32 depackrnc1(void *packed,void *unpacked);
 
