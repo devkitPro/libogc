@@ -38,10 +38,16 @@ distribution.
 
 #include <gctypes.h>
 
+/*!
+ * \addtogroup vi_defines List of defines used for the VIDEO subsystem
+ * @{
+ */
+
+
 #define VI_DISPLAY_PIX_SZ           2		/*!< multiplier to get real pixel size in bytes */
 
 /*!
- * \addtogroup vi_modetypedef VIDEO mode type definition
+ * \addtogroup vi_modetypedef VIDEO mode types
  * @{
  */
 
@@ -55,7 +61,7 @@ distribution.
 
 
 /*!
- * \addtogroup vi_standardtypedef VIDEO standard type definition
+ * \addtogroup vi_standardtypedef VIDEO standard types
  * @{
  */
 
@@ -74,8 +80,19 @@ distribution.
 #define VI_XFBMODE_SF				0
 #define VI_XFBMODE_DF				1
 
-#define VI_FIELD_ABOVE              1
-#define VI_FIELD_BELOW              0
+
+/*!
+ * \addtogroup vi_fielddef VIDEO field types
+ * @{
+ */
+
+#define VI_FIELD_ABOVE              1		/*!< Upper field in DS mode */
+#define VI_FIELD_BELOW              0		/*!< Lower field in DS mode */
+
+/*!
+ * @}
+ */
+
 
 // Maximum screen space
 #define VI_MAX_WIDTH_NTSC           720
@@ -89,6 +106,13 @@ distribution.
 
 #define VI_MAX_WIDTH_EURGB60        VI_MAX_WIDTH_NTSC
 #define VI_MAX_HEIGHT_EURGB60       VI_MAX_HEIGHT_NTSC
+
+#define VIDEO_PadFramebufferWidth(width)     ((u16)(((u16)(width) + 15) & ~15))			/*!< macro to pad the width to a multiple of 16 */
+
+/*!
+ * @}
+ */
+
 
 #define VI_TVMODE(fmt, mode)   ( ((fmt) << 2) + (mode) )
 
@@ -110,5 +134,41 @@ distribution.
 
 #define VI_TVMODE_DEBUG_PAL_INT		VI_TVMODE(VI_DEBUG_PAL,   VI_INTERLACE)
 #define VI_TVMODE_DEBUG_PAL_DS		VI_TVMODE(VI_DEBUG_PAL,   VI_NON_INTERLACE)
+
+
+/*!
+ * \addtogroup vi_defines List of defines used for the VIDEO subsystem
+ * @{
+ */
+
+
+/*!
+ * \addtogroup gxrmode_obj VIDEO render modes
+ * @{
+ */
+
+extern GXRModeObj TVNtsc240Ds;				/*!< Video and render mode configuration for 240 lines,singlefield NTSC mode */ 
+extern GXRModeObj TVNtsc240DsAa;			/*!< Video and render mode configuration for 240 lines,singlefield,antialiased NTSC mode */ 
+extern GXRModeObj TVNtsc240Int;				/*!< Video and render mode configuration for 240 lines,interlaced NTSC mode */ 
+extern GXRModeObj TVNtsc240IntAa;			/*!< Video and render mode configuration for 240 lines,interlaced,antialiased NTSC mode */ 
+extern GXRModeObj TVNtsc480IntDf;			/*!< Video and render mode configuration for 480 lines,interlaced,doublefield NTSC mode */ 
+extern GXRModeObj TVNtsc480IntAa;			/*!< Video and render mode configuration for 480 lines,interlaced,doublefield,antialiased NTSC mode */ 
+extern GXRModeObj TVMpal480IntDf;
+extern GXRModeObj TVPal264Ds;
+extern GXRModeObj TVPal264DsAa;
+extern GXRModeObj TVPal264Int;
+extern GXRModeObj TVPal264IntAa;
+extern GXRModeObj TVPal524IntAa;
+extern GXRModeObj TVPal528Int;
+extern GXRModeObj TVPal528IntDf;
+extern GXRModeObj TVPal574IntDfScale;
+
+/*!
+ * @}
+ */
+
+/*!
+ * @}
+ */
 
 #endif
