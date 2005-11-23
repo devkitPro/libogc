@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: aram.c,v 1.6 2005-11-21 10:49:32 shagkur Exp $
+$Id: aram.c,v 1.7 2005-11-23 16:36:03 shagkur Exp $
 
 aram.c -- ARAM subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.6  2005/11/21 10:49:32  shagkur
+no message
+
 
 -------------------------------------------------------------*/
 
@@ -55,6 +58,8 @@ $Log: not supported by cvs2svn $
 #define DSPCR_HALT          0x0004        // halt DSP
 #define DSPCR_PIINT         0x0002        // assert DSP PI interrupt
 #define DSPCR_RES           0x0001        // reset DSP
+
+#define AR_ARAMEXPANSION	2
 
 #define _SHIFTL(v, s, w)	\
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
