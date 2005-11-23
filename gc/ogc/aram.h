@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: aram.h,v 1.6 2005-11-23 07:50:15 shagkur Exp $
+$Id: aram.h,v 1.7 2005-11-23 16:46:21 shagkur Exp $
 
 aram.h -- ARAM subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.6  2005/11/23 07:50:15  shagkur
+- added more detailed description to  AR_Init
+
 Revision 1.5  2005/11/22 14:05:42  shagkur
 - added copyright header (taken from libnds)
 - introduced CVS ID and LOG token
@@ -73,7 +76,6 @@ no message
 
 #define AR_ARAMINTALL		0		/*!< use all the internal ARAM memory */
 #define AR_ARAMINTUSER		1		/*!< use only the internal user space of the ARAM memory */
-#define AR_ARAMEXPANSION	2		/*!< use expansion ARAM memory, if present */
 
 /*!
  * @}
@@ -120,16 +122,17 @@ u32 AR_GetDMAStatus();
  * \fn u32 AR_Init(u32 *stack_idx_array,u32 num_entries)
  * \brief Initializes ARAM subsystem.
  *
- *        Following tasks are performed:<br>
+ *        Following tasks are performed:
+ *
  *      - Disables ARAM DMA
  *      - Sets DMA callback to NULL
  *      - Initializes ARAM controller
  *      - Determines size of ARAM memory
  *      - Initializes the ARAM stack based memory allocation system<br>
- *      <br>
+ *
  *        The parameter u32 *stack_idx_array points to an array of u32 integers. The parameter u32 num_entries specifies the number of entries in this array.<br>
  *        The user application is responsible for determining how many ARAM blocks the device driver can allocate.<br>
- *      <br>
+ *        
  *        As an example, consider:
  * \code
  *        #define MAX_NUM_BLOCKS 10
@@ -141,13 +144,13 @@ u32 AR_GetDMAStatus();
  *           AR_Init(aram_blocks, MAX_NUM_BLOCKS);
  *        }
  * \endcode
- *
+ *        
  *        Here, we are telling AR that the application will allocate, at most, 10 blocks (of arbitrary size), and that AR should store addresses for those blocks in the array aram_blocks. Note that the array is simply storage supplied by the application so that AR can track the number and size of memory blocks allocated by AR_Alloc().
  *        AR_Free()also uses this array to release blocks.<br>
  *        If you do not wish to use AR_Alloc() and AR_Free() and would rather manage ARAM usage within your application, then call AR_Init() like so:<br>
- *        <br>
+ *
  *               AR_Init(NULL, 0);<br>
- *        <br>
+ *
  *        The AR_Init() function also calculates the total size of the ARAM aggregate. Note that this procedure is <b><i>destructive</i></b> - i.e., any data stored in ARAM will be corrupted.<br>
  *        AR_Init()may be invoked multiple times. This function checks the state of an initialization flag; if asserted, this function will simply exit on subsequent calls. To perform another initialization of the ARAM driver, call AR_Reset() before invoking AR_Init()again.
  *
@@ -161,12 +164,18 @@ u32 AR_Init(u32 *stack_idx_array,u32 num_entries);
 
 /*! 
  * \fn void AR_StartDMA(u32 dir,u32 memaddr,u32 aramaddr,u32 len)
- * \brief Initialize and start ARAM DMA transfer.
+ * \brief Initiates a DMA between main memory and ARAM.
  *
- * \param[in] dir direction of \ref dmamode "ARAM DMA operation"
- * \param[in] memaddr main memory address to read/write from/to data.
- * \param[in] aramaddr ARAM memory address to write/read to/from data.
- * \param[in] len length of data to copy.
+ *        This function:
+ *
+ *      - Does <b><i>not</i></b> perform boundery-checking on addresses and lengths.
+ *      - Will assert failure if a DMA is allready in progress.
+ *      - Is provided for debugging purpose. Application programmers must use the ARQ API in order to access ARAM.
+ *
+ * \param[in] dir specifies the \ref dmamode "direction" of transfer.
+ * \param[in] memaddr specifies main memory address for the transfer
+ * \param[in] aramaddr specifies the ARAM address for the transfer. <b><i>NOTE:</i></b> Addresses are 27bits wide and refer to bytes
+ * \param[in] len specifies the length of the block to transfer. <b><i>NOTE:</i></b> Must be in bytes and a multiple of 32
  *
  * \return none
  */
@@ -175,11 +184,13 @@ void AR_StartDMA(u32 dir,u32 memaddr,u32 aramaddr,u32 len);
 
 /*! 
  * \fn u32 AR_Alloc(u32 len)
- * \brief Allocate a block from ARAM
+ * \brief Allocate a block of memory from ARAM having <i>len</i> bytes.
  *
- * \param[in] len length of block to allocate.
+ *        The <i>len</i> parameter <b><i>must</i></b> be a multiple of 32
  *
- * \return ARAM blockstartaddress
+ * \param[in] len length of the specified block of memory in ARAM
+ *
+ * \return address of the block if successful, otherwise NULL
  */
 u32 AR_Alloc(u32 len);
 
@@ -199,7 +210,7 @@ u32 AR_Free(u32 *len);
  * \fn void AR_Clear(u32 flag)
  * \brief Clear ARAM memory
  *
- * \param[in] flag Mode flag for clear operation (ARAMINTALL, ARAMINTUSER, ARAMEXPANSION)
+ * \param[in] flag specifies the region of ARAM to clear
  *
  * \return none
  */
@@ -208,16 +219,19 @@ void AR_Clear(u32 flag);
 
 /*! 
  * \fn BOOL AR_CheckInit()
- * \brief Check if ARAM subsystem is initialized.
+ * \brief Get the ARAM subsystem initialization flag
  *
- * \return boolean value
+ * \return TRUE if the ARAM subsystem has been initialized(via AR_Init())<br>
+ *         FALSE if the ARAM subsystem has not been initialized, or has been reset(via AR_Reset())
  */
 BOOL AR_CheckInit();
 
 
 /*!
  * \fn void AR_Reset()
- * \brief Reset the ARAM subsystem initialization flag
+ * \brief Clears the ARAM subsystem initialization flag.
+ *
+ *        Calling AR_Init() after this function will cause a "real" initialization of ARAM
  *
  * \return none
  */
@@ -226,9 +240,9 @@ void AR_Reset();
 
 /*! 
  * \fn u32 AR_GetSize()
- * \brief Get the whole size, including expansion, of ARAM memory
+ * \brief Get the total size - in bytes - of ARAM as calculated during AR_Init()
  *
- * \return ARAM memory size
+ * \return size of the specified ARAM block
  */
 u32 AR_GetSize();
 
