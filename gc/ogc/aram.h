@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: aram.h,v 1.5 2005-11-22 14:05:42 shagkur Exp $
+$Id: aram.h,v 1.6 2005-11-23 07:50:15 shagkur Exp $
 
 aram.h -- ARAM subsystem
 
@@ -28,6 +28,11 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.5  2005/11/22 14:05:42  shagkur
+- added copyright header (taken from libnds)
+- introduced CVS ID and LOG token
+- started doxygen styled documentation
+
 Revision 1.4  2005/11/21 10:49:01  shagkur
 no message
 
@@ -91,20 +96,22 @@ typedef void (*ARCallback)(void);
 
 /*! 
  * \fn ARCallback AR_RegisterCallback(ARCallback callback)
- * \brief Register a user callback function for the ARAM interrupt handler.
+ * \brief Register the given function as a DMA callback
  *
- * \param[in] callback pointer to callback to call when ARAM interrupt occured.
+ *        Any existing callback is replaced unconditionally
  *
- * \return pointer to old callback function or NULL respectively.
+ * \param[in] callback to be invoked upon completion of DMA transaction
+ *
+ * \return pointer to the previously registered callback and NULL respectively
  */
 ARCallback AR_RegisterCallback(ARCallback callback);
 
 
 /*! 
  * \fn u32 AR_GetDMAStatus()
- * \brief Get ARAM DMA status
+ * \brief Get current status of DMA
  *
- * \return DMA status
+ * \return zero if DMA is idle, non-zero if a DMA is in progress
  */
 u32 AR_GetDMAStatus();
 
@@ -113,10 +120,41 @@ u32 AR_GetDMAStatus();
  * \fn u32 AR_Init(u32 *stack_idx_array,u32 num_entries)
  * \brief Initializes ARAM subsystem.
  *
- * \param[in] stack_idx_array pointer to an array of indicies to keep track on allocated ARAM blocks.
- * \param[in] num_entries maximum count of entries the array can take.
+ *        Following tasks are performed:<br>
+ *      - Disables ARAM DMA
+ *      - Sets DMA callback to NULL
+ *      - Initializes ARAM controller
+ *      - Determines size of ARAM memory
+ *      - Initializes the ARAM stack based memory allocation system<br>
+ *      <br>
+ *        The parameter u32 *stack_idx_array points to an array of u32 integers. The parameter u32 num_entries specifies the number of entries in this array.<br>
+ *        The user application is responsible for determining how many ARAM blocks the device driver can allocate.<br>
+ *      <br>
+ *        As an example, consider:
+ * \code
+ *        #define MAX_NUM_BLOCKS 10
  *
- * \return ARAM baseaddress
+ *        u32 aram_blocks[MAX_NUM_BLOCKS];
+ *        ...
+ *        void func(void)
+ *        {
+ *           AR_Init(aram_blocks, MAX_NUM_BLOCKS);
+ *        }
+ * \endcode
+ *
+ *        Here, we are telling AR that the application will allocate, at most, 10 blocks (of arbitrary size), and that AR should store addresses for those blocks in the array aram_blocks. Note that the array is simply storage supplied by the application so that AR can track the number and size of memory blocks allocated by AR_Alloc().
+ *        AR_Free()also uses this array to release blocks.<br>
+ *        If you do not wish to use AR_Alloc() and AR_Free() and would rather manage ARAM usage within your application, then call AR_Init() like so:<br>
+ *        <br>
+ *               AR_Init(NULL, 0);<br>
+ *        <br>
+ *        The AR_Init() function also calculates the total size of the ARAM aggregate. Note that this procedure is <b><i>destructive</i></b> - i.e., any data stored in ARAM will be corrupted.<br>
+ *        AR_Init()may be invoked multiple times. This function checks the state of an initialization flag; if asserted, this function will simply exit on subsequent calls. To perform another initialization of the ARAM driver, call AR_Reset() before invoking AR_Init()again.
+ *
+ * \param[in] stack_idx_array pointer to an array of u32 integer
+ * \param[in] num_entries number of entries in the specified array
+ *
+ * \return base address of the "user" ARAM area. As of this writing, the operating system reserves the bottom 16 KB of ARAM. Therefore, AR_Init() returns 0x04000 to indicate the starting location of the ARAM user area.
  */
 u32 AR_Init(u32 *stack_idx_array,u32 num_entries);
 
