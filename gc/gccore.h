@@ -96,20 +96,21 @@ distribution.
 /*!
  * \page api_doc Detailed API description
  *
- * - \ref aram.h "ARAM subsystem"<br>
- * - \ref audio.h "AUDIO subsystem"<br>
- * - \ref exi.h "EXI subsystem"<br>
- * - \ref irq.h "IRQ subsystem"<br>
- * - \ref dsp.h "DSP subsystem"<br>
- * - \ref card.h "Memory card subsystem"<br>
- * - \ref cache.h "Cache subsystem"<br>
- * - \ref video.h "VIDEO subsystem"<br>
- * - \ref system.h "OS functions and initialization"<br>
- * - \ref lwp.h "Thread subsystem I"<br>
- * - \ref message.h "Thread subsystem II"<br>
- * - \ref mutex.h "Thread subsystem III"<br>
- * - \ref semaphore.h "Thread subsystem IV"<br>
- * - \ref cond.h "Thread subsystem V"<br>
+ * - \ref aram.h "ARAM subsystem"
+ * - \ref audio.h "AUDIO subsystem"
+ * - \ref exi.h "EXI subsystem"
+ * - \ref irq.h "IRQ subsystem"
+ * - \ref dsp.h "DSP subsystem"
+ * - \ref dvd.h "DVD subsystem"
+ * - \ref video.h "VIDEO subsystem"
+ * - \ref cache.h "Cache subsystem"
+ * - \ref card.h "Memory card subsystem"
+ * - \ref system.h "OS functions and initialization"
+ * - \ref lwp.h "Thread subsystem I"
+ * - \ref message.h "Thread subsystem II"
+ * - \ref mutex.h "Thread subsystem III"
+ * - \ref semaphore.h "Thread subsystem IV"
+ * - \ref cond.h "Thread subsystem V"
  */
 	   
 s32 depackrnc1_ulen(void *packed);
