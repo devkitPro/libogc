@@ -190,10 +190,10 @@ $(GCSYSLIB).a: $(GCSYSOBJ)
 $(STUBSLIB).a: $(STUBSOBJ)
 #---------------------------------------------------------------------------------
  
-.PHONY: libs install dist docs
+.PHONY: libs install-headers install dist docs
 
 #---------------------------------------------------------------------------------
-install:
+install-headers:
 #---------------------------------------------------------------------------------
 	@mkdir -p $(INCDIR)
 	@mkdir -p $(INCDIR)/ogc
@@ -205,6 +205,10 @@ install:
 	@cp ./gc/modplay/*.h $(INCDIR)/modplay
 	@cp ./gc/mad/*.h $(INCDIR)/mad
 	@cp ./gc/sdcard/*.h $(INCDIR)/sdcard
+
+#---------------------------------------------------------------------------------
+install: install-headers
+#---------------------------------------------------------------------------------
 	@cp -frv include $(INSTALLPATH)/$(PREFIX)
 	@cp -frv lib $(INSTALLPATH)/$(PREFIX)
 	@cp -fv ogc.ld $(INSTALLPATH)/$(PREFIX)/lib/ogc.ld
@@ -213,12 +217,13 @@ install:
 	@cp -fv specs.ogc $(INSTALLPATH)/lib/gcc/$(PREFIX)/$(GCC_VERSION)/specs
 
 #---------------------------------------------------------------------------------
-dist:
+dist: install-headers
 #---------------------------------------------------------------------------------
 	@tar    --exclude=*CVS* --exclude=*build* --exclude=*deps* \
-			--exclude=*.bz2  --exclude=*include* --exclude=*lib/* \
-			-cvjf libogc-src-$(DATESTRING).tar.bz2 *
+		--exclude=*.bz2  --exclude=*include* --exclude=*lib/* \
+		-cvjf libogc-src-$(DATESTRING).tar.bz2 *
 	@tar -cvjf libogc-$(DATESTRING).tar.bz2 include lib license.txt
+
 #---------------------------------------------------------------------------------
 libs: $(OGCLIB).a $(BBALIB).a $(MODLIB).a $(MADLIB).a $(DBLIB).a $(SDCARDLIB).a $(GCSYSLIB).a $(STUBSLIB).a
 #---------------------------------------------------------------------------------
@@ -232,7 +237,7 @@ clean:
 	rm -fr $(INCDIR)
 	rm -f *.map
 #---------------------------------------------------------------------------------
-docs:
+docs: install-headers
 #---------------------------------------------------------------------------------
 	doxygen libogc.dox
 
