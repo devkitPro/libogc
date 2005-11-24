@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: dvd.h,v 1.22 2005-11-23 07:51:59 shagkur Exp $
+$Id: dvd.h,v 1.23 2005-11-24 14:29:22 shagkur Exp $
 
 dvd.h -- DVD subsystem
 
@@ -28,6 +28,11 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.22  2005/11/23 07:51:59  shagkur
+- Added copyright header(taken from libnds).
+- Introduced RCS ID and LOG tokens.
+- documentation started in doxygen style
+
 
 -------------------------------------------------------------*/
 
@@ -50,7 +55,7 @@ $Log: not supported by cvs2svn $
  * @{
  */
 
-#define DVD_RESETHARD					0			/*!< Performs a hard reset. complete new boot FW. */
+#define DVD_RESETHARD					0			/*!< Performs a hard reset. Complete new boot of FW. */
 #define DVD_RESETSOFT					1			/*!< Performs a soft reset. FW restart and drive spinup */
 
 /*!
@@ -177,8 +182,11 @@ typedef struct _dvdfileinfo dvdfileinfo;
 
 
 /*!
- * \typedef void (*dvdcbcallback)(s32 result,dvdcmdblk *block)
- * \brief function pointer typedef for the user's operations callback
+ * \typedef void (*dvdcallback)(s32 result,dvdfileinfo *info)
+ * \brief function pointer typedef for the user's DVD operation callback
+ *
+ * \param[in] result error code of last operation
+ * \param[in] info pointer to user's file info strucutre
  */
 typedef void (*dvdcallback)(s32 result,dvdfileinfo *info);
 
@@ -195,15 +203,92 @@ struct _dvdfileinfo {
 	dvdcallback cb;
 };
 
+
+/*! 
+ * \fn void DVD_Init()
+ * \brief Initializes the DVD subsystem
+ *
+ *        You must call this function before calling any other DVD function
+ *
+ * \return none
+ */
 void DVD_Init();
 void DVD_Pause();
+
+
+/*! 
+ * \fn void DVD_Reset(u32 reset_mode)
+ * \brief Performs a reset of the drive and FW respectively.
+ *
+ * \param[in] reset_mode \ref dvd_resetmode "type" of reset
+ *
+ * \return none
+ */
 void DVD_Reset(u32 reset_mode);
 
+
+/*! 
+ * \fn s32 DVD_Mount()
+ * \brief Mounts the DVD drive.
+ *
+ *        This is a synchronous version of DVD_MountAsync().
+ *
+ * \return none
+ */
 s32 DVD_Mount();
 s32 DVD_GetDriveStatus();
+
+
+/*! 
+ * \fn s32 DVD_MountAsync(dvdcmdblk *block,dvdcbcallback cb)
+ * \brief Mounts the DVD drive.
+ *
+ *        You <b>must</b> call this function in order to access the DVD.
+ *
+ *        Following tasks are performed:
+ *      - Issue a hard reset to the drive.
+ *      - Turn on drive's debug mode.
+ *      - Patch drive's FW.
+ *      - Enable extensions.
+ *      - Read disc ID
+ *
+ *        The patch code and procedure was taken from the gc-linux DVD device driver.
+ *
+ * \param[in] block pointer to a dvdcmdblk structure used to process the operation
+ * \param[in] cb callback to be invoked upon completion of operation
+ *
+ * \return none
+ */
 s32 DVD_MountAsync(dvdcmdblk *block,dvdcbcallback cb);
-s32 DVD_ControlMotor(u32 cmd,dvdcmdblk *block);
-s32 DVD_ControlMotorAsync(u32 cmd,dvdcmdblk *block,dvdcbcallback cb);
+
+
+/*! 
+ * \fn s32 DVD_ControlDrive(u32 cmd,dvdcmdblk *block)
+ * \brief Controls the drive's motor and behavior.
+ *
+ *        This is a synchronous version of DVD_ControlDriveAsync().
+ *
+ * \param[in] cmd \ref dvd_motorctrlmode "command" to control the drive.
+ * \param[in] block pointer to a dvdcmdblk structure used to process the operation
+ *
+ * \return none
+ */
+s32 DVD_ControlDrive(u32 cmd,dvdcmdblk *block);
+
+
+/*! 
+ * \fn s32 DVD_ControlDriveAsync(u32 cmd,dvdcmdblk *block,dvdcbcallback cb)
+ * \brief Controls the drive's motor and behavior.
+ *
+ * \param[in] cmd \ref dvd_motorctrlmode "command" to control the drive.
+ * \param[in] block pointer to a dvdcmdblk structure used to process the operation
+ * \param[in] cb callback to be invoked upon completion of operation.
+ *
+ * \return none
+ */
+s32 DVD_ControlDriveAsync(u32 cmd,dvdcmdblk *block,dvdcbcallback cb);
+
+
 s32 DVD_GetCmdBlockStatus(dvdcmdblk *block);
 s32 DVD_SpinUpDrive(dvdcmdblk *block);
 s32 DVD_SpinUpDriveAsync(dvdcmdblk *block,dvdcbcallback cb);
