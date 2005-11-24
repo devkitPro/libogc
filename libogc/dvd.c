@@ -1,12 +1,18 @@
 /*-------------------------------------------------------------
 
-$Id: dvd.c,v 1.41 2005-11-23 19:45:13 shagkur Exp $
+$Id: dvd.c,v 1.42 2005-11-24 14:25:42 shagkur Exp $
 
 dvd.h -- DVD subsystem
 
 Copyright (C) 2004
 Michael Wiedenbauer (shagkur)
 Dave Murphy (WinterMute)
+
+Additionally following copyrights apply for the patching system:
+ * Copyright (C) 2005 The GameCube Linux Team
+ * Copyright (C) 2005 Albert Herranz
+
+Thanks alot guys for that incredible patch!!
 
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any
@@ -28,6 +34,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.41  2005/11/23 19:45:13  shagkur
+- moved a define to .c
+
 
 -------------------------------------------------------------*/
 #include <stdlib.h>
@@ -2166,7 +2175,7 @@ s32 DVD_SpinUpDrive(dvdcmdblk *block)
 	return ret;
 }
 
-s32 DVD_ControlMotorAsync(u32 cmd,dvdcmdblk *block,dvdcbcallback cb)
+s32 DVD_ControlDriveAsync(u32 cmd,dvdcmdblk *block,dvdcbcallback cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_ControlMotorAsync(%d,%p,%p)\n",cmd,block,cb);
@@ -2177,7 +2186,7 @@ s32 DVD_ControlMotorAsync(u32 cmd,dvdcmdblk *block,dvdcbcallback cb)
 	return __issuecommand(1,block);
 }
 
-s32 DVD_ControlMotor(u32 cmd,dvdcmdblk *block)
+s32 DVD_ControlDrive(u32 cmd,dvdcmdblk *block)
 {
 	s32 ret,state;
 	u32 level;
