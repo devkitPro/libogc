@@ -1,9 +1,5 @@
 #ifndef __GCTYPES_H__
 #define __GCTYPES_H__
-/*+----------------------------------------------------------------------------------------------+*/
-// typedef's borrowed from the HAM development kit for Gameboy Advance
-// See www.ngine.de for information about this fantastic devkit!
-/*+----------------------------------------------------------------------------------------------+*/
 
 #ifdef __cplusplus
    extern "C" {
@@ -11,28 +7,31 @@
 
 // bool is a standard type in cplusplus, but not in c.
 #ifndef __cplusplus
-typedef unsigned char bool;                     ///< For c++ compatibility
+/** C++ compatible bool for C
+
+*/
+typedef enum { false, true } bool;
 #endif
 /*+----------------------------------------------------------------------------------------------+*/
-typedef unsigned char u8;                       ///< 8bit unsigned integer
-typedef unsigned short u16;                 ///< 16bit unsigned integer
-typedef unsigned int u32;                       ///< 32bit unsigned integer
-typedef unsigned long long u64;             ///< 64bit unsigned integer
+typedef unsigned char u8;									///< 8bit unsigned integer
+typedef unsigned short u16;								///< 16bit unsigned integer
+typedef unsigned int u32;									///< 32bit unsigned integer
+typedef unsigned long long u64;						///< 64bit unsigned integer
 /*+----------------------------------------------------------------------------------------------+*/
-typedef signed char s8;                         ///< 8bit signed integer
-typedef signed short s16;                   ///< 16bit signed integer
-typedef signed int s32;                         ///< 32bit signed integer
-typedef signed long long s64;               ///< 64bit signed integer
+typedef signed char s8;										///< 8bit signed integer
+typedef signed short s16;									///< 16bit signed integer
+typedef signed int s32;										///< 32bit signed integer
+typedef signed long long s64;							///< 64bit signed integer
 /*+----------------------------------------------------------------------------------------------+*/
-typedef volatile unsigned char vu8;             ///< 8bit unsigned volatile't integer
-typedef volatile unsigned short vu16;       ///< 16bit unsigned volatile't integer
-typedef volatile unsigned int vu32;             ///< 32bit unsigned volatile't integer
-typedef volatile unsigned long long vu64;   ///< 64bit unsigned volatile't integer
+typedef volatile unsigned char vu8;				///< 8bit unsigned volatile integer
+typedef volatile unsigned short vu16;			///< 16bit unsigned volatile integer
+typedef volatile unsigned int vu32;				///< 32bit unsigned volatile integer
+typedef volatile unsigned long long vu64;	///< 64bit unsigned volatile integer
 /*+----------------------------------------------------------------------------------------------+*/
-typedef volatile signed char vs8;               ///< 8bit signed volatile't integer
-typedef volatile signed short vs16;         ///< 16bit signed volatile't integer
-typedef volatile signed int vs32;               ///< 32bit signed volatile't integer
-typedef volatile signed long long vs64;     ///< 64bit signed volatile't integer
+typedef volatile signed char vs8;					///< 8bit signed volatile integer
+typedef volatile signed short vs16;				///< 16bit signed volatile integer
+typedef volatile signed int vs32;					///< 32bit signed volatile integer
+typedef volatile signed long long vs64;		///< 64bit signed volatile integer
 /*+----------------------------------------------------------------------------------------------+*/
 // fixed point math typedefs
 typedef s16 sfp16;                              ///< 1:7:8 fixed point
@@ -62,11 +61,6 @@ typedef unsigned int BOOL;
 /*+----------------------------------------------------------------------------------------------+*/
 #ifndef FALSE
 #define FALSE 0                                 ///< False
-#endif
-/*+----------------------------------------------------------------------------------------------+*/
-#ifndef __cplusplus
-#define true  TRUE                              ///< For c++ compatibility
-#define false FALSE                             ///< For c++ compatibility
 #endif
 /*+----------------------------------------------------------------------------------------------+*/
 #ifndef NULL
