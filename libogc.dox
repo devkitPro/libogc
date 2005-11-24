@@ -6,7 +6,7 @@
 PROJECT_NAME           = libOGC
 PROJECT_NUMBER         = 1.0
 OUTPUT_DIRECTORY       = docs
-CREATE_SUBDIRS         = YES
+CREATE_SUBDIRS         = NO
 OUTPUT_LANGUAGE        = English
 USE_WINDOWS_ENCODING   = YES
 BRIEF_MEMBER_DESC      = YES
@@ -82,24 +82,24 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = gc/ogc/card.h \
-                         gc/ogc/exi.h \
-                         gc/ogc/audio.h \
-                         gc/ogc/lwp.h \
-                         gc/ogc/cache.h \
-                         gc/ogc/irq.h \
-                         gc/ogc/dsp.h \
-                         gc/ogc/message.h \
-                         gc/ogc/mutex.h \
-                         gc/ogc/semaphore.h \
-                         gc/ogc/video.h \
-                         gc/ogc/system.h \
-                         gc/ogc/aram.h \
-                         gc/ogc/cond.h \
-                         gc/gccore.h \
-                         gc/ogc/gx_struct.h \
-                         gc/ogc/video_types.h \
-                         gc/ogc/dvd.h
+INPUT                  = include/ogc/card.h \
+                         include/ogc/exi.h \
+                         include/ogc/audio.h \
+                         include/ogc/lwp.h \
+                         include/ogc/cache.h \
+                         include/ogc/irq.h \
+                         include/ogc/dsp.h \
+                         include/ogc/message.h \
+                         include/ogc/mutex.h \
+                         include/ogc/semaphore.h \
+                         include/ogc/video.h \
+                         include/ogc/system.h \
+                         include/ogc/aram.h \
+                         include/ogc/cond.h \
+                         include/gccore.h \
+                         include/ogc/gx_struct.h \
+                         include/ogc/video_types.h \
+                         include/ogc/dvd.h
 FILE_PATTERNS          = *.c \
                          *.cc \
                          *.cxx \
@@ -147,7 +147,7 @@ STRIP_CODE_COMMENTS    = YES
 REFERENCED_BY_RELATION = YES
 REFERENCES_RELATION    = YES
 USE_HTAGS              = NO
-VERBATIM_HEADERS       = YES
+VERBATIM_HEADERS       = NO
 #---------------------------------------------------------------------------
 # configuration options related to the alphabetical class index
 #---------------------------------------------------------------------------
@@ -273,4 +273,4 @@ DOT_CLEANUP            = YES
 #---------------------------------------------------------------------------
 # Configuration::additions related to the search engine   
 #---------------------------------------------------------------------------
-SEARCHENGINE           = NO
+SEARCHENGINE           = YES
