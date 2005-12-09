@@ -44,15 +44,6 @@ void __lwp_sema_freesema(lwp_sema *sem)
 	_CPU_ISR_Restore(level);
 }
 
-void __lwp_sema_init()
-{
-	s32 i;
-	u32 level;
-
-	_CPU_ISR_Disable(level);
-	for(i=0;i<LWP_MAXSEMAS;i++) _sema_objects[i].sem_id = -1;
-	_CPU_ISR_Restore(level);
-}
 
 void __lwp_sema_initialize(lwp_sema *sema,lwp_semattr *attrs,u32 init_count)
 {

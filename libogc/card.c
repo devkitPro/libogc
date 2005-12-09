@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: card.c,v 1.52 2005-11-22 07:18:13 shagkur Exp $
+$Id: card.c,v 1.53 2005-12-09 09:35:45 shagkur Exp $
 
 card.c -- Memory card subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.52  2005/11/22 07:18:13  shagkur
+- changes done accordingly to changes in dsp.h/.c
+
 Revision 1.51  2005/11/21 12:15:46  shagkur
 no message
 

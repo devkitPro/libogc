@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: mutex.h,v 1.6 2005-11-21 12:37:51 shagkur Exp $
+$Id: mutex.h,v 1.7 2005-12-09 09:21:32 shagkur Exp $
 
 mutex.h -- Thread subsystem III
 
@@ -28,6 +28,10 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.6  2005/11/21 12:37:51  shagkur
+Added copyright header(taken from libnds).
+Introduced RCS $Id: mutex.h,v 1.7 2005-12-09 09:21:32 shagkur Exp $ and $Log: not supported by cvs2svn $ token in project files.
+
 
 -------------------------------------------------------------*/
 

@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: gccore.h,v 1.13 2005-11-24 14:28:50 shagkur Exp $
+$Id: gccore.h,v 1.14 2005-12-09 09:24:32 shagkur Exp $
 
 gccore.h -- GC core header
 
@@ -28,6 +28,11 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.13  2005/11/24 14:28:50  shagkur
+- added copyright header(taken from libnds)
+- introduced RCS ID and LOG token
+- added DVD section to the API description list
+
 
 -------------------------------------------------------------*/
 

@@ -28,13 +28,10 @@ typedef struct _lwpsema {
 	u32 count;
 } lwp_sema;
 
-void __lwp_sema_init();
 void __lwp_sema_initialize(lwp_sema *,lwp_semattr *,u32);
 u32 __lwp_sema_surrender(lwp_sema *,u32);
 u32 __lwp_sema_seize(lwp_sema *,u32,u32,u32);
 void __lwp_sema_flush(lwp_sema *,u32);
-lwp_sema* __lwp_sema_allocsema();
-void __lwp_sema_freesema(lwp_sema *);
 
 #ifdef LIBOGC_INTERNAL
 #include <libogc/lwp_sema.inl>

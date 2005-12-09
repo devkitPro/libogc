@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: semaphore.h,v 1.5 2005-11-21 12:37:51 shagkur Exp $
+$Id: semaphore.h,v 1.6 2005-12-09 09:21:32 shagkur Exp $
 
 semaphore.h -- Thread subsystem IV
 
@@ -28,6 +28,10 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.5  2005/11/21 12:37:51  shagkur
+Added copyright header(taken from libnds).
+Introduced RCS $Id: semaphore.h,v 1.6 2005-12-09 09:21:32 shagkur Exp $ and $Log: not supported by cvs2svn $ token in project files.
+
 
 -------------------------------------------------------------*/
 

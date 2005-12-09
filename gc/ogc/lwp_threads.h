@@ -6,6 +6,7 @@
 #include <lwp_states.h>
 #include <lwp_tqdata.h>
 #include <lwp_watchdog.h>
+#include <lwp_objmgr.h>
 #include <context.h>
 
 //#define _LWPTHREADS_DEBUG
@@ -14,8 +15,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct _lwp_obj lwp_obj;
 
 typedef struct _lwpwaitinfo {
 	u32 id;
@@ -29,16 +28,14 @@ typedef struct _lwpwaitinfo {
 } lwp_waitinfo;
 
 typedef struct _lwpcntrl {
-	lwp_node node;
-	
-	s32 id;		//only used for gdb though
+	lwp_obj object;
 	u8  cur_prio,real_prio;
 	u32 suspendcnt,res_cnt;
 	u32 isr_level;
 	u32 cur_state;
 	boolean is_preemptible;
 	lwp_waitinfo wait;
-	lwp_obj *own;
+	lwp_objinfo *information;
 	prio_cntrl priomap;
 	wd_cntrl timer;
 
@@ -53,11 +50,7 @@ typedef struct _lwpcntrl {
 	void *libc_reent;
 } lwp_cntrl, *lwp_cntrl_t;
 
-struct _lwp_obj {
-	s32 lwp_id;
-	lwp_cntrl thethread;
-};
-
+extern lwp_cntrl *_thr_main;
 extern lwp_cntrl *_thr_idle;
 extern lwp_cntrl *_thr_executing;
 extern lwp_cntrl *_thr_heir;
@@ -83,11 +76,8 @@ u32 __lwp_thread_init(lwp_cntrl *,void *,u32,u32,u32,boolean);
 u32 __lwp_thread_start(lwp_cntrl *,void* (*)(void*),void *);
 void __lwp_thread_exit(void *);
 void __lwp_thread_close(lwp_cntrl *);
-void __lwp_start_multitasking();
-void __lwp_stop_multitasking(void (*exitfunc)());
-u32 __lwp_init();
-void __lwp_thread_freelwp(lwp_cntrl *);
-lwp_cntrl* __lwp_thread_alloclwp();
+void __lwp_thread_startmultitasking();
+void __lwp_thread_stopmultitasking(void (*exitfunc)());
 lwp_obj* __lwp_thread_getobject(lwp_cntrl *);
 boolean __lwp_evaluatemode();
 

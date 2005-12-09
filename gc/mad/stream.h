@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: stream.h,v 1.3 2005-08-24 23:12:47 wntrmute Exp $
+ * $Id: stream.h,v 1.4 2005-12-09 09:27:10 shagkur Exp $
  */
 
 # ifndef LIBMAD_STREAM_H

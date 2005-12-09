@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: dsp.h,v 1.6 2005-11-22 07:14:55 shagkur Exp $
+$Id: dsp.h,v 1.7 2005-12-09 09:21:32 shagkur Exp $
 
 dsp.h -- DSP subsystem
 
@@ -28,6 +28,11 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.6  2005/11/22 07:14:55  shagkur
+- Added copyright header(taken from libnds).
+- Introduced RCS $Id: dsp.h,v 1.7 2005-12-09 09:21:32 shagkur Exp $ and $Log: not supported by cvs2svn $ token in project files.
+- documentation started in doxygen style
+
 Revision 1.5  2005/11/21 12:13:45  shagkur
 no message
 

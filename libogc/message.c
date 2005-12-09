@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: message.c,v 1.7 2005-11-21 12:35:32 shagkur Exp $
+$Id: message.c,v 1.8 2005-12-09 09:35:45 shagkur Exp $
 
 message.c -- Thread subsystem II
 
@@ -28,65 +28,93 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.7  2005/11/21 12:35:32  shagkur
+no message
+
 
 -------------------------------------------------------------*/
 
 
+#include <asm.h>
 #include <stdlib.h>
 #include <lwp_messages.h>
-#include <lwp_wkspace.h>
+#include <lwp_objmgr.h>
+#include <lwp_config.h>
 #include "message.h"
+
+typedef struct _mqbox_st
+{
+	lwp_obj object;
+	mq_cntrl mqueue;
+} mqbox_st;
+
+static lwp_objinfo _lwp_mqbox_objects;
+
+void __lwp_mqbox_init()
+{
+	__lwp_objmgr_initinfo(&_lwp_mqbox_objects,LWP_MAX_MQUEUES,sizeof(mqbox_st));
+}
 
 s32 MQ_Init(mq_box_t *mqbox,u32 count)
 {
+	u32 level;
 	mq_attr attr;
-	mq_cntrl *ret = NULL;
+	mqbox_st *ret = NULL;
 
 	if(!mqbox) return -1;
 	*mqbox = 0;
 	
+	_CPU_ISR_Disable(level);
 	__lwp_thread_dispatchdisable();
 
-	ret = __lwpmq_allocmqueue();
+	ret = (mqbox_st*)__lwp_objmgr_allocate(&_lwp_mqbox_objects);
 	if(!ret) {
 		__lwp_thread_dispatchenable();
+		_CPU_ISR_Restore(level);
 		return MQ_ERROR_TOOMANY;
 	}
 
 	attr.mode = LWP_MQ_FIFO;
-	if(!__lwpmq_initialize(ret,&attr,count,sizeof(mqmsg))) {
-		__lwpmq_freemqueue(ret);
+	if(!__lwpmq_initialize(&ret->mqueue,&attr,count,sizeof(mqmsg))) {
+		__lwp_objmgr_free(&_lwp_mqbox_objects,&ret->object);
 		__lwp_thread_dispatchenable();
+		_CPU_ISR_Restore(level);
 		return MQ_ERROR_TOOMANY;
 	}
 
 	*mqbox = (mq_box_t)ret;
+	__lwp_objmgr_open(&_lwp_mqbox_objects,&ret->object);
 	__lwp_thread_dispatchenable();
+	_CPU_ISR_Restore(level);
 	return MQ_ERROR_SUCCESSFUL;
 }
 
 void MQ_Close(mq_box_t mqbox)
 {
-	mq_cntrl *mbox = (mq_cntrl*)mqbox;
+	u32 level;
+	mqbox_st *mbox = (mqbox_st*)mqbox;
 
 	if(!mbox) return;
 	
+	_CPU_ISR_Disable(level);
 	__lwp_thread_dispatchdisable();
-	__lwpmq_close(mbox,0);
-	__lwpmq_freemqueue(mbox);
+	__lwpmq_close(&mbox->mqueue,0);
+	__lwp_objmgr_close(&_lwp_mqbox_objects,&mbox->object);
+	__lwp_objmgr_free(&_lwp_mqbox_objects,&mbox->object);
 	__lwp_thread_dispatchenable();
+	_CPU_ISR_Restore(level);
 }
 
 BOOL MQ_Send(mq_box_t mqbox,mqmsg msg,u32 flags)
 {
 	BOOL ret = FALSE;
-	mq_cntrl *mbox = (mq_cntrl*)mqbox;
+	mqbox_st *mbox = (mqbox_st*)mqbox;
 	u32 wait = (flags==MQ_MSG_BLOCK)?TRUE:FALSE;
 
 	if(!mbox) return FALSE;
 
 	__lwp_thread_dispatchdisable();
-	if(__lwpmq_submit(mbox,msg,sizeof(mqmsg),(u32)mbox,LWP_MQ_SEND_REQUEST,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
+	if(__lwpmq_submit(&mbox->mqueue,msg,sizeof(mqmsg),(u32)mbox,LWP_MQ_SEND_REQUEST,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
 	__lwp_thread_dispatchenable();
 	return ret;
 }
@@ -94,13 +122,13 @@ BOOL MQ_Send(mq_box_t mqbox,mqmsg msg,u32 flags)
 BOOL MQ_Receive(mq_box_t mqbox,mqmsg *msg,u32 flags)
 {
 	BOOL ret = FALSE;
-	mq_cntrl *mbox = (mq_cntrl*)mqbox;
+	mqbox_st *mbox = (mqbox_st*)mqbox;
 	u32 tmp,wait = (flags==MQ_MSG_BLOCK)?TRUE:FALSE;
 
 	if(!mbox) return FALSE;
 
 	__lwp_thread_dispatchdisable();
-	if(__lwpmq_seize(mbox,(u32)mbox,(void*)msg,&tmp,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
+	if(__lwpmq_seize(&mbox->mqueue,(u32)mbox,(void*)msg,&tmp,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
 	__lwp_thread_dispatchenable();
 	return ret;
 }
@@ -108,13 +136,13 @@ BOOL MQ_Receive(mq_box_t mqbox,mqmsg *msg,u32 flags)
 BOOL MQ_Jam(mq_box_t mqbox,mqmsg msg,u32 flags)
 {
 	BOOL ret = FALSE;
-	mq_cntrl *mbox = (mq_cntrl*)mqbox;
+	mqbox_st *mbox = (mqbox_st*)mqbox;
 	u32 wait = (flags==MQ_MSG_BLOCK)?TRUE:FALSE;
 
 	if(!mbox) return FALSE;
 
 	__lwp_thread_dispatchdisable();
-	if(__lwpmq_submit(mbox,msg,sizeof(mqmsg),(u32)mbox,LWP_MQ_SEND_URGENT,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
+	if(__lwpmq_submit(&mbox->mqueue,msg,sizeof(mqmsg),(u32)mbox,LWP_MQ_SEND_URGENT,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
 	__lwp_thread_dispatchenable();
 	return ret;
 }

@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: semaphore.c,v 1.8 2005-11-21 12:35:32 shagkur Exp $
+$Id: semaphore.c,v 1.9 2005-12-09 09:35:45 shagkur Exp $
 
 semaphore.c -- Thread subsystem IV
 
@@ -28,15 +28,28 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.8  2005/11/21 12:35:32  shagkur
+no message
+
 
 -------------------------------------------------------------*/
 
 
 #include <stdlib.h>
 #include <errno.h>
+#include <asm.h>
 #include "lwp_sema.h"
-#include "lwp_wkspace.h"
+#include "lwp_objmgr.h"
+#include "lwp_config.h"
 #include "semaphore.h"
+
+typedef struct _sema_st
+{
+	lwp_obj object;
+	lwp_sema sema;
+} sema_st;
+
+static lwp_objinfo _lwp_sema_objects;
 
 static s32 __lwp_semwaitsupp(lwp_sema *sem,u32 id,u32 timeout,u8 blocking)
 {
@@ -60,33 +73,43 @@ static s32 __lwp_semwaitsupp(lwp_sema *sem,u32 id,u32 timeout,u8 blocking)
 	return 0;
 }
 
+void __lwp_sema_init()
+{
+	__lwp_objmgr_initinfo(&_lwp_sema_objects,LWP_MAX_SEMAS,sizeof(sema_st));
+}
+
 s32 LWP_SemInit(sem_t *sem,u32 start,u32 max)
 {
+	u32 level;
 	lwp_semattr attr;
-	lwp_sema *ret;
+	sema_st *ret;
 
 	if(!sem) return -1;
 	*sem = NULL;
 	
+	_CPU_ISR_Disable(level);
 	__lwp_thread_dispatchdisable();
-	ret = __lwp_sema_allocsema();
+	ret = (sema_st*)__lwp_objmgr_allocate(&_lwp_sema_objects);
 	if(!ret) {
 		__lwp_thread_dispatchenable();
+		_CPU_ISR_Restore(level);
 		return -1;
 	}
 
 	attr.max_cnt = max;
 	attr.mode = LWP_SEMA_MODEFIFO;
-	__lwp_sema_initialize(ret,&attr,start);
+	__lwp_sema_initialize(&ret->sema,&attr,start);
 
-	*sem = (void*)ret;
+	*sem = (sem_t)ret;
+	__lwp_objmgr_open(&_lwp_sema_objects,&ret->object);
 	__lwp_thread_dispatchenable();
+	_CPU_ISR_Restore(level);
 	return 0;
 }
 
 s32 LWP_SemWait(sem_t sem)
 {
-	return __lwp_semwaitsupp((lwp_sema*)sem,(u32)sem,LWP_THREADQ_NOTIMEOUT,TRUE);
+	return __lwp_semwaitsupp(&((sema_st*)sem)->sema,(u32)sem,LWP_THREADQ_NOTIMEOUT,TRUE);
 }
 
 s32 LWP_SemPost(sem_t sem)
@@ -94,20 +117,24 @@ s32 LWP_SemPost(sem_t sem)
 	if(!sem) return -1;
 
 	__lwp_thread_dispatchdisable();
-	__lwp_sema_surrender((lwp_sema*)sem,(u32)sem);
+	__lwp_sema_surrender(&((sema_st*)sem)->sema,(u32)sem);
 	__lwp_thread_dispatchenable();
 	return 0;
 }
 
 s32 LWP_SemDestroy(sem_t sem)
 {
-	lwp_sema *p = (lwp_sema*)sem;
+	u32 level;
+	sema_st *p = (sema_st*)sem;
 	if(!p) return -1;
 
+	_CPU_ISR_Disable(level);
 	__lwp_thread_dispatchdisable();
-	__lwp_sema_flush(p,-1);
-	__lwp_sema_freesema(p);
+	__lwp_sema_flush(&p->sema,-1);
+	__lwp_objmgr_close(&_lwp_sema_objects,&p->object);
+	__lwp_objmgr_free(&_lwp_sema_objects,&p->object);
 	__lwp_thread_dispatchenable();
+	_CPU_ISR_Restore(level);
 
 	return 0;
 }

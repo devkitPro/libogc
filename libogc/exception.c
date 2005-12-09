@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: exception.c,v 1.24 2005-11-21 12:15:46 shagkur Exp $
+$Id: exception.c,v 1.25 2005-12-09 09:35:45 shagkur Exp $
 
 exception.c -- PPC exception handling support
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.24  2005/11/21 12:15:46  shagkur
+no message
+
 
 -------------------------------------------------------------*/
 

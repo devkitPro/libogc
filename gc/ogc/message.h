@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: message.h,v 1.4 2005-11-21 12:37:51 shagkur Exp $
+$Id: message.h,v 1.5 2005-12-09 09:21:32 shagkur Exp $
 
 message.h -- Thread subsystem II
 
@@ -28,6 +28,10 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.4  2005/11/21 12:37:51  shagkur
+Added copyright header(taken from libnds).
+Introduced RCS $Id: message.h,v 1.5 2005-12-09 09:21:32 shagkur Exp $ and $Log: not supported by cvs2svn $ token in project files.
+
 
 -------------------------------------------------------------*/
 

@@ -8,10 +8,8 @@
 #include "lwp_threads.h"
 #include "lwp_threadq.h"
 #include "lwp_watchdog.h"
-#include "lwp_wkspace.h"
 
 #define LWP_MAXPRIORITIES		256
-#define LWP_MAXTHREADS			1024
 
 /* new one */
 frame_context core_context;
@@ -21,7 +19,6 @@ lwp_cntrl *_thr_idle = NULL;
 lwp_cntrl *_thr_executing = NULL;
 lwp_cntrl *_thr_heir = NULL;
 lwp_cntrl *_thr_allocated_fp = NULL;
-
 lwp_queue _lwp_thr_ready[LWP_MAXPRIORITIES];
 
 volatile boolean _context_switch_want;
@@ -30,7 +27,6 @@ vu32 _thread_dispatch_disable_level;
 void **__lwp_thr_libc_reent = NULL;
 
 static void (*_lwp_exitfunc)(void);
-static lwp_obj _lwp_objects[LWP_MAXTHREADS];
 
 extern void _cpu_context_switch(void *,void *);
 extern void _cpu_context_save(void *);
@@ -41,10 +37,6 @@ extern void _cpu_context_restore_fp(void *);
 extern int __libc_create_hook(lwp_cntrl *,lwp_cntrl *);
 extern int __libc_start_hook(lwp_cntrl *,lwp_cntrl *);
 extern int __libc_delete_hook(lwp_cntrl *, lwp_cntrl *);
-
-extern int main();
-
-extern u8 __stack_addr[],__stack_end[];
 
 extern int printk(const char *fmt,...);
 
@@ -75,34 +67,12 @@ void __lwp_dumpcontext_fp(lwp_cntrl *thrA,lwp_cntrl *thrB)
 }
 
 #endif
-
+/*
 void __lwp_getthreadlist(lwp_obj **thrs)
 {
 	*thrs = _lwp_objects;
 }
-
-s32 __lwp_getcurrentid()
-{
-	return _thr_executing->id;
-}
-
-
-frame_context* __lwp_getthrcontext(s32 thr_id)
-{
-	frame_context *ctx = NULL;
-
-	if(_lwp_objects[thr_id].lwp_id!=-1)  {
-		ctx = &_lwp_objects[thr_id].thethread.context;
-	}
-	return ctx;
-}
-
-u32 __lwp_is_threadactive(s32 thr_id)
-{
-	if(_lwp_objects[thr_id].lwp_id!=-1) return 1;
-	else return 0;
-}
-
+*/
 u32 __lwp_isr_in_progress()
 {
 	register u32 isr_nest_level;
@@ -185,12 +155,6 @@ void __thread_dispatch()
 	_CPU_ISR_Restore(level);
 }
 
-static void* idle_func(void *arg)
-{
-	while(1);
-	return 0;
-}
-
 static void __lwp_thread_handler()
 {
 	u32 level;
@@ -209,41 +173,6 @@ static void __lwp_thread_handler()
 #ifdef _LWPTHREADS_DEBUG
 	printf("__lwp_thread_handler(%p): thread returned(%p)\n",exec,exec->wait.ret_arg);
 #endif
-}
-
-lwp_cntrl* __lwp_thread_alloclwp()
-{
-	s32 i;
-	u32 level;
-	lwp_cntrl *ret = NULL;
-
-	_CPU_ISR_Disable(level);
-
-	i=0;
-	while(i<LWP_MAXTHREADS && _lwp_objects[i].lwp_id!=-1) i++;
-	if(i<LWP_MAXTHREADS) {
-		_lwp_objects[i].thethread.id = i;
-		_lwp_objects[i].lwp_id = i;
-		_lwp_objects[i].thethread.own = &_lwp_objects[i];
-		ret = &_lwp_objects[i].thethread;
-	}
-
-	_CPU_ISR_Restore(level);
-	return ret;
-}
-
-void __lwp_thread_freelwp(lwp_cntrl *thethread)
-{
-	u32 idx,level;
-	
-	if(thethread->id==-1) return;
-	
-	_CPU_ISR_Disable(level);
-	idx = thethread->id;
-	_lwp_objects[idx].lwp_id = -1;
-	_lwp_objects[idx].thethread.id = -1;
-	_lwp_objects[idx].thethread.own = NULL;
-	_CPU_ISR_Restore(level);
 }
 
 void __lwp_rotate_readyqueue(u32 prio)
@@ -291,8 +220,8 @@ void __lwp_thread_yield()
 	
 	_CPU_ISR_Disable(level);
 	if(!__lwp_queue_onenode(ready)) {
-		__lwp_queue_extractI(&exec->node);
-		__lwp_queue_appendI(ready,&exec->node);
+		__lwp_queue_extractI(&exec->object.node);
+		__lwp_queue_appendI(ready,&exec->object.node);
 		_CPU_ISR_Flash(level);
 		if(__lwp_thread_isheir(exec))
 			_thr_heir = (lwp_cntrl*)ready->first;
@@ -323,7 +252,7 @@ void __lwp_thread_setstate(lwp_cntrl *thethread,u32 state)
 		__lwp_queue_init_empty(ready);
 		__lwp_priomap_removefrom(&thethread->priomap);
 	} else 
-		__lwp_queue_extractI(&thethread->node);
+		__lwp_queue_extractI(&thethread->object.node);
 	_CPU_ISR_Flash(level);
 
 	if(__lwp_thread_isheir(thethread))
@@ -347,7 +276,7 @@ void __lwp_thread_clearstate(lwp_cntrl *thethread,u32 state)
 		cur_state = thethread->cur_state = __lwp_clearstate(cur_state,state);
 		if(__lwp_stateready(cur_state)) {
 			__lwp_priomap_addto(&thethread->priomap);
-			__lwp_queue_appendI(thethread->ready,&thethread->node);
+			__lwp_queue_appendI(thethread->ready,&thethread->object.node);
 			_CPU_ISR_Flash(level);
 			
 			if(thethread->cur_prio<_thr_heir->cur_prio) {
@@ -394,9 +323,9 @@ void __lwp_thread_changepriority(lwp_cntrl *thethread,u32 prio,u32 prependit)
 
 	__lwp_priomap_addto(&thethread->priomap);
 	if(prependit)
-		__lwp_queue_prependI(thethread->ready,&thethread->node);
+		__lwp_queue_prependI(thethread->ready,&thethread->object.node);
 	else
-		__lwp_queue_appendI(thethread->ready,&thethread->node);
+		__lwp_queue_appendI(thethread->ready,&thethread->object.node);
 
 	_CPU_ISR_Flash(level);
 
@@ -439,7 +368,7 @@ void __lwp_thread_suspend(lwp_cntrl *thethread)
 		__lwp_queue_init_empty(ready);
 		__lwp_priomap_removefrom(&thethread->priomap);
 	} else {
-		__lwp_queue_extractI(&thethread->node);
+		__lwp_queue_extractI(&thethread->object.node);
 	}
 	_CPU_ISR_Flash(level);
 	
@@ -469,7 +398,7 @@ void __lwp_thread_settransient(lwp_cntrl *thethread)
 			__lwp_queue_init_empty(ready);
 			__lwp_priomap_removefrom(&thethread->priomap);
 		} else {
-			__lwp_queue_extractI(&thethread->node);
+			__lwp_queue_extractI(&thethread->object.node);
 		}
 	}
 
@@ -497,7 +426,7 @@ void __lwp_thread_resume(lwp_cntrl *thethread,u32 force)
 		state = thethread->cur_state = __lwp_clearstate(thethread->cur_state,LWP_STATES_SUSPENDED);
 		if(__lwp_stateready(state)) {
 			__lwp_priomap_addto(&thethread->priomap);
-			__lwp_queue_appendI(thethread->ready,&thethread->node);
+			__lwp_queue_appendI(thethread->ready,&thethread->object.node);
 			_CPU_ISR_Flash(level);
 			if(thethread->cur_prio<_thr_heir->cur_prio) {
 				_thr_heir = thethread;
@@ -560,7 +489,7 @@ void __lwp_thread_ready(lwp_cntrl *thethread)
 #endif
 	thethread->cur_state = LWP_STATES_READY;
 	__lwp_priomap_addto(&thethread->priomap);
-	__lwp_queue_appendI(thethread->ready,&thethread->node);
+	__lwp_queue_appendI(thethread->ready,&thethread->object.node);
 	_CPU_ISR_Flash(level);
 
 	__lwp_thread_calcheir();
@@ -633,7 +562,6 @@ void __lwp_thread_close(lwp_cntrl *thethread)
 	while((p=__lwp_threadqueue_dequeue(&thethread->join_list))) {
 		*(void**)p->wait.ret_arg = value_ptr;
 	}
-	__lwp_thread_freelwp(thethread);
 	_CPU_ISR_Restore(level);
 
 	__libc_delete_hook(_thr_executing,thethread);
@@ -642,6 +570,13 @@ void __lwp_thread_close(lwp_cntrl *thethread)
 		__lwp_thread_deallocatefp();
 
 	__lwp_stack_free(thethread);
+
+	_CPU_ISR_Disable(level);
+	if(thethread->information) {
+		__lwp_objmgr_close(thethread->information,&thethread->object);
+		__lwp_objmgr_free(thethread->information,&thethread->object);
+	}
+	_CPU_ISR_Restore(level);
 }
 
 void __lwp_thread_closeall()
@@ -657,7 +592,7 @@ void __lwp_thread_closeall()
 			if(ptr==_thr_executing) flag = 1;
 			else __lwp_thread_close(ptr);
 		}
-		if(flag) __lwp_queue_appendI(&_lwp_thr_ready[i],&_thr_executing->node);
+		if(flag) __lwp_queue_appendI(&_lwp_thr_ready[i],&_thr_executing->object.node);
 	}
 	_CPU_ISR_Restore(level);
 }
@@ -668,11 +603,6 @@ void __lwp_thread_exit(void *value_ptr)
 	_thr_executing->wait.ret_arg = (u32*)value_ptr;
 	__lwp_thread_close(_thr_executing);
 	__lwp_thread_dispatchenable();
-}
-
-lwp_obj* __lwp_thread_getobject(lwp_cntrl *thethread)
-{
-	return thethread->own;
 }
 
 u32 __lwp_thread_start(lwp_cntrl *thethread,void* (*entry)(void*),void *arg)
@@ -691,12 +621,8 @@ u32 __lwp_thread_start(lwp_cntrl *thethread,void* (*entry)(void*),void *arg)
 	return 0;
 }
 
-void __lwp_start_multitasking()
+void __lwp_thread_startmultitasking()
 {
-	u32 level;
-
-	_CPU_ISR_Disable(level);
-
 	_lwp_exitfunc = NULL;
 
 	__sys_state_set(SYS_STATE_BEGIN_MT);
@@ -711,11 +637,9 @@ void __lwp_start_multitasking()
 	_cpu_context_switch((void*)&core_context,(void*)&_thr_heir->context);
 
 	if(_lwp_exitfunc) _lwp_exitfunc();
-	
-	_CPU_ISR_Restore(level);
 }
 
-void __lwp_stop_multitasking(void (*exitfunc)())
+void __lwp_thread_stopmultitasking(void (*exitfunc)())
 {
 	_lwp_exitfunc = exitfunc;
 	if(__sys_state_get()!=SYS_STATE_SHUTDOWN) {
@@ -724,15 +648,13 @@ void __lwp_stop_multitasking(void (*exitfunc)())
 	}
 }
 
-u32 __lwp_sys_init()
+void __lwp_thread_coreinit()
 {
-	u32 index,level;
+	u32 index;
 
 #ifdef _LWPTHREADS_DEBUG
 	printf("__lwp_sys_init()\n\n");
 #endif
-	_CPU_ISR_Disable(level);
-	
 	__lwp_thread_dispatchinitialize();
 	
 	_context_switch_want = FALSE;
@@ -740,28 +662,9 @@ u32 __lwp_sys_init()
 	_thr_heir = NULL;
 	_thr_allocated_fp = NULL;
 
-	for(index=0;index<LWP_MAXTHREADS;index++) {
-		_lwp_objects[index].lwp_id = -1;
-	}
 	for(index=0;index<=LWP_PRIO_MAX;index++)
 		__lwp_queue_init_empty(&_lwp_thr_ready[index]);
 	
 	__sys_state_set(SYS_STATE_BEFORE_MT);
-	
-	// create idle thread, is needed iff all threads are locked on a queue
-	_thr_idle = __lwp_thread_alloclwp();
-	__lwp_thread_init(_thr_idle,NULL,0,255,0,TRUE);
-	_thr_executing = _thr_heir = _thr_idle;
-	__lwp_thread_start(_thr_idle,idle_func,NULL);
-
-	// create main thread, as this is our entry point
-	// for every GC application.
-	_thr_main = __lwp_thread_alloclwp();
-	__lwp_thread_init(_thr_main,__stack_end,((u32)__stack_addr-(u32)__stack_end),191,0,TRUE);
-	_thr_executing = _thr_heir = _thr_main;
-	__lwp_thread_start(_thr_main,(void*)main,NULL);
-
-	_CPU_ISR_Restore(level);
-	return 1;
 }
 

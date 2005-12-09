@@ -390,7 +390,7 @@ static void handle_query()
 	lwp_obj *threads = NULL;
 
 //	printf("%s\n",remcomInBuffer);
-
+/*
 	__lwp_getthreadlist(&threads);
 	if(remcomInBuffer[1]=='C') 
 		sprintf(remcomOutBuffer,"QC%04x",threads[dbg_currthr].thethread.id+1);
@@ -412,6 +412,7 @@ static void handle_query()
 		strcpy(remcomOutBuffer,"OK");
 	else if(strncmp(&remcomInBuffer[1],"Offsets",7)==0)
 		sprintf(remcomOutBuffer,"Text=%08x;Data=%08x;Bss=%08x",((u32)__text_fstart-(u32)__text_fstart),((u32)__data_fstart-(u32)__text_fstart),((u32)__bss_fstart-(u32)__text_fstart));
+*/
 }
 
 void c_debug_handler(frame_context *ctx)

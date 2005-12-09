@@ -309,12 +309,12 @@ s32 card_preFAT(s32 drv_no)
 {
 	s32 ret;
 
-	LWP_MutexLock(&_fatLock[drv_no]);
+	LWP_MutexLock(_fatLock[drv_no]);
 
 	if(_fatFlag[drv_no]!=INITIALIZED) {
 		ret = card_initFAT(drv_no);
 		if(ret!=0) {
-			LWP_MutexUnlock(&_fatLock[drv_no]);
+			LWP_MutexUnlock(_fatLock[drv_no]);
 			return ret;
 		}
 	}
@@ -323,7 +323,7 @@ s32 card_preFAT(s32 drv_no)
 
 s32 card_postFAT(s32 drv_no)
 {
-	LWP_MutexUnlock(&_fatLock[drv_no]);
+	LWP_MutexUnlock(_fatLock[drv_no]);
 	return CARDIO_ERROR_READY;
 }
 
@@ -3024,7 +3024,7 @@ s32 card_unmountFAT(const char *p_devname)
     if(drv_no>=MAX_DRIVE)
         return CARDIO_ERROR_INVALIDPARAM;
 
-	LWP_MutexLock(&_fatLock[drv_no]);
+	LWP_MutexLock(_fatLock[drv_no]);
 	if(_fatFlag[drv_no]==INITIALIZED)
 		ret = card_doUnmount(drv_no);
 

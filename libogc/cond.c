@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: cond.c,v 1.10 2005-11-21 12:15:46 shagkur Exp $
+$Id: cond.c,v 1.11 2005-12-09 09:35:45 shagkur Exp $
 
 cond.c -- Thread subsystem V
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.10  2005/11/21 12:15:46  shagkur
+no message
+
 
 -------------------------------------------------------------*/
 
@@ -37,90 +40,48 @@ $Log: not supported by cvs2svn $
 #include "asm.h"
 #include "mutex.h"
 #include "lwp_threadq.h"
-#include "lwp_wkspace.h"
+#include "lwp_objmgr.h"
+#include "lwp_config.h"
 #include "cond.h"
 
-#define LWP_MAXCONDVARS			1024
-
-struct _cond {
-	mutex_t mutex;
+typedef struct _cond_st {
+	lwp_obj object;
+	mutex_t lock;
 	lwp_thrqueue wait_queue;
-};
+} cond_st;
 
-struct _cond_obj {
-	u32 cond_id;
-	struct _cond cond;
-};
-
-static struct _cond_obj _cond_objects[LWP_MAXCONDVARS];
+static lwp_objinfo _lwp_cond_objects;
 
 extern int clock_gettime(struct timespec *tp);
 extern void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
 
-static struct _cond* __lwp_cond_allochandle()
-{
-	s32 i;
-	u32 level;
-	struct _cond *ret = NULL;
-	
-	_CPU_ISR_Disable(level);
-
-	i = 0;
-	while(i<LWP_MAXCONDVARS && _cond_objects[i].cond_id!=-1) i++;
-	if(i<LWP_MAXCONDVARS) {
-		_cond_objects[i].cond_id = i;
-		ret = &_cond_objects[i].cond;
-	}
-
-	_CPU_ISR_Restore(level);
-	return ret;
-}
-
-static void __lwp_cond_freehandle(struct _cond *cond)
-{
-	s32 i;
-	u32 level;
-
-	_CPU_ISR_Disable(level);
-
-	i = 0;
-	while(i<LWP_MAXCONDVARS && cond!=&_cond_objects[i].cond) i++;
-	if(i<LWP_MAXCONDVARS && _cond_objects[i].cond_id!=-1) {
-		_cond_objects[i].cond_id = -1;
-	}
-	_CPU_ISR_Restore(level);
-}
-
 void __lwp_cond_init()
 {
-	s32 i;
-	u32 level;
-
-	_CPU_ISR_Disable(level);
-	for(i=0;i<LWP_MAXCONDVARS;i++) _cond_objects[i].cond_id = -1;
-	_CPU_ISR_Restore(level);
+	__lwp_objmgr_initinfo(&_lwp_cond_objects,LWP_MAX_CONDVARS,sizeof(cond_st));
 }
 
 static s32 __lwp_cond_waitsupp(cond_t cond,mutex_t mutex,u32 timeout,u8 timedout)
 {
-	u32 status,mstatus;
-	struct _cond *thecond = (struct _cond*)cond;
+	u32 status,mstatus,level;
+	cond_st *thecond = (cond_st*)cond;
 
-	if(!cond) return -1;
+	if(!thecond) return -1;
 
 	__lwp_thread_dispatchdisable();
-	if(thecond->mutex && thecond->mutex!=mutex) {
+	if(thecond->lock && thecond->lock!=mutex) {
 		__lwp_thread_dispatchenable();
 		return EINVAL;
 	}
 
 	LWP_MutexUnlock(mutex);
 	if(!timedout) {
-		thecond->mutex = mutex;
+		thecond->lock = mutex;
+		_CPU_ISR_Disable(level);
 		__lwp_threadqueue_csenter(&thecond->wait_queue);
 		_thr_executing->wait.ret_code = 0;
 		_thr_executing->wait.queue = &thecond->wait_queue;
 		_thr_executing->wait.id = (u32)thecond;
+		_CPU_ISR_Restore(level);
 		__lwp_threadqueue_enqueue(&thecond->wait_queue,timeout);
 		__lwp_thread_dispatchenable();
 		
@@ -141,14 +102,14 @@ static s32 __lwp_cond_waitsupp(cond_t cond,mutex_t mutex,u32 timeout,u8 timedout
 static s32 __lwp_cond_signalsupp(cond_t cond,u8 isbroadcast)
 {
 	lwp_cntrl *thethread;
-	struct _cond *thecond = (struct _cond*)cond;
+	cond_st *thecond = (cond_st*)cond;
 	
 	if(!thecond) return -1;
 	
 	__lwp_thread_dispatchdisable();
 	do {
 		thethread = __lwp_threadqueue_dequeue(&thecond->wait_queue);
-		if(!thethread) thecond->mutex = NULL;
+		if(!thethread) thecond->lock = NULL;
 	} while(isbroadcast && thethread);
 	__lwp_thread_dispatchenable();
 	return 0;
@@ -156,22 +117,27 @@ static s32 __lwp_cond_signalsupp(cond_t cond,u8 isbroadcast)
 
 s32 LWP_CondInit(cond_t *cond)
 {
-	struct _cond *ret;
+	u32 level;
+	cond_st *ret;
 	
 	if(!cond) return -1;
 	
+	_CPU_ISR_Disable(level);
 	__lwp_thread_dispatchdisable();
-	ret = __lwp_cond_allochandle();
+	ret = (cond_st*)__lwp_objmgr_allocate(&_lwp_cond_objects);
 	if(!ret) {
 		__lwp_thread_dispatchenable();
+		_CPU_ISR_Restore(level);
 		return ENOMEM;
 	}
 
-	ret->mutex = NULL;
+	ret->lock = NULL;
 	__lwp_threadqueue_init(&ret->wait_queue,LWP_THREADQ_MODEFIFO,LWP_STATES_WAITING_FOR_CONDVAR,ETIMEDOUT);
 
 	*cond = (cond_t)ret;
+	__lwp_objmgr_open(&_lwp_cond_objects,&ret->object);
 	__lwp_thread_dispatchenable();
+	_CPU_ISR_Restore(level);
 
 	return 0;
 }
@@ -208,13 +174,20 @@ s32 LWP_CondTimedWait(cond_t cond,mutex_t mutex,const struct timespec *abstime)
 
 s32 LWP_CondDestroy(cond_t cond)
 {
-	struct _cond *ptr = (struct _cond*)cond;
+	u32 level;
+	cond_st *ptr = (cond_st*)cond;
+
+	_CPU_ISR_Disable(level);
 	__lwp_thread_dispatchdisable();
 	if(__lwp_threadqueue_first(&ptr->wait_queue)) {
 		__lwp_thread_dispatchenable();
+		_CPU_ISR_Restore(level);
 		return EBUSY;
 	}
-	__lwp_cond_freehandle(ptr);
+
+	__lwp_objmgr_close(&_lwp_cond_objects,&ptr->object);
+	__lwp_objmgr_free(&_lwp_cond_objects,&ptr->object);
 	__lwp_thread_dispatchenable();
+	_CPU_ISR_Restore(level);
 	return 0;
 }

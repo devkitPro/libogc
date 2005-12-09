@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: irq.h,v 1.6 2005-11-21 12:13:45 shagkur Exp $
+$Id: irq.h,v 1.7 2005-12-09 09:21:32 shagkur Exp $
 
 irq.h -- Interrupt subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.6  2005/11/21 12:13:45  shagkur
+no message
+
 
 -------------------------------------------------------------*/
 

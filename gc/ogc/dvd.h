@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: dvd.h,v 1.23 2005-11-24 14:29:22 shagkur Exp $
+$Id: dvd.h,v 1.24 2005-12-09 09:21:32 shagkur Exp $
 
 dvd.h -- DVD subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.23  2005/11/24 14:29:22  shagkur
+- added more function documentation
+
 Revision 1.22  2005/11/23 07:51:59  shagkur
 - Added copyright header(taken from libnds).
 - Introduced RCS ID and LOG tokens.
@@ -49,7 +52,24 @@ Revision 1.22  2005/11/23 07:51:59  shagkur
 #include <gctypes.h>
 #include <ogc/lwp_queue.h>
 
+#define  DVD_STATE_FATAL_ERROR			-1 
+#define  DVD_STATE_END					0 
+#define  DVD_STATE_BUSY					1 
+#define  DVD_STATE_WAITING				2 
+#define  DVD_STATE_COVER_CLOSED			3 
+#define  DVD_STATE_NO_DISK				4 
+#define  DVD_STATE_COVER_OPEN			5 
+#define  DVD_STATE_WRONG_DISK			6 
+#define  DVD_STATE_MOTOR_STOPPED		7 
+#define  DVD_STATE_IGNORED				8 
+#define  DVD_STATE_CANCELED				10 
+#define  DVD_STATE_RETRY				11 
 
+#define  DVD_ERROR_OK					0 
+#define  DVD_ERROR_FATAL				-1 
+#define  DVD_ERROR_IGNORED				-2 
+#define  DVD_ERROR_CANCELED				-3 
+#define  DVD_ERROR_COVER_CLOSED			-4 
 /*! 
  * \addtogroup dvd_resetmode DVD reset modes
  * @{
@@ -263,30 +283,30 @@ s32 DVD_MountAsync(dvdcmdblk *block,dvdcbcallback cb);
 
 
 /*! 
- * \fn s32 DVD_ControlDrive(u32 cmd,dvdcmdblk *block)
+ * \fn s32 DVD_ControlDrive(dvdcmdblk *block,u32 cmd)
  * \brief Controls the drive's motor and behavior.
  *
  *        This is a synchronous version of DVD_ControlDriveAsync().
  *
- * \param[in] cmd \ref dvd_motorctrlmode "command" to control the drive.
  * \param[in] block pointer to a dvdcmdblk structure used to process the operation
+ * \param[in] cmd \ref dvd_motorctrlmode "command" to control the drive.
  *
  * \return none
  */
-s32 DVD_ControlDrive(u32 cmd,dvdcmdblk *block);
+s32 DVD_ControlDrive(dvdcmdblk *block,u32 cmd);
 
 
 /*! 
- * \fn s32 DVD_ControlDriveAsync(u32 cmd,dvdcmdblk *block,dvdcbcallback cb)
+ * \fn s32 DVD_ControlDriveAsync(dvdcmdblk *block,u32 cmd,dvdcbcallback cb)
  * \brief Controls the drive's motor and behavior.
  *
- * \param[in] cmd \ref dvd_motorctrlmode "command" to control the drive.
  * \param[in] block pointer to a dvdcmdblk structure used to process the operation
+ * \param[in] cmd \ref dvd_motorctrlmode "command" to control the drive.
  * \param[in] cb callback to be invoked upon completion of operation.
  *
  * \return none
  */
-s32 DVD_ControlDriveAsync(u32 cmd,dvdcmdblk *block,dvdcbcallback cb);
+s32 DVD_ControlDriveAsync(dvdcmdblk *block,u32 cmd,dvdcbcallback cb);
 
 
 s32 DVD_GetCmdBlockStatus(dvdcmdblk *block);
@@ -294,10 +314,10 @@ s32 DVD_SpinUpDrive(dvdcmdblk *block);
 s32 DVD_SpinUpDriveAsync(dvdcmdblk *block,dvdcbcallback cb);
 s32 DVD_Inquiry(dvdcmdblk *block,dvddrvinfo *info);
 s32 DVD_InquiryAsync(dvdcmdblk *block,dvddrvinfo *info,dvdcbcallback cb);
-s32 DVD_ReadPrio(dvdfileinfo *info,void *buf,u32 len,u32 offset,s32 prio);
+s32 DVD_ReadPrio(dvdcmdblk *block,void *buf,u32 len,u32 offset,s32 prio);
 s32 DVD_ReadAbsAsyncPrio(dvdcmdblk *block,void *buf,u32 len,u32 offset,dvdcbcallback cb,s32 prio);
 s32 DVD_ReadAbsAsyncForBS(dvdcmdblk *block,void *buf,u32 len,u32 offset,dvdcbcallback cb);
-s32 DVD_SeekPrio(dvdfileinfo *info,u32 offset,s32 prio);
+s32 DVD_SeekPrio(dvdcmdblk *block,u32 offset,s32 prio);
 s32 DVD_SeekAbsAsyncPrio(dvdcmdblk *block,u32 offset,dvdcbcallback cb,s32 prio);
 s32 DVD_CancelAllAsync(dvdcbcallback cb);
 s32 DVD_StopStreamAtEndAsync(dvdcmdblk *block,dvdcbcallback cb);

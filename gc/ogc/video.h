@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: video.h,v 1.17 2005-11-23 07:53:53 shagkur Exp $
+$Id: video.h,v 1.18 2005-12-09 09:21:32 shagkur Exp $
 
 video.h -- VIDEO subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.17  2005/11/23 07:53:53  shagkur
+no message
+
 Revision 1.16  2005/11/23 07:53:07  shagkur
 - adjusted documentation blocks
 - moved all defines ande externs to video_types.h

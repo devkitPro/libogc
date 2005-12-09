@@ -41,9 +41,6 @@ typedef struct _lwpmutex {
 	lwp_cntrl *holder;
 } lwp_mutex;
 
-void __lwp_mutex_init();
-lwp_mutex* __lwp_mutex_allocmutex();
-void __lwp_mutex_freemutex(lwp_mutex *mutex);
 void __lwp_mutex_initialize(lwp_mutex *,lwp_mutex_attr *,u32);
 u32 __lwp_mutex_surrender(lwp_mutex *);
 void __lwp_mutex_seize_irq_blocking(lwp_mutex *,u32);

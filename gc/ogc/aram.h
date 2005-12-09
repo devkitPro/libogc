@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: aram.h,v 1.7 2005-11-23 16:46:21 shagkur Exp $
+$Id: aram.h,v 1.8 2005-12-09 09:20:49 shagkur Exp $
 
 aram.h -- ARAM subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.7  2005/11/23 16:46:21  shagkur
+- more detailed description to certain functions done
+
 Revision 1.6  2005/11/23 07:50:15  shagkur
 - added more detailed description to  AR_Init
 

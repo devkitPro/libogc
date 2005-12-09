@@ -56,7 +56,7 @@ void __lwp_threadqueue_enqueuefifo(lwp_thrqueue *queue,lwp_cntrl *thethread,u32 
 		case LWP_THREADQ_SYNCHRONIZED:
 			break;
 		case LWP_THREADQ_NOTHINGHAPPEND:
-			__lwp_queue_appendI(&queue->queues.fifo,&thethread->node);
+			__lwp_queue_appendI(&queue->queues.fifo,&thethread->object.node);
 			_CPU_ISR_Restore(level);
 			return;
 		case LWP_THREADQ_TIMEOUT:
@@ -147,7 +147,7 @@ forward_search:
 			_CPU_ISR_Restore(level);
 			goto forward_search;
 		}
-		search_thread = (lwp_cntrl*)search_thread->node.next;
+		search_thread = (lwp_cntrl*)search_thread->object.node.next;
 	}
 	if(queue->sync_state!=LWP_THREADQ_NOTHINGHAPPEND) goto synchronize;
 	queue->sync_state = LWP_THREADQ_SYNCHRONIZED;
@@ -177,7 +177,7 @@ reverse_search:
 			_CPU_ISR_Restore(level);
 			goto reverse_search;
 		}
-		search_thread = (lwp_cntrl*)search_thread->node.prev;
+		search_thread = (lwp_cntrl*)search_thread->object.node.prev;
 	}
 	if(queue->sync_state!=LWP_THREADQ_NOTHINGHAPPEND) goto synchronize;
 	queue->sync_state = LWP_THREADQ_SYNCHRONIZED;
@@ -272,8 +272,8 @@ dequeue:
 #endif
 	newfirstnode = ret->wait.block2n.first;
 	newfirstthr = (lwp_cntrl*)newfirstnode;
-	next_node = ret->node.next;
-	prev_node = ret->node.prev;
+	next_node = ret->object.node.next;
+	prev_node = ret->object.node.prev;
 	if(!__lwp_queue_isempty(&ret->wait.block2n)) {
 		last_node = ret->wait.block2n.last;
 		newsecnode = newfirstnode->next;
@@ -426,7 +426,7 @@ void __lwp_threadqueue_extractfifo(lwp_thrqueue *queue,lwp_cntrl *thethread)
 		return;
 	}
 	
-	__lwp_queue_extractI(&thethread->node);
+	__lwp_queue_extractI(&thethread->object.node);
 	if(!__lwp_wd_isactive(&thethread->timer)) {
 		_CPU_ISR_Restore(level);
 	} else {

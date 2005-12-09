@@ -200,6 +200,14 @@ SOURCE=.\libogc\lwp_mutex.inl
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\lwp_objmgr.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\lwp_objmgr.inl
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\lwp_priority.c
 # End Source File
 # Begin Source File
@@ -928,11 +936,19 @@ SOURCE=.\gc\ogc\lwp.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\gc\ogc\lwp_config.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\gc\ogc\lwp_messages.h
 # End Source File
 # Begin Source File
 
 SOURCE=.\gc\ogc\lwp_mutex.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\lwp_objmgr.h
 # End Source File
 # Begin Source File
 

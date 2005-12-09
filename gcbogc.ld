@@ -80,19 +80,19 @@ SECTIONS
     /* .gnu.warning sections are handled specially by elf32.em.  */
     *(.gnu.warning)
     *(.gnu.linkonce.t.*)
+	. = ALIGN(32);   /* REQUIRED. LD is flaky without it. */
   } = 0
   .fini      :
   {
     KEEP (*(.fini))
+	. = ALIGN(32);   /* REQUIRED. LD is flaky without it. */
   } = 0
   PROVIDE (__etext = .);
   PROVIDE (_etext = .);
   PROVIDE (etext = .);
 
-  . = ALIGN(32);
   text_mem_size = . - text_mem_start;
 
-  . = ALIGN(32);
   data_mem_start = .;
   .rodata   : { *(.rodata) *(.rodata.*) *(.gnu.linkonce.r.*) }
   .rodata1   : { *(.rodata1) }
@@ -120,6 +120,7 @@ SECTIONS
     *(.data.*)
     *(.gnu.linkonce.d.*)
     SORT(CONSTRUCTORS)
+	. = ALIGN(32);   /* REQUIRED. LD is flaky without it. */
   }
   .data1   : { *(.data1) }
   .tdata	  : { *(.tdata .tdata.* .gnu.linkonce.td.*) }
@@ -149,6 +150,7 @@ SECTIONS
     KEEP (*(EXCLUDE_FILE (*crtend.o ) .ctors))
     KEEP (*(SORT(.ctors.*)))
     KEEP (*(.ctors))
+	. = ALIGN(32);   /* REQUIRED. LD is flaky without it. */
   }
    .dtors         :
   {
@@ -156,6 +158,7 @@ SECTIONS
     KEEP (*(EXCLUDE_FILE (*crtend.o ) .dtors))
     KEEP (*(SORT(.dtors.*)))
     KEEP (*(.dtors))
+	. = ALIGN(32);   /* REQUIRED. LD is flaky without it. */
   }
   .jcr            : { KEEP (*(.jcr)) }
   .got		  : { *(.got.plt) *(.got) }
@@ -167,15 +170,13 @@ SECTIONS
     *(.sdata)
     *(.sdata.*)
     *(.gnu.linkonce.s.*)
+	. = ALIGN(32);   /* REQUIRED. LD is flaky without it. */
   }
   _edata = .;
   PROVIDE (edata = .);
 
-  . = ALIGN(32);
   data_mem_size = . - data_mem_start;
-  .textlen = . - base_address;
 
-  . = ALIGN(32);
   bss_mem_start = .;
   .sbss      :
   {
@@ -189,10 +190,9 @@ SECTIONS
     *(.scommon)
     PROVIDE (__sbss_end = .);
     PROVIDE (___sbss_end = .);
+	. = ALIGN(32);   /* REQUIRED. LD is flaky without it. */
 	__sbss_end = .;
   }
- 
- . = ALIGN(32);
  
  .bss       :
   {
@@ -206,11 +206,13 @@ SECTIONS
    /* Align here to ensure that the .bss section occupies space up to
       _end.  Align after .bss to ensure correct alignment even if the
       .bss section disappears because there are no input sections.  */
+
    . = ALIGN(32);
+
     PROVIDE (__bss_end = .);
 	__bss_end = .;
   }
-  . = ALIGN(32);
+
   bss_mem_size = . - bss_mem_start;
 
   /* calculate file addresses */
@@ -219,6 +221,8 @@ SECTIONS
   bss_file_start = bss_mem_start - file_start;
 
   _end = .;
+  .textlen = . - base_address;
+
   PROVIDE(end = .);
   /* Stabs debugging sections.  */
   .stab 0 : { *(.stab) }
@@ -261,12 +265,9 @@ __stack_addr = (__bss_start + SIZEOF(.bss) + 0x10000 + 7) & (-8);
 __stack_end = (__bss_start + SIZEOF(.bss));
 __intrstack_addr = (__stack_addr + 0x2000);
 __intrstack_end = (__stack_addr);
-__ArenaLo = (__intrstack_addr + 31) & (-32);
-__ArenaHi = (0x81700000);
-__gxregs = (__ArenaHi + 31) & (-32);
-
-/* for backward compatibility with old crt0 */
-PROVIDE (__stack = (0x81700000));
+__ArenaLo = (0x80B00000);
+__ArenaHi = (0x81100000);
+__gxregs = (0x81700000);
 
 PROVIDE(__isIPL = __isIPL);
 PROVIDE(__text_start = text_mem_start);

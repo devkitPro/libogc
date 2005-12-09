@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: cond.h,v 1.4 2005-11-21 12:14:01 shagkur Exp $
+$Id: cond.h,v 1.5 2005-12-09 09:21:32 shagkur Exp $
 
 cond.h -- Thread subsystem V
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.4  2005/11/21 12:14:01  shagkur
+no message
+
 
 -------------------------------------------------------------*/
 

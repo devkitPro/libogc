@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: system.c,v 1.57 2005-11-22 07:18:36 shagkur Exp $
+$Id: system.c,v 1.58 2005-12-09 09:35:45 shagkur Exp $
 
 system.c -- OS functions and initialization
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.57  2005/11/22 07:18:36  shagkur
+- Added function for console window initialization
+
 Revision 1.56  2005/11/21 12:35:32  shagkur
 no message
 
@@ -48,14 +51,13 @@ no message
 #include "lwp_threads.h"
 #include "lwp_priority.h"
 #include "lwp_watchdog.h"
-#include "lwp_sema.h"
-#include "lwp_mutex.h"
-#include "lwp_messages.h"
 #include "lwp_wkspace.h"
+#include "lwp_objmgr.h"
+#include "lwp_config.h"
 #include "system.h"
 
 #define SYSMEM_SIZE				0x1800000
-#define KERNEL_HEAP				(128*1024)
+#define KERNEL_HEAP				(512*1024)
 
 // DSPCR bits
 #define DSPCR_DSPRESET      0x0800        // Reset DSP
@@ -86,6 +88,12 @@ struct _sramcntrl {
 	s32 sync;
 } sramcntrl ATTRIBUTE_ALIGN(32);
 
+typedef struct _alarm_st
+{
+	lwp_obj object;
+	wd_cntrl alarm;
+} alarm_st;
+
 typedef struct _yay0header {
 	unsigned int id ATTRIBUTE_PACKED;
 	unsigned int dec_size ATTRIBUTE_PACKED;
@@ -103,7 +111,7 @@ static sys_fontheader *sys_fontdata = NULL;
 
 static lwp_queue sys_reset_func_queue;
 static u32 system_initialized = 0;
-static sysalarm *system_alarm = NULL;
+static lwp_objinfo sys_alarm_objects;
 
 static void *__sysarenalo = NULL;
 static void *__sysarenahi = NULL;
@@ -125,13 +133,17 @@ static s32 __sram_sync();
 static s32 __sram_writecallback(s32 chn,s32 dev);
 static s32 __mem_onreset(s32 final);
 
-extern u32 __lwp_sys_init();
+extern void	__lwp_thread_coreinit();
+extern void	__lwp_sysinit();
 extern void __heap_init();
 extern void __exception_init();
 extern void __exception_closeall();
 extern void __systemcall_init();
 extern void __decrementer_init();
+extern void __lwp_mutex_init();
 extern void __lwp_cond_init();
+extern void __lwp_mqbox_init();
+extern void __lwp_sema_init();
 extern void __exi_init();
 extern void __si_init();
 extern void __irq_init();
@@ -283,14 +295,13 @@ static void __lowmem_init()
 	void *ram_end = (void*)(0x80000000|SYSMEM_SIZE);
 	void *arena_start = (void*)0x80003000;
 
-	memset(ram_start, 0, 0x100);
-	memset(arena_start, 0, ((u32)__text_start-(u32)arena_start));
-	memset(__ArenaLo,0,((u32)ram_end-(u32)__ArenaLo));
+	memset(ram_start,0,0x100);
+	memset(arena_start,0,0x100);
 
 	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"
 	*((u32*)(ram_start+0x24))	= 1;            // version
 	*((u32*)(ram_start+0x28))	= SYSMEM_SIZE;	// physical memory size
-	*((u32*)(ram_start+0x2C))	= 3;//1 + ((*(u32*)0xCC00302c)>>28);
+	*((u32*)(ram_start+0x2C))	= 1 + ((*(u32*)0xCC00302c)>>28);
 
 	*((u32*)(ram_start+0x30))	= 0;
 	*((u32*)(ram_start+0x34))	= 0x816ffff0;
@@ -804,36 +815,40 @@ void __sdloader_boot()
 
 void SYS_Init()
 {
-	if(system_initialized) return;
+	u32 level;
+	
+	_CPU_ISR_Disable(level);
 
+	if(system_initialized) return;
 	system_initialized = 1;
 
 	__lowmem_init();
 	__lwp_wkspace_init(KERNEL_HEAP);
 	__lwp_queue_init_empty(&sys_reset_func_queue);
-	__libc_init(1);
+	__lwp_objmgr_initinfo(&sys_alarm_objects,LWP_MAX_WATCHDOGS,sizeof(alarm_st));
 	__sys_state_init();
 	__lwp_priority_init();
 	__lwp_watchdog_init();
-	__lwp_sema_init();
-	__lwp_mutex_init();
-	__lwp_cond_init();
-	__lwpmq_init();
 	__exception_init();
 	__systemcall_init();
 	__decrementer_init();
 	__irq_init();
 	__exi_init();
+	__si_init();
 	__sram_init();
-	__lwp_sys_init();
+	__lwp_thread_coreinit();
+	__lwp_sysinit();
+	__memlock_init();
+	__lwp_mqbox_init();
+	__lwp_sema_init();
+	__lwp_mutex_init();
+	__lwp_cond_init();
+	__timesystem_init();
 	__dsp_bootstrap();
-
+	
 	if(!__sys_inIPL) 
 		__memprotect_init();
 	
-	__memlock_init();
-	__timesystem_init();
-	__si_init();
 #ifdef SDLOADER_FIX
 	__SYS_SetBootTime();
 #endif
@@ -842,7 +857,9 @@ void SYS_Init()
 	IRQ_Request(IRQ_PI_RSW,__RSWHandler,NULL);
 	__MaskIrq(IRQMASK(IRQ_PI_RSW));
 
-	__lwp_start_multitasking();
+	__libc_init(1);
+	__lwp_thread_startmultitasking();
+	_CPU_ISR_Restore(level);
 }
 
 void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
@@ -1079,109 +1096,95 @@ void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width)
 
 void SYS_CreateAlarm(sysalarm *alarm)
 {
+	u32 level;
+
+	_CPU_ISR_Disable(level);
 	alarm->alarmhandler = NULL;
+	alarm->handle = NULL;
 	alarm->ticks = 0;
 	alarm->start_per = 0;
 	alarm->periodic = 0;
+	_CPU_ISR_Restore(level);
 }
 
 void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb)
 {
-	u32 found,level;
-	sysalarm *ptr;
+	u32 level;
+	alarm_st *ptr;
 
+	_CPU_ISR_Disable(level);
 	alarm->alarmhandler = cb;
 	alarm->ticks = __lwp_wd_calc_ticks(tp);
 
 	alarm->periodic = 0;
 	alarm->start_per = 0;
 
-	found = 0;
-
-	_CPU_ISR_Disable(level);
-	ptr = system_alarm;
-	while(ptr && ptr->next && ptr!=alarm) ptr = ptr->next;
-	if(ptr && ptr==alarm) found = 1;
-	else {
-		alarm->prev = NULL;
-		alarm->next = NULL;
-		if(ptr) {
-			alarm->prev = ptr;
-			ptr->next = alarm;
-		} else
-			system_alarm = ptr;
+	ptr = (alarm_st*)alarm->handle;
+	if(!ptr) ptr = (alarm_st*)__lwp_objmgr_allocate(&sys_alarm_objects);
+	if(ptr) {
+		__lwp_wd_initialize(&ptr->alarm,__sys_alarmhandler,alarm);
+		__lwp_wd_insert_ticks(&ptr->alarm,alarm->ticks);
+		__lwp_objmgr_open(&sys_alarm_objects,&ptr->object);
+		alarm->handle = ptr;
 	}
 	_CPU_ISR_Restore(level);
-
-	if(!found) alarm->handle = __lwp_wkspace_allocate(sizeof(wd_cntrl));
-	if(alarm->handle) {
-		__lwp_wd_initialize(alarm->handle,__sys_alarmhandler,alarm);
-		__lwp_wd_insert_ticks(alarm->handle,alarm->ticks);
-	}
 }
 
 void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb)
 {
-	u32 found,level;
-	sysalarm *ptr;
+	u32 level;
+	alarm_st *ptr;
 
+	_CPU_ISR_Disable(level);
 	alarm->start_per = __lwp_wd_calc_ticks(tp_start);
 	alarm->periodic = __lwp_wd_calc_ticks(tp_period);
 	alarm->alarmhandler = cb;
 
 	alarm->ticks = 0;
 
-	found = 0;
-
-	_CPU_ISR_Disable(level);
-	ptr = system_alarm;
-	while(ptr && ptr->next && ptr!=alarm) ptr = ptr->next;
-	if(ptr && ptr==alarm) found = 1;
-	else {
-		alarm->prev = NULL;
-		alarm->next = NULL;
-		if(ptr) {
-			alarm->prev = ptr;
-			ptr->next = alarm;
-		} else
-			system_alarm = ptr;
+	ptr = (alarm_st*)alarm->handle;
+	if(!ptr) ptr = (alarm_st*)__lwp_objmgr_allocate(&sys_alarm_objects);
+	if(ptr) {
+		__lwp_wd_initialize(&ptr->alarm,__sys_alarmhandler,alarm);
+		__lwp_wd_insert_ticks(&ptr->alarm,alarm->start_per);
+		__lwp_objmgr_open(&sys_alarm_objects,&ptr->object);
+		alarm->handle = ptr;
 	}
 	_CPU_ISR_Restore(level);
-
-	if(!found) alarm->handle = __lwp_wkspace_allocate(sizeof(wd_cntrl));
-	if(alarm->handle) {
-		__lwp_wd_initialize(alarm->handle,__sys_alarmhandler,alarm);
-		__lwp_wd_insert_ticks(alarm->handle,alarm->start_per);
-	}
 }
 
 void SYS_RemoveAlarm(sysalarm *alarm)
 {
 	u32 level;
-	sysalarm *prev,*next;
+	alarm_st *ptr;
 
+	_CPU_ISR_Disable(level);
+	ptr = (alarm_st*)alarm->handle;
+	alarm->handle = NULL;
 	alarm->alarmhandler = NULL;
 	alarm->ticks = 0;
 	alarm->periodic = 0;
 	alarm->start_per = 0;
 	
-	_CPU_ISR_Disable(level);
-	prev = alarm->prev;
-	next = alarm->next;
-	if(alarm==system_alarm) system_alarm = system_alarm->next;
-	if(prev) prev->next = next;
-	if(next) next->prev = prev;
-	_CPU_ISR_Restore(level);
-
-	if(alarm->handle) {
-		__lwp_wd_remove(alarm->handle);
-		__lwp_wkspace_free(alarm->handle);
+	if(ptr) {
+		__lwp_wd_remove(&ptr->alarm);
+		__lwp_objmgr_close(&sys_alarm_objects,&ptr->object);
+		__lwp_objmgr_free(&sys_alarm_objects,&ptr->object);
 	}
+	_CPU_ISR_Restore(level);
 }
 
 void SYS_CancelAlarm(sysalarm *alarm)
 {
-	if(alarm->handle) __lwp_wd_remove(alarm->handle);
+	u32 level;
+	alarm_st *ptr = (alarm_st*)alarm->handle;
+
+	_CPU_ISR_Disable(level);
+	if(ptr) {
+		__lwp_wd_remove(&ptr->alarm);
+		__lwp_objmgr_close(&sys_alarm_objects,&ptr->object);
+	}
+	_CPU_ISR_Restore(level);
 }
 
 resetcallback SYS_SetResetCallback(resetcallback cb)

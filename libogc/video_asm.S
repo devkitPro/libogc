@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: video_asm.S,v 1.6 2005-11-21 12:35:32 shagkur Exp $
+$Id: video_asm.S,v 1.7 2005-12-09 09:35:45 shagkur Exp $
 
 video_asm.S -- VIDEO subsystem assembler support
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.6  2005/11/21 12:35:32  shagkur
+no message
+
 
 -------------------------------------------------------------*/
 
