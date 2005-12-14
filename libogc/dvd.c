@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: dvd.c,v 1.43 2005-12-09 09:35:45 shagkur Exp $
+$Id: dvd.c,v 1.44 2005-12-14 06:17:26 shagkur Exp $
 
 dvd.h -- DVD subsystem
 
@@ -34,6 +34,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.43  2005/12/09 09:35:45  shagkur
+no message
+
 Revision 1.42  2005/11/24 14:25:42  shagkur
 - added copyright notice for the FW patch and procedure used.
 
@@ -1091,44 +1094,38 @@ static void __dvd_spinupdrivecb(s32 result)
 			if(__dvd_mountstep==0x01) {
 				__dvd_mountstep++;
 				_diReg[1] = _diReg[1];
-				DVD_LowSpinMotor(DVD_SPINMOTOR_DOWN,__dvd_spinupdrivecb);
-				return;
-			}
-			if(__dvd_mountstep==0x02) {
-				__dvd_mountstep++;
-				_diReg[1] = _diReg[1];
 				DCInvalidateRange(&__dvd_driveinfo,DVD_DRVINFSIZE);
 				DVD_LowInquiry(&__dvd_driveinfo,__dvd_spinupdrivecb);
 				return;
 			}
-			if(__dvd_mountstep==0x03) {
+			if(__dvd_mountstep==0x02) {
 				__dvd_mountstep++;
 				DVD_LowPatchDriveCode(__dvd_spinupdrivecb);
 				return;
 			}
 		} else {
-			if(!__dvd_mountstep) __dvd_mountstep = 0x04;
+			if(!__dvd_mountstep) __dvd_mountstep = 0x03;
 		}
 
-		if(__dvd_mountstep==0x04) {
+		if(__dvd_mountstep==0x03) {
 			__dvd_mountstep++;
 			_diReg[1] = _diReg[1];
 			DVD_LowEnableExtensions(__dvd_extensionsenabled,__dvd_spinupdrivecb);
 			return;
 		}
-		if(__dvd_mountstep==0x05) {
+		if(__dvd_mountstep==0x04) {
 			__dvd_mountstep++;
 			_diReg[1] = _diReg[1];
 			DVD_LowUnlockDrive(__dvd_spinupdrivecb);
 			return;
 		}
-		if(__dvd_mountstep==0x06) {
+		if(__dvd_mountstep==0x05) {
 			__dvd_mountstep++;
 			_diReg[1] = _diReg[1];
-			DVD_LowSpinMotor(DVD_SPINMOTOR_UP,__dvd_spinupdrivecb);
+			DVD_LowSpinMotor((DVD_SPINMOTOR_ACCEPT|DVD_SPINMOTOR_UP),__dvd_spinupdrivecb);
 			return;
 		}
-		if(__dvd_mountstep==0x07) {
+		if(__dvd_mountstep==0x06) {
 			__dvd_mountstep++;
 			if(!__dvd_lasterror) {
 				_diReg[1] = _diReg[1];
