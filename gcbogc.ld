@@ -176,6 +176,7 @@ SECTIONS
   PROVIDE (edata = .);
 
   data_mem_size = . - data_mem_start;
+  .textlen = . - base_address;
 
   bss_mem_start = .;
   .sbss      :
@@ -221,7 +222,6 @@ SECTIONS
   bss_file_start = bss_mem_start - file_start;
 
   _end = .;
-  .textlen = . - base_address;
 
   PROVIDE(end = .);
   /* Stabs debugging sections.  */
