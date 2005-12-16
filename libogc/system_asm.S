@@ -186,7 +186,7 @@ __SystemInit:
 
 	.globl __flush_cache
 __flush_cache:
-	lis		r5,-1
+	lis		r5,0xffff
 	ori		r5,r5,0xfff1
 	and		r5,r5,r3
 	subf	r3,r5,r3
