@@ -223,7 +223,7 @@ __reset:
 	ori		r8,r8,0x3000
 	li		r4,3
 	stw		r4,36(r8)
-	stw		r4,36(r8)
+	stw		r3,36(r8)
 	nop
 	b		7f
 6:	b		8f
