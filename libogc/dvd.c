@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: dvd.c,v 1.44 2005-12-14 06:17:26 shagkur Exp $
+$Id: dvd.c,v 1.45 2005-12-16 07:18:30 shagkur Exp $
 
 dvd.h -- DVD subsystem
 
@@ -34,6 +34,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.44  2005/12/14 06:17:26  shagkur
+- removed drive spindown after reset
+
 Revision 1.43  2005/12/09 09:35:45  shagkur
 no message
 
@@ -1905,7 +1908,7 @@ s32 DVD_LowAudioBufferConfig(s32 enable,u32 size,dvdcallbacklow cb)
 	val = 0;
 	if(enable) {
 		val |= 0x00010000;
-		if(size<=0) val |= 0x0000000a;
+		if(!size) val |= 0x0000000a;
 	}
 
 	_diReg[2] = DVD_AUDIOCONFIG|val;
