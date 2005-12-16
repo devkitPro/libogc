@@ -202,24 +202,31 @@ __flush_cache:
 
 	.globl __reset
 __reset:
-	mfspr	r8,HID0
+	b		1f
+9:	mfspr	r8,HID0
 	ori		r8,r8,0x0008
 	mtspr	HID0,r8
 	isync
 	sync
 	nop
-	mftb	r5
-1:	mftb	r6
+	b		2f
+1:	b		3f
+2:	mftb	r5
+4:	mftb	r6
 	subf	r7,r5,r6
 	cmplwi	r7,0x1124
-	blt		1b
+	blt		4b
 	nop
-	lis		r8,0xCC00
+	b		5f
+3:	b		6f
+5:	lis		r8,0xCC00
 	ori		r8,r8,0x3000
 	li		r4,3
 	stw		r4,36(r8)
 	stw		r4,36(r8)
 	nop
-2:	nop
-	b		2b
-	blr
+	b		7f
+6:	b		8f
+7:	nop
+	b		7b
+8:	b		9b	
