@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: dvd.c,v 1.45 2005-12-16 07:18:30 shagkur Exp $
+$Id: dvd.c,v 1.46 2005-12-16 16:53:52 shagkur Exp $
 
 dvd.h -- DVD subsystem
 
@@ -34,6 +34,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.45  2005/12/16 07:18:30  shagkur
+- changed audio buffer config
+
 Revision 1.44  2005/12/14 06:17:26  shagkur
 - removed drive spindown after reset
 
@@ -1330,7 +1333,7 @@ void __dvd_statebusy(dvdcmdblk *block)
 			len = block->len-block->txdsize;
 			if(len<0x80000) block->currtxsize = len;
 			else block->currtxsize = 0x80000;
-			DVD_LowRead(block->buf,block->currtxsize,(block->offset+block->txdsize),__dvd_statebusycb);
+			DVD_LowRead(block->buf+block->txdsize,block->currtxsize,(block->offset+block->txdsize),__dvd_statebusycb);
 			return;
 		case 2:					//Seek(Sector)
 			_diReg[1] = _diReg[1];
