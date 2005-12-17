@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: card.c,v 1.54 2005-12-17 22:42:48 shagkur Exp $
+$Id: card.c,v 1.55 2005-12-17 23:10:57 shagkur Exp $
 
 card.c -- Memory card subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.54  2005/12/17 22:42:48  shagkur
+- fixed a bug in card_bat structure
+
 Revision 1.53  2005/12/09 09:35:45  shagkur
 no message
 
@@ -1623,7 +1626,7 @@ static s32 __card_formatregion(s32 chn,u32 encode,cardcallback callback)
 	s32 ret;
 	u16 tmp;
 	u32 cnt;
-	s64 time;
+	u64 time;
 	u64 rnd_val;
 	void *workarea,*memblock;
 	cardcallback cb = NULL;
@@ -1655,9 +1658,12 @@ static s32 __card_formatregion(s32 chn,u32 encode,cardcallback callback)
 	rnd_val = time = gettime();
 	sramex = __SYS_LockSramEx();
 	while(cnt<12) {
-		//rnd_val*0x41c64e6d;
-		rnd_val += (rnd_val>>16);
-		sramex->flash_id[chn][cnt] = 0;
+		rnd_val += (((rnd_val*0x41c64e6d)+0x3039)>>16);
+		((u8*)header->serial)[cnt] = (sramex->flash_id[chn][cnt]+(u32)rnd_val);
+
+		rnd_val += (((rnd_val*0x41c64e6d)+0x3039)>>16);
+		rnd_val &= (u64)0x0000000000007fff;
+		
 		cnt++;
 	}
 	__SYS_UnlockSramEx(0);
