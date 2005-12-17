@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: system.h,v 1.25 2005-12-09 09:21:32 shagkur Exp $
+$Id: system.h,v 1.26 2005-12-17 22:25:30 shagkur Exp $
 
 system.h -- OS functions and initialization
 
@@ -28,16 +28,14 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.25  2005/12/09 09:21:32  shagkur
+no message
+
 Revision 1.24  2005/11/22 07:15:22  shagkur
 - Added function for console window initialization
 
 Revision 1.23  2005/11/21 12:37:51  shagkur
 Added copyright header(taken from libnds).
-Introduced RCS $Id: system.h,v 1.25 2005-12-09 09:21:32 shagkur Exp $ and $Log: not supported by cvs2svn $
-Introduced RCS $Id: system.h,v 1.25 2005-12-09 09:21:32 shagkur Exp $ and Revision 1.24  2005/11/22 07:15:22  shagkur
-Introduced RCS $Id: system.h,v 1.25 2005-12-09 09:21:32 shagkur Exp $ and - Added function for console window initialization
-Introduced RCS $Id: system.h,v 1.25 2005-12-09 09:21:32 shagkur Exp $ and token in project files.
-
 
 -------------------------------------------------------------*/
 
