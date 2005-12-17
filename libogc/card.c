@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: card.c,v 1.53 2005-12-09 09:35:45 shagkur Exp $
+$Id: card.c,v 1.54 2005-12-17 22:42:48 shagkur Exp $
 
 card.c -- Memory card subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.53  2005/12/09 09:35:45  shagkur
+no message
+
 Revision 1.52  2005/11/22 07:18:13  shagkur
 - changes done accordingly to changes in dsp.h/.c
 
@@ -72,14 +75,11 @@ no message
 #define CARD_STATUS_UNLOCKED			0x40
 
 struct card_header {
-	u8 pad_00[0x0c];
-	u8 time[0x08];
-	u8 card_id[0x12];
-	u8 pad_ff[0x02];
-	u16	mcard_size;
+	u32 serial[0x08];
+	u16 device_id;
+	u16	size;
 	u16 encoding;
-	u8 pad_0f[0x1d4];
-	u16 updated;
+	u8 padding[0x1d6];
 	u16 chksum1;
 	u16 chksum2;
 } ATTRIBUTE_PACKED;
@@ -119,7 +119,7 @@ struct card_bat {
 	u16 updated;
 	u16 freeblocks;
 	u16 lastalloc;
-	u16 fat[0xffb];
+	u16 fat[0xffc];
 } ATTRIBUTE_PACKED;
 
 typedef struct _card_block {
@@ -1628,6 +1628,7 @@ static s32 __card_formatregion(s32 chn,u32 encode,cardcallback callback)
 	void *workarea,*memblock;
 	cardcallback cb = NULL;
 	card_block *card = NULL;
+	struct card_header *header;
 	struct card_bat *fatblock = NULL;
 	struct card_dircntrl *dircntrl = NULL;
 	syssram *sram;
@@ -1639,38 +1640,39 @@ static s32 __card_formatregion(s32 chn,u32 encode,cardcallback callback)
 
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
 	
-	workarea = card->workarea;
-	memset(workarea,0xff,8192);
+	header = workarea = card->workarea;
+	memset(header,0xff,8192);
 	
 	tmp = _viReg[55];
-	((u16*)workarea)[18] = encode;
+	header->encoding = encode;
 
 	sram = __SYS_LockSram();
-	((u32*)workarea)[5] = sram->counter_bias;
-	((u32*)workarea)[6] = sram->lang;
+	header->serial[5] = sram->counter_bias;
+	header->serial[6] = sram->lang;
 	__SYS_UnlockSram(0);
 
 	cnt = 0;
 	rnd_val = time = gettime();
 	sramex = __SYS_LockSramEx();
 	while(cnt<12) {
+		//rnd_val*0x41c64e6d;
 		rnd_val += (rnd_val>>16);
 		sramex->flash_id[chn][cnt] = 0;
 		cnt++;
 	}
 	__SYS_UnlockSramEx(0);
 
-	*(u64*)&(((u32*)workarea)[3]) = time;
-	((u32*)workarea)[7] = tmp;
-	((u16*)workarea)[11] = 0;
-	((u16*)workarea)[17] = card->card_size;
-	__card_checksum(workarea,508,&((u16*)workarea)[254],&((u16*)workarea)[255]);
+	*(u64*)&(header->serial[3]) = time;
+	header->serial[7] = tmp;
+	header->device_id = 0;
+	header->size = card->card_size;
+	__card_checksum((u16*)header,508,&header->chksum1,&header->chksum2);
 	
 	cnt = 0;
 	while(cnt<2) {
 		memblock = workarea+((cnt+1)<<13);
 		dircntrl = memblock+8128;
-		memset(memblock,255,8192);
+		memset(memblock,0xff,8192);
 		__card_checksum(memblock,8188,&dircntrl->chksum1,&dircntrl->chksum2);
 		cnt++;
 	}
