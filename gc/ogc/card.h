@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: card.h,v 1.20 2005-12-09 09:20:49 shagkur Exp $
+$Id: card.h,v 1.21 2005-12-26 11:06:44 shagkur Exp $
 
 card.h -- Memory card subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.20  2005/12/09 09:20:49  shagkur
+no message
+
 Revision 1.19  2005/11/21 12:14:01  shagkur
 no message
 
@@ -156,6 +159,7 @@ typedef struct _card_dir {
       s32 chn; 
       u32 fileno; 
 	  u32 filelen;
+	  u8 permissions;
       u8 filename[CARD_FILENAMELEN]; 
       u8 gamecode[4]; 
       u8 company[2];
