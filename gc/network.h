@@ -221,6 +221,7 @@ struct sockaddr {
 };
 
 s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean use_dhcp);
+s32 if_configex(struct ip_addr *pIP,struct ip_addr *pGW,struct ip_addr *pMask,boolean use_dhcp);
 u32 inet_addr(const char *cp);
 
 s32 net_init();

@@ -1541,6 +1541,89 @@ s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 	return ret;
 }
 
+s32 if_configex(struct ip_addr *pIP,struct ip_addr *pGW,struct ip_addr *pMask,boolean use_dhcp)
+{
+	s32 ret = 0;
+	struct ip_addr loc_ip, netmask, gw;
+	struct netif *pnet;
+	struct timespec tb;
+	dev_s hbba = NULL;
+
+	if(g_netinitiated) return 0;
+	g_netinitiated = 1;
+
+	devoptab_list[STD_NET] = &dotab_net;
+#ifdef STATS
+	stats_init();
+#endif /* STATS */
+	
+	sys_init();
+	mem_init();
+	memp_init();
+	pbuf_init();
+	netif_init();
+
+	// init tcpip thread message box
+	MQ_Init(&netthread_mbox,MQBOX_SIZE);
+	if(!netthread_mbox) return -1;
+
+	// init timer thread
+	LWP_InitQueue(&tqtmr);
+	if(LWP_CreateThread(&htmr_thread,tmr_thread,NULL,tmrthread_stack,16384,220)==-1) return -1;
+
+	// create & setup interface 
+	gw.addr = 0;
+	loc_ip.addr = 0;
+	netmask.addr = 0;
+	if(!use_dhcp) {
+		gw.addr = pGW->addr;
+		if(pIP && pMask) {
+			loc_ip.addr = pIP->addr;
+			netmask.addr = pMask->addr;
+		} else
+			return -1;
+	}
+
+	hbba = bba_create(&g_hNetIF);
+	pnet = netif_add(&g_hNetIF,&loc_ip, &netmask, &gw, hbba, bba_init, net_input);
+	if(pnet) {
+		netif_set_up(pnet);
+		netif_set_default(pnet);
+#if (LWIP_DHCP)
+		if(use_dhcp==TRUE) {
+			//setup coarse timer
+			tb.tv_sec = DHCP_COARSE_TIMER_SECS;
+			tb.tv_nsec = 0;
+			net_dhcpcoarse_ticks = __lwp_wd_calc_ticks(&tb);
+			__lwp_wd_initialize(&dhcp_coarsetimer_cntrl,__dhcpcoarse_timer,NULL);
+			__lwp_wd_insert_ticks(&dhcp_coarsetimer_cntrl,net_dhcpcoarse_ticks);
+			
+			//setup fine timer
+			tb.tv_sec = 0;
+			tb.tv_nsec = DHCP_FINE_TIMER_MSECS*TB_NSPERMS;
+			net_dhcpfine_ticks = __lwp_wd_calc_ticks(&tb);
+			__lwp_wd_initialize(&dhcp_finetimer_cntrl,__dhcpfine_timer,NULL);
+			__lwp_wd_insert_ticks(&dhcp_finetimer_cntrl,net_dhcpfine_ticks);
+
+			//now start dhcp client
+			dhcp_start(pnet);
+		}
+#endif
+	} else
+		return -1;
+	
+	// setup loopinterface
+	IP4_ADDR(&gw, 127,0,0,1);
+	IP4_ADDR(&loc_ip, 127,0,0,1);
+	IP4_ADDR(&netmask, 255,0,0,0);
+	pnet = netif_add(&g_hLoopIF,&loc_ip,&netmask,&gw,NULL,loopif_init,net_input);
+
+	//last and least start the tcpip layer
+	ret = net_init();
+
+	return ret;
+}
+
 s32 net_init()
 {
 	sem_t sem;
