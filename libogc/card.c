@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: card.c,v 1.56 2005-12-21 06:46:31 shagkur Exp $
+$Id: card.c,v 1.57 2005-12-26 11:09:15 shagkur Exp $
 
 card.c -- Memory card subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.56  2005/12/21 06:46:31  shagkur
+- fixded filename problem in the file creation functions
+
 Revision 1.55  2005/12/17 23:10:57  shagkur
 - finished format function
 
@@ -2662,7 +2665,8 @@ s32 CARD_CreateAsync(s32 chn,const char *filename,u32 size,card_file *file,cardc
 #ifdef _CARD_DEBUG
 	printf("CARD_CreateAsync(%d,%s,%d,%p,%p)\n",chn,filename,size,file,callback);
 #endif
-	if(strlen(filename)>CARD_FILENAMELEN) return CARD_ERROR_NAMETOOLONG;
+	len = strlen(filename);
+	if(len>CARD_FILENAMELEN) return CARD_ERROR_NAMETOOLONG;
 	
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
 	if(size<=0 || size%card->sector_size) return CARD_ERROR_FATAL_ERROR;
@@ -2674,7 +2678,7 @@ s32 CARD_CreateAsync(s32 chn,const char *filename,u32 size,card_file *file,cardc
 	for(i=0;i<CARD_MAXFILES;i++) {
 		if(entry[i].gamecode[0]==0xff) {
 			if(filenum==-1) filenum = i;
-		} else if(memcmp(entry[i].filename,filename,CARD_FILENAMELEN)==0) {
+		} else if(memcmp(entry[i].filename,filename,len)==0) {
 			if((card_gamecode[0]==0xff || card_company[0]==0xff)
 				|| ((card_gamecode[0]!=0xff && memcmp(entry[i].gamecode,card_gamecode,4)==0)
 				&& (card_company[0]!=0xff && memcmp(entry[i].company,card_company,2)==0))) {
@@ -2698,10 +2702,9 @@ s32 CARD_CreateAsync(s32 chn,const char *filename,u32 size,card_file *file,cardc
 	if(!cb) cb = __card_defaultapicallback;
 	card->card_api_cb = cb;
 	
-	len = strlen(filename);
 	entry[filenum].length = size/card->sector_size;
 	memset(entry[filenum].filename,0,CARD_FILENAMELEN);
-	strncpy(entry[filenum].filename,filename,(len>CARD_FILENAMELEN?CARD_FILENAMELEN:len));
+	memcpy(entry[filenum].filename,filename,len+1);
 	
 	card->curr_file = file;
 	file->chn = chn;
@@ -2736,7 +2739,8 @@ s32 CARD_CreateEntryAsync(s32 chn,card_dir *direntry,card_file *file,cardcallbac
 #ifdef _CARD_DEBUG
 	printf("CARD_CreateEntryAsync(%d,%p,%p,%p)\n",chn,direntry,file,callback);
 #endif
-	if(strlen(direntry->filename)>CARD_FILENAMELEN) return CARD_ERROR_NAMETOOLONG;
+	len = strlen(direntry->filename);
+	if(len>CARD_FILENAMELEN) return CARD_ERROR_NAMETOOLONG;
 	
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
 	if(direntry->filelen<=0 || direntry->filelen%card->sector_size) return CARD_ERROR_FATAL_ERROR;
@@ -2748,7 +2752,7 @@ s32 CARD_CreateEntryAsync(s32 chn,card_dir *direntry,card_file *file,cardcallbac
 	for(i=0;i<CARD_MAXFILES;i++) {
 		if(entry[i].gamecode[0]==0xff) {
 			if(filenum==-1) filenum = i;
-		} else if(memcmp(entry[i].filename,direntry->filename,CARD_FILENAMELEN)==0) {
+		} else if(memcmp(entry[i].filename,direntry->filename,len)==0) {
 			if((entry->gamecode[0]==0xff || entry->company[0]==0xff)
 				|| ((entry->gamecode[0]!=0xff && memcmp(entry[i].gamecode,entry->gamecode,4)==0)
 				&& (entry->company[0]!=0xff && memcmp(entry[i].company,entry->company,2)==0))) {
@@ -2772,10 +2776,9 @@ s32 CARD_CreateEntryAsync(s32 chn,card_dir *direntry,card_file *file,cardcallbac
 	if(!cb) cb = __card_defaultapicallback;
 	card->card_api_cb = cb;
 	
-	len = strlen(direntry->filename);
 	entry[filenum].length = direntry->filelen/card->sector_size;
 	memset(entry[filenum].filename,0,CARD_FILENAMELEN);
-	strncpy(entry[filenum].filename,direntry->filename,(len>CARD_FILENAMELEN?CARD_FILENAMELEN:len));
+	memcpy(entry[filenum].filename,direntry->filename,len+1);
 	
 	card->curr_file = file;
 	file->chn = chn;
@@ -2829,7 +2832,7 @@ s32 CARD_Open(s32 chn,const char *filename,card_file *file)
 
 s32 CARD_OpenEntry(s32 chn,card_dir *entry,card_file *file)
 {
-	s32 ret;
+	s32 ret,fileno;
 	struct card_dat *dirblock = NULL;
 	card_block *card = NULL;
 
@@ -2837,9 +2840,13 @@ s32 CARD_OpenEntry(s32 chn,card_dir *entry,card_file *file)
 	
 	file->filenum = -1;
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
+	if((ret=__card_getfilenum(card,entry->filename,entry->gamecode,entry->company,&fileno))<0) {
+		__card_putcntrlblock(card,ret);
+		return ret;
+	}
 
 	dirblock = __card_getdirblock(card);
-	if(dirblock->entries[entry->fileno].block<5 || dirblock->entries[entry->fileno].block>=card->blocks) {
+	if(dirblock->entries[fileno].block<5 || dirblock->entries[fileno].block>=card->blocks) {
 		__card_putcntrlblock(card,CARD_ERROR_BROKEN);
 		return CARD_ERROR_BROKEN;
 	}
@@ -2847,8 +2854,8 @@ s32 CARD_OpenEntry(s32 chn,card_dir *entry,card_file *file)
 	file->chn = chn;
 	file->filenum = entry->fileno;
 	file->offset = 0;
-	file->len = dirblock->entries[entry->fileno].length*card->sector_size;
-	file->iblock = dirblock->entries[entry->fileno].block;	
+	file->len = dirblock->entries[fileno].length*card->sector_size;
+	file->iblock = dirblock->entries[fileno].block;	
 
 	__card_putcntrlblock(card,CARD_ERROR_READY);
 	return CARD_ERROR_READY;
@@ -3039,7 +3046,7 @@ s32 CARD_FindNext(card_dir *dir)
 
 s32 CARD_GetDirectory(s32 chn,card_dir *dir_entries,s32 *count,bool showall)
 {
-	s32 i,j;
+	s32 i,cnt;
 	s32 ret = CARD_ERROR_READY; 
 	struct card_dat *dirblock = NULL; 
 	struct card_direntry *entries = NULL; 
@@ -3052,21 +3059,22 @@ s32 CARD_GetDirectory(s32 chn,card_dir *dir_entries,s32 *count,bool showall)
 	dirblock = __card_getdirblock(card); 
 
 	entries = dirblock->entries; 
-	for(i=0,j=0;i<CARD_MAXFILES;i++) {
+	for(i=0,cnt=0;i<CARD_MAXFILES;i++) {
 		if(entries[i].gamecode[0]!=0xff) {
 			if(showall || ((card_gamecode[0]!=0xff && memcmp(entries[i].gamecode,card_gamecode,4)==0)
 				&& (card_company[0]!=0xff && memcmp(entries[i].company,card_company,2)==0))) {
-				dir_entries[j].fileno = i;
-				dir_entries[j].filelen = entries[i].length*card->sector_size;
-				memcpy(dir_entries[j].gamecode,entries[i].gamecode,4);
-				memcpy(dir_entries[j].company,entries[i].company,2);
-				memcpy(dir_entries[j].filename,entries[i].filename,CARD_FILENAMELEN);
-				j++;
+				dir_entries[cnt].fileno = i;
+				dir_entries[cnt].permissions = entries[i].permission;
+				dir_entries[cnt].filelen = entries[i].length*card->sector_size;
+				memcpy(dir_entries[cnt].gamecode,entries[i].gamecode,4);
+				memcpy(dir_entries[cnt].company,entries[i].company,2);
+				memcpy(dir_entries[cnt].filename,entries[i].filename,CARD_FILENAMELEN);
+				cnt++;
 			}
 		}
 	}
-	if(count) *count = j;
-	if(j==0) ret = CARD_ERROR_NOFILE;
+	if(count) *count = cnt;
+	if(cnt==0) ret = CARD_ERROR_NOFILE;
 	__card_putcntrlblock(card,ret); 
 	return ret;
 }
