@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: dvd.c,v 1.47 2005-12-23 12:53:45 shagkur Exp $
+$Id: dvd.c,v 1.48 2006-01-10 06:48:43 shagkur Exp $
 
 dvd.h -- DVD subsystem
 
@@ -34,6 +34,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.47  2005/12/23 12:53:45  shagkur
+- added audio-streamfix and offset patching to dvd FW patchcodes. introduced with a new patchcode project
+
 Revision 1.46  2005/12/16 16:53:52  shagkur
 - fixed a bug in DVD_Read
 
@@ -1461,7 +1464,6 @@ static void __dvd_patchdrivecb(s32 result)
 	}
 	__dvd_callback = NULL;
 	__dvdpatchcode = NULL;
-	__dvd_resetoccured = 1;
 	__dvd_interoperable = 1;
 	__dvd_finalunlockcb(result);
 }
