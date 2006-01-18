@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: dvd.c,v 1.48 2006-01-10 06:48:43 shagkur Exp $
+$Id: dvd.c,v 1.49 2006-01-18 18:22:03 shagkur Exp $
 
 dvd.h -- DVD subsystem
 
@@ -34,6 +34,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.48  2006/01/10 06:48:43  shagkur
+- changed the patching routine to not set the reset flag again
+
 Revision 1.47  2005/12/23 12:53:45  shagkur
 - added audio-streamfix and offset patching to dvd FW patchcodes. introduced with a new patchcode project
 
@@ -176,6 +179,7 @@ static u32 __dvd_fatalerror = 0;
 static u32 __dvd_lasterror = 0;
 static u32 __dvd_internalretries = 0;
 static u32 __dvd_autofinishing = 0;
+static u32 __dvd_autoinvalidation = 1;
 static u32 __dvd_cancellasterror = 0;
 static u32 __dvd_interoperable = 0;
 static u32 __dvd_mountstep = 0;
@@ -1768,8 +1772,9 @@ s32 __issuecommand(s32 prio,dvdcmdblk *block)
 	printf("__issuecommand(%d,%p,%p)\n",prio,block,block->cb);
 	printf("__issuecommand(%p)\n",__dvd_waitingqueue[prio].first);
 #endif
-	if(block->cmd==0x0001 || block->cmd==0x00004
-		|| block->cmd==0x0005 || block->cmd==0x000e) DCInvalidateRange(block->buf,block->len);
+	if(__dvd_autoinvalidation && 
+		(block->cmd==0x0001 || block->cmd==0x00004
+		|| block->cmd==0x0005 || block->cmd==0x000e)) DCInvalidateRange(block->buf,block->len);
 
 	_CPU_ISR_Disable(level);
 	block->state = 0x0002;
@@ -2527,4 +2532,11 @@ void DVD_Init()
 
 		LWP_InitQueue(&__dvd_wait_queue);
 	}
+}
+
+u32 DVD_SetAutoInvalidation(u32 auto_inv)
+{
+	u32 ret = __dvd_autoinvalidation;
+	__dvd_autoinvalidation= auto_inv;
+	return ret;
 }

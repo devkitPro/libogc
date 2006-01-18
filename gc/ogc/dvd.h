@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: dvd.h,v 1.24 2005-12-09 09:21:32 shagkur Exp $
+$Id: dvd.h,v 1.25 2006-01-18 18:21:44 shagkur Exp $
 
 dvd.h -- DVD subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.24  2005/12/09 09:21:32  shagkur
+no message
+
 Revision 1.23  2005/11/24 14:29:22  shagkur
 - added more function documentation
 
@@ -323,6 +326,7 @@ s32 DVD_CancelAllAsync(dvdcbcallback cb);
 s32 DVD_StopStreamAtEndAsync(dvdcmdblk *block,dvdcbcallback cb);
 s32 DVD_StopStreamAtEnd(dvdcmdblk *block);
 s32 DVD_ReadDiskID(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb);
+u32 DVD_SetAutoInvalidation(u32 auto_inv);
 dvddiskid* DVD_GetCurrentDiskID();
 dvddrvinfo* DVD_GetDriveInfo();
 
