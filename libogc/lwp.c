@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: lwp.c,v 1.22 2005-12-09 09:35:45 shagkur Exp $
+$Id: lwp.c,v 1.23 2006-04-10 05:29:59 shagkur Exp $
 
 lwp.c -- Thread subsystem I
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.22  2005/12/09 09:35:45  shagkur
+no message
+
 Revision 1.21  2005/11/21 12:15:46  shagkur
 no message
 
@@ -320,7 +323,7 @@ void LWP_CloseQueue(lwpq_t thequeue)
 	_CPU_ISR_Restore(level);
 }
 
-s32 LWP_SleepThread(lwpq_t thequeue)
+s32 LWP_ThreadSleep(lwpq_t thequeue)
 {
 	u32 level;
 	lwp_cntrl *exec = NULL;
@@ -347,7 +350,7 @@ s32 LWP_SleepThread(lwpq_t thequeue)
 	return 0;
 }
 
-void LWP_WakeThread(lwpq_t thequeue)
+void LWP_ThreadBroadcast(lwpq_t thequeue)
 {
 	lwp_cntrl *thethread;
 	tqueue_st *tq = (tqueue_st*)thequeue;
@@ -356,5 +359,15 @@ void LWP_WakeThread(lwpq_t thequeue)
 	do {
 		thethread = __lwp_threadqueue_dequeue(&tq->tqueue);
 	} while(thethread);
+	__lwp_thread_dispatchenable();
+}
+
+void LWP_ThreadSignal(lwpq_t thequeue)
+{
+	lwp_cntrl *thethread;
+	tqueue_st *tq = (tqueue_st*)thequeue;
+
+	__lwp_thread_dispatchdisable();
+	thethread = __lwp_threadqueue_dequeue(&tq->tqueue);
 	__lwp_thread_dispatchenable();
 }
