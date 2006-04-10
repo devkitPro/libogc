@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: arqueue.h,v 1.6 2005-12-09 09:20:49 shagkur Exp $
+$Id: arqueue.h,v 1.7 2006-04-10 05:34:17 shagkur Exp $
 
 arqueue.h -- ARAM task request queue implementation
 
@@ -28,9 +28,11 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.6  2005/12/09 09:20:49  shagkur
+no message
+
 Revision 1.5  2005/11/21 12:41:27  shagkur
 - Added copyright header(taken from libnds).
-- Introduced RCS $Id: arqueue.h,v 1.6 2005-12-09 09:20:49 shagkur Exp $ and $Log: not supported by cvs2svn $ token in project files.
 
 
 -------------------------------------------------------------*/
@@ -40,10 +42,13 @@ Revision 1.5  2005/11/21 12:41:27  shagkur
 #define __ARQUEUE_H__
 
 #include <gctypes.h>
+#include <ogc/lwp_queue.h>
 #include "aram.h"
 
 #define ARQ_MRAMTOARAM			AR_MRAMTOARAM
 #define ARQ_ARAMTOMRAM			AR_ARAMTOMRAM
+
+#define ARQ_DEF_CHUNK_SIZE		4096
 
 #define ARQ_PRIO_LO				0
 #define ARQ_PRIO_HI				1
@@ -52,21 +57,65 @@ Revision 1.5  2005/11/21 12:41:27  shagkur
    extern "C" {
 #endif /* __cplusplus */
 
-typedef void (*ARQCallback)(u32);
+enum {
+	ARQ_TASK_READY = 0,
+	ARQ_TASK_RUNNING,
+	ARQ_TASK_FINISHED
+};
 
-typedef struct _arq_request {
-	struct _arq_request *next;
-	u32 owner,type,prio,src,dest,len;
+typedef struct _arq_request ARQRequest;
+typedef void (*ARQCallback)(ARQRequest *);
+
+struct _arq_request {
+	lwp_node node;
+	u32 owner,dir,prio,state;
+	u32 aram_addr,mram_addr,len;
 	ARQCallback callback;
-} ARQRequest;
+};
 
 void ARQ_Init();
 void ARQ_Reset();
-void ARQ_PostRequest(ARQRequest *req,u32 owner,u32 type,u32 prio,u32 src,u32 dest,u32 len,ARQCallback cb);
+
+
+/*!
+ * \fn void ARQ_PostRequest(ARQRequest *req,u32 owner,u32 dir,u32 prio,u32 aram_addr,u32 mram_addr,u32 len)
+ * \brief Enqueue a ARAM DMA transfer request.
+ *
+ * \param[in] req structure to hold ARAM DMA request informations.
+ * \param[in] owner unique owner id.
+ * \param[in] dir direction of ARAM DMA transfer.
+ * \param[in] prio priority of request. 
+ * \param[in] aram_addr startaddress of buffer to be pushed onto the queue. <b><i>NOTE:</i></b> Must be 32-bytealigned.
+ * \param[in] mram_addr length of data to be pushed onto the queue.
+ * \param[in] len startaddress of buffer to be pushed onto the queue. <b><i>NOTE:</i></b> Must be 32-bytealigned.
+ * \param[in] cb length of data to be pushed onto the queue.
+ *
+ * \return none
+ */
+void ARQ_PostRequest(ARQRequest *req,u32 owner,u32 dir,u32 prio,u32 aram_addr,u32 mram_addr,u32 len);
+
+
+/*!
+ * \fn void ARQ_PostRequestAsync(ARQRequest *req,u32 owner,u32 dir,u32 prio,u32 aram_addr,u32 mram_addr,u32 len,ARQCallback cb)
+ * \brief Enqueue a ARAM DMA transfer request.
+ *
+ * \param[in] req structure to hold ARAM DMA request informations.
+ * \param[in] owner unique owner id.
+ * \param[in] dir direction of ARAM DMA transfer.
+ * \param[in] prio priority of request. 
+ * \param[in] aram_addr startaddress of buffer to be pushed onto the queue. <b><i>NOTE:</i></b> Must be 32-bytealigned.
+ * \param[in] mram_addr length of data to be pushed onto the queue.
+ * \param[in] len startaddress of buffer to be pushed onto the queue. <b><i>NOTE:</i></b> Must be 32-bytealigned.
+ * \param[in] cb length of data to be pushed onto the queue.
+ *
+ * \return none
+ */
+void ARQ_PostRequestAsync(ARQRequest *req,u32 owner,u32 dir,u32 prio,u32 aram_addr,u32 mram_addr,u32 len,ARQCallback cb);
 void ARQ_RemoveRequest(ARQRequest *req);
 void ARQ_SetChunkSize(u32 size);
 u32 ARQ_GetChunkSize();
 void ARQ_FlushQueue();
+u32 ARQ_RemoveOwnerRequest(u32 owner);
 
 #ifdef __cplusplus
    }
