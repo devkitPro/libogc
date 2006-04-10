@@ -141,14 +141,14 @@ static void* net_thread(void *);
 static void __dhcpcoarse_timer(void *arg)
 {
 	tmr_flag |= 0x08;
-	LWP_WakeThread(tqtmr);
+	LWP_ThreadSignal(tqtmr);
 	__lwp_wd_insert_ticks(&dhcp_coarsetimer_cntrl,net_dhcpcoarse_ticks);
 }
 
 static void __dhcpfine_timer(void *arg)
 {
 	tmr_flag |= 0x04;
-	LWP_WakeThread(tqtmr);
+	LWP_ThreadSignal(tqtmr);
 	__lwp_wd_insert_ticks(&dhcp_finetimer_cntrl,net_dhcpfine_ticks);
 }
 
@@ -158,7 +158,7 @@ static void __tcp_timer(void *arg)
 	printf("__tcp_timer(%d,%p,%p)\n",tcp_timer_active,tcp_active_pcbs,tcp_tw_pcbs);
 #endif
 	tmr_flag |= 0x02;
-	LWP_WakeThread(tqtmr);
+	LWP_ThreadSignal(tqtmr);
 	if (tcp_active_pcbs || tcp_tw_pcbs) {
 		__lwp_wd_insert_ticks(&tcp_timer_cntrl,net_tcp_ticks);
 	} else
@@ -1297,7 +1297,7 @@ static void* tmr_thread(void *arg)
 	while(1) {
 		_CPU_ISR_Disable(level);
 		while(!tmr_flag)
-			LWP_SleepThread(tqtmr);
+			LWP_ThreadSleep(tqtmr);
 		tmrflag = tmr_flag;
 		tmr_flag = 0;
 		_CPU_ISR_Restore(level);

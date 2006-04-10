@@ -148,7 +148,7 @@ void MP3Player_Stop()
 	CurrentTXLen = 0;
 	CurrentBuffer = 0;
 	MP3Playing = FALSE;
-	LWP_WakeThread(thQueue);
+	LWP_ThreadSignal(thQueue);
 	LWP_JoinThread(hStreamPlay,NULL);
 }
 
@@ -177,7 +177,7 @@ static void *StreamPlay(void *arg)
 	mad_timer_reset(&Timer);
 
 	while(MP3Playing==TRUE) {
-		LWP_SleepThread(thQueue);
+		LWP_ThreadSleep(thQueue);
 		if(Stream.buffer==NULL || Stream.error==MAD_ERROR_BUFLEN) {
 			size_t ReadSize, Remaining;
 			u8 *ReadStart;
@@ -285,7 +285,7 @@ static void DataTransferCallback()
 	AUDIO_StartDMA();
 
 	CurrentBuffer ^= 1;
-	LWP_WakeThread(thQueue);
+	LWP_ThreadSignal(thQueue);
 }
 
 u32 DSPSampleRate(u32 Input)

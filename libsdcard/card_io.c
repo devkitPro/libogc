@@ -174,7 +174,7 @@ static s32 __exi_unlock(s32 chn,s32 dev)
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	LWP_WakeThread(_ioEXILock[chn]);
+	LWP_ThreadSignal(_ioEXILock[chn]);
 	_CPU_ISR_Restore(level);
 	return 1;
 }
@@ -187,7 +187,7 @@ static void __exi_wait(s32 drv_no)
 	_CPU_ISR_Disable(level);
 	do {
 		if((ret=EXI_Lock(drv_no,EXI_DEVICE_0,__exi_unlock))==1) break;
-		LWP_SleepThread(_ioEXILock[drv_no]);
+		LWP_ThreadSleep(_ioEXILock[drv_no]);
 	} while(ret==0);
 	_CPU_ISR_Restore(level);
 }

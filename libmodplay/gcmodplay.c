@@ -37,7 +37,7 @@ static void* player(void *arg)
 
 	thr_running = TRUE;
 	while(sndPlaying==TRUE) {
-		LWP_SleepThread(player_queue);
+		LWP_ThreadSleep(player_queue);
 
 		if(curr_datalen>0 && sndPlaying==TRUE) {
 #ifdef _GCMOD_DEBUG
@@ -76,7 +76,7 @@ static void dmaCallback()
 
 	curaudio ^= 1;
 	curr_datalen = mod->samplespertick<<2;
-	LWP_WakeThread(player_queue);
+	LWP_ThreadSignal(player_queue);
 #ifdef _GCMOD_DEBUG
 	start = gettime();
 	printf("dmaCallback(%p,%d,%d,%d us) leave\n",(void*)audioBuf[curaudio],curr_datalen,curaudio,diff_usec(end,start));
@@ -156,7 +156,7 @@ static void SndBufStop()
 	curr_datalen = 0;
 	curaudio = 0;
 	sndPlaying = FALSE;
-	LWP_WakeThread(player_queue);
+	LWP_ThreadSignal(player_queue);
 	LWP_JoinThread(hplayer,NULL);
 }
 
