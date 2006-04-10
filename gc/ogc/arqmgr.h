@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: arqmgr.h,v 1.8 2005-12-09 09:20:49 shagkur Exp $
+$Id: arqmgr.h,v 1.9 2006-04-10 05:35:05 shagkur Exp $
 
 arqmgr.h -- ARAM task queue management
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.8  2005/12/09 09:20:49  shagkur
+no message
+
 Revision 1.7  2005/11/22 14:00:37  shagkur
 - small typo fix
 
@@ -57,16 +60,17 @@ Revision 1.6  2005/11/22 13:58:25  shagkur
    extern "C" {
 #endif /* __cplusplus */
 
+
 /*!
  * \typedef void (*ARQMCallback)()
  * \brief function pointer typedef for the user's callback when ARAM operation has completed
  * \param none
  */
-typedef void (*ARQMCallback)();
+typedef void (*ARQMCallback)(s32 result);
 
 
 /*!
- * \fn void ARQM_Init(u32 arambase,u32 len)
+ * \fn void ARQM_Init(u32 arambase,s32 len)
  * \brief Initialize the ARAM queue management system
  *
  * \param[in] arambase ARAM startaddress to take for the queue stack
@@ -74,20 +78,46 @@ typedef void (*ARQMCallback)();
  *
  * \return none
  */
-void ARQM_Init(u32 arambase,u32 len);
+void ARQM_Init(u32 arambase,s32 len);
 
 
 /*!
- * \fn u32 ARQM_PushData(void *buff,u32 len,ARQMCallback tccb)
+ * \fn u32 ARQM_PushData(void *buff,s32 len)
  * \brief Push the data onto the ARAM queue
  *
- * \param[in] buff startaddress of buffer to be pushed onto the queue. <b><i>NOTE:</i></b> Has to be aligned on a 32byte boundery!
+ * \param[in] buff startaddress of buffer to be pushed onto the queue. <b><i>NOTE:</i></b> Must be 32-bytealigned.
  * \param[in] len length of data to be pushed onto the queue.
- * \param[in] tccb user callback to be called when ARAM operation has completed.
  *
  * \return none
  */
-u32 ARQM_PushData(void *buff,u32 len,ARQMCallback tccb);
+u32 ARQM_PushData(void *buffer,s32 len);
+
+
+/*!
+ * \fn u32 ARQM_GetZeroBuffer()
+ * \brief Returns ARAM address of 'zero buffer'
+ *
+ * \return See description
+ */
+u32 ARQM_GetZeroBuffer();
+
+
+/*!
+ * \fn u32 ARQM_GetStackPointer()
+ * \brief Return the ARAM address of the next free stack pointer
+ *
+ * \return See description
+ */
+u32 ARQM_GetStackPointer();
+
+
+/*!
+ * \fn u32 ARQM_GetFreeSize()
+ * \brief Return Returns remaining number of bytes on stack
+ *
+ * \return See description
+ */
+u32 ARQM_GetFreeSize();
 
 #ifdef __cplusplus
    }
