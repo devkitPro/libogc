@@ -381,7 +381,7 @@ static inline void bba_outsdmadata(void *val,u32 len,s32 (*dmasubsnd)(s32 chn,s3
 
 static s32 __bba_exi_unlock(s32 chn,s32 dev)
 {
-	LWP_WakeThread(wait_exi_queue);
+	LWP_ThreadSignal(wait_exi_queue);
 	return 1;
 }
 
@@ -393,7 +393,7 @@ static u32 __bba_exi_wait()
 	do {
 		if((ret=EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,__bba_exi_unlock))==1) break;
 		LWIP_DEBUGF(NETIF_DEBUG|1,("__bba_exi_wait(exi locked)\n"));
-		LWP_SleepThread(wait_exi_queue);
+		LWP_ThreadSleep(wait_exi_queue);
 	} while(ret==0);
 	_CPU_ISR_Restore(level);
 	return ret;
@@ -406,7 +406,7 @@ static u32 __bba_tx_wake(struct bba_priv *priv)
 	_CPU_ISR_Disable(level);
 	if(priv->state==ERR_TXPENDING) {
 		priv->state = ERR_OK;
-		LWP_WakeThread(priv->tq_xmit);
+		LWP_ThreadBroadcast(priv->tq_xmit);
 	}
 	_CPU_ISR_Restore(level);
 	return 1;
@@ -419,7 +419,7 @@ static u32 __bba_tx_stop(struct bba_priv *priv)
 	_CPU_ISR_Disable(level);
 	while(priv->state==ERR_TXPENDING) {
 		LWIP_DEBUGF(NETIF_DEBUG,("__bba_tx_stop(pending tx)\n"));
-		LWP_SleepThread(priv->tq_xmit);
+		LWP_ThreadSleep(priv->tq_xmit);
 	}
 	priv->state = ERR_TXPENDING;
 	_CPU_ISR_Restore(level);
@@ -431,7 +431,7 @@ static __inline__ u32 __linkstate()
 	u8 nways = 0;
 
 	nways = bba_in8(BBA_NWAYS);
-	if(nways&BBA_NWAYS_LS10 || nways&BBA_NWAYS_LS100) return 1;
+	if(nways&BBA_NWAYS_LS10 || nways&BBA_NWAYS_LS100) return nways;
 	return 0;
 }
 
@@ -442,7 +442,7 @@ static u32 __bba_get_linkstateasync()
 	cnt = 0;
 	do {
 		udelay(500);
-		ret = __linkstate();
+		ret = __linkstate()&0xf0;
 	} while(!ret && ++cnt<4000);
 	return ret;
 }
@@ -465,19 +465,22 @@ static void __bba_reset()
 {
 	bba_out8(0x60,0x00);
 	udelay(10000);
-	bba_cmd_in8_slow(0x0F);
-	udelay(10000);
+//	bba_cmd_in8_slow(0x0F);
+//	udelay(10000);
 	bba_out8(BBA_NCRA,BBA_NCRA_RESET);
+	udelay(100);
 	bba_out8(BBA_NCRA,0x00);
+	udelay(100);
 }
 
 static void __bba_recv_init()
 {
 	bba_out8(BBA_NCRB,(BBA_NCRB_PR|BBA_NCRB_CA|BBA_NCRB_2_PACKETS_PER_INT));
+	bba_out8(BBA_SI_ACTRL2,0x74);
 	bba_out8(BBA_RXINTT, 0x00);
 	bba_out8(BBA_RXINTT+1, 0x06); /* 0x0600 = 61us */
 
-	bba_out8(BBA_MISC2,(BBA_MISC2_AUTORCVR));
+	bba_out8(BBA_MISC2,BBA_MISC2_AUTORCVR);
 
 	bba_out12(BBA_TLBP, BBA_INIT_TLBP);
 	bba_out12(BBA_BP,BBA_INIT_BP);
@@ -538,7 +541,7 @@ void bba_process(struct pbuf *p,struct netif *dev)
 
 static err_t __bba_link_tx(struct netif *dev,struct pbuf *p)
 {
-	u32 len;
+	u32 len,i;
 	struct pbuf *tmp;
 	struct bba_priv *priv = (struct bba_priv*)dev->state;
 
@@ -563,14 +566,19 @@ static err_t __bba_link_tx(struct netif *dev,struct pbuf *p)
 	
 	cur_snd_len = 0;
 	for(tmp=p;tmp!=NULL;tmp=tmp->next) {
-		memcpy(cur_snd_buffer+cur_snd_len,tmp->payload,tmp->len);
+		register u8 *src = (u8*)tmp->payload;
+		register u8 *dst = (u8*)cur_snd_buffer+cur_snd_len;
+		for(i=0;i<tmp->len;i++) *dst++ = *src++;
 		cur_snd_len += tmp->len;
 	}
 
 	bba_out12(BBA_TXFIFOCNT,p->tot_len);
 
 	len = cur_snd_len;
-	if(len<BBA_MINPKTSIZE) len = BBA_MINPKTSIZE;
+	if(len<BBA_MINPKTSIZE) {
+		len = BBA_MINPKTSIZE;
+		for(i=cur_snd_len;i<len;i++) cur_snd_buffer[i] = 0;
+	}
 
 	cur_snd_dmalen = len&~0x1f;
 	cur_snd_immlen = len&0x1f;
@@ -615,10 +623,10 @@ static u32 __bba_rx_err(u8 status)
 
 static err_t bba_start_rx(struct netif *dev)
 {
-	u32 rcv_len,len;
 	u32 top,pos,pkt_status,size;
-	u8 *rcv_buf0,*rcv_buf1,*pc;
 	struct pbuf *tmp,*p = NULL;
+	register u8 *rcv_buf;
+	register u32 off,rcv_len;
 	
 	LWIP_DEBUGF(NETIF_DEBUG,("bba_start_rx()\n"));
 
@@ -652,59 +660,41 @@ static err_t bba_start_rx(struct netif *dev)
 		}
 		
 		rcv_len = (cur_rcv_len0+31)&~31;
-		DCInvalidateRange(cur_rcv_buffer0,cur_rcv_len0);
+		DCInvalidateRange(cur_rcv_buffer0,rcv_len);
 		bba_select();
 		bba_insregister(pos);
 		bba_insdmadata(cur_rcv_buffer0,rcv_len,NULL);
 		bba_sync();
 		bba_deselect();
 		if(cur_rcv_len1>0) {
-			rrp = BBA_INIT_RRP;
+			pos = (BBA_INIT_RRP<<8);
 			rcv_len = (cur_rcv_len1+31)&~31;
-			DCInvalidateRange(cur_rcv_buffer1,cur_rcv_len1);
+			DCInvalidateRange(cur_rcv_buffer1,rcv_len);
 			bba_select();
-			bba_insregister((rrp<<8));
+			bba_insregister(pos);
 			bba_insdmadata(cur_rcv_buffer1,rcv_len,NULL);
 			bba_sync();
 			bba_deselect();
 		}
 
-		rcv_buf0 = cur_rcv_buffer0;
-		rcv_buf1 = cur_rcv_buffer1;
-		p = pbuf_alloc(PBUF_RAW,(cur_rcv_len0+cur_rcv_len1),PBUF_POOL);
-		if(p) {
-			for(tmp=p;tmp!=NULL;tmp=tmp->next) {
-				pc = tmp->payload;
-				len = tmp->len;
-				if(cur_rcv_len0>0 && cur_rcv_len0>=len) {
-					memcpy(pc,rcv_buf0,len);
-					cur_rcv_len0 -= len;
-					rcv_buf0 += len;
-					continue;
-				} 
-				if(cur_rcv_len0>0 && cur_rcv_len0<len) {
-					memcpy(pc,rcv_buf0,cur_rcv_len0);
-					pc += cur_rcv_len0;
-					len -= cur_rcv_len0;
-					cur_rcv_len0 = 0;
-				}
-				if(len>0) {
-					if(!cur_rcv_len0 && (cur_rcv_len1>0 && cur_rcv_len1>=len)) {
-						memcpy(pc,rcv_buf1,len);
-						cur_rcv_len1 -= len;
-						rcv_buf1 += len;
-						continue;
-					} 
-					if(!cur_rcv_len0 && (cur_rcv_len1>0 && cur_rcv_len1<len)) {
-						memcpy(pc,rcv_buf1,cur_rcv_len1);
-						pc += cur_rcv_len1;
-						len -= cur_rcv_len1;
-						cur_rcv_len1 = 0;
-					}
+		off = 0;
+		rcv_len = cur_rcv_len0;
+		rcv_buf = cur_rcv_buffer0;
+		p = pbuf_alloc(PBUF_RAW,size,PBUF_POOL);
+		for(tmp=p;tmp!=NULL;tmp=tmp->next) {
+			s32 i;
+			register u8 *pc = (u8*)tmp->payload;
+			register u32 len = (u32)tmp->len;
+			for(i=0;i<len;i++) {
+				pc[i] = rcv_buf[off++];
+				if(off>=rcv_len) {
+					off = 0;
+					rcv_len = cur_rcv_len1;
+					rcv_buf = cur_rcv_buffer1;
 				}
 			}
-			dev->input(p,dev);
 		}
+		dev->input(p,dev);
 		bba_out12(BBA_RRP,cur_descr.next_packet_ptr);
 
 		rwp = bba_in12(BBA_RWP);
@@ -780,14 +770,32 @@ static err_t __bba_init(struct netif *dev)
 	bba_cmd_outs(0x04,&priv->devid,2);
 	bba_cmd_out8(0x05,priv->acstart);
 
+	/* Assume you are being started by something which has fucked NWAY!
+	   So reset to power on defaults for SIACTRL/SIACONN */
+	bba_out8(0x58, 0x80);
+	bba_out8(0x59, 0x00);
+	bba_out8(0x5a, 0x03);
+	bba_out8(0x5b, 0x83);
+	bba_out8(0x5c, 0x32);
+	bba_out8(0x5d, 0xfe);
+	bba_out8(0x5e, 0x1f);
+	bba_out8(0x5f, 0x1f);	
+	udelay(100);
+/*
 	bba_out8(0x5b, (bba_in8(0x5b)&~0x80));
 	bba_out8(0x5e, 0x01);
 	bba_out8(0x5c, (bba_in8(0x5c)|0x04));
-
+*/
 	bba_out8(BBA_NCRB,0x00);
 	
 	__bba_recv_init();
 
+	/* This doesn't set the speed anymore - it simple kicks off NWAY */
+	speed = bba_in8(BBA_NWAYC)&0xc0;
+	bba_out8(BBA_NWAYC,speed);
+	udelay(100);
+	bba_out8(BBA_NWAYC,(speed|0x04));
+	
 	bba_ins(BBA_NAFR_PAR0,priv->ethaddr->addr, 6);
 	LWIP_DEBUGF(NETIF_DEBUG,("MAC ADDRESS %02x:%02x:%02x:%02x:%02x:%02x\n", 
 		priv->ethaddr->addr[0], priv->ethaddr->addr[1], priv->ethaddr->addr[2], 
@@ -830,28 +838,25 @@ static err_t bba_probe(struct netif *dev)
 
 static u32 bba_calc_response(struct bba_priv *priv,u32 val)
 {
-	u8 revid_0, revid_eth_0, revid_eth_1;
+	u8 i0,i1,i2,i3;
+	u8 c0,c1,c2,c3;
+	u8 revid_0,revid_eth_0,revid_eth_1;
+
 	revid_0 = priv->revid;
 	revid_eth_0 = _SHIFTR(priv->devid,8,8);
-	revid_eth_1 = priv->devid&0xff;
+	revid_eth_1 = _SHIFTR(priv->devid,0,8);
 
-	u8 i0, i1, i2, i3;
-	i0 = (val & 0xff000000) >> 24;
-	i1 = (val & 0x00ff0000) >> 16;
-	i2 = (val & 0x0000ff00) >> 8;
-	i3 = (val & 0x000000ff);
+	i0 = _SHIFTR(val,24,8);
+	i1 = _SHIFTR(val,16,8);
+	i2 = _SHIFTR(val, 8,8);
+	i3 = _SHIFTR(val, 0,8);
 
-	u8 c0, c1, c2, c3;
-	c0 = ((i0 + i1 * 0xc1 + 0x18 + revid_0) ^ (i3 * i2 + 0x90)
-	    ) & 0xff;
-	c1 = ((i1 + i2 + 0x90) ^ (c0 + i0 - 0xc1)
-	    ) & 0xff;
-	c2 = ((i2 + 0xc8) ^ (c0 + ((revid_eth_0 + revid_0 * 0x23) ^ 0x19))
-	    ) & 0xff;
-	c3 = ((i0 + 0xc1) ^ (i3 + ((revid_eth_1 + 0xc8) ^ 0x90))
-	    ) & 0xff;
+	c0 = ((i0+i1*0xc1+0x18+revid_0)^(i3*i2+0x90))&0xff;
+	c1 = ((i1+i2+0x90)^(c0+i0-0xc1))&0xff;
+	c2 = ((i2+0xc8)^(c0+((revid_eth_0+revid_0*0x23)^0x19)))&0xff;
+	c3 = ((i0+0xc1)^(i3+((revid_eth_1+0xc8)^0x90)))&0xff;
 
-	return ((c0 << 24) | (c1 << 16) | (c2 << 8) | c3);
+	return ((c0<<24)|(c1<<16)|(c2<<8)|c3);
 }
 
 static s32 bba_event_handler(s32 nChn,s32 nDev)
@@ -922,7 +927,7 @@ static s32 bba_event_handler(s32 nChn,s32 nDev)
 static void __arp_timer(void *arg)
 {
 	tmr_flag |= 0x01;
-	LWP_WakeThread(tqtmr);
+	LWP_ThreadSignal(tqtmr);
 	__lwp_wd_insert_ticks(&arp_time_cntrl,net_arp_ticks);
 }
 
@@ -944,8 +949,8 @@ err_t bba_init(struct netif *dev)
 		EXI_Unlock(EXI_CHANNEL_0);
 		return ret;
 	}
-	ret = __bba_get_linkstateasync();
 
+	ret = __bba_get_linkstateasync();
 	if(ret) {
 		etharp_init();
 
