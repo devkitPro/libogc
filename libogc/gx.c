@@ -249,7 +249,7 @@ static void __GXFinishInterruptHandler()
 #ifdef _GP_DEBUG
 	printk("__GXFinishInterruptHandler()\n\n");
 #endif
-	LWP_WakeThread(_gxwaitfinish);
+	LWP_ThreadBroadcast(_gxwaitfinish);
 
 	_peReg[5] |= 8;
 }
@@ -1117,7 +1117,7 @@ void GX_WaitDrawDone()
 #endif
 	_CPU_ISR_Disable(level);
 	while(!_gxfinished)
-		LWP_SleepThread(_gxwaitfinish);
+		LWP_ThreadSleep(_gxwaitfinish);
 	_CPU_ISR_Restore(level);
 }
 

@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: card.c,v 1.57 2005-12-26 11:09:15 shagkur Exp $
+$Id: card.c,v 1.58 2006-04-10 05:30:55 shagkur Exp $
 
 card.c -- Memory card subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.57  2005/12/26 11:09:15  shagkur
+- fixed string problem with filenames in DAT
+
 Revision 1.56  2005/12/21 06:46:31  shagkur
 - fixded filename problem in the file creation functions
 
@@ -335,7 +338,7 @@ static s32 __card_sync(s32 chn)
 
 	_CPU_ISR_Disable(level);
 	while((ret=CARD_GetErrorCode(chn))==CARD_ERROR_BUSY) {
-		LWP_SleepThread(card->wait_sync_queue);
+		LWP_ThreadSleep(card->wait_sync_queue);
 	}
 	_CPU_ISR_Restore(level);
 	return ret;
@@ -349,7 +352,7 @@ static void __card_synccallback(s32 chn,s32 result)
 	printf("__card_synccallback(%d,%d,%d)\n",chn,result,card->result);
 #endif
 	_CPU_ISR_Disable(level);
-	LWP_WakeThread(card->wait_sync_queue);
+	LWP_ThreadBroadcast(card->wait_sync_queue);
 	_CPU_ISR_Restore(level);
 }
 

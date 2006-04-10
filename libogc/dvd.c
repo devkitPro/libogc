@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: dvd.c,v 1.49 2006-01-18 18:22:03 shagkur Exp $
+$Id: dvd.c,v 1.50 2006-04-10 05:30:55 shagkur Exp $
 
 dvd.h -- DVD subsystem
 
@@ -34,6 +34,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.49  2006/01/18 18:22:03  shagkur
+- Added DVD_SetAutoInvalidation
+
 Revision 1.48  2006/01/10 06:48:43  shagkur
 - changed the patching routine to not set the reset flag again
 
@@ -1149,37 +1152,37 @@ static void __dvd_statebusycb(s32 result)
 
 static void __dvd_mountsynccb(s32 result,dvdcmdblk *block)
 {
-	LWP_WakeThread(__dvd_wait_queue);
+	LWP_ThreadBroadcast(__dvd_wait_queue);
 }
 
 static void __dvd_inquirysynccb(s32 result,dvdcmdblk *block)
 {
-	LWP_WakeThread(__dvd_wait_queue);
+	LWP_ThreadBroadcast(__dvd_wait_queue);
 }
 
 static void __dvd_readsynccb(s32 result,dvdcmdblk *block)
 {
-	LWP_WakeThread(__dvd_wait_queue);
+	LWP_ThreadBroadcast(__dvd_wait_queue);
 }
 
 static void __dvd_streamatendsynccb(s32 result,dvdcmdblk *block)
 {
-	LWP_WakeThread(__dvd_wait_queue);
+	LWP_ThreadBroadcast(__dvd_wait_queue);
 }
 
 static void __dvd_seeksynccb(s32 result,dvdcmdblk *block)
 {
-	LWP_WakeThread(__dvd_wait_queue);
+	LWP_ThreadBroadcast(__dvd_wait_queue);
 }
 
 static void __dvd_spinupdrivesynccb(s32 result,dvdcmdblk *block)
 {
-	LWP_WakeThread(__dvd_wait_queue);
+	LWP_ThreadBroadcast(__dvd_wait_queue);
 }
 
 static void __dvd_motorcntrlsynccb(s32 result,dvdcmdblk *block)
 {
-	LWP_WakeThread(__dvd_wait_queue);
+	LWP_ThreadBroadcast(__dvd_wait_queue);
 }
 
 static void __dvd_statemotorstoppedcb(s32 result)
@@ -1219,7 +1222,7 @@ static void __dvd_statecheckid1cb(s32 result)
 #endif
 	__dvd_ready = 1;
 	if(memcmp(__dvd_diskID,&__dvd_tmpid0,DVD_DISKIDSIZE)) memcpy(__dvd_diskID,&__dvd_tmpid0,DVD_DISKIDSIZE);
-	LWP_WakeThread(__dvd_wait_queue);
+	LWP_ThreadBroadcast(__dvd_wait_queue);
 }
 
 static void __dvd_stategotoretrycb(s32 result)
@@ -2228,7 +2231,7 @@ s32 DVD_Inquiry(dvdcmdblk *block,dvddrvinfo *info)
 		if(state==0) ret = block->txdsize;
 		else if(state==-1) ret = -1;
 		else if(state==10) ret = -3;
-		else LWP_SleepThread(__dvd_wait_queue);
+		else LWP_ThreadSleep(__dvd_wait_queue);
 	} while(state!=0 && state!=-1 && state!=10);
 	_CPU_ISR_Restore(level);
 	return ret;
@@ -2251,7 +2254,7 @@ s32 DVD_ReadPrio(dvdcmdblk *block,void *buf,u32 len,u32 offset,s32 prio)
 			if(state==0) ret = block->txdsize;
 			else if(state==-1) ret = -1;
 			else if(state==10) ret = -3;
-			else LWP_SleepThread(__dvd_wait_queue);
+			else LWP_ThreadSleep(__dvd_wait_queue);
 		} while(state!=0 && state!=-1 && state!=10);
 		_CPU_ISR_Restore(level);
 		return ret;
@@ -2276,7 +2279,7 @@ s32 DVD_SeekPrio(dvdcmdblk *block,u32 offset,s32 prio)
 			if(state==0) ret = 0;
 			else if(state==-1) ret = -1;
 			else if(state==10) ret = -3;
-			else LWP_SleepThread(__dvd_wait_queue);
+			else LWP_ThreadSleep(__dvd_wait_queue);
 		} while(state!=0 && state!=-1 && state!=10);
 		_CPU_ISR_Restore(level);
 
@@ -2322,7 +2325,7 @@ s32 DVD_StopStreamAtEnd(dvdcmdblk *block)
 		state = block->state;
 		if(state==0 || state==-1) ret = -1;
 		else if(state==10) ret = block->txdsize;
-		else LWP_SleepThread(__dvd_wait_queue);
+		else LWP_ThreadSleep(__dvd_wait_queue);
 	} while(state!=0 && state!=-1 && state!=10);
 	_CPU_ISR_Restore(level);
 	
@@ -2354,7 +2357,7 @@ s32 DVD_SpinUpDrive(dvdcmdblk *block)
 		state = block->state;
 		if(state==0 || state==-1) ret = -1;
 		else if(state==10) ret = block->txdsize;
-		else LWP_SleepThread(__dvd_wait_queue);
+		else LWP_ThreadSleep(__dvd_wait_queue);
 	} while(state!=0 && state!=-1 && state!=10);
 	_CPU_ISR_Restore(level);
 
@@ -2386,7 +2389,7 @@ s32 DVD_ControlDrive(dvdcmdblk *block,u32 cmd)
 		state = block->state;
 		if(state==0 || state==-1) ret = -1;
 		else if(state==10) ret = block->txdsize;
-		else LWP_SleepThread(__dvd_wait_queue);
+		else LWP_ThreadSleep(__dvd_wait_queue);
 	} while(state!=0 && state!=-1 && state!=10);
 	_CPU_ISR_Restore(level);
 
@@ -2499,7 +2502,7 @@ s32 DVD_Mount()
 		if(state==0) ret = 0;
 		else if(state==-1) ret = -1;
 		else if(state==10) ret = -3;
-		else LWP_SleepThread(__dvd_wait_queue);
+		else LWP_ThreadSleep(__dvd_wait_queue);
 	} while(state!=0 && state!=-1 && state!=10);
 	__dvd_mountusrcb = NULL;		//set to zero coz this is only used to sync for this function.
 	_CPU_ISR_Restore(level);

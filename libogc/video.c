@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: video.c,v 1.43 2005-12-09 09:35:45 shagkur Exp $
+$Id: video.c,v 1.44 2006-04-10 05:30:55 shagkur Exp $
 
 video.c -- VIDEO subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.43  2005/12/09 09:35:45  shagkur
+no message
+
 Revision 1.42  2005/11/22 07:19:15  shagkur
 - added internal function to retrieve the next framebuffer address. used for the console window initialization.
 
@@ -1251,7 +1254,7 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 	if(postRetraceCB)
 		postRetraceCB(retraceCount);
 
-	LWP_WakeThread(video_queue);
+	LWP_ThreadBroadcast(video_queue);
 }
 
 void* __VIDEO_GetNextFramebuffer()
@@ -1429,7 +1432,7 @@ void VIDEO_WaitVSync(void)
 	_CPU_ISR_Disable(level);
 	retcnt = retraceCount;
 	do {
-		LWP_SleepThread(video_queue);
+		LWP_ThreadSleep(video_queue);
 	} while(retraceCount==retcnt);
 	_CPU_ISR_Restore(level);
 }
