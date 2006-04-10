@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: exi.c,v 1.30 2005-12-09 09:35:45 shagkur Exp $
+$Id: exi.c,v 1.31 2006-04-10 05:32:31 shagkur Exp $
 
 exi.c -- EXI subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.30  2005/12/09 09:35:45  shagkur
+no message
+
 Revision 1.29  2005/11/21 12:31:13  shagkur
 no message
 
@@ -68,6 +71,7 @@ no message
 
 
 struct _lck_dev {
+	lwp_node node;
 	u32 dev;
 	EXICallback unlockcb;
 };
@@ -84,9 +88,11 @@ typedef struct _exibus_priv {
 	u32 lck_cnt;
 	u32 exi_id;
 	u64 exi_idtime;
-	struct _lck_dev lck_dev[EXI_MAX_DEVICES];
+	lwp_queue lckd_dev;
 } exibus_priv;
 
+static lwp_queue _lckdev_queue;
+static struct _lck_dev lckdevs[256];
 static exibus_priv eximap[EXI_MAX_CHANNELS];
 static u64 last_exi_idtime[EXI_MAX_CHANNELS];
 
@@ -120,6 +126,29 @@ static __inline__ void __exi_clearirqs(s32 nChn,u32 nEXIIrq,u32 nTCIrq,u32 nEXTI
 	if(nTCIrq) d |= EXI_TC_IRQ;
 	if(nEXTIrq) d |= EXI_EXT_IRQ;
 	_exiReg[nChn*5] = d;
+}
+
+static void __exi_initmap(exibus_priv *exim)
+{
+	s32 i;
+	exibus_priv *m;
+
+	__lwp_queue_initialize(&_lckdev_queue,lckdevs,256,sizeof(struct _lck_dev));
+	
+	for(i=0;i<EXI_MAX_CHANNELS;i++) {
+		m = &exim[i];
+		m->CallbackEXI = NULL;
+		m->CallbackEXT = NULL;
+		m->CallbackTC = NULL;
+		m->imm_buff = NULL;
+		m->exi_id = 0;
+		m->exi_idtime = 0;
+		m->flags = 0;
+		m->imm_len = 0;
+		m->lck_cnt = 0;
+		m->lockeddev = 0;
+		__lwp_queue_init_empty(&m->lckd_dev);
+	}
 }
 
 static s32 __exi_probe(s32 nChn)
@@ -211,7 +240,8 @@ static s32 __exi_attach(s32 nChn,EXICallback ext_cb)
 
 s32 EXI_Lock(s32 nChn,s32 nDev,EXICallback unlockCB)
 {
-	u32 level,i;
+	u32 level;
+	struct _lck_dev *lckd;
 	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
 	printf("EXI_Lock(%d,%d,%p)\n",nChn,nDev,unlockCB);
@@ -219,15 +249,13 @@ s32 EXI_Lock(s32 nChn,s32 nDev,EXICallback unlockCB)
 	_CPU_ISR_Disable(level);
 	if(exi->flags&EXI_FLAG_LOCKED) {
 		if(unlockCB) {
-			for(i=0;i<exi->lck_cnt;i++) {
-				if(exi->lck_dev[i].dev==nDev)  {
-					_CPU_ISR_Restore(level);
-					return 0;
-				}	
+			lckd = (struct _lck_dev*)__lwp_queue_getI(&_lckdev_queue);
+			if(lckd) {
+				lckd->dev = nDev;
+				lckd->unlockcb = unlockCB;
+				__lwp_queue_appendI(&exi->lckd_dev,&lckd->node);
+				++exi->lck_cnt;
 			}
-			exi->lck_dev[i].unlockcb = unlockCB;
-			exi->lck_dev[i].dev = nDev;
-			exi->lck_cnt++;
 		}
 		_CPU_ISR_Restore(level);
 		return 0;
@@ -245,6 +273,7 @@ s32 EXI_Unlock(s32 nChn)
 {
 	u32 level,dev;
 	EXICallback cb;
+	struct _lck_dev *lckd;
 	exibus_priv *exi = &eximap[nChn];
 #ifdef _EXI_DEBUG
 	printf("EXI_Unlock(%d)\n",nChn);
@@ -263,9 +292,12 @@ s32 EXI_Unlock(s32 nChn)
 		return 1;
 	}
 
-	cb = exi->lck_dev[0].unlockcb;
-	dev = exi->lck_dev[0].dev;
-	if((--exi->lck_cnt)>0) memmove(&(exi->lck_dev[0]),&(exi->lck_dev[1]),(exi->lck_cnt*sizeof(struct _lck_dev)));
+	lckd = (struct _lck_dev*)__lwp_queue_getI(&exi->lckd_dev);
+	__lwp_queue_appendI(&_lckdev_queue,&lckd->node);
+	--exi->lck_cnt;
+
+	cb = lckd->unlockcb;
+	dev = lckd->dev;
 	if(cb) cb(nChn,dev);
 
 	_CPU_ISR_Restore(level);
@@ -717,7 +749,7 @@ void __exi_init()
 
 	_exiReg[0] = 0x2000;
 	
-	memset(eximap,0,EXI_MAX_CHANNELS*sizeof(exibus_priv));
+	__exi_initmap(eximap);
 
 	IRQ_Request(IRQ_EXI0_EXI,__exi_irq_handler,NULL);
 	IRQ_Request(IRQ_EXI0_TC,__tc_irq_handler,NULL);
