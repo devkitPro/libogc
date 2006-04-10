@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: aram.c,v 1.8 2005-12-09 09:35:45 shagkur Exp $
+$Id: aram.c,v 1.9 2006-04-10 05:23:59 shagkur Exp $
 
 aram.c -- ARAM subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.8  2005/12/09 09:35:45  shagkur
+no message
+
 Revision 1.7  2005/11/23 16:36:03  shagkur
 - moved a define from .h
 
@@ -152,17 +155,17 @@ void AR_StartDMA(u32 dir,u32 memaddr,u32 aramaddr,u32 len)
 	_CPU_ISR_Disable(level);
 
 	// set main memory address
-	_dspReg[16] = (_dspReg[16]&~0x03ff)|((memaddr>>16)&0xffff);
-	_dspReg[17] = (_dspReg[17]&~0xffe0)|(memaddr&0xffff);
+	_dspReg[16] = (_dspReg[16]&~0x03ff)|_SHIFTR(memaddr,16,16);
+	_dspReg[17] = (_dspReg[17]&~0xffe0)|_SHIFTR(memaddr, 0,16);
 	
 	// set aram address
-	_dspReg[18] = (_dspReg[18]&~0x03ff)|((aramaddr>>16)&0xffff);
-	_dspReg[19] = (_dspReg[19]&~0xffe0)|(aramaddr&0xffff);
+	_dspReg[18] = (_dspReg[18]&~0x03ff)|_SHIFTR(aramaddr,16,16);
+	_dspReg[19] = (_dspReg[19]&~0xffe0)|_SHIFTR(aramaddr, 0,16);
 	
 	// set cntrl bits
-	_dspReg[20] = (_dspReg[20]&~0x8000)|(_SHIFTL(dir,15,1));
-	_dspReg[20] = (_dspReg[20]&~0x7fff)|(_SHIFTR(len,16,15));
-	_dspReg[21] = (_dspReg[21]&~0xffe0)|(len&0xffff);
+	_dspReg[20] = (_dspReg[20]&~0x8000)|_SHIFTL(dir,15,1);
+	_dspReg[20] = (_dspReg[20]&~0x03ff)|_SHIFTR(len,16,16);
+	_dspReg[21] = (_dspReg[21]&~0xffe0)|_SHIFTR(len, 0,16);
 
 	_CPU_ISR_Restore(level);
 }
@@ -243,7 +246,12 @@ u32 AR_GetInternalSize()
 
 static __inline__ void __ARClearInterrupt()
 {
-	u16 cause = _dspReg[5]&~(DSPCR_DSPINT|DSPCR_AIINT);
+	u16 cause;
+	
+	cause = _dspReg[5]&~(DSPCR_DSPINT|DSPCR_AIINT);
+#ifdef _AR_DEBUG
+	printf("__ARClearInterrupt(0x%04x)\n",cause);
+#endif
 	_dspReg[5] = (cause|DSPCR_ARINT);
 }
 
@@ -258,17 +266,17 @@ static void __ARReadDMA(u32 memaddr,u32 aramaddr,u32 len)
 	printf("__ARReadDMA(0x%08x,0x%08x,%d)\n",memaddr,aramaddr,len);
 #endif
 	// set main memory address
-	_dspReg[16] = (_dspReg[16]&~0x03ff)|((memaddr>>16)&0xffff);
-	_dspReg[17] = (_dspReg[17]&~0xffe0)|(memaddr&0xffff);
+	_dspReg[16] = (_dspReg[16]&~0x03ff)|_SHIFTR(memaddr,16,16);
+	_dspReg[17] = (_dspReg[17]&~0xffe0)|_SHIFTR(memaddr, 0,16);
 	
 	// set aram address
-	_dspReg[18] = (_dspReg[18]&~0x03ff)|((aramaddr>>16)&0xffff);
-	_dspReg[19] = (_dspReg[19]&~0xffe0)|(aramaddr&0xffff);
+	_dspReg[18] = (_dspReg[18]&~0x03ff)|_SHIFTR(aramaddr,16,16);
+	_dspReg[19] = (_dspReg[19]&~0xffe0)|_SHIFTR(aramaddr, 0,16);
 	
 	// set cntrl bits
 	_dspReg[20] = (_dspReg[20]&~0x8000)|0x8000;
-	_dspReg[20] = (_dspReg[20]&~0x7fff)|(_SHIFTR(len,16,15));
-	_dspReg[21] = (_dspReg[21]&~0xffe0)|(len&0xffff);
+	_dspReg[20] = (_dspReg[20]&~0x03ff)|_SHIFTR(len,16,16);
+	_dspReg[21] = (_dspReg[21]&~0xffe0)|_SHIFTR(len, 0,16);
 
 	__ARWaitDma();
 	__ARClearInterrupt();
@@ -281,17 +289,17 @@ static void __ARWriteDMA(u32 memaddr,u32 aramaddr,u32 len)
 	printf("__ARWriteDMA(0x%08x,0x%08x,%d)\n",memaddr,aramaddr,len);
 #endif
 	// set main memory address
-	_dspReg[16] = (_dspReg[16]&~0x03ff)|((memaddr>>16)&0xffff);
-	_dspReg[17] = (_dspReg[17]&~0xffe0)|(memaddr&0xffff);
+	_dspReg[16] = (_dspReg[16]&~0x03ff)|_SHIFTR(memaddr,16,16);
+	_dspReg[17] = (_dspReg[17]&~0xffe0)|_SHIFTR(memaddr, 0,16);
 	
 	// set aram address
-	_dspReg[18] = (_dspReg[18]&~0x03ff)|((aramaddr>>16)&0xffff);
-	_dspReg[19] = (_dspReg[19]&~0xffe0)|(aramaddr&0xffff);
+	_dspReg[18] = (_dspReg[18]&~0x03ff)|_SHIFTR(aramaddr,16,16);
+	_dspReg[19] = (_dspReg[19]&~0xffe0)|_SHIFTR(aramaddr, 0,16);
 	
 	// set cntrl bits
 	_dspReg[20] = (_dspReg[20]&~0x8000);
-	_dspReg[20] = (_dspReg[20]&~0x7fff)|(_SHIFTR(len,16,15));
-	_dspReg[21] = (_dspReg[21]&~0xffe0)|(len&0xffff);
+	_dspReg[20] = (_dspReg[20]&~0x03ff)|_SHIFTR(len,16,16);
+	_dspReg[21] = (_dspReg[21]&~0xffe0)|_SHIFTR(len, 0,16);
 
 	__ARWaitDma();
 	__ARClearInterrupt();
@@ -355,14 +363,14 @@ static void __ARCheckSize()
 
 	DCInvalidateRange(buffer,32);
 	__ARReadDMA((u32)buffer,0x1000000,32);
-	ppcsync();
+	_nop();
 
 	arszflag = 0x03;
 	if(buffer[0]==dummy_data[0]) {
 		memset(buffer,0,32);
 		DCFlushRange(buffer,32);
 		__ARReadDMA((u32)buffer,0x1200000,32);
-		ppcsync();
+		_nop();
 		if(buffer[0]==dummy_data[0]) {
 			__ARExpansionSize = 0x200000;
 			arsize +=  0x200000;
@@ -372,7 +380,7 @@ static void __ARCheckSize()
 		memset(buffer,0,32);
 		DCFlushRange(buffer,32);
 		__ARReadDMA((u32)buffer,0x2000000,32);
-		ppcsync();
+		_nop();
 		if(buffer[0]==dummy_data[0]) {
 			__ARExpansionSize = 0x400000;
 			arsize +=  0x400000;
@@ -383,7 +391,7 @@ static void __ARCheckSize()
 		memset(buffer,0,32);
 		DCFlushRange(buffer,32);
 		__ARReadDMA((u32)buffer,0x1400000,32);
-		ppcsync();
+		_nop();
 		if(buffer[0]==dummy_data[0]) {
 			__ARExpansionSize = 0x1000000;
 			arsize +=  0x1000000;
@@ -406,6 +414,9 @@ end_check:
 
 static void __ARHandler()
 {
+#ifdef _AR_DEBUG
+	printf("__ARHandler()\n");
+#endif
 	__ARClearInterrupt();
 	
 	if(__ARDmaCallback)
