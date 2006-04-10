@@ -7,6 +7,7 @@
 #define ATTRIBUTE_ALIGN(v)				__attribute__((aligned(v)))
 
 #define _sync() asm volatile("sync")
+#define _nop() asm volatile("nop")
 #define ppcsync() asm volatile("sc")
 #define ppchalt() ({					\
 	asm volatile("sync");				\
