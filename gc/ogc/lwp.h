@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: lwp.h,v 1.11 2005-12-09 09:21:32 shagkur Exp $
+$Id: lwp.h,v 1.12 2006-04-10 05:35:24 shagkur Exp $
 
 lwp.h -- Thread subsystem I
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.11  2005/12/09 09:21:32  shagkur
+no message
+
 Revision 1.10  2005/11/21 12:13:33  shagkur
 no message
 
@@ -172,22 +175,31 @@ void LWP_InitQueue(lwpq_t *thequeue);
 void LWP_CloseQueue(lwpq_t thequeue);
 
 
-/*! \fn s32 LWP_SleepThread(lwpq_t thequeue)
+/*! \fn s32 LWP_ThreadSleep(lwpq_t thequeue)
 \brief Pushes the current thread onto the given thread synchronization queue and sets the thread state to blocked.
 \param[in] thequeue handle to the thread's synchronization queue to push the thread on
 
 \return none
 */
-s32 LWP_SleepThread(lwpq_t thequeue);
+s32 LWP_ThreadSleep(lwpq_t thequeue);
 
 
-/*! \fn void LWP_WakeThread(lwpq_t thequeue)
+/*! \fn void LWP_ThreadSignal(lwpq_t thequeue)
+\brief Signals one thread to be revmoved from the thread synchronization queue and sets it back to running state.
+\param[in] thequeue handle to the thread's synchronization queue to pop the blocked thread off
+
+\return none
+*/
+void LWP_ThreadSignal(lwpq_t thequeue);
+
+
+/*! \fn void LWP_ThreadBroadcast(lwpq_t thequeue)
 \brief Removes all blocked threads from the thread synchronization queue and sets them back to running state.
 \param[in] thequeue handle to the thread's synchronization queue to pop the blocked threads off
 
 \return none
 */
-void LWP_WakeThread(lwpq_t thequeue);
+void LWP_ThreadBroadcast(lwpq_t thequeue);
 
 #ifdef __cplusplus
 	}
