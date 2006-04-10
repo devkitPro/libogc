@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: arqueue.c,v 1.5 2005-11-21 12:42:30 shagkur Exp $
+$Id: arqueue.c,v 1.6 2006-04-10 05:26:45 shagkur Exp $
 
 arqueue.c -- ARAM task request queue implementation
 
@@ -28,72 +28,79 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.5  2005/11/21 12:42:30  shagkur
+- Added copyright header(taken from libnds).
+- Introduced RCS $Id: arqueue.c,v 1.6 2006-04-10 05:26:45 shagkur Exp $ and $Log: not supported by cvs2svn $ token in project files.
+
 
 -------------------------------------------------------------*/
 
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <lwp.h>
 
 #include "asm.h"
 #include "processor.h"
 #include "arqueue.h"
 
+//#define _ARQ_DEBUG
+
 static u32 __ARQChunkSize;
 static u32 __ARQInitFlag = 0;
+static lwpq_t __ARQSyncQueue;
 
-static ARQRequest *__ARQReqQueueLo;
-static ARQRequest *__ARQReqQueueHi;
-static ARQRequest *__ARQReqQueueTemp;
-static ARQRequest *__ARQReqTailLo;
-static ARQRequest *__ARQReqTailHi;
-static ARQRequest *__ARQReqTailTemp;
-static u32 __ARQReqPendingLo;
-static u32 __ARQReqPendingHi;
-
+static lwp_queue __ARQReqQueueLo;
+static lwp_queue __ARQReqQueueHi;
+static ARQRequest *__ARQReqPendingLo;
+static ARQRequest *__ARQReqPendingHi;
 static ARQCallback __ARQCallbackLo = NULL;
 static ARQCallback __ARQCallbackHi = NULL;
 
 static __inline__ void __ARQPopTaskQueueHi()
 {
-	if(!__ARQReqQueueHi) return;
-	if(__ARQReqQueueHi->type==ARQ_MRAMTOARAM) {
-		AR_StartDMA(__ARQReqQueueHi->type,__ARQReqQueueHi->src,__ARQReqQueueHi->dest,__ARQReqQueueHi->len);
-	} else {
-		AR_StartDMA(__ARQReqQueueHi->type,__ARQReqQueueHi->dest,__ARQReqQueueHi->src,__ARQReqQueueHi->len);
-	}
-	__ARQCallbackHi = __ARQReqQueueHi->callback;
-	__ARQReqPendingHi = (u32)__ARQReqQueueHi;
-	__ARQReqQueueHi = __ARQReqQueueHi->next;
+	ARQRequest *req;
+
+	req = (ARQRequest*)__lwp_queue_getI(&__ARQReqQueueHi);
+	if(!req) return;
+
+	req->state = ARQ_TASK_RUNNING;
+#ifdef _ARQ_DEBUG
+	printf("__ARQPopTaskQueueHi(%02x,%08x,%08x,%d)\n",req->dir,req->aram_addr,req->mram_addr,req->len);
+#endif
+	AR_StartDMA(req->dir,req->mram_addr,req->aram_addr,req->len);
+	__ARQCallbackHi = req->callback;
+	__ARQReqPendingHi = req;
 }
 
-static void __ARQCallbackHack(u32 request)
+static void __ARQCallbackSync(ARQRequest *req)
 {
+	LWP_ThreadBroadcast(__ARQSyncQueue);
 }
 
 static void __ARQServiceQueueLo()
 {
-	if(!__ARQReqPendingLo && __ARQReqQueueLo) {
-		__ARQReqPendingLo = (u32)__ARQReqQueueLo;
-		__ARQReqQueueLo = __ARQReqQueueLo->next;
+	ARQRequest *req;
+
+	if(!__ARQReqPendingLo) {
+		req = (ARQRequest*)__lwp_queue_getI(&__ARQReqQueueLo);
+		__ARQReqPendingLo = req;
 	}
 	
-	if(__ARQReqPendingLo) {
-		if(((ARQRequest*)__ARQReqPendingLo)->len<=__ARQChunkSize) {
-			if(((ARQRequest*)__ARQReqPendingLo)->type==ARQ_MRAMTOARAM) {
-				AR_StartDMA(((ARQRequest*)__ARQReqPendingLo)->type,((ARQRequest*)__ARQReqPendingLo)->src,((ARQRequest*)__ARQReqPendingLo)->dest,((ARQRequest*)__ARQReqPendingLo)->len);
-			} else {
-				AR_StartDMA(((ARQRequest*)__ARQReqPendingLo)->type,((ARQRequest*)__ARQReqPendingLo)->dest,((ARQRequest*)__ARQReqPendingLo)->src,((ARQRequest*)__ARQReqPendingLo)->len);
-			}
-			__ARQCallbackLo = ((ARQRequest*)__ARQReqPendingLo)->callback;
+	req = __ARQReqPendingLo;
+	if(req) {
+		req->state = ARQ_TASK_RUNNING;
+#ifdef _ARQ_DEBUG
+		printf("__ARQServiceQueueLo(%02x,%08x,%08x,%d,%d)\n",req->dir,req->aram_addr,req->mram_addr,req->len,__ARQChunkSize);
+#endif
+		if(req->len<=__ARQChunkSize) {
+			AR_StartDMA(req->dir,req->mram_addr,req->aram_addr,req->len);
+			__ARQCallbackLo = __ARQReqPendingLo->callback;
 		} else {
-			if(((ARQRequest*)__ARQReqPendingLo)->type==ARQ_MRAMTOARAM) {
-				AR_StartDMA(((ARQRequest*)__ARQReqPendingLo)->type,((ARQRequest*)__ARQReqPendingLo)->src,((ARQRequest*)__ARQReqPendingLo)->dest,__ARQChunkSize);
-			} else {
-				AR_StartDMA(((ARQRequest*)__ARQReqPendingLo)->type,((ARQRequest*)__ARQReqPendingLo)->dest,((ARQRequest*)__ARQReqPendingLo)->src,__ARQChunkSize);
-			}
-			((ARQRequest*)__ARQReqPendingLo)->len -= __ARQChunkSize;
-			((ARQRequest*)__ARQReqPendingLo)->src += __ARQChunkSize;
-			((ARQRequest*)__ARQReqPendingLo)->dest += __ARQChunkSize;
+			AR_StartDMA(req->dir,req->mram_addr,req->aram_addr,__ARQChunkSize);
+			__ARQReqPendingLo->len -= __ARQChunkSize;
+			__ARQReqPendingLo->aram_addr += __ARQChunkSize;
+			__ARQReqPendingLo->mram_addr += __ARQChunkSize;
 		}
 	}
 }
@@ -101,12 +108,14 @@ static void __ARQServiceQueueLo()
 static void __ARInterruptServiceRoutine()
 {
 	if(__ARQCallbackHi) {
+		__ARQReqPendingHi->state = ARQ_TASK_FINISHED;
 		__ARQCallbackHi(__ARQReqPendingHi);
-		__ARQReqPendingHi = 0;
+		__ARQReqPendingHi = NULL;
 		__ARQCallbackHi = NULL;
 	} else if(__ARQCallbackLo) {
+		__ARQReqPendingLo->state = ARQ_TASK_FINISHED;
 		__ARQCallbackLo(__ARQReqPendingLo);
-		__ARQReqPendingLo = 0;
+		__ARQReqPendingLo = NULL;
 		__ARQCallbackLo = NULL;
 	}
 	__ARQPopTaskQueueHi();
@@ -115,32 +124,46 @@ static void __ARInterruptServiceRoutine()
 
 void ARQ_Init()
 {
+	u32 level;
+#ifdef _ARQ_DEBUG
+	printf("ARQ_Init(%02x)\n",__ARQInitFlag);
+#endif
 	if(__ARQInitFlag) return;
 
-	__ARQReqQueueLo = NULL;
-	__ARQReqQueueHi = NULL;
-	
-	__ARQChunkSize = 4096;
-	AR_RegisterCallback(__ARInterruptServiceRoutine);
+	_CPU_ISR_Disable(level);
 
-	__ARQReqPendingLo = 0;
-	__ARQReqPendingHi = 0;
-
+	__ARQReqPendingLo = NULL;
+	__ARQReqPendingHi = NULL;
 	__ARQCallbackLo = NULL;
 	__ARQCallbackHi = NULL;
+	
+	__ARQChunkSize = ARQ_DEF_CHUNK_SIZE;
+
+	LWP_InitQueue(&__ARQSyncQueue);
+
+	__lwp_queue_init_empty(&__ARQReqQueueLo);
+	__lwp_queue_init_empty(&__ARQReqQueueHi);
+
+	AR_RegisterCallback(__ARInterruptServiceRoutine);
 
 	__ARQInitFlag = 1;
+	_CPU_ISR_Restore(level);
 }
 
 void ARQ_Reset()
 {
+	u32 level;
+	_CPU_ISR_Disable(level);
 	__ARQInitFlag = 0;
+	_CPU_ISR_Restore(level);
 }
 
 void ARQ_SetChunkSize(u32 size)
 {
-	if(!(size&0x1f)) __ARQChunkSize = size;
-	else __ARQChunkSize = (size+31)&~31;
+	u32 level;
+	_CPU_ISR_Disable(level);
+	__ARQChunkSize = (size+31)&~31;
+	_CPU_ISR_Restore(level);
 }
 
 u32 ARQ_GetChunkSize()
@@ -154,52 +177,57 @@ void ARQ_FlushQueue()
 
 	_CPU_ISR_Disable(level);
 	
-	__ARQReqQueueHi = NULL;
-	__ARQReqTailHi = NULL;
-	__ARQReqQueueLo = NULL;
-	__ARQReqTailLo = NULL;
-	if(!__ARQCallbackLo) __ARQReqPendingLo = 0;
+	__lwp_queue_init_empty(&__ARQReqQueueLo);
+	__lwp_queue_init_empty(&__ARQReqQueueHi);
+	if(!__ARQCallbackLo) __ARQReqPendingLo = NULL;
 
 	_CPU_ISR_Restore(level);
 }
 
-void ARQ_PostRequest(ARQRequest *req,u32 owner,u32 type,u32 prio,u32 src,u32 dest,u32 len,ARQCallback cb)
+void ARQ_PostRequestAsync(ARQRequest *req,u32 owner,u32 dir,u32 prio,u32 aram_addr,u32 mram_addr,u32 len,ARQCallback cb)
+{
+	u32 level;
+	ARQRequest *p;
+
+	req->state = ARQ_TASK_READY;
+	req->dir = dir;
+	req->owner = owner;
+	req->aram_addr = aram_addr;
+	req->mram_addr = mram_addr;
+	req->len = len;
+	req->prio = prio;
+	req->callback = cb;
+	
+	_CPU_ISR_Disable(level);
+
+	if(prio==ARQ_PRIO_LO) __lwp_queue_appendI(&__ARQReqQueueLo,&req->node);
+	else __lwp_queue_appendI(&__ARQReqQueueHi,&req->node);
+
+	if(!__ARQReqPendingLo && !__ARQReqPendingHi) {
+		p = (ARQRequest*)__lwp_queue_getI(&__ARQReqQueueHi);
+		if(p) {
+			p->state = ARQ_TASK_RUNNING;
+#ifdef _ARQ_DEBUG
+			printf("ARQ_PostRequest(%02x,%08x,%08x,%d)\n",p->dir,p->aram_addr,p->mram_addr,p->len);
+#endif
+			AR_StartDMA(p->dir,p->mram_addr,p->aram_addr,p->len);
+			__ARQCallbackHi = p->callback;
+			__ARQReqPendingHi = p;
+		}
+		if(!__ARQReqPendingHi) __ARQServiceQueueLo();
+	}
+	_CPU_ISR_Restore(level);
+}
+
+void ARQ_PostRequest(ARQRequest *req,u32 owner,u32 dir,u32 prio,u32 aram_addr,u32 mram_addr,u32 len)
 {
 	u32 level;
 
-	req->next = NULL;
-	req->type = type;
-	req->owner = owner;
-	req->src = src;
-	req->dest = dest;
-	req->len = len;
-	req->prio = prio;
-	req->callback = __ARQCallbackHack;
-	if(cb) req->callback = cb;
-	
-	_CPU_ISR_Disable(level);
-	if(prio==ARQ_PRIO_LO) { 
-		if(__ARQReqQueueLo) __ARQReqTailLo->next = req;
-		else __ARQReqQueueLo = req;
-		__ARQReqTailLo = req;
-	} else {
-		if(__ARQReqQueueHi) __ARQReqTailHi->next = req;
-		else __ARQReqQueueHi = req;
-		__ARQReqTailHi = req;
-	}
+	ARQ_PostRequestAsync(req,owner,dir,prio,aram_addr,mram_addr,len,__ARQCallbackSync);
 
-	if(!__ARQReqPendingLo && !__ARQReqPendingHi) {
-		if(__ARQReqQueueHi) {
-			if(__ARQReqQueueHi->type==ARQ_MRAMTOARAM) {
-				AR_StartDMA(__ARQReqQueueHi->type,__ARQReqQueueHi->src,__ARQReqQueueHi->dest,__ARQReqQueueHi->len);
-			} else {
-				AR_StartDMA(__ARQReqQueueHi->type,__ARQReqQueueHi->dest,__ARQReqQueueHi->src,__ARQReqQueueHi->len);
-			}		
-			__ARQCallbackHi = __ARQReqQueueHi->callback;
-			__ARQReqPendingHi = (u32)__ARQReqQueueHi;
-			__ARQReqQueueHi = __ARQReqQueueHi->next;
-		}
-		if(!__ARQReqPendingHi) __ARQServiceQueueLo();
+	_CPU_ISR_Disable(level);
+	while(req->state!=ARQ_TASK_FINISHED) {
+		LWP_ThreadSleep(__ARQSyncQueue);
 	}
 	_CPU_ISR_Restore(level);
 }
@@ -207,40 +235,41 @@ void ARQ_PostRequest(ARQRequest *req,u32 owner,u32 type,u32 prio,u32 src,u32 des
 void ARQ_RemoveRequest(ARQRequest *req)
 {
 	u32 level;
-	ARQRequest *p;
 
 	_CPU_ISR_Disable(level);
-	__ARQReqQueueTemp = NULL;
-	__ARQReqTailTemp = NULL;
-	
-	p = __ARQReqQueueHi;
-	while(p!=NULL) {
-		if(p!=req) {
-			if(__ARQReqQueueTemp) __ARQReqTailTemp->next = p;
-			else __ARQReqQueueTemp = p;
-			__ARQReqTailTemp = p;
-		}
-		p = p->next;
-	}
-
-	__ARQReqQueueHi = __ARQReqQueueTemp;
-	__ARQReqTailHi = __ARQReqTailTemp;
-	
-	__ARQReqQueueTemp = NULL;
-	__ARQReqTailTemp = NULL;
-	p = __ARQReqQueueLo;
-	while(p!=NULL) {
-		if(p!=req) {
-			if(__ARQReqQueueTemp) __ARQReqTailTemp->next = p;
-			else __ARQReqQueueTemp = p;
-			__ARQReqTailTemp = p;
-		}
-		p = p->next;
-	}
-
-	__ARQReqQueueLo = __ARQReqQueueTemp;
-	__ARQReqTailLo = __ARQReqTailTemp;
-	
-	if(__ARQReqPendingLo && __ARQReqPendingLo==(u32)req && __ARQCallbackLo==NULL) __ARQReqPendingLo = 0;
+	__lwp_queue_extractI(&req->node);
+	if(__ARQReqPendingLo && __ARQReqPendingLo==req && __ARQCallbackLo==NULL) __ARQReqPendingLo = NULL;
 	_CPU_ISR_Restore(level);
 }
+
+u32 ARQ_RemoveOwnerRequest(u32 owner)
+{
+	u32 level,cnt;
+	ARQRequest *req;
+
+	_CPU_ISR_Disable(level);
+	
+	cnt = 0;
+	req = (ARQRequest*)__ARQReqQueueHi.first;
+	while(req!=(ARQRequest*)__lwp_queue_tail(&__ARQReqQueueHi)) {
+		if(req->owner==owner) {
+			__lwp_queue_extractI(&req->node);
+			cnt++;
+		}
+		req = (ARQRequest*)req->node.next;
+	}
+
+	req = (ARQRequest*)__ARQReqQueueLo.first;
+	while(req!=(ARQRequest*)__lwp_queue_tail(&__ARQReqQueueLo)) {
+		if(req->owner==owner) {
+			__lwp_queue_extractI(&req->node);
+			cnt++;
+		}
+		req = (ARQRequest*)req->node.next;
+	}
+	if(__ARQReqPendingLo && __ARQReqPendingLo==req && __ARQCallbackLo==NULL) __ARQReqPendingLo = NULL;
+	_CPU_ISR_Restore(level);
+
+	return cnt;
+}
+
