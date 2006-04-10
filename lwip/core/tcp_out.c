@@ -123,7 +123,7 @@ tcp_enqueue(struct tcp_pcb *pcb, void *arg, u16_t len,
   u32_t left, seqno;
   u16_t seglen;
   void *ptr;
-  u8_t queuelen;
+  u32_t queuelen;
 
   LWIP_DEBUGF(TCP_OUTPUT_DEBUG, ("tcp_enqueue(pcb=%p, arg=%p, len=%u, flags=%x, copy=%u)\n",
     (void *)pcb, arg, len, (unsigned int)flags, (unsigned int)copy));
