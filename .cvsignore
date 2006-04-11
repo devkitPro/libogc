@@ -2,3 +2,5 @@ build
 deps
 lib
 include
+docs
+warn.log
