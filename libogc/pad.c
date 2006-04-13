@@ -22,11 +22,15 @@
 #define PAD_ENABLEDMASK(chan)		(0x80000000>>chan);
 
 typedef struct _keyinput {
-	vs16 up;
-	vs16 down;
-	vs16 state;
-	vs16 oldstate;
-} __attribute__ ((packed)) keyinput;
+	s8 stickX;
+	s8 stickY;
+	s8 substickX;
+	s8 substickY;
+	u16 up;
+	u16 down;
+	u16 state;
+	u16 oldstate;
+} keyinput;
 
 typedef void (*SPECCallback)(u32,u32*,PADStatus*);
 
@@ -53,9 +57,7 @@ static u32 __pad_type[PAD_CHANMAX];
 static s8 __pad_origin[PAD_CHANMAX][12];
 static u32 __pad_cmdprobedevice[PAD_CHANMAX];
 
-static volatile keyinput Keys[PAD_CHANMAX] = { {0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}};
-static PADStatus padstatus[PAD_CHANMAX];
-
+static keyinput __pad_keys[PAD_CHANMAX];
 static vu32* const _siReg = (u32*)0xCC006400;
 static vu16* const _viReg = (u16*)0xCC002000;
 
@@ -429,8 +431,9 @@ u32 PAD_Init()
 	if(__pad_initialized) return 1;
 
 	if(__pad_spec) PAD_SetSpec(__pad_spec);
-	
-	__pad_initialized = 1;
+
+	memset(__pad_keys,0,sizeof(keyinput)*PAD_CHANMAX);
+
 	__pad_recalibratebits = 0xf0000000;
 
 	chan = 0;
@@ -442,6 +445,7 @@ u32 PAD_Init()
 	SI_RefreshSamplingRate();
 	SYS_RegisterResetFunc(&pad_resetinfo);
 	
+	__pad_initialized = 1;
 	return PAD_Reset(0xf0000000);
 }
 
@@ -632,57 +636,117 @@ sampling_callback PAD_SetSamplingCallback(sampling_callback cb)
 
 void PAD_ScanPads(u32 dummy)
 {
-	s32 index;
-
+	s32 i;
+	u32 level;
+	u16 state,oldstate;
+	PADStatus padstatus[PAD_CHANMAX];
+	
 	PAD_Read(padstatus);
 
-	for(index=0;index<4;index++) {
-		Keys[index].oldstate	= Keys[index].state;
-		Keys[index].state		= padstatus[index].button;
-		Keys[index].up			= Keys[index].oldstate&~Keys[index].state;
-		Keys[index].down		= ~Keys[index].oldstate&Keys[index].state;
+	_CPU_ISR_Disable(level);
+	for(i=0;i<PAD_CHANMAX;i++) {
+		oldstate				= __pad_keys[i].state; 
+		state					= padstatus[i].button;
+		__pad_keys[i].stickX	= padstatus[i].stickX;
+		__pad_keys[i].stickY	= padstatus[i].stickY;
+		__pad_keys[i].substickX	= padstatus[i].substickX;
+		__pad_keys[i].substickY	= padstatus[i].substickY;
+		__pad_keys[i].up		= (oldstate^state)&oldstate;
+		__pad_keys[i].down		= (oldstate^state)&state;
+		__pad_keys[i].oldstate	= oldstate;
+		__pad_keys[i].state		= state;
 	}			
+	_CPU_ISR_Restore(level);
 }
 
 
 u16 PAD_ButtonsUp(int pad)
 {
+	u16 ret;
+	u32 level;
+
 	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
-	return 	Keys[pad].up;
+
+	_CPU_ISR_Disable(level);
+	ret = __pad_keys[pad].up;
+	_CPU_ISR_Restore(level);
+	return ret;
 }
 
 u16 PAD_ButtonsDown(int pad)
 {
+	u16 ret;
+	u32 level;
+
 	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
-	return 	Keys[pad].down;
+
+	_CPU_ISR_Disable(level);
+	ret = __pad_keys[pad].down;
+	_CPU_ISR_Restore(level);
+	return ret;
 }
 
 u16 PAD_ButtonsHeld(int pad)
 {
+	u16 ret;
+	u32 level;
+
 	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
-	return Keys[pad].state;
+
+	_CPU_ISR_Disable(level);
+	ret = __pad_keys[pad].state;
+	_CPU_ISR_Restore(level);
+	return ret;
 }
 
 s8 PAD_SubStickX(int pad)
 {
+	s8 ret;
+	u32 level;
+
 	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
-	return padstatus[pad].substickX;
+
+	_CPU_ISR_Disable(level);
+	ret = __pad_keys[pad].substickX;
+	_CPU_ISR_Restore(level);
+	return ret;
 }
 
 s8 PAD_SubStickY(int pad)
 {
+	s8 ret;
+	u32 level;
+
 	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
-	return padstatus[pad].substickY;
+
+	_CPU_ISR_Disable(level);
+	ret = __pad_keys[pad].substickY;
+	_CPU_ISR_Restore(level);
+	return ret;
 }
 
 s8 PAD_StickX(int pad)
 {
+	s8 ret;
+	u32 level;
+
 	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
-	return padstatus[pad].stickX;
+
+	_CPU_ISR_Disable(level);
+	ret = __pad_keys[pad].stickX;
+	_CPU_ISR_Restore(level);
+	return ret;
 }
 
 s8 PAD_StickY(int pad)
 {
+	s8 ret;
+	u32 level;
+
 	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
-	return padstatus[pad].stickY;
+
+	_CPU_ISR_Disable(level);
+	ret = __pad_keys[pad].stickY;
+	_CPU_ISR_Restore(level);
+	return ret;
 }
