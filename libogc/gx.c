@@ -339,7 +339,7 @@ static GXTexRegion* __GXDefRegionCallback(GXTexObj *obj,u8 mapid)
 	fmt = GX_GetTexFmt(obj);
 	if(fmt==0x0008 || fmt==0x0009 || fmt==0x000a) {
 		idx = regionB++;
-		ret = (GXTexRegion*)&(_gx[0x100+(((idx&0x3)+8)*(sizeof(GXTexRegion)>>2))]);
+		ret = (GXTexRegion*)&(_gx[0x120+((idx&0x3)*(sizeof(GXTexRegion)>>2))]);
 	} else {
 		idx = regionA++;
 		ret = (GXTexRegion*)&(_gx[0x100+((idx&0x7)*(sizeof(GXTexRegion)>>2))]);
@@ -886,20 +886,20 @@ GXFifoObj* GX_Init(void *base,u32 size)
 		region = (GXTexRegion*)&(_gx[0x100+(i*(sizeof(GXTexRegion)>>2))]);
 		GX_InitTexCacheRegion(region,GX_FALSE,tmem_even,GX_TEXCACHE_32K,tmem_odd+0x80000,GX_TEXCACHE_32K);
 	}
-	for(;i<4;i++) {
+	for(i=0;i<4;i++) {
 		tmem_even = ((i<<1)+8)<<15;
 		tmem_odd = ((i<<1)+9)<<15;
-		region = (GXTexRegion*)&(_gx[0x100+(i*(sizeof(GXTexRegion)>>2))]);
+		region = (GXTexRegion*)&(_gx[0x120+(i*(sizeof(GXTexRegion)>>2))]);
 		GX_InitTexCacheRegion(region,GX_FALSE,tmem_even,GX_TEXCACHE_32K,tmem_odd,GX_TEXCACHE_32K);
 	}
-	for(i=0;i<GX_TLUT15;i++) {
-		tmem_even = (i<<13)+0x00120000;
+	for(i=0;i<16;i++) {
+		tmem_even = (i<<13)+0x000C0000;
 		tregion = (GXTlutRegion*)&(_gx[0x150+(i*(sizeof(GXTlutRegion)>>2))]);
 		GX_InitTlutRegion(tregion,tmem_even,GX_TLUT_256);
 	}
-	for(;i<GX_BIGTLUT3;i++) {
-		tmem_even = (i<<15)+0x00140000;
-		tregion = (GXTlutRegion*)&(_gx[0x150+(i*(sizeof(GXTlutRegion)>>2))]);
+	for(i=0;i<4;i++) {
+		tmem_even = (i<<15)+0x000E0000;
+		tregion = (GXTlutRegion*)&(_gx[0x150+((i+16)*(sizeof(GXTlutRegion)>>2))]);
 		GX_InitTlutRegion(tregion,tmem_even,GX_TLUT_1K);
 	}
 
