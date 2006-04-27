@@ -461,12 +461,13 @@ static u32 __bba_read_cid()
 
 	return cid;
 }
+
 static void __bba_reset()
 {
 	bba_out8(0x60,0x00);
 	udelay(10000);
-//	bba_cmd_in8_slow(0x0F);
-//	udelay(10000);
+	bba_cmd_in8_slow(0x0F);
+	udelay(10000);
 	bba_out8(BBA_NCRA,BBA_NCRA_RESET);
 	udelay(100);
 	bba_out8(BBA_NCRA,0x00);
@@ -475,7 +476,7 @@ static void __bba_reset()
 
 static void __bba_recv_init()
 {
-	bba_out8(BBA_NCRB,(BBA_NCRB_PR|BBA_NCRB_CA|BBA_NCRB_2_PACKETS_PER_INT));
+	bba_out8(BBA_NCRB,(BBA_NCRB_AB|BBA_NCRB_CA|BBA_NCRB_2_PACKETS_PER_INT));
 	bba_out8(BBA_SI_ACTRL2,0x74);
 	bba_out8(BBA_RXINTT, 0x00);
 	bba_out8(BBA_RXINTT+1, 0x06); /* 0x0600 = 61us */
@@ -781,13 +782,7 @@ static err_t __bba_init(struct netif *dev)
 	bba_out8(0x5e, 0x1f);
 	bba_out8(0x5f, 0x1f);	
 	udelay(100);
-/*
-	bba_out8(0x5b, (bba_in8(0x5b)&~0x80));
-	bba_out8(0x5e, 0x01);
-	bba_out8(0x5c, (bba_in8(0x5c)|0x04));
-*/
-	bba_out8(BBA_NCRB,0x00);
-	
+
 	__bba_recv_init();
 
 	/* This doesn't set the speed anymore - it simple kicks off NWAY */
@@ -795,6 +790,8 @@ static err_t __bba_init(struct netif *dev)
 	bba_out8(BBA_NWAYC,speed);
 	udelay(100);
 	bba_out8(BBA_NWAYC,(speed|0x04));
+	udelay(100);
+	bba_out8(BBA_NWAYC,(speed|0x08));
 	
 	bba_ins(BBA_NAFR_PAR0,priv->ethaddr->addr, 6);
 	LWIP_DEBUGF(NETIF_DEBUG,("MAC ADDRESS %02x:%02x:%02x:%02x:%02x:%02x\n", 
