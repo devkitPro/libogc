@@ -193,9 +193,6 @@ struct bba_priv {
 	struct eth_addr *ethaddr;
 };
 
-static u64 net_arp_ticks = 0;
-static wd_cntrl arp_time_cntrl;
-
 static lwpq_t wait_exi_queue;
 
 static struct netif *gc_netif = NULL;
@@ -236,12 +233,12 @@ extern void udelay(int us);
 									bba_out8((reg),((val)&0xff)); \
 									bba_out8(((reg)+1),(((val)&0xff00)>>8)); \
 							} while(0)
-
+/*
 static void bba_cmd_ins(u32 reg,void *val,u32 len);
 static void bba_cmd_outs(u32 reg,void *val,u32 len);
 static void bba_ins(u32 reg,void *val,u32 len);
 static void bba_outs(u32 reg,void *val,u32 len);
-
+*/
 extern lwpq_t tqtmr;
 extern vu32 tmr_flag;
 
@@ -254,13 +251,6 @@ static __inline__ void bba_cmd_insnosel(u32 reg,void *val,u32 len)
 	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_READ);
 }
 
-static void bba_cmd_ins(u32 reg,void *val,u32 len)
-{
-	bba_select();
-	bba_cmd_insnosel(reg,val,len);
-	bba_deselect();
-}
-
 static __inline__ void bba_cmd_outsnosel(u32 reg,void *val,u32 len)
 {
 	u16 req;
@@ -270,7 +260,68 @@ static __inline__ void bba_cmd_outsnosel(u32 reg,void *val,u32 len)
 	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_WRITE);
 }
 
-static void bba_cmd_outs(u32 reg,void *val,u32 len)
+static __inline__ void bba_insnosel(u32 reg,void *val,u32 len)
+{
+	u32 req;
+	req = (reg<<8)|0x80000000;
+	EXI_Imm(EXI_CHANNEL_0,&req,sizeof(req),EXI_WRITE,NULL);
+	EXI_Sync(EXI_CHANNEL_0);
+	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_READ);
+}
+
+static __inline__ void bba_outsnosel(u32 reg,void *val,u32 len)
+{
+	u32 req;
+	req = (reg<<8)|0xC0000000;
+	EXI_Imm(EXI_CHANNEL_0,&req,sizeof(req),EXI_WRITE,NULL);
+	EXI_Sync(EXI_CHANNEL_0);
+	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_WRITE);
+}
+
+static __inline__ void bba_insregister(u32 reg)
+{
+	u32 req;
+	req = (reg<<8)|0x80000000;
+	EXI_Imm(EXI_CHANNEL_0,&req,sizeof(req),EXI_WRITE,NULL);
+	EXI_Sync(EXI_CHANNEL_0);
+}
+
+static __inline__ void bba_insdata(void *val,u32 len)
+{
+	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_READ);
+}
+
+static __inline__ void bba_insdmadata(void *val,u32 len,s32 (*dmasubrcv)(s32 chn,s32 dev))
+{
+	EXI_Dma(EXI_CHANNEL_0,val,len,EXI_READ,dmasubrcv);
+}
+
+static __inline__ void bba_outsregister(u32 reg)
+{
+	u32 req;
+	req = (reg<<8)|0xC0000000;
+	EXI_Imm(EXI_CHANNEL_0,&req,sizeof(req),EXI_WRITE,NULL);
+	EXI_Sync(EXI_CHANNEL_0);
+}
+
+static __inline__ void bba_outsdata(void *val,u32 len)
+{
+	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_WRITE);
+}
+
+static __inline__ void bba_outsdmadata(void *val,u32 len,s32 (*dmasubsnd)(s32 chn,s32 dev))
+{
+	EXI_Dma(EXI_CHANNEL_0,val,len,EXI_WRITE,dmasubsnd);
+}
+
+static inline void bba_cmd_ins(u32 reg,void *val,u32 len)
+{
+	bba_select();
+	bba_cmd_insnosel(reg,val,len);
+	bba_deselect();
+}
+
+static inline void bba_cmd_outs(u32 reg,void *val,u32 len)
 {
 	bba_select();
 	bba_cmd_outsnosel(reg,val,len);
@@ -299,6 +350,21 @@ static inline void bba_cmd_out8(u32 reg,u8 val)
 	bba_cmd_outs(reg,&val,sizeof(val));
 }
 
+static inline void bba_ins(u32 reg,void *val,u32 len)
+{
+	bba_select();
+	bba_insnosel(reg,val,len);
+	bba_deselect();
+}
+
+
+static inline void bba_outs(u32 reg,void *val,u32 len)
+{
+	bba_select();
+	bba_outsnosel(reg,val,len);
+	bba_deselect();
+}
+
 static inline u8 bba_in8(u32 reg)
 {
 	u8 val;
@@ -311,77 +377,9 @@ static inline void bba_out8(u32 reg,u8 val)
 	bba_outs(reg,&val,sizeof(val));
 }
 
-static inline void bba_insnosel(u32 reg,void *val,u32 len)
-{
-	u32 req;
-	req = (reg<<8)|0x80000000;
-	EXI_Imm(EXI_CHANNEL_0,&req,sizeof(req),EXI_WRITE,NULL);
-	EXI_Sync(EXI_CHANNEL_0);
-	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_READ);
-}
-
-static void bba_ins(u32 reg,void *val,u32 len)
-{
-	bba_select();
-	bba_insnosel(reg,val,len);
-	bba_deselect();
-}
-
-static inline void bba_outsnoselect(u32 reg,void *val,u32 len)
-{
-	u32 req;
-	req = (reg<<8)|0xC0000000;
-	EXI_Imm(EXI_CHANNEL_0,&req,sizeof(req),EXI_WRITE,NULL);
-	EXI_Sync(EXI_CHANNEL_0);
-	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_WRITE);
-}
-
-static void bba_outs(u32 reg,void *val,u32 len)
-{
-	bba_select();
-	bba_outsnoselect(reg,val,len);
-	bba_deselect();
-}
-
-static inline void bba_insregister(u32 reg)
-{
-	u32 req;
-	req = (reg<<8)|0x80000000;
-	EXI_Imm(EXI_CHANNEL_0,&req,sizeof(req),EXI_WRITE,NULL);
-	EXI_Sync(EXI_CHANNEL_0);
-}
-
-static inline void bba_insdata(void *val,u32 len)
-{
-	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_READ);
-}
-
-static inline void bba_insdmadata(void *val,u32 len,s32 (*dmasubrcv)(s32 chn,s32 dev))
-{
-	EXI_Dma(EXI_CHANNEL_0,val,len,EXI_READ,dmasubrcv);
-}
-
-static inline void bba_outsregister(u32 reg)
-{
-	u32 req;
-	req = (reg<<8)|0xC0000000;
-	EXI_Imm(EXI_CHANNEL_0,&req,sizeof(req),EXI_WRITE,NULL);
-	EXI_Sync(EXI_CHANNEL_0);
-}
-
-static inline void bba_outsdata(void *val,u32 len)
-{
-	EXI_ImmEx(EXI_CHANNEL_0,val,len,EXI_WRITE);
-}
-
-static inline void bba_outsdmadata(void *val,u32 len,s32 (*dmasubsnd)(s32 chn,s32 dev))
-{
-	EXI_Dma(EXI_CHANNEL_0,val,len,EXI_WRITE,dmasubsnd);
-}
-
 static s32 __bba_exi_unlock(s32 chn,s32 dev)
 {
-	LWP_ThreadSignal(wait_exi_queue);
+	LWP_ThreadBroadcast(wait_exi_queue);
 	return 1;
 }
 
@@ -443,7 +441,8 @@ static u32 __bba_get_linkstateasync()
 	do {
 		udelay(500);
 		ret = __linkstate()&0xf0;
-	} while(!ret && ++cnt<4000);
+		cnt++;
+	} while(!ret && cnt<10000);
 	return ret;
 }
 
@@ -921,17 +920,9 @@ static s32 bba_event_handler(s32 nChn,s32 nDev)
 	return 1;
 }
 
-static void __arp_timer(void *arg)
-{
-	tmr_flag |= 0x01;
-	LWP_ThreadSignal(tqtmr);
-	__lwp_wd_insert_ticks(&arp_time_cntrl,net_arp_ticks);
-}
-
 err_t bba_init(struct netif *dev)
 {
 	err_t ret;
-	struct timespec tb;
 
 	_siReg[15] = (_siReg[15]&~0x80000000);
 	
@@ -949,14 +940,6 @@ err_t bba_init(struct netif *dev)
 
 	ret = __bba_get_linkstateasync();
 	if(ret) {
-		etharp_init();
-
-		tb.tv_sec = ARP_TMR_INTERVAL/TB_MSPERSEC;
-		tb.tv_nsec = 0;
-		net_arp_ticks = __lwp_wd_calc_ticks(&tb);
-		__lwp_wd_initialize(&arp_time_cntrl,__arp_timer,NULL);
-		__lwp_wd_insert_ticks(&arp_time_cntrl,net_arp_ticks);
-
 		dev->flags |= NETIF_FLAG_LINK_UP;
 		ret = ERR_OK;
 	} else {
