@@ -175,11 +175,7 @@ unsigned int _DEFUN(nanosleep,(tb),
 
 static s32 __time_exi_unlock(s32 chn,s32 dev)
 {
-	u32 level;
-
-	_CPU_ISR_Disable(level);
-	LWP_ThreadSignal(time_exi_wait);
-	_CPU_ISR_Restore(level);
+	LWP_ThreadBroadcast(time_exi_wait);
 	return 1;
 }
 
