@@ -417,7 +417,7 @@ static void __bba_reset()
 
 static void __bba_recv_init()
 {
-	bba_out8(BBA_NCRB,(BBA_NCRB_PR|BBA_NCRB_CA|BBA_NCRB_AB));
+	bba_out8(BBA_NCRB,(BBA_NCRB_CA|BBA_NCRB_AB));
 	bba_out8(BBA_MISC2,(BBA_MISC2_AUTORCVR));
 
 	bba_out12(BBA_TLBP, BBA_INIT_TLBP);
@@ -806,9 +806,9 @@ s8_t uip_bba_init(struct uip_netif *dev)
 
 	cnt = 0;
 	do {
-		udelay(20000);
+		udelay(500);
 		cnt++;
-	} while((ret=__bba_getlink_state_async())==0 && cnt<250);
+	} while((ret=__bba_getlink_state_async())==0 && cnt<10000);
 	if(!ret) return UIP_ERR_IF;
 
 	uip_netif_setup(dev);
