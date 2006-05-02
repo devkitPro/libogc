@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: lwp.c,v 1.25 2006-05-02 11:56:10 shagkur Exp $
+$Id: lwp.c,v 1.26 2006-05-02 14:18:14 shagkur Exp $
 
 lwp.c -- Thread subsystem I
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.25  2006/05/02 11:56:10  shagkur
+- changed object handling & thread protection
+
 Revision 1.24  2006/05/02 09:34:08  shagkur
 - changed object handling and handle typedef
 - removed useless ISR disabling
@@ -258,7 +261,7 @@ lwp_t LWP_GetSelf()
 
 	__lwp_thread_dispatchdisable();
 	ret = (lwp_t)_thr_executing->object.id;
-	__lwp_thread_dispatchenable();
+	__lwp_thread_dispatchunnest();
 
 	return ret;
 }
