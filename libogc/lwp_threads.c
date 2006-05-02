@@ -571,12 +571,9 @@ void __lwp_thread_close(lwp_cntrl *thethread)
 
 	__lwp_stack_free(thethread);
 
-	_CPU_ISR_Disable(level);
-	if(thethread->information) {
-		__lwp_objmgr_close(thethread->information,&thethread->object);
-		__lwp_objmgr_free(thethread->information,&thethread->object);
-	}
-	_CPU_ISR_Restore(level);
+	__lwp_objmgr_close(thethread->information,&thethread->object);
+	__lwp_objmgr_free(thethread->information,&thethread->object);
+	thethread->information = NULL;
 }
 
 void __lwp_thread_closeall()
