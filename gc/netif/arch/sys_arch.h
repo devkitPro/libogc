@@ -30,25 +30,27 @@
  * 
  * Author: Adam Dunkels <adam@sics.se>
  *
- * $Id: sys_arch.h,v 1.3 2005-12-09 09:27:40 shagkur Exp $
+ * $Id: sys_arch.h,v 1.4 2006-05-02 09:41:40 shagkur Exp $
  */
 #ifndef __SYS_GC_H__
 #define __SYS_GC_H__
 
-#include <types.h>
 #include <lwp.h>
 #include <message.h>
+#include <mutex.h>
+#include <cond.h>
+#include <semaphore.h>
 
-#define SYS_MBOX_NULL NULL
-#define SYS_SEM_NULL  NULL
+#define SYS_MBOX_NULL		MQ_BOX_NULL
+#define SYS_SEM_NULL		LWP_SEM_NULL
 
-typedef lwp_sem sys_sem;
-typedef lwp_sem *sys_sem_t;
+typedef sem_t sys_sem;
+typedef sem_t *sys_sem_t;
 
-typedef mq_box sys_mbox;
-typedef mq_box *sys_mbox_t;
+typedef mqbox_t sys_mbox;
+typedef mqbox_t *sys_mbox_t;
 
-struct sys_thread;
-typedef struct sys_thread *sys_thread_t;
+typedef lwp_t sys_thread;
+typedef lwp_t* sys_thread_t;
 
 #endif /* __SYS_C64_H__ */

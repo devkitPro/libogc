@@ -72,7 +72,7 @@ struct apimsg_msg {
 			u32 len;
 			u8 copy;
 		} w;
-		mq_box_t mbox;
+		sys_mbox mbox;
 		u16 len;
 	} msg;
 };

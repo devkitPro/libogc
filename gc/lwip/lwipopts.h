@@ -70,17 +70,17 @@ a lot of data that needs to be copied, this should be set high. */
 /* The following four are used only with the sequential API and can be
    set to 0 if the application only will use the raw API. */
 /* MEMP_NUM_NETBUF: the number of struct netbufs. */
-#define MEMP_NUM_NETBUF         8
+#define MEMP_NUM_NETBUF         16
 /* MEMP_NUM_NETCONN: the number of struct netconns. */
-#define MEMP_NUM_NETCONN        8
+#define MEMP_NUM_NETCONN        16
 /* MEMP_NUM_APIMSG: the number of struct api_msg, used for
    communication between the TCP/IP stack and the sequential
    programs. */
-#define MEMP_NUM_API_MSG        32
+#define MEMP_NUM_API_MSG        128
 /* MEMP_NUM_TCPIPMSG: the number of struct tcpip_msg, which is used
    for sequential API communication and incoming packets. Used in
    src/api/tcpip.c. */
-#define MEMP_NUM_TCPIP_MSG      64
+#define MEMP_NUM_TCPIP_MSG      128
 /* MEMP_NUM_SYS_TIMEOUT: the number of simulateously active
    timeouts. */
 #define MEMP_NUM_SYS_TIMEOUT    0

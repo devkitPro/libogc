@@ -44,11 +44,6 @@
 
 #include "lwip/err.h"
 
-#include <message.h>
-#include <mutex.h>
-#include <cond.h>
-#include <semaphore.h>
-
 #define NETCONN_NOCOPY 0x00
 #define NETCONN_COPY   0x01
 
@@ -93,9 +88,9 @@ struct netconn {
 	} pcb;
 	err_t err;
 	sem_t sem;
-	mq_box_t mbox;
-	mq_box_t recvmbox;
-	mq_box_t acceptmbox;
+	sys_mbox mbox;
+	sys_mbox recvmbox;
+	sys_mbox acceptmbox;
 	u16 recvavail;
 	s32 socket;
 	void (*callback)(struct netconn *,enum netconn_evt,u32);

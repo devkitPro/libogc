@@ -41,8 +41,8 @@
 
 /* For a totally minimal and standalone system, we provide null
    definitions of the sys_ functions. */
-typedef u8_t sys_sem_t;
-typedef u8_t sys_mbox_t;
+#include "arch/sys_arch.h"
+
 struct sys_timeout {u8_t dummy;};
 
 #define sys_init()
