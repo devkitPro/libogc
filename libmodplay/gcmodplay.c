@@ -129,20 +129,18 @@ static s32 SndBufStart(MODSNDBUF *sndbuf)
 	DCFlushRange(audioBuf[0],SNDBUFFERSIZE);
 	DCFlushRange(audioBuf[1],SNDBUFFERSIZE);
 
-	AUDIO_RegisterDMACallback(dmaCallback);
-
 	while(thr_running);
 
 	curaudio = 0;
 	sndPlaying = TRUE;
 	if(LWP_CreateThread(&hplayer,player,NULL,player_stack,STACKSIZE,80)!=-1) {
+		AUDIO_RegisterDMACallback(dmaCallback);
 		AUDIO_InitDMA((u32)audioBuf[curaudio],curr_datalen);
 		AUDIO_StartDMA();
 		return 1;
 	}
-
-	AUDIO_RegisterDMACallback(NULL);
 	sndPlaying = FALSE;
+
 	return -1;
 }
 
