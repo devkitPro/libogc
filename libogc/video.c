@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: video.c,v 1.44 2006-04-10 05:30:55 shagkur Exp $
+$Id: video.c,v 1.45 2006-05-02 09:38:59 shagkur Exp $
 
 video.c -- VIDEO subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.44  2006/04/10 05:30:55  shagkur
+- changed calls to thread queue functions to meet the new prototypes.
+
 Revision 1.43  2005/12/09 09:35:45  shagkur
 no message
 
@@ -1269,7 +1272,9 @@ void* __VIDEO_GetNextFramebuffer()
 
 void VIDEO_Init()
 {
-	u32 vimode = 0;
+	u32 level,vimode = 0;
+
+	_CPU_ISR_Disable(level);
 
 	if(!(_viReg[1]&0x0001))
 		__VIInit(VI_TVMODE_NTSC_INT);
@@ -1344,6 +1349,7 @@ void VIDEO_Init()
 
 	IRQ_Request(IRQ_PI_VI,__VIRetraceHandler,NULL);
 	__UnmaskIrq(IRQMASK(IRQ_PI_VI));
+	_CPU_ISR_Restore(level);
 }
 
 void VIDEO_Configure(GXRModeObj *rmode)
