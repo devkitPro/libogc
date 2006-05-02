@@ -22,6 +22,8 @@
 #include "uIP/uip_pbuf.h"
 #include "uIP/uip_netif.h"
 
+#include "lwp_config.h"
+
 #define GEKKO_MAX_BP	1024
 
 #define PC_REGNUM		64
@@ -76,10 +78,11 @@ static struct bp_entry *p_bpentries = NULL;
 
 void __breakinst();
 
-extern void __lwp_getthreadlist(lwp_obj** thrs);
-extern frame_context* __lwp_getthrcontext();
-extern u32 __lwp_getcurrentid();
-extern u32 __lwp_is_threadactive(s32 thr_id);
+extern lwp_t __lwp_thread_currentid();
+extern BOOL __lwp_thread_exists(u32 id);
+extern BOOL __lwp_thread_isalive(s32 thr_id);
+extern frame_context* __lwp_thread_context(s32 thr_id);
+
 extern void __exception_load(u32,void *,u32,void*);
 extern void __excpetion_close(u32);
 
@@ -385,23 +388,20 @@ static void putpacket(const u8 *buffer)
 
 static void handle_query()
 {
-	u32 i,id;
+	u32 id;
 	u8 *ptr;
-	lwp_obj *threads = NULL;
 
 //	printf("%s\n",remcomInBuffer);
-/*
-	__lwp_getthreadlist(&threads);
+
 	if(remcomInBuffer[1]=='C') 
-		sprintf(remcomOutBuffer,"QC%04x",threads[dbg_currthr].thethread.id+1);
+		sprintf(remcomOutBuffer,"QC%04x",dbg_currthr);
 	else if(strncmp(&remcomInBuffer[2],"ThreadInfo",10)==0) {
 		ptr = remcomOutBuffer;
 		if(remcomInBuffer[1]=='f') {
 			*ptr = 'm';
-			for(i=0;i<1024;i++) {
-				if(threads && threads[i].lwp_id!=-1) {
+			for(id=0;id<LWP_MAX_THREADS;id++) {
+				if(__lwp_thread_exists(id)) {
 					ptr++;
-					id = threads[i].thethread.id+1;
 					ptr = mem2hex((u8*)&id,ptr,4);
 					*ptr =  ',';
 				}
@@ -412,7 +412,6 @@ static void handle_query()
 		strcpy(remcomOutBuffer,"OK");
 	else if(strncmp(&remcomInBuffer[1],"Offsets",7)==0)
 		sprintf(remcomOutBuffer,"Text=%08x;Data=%08x;Bss=%08x",((u32)__text_fstart-(u32)__text_fstart),((u32)__data_fstart-(u32)__text_fstart),((u32)__bss_fstart-(u32)__text_fstart));
-*/
 }
 
 void c_debug_handler(frame_context *ctx)
@@ -431,8 +430,11 @@ void c_debug_handler(frame_context *ctx)
 	
 	if(dbg_listensock>=0 && (dbg_datasock<0 || dbg_active==0))
 		dbg_datasock = tcpip_accept(dbg_listensock);
-	if(dbg_datasock<0) return;
-	else tcpip_starttimer(dbg_datasock);
+	if(dbg_datasock<0) {
+		mtmsr(msr);
+		return;
+	} else 
+		tcpip_starttimer(dbg_datasock);
 	
 	sigval = computeSignal(ctx->EXCPT_Number);
 	
@@ -457,7 +459,7 @@ void c_debug_handler(frame_context *ctx)
 	putpacket(remcomOutBuffer);
 
 	pctx = ctx;
-	except_thr = __lwp_getcurrentid();
+	except_thr = __lwp_thread_currentid();
 
 	while(1) {
 		remcomOutBuffer[0] = 0;
@@ -471,8 +473,8 @@ void c_debug_handler(frame_context *ctx)
 				break;
 			case 'H':
 				if(remcomInBuffer[2]=='-') dbg_currthr = except_thr;
-				else dbg_currthr = strtoul(remcomInBuffer+2,0,16)-1;
-				if(dbg_currthr!=except_thr) pctx = __lwp_getthrcontext(dbg_currthr);
+				else dbg_currthr = strtoul(remcomInBuffer+2,0,16);
+				if(dbg_currthr!=except_thr) pctx = __lwp_thread_context(dbg_currthr);
 				else pctx = ctx;
 				strcpy(remcomOutBuffer,"OK");
 				break;
@@ -528,7 +530,7 @@ void c_debug_handler(frame_context *ctx)
 			case 'T':
 				ptr = &remcomInBuffer[1];
 				hexToInt(&ptr,&thrid);
-				if(__lwp_is_threadactive(thrid-1)) strcpy(remcomOutBuffer,"OK");
+				if(__lwp_thread_isalive(thrid)) strcpy(remcomOutBuffer,"OK");
 				else strcpy(remcomOutBuffer,"E01");
 				break;
 			case 'z':
