@@ -76,7 +76,7 @@ struct __gxfifo {
 };
 
 static void *_gxcurrbp = NULL;
-static lwp_t _gxcurrentlwp = NULL;
+static lwp_t _gxcurrentlwp = -1;
 
 static GXFifoObj _gxdefiniobj;
 
@@ -1100,7 +1100,7 @@ void GX_SetDrawSync(u16 token)
 
 void GX_SetDrawDone()
 {
-	u32 level = 0;
+	u32 level;
 	_CPU_ISR_Disable(level);
 	GX_LOAD_BP_REG(0x45000002); // set draw done!
 	GX_Flush();
@@ -1123,8 +1123,17 @@ void GX_WaitDrawDone()
 
 void GX_DrawDone()
 {
-	GX_SetDrawDone();
-	GX_WaitDrawDone();
+	u32 level;
+	_CPU_ISR_Disable(level);
+	GX_LOAD_BP_REG(0x45000002); // set draw done!
+	GX_Flush();
+
+	_gxfinished = 0;
+	_CPU_ISR_Flash(level);
+	
+	while(!_gxfinished)
+		LWP_ThreadSleep(_gxwaitfinish);
+	_CPU_ISR_Restore(level);
 }
 
 GXDrawDoneCallback GX_SetDrawDoneCallback(GXDrawDoneCallback cb)
