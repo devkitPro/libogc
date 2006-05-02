@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: message.c,v 1.9 2006-05-02 09:38:21 shagkur Exp $
+$Id: message.c,v 1.10 2006-05-02 11:56:10 shagkur Exp $
 
 message.c -- Thread subsystem II
 
@@ -28,6 +28,10 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.9  2006/05/02 09:38:21  shagkur
+- changed object handling and handle typedef
+- removed ISR disabling
+
 Revision 1.8  2005/12/09 09:35:45  shagkur
 no message
 
@@ -60,7 +64,6 @@ void __lwp_mqbox_init()
 
 static __inline__ mqbox_st* __lwp_mqbox_open(mqbox_t mbox)
 {
-	__lwp_thread_dispatchdisable();
 	return (mqbox_st*)__lwp_objmgr_get(&_lwp_mqbox_objects,mbox);
 }
 
@@ -76,8 +79,12 @@ static mqbox_st* __lwp_mqbox_allocate()
 
 	__lwp_thread_dispatchdisable();
 	mqbox = (mqbox_st*)__lwp_objmgr_allocate(&_lwp_mqbox_objects);
-	if(mqbox) __lwp_objmgr_open(&_lwp_mqbox_objects,&mqbox->object);
-	return mqbox;
+	if(mqbox) {
+		__lwp_objmgr_open(&_lwp_mqbox_objects,&mqbox->object);
+		return mqbox;
+	}
+	__lwp_thread_dispatchenable();
+	return NULL;
 }
 
 s32 MQ_Init(mqbox_t *mqbox,u32 count)
@@ -88,10 +95,7 @@ s32 MQ_Init(mqbox_t *mqbox,u32 count)
 	if(!mqbox) return -1;
 
 	ret = __lwp_mqbox_allocate();
-	if(!ret) {
-		__lwp_thread_dispatchenable();
-		return MQ_ERROR_TOOMANY;
-	}
+	if(!ret) return MQ_ERROR_TOOMANY;
 
 	attr.mode = LWP_MQ_FIFO;
 	if(!__lwpmq_initialize(&ret->mqueue,&attr,count,sizeof(mqmsg_t))) {
@@ -110,10 +114,8 @@ void MQ_Close(mqbox_t mqbox)
 	mqbox_st *mbox;
 
 	mbox = __lwp_mqbox_open(mqbox);
-	if(!mbox) {
-		__lwp_thread_dispatchenable();
-		return;
-	}
+	if(!mbox) return;
+
 	__lwpmq_close(&mbox->mqueue,0);
 	__lwp_thread_dispatchenable();
 
@@ -127,10 +129,7 @@ BOOL MQ_Send(mqbox_t mqbox,mqmsg_t msg,u32 flags)
 	u32 wait = (flags==MQ_MSG_BLOCK)?TRUE:FALSE;
 
 	mbox = __lwp_mqbox_open(mqbox);
-	if(!mbox) {
-		__lwp_thread_dispatchenable();
-		return FALSE;
-	}
+	if(!mbox) return FALSE;
 	
 	ret = FALSE;
 	if(__lwpmq_submit(&mbox->mqueue,msg,sizeof(mqmsg_t),mbox->object.id,LWP_MQ_SEND_REQUEST,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
@@ -146,10 +145,7 @@ BOOL MQ_Receive(mqbox_t mqbox,mqmsg_t *msg,u32 flags)
 	u32 tmp,wait = (flags==MQ_MSG_BLOCK)?TRUE:FALSE;
 
 	mbox = __lwp_mqbox_open(mqbox);
-	if(!mbox) {
-		__lwp_thread_dispatchenable();
-		return FALSE;
-	}
+	if(!mbox) return FALSE;
 
 	ret = FALSE;
 	if(__lwpmq_seize(&mbox->mqueue,mbox->object.id,(void*)msg,&tmp,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
@@ -165,10 +161,7 @@ BOOL MQ_Jam(mqbox_t mqbox,mqmsg_t msg,u32 flags)
 	u32 wait = (flags==MQ_MSG_BLOCK)?TRUE:FALSE;
 
 	mbox = __lwp_mqbox_open(mqbox);
-	if(!mbox) {
-		__lwp_thread_dispatchenable();
-		return FALSE;
-	}
+	if(!mbox) return FALSE;
 
 	ret = FALSE;
 	if(__lwpmq_submit(&mbox->mqueue,msg,sizeof(mqmsg_t),mbox->object.id,LWP_MQ_SEND_URGENT,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;

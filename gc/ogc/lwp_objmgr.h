@@ -28,6 +28,8 @@ void __lwp_objmgr_initinfo(lwp_objinfo *info,u32 max_nodes,u32 node_size);
 void __lwp_objmgr_free(lwp_objinfo *info,lwp_obj *object);
 lwp_obj* __lwp_objmgr_allocate(lwp_objinfo *info);
 lwp_obj* __lwp_objmgr_get(lwp_objinfo *info,u32 id);
+lwp_obj* __lwp_objmgr_get_isrdisable(lwp_objinfo *info,u32 id,u32 *p_level);
+lwp_obj* __lwp_objmgr_get_noprotection(lwp_objinfo *info,u32 id);
 
 #ifdef LIBOGC_INTERNAL
 #include <libogc/lwp_objmgr.inl>

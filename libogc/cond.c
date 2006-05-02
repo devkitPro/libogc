@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: cond.c,v 1.12 2006-05-02 09:32:18 shagkur Exp $
+$Id: cond.c,v 1.13 2006-05-02 11:56:10 shagkur Exp $
 
 cond.c -- Thread subsystem V
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.12  2006/05/02 09:32:18  shagkur
+- changed object handling and handle typedef
+
 Revision 1.11  2005/12/09 09:35:45  shagkur
 no message
 
@@ -65,7 +68,6 @@ void __lwp_cond_init()
 
 static __inline__ cond_st* __lwp_cond_open(cond_t cond)
 {
-	__lwp_thread_dispatchdisable();
 	return (cond_st*)__lwp_objmgr_get(&_lwp_cond_objects,cond);
 }
 
@@ -81,8 +83,12 @@ static cond_st* __lwp_cond_allocate()
 
 	__lwp_thread_dispatchdisable();
 	cond = (cond_st*)__lwp_objmgr_allocate(&_lwp_cond_objects);
-	if(cond) __lwp_objmgr_open(&_lwp_cond_objects,&cond->object);
-	return cond;
+	if(cond) {
+		__lwp_objmgr_open(&_lwp_cond_objects,&cond->object);
+		return cond;
+	}
+	__lwp_thread_dispatchenable();
+	return NULL;
 }
 
 static s32 __lwp_cond_waitsupp(cond_t cond,mutex_t mutex,u32 timeout,u8 timedout)
@@ -91,7 +97,9 @@ static s32 __lwp_cond_waitsupp(cond_t cond,mutex_t mutex,u32 timeout,u8 timedout
 	cond_st *thecond;
 
 	thecond = __lwp_cond_open(cond);
-	if(!thecond || (thecond->lock && thecond->lock!=mutex)) {
+	if(!thecond) return -1;
+		
+	if(thecond->lock!=LWP_MUTEX_NULL && thecond->lock!=mutex) {
 		__lwp_thread_dispatchenable();
 		return EINVAL;
 	}
@@ -128,10 +136,7 @@ static s32 __lwp_cond_signalsupp(cond_t cond,u8 isbroadcast)
 	cond_st *thecond;
 	
 	thecond = __lwp_cond_open(cond);
-	if(!thecond) {
-		__lwp_thread_dispatchenable();
-		return -1;
-	}
+	if(!thecond) return -1;
 
 	do {
 		thethread = __lwp_threadqueue_dequeue(&thecond->wait_queue);
@@ -148,10 +153,7 @@ s32 LWP_CondInit(cond_t *cond)
 	if(!cond) return -1;
 	
 	ret = __lwp_cond_allocate();
-	if(!ret) {
-		__lwp_thread_dispatchenable();
-		return ENOMEM;
-	}
+	if(!ret) return ENOMEM;
 
 	ret->lock = LWP_MUTEX_NULL;
 	__lwp_threadqueue_init(&ret->wait_queue,LWP_THREADQ_MODEFIFO,LWP_STATES_WAITING_FOR_CONDVAR,ETIMEDOUT);
@@ -197,10 +199,7 @@ s32 LWP_CondDestroy(cond_t cond)
 	cond_st *ptr;
 
 	ptr = __lwp_cond_open(cond);
-	if(!ptr) {
-		__lwp_thread_dispatchenable();
-		return -1;
-	}
+	if(!ptr) return -1;
 
 	if(__lwp_threadqueue_first(&ptr->wait_queue)) {
 		__lwp_thread_dispatchenable();

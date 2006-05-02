@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <lwp_threads.h>
 #include <lwp_wkspace.h>
 
 #include "lwp_objmgr.h"
@@ -64,16 +65,42 @@ void __lwp_objmgr_initinfo(lwp_objinfo *info,u32 max_nodes,u32 node_size)
 	_lwp_objmgr_mem_alc = _lwp_objmgr_mem_req;
 }
 
-lwp_obj* __lwp_objmgr_get(lwp_objinfo *info,u32 id)
+lwp_obj* __lwp_objmgr_get_isrdisable(lwp_objinfo *info,u32 id,u32 *p_level)
 {
 	u32 level;
 	lwp_obj *object = NULL;
 
 	_CPU_ISR_Disable(level);
-	if(info->max_id>=id) object = info->local_table[id];
+	if(info->max_id>=id) {
+		if((object=info->local_table[id])!=NULL) {
+			*p_level = level;
+			return object;
+		}
+	}
 	_CPU_ISR_Restore(level);
+	return NULL;
+}
 
-	return object;
+lwp_obj* __lwp_objmgr_get_noprotection(lwp_objinfo *info,u32 id)
+{
+	lwp_obj *object = NULL;
+
+	if(info->max_id>=id) {
+		if((object=info->local_table[id])!=NULL) return object;
+	}
+	return NULL;
+}
+
+lwp_obj* __lwp_objmgr_get(lwp_objinfo *info,u32 id)
+{
+	lwp_obj *object = NULL;
+
+	if(info->max_id>=id) {
+		__lwp_thread_dispatchdisable();
+		if((object=info->local_table[id])!=NULL) return object;
+		__lwp_thread_dispatchenable();
+	}
+	return NULL;
 }
 
 lwp_obj* __lwp_objmgr_allocate(lwp_objinfo *info)
