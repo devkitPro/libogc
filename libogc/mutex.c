@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: mutex.c,v 1.10 2005-12-09 09:35:45 shagkur Exp $
+$Id: mutex.c,v 1.11 2006-05-02 09:38:21 shagkur Exp $
 
 mutex.c -- Thread subsystem III
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.10  2005/12/09 09:35:45  shagkur
+no message
+
 Revision 1.9  2005/11/21 12:35:32  shagkur
 no message
 
@@ -51,11 +54,18 @@ typedef struct _mutex_st
 
 static lwp_objinfo _lwp_mutex_objects;
 
-static s32 __lwp_mutex_locksupp(mutex_t mutex,u32 timeout,u8 block)
+static s32 __lwp_mutex_locksupp(mutex_t lock,u32 timeout,u8 block)
 {
 	u32 level;
+	mutex_st *p;
+
 	_CPU_ISR_Disable(level);
-	__lwp_mutex_seize(&((mutex_st*)mutex)->mutex,(u32)mutex,block,timeout,level);
+	p = (mutex_st*)__lwp_objmgr_get(&_lwp_mutex_objects,lock);
+	if(!p) {
+		_CPU_ISR_Restore(level);
+		return -1;
+	}
+	__lwp_mutex_seize(&p->mutex,p->object.id,block,timeout,level);
 	return _thr_executing->wait.ret_code;
 }
 
@@ -65,20 +75,38 @@ void __lwp_mutex_init()
 }
 
 
+static __inline__ mutex_st* __lwp_mutex_open(mutex_t lock)
+{
+	__lwp_thread_dispatchdisable();
+	return (mutex_st*)__lwp_objmgr_get(&_lwp_mutex_objects,lock);
+}
+
+static __inline__ void __lwp_mutex_free(mutex_st *lock)
+{
+	__lwp_objmgr_close(&_lwp_mutex_objects,&lock->object);
+	__lwp_objmgr_free(&_lwp_mutex_objects,&lock->object);
+}
+
+static mutex_st* __lwp_mutex_allocate()
+{
+	mutex_st *lock;
+
+	__lwp_thread_dispatchdisable();
+	lock = (mutex_st*)__lwp_objmgr_allocate(&_lwp_mutex_objects);
+	if(lock) __lwp_objmgr_open(&_lwp_mutex_objects,&lock->object);
+	return lock;
+}
+
 s32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
 {
-	u32 level;
 	lwp_mutex_attr attr;
 	mutex_st *ret;
 	
 	if(!mutex) return -1;
 
-	_CPU_ISR_Disable(level);
-	__lwp_thread_dispatchdisable();
-	ret = (mutex_st*)__lwp_objmgr_allocate(&_lwp_mutex_objects);
+	ret = __lwp_mutex_allocate();
 	if(!ret) {
 		__lwp_thread_dispatchenable();
-		_CPU_ISR_Restore(level);
 		return -1;
 	}
 
@@ -88,31 +116,29 @@ s32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
 	attr.prioceil = 1; //__lwp_priotocore(LWP_PRIO_MAX-1);
 	__lwp_mutex_initialize(&ret->mutex,&attr,LWP_MUTEX_UNLOCKED);
 
-	*mutex = (mutex_t)ret;
-	__lwp_objmgr_open(&_lwp_mutex_objects,&ret->object);
+	*mutex = (mutex_t)ret->object.id;
 	__lwp_thread_dispatchenable();
-	_CPU_ISR_Restore(level);
 	return 0;
 }
 
 s32 LWP_MutexDestroy(mutex_t mutex)
 {
-	u32 level;
-	mutex_st *p = (mutex_st*)mutex;
+	mutex_st *p;
 
-	_CPU_ISR_Disable(level);
-	__lwp_thread_dispatchdisable();
+	p = __lwp_mutex_open(mutex);
+	if(!p) {
+		__lwp_thread_dispatchenable();
+		return 0;
+	}
+
 	if(__lwp_mutex_locked(&p->mutex)) {
 		__lwp_thread_dispatchenable();
-		_CPU_ISR_Restore(level);
 		return EBUSY;
 	}
-	
 	__lwp_mutex_flush(&p->mutex,EINVAL);
-	__lwp_objmgr_close(&_lwp_mutex_objects,&p->object);
-	__lwp_objmgr_free(&_lwp_mutex_objects,&p->object);
 	__lwp_thread_dispatchenable();
-	_CPU_ISR_Restore(level);
+
+	__lwp_mutex_free(p);
 	return 0;
 }
 
@@ -129,8 +155,15 @@ s32 LWP_MutexTryLock(mutex_t mutex)
 s32 LWP_MutexUnlock(mutex_t mutex)
 {
 	u32 ret;
-	__lwp_thread_dispatchdisable();
-	ret = __lwp_mutex_surrender(&((mutex_st*)mutex)->mutex);
+	mutex_st *lock;
+
+	lock = __lwp_mutex_open(mutex);
+	if(!lock) {
+		__lwp_thread_dispatchenable();
+		return -1;
+	}
+	ret = __lwp_mutex_surrender(&lock->mutex);
 	__lwp_thread_dispatchenable();
+
 	return ret;
 }

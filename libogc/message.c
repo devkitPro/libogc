@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: message.c,v 1.8 2005-12-09 09:35:45 shagkur Exp $
+$Id: message.c,v 1.9 2006-05-02 09:38:21 shagkur Exp $
 
 message.c -- Thread subsystem II
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.8  2005/12/09 09:35:45  shagkur
+no message
+
 Revision 1.7  2005/11/21 12:35:32  shagkur
 no message
 
@@ -55,94 +58,121 @@ void __lwp_mqbox_init()
 	__lwp_objmgr_initinfo(&_lwp_mqbox_objects,LWP_MAX_MQUEUES,sizeof(mqbox_st));
 }
 
-s32 MQ_Init(mq_box_t *mqbox,u32 count)
+static __inline__ mqbox_st* __lwp_mqbox_open(mqbox_t mbox)
 {
-	u32 level;
+	__lwp_thread_dispatchdisable();
+	return (mqbox_st*)__lwp_objmgr_get(&_lwp_mqbox_objects,mbox);
+}
+
+static __inline__ void __lwp_mqbox_free(mqbox_st *mqbox)
+{
+	__lwp_objmgr_close(&_lwp_mqbox_objects,&mqbox->object);
+	__lwp_objmgr_free(&_lwp_mqbox_objects,&mqbox->object);
+}
+
+static mqbox_st* __lwp_mqbox_allocate()
+{
+	mqbox_st *mqbox;
+
+	__lwp_thread_dispatchdisable();
+	mqbox = (mqbox_st*)__lwp_objmgr_allocate(&_lwp_mqbox_objects);
+	if(mqbox) __lwp_objmgr_open(&_lwp_mqbox_objects,&mqbox->object);
+	return mqbox;
+}
+
+s32 MQ_Init(mqbox_t *mqbox,u32 count)
+{
 	mq_attr attr;
 	mqbox_st *ret = NULL;
 
 	if(!mqbox) return -1;
-	*mqbox = 0;
-	
-	_CPU_ISR_Disable(level);
-	__lwp_thread_dispatchdisable();
 
-	ret = (mqbox_st*)__lwp_objmgr_allocate(&_lwp_mqbox_objects);
+	ret = __lwp_mqbox_allocate();
 	if(!ret) {
 		__lwp_thread_dispatchenable();
-		_CPU_ISR_Restore(level);
 		return MQ_ERROR_TOOMANY;
 	}
 
 	attr.mode = LWP_MQ_FIFO;
-	if(!__lwpmq_initialize(&ret->mqueue,&attr,count,sizeof(mqmsg))) {
-		__lwp_objmgr_free(&_lwp_mqbox_objects,&ret->object);
+	if(!__lwpmq_initialize(&ret->mqueue,&attr,count,sizeof(mqmsg_t))) {
+		__lwp_mqbox_free(ret);
 		__lwp_thread_dispatchenable();
-		_CPU_ISR_Restore(level);
 		return MQ_ERROR_TOOMANY;
 	}
 
-	*mqbox = (mq_box_t)ret;
-	__lwp_objmgr_open(&_lwp_mqbox_objects,&ret->object);
+	*mqbox = (mqbox_t)ret->object.id;
 	__lwp_thread_dispatchenable();
-	_CPU_ISR_Restore(level);
 	return MQ_ERROR_SUCCESSFUL;
 }
 
-void MQ_Close(mq_box_t mqbox)
+void MQ_Close(mqbox_t mqbox)
 {
-	u32 level;
-	mqbox_st *mbox = (mqbox_st*)mqbox;
+	mqbox_st *mbox;
 
-	if(!mbox) return;
-	
-	_CPU_ISR_Disable(level);
-	__lwp_thread_dispatchdisable();
+	mbox = __lwp_mqbox_open(mqbox);
+	if(!mbox) {
+		__lwp_thread_dispatchenable();
+		return;
+	}
 	__lwpmq_close(&mbox->mqueue,0);
-	__lwp_objmgr_close(&_lwp_mqbox_objects,&mbox->object);
-	__lwp_objmgr_free(&_lwp_mqbox_objects,&mbox->object);
 	__lwp_thread_dispatchenable();
-	_CPU_ISR_Restore(level);
+
+	__lwp_mqbox_free(mbox);
 }
 
-BOOL MQ_Send(mq_box_t mqbox,mqmsg msg,u32 flags)
+BOOL MQ_Send(mqbox_t mqbox,mqmsg_t msg,u32 flags)
 {
-	BOOL ret = FALSE;
-	mqbox_st *mbox = (mqbox_st*)mqbox;
+	BOOL ret;
+	mqbox_st *mbox;
 	u32 wait = (flags==MQ_MSG_BLOCK)?TRUE:FALSE;
 
-	if(!mbox) return FALSE;
-
-	__lwp_thread_dispatchdisable();
-	if(__lwpmq_submit(&mbox->mqueue,msg,sizeof(mqmsg),(u32)mbox,LWP_MQ_SEND_REQUEST,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
+	mbox = __lwp_mqbox_open(mqbox);
+	if(!mbox) {
+		__lwp_thread_dispatchenable();
+		return FALSE;
+	}
+	
+	ret = FALSE;
+	if(__lwpmq_submit(&mbox->mqueue,msg,sizeof(mqmsg_t),mbox->object.id,LWP_MQ_SEND_REQUEST,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
 	__lwp_thread_dispatchenable();
+
 	return ret;
 }
 
-BOOL MQ_Receive(mq_box_t mqbox,mqmsg *msg,u32 flags)
+BOOL MQ_Receive(mqbox_t mqbox,mqmsg_t *msg,u32 flags)
 {
-	BOOL ret = FALSE;
-	mqbox_st *mbox = (mqbox_st*)mqbox;
+	BOOL ret;
+	mqbox_st *mbox;
 	u32 tmp,wait = (flags==MQ_MSG_BLOCK)?TRUE:FALSE;
 
-	if(!mbox) return FALSE;
+	mbox = __lwp_mqbox_open(mqbox);
+	if(!mbox) {
+		__lwp_thread_dispatchenable();
+		return FALSE;
+	}
 
-	__lwp_thread_dispatchdisable();
-	if(__lwpmq_seize(&mbox->mqueue,(u32)mbox,(void*)msg,&tmp,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
+	ret = FALSE;
+	if(__lwpmq_seize(&mbox->mqueue,mbox->object.id,(void*)msg,&tmp,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
 	__lwp_thread_dispatchenable();
+	
 	return ret;
 }
 
-BOOL MQ_Jam(mq_box_t mqbox,mqmsg msg,u32 flags)
+BOOL MQ_Jam(mqbox_t mqbox,mqmsg_t msg,u32 flags)
 {
-	BOOL ret = FALSE;
-	mqbox_st *mbox = (mqbox_st*)mqbox;
+	BOOL ret;
+	mqbox_st *mbox;
 	u32 wait = (flags==MQ_MSG_BLOCK)?TRUE:FALSE;
 
-	if(!mbox) return FALSE;
+	mbox = __lwp_mqbox_open(mqbox);
+	if(!mbox) {
+		__lwp_thread_dispatchenable();
+		return FALSE;
+	}
 
-	__lwp_thread_dispatchdisable();
-	if(__lwpmq_submit(&mbox->mqueue,msg,sizeof(mqmsg),(u32)mbox,LWP_MQ_SEND_URGENT,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
+	ret = FALSE;
+	if(__lwpmq_submit(&mbox->mqueue,msg,sizeof(mqmsg_t),mbox->object.id,LWP_MQ_SEND_URGENT,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
 	__lwp_thread_dispatchenable();
+
 	return ret;
 }
