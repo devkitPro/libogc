@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: message.h,v 1.5 2005-12-09 09:21:32 shagkur Exp $
+$Id: message.h,v 1.6 2006-05-02 09:39:34 shagkur Exp $
 
 message.h -- Thread subsystem II
 
@@ -28,9 +28,15 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.5  2005/12/09 09:21:32  shagkur
+no message
+
 Revision 1.4  2005/11/21 12:37:51  shagkur
 Added copyright header(taken from libnds).
-Introduced RCS $Id: message.h,v 1.5 2005-12-09 09:21:32 shagkur Exp $ and $Log: not supported by cvs2svn $ token in project files.
+Introduced RCS $Id: message.h,v 1.6 2006-05-02 09:39:34 shagkur Exp $ and $Log: not supported by cvs2svn $
+Introduced RCS $Id: message.h,v 1.6 2006-05-02 09:39:34 shagkur Exp $ and Revision 1.5  2005/12/09 09:21:32  shagkur
+Introduced RCS $Id: message.h,v 1.6 2006-05-02 09:39:34 shagkur Exp $ and no message
+Introduced RCS $Id: message.h,v 1.6 2006-05-02 09:39:34 shagkur Exp $ and token in project files.
 
 
 -------------------------------------------------------------*/
@@ -46,6 +52,8 @@ Introduced RCS $Id: message.h,v 1.5 2005-12-09 09:21:32 shagkur Exp $ and $Log: 
 
 #include <gctypes.h>
 
+#define MQ_BOX_NULL				0xffffffff
+
 #define MQ_ERROR_SUCCESSFUL		0
 #define MQ_ERROR_TOOMANY		-5
 
@@ -58,69 +66,69 @@ extern "C" {
 #endif
 
 
-/*! \typedef void* mq_box_t
+/*! \typedef u32 mqbox_t
 \brief typedef for the message queue handle
 */
-typedef void* mq_box_t;
+typedef u32 mqbox_t;
 
 
-/*! \typedef void* mqmsg
+/*! \typedef void* mqmsg_t
 \brief typedef for the message pointer
 */
-typedef void* mqmsg;
+typedef void* mqmsg_t;
 
 
 
-/*! \fn u32 MQ_Init(mq_box_t *mqbox,u32 count)
+/*! \fn u32 MQ_Init(mqbox_t *mqbox,u32 count)
 \brief Initializes a message queue
-\param[out] mqbox pointer to the mq_box_t handle.
+\param[out] mqbox pointer to the mqbox_t handle.
 \param[in] count maximum number of messages the queue can hold
 
 \return 0 on success, <0 on error
 */
-s32 MQ_Init(mq_box_t *mqbox,u32 count);
+s32 MQ_Init(mqbox_t *mqbox,u32 count);
 
 
-/*! \fn void MQ_Close(mq_box_t mqbox)
+/*! \fn void MQ_Close(mqbox_t mqbox)
 \brief Closes the message queue and releases all memory.
-\param[in] mqbox handle to the mq_box_t structure.
+\param[in] mqbox handle to the mqbox_t structure.
 
 \return none
 */
-void MQ_Close(mq_box_t mqbox);
+void MQ_Close(mqbox_t mqbox);
 
 
-/*! \fn BOOL MQ_Send(mq_box_t mqbox,mqmsg msg,u32 flags)
+/*! \fn BOOL MQ_Send(mqbox_t mqbox,mqmsg_t msg,u32 flags)
 \brief Sends a message to the given message queue.
-\param[in] mqbox mq_box_t handle to the message queue
+\param[in] mqbox mqbox_t handle to the message queue
 \param[in] msg message to send
 \param[in] flags message flags (MQ_MSG_BLOCK, MQ_MSG_NOBLOCK)
 
 \return boolean result
 */
-BOOL MQ_Send(mq_box_t mqbox,mqmsg msg,u32 flags);
+BOOL MQ_Send(mqbox_t mqbox,mqmsg_t msg,u32 flags);
 
 
-/*! \fn BOOL MQ_Jam(mq_box_t mqbox,mqmsg msg,u32 flags)
+/*! \fn BOOL MQ_Jam(mqbox_t mqbox,mqmsg_t msg,u32 flags)
 \brief Sends a message to the given message queue and jams it in front of the queue.
-\param[in] mqbox mq_box_t handle to the message queue
+\param[in] mqbox mqbox_t handle to the message queue
 \param[in] msg message to send
 \param[in] flags message flags (MQ_MSG_BLOCK, MQ_MSG_NOBLOCK)
 
 \return boolean result
 */
-BOOL MQ_Jam(mq_box_t mqbox,mqmsg msg,u32 flags);
+BOOL MQ_Jam(mqbox_t mqbox,mqmsg_t msg,u32 flags);
 
 
-/*! \fn BOOL MQ_Receive(mq_box_t mqbox,mqmsg *msg,u32 flags)
+/*! \fn BOOL MQ_Receive(mqbox_t mqbox,mqmsg_t *msg,u32 flags)
 \brief Sends a message to the given message queue.
-\param[in] mqbox mq_box_t handle to the message queue
-\param[in] msg pointer to a mqmsg-type message to receive.
+\param[in] mqbox mqbox_t handle to the message queue
+\param[in] msg pointer to a mqmsg_t_t-type message to receive.
 \param[in] flags message flags (MQ_MSG_BLOCK, MQ_MSG_NOBLOCK)
 
 \return boolean result
 */
-BOOL MQ_Receive(mq_box_t mqbox,mqmsg *msg,u32 flags);
+BOOL MQ_Receive(mqbox_t mqbox,mqmsg_t *msg,u32 flags);
 
 #ifdef __cplusplus
 	}

@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: mutex.h,v 1.7 2005-12-09 09:21:32 shagkur Exp $
+$Id: mutex.h,v 1.8 2006-05-02 09:39:34 shagkur Exp $
 
 mutex.h -- Thread subsystem III
 
@@ -28,9 +28,15 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.7  2005/12/09 09:21:32  shagkur
+no message
+
 Revision 1.6  2005/11/21 12:37:51  shagkur
 Added copyright header(taken from libnds).
-Introduced RCS $Id: mutex.h,v 1.7 2005-12-09 09:21:32 shagkur Exp $ and $Log: not supported by cvs2svn $ token in project files.
+Introduced RCS $Id: mutex.h,v 1.8 2006-05-02 09:39:34 shagkur Exp $ and $Log: not supported by cvs2svn $
+Introduced RCS $Id: mutex.h,v 1.8 2006-05-02 09:39:34 shagkur Exp $ and Revision 1.7  2005/12/09 09:21:32  shagkur
+Introduced RCS $Id: mutex.h,v 1.8 2006-05-02 09:39:34 shagkur Exp $ and no message
+Introduced RCS $Id: mutex.h,v 1.8 2006-05-02 09:39:34 shagkur Exp $ and token in project files.
 
 
 -------------------------------------------------------------*/
@@ -46,15 +52,17 @@ Introduced RCS $Id: mutex.h,v 1.7 2005-12-09 09:21:32 shagkur Exp $ and $Log: no
 
 #include <gctypes.h>
 
+#define LWP_MUTEX_NULL		0xffffffff
+
 #ifdef __cplusplus
 	extern "C" {
 #endif
 
 
-/*! \typedef void* mutex_t
+/*! \typedef u32 mutex_t
 \brief typedef for the mutex handle
 */
-typedef void *mutex_t;
+typedef u32 mutex_t;
 
 
 /*! \fn s32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
