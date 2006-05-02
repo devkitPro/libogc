@@ -4,10 +4,16 @@
 #include <processor.h>
 #include "lwp_wkspace.h"
 
+static u32 __wkspace_area_alc;
 static wkspace_cntrl __wkspace_area;
 
 extern void SYS_SetArenaLo(void *newLo);
 extern void* SYS_GetArenaLo();
+
+u32 __lwp_wkspace_memsize_alc()
+{
+	return __wkspace_area_alc;
+}
 
 void __lwp_wkspace_init(u32 size)
 {
@@ -17,6 +23,7 @@ void __lwp_wkspace_init(u32 size)
 
 	if(size<WKSPACE_MIN_SIZE) return;
 
+	__wkspace_area_alc = 0;
 	__wkspace_area.pg_size = PPC_ALIGNMENT;
 	rsize = size - WKSPACE_OVERHEAD;
 	
@@ -66,6 +73,7 @@ void* __lwp_wkspace_allocate(u32 size)
 
 	if(rsize<sizeof(wkspace_block)) rsize = sizeof(wkspace_block);
 	
+	__wkspace_area_alc += rsize;
 	for(block=__wkspace_area.first;;block=block->next) {
 		if(block==__lwp_wkspace_tail(&__wkspace_area)) {
 			_CPU_ISR_Restore(level);
