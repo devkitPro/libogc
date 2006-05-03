@@ -29,7 +29,7 @@ void __lwp_objmgr_initinfo(lwp_objinfo *info,u32 max_nodes,u32 node_size)
 	void **local_table;
 	
 
-	info->min_id = 1;
+	info->min_id = 0;
 	info->max_id = 0;
 	info->inactives_cnt = 0;
 	info->node_size = node_size;
