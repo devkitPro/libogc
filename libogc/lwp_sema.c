@@ -1,50 +1,6 @@
 #include "asm.h"
 #include "lwp_sema.h"
 
-#define LWP_MAXSEMAS		1024
-
-struct _lwp_semaobj {
-	s32 sem_id;
-	lwp_sema sem;
-};
-
-static struct _lwp_semaobj _sema_objects[LWP_MAXSEMAS];
-
-lwp_sema* __lwp_sema_allocsema()
-{
-	s32 i;
-	u32 level;
-	lwp_sema *ret = NULL;
-	
-	_CPU_ISR_Disable(level);
-
-	i = 0;
-	while(i<LWP_MAXSEMAS && _sema_objects[i].sem_id!=-1) i++;
-	if(i<LWP_MAXSEMAS) {
-		_sema_objects[i].sem_id = i;
-		ret = &_sema_objects[i].sem;
-	}
-
-	_CPU_ISR_Restore(level);
-	return ret;
-}
-
-void __lwp_sema_freesema(lwp_sema *sem)
-{
-	s32 i;
-	u32 level;
-
-	_CPU_ISR_Disable(level);
-
-	i = 0;
-	while(i<LWP_MAXSEMAS && sem!=&_sema_objects[i].sem) i++;
-	if(i<LWP_MAXSEMAS && _sema_objects[i].sem_id!=-1) {
-		_sema_objects[i].sem_id = -1;
-	}
-	_CPU_ISR_Restore(level);
-}
-
-
 void __lwp_sema_initialize(lwp_sema *sema,lwp_semattr *attrs,u32 init_count)
 {
 	sema->attrs = *attrs;
