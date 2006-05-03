@@ -387,10 +387,11 @@ static struct netconn* netconn_accept(struct netconn* conn)
 	
 	if(conn==NULL) return NULL;
 
+	LWIP_DEBUGF(SOCKETS_DEBUG, ("netconn_accept(%p)\n", conn));
 	MQ_Receive(conn->acceptmbox,(mqmsg_t)&newconn,MQ_MSG_BLOCK);
 	if(conn->callback)
 		(*conn->callback)(conn,NETCONN_EVTRCVMINUS,0);
-
+	LWIP_DEBUGF(SOCKETS_DEBUG, ("netconn_accept(%p)\n", newconn));
 	return newconn;
 }
 
@@ -1257,7 +1258,7 @@ static err_t net_input(struct pbuf *p,struct netif *inp)
 {
 	struct net_msg *msg = memp_malloc(MEMP_TCPIP_MSG);
 			   
-	LWIP_DEBUGF(NETIF_DEBUG, ("net_input(%p,%p)\n", p,inp));
+	LWIP_DEBUGF(SOCKETS_DEBUG, ("net_input(%p,%p)\n", p,inp));
 
 	if(msg==NULL) {
 		LWIP_ERROR(("net_input: msg out of memory.\n"));
@@ -1325,21 +1326,21 @@ static void* net_thread(void *arg)
 	
 	LWP_SemPost(sem);
 	
-	LWIP_DEBUGF(TCPIP_DEBUG, ("net_thread(%p)\n",arg));
+	LWIP_DEBUGF(SOCKETS_DEBUG, ("net_thread(%p)\n",arg));
 
 	while(1) {
 		MQ_Receive(netthread_mbox,(mqmsg_t)&msg,MQ_MSG_BLOCK);
 		switch(msg->type) {
 			case NETMSG_API:
-			    LWIP_DEBUGF(TCPIP_DEBUG, ("net_thread: API message %p\n", (void *)msg));
+			    LWIP_DEBUGF(SOCKETS_DEBUG, ("net_thread: API message %p\n", (void *)msg));
 				apimsg_input(msg->msg.apimsg);
 				break;
 			case NETMSG_INPUT:
-			    LWIP_DEBUGF(TCPIP_DEBUG, ("net_thread: IP packet %p\n", (void *)msg));
+			    LWIP_DEBUGF(SOCKETS_DEBUG, ("net_thread: IP packet %p\n", (void *)msg));
 				bba_process(msg->msg.inp.p,msg->msg.inp.net);
 				break;
 			case NETMSG_CALLBACK:
-			    LWIP_DEBUGF(TCPIP_DEBUG, ("net_thread: CALLBACK %p\n", (void *)msg));
+			    LWIP_DEBUGF(SOCKETS_DEBUG, ("net_thread: CALLBACK %p\n", (void *)msg));
 				msg->msg.cb.f(msg->msg.cb.ctx);
 				break;
 			default:
@@ -1672,13 +1673,10 @@ s32 net_accept(s32 s,struct sockaddr *addr,socklen_t *addrlen)
 	
 	sock = get_socket(s);
 	if(!sock) return -1;
-#ifdef _NET_DEBUG
-	printf("netconn_accept(%d)\n",s);
-#endif
+
+	LWIP_DEBUGF(SOCKETS_DEBUG, ("net_accept(%d)\n", s));
 	newconn = netconn_accept(sock->conn);
-#ifdef _NET_DEBUG
-	printf("netconn_accept(%p)\n",newconn);
-#endif
+	LWIP_DEBUGF(SOCKETS_DEBUG, ("net_accept(%p)\n", newconn));
 	
 	netconn_peer(newconn,&naddr,&port);
 	
