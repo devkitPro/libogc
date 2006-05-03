@@ -60,7 +60,7 @@ typedef struct _mqcntrl {
 u32 __lwpmq_initialize(mq_cntrl *,mq_attr *,u32,u32);
 void __lwpmq_close(mq_cntrl *,u32);
 u32 __lwpmq_seize(mq_cntrl *,u32,void *,u32 *,u32,u32);
-u32 __lwpmq_submit(mq_cntrl *,void *,u32,u32,u32,u32,u32);
+u32 __lwpmq_submit(mq_cntrl *,u32,void *,u32,u32,u32,u32);
 u32 __lwpmq_broadcast(mq_cntrl *,void *,u32,u32,u32 *);
 void __lwpmq_msg_insert(mq_cntrl *,mq_buffercntrl *,u32);
 u32 __lwpmq_flush(mq_cntrl *);
