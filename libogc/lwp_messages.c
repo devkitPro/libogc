@@ -127,7 +127,7 @@ u32 __lwpmq_seize(mq_cntrl *mqueue,u32  id,void *buffer,u32 *size,u32 wait,u32 t
 	return LWP_MQ_STATUS_SUCCESSFUL;
 }
 
-u32 __lwpmq_submit(mq_cntrl *mqueue,void *buffer,u32 size,u32 id,u32 type,u32 wait,u32 timeout)
+u32 __lwpmq_submit(mq_cntrl *mqueue,u32 id,void *buffer,u32 size,u32 type,u32 wait,u32 timeout)
 {
 	u32 level;
 	lwp_cntrl *thread;
