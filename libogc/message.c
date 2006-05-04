@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: message.c,v 1.11 2006-05-03 11:03:34 shagkur Exp $
+$Id: message.c,v 1.12 2006-05-04 05:46:43 shagkur Exp $
 
 message.c -- Thread subsystem II
 
@@ -28,6 +28,10 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.11  2006/05/03 11:03:34  shagkur
+- function body of __lwpmq_submit()
+- changed function call according to lwp_messages changes
+
 Revision 1.10  2006/05/02 11:56:10  shagkur
 - changed object handling & thread protection
 

@@ -183,10 +183,10 @@ a lot of data that needs to be copied, this should be set high. */
 #define DBG_TYPES_ON                    -1
 #define DEMO_DEBUG                      DBG_OFF
 #define ETHARP_DEBUG                    DBG_OFF
-#define NETIF_DEBUG                     DBG_ON
+#define NETIF_DEBUG                     DBG_OFF
 #define PBUF_DEBUG                      DBG_OFF
 #define API_LIB_DEBUG                   DBG_OFF
-#define API_MSG_DEBUG                   DBG_OFF
+#define API_MSG_DEBUG                   DBG_ON
 #define SOCKETS_DEBUG                   DBG_OFF
 #define ICMP_DEBUG                      DBG_OFF
 #define INET_DEBUG                      DBG_OFF
@@ -212,7 +212,7 @@ a lot of data that needs to be copied, this should be set high. */
 #define SLIP_DEBUG                      DBG_OFF
 #define DHCP_DEBUG                      DBG_OFF
 
-#define DBG_MIN_LEVEL                   DBG_LEVEL_WARNING
+#define DBG_MIN_LEVEL                   DBG_LEVEL_OFF
 #endif
 
 

@@ -74,7 +74,7 @@ u32 __lwpmq_initialize(mq_cntrl *mqueue,mq_attr *attrs,u32 max_pendingmsgs,u32 m
 	return 1;
 }
 
-u32 __lwpmq_seize(mq_cntrl *mqueue,u32  id,void *buffer,u32 *size,u32 wait,u32 timeout)
+u32 __lwpmq_seize(mq_cntrl *mqueue,u32 id,void *buffer,u32 *size,u32 wait,u32 timeout)
 {
 	u32 level;
 	mq_buffercntrl *msg;
@@ -83,7 +83,7 @@ u32 __lwpmq_seize(mq_cntrl *mqueue,u32  id,void *buffer,u32 *size,u32 wait,u32 t
 	exec = _thr_executing;
 	exec->wait.ret_code = LWP_MQ_STATUS_SUCCESSFUL;
 #ifdef _LWPMQ_DEBUG
-	printf("__lwpmq_seize(%p,%d,%p,%p,%d)\n",mqueue,id,buffer,size,wait);
+	printf("__lwpmq_seize(%p,%d,%p,%p,%d,%d)\n",mqueue,id,buffer,size,wait,mqueue->num_pendingmsgs);
 #endif
 	
 	_CPU_ISR_Disable(level);

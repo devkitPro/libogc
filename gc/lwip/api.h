@@ -87,7 +87,7 @@ struct netconn {
 		struct raw_pcb *raw;
 	} pcb;
 	err_t err;
-	sem_t sem;
+	sys_sem sem;
 	sys_mbox mbox;
 	sys_mbox recvmbox;
 	sys_mbox acceptmbox;
