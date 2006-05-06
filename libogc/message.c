@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: message.c,v 1.12 2006-05-04 05:46:43 shagkur Exp $
+$Id: message.c,v 1.13 2006-05-06 18:07:25 shagkur Exp $
 
 message.c -- Thread subsystem II
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.12  2006/05/04 05:46:43  shagkur
+no message
+
 Revision 1.11  2006/05/03 11:03:34  shagkur
 - function body of __lwpmq_submit()
 - changed function call according to lwp_messages changes
@@ -56,6 +59,14 @@ no message
 #include <lwp_config.h>
 #include "message.h"
 
+#define LWP_OBJTYPE_MBOX			5
+
+#define LWP_CHECK_MBOX(hndl)		\
+{									\
+	if(((hndl)==MQ_BOX_NULL) || (LWP_OBJTYPE(hndl)!=LWP_OBJTYPE_MBOX))	\
+		return NULL;				\
+}
+
 typedef struct _mqbox_st
 {
 	lwp_obj object;
@@ -71,7 +82,8 @@ void __lwp_mqbox_init()
 
 static __inline__ mqbox_st* __lwp_mqbox_open(mqbox_t mbox)
 {
-	return (mqbox_st*)__lwp_objmgr_get(&_lwp_mqbox_objects,mbox);
+	LWP_CHECK_MBOX(mbox);
+	return (mqbox_st*)__lwp_objmgr_get(&_lwp_mqbox_objects,LWP_OBJMASKID(mbox));
 }
 
 static __inline__ void __lwp_mqbox_free(mqbox_st *mqbox)
@@ -111,7 +123,7 @@ s32 MQ_Init(mqbox_t *mqbox,u32 count)
 		return MQ_ERROR_TOOMANY;
 	}
 
-	*mqbox = (mqbox_t)ret->object.id;
+	*mqbox = (mqbox_t)(LWP_OBJMASKTYPE(LWP_OBJTYPE_MBOX)|LWP_OBJMASKID(ret->object.id));
 	__lwp_thread_dispatchenable();
 	return MQ_ERROR_SUCCESSFUL;
 }

@@ -15,20 +15,20 @@
 
 #define GX_FINISH		2
 #define BIG_NUMBER		(1024*1024)
-#define WGPIPE			0xCC008000
+#define WGPIPE			(0xCC008000)
 
 #define _SHIFTL(v, s, w)	\
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
 #define _SHIFTR(v, s, w)	\
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
-#define FIFO_PUTU8(x)	*(vu8*)WGPIPE = (x)
-#define FIFO_PUTS8(x)	*(vs8*)WGPIPE = (x)
-#define FIFO_PUTU16(x)	*(vu16*)WGPIPE = (x)
-#define FIFO_PUTS16(x)	*(vs16*)WGPIPE = (x)
-#define FIFO_PUTU32(x)	*(vu32*)WGPIPE = (x)
-#define FIFO_PUTS32(x)	*(vs32*)WGPIPE = (x)
-#define FIFO_PUTF32(x)	*(vf32*)WGPIPE = (x)
+#define FIFO_PUTU8(x)	*(vu8*)WGPIPE = (u8)(x)
+#define FIFO_PUTS8(x)	*(vs8*)WGPIPE = (s8)(x)
+#define FIFO_PUTU16(x)	*(vu16*)WGPIPE = (u16)(x)
+#define FIFO_PUTS16(x)	*(vs16*)WGPIPE = (s16)(x)
+#define FIFO_PUTU32(x)	*(vu32*)WGPIPE = (u32)(x)
+#define FIFO_PUTS32(x)	*(vs32*)WGPIPE = (s32)(x)
+#define FIFO_PUTF32(x)	*(vf32*)WGPIPE = (f32)(x)
 
 #define GX_LOAD_BP_REG(x)				\
 	do {								\
@@ -76,15 +76,15 @@ struct __gxfifo {
 };
 
 static void *_gxcurrbp = NULL;
-static lwp_t _gxcurrentlwp = -1;
+static lwp_t _gxcurrentlwp = LWP_THREAD_NULL;
 
 static GXFifoObj _gxdefiniobj;
 
 static u8 _cpgplinked = 0;
 static u16 _gxgpstatus = 0;
-static u32 _gxoverflowsuspend = 0;
-static u32 _gxoverflowcount = 0;
-static u32 _gxfinished = 0;
+static vu32 _gxoverflowsuspend = 0;
+static vu32 _gxoverflowcount = 0;
+static vu32 _gxfinished = 0;
 static lwpq_t _gxwaitfinish;
 
 static struct __gxfifo *_gpfifo = NULL;
@@ -112,7 +112,7 @@ static u8 _gxteximg3ids[8] = {0x94,0x95,0x96,0x97,0xB4,0xB5,0xB6,0xB7};
 static u8 _gxtextlutids[8] = {0x98,0x99,0x9A,0x9B,0xB8,0xB9,0xBA,0xBB};
 
 struct __gxfifo _gx_dl_fifo;
-u8 _gx_saved_data[0x800];
+u8 _gx_saved_data[1280];
 
 extern u8 __gxregs[];
 static u32 *_gx = (u32*)__gxregs;
@@ -142,32 +142,32 @@ static void EnableWriteGatherPipe()
 
 static void __GX_FifoLink(u8 enable)
 {
-	((u16*)_gx)[0] = (((u16*)_gx)[0]&~0x10)|(_SHIFTL(enable,4,1));
-	_cpReg[1] = ((u16*)_gx)[0];
+	((u16*)_gx)[1] = ((((u16*)_gx)[1]&~0x10)|(_SHIFTL(enable,4,1)));
+	_cpReg[1] = ((u16*)_gx)[1];
 }
 
 static void __GX_WriteFifoIntReset(u8 inthi,u8 intlo)
 {
-	((u16*)_gx)[1] = (((u16*)_gx)[1]&~0x03)|(_SHIFTL(intlo,1,1))|(inthi&1);
-	_cpReg[2] = ((u16*)_gx)[1];
+	((u16*)_gx)[2] = ((((u16*)_gx)[2]&~0x03)|(_SHIFTL(intlo,1,1))|(inthi&1));
+	_cpReg[2] = ((u16*)_gx)[2];
 }
 
 static void __GX_WriteFifoIntEnable(u8 inthi, u8 intlo)
 {
-	((u16*)_gx)[0] = (((u16*)_gx)[0]&~0x0C)|(_SHIFTL(intlo,3,1))|(_SHIFTL(inthi,2,1));
-	_cpReg[1] = ((u16*)_gx)[0];
+	((u16*)_gx)[1] = ((((u16*)_gx)[1]&~0x0C)|(_SHIFTL(intlo,3,1))|(_SHIFTL(inthi,2,1)));
+	_cpReg[1] = ((u16*)_gx)[1];
 }
 
 static void __GX_FifoReadEnable()
 {
-	((u16*)_gx)[0] = (((u16*)_gx)[0]&~0x01)|1;
-	_cpReg[1] = ((u16*)_gx)[0];
+	((u16*)_gx)[1] = ((((u16*)_gx)[1]&~0x01)|1);
+	_cpReg[1] = ((u16*)_gx)[1];
 }
 
 static void __GX_FifoReadDisable()
 {
-	((u16*)_gx)[0] = (((u16*)_gx)[0]&~0x01)|0;
-	_cpReg[1] = ((u16*)_gx)[0];
+	((u16*)_gx)[1] = ((((u16*)_gx)[1]&~0x01)|0);
+	_cpReg[1] = ((u16*)_gx)[1];
 }
 
 static void __GX_SaveCPUFifoAux(struct __gxfifo *fifo)
@@ -182,7 +182,7 @@ static void __GX_SaveCPUFifoAux(struct __gxfifo *fifo)
 	fifo->wt_ptr = (u32)MEM_PHYSICAL_TO_K0((_piReg[0x05]&~0x04000000));
 
 	if(_cpgplinked) {
-		fifo->rd_ptr = (_SHIFTL(_cpReg[29],16,16)|(_cpReg[28]&0xffff));
+		fifo->rd_ptr = (u32)MEM_PHYSICAL_TO_K0(_SHIFTL(_cpReg[29],16,16)|(_cpReg[28]&0xffff));
 		fifo->rdwt_dst = (_SHIFTL(_cpReg[25],16,16)|(_cpReg[24]&0xffff));
 	} else {
 		fifo->rdwt_dst = (fifo->wt_ptr - fifo->rd_ptr);
@@ -213,45 +213,46 @@ static void __GXUnderflowHandler()
 	}
 }
 
-static void __GXCPInterruptHandler()
+static void __GXCPInterruptHandler(u32 irq,void *ctx)
 {
-	u16 _cpintcause = _cpReg[0];
+	((u16*)_gx)[0] = _cpReg[0];
 
-	if((((u16*)_gx)[0]&0x08) && (_cpintcause&0x02)) 
+	if((((u16*)_gx)[1]&0x08) && (((u16*)_gx)[0]&0x02)) 
 		__GXUnderflowHandler();
 
-	if((((u16*)_gx)[0]&0x04) && (_cpintcause&0x01))
+	if((((u16*)_gx)[1]&0x04) && (((u16*)_gx)[0]&0x01))
 		__GXOverflowHandler();
 
-	if((((u16*)_gx)[0]&0x20) && (_cpintcause&0x10)) {
-		((u16*)_gx)[0] &= ~0x20;
-		_cpReg[1] = ((u16*)_gx)[0];
+	if((((u16*)_gx)[1]&0x20) && (((u16*)_gx)[0]&0x10)) {
+		((u16*)_gx)[1] &= ~0x20;
+		_cpReg[1] = ((u16*)_gx)[1];
 		if(breakPtCB)
 			breakPtCB();
 	}
 }
 
-static void __GXTokenInterruptHandler()
+static void __GXTokenInterruptHandler(u32 irq,void *ctx)
 {
 	u16 token = _peReg[7];
 	
 	if(tokenCB)
 		tokenCB(token);
 	
-	_peReg[5] |= 4;	
+	_peReg[5] = (_peReg[5]&~0x04)|0x04;	
 }
 
-static void __GXFinishInterruptHandler()
+static void __GXFinishInterruptHandler(u32 irq,void *ctx)
 {
+#ifdef _GP_DEBUG
+	printf("__GXFinishInterruptHandler()\n");
+#endif
 	_gxfinished = 1;
+
 	if(drawDoneCB)
 		drawDoneCB();
-#ifdef _GP_DEBUG
-	printk("__GXFinishInterruptHandler()\n\n");
-#endif
+	
+	_peReg[5] = (_peReg[5]&~0x08)|0x08;	
 	LWP_ThreadBroadcast(_gxwaitfinish);
-
-	_peReg[5] |= 8;
 }
 
 static void __GX_PEInit()
@@ -263,22 +264,17 @@ static void __GX_PEInit()
 	__UnmaskIrq(IRQMASK(IRQ_PI_PEFINISH));
 
 	_peReg[5] = 0x0F;
-	_peReg[7] = 0x00;
 }
 
 static void __GX_FifoInit()
 {
-	u32 level;
-
-	_CPU_ISR_Disable(level);
-	_gxoverflowsuspend = 0;
-	_cpufifo = 0;
-	_gpfifo = 0;
-	_gxcurrentlwp = LWP_GetSelf();
-	_CPU_ISR_Restore(level);
-
 	IRQ_Request(IRQ_PI_CP,__GXCPInterruptHandler,NULL);
 	__UnmaskIrq(IRQMASK(IRQ_PI_CP));
+
+	_gxoverflowsuspend = 0;
+	_cpufifo = NULL;
+	_gpfifo = NULL;
+	_gxcurrentlwp = LWP_GetSelf();
 }
 
 static void __GX_SetTmemConfig(u8 nr)
@@ -339,17 +335,17 @@ static GXTexRegion* __GXDefRegionCallback(GXTexObj *obj,u8 mapid)
 	fmt = GX_GetTexFmt(obj);
 	if(fmt==0x0008 || fmt==0x0009 || fmt==0x000a) {
 		idx = regionB++;
-		ret = (GXTexRegion*)&(_gx[0x120+((idx&0x3)*(sizeof(GXTexRegion)>>2))]);
+		ret = (GXTexRegion*)(&_gx[0x120+((idx&0x3)*(sizeof(GXTexRegion)>>2))]);
 	} else {
 		idx = regionA++;
-		ret = (GXTexRegion*)&(_gx[0x100+((idx&0x7)*(sizeof(GXTexRegion)>>2))]);
+		ret = (GXTexRegion*)(&_gx[0x100+((idx&0x7)*(sizeof(GXTexRegion)>>2))]);
 	}
 	return ret;
 }
 
 static GXTlutRegion* __GXDefTlutRegionCallback(u32 tlut_name)
 {
-	return (GXTlutRegion*)&(_gx[0x150+(tlut_name*(sizeof(GXTlutRegion)>>2))]);
+	return (GXTlutRegion*)(&_gx[0x150+(tlut_name*(sizeof(GXTlutRegion)>>2))]);
 }
 
 static void __GX_InitGX()
@@ -560,10 +556,10 @@ static void __GX_SendFlushPrim()
 {
 	u32 tmp,tmp2,cnt;
 
-	tmp = ((u16*)_gx)[2]*((u16*)_gx)[3];
+	tmp = ((u16*)_gx)[30]*((u16*)_gx)[31];
 
 	FIFO_PUTU8(0x98);
-	FIFO_PUTU16(((u16*)_gx)[2]);
+	FIFO_PUTU16(((u16*)_gx)[30]);
 
 	tmp2 = (tmp+3)/4;
 	if(tmp>0) {
@@ -587,7 +583,7 @@ static void __GX_SendFlushPrim()
 			}
 		}
 	}
-	((u16*)_gx)[1] = 1;
+	((u16*)_gx)[29] = 1;
 }
 
 static void __GX_SetVCD()
@@ -778,18 +774,14 @@ GXFifoObj* GX_Init(void *base,u32 size)
 
 	LWP_InitQueue(&_gxwaitfinish);
 
+	memset(_gx,0,1280);
+
 	__GX_FifoInit();
 	GX_InitFifoBase(&_gxdefiniobj,base,size);
 	GX_SetCPUFifo(&_gxdefiniobj);
 	GX_SetGPFifo(&_gxdefiniobj);
 	__GX_PEInit();
 	EnableWriteGatherPipe();
-	
-	_gx[0x00] = 0;
-	_gx[0x01] = 0;
-	_gx[0x02] = 0;
-	_gx[0x03] = 0;
-	_gx[0x04] = 0;
 
 	_gx[0xaf] = 0xff;
 	_gx[0xaf] = (_gx[0xaf]&~0xff000000)|(_SHIFTL(0x0f,24,8));
@@ -882,24 +874,24 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	}
 
 	for(i=0;i<8;i++) {
-		tmem_even = tmem_odd = i<<15;
-		region = (GXTexRegion*)&(_gx[0x100+(i*(sizeof(GXTexRegion)>>2))]);
-		GX_InitTexCacheRegion(region,GX_FALSE,tmem_even,GX_TEXCACHE_32K,tmem_odd+0x80000,GX_TEXCACHE_32K);
+		tmem_even = tmem_odd = (i<<15);
+		region = (GXTexRegion*)(&_gx[0x100+(i*(sizeof(GXTexRegion)>>2))]);
+		GX_InitTexCacheRegion(region,GX_FALSE,tmem_even,GX_TEXCACHE_32K,(tmem_odd+0x00080000),GX_TEXCACHE_32K);
 	}
 	for(i=0;i<4;i++) {
-		tmem_even = ((i<<1)+8)<<15;
-		tmem_odd = ((i<<1)+9)<<15;
-		region = (GXTexRegion*)&(_gx[0x120+(i*(sizeof(GXTexRegion)>>2))]);
+		tmem_even = ((0x08+(i<<1))<<15);
+		tmem_odd = ((0x09+(i<<1))<<15);
+		region = (GXTexRegion*)(&_gx[0x120+(i*(sizeof(GXTexRegion)>>2))]);
 		GX_InitTexCacheRegion(region,GX_FALSE,tmem_even,GX_TEXCACHE_32K,tmem_odd,GX_TEXCACHE_32K);
 	}
 	for(i=0;i<16;i++) {
 		tmem_even = (i<<13)+0x000C0000;
-		tregion = (GXTlutRegion*)&(_gx[0x150+(i*(sizeof(GXTlutRegion)>>2))]);
+		tregion = (GXTlutRegion*)(&_gx[0x150+(i*(sizeof(GXTlutRegion)>>2))]);
 		GX_InitTlutRegion(tregion,tmem_even,GX_TLUT_256);
 	}
 	for(i=0;i<4;i++) {
 		tmem_even = (i<<15)+0x000E0000;
-		tregion = (GXTlutRegion*)&(_gx[0x150+((i+16)*(sizeof(GXTlutRegion)>>2))]);
+		tregion = (GXTlutRegion*)(&_gx[0x150+((i+16)*(sizeof(GXTlutRegion)>>2))]);
 		GX_InitTlutRegion(tregion,tmem_even,GX_TLUT_1K);
 	}
 
@@ -913,7 +905,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 
 	__GX_SetTmemConfig(0);
 	__GX_InitGX();
-
+	
 	return &_gxdefiniobj;
 }
 
@@ -961,15 +953,14 @@ void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr)
 void GX_SetCPUFifo(GXFifoObj *fifo)
 {
 	u32 level;
-	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
 	
 	_CPU_ISR_Disable(level);
-	_cpufifo = ptr;
+	_cpufifo = (struct __gxfifo*)fifo;
 	if(_cpufifo==_gpfifo) {
-		_piReg[3] = (ptr->buf_start&~0xC0000000);
-		_piReg[4] = (ptr->buf_end&~0xC0000000);
-		_piReg[5] = (ptr->wt_ptr&~0xC0000000);
-		_cpgplinked = (_cpgplinked&~1)|1;
+		_piReg[3] = MEM_VIRTUAL_TO_PHYSICAL(_cpufifo->buf_start);
+		_piReg[4] = MEM_VIRTUAL_TO_PHYSICAL(_cpufifo->buf_end);
+		_piReg[5] = ((_cpufifo->wt_ptr&0x3FFFFFE0)&~0x04000000);
+		_cpgplinked = 1;
 
 		__GX_WriteFifoIntReset(GX_TRUE,GX_TRUE);
 		__GX_WriteFifoIntEnable(GX_ENABLE,GX_DISABLE);
@@ -984,9 +975,9 @@ void GX_SetCPUFifo(GXFifoObj *fifo)
 	}
 	__GX_WriteFifoIntEnable(GX_DISABLE,GX_DISABLE);
 
-	_piReg[3] = (ptr->buf_start&~0xC0000000);
-	_piReg[4] = (ptr->buf_end&~0xC0000000);
-	_piReg[5] = (ptr->wt_ptr&~0xC0000000);
+	_piReg[3] = MEM_VIRTUAL_TO_PHYSICAL(_cpufifo->buf_start);
+	_piReg[4] = MEM_VIRTUAL_TO_PHYSICAL(_cpufifo->buf_end);
+	_piReg[5] = ((_cpufifo->wt_ptr&0x3FFFFFE0)&~0x04000000);
 	_CPU_ISR_Restore(level);
 }
 
@@ -998,41 +989,40 @@ GXFifoObj* GX_GetCPUFifo()
 void GX_SetGPFifo(GXFifoObj *fifo)
 {
 	u32 level;
-	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
 
 	_CPU_ISR_Disable(level);
 	__GX_FifoReadDisable();
 	__GX_WriteFifoIntEnable(GX_DISABLE,GX_DISABLE);
 	
-	_gpfifo = ptr;
+	_gpfifo = (struct __gxfifo*)fifo;
 	
 	/* setup fifo base */
-	_cpReg[16] = _SHIFTL((ptr->buf_start&~0xC0000000),0,16);
-	_cpReg[17] = _SHIFTR((ptr->buf_start&~0xC0000000),16,16);
+	_cpReg[16] = _SHIFTL(MEM_VIRTUAL_TO_PHYSICAL(_gpfifo->buf_start),0,16);
+	_cpReg[17] = _SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(_gpfifo->buf_start),16,16);
 	
 	/* setup fifo end */
-	_cpReg[18] = _SHIFTL((ptr->buf_end&~0xC0000000),0,16);
-	_cpReg[19] = _SHIFTR((ptr->buf_end&~0xC0000000),16,16);
+	_cpReg[18] = _SHIFTL(MEM_VIRTUAL_TO_PHYSICAL(_gpfifo->buf_end),0,16);
+	_cpReg[19] = _SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(_gpfifo->buf_end),16,16);
 	
 	/* setup hiwater mark */
-	_cpReg[20] = _SHIFTL(ptr->hi_mark,0,16);
-	_cpReg[21] = _SHIFTR(ptr->hi_mark,16,16);
+	_cpReg[20] = _SHIFTL(_gpfifo->hi_mark,0,16);
+	_cpReg[21] = _SHIFTR(_gpfifo->hi_mark,16,16);
 	
 	/* setup lowater mark */
-	_cpReg[22] = _SHIFTL(ptr->lo_mark,0,16);
-	_cpReg[23] = _SHIFTR(ptr->lo_mark,16,16);
+	_cpReg[22] = _SHIFTL(_gpfifo->lo_mark,0,16);
+	_cpReg[23] = _SHIFTR(_gpfifo->lo_mark,16,16);
 	
 	/* setup rd<->wd dist */
-	_cpReg[24] = _SHIFTL(ptr->rdwt_dst,0,16);
-	_cpReg[25] = _SHIFTR(ptr->rdwt_dst,16,16);
+	_cpReg[24] = _SHIFTL(_gpfifo->rdwt_dst,0,16);
+	_cpReg[25] = _SHIFTR(_gpfifo->rdwt_dst,16,16);
 	
 	/* setup wt ptr */
-	_cpReg[26] = _SHIFTL((ptr->wt_ptr&~0xC0000000),0,16);
-	_cpReg[27] = _SHIFTR((ptr->wt_ptr&~0xC0000000),16,16);
+	_cpReg[26] = _SHIFTL(MEM_VIRTUAL_TO_PHYSICAL(_gpfifo->wt_ptr),0,16);
+	_cpReg[27] = _SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(_gpfifo->wt_ptr),16,16);
 	
 	/* setup rd ptr */
-	_cpReg[28] = _SHIFTL((ptr->rd_ptr&~0xC0000000),0,16);
-	_cpReg[29] = _SHIFTR((ptr->rd_ptr&~0xC0000000),16,16);
+	_cpReg[28] = _SHIFTL(MEM_VIRTUAL_TO_PHYSICAL(_gpfifo->rd_ptr),0,16);
+	_cpReg[29] = _SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(_gpfifo->rd_ptr),16,16);
 
 	if(_cpufifo==_gpfifo) {
 		_cpgplinked = 1;
@@ -1048,6 +1038,11 @@ void GX_SetGPFifo(GXFifoObj *fifo)
 	_CPU_ISR_Restore(level);
 }
 
+GXFifoObj* GX_GetGPFifo()
+{
+	return (GXFifoObj*)_gpfifo;
+}
+
 void GX_SaveCPUFifo(GXFifoObj *fifo)
 {
 	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
@@ -1056,11 +1051,18 @@ void GX_SaveCPUFifo(GXFifoObj *fifo)
 
 void GX_Flush()
 {
-	s32 i;
+	if(_gx[0x09]) 
+		__GX_SetDirtyState();
 
-	if(_gx[0x09]) __GX_SetDirtyState();
-	for (i=0; i<8; ++i)
-		FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	
 	ppcsync();
 }
 
@@ -1069,10 +1071,10 @@ void GX_EnableBreakPt(void *break_pt)
 	u32 level = 0;
 	_CPU_ISR_Disable(level);
 	__GX_FifoReadDisable();
-	_cpReg[30] = _SHIFTL(((u32)break_pt&~0xC0000000),0,16);
-	_cpReg[31] = _SHIFTR(((u32)break_pt&~0xC0000000),16,16);
-	((u16*)_gx)[0] = (((u16*)_gx)[0]&~0x22)|0x22;
-	_cpReg[1] = ((u16*)_gx)[0];
+	_cpReg[30] = _SHIFTL(MEM_VIRTUAL_TO_PHYSICAL(break_pt),0,16);
+	_cpReg[31] = _SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(break_pt),16,16);
+	((u16*)_gx)[1] = (((u16*)_gx)[1]&~0x22)|0x22;
+	_cpReg[1] = ((u16*)_gx)[1];
 	_gxcurrbp = break_pt;
 	__GX_FifoReadEnable();
  	_CPU_ISR_Restore(level);
@@ -1082,8 +1084,8 @@ void GX_DisableBreakPt()
 {
 	u32 level = 0;
 	_CPU_ISR_Disable(level);
-	((u16*)_gx)[0] = (((u16*)_gx)[0]&~0x22);
-	_cpReg[1] = ((u16*)_gx)[0];
+	((u16*)_gx)[1] = (((u16*)_gx)[1]&~0x22);
+	_cpReg[1] = ((u16*)_gx)[1];
 	_gxcurrbp = NULL;
 	_CPU_ISR_Restore(level);
 }
@@ -1131,8 +1133,8 @@ GXDrawDoneCallback GX_SetDrawDoneCallback(GXDrawDoneCallback cb)
 {
 	u32 level;
 
-	GXDrawDoneCallback ret = drawDoneCB;
 	_CPU_ISR_Disable(level);
+	GXDrawDoneCallback ret = drawDoneCB;
 	drawDoneCB = cb;
 	_CPU_ISR_Restore(level);
 	return ret;
@@ -1142,8 +1144,8 @@ GXDrawSyncCallback GX_SetDrawSyncCallback(GXDrawSyncCallback cb)
 {
 	u32 level;
 
-	GXDrawSyncCallback ret = tokenCB;
 	_CPU_ISR_Disable(level);
+	GXDrawSyncCallback ret = tokenCB;
 	tokenCB = cb;
 	_CPU_ISR_Restore(level);
 	return ret;
@@ -1153,8 +1155,8 @@ GXBreakPtCallback GX_SetBreakPtCallback(GXBreakPtCallback cb)
 {
 	u32 level;
 
-	GXBreakPtCallback ret = breakPtCB;
 	_CPU_ISR_Disable(level);
+	GXBreakPtCallback ret = breakPtCB;
 	breakPtCB = cb;
 	_CPU_ISR_Restore(level);
 	return ret;
@@ -1175,12 +1177,12 @@ void GX_SetMisc(u32 token,u32 value)
 	u32 cnt;
 
 	if(token==GX_MT_XF_FLUSH) {
-		((u16*)_gx)[2] = value;
-		cnt = cntlzw(((u16*)_gx)[2]);
-		((u16*)_gx)[0] = _SHIFTR(cnt,5,16);
+		((u16*)_gx)[30] = value;
+		cnt = cntlzw(((u16*)_gx)[30]);
+		((u16*)_gx)[28] = _SHIFTR(cnt,5,16);
 
-		((u16*)_gx)[1] = 1;
-		if(!((u16*)_gx)[2]) return;
+		((u16*)_gx)[29] = 1;
+		if(!((u16*)_gx)[30]) return;
 
 		_gx[0x09] |= 0x0008;
 	} else if(token==GX_MT_DL_SAVE_CTX) {
@@ -1562,7 +1564,7 @@ void GX_BeginDispList(void *list,u32 size)
 		__GX_SetDirtyState();
 
 	if(((u8*)_gx)[0x371]) 
-		memcpy(_gx_saved_data,_gx,1272);
+		memcpy(_gx_saved_data,_gx,1280);
 
 	_gx_dl_fifo.buf_start = (u32)list;
 	_gx_dl_fifo.buf_end = (u32)list + size - 4;
@@ -1582,7 +1584,7 @@ void GX_BeginDispList(void *list,u32 size)
 
 u32 GX_EndDispList()
 {
-	u32 level;
+	u32 level,ret = 0;
 	
 	if(_gx[0x09])
 		__GX_SetDirtyState();
@@ -1598,6 +1600,9 @@ u32 GX_EndDispList()
 	}
 
 	((u8*)_gx)[0x372] = 0;
+	if(	_SHIFTR(_piReg[5],26,1)) ret = _gx_dl_fifo.rdwt_dst;
+
+	return ret;
 }
 
 void GX_CallDispList(void *list,u32 nbytes)

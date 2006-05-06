@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: cond.c,v 1.13 2006-05-02 11:56:10 shagkur Exp $
+$Id: cond.c,v 1.14 2006-05-06 18:07:25 shagkur Exp $
 
 cond.c -- Thread subsystem V
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.13  2006/05/02 11:56:10  shagkur
+- changed object handling & thread protection
+
 Revision 1.12  2006/05/02 09:32:18  shagkur
 - changed object handling and handle typedef
 
@@ -50,6 +53,14 @@ no message
 #include "lwp_config.h"
 #include "cond.h"
 
+#define LWP_OBJTYPE_COND				4
+
+#define LWP_CHECK_COND(hndl)		\
+{									\
+	if(((hndl)==LWP_COND_NULL) || (LWP_OBJTYPE(hndl)!=LWP_OBJTYPE_COND))	\
+		return NULL;				\
+}
+
 typedef struct _cond_st {
 	lwp_obj object;
 	mutex_t lock;
@@ -68,7 +79,8 @@ void __lwp_cond_init()
 
 static __inline__ cond_st* __lwp_cond_open(cond_t cond)
 {
-	return (cond_st*)__lwp_objmgr_get(&_lwp_cond_objects,cond);
+	LWP_CHECK_COND(cond);
+	return (cond_st*)__lwp_objmgr_get(&_lwp_cond_objects,LWP_OBJMASKID(cond));
 }
 
 static __inline__ void __lwp_cond_free(cond_st *cond)
@@ -158,7 +170,7 @@ s32 LWP_CondInit(cond_t *cond)
 	ret->lock = LWP_MUTEX_NULL;
 	__lwp_threadqueue_init(&ret->wait_queue,LWP_THREADQ_MODEFIFO,LWP_STATES_WAITING_FOR_CONDVAR,ETIMEDOUT);
 
-	*cond = (cond_t)ret->object.id;
+	*cond = (cond_t)(LWP_OBJMASKTYPE(LWP_OBJTYPE_COND)|LWP_OBJMASKID(ret->object.id));
 	__lwp_thread_dispatchenable();
 
 	return 0;

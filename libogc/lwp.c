@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: lwp.c,v 1.27 2006-05-02 14:39:55 shagkur Exp $
+$Id: lwp.c,v 1.28 2006-05-06 18:07:25 shagkur Exp $
 
 lwp.c -- Thread subsystem I
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.27  2006/05/02 14:39:55  shagkur
+no message
+
 Revision 1.26  2006/05/02 14:18:14  shagkur
 - changed LWP_GetSelf() to not issue a context switch
 
@@ -65,6 +68,21 @@ no message
 #include "lwp_config.h"
 #include "lwp.h"
 
+#define LWP_OBJTYPE_THREAD			0
+#define LWP_OBJTYPE_TQUEUE			1
+
+#define LWP_CHECK_THREAD(hndl)		\
+{									\
+	if(((hndl)==LWP_THREAD_NULL) || (LWP_OBJTYPE(hndl)!=LWP_OBJTYPE_THREAD))	\
+		return NULL;				\
+}
+
+#define LWP_CHECK_TQUEUE(hndl)		\
+{									\
+	if(((hndl)==LWP_TQUEUE_NULL) || (LWP_OBJTYPE(hndl)!=LWP_OBJTYPE_TQUEUE))	\
+		return NULL;				\
+}
+
 typedef struct _tqueue_st {
 	lwp_obj object;
 	lwp_thrqueue tqueue;
@@ -84,12 +102,14 @@ static __inline__ u32 __lwp_priotocore(u32 prio)
 
 static __inline__ lwp_cntrl* __lwp_cntrl_open(lwp_t thr_id)
 {
-	return (lwp_cntrl*)__lwp_objmgr_get(&_lwp_thr_objects,thr_id);
+	LWP_CHECK_THREAD(thr_id);
+	return (lwp_cntrl*)__lwp_objmgr_get(&_lwp_thr_objects,LWP_OBJMASKID(thr_id));
 }
 
 static __inline__ tqueue_st* __lwp_tqueue_open(lwpq_t tqueue)
 {
-	return (tqueue_st*)__lwp_objmgr_get(&_lwp_tqueue_objects,tqueue);
+	LWP_CHECK_TQUEUE(tqueue);
+	return (tqueue_st*)__lwp_objmgr_get(&_lwp_tqueue_objects,LWP_OBJMASKID(tqueue));
 }
 
 static lwp_cntrl* __lwp_cntrl_allocate()
@@ -220,7 +240,7 @@ s32 LWP_CreateThread(lwp_t *thethread,void* (*entry)(void *),void *arg,void *sta
 		return -1;
 	}
 
-	*thethread = lwp_thread->object.id;
+	*thethread = (lwp_t)(LWP_OBJMASKTYPE(LWP_OBJTYPE_THREAD)|LWP_OBJMASKID(lwp_thread->object.id));
 	__lwp_thread_dispatchenable();
 
 	return 0;
@@ -263,7 +283,7 @@ lwp_t LWP_GetSelf()
 	lwp_t ret;
 
 	__lwp_thread_dispatchdisable();
-	ret = (lwp_t)_thr_executing->object.id;
+	ret = (lwp_t)(LWP_OBJMASKTYPE(LWP_OBJTYPE_THREAD)|LWP_OBJMASKID(_thr_executing->object.id));
 	__lwp_thread_dispatchunnest();
 
 	return ret;
@@ -273,7 +293,7 @@ void LWP_SetThreadPriority(lwp_t thethread,u32 prio)
 {
 	lwp_cntrl *lwp_thread;
 
-	if(thethread==-1) thethread = LWP_GetSelf();
+	if(thethread==LWP_THREAD_NULL) thethread = LWP_GetSelf();
 
 	lwp_thread = __lwp_cntrl_open(thethread);
 	if(!lwp_thread) return;
@@ -332,7 +352,7 @@ s32 LWP_JoinThread(lwp_t thethread,void **value_ptr)
 	exec->wait.ret_arg_1 = NULL;
 	exec->wait.ret_arg = (void*)&return_ptr;
 	exec->wait.queue = &lwp_thread->join_list;
-	exec->wait.id = lwp_thread->object.id;
+	exec->wait.id = thethread;
 	_CPU_ISR_Restore(level);
 	__lwp_threadqueue_enqueue(&lwp_thread->join_list,LWP_WD_NOTIMEOUT);
 	__lwp_thread_dispatchenable();
@@ -352,7 +372,7 @@ s32 LWP_InitQueue(lwpq_t *thequeue)
 
 	__lwp_threadqueue_init(&tq->tqueue,LWP_THREADQ_MODEFIFO,LWP_STATES_WAITING_ON_THREADQ,0);
 
-	*thequeue = tq->object.id;
+	*thequeue = (lwpq_t)(LWP_OBJMASKTYPE(LWP_OBJTYPE_TQUEUE)|LWP_OBJMASKID(tq->object.id));
 	__lwp_thread_dispatchenable();
 
 	return 0;
@@ -391,7 +411,7 @@ s32 LWP_ThreadSleep(lwpq_t thequeue)
 	exec->wait.ret_arg = NULL;
 	exec->wait.ret_arg_1 = NULL;
 	exec->wait.queue = &tq->tqueue;
-	exec->wait.id = tq->object.id;
+	exec->wait.id = thequeue;
 	_CPU_ISR_Restore(level);
 	__lwp_threadqueue_enqueue(&tq->tqueue,LWP_THREADQ_NOTIMEOUT);
 	__lwp_thread_dispatchenable();

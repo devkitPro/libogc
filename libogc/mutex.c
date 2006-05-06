@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: mutex.c,v 1.12 2006-05-02 11:56:10 shagkur Exp $
+$Id: mutex.c,v 1.13 2006-05-06 18:07:25 shagkur Exp $
 
 mutex.c -- Thread subsystem III
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.12  2006/05/02 11:56:10  shagkur
+- changed object handling & thread protection
+
 Revision 1.11  2006/05/02 09:38:21  shagkur
 - changed object handling and handle typedef
 - removed ISR disabling
@@ -49,6 +52,14 @@ no message
 #include "lwp_objmgr.h"
 #include "lwp_config.h"
 #include "mutex.h"
+
+#define LWP_OBJTYPE_MUTEX			2
+
+#define LWP_CHECK_MUTEX(hndl)		\
+{									\
+	if(((hndl)==LWP_MUTEX_NULL) || (LWP_OBJTYPE(hndl)!=LWP_OBJTYPE_MUTEX))	\
+		return NULL;				\
+}
 
 typedef struct _mutex_st
 {
@@ -78,7 +89,8 @@ void __lwp_mutex_init()
 
 static __inline__ mutex_st* __lwp_mutex_open(mutex_t lock)
 {
-	return (mutex_st*)__lwp_objmgr_get(&_lwp_mutex_objects,lock);
+	LWP_CHECK_MUTEX(lock);
+	return (mutex_st*)__lwp_objmgr_get(&_lwp_mutex_objects,LWP_OBJMASKID(lock));
 }
 
 static __inline__ void __lwp_mutex_free(mutex_st *lock)
@@ -117,7 +129,7 @@ s32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
 	attr.prioceil = 1; //__lwp_priotocore(LWP_PRIO_MAX-1);
 	__lwp_mutex_initialize(&ret->mutex,&attr,LWP_MUTEX_UNLOCKED);
 
-	*mutex = (mutex_t)ret->object.id;
+	*mutex = (mutex_t)(LWP_OBJMASKTYPE(LWP_OBJTYPE_MUTEX)|LWP_OBJMASKID(ret->object.id));
 	__lwp_thread_dispatchenable();
 	return 0;
 }
