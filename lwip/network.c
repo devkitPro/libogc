@@ -49,8 +49,9 @@ struct netselect_cb {
 	fd_set *readset;
 	fd_set *writeset;
 	fd_set *exceptset;
-	u32 sem_signaled;
-	sys_sem sem;
+	u32 signaled;
+	mutex_t cond_lck;
+	cond_t cond;
 };
 
 typedef void (*apimsg_decode)(struct apimsg_msg *);
@@ -1460,7 +1461,7 @@ static void evt_callback(struct netconn *conn,enum netconn_evt evt,u32 len)
 	while(1) {
 		LWP_SemWait(sockselect_sem);
 		for(scb = selectcb_list;scb;scb = scb->next) {
-			if(scb->sem_signaled==0) {
+			if(scb->signaled==0) {
 				if(scb->readset && FD_ISSET(s,scb->readset))
 					if(sock->rcvevt) break;
 				if(scb->writeset && FD_ISSET(s,scb->writeset))
@@ -1468,9 +1469,11 @@ static void evt_callback(struct netconn *conn,enum netconn_evt evt,u32 len)
 			}
 		}
 		if(scb) {
-			scb->sem_signaled = 1;
+			scb->signaled = 1;
 			LWP_SemPost(sockselect_sem);
-			LWP_SemPost(scb->sem);
+			LWP_MutexLock(scb->cond_lck);
+			LWP_CondSignal(scb->cond);
+			LWP_MutexUnlock(scb->cond_lck);
 		} else {
 			LWP_SemPost(sockselect_sem);
 			break;
@@ -2029,7 +2032,7 @@ s32 net_select(s32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset,st
 {
 	s32 i,nready;
 	fd_set lreadset,lwriteset,lexceptset;
-	u32 msectimeout;
+	struct timespec tb,*p_tb;
 	struct netselect_cb sel_cb;
 	struct netselect_cb *psel_cb;
 	
@@ -2037,7 +2040,7 @@ s32 net_select(s32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset,st
 	sel_cb.readset = readset;
 	sel_cb.writeset = writeset;
 	sel_cb.exceptset = exceptset;
-	sel_cb.sem_signaled = 0;
+	sel_cb.signaled = 0;
 	
 	LWP_SemWait(sockselect_sem);
 	
@@ -2069,17 +2072,23 @@ s32 net_select(s32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset,st
 			return 0;
 		}
 
-		LWP_SemInit(&sel_cb.sem,0,1);
+		LWP_MutexInit(&sel_cb.cond_lck,FALSE);
+		LWP_CondInit(&sel_cb.cond);
 		sel_cb.next = selectcb_list;
 		selectcb_list = &sel_cb;
 
 		LWP_SemPost(sockselect_sem);
 		if(timeout==NULL)
-			msectimeout = 0;
-		else
-			msectimeout = ((timeout->tv_sec*1000)+((timeout->tv_usec+500)/1000));
+			p_tb = NULL;
+		else {
+			tb.tv_sec = timeout->tv_sec;
+			tb.tv_nsec = (timeout->tv_usec+500)*TB_NSPERUS;
+			p_tb = &tb;
+		}
 		
-		i = LWP_SemWait(sel_cb.sem);			//todo: implement watchdog on lower level
+		LWP_MutexLock(sel_cb.cond_lck);
+		i = LWP_CondTimedWait(sel_cb.cond,sel_cb.cond_lck,p_tb);
+		LWP_MutexUnlock(sel_cb.cond_lck);
 
 		LWP_SemWait(sockselect_sem);
 		if(selectcb_list==&sel_cb)
@@ -2094,8 +2103,10 @@ s32 net_select(s32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset,st
 		}
 		LWP_SemPost(sockselect_sem);
 		
-		LWP_SemDestroy(sel_cb.sem);
-		if(i==-1) {
+		LWP_CondDestroy(sel_cb.cond);
+		LWP_MutexDestroy(sel_cb.cond_lck);
+
+		if(i==ETIMEDOUT) {
 			if(readset)
 				FD_ZERO(readset);
 			if(writeset)
