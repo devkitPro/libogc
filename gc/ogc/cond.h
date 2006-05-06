@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: cond.h,v 1.6 2006-05-02 09:39:34 shagkur Exp $
+$Id: cond.h,v 1.7 2006-05-06 18:10:07 shagkur Exp $
 
 cond.h -- Thread subsystem V
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.6  2006/05/02 09:39:34  shagkur
+- changed handle typedef
+
 Revision 1.5  2005/12/09 09:21:32  shagkur
 no message
 
@@ -48,6 +51,8 @@ no message
 
 #include <gctypes.h>
 #include <time.h>
+
+#define LWP_COND_NULL		0xffffffff
 
 #ifdef __cplusplus
 extern "C" {

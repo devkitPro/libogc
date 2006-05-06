@@ -4,6 +4,10 @@
 #include <gctypes.h>
 #include <lwp_queue.h>
 
+#define LWP_OBJMASKTYPE(type)		(type<<16)
+#define LWP_OBJMASKID(id)			(id&0xffff)
+#define LWP_OBJTYPE(id)				(id>>16)
+
 #ifdef __cplusplus
 extern "C" {
 #endif

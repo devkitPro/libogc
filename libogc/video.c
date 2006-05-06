@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: video.c,v 1.45 2006-05-02 09:38:59 shagkur Exp $
+$Id: video.c,v 1.46 2006-05-06 18:07:48 shagkur Exp $
 
 video.c -- VIDEO subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.45  2006/05/02 09:38:59  shagkur
+- made VIDEO_Init(), ISR safe
+
 Revision 1.44  2006/04/10 05:30:55  shagkur
 - changed calls to thread queue functions to meet the new prototypes.
 

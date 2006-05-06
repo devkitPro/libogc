@@ -12,8 +12,8 @@
 #define GX_CLIP_DISABLE		0
 #define GX_CLIP_ENABLE		1
 
-#define GX_FIFO_MINSIZE		64*1024
-#define GX_FIFO_HIWATERMARK	16*1024
+#define GX_FIFO_MINSIZE		(64*1024)
+#define GX_FIFO_HIWATERMARK	(16*1024)
 #define GX_FIFO_OBJSIZE		128
 
 #define GX_PERSPECTIVE		0
@@ -850,6 +850,7 @@ void GX_SetCPUFifo(GXFifoObj *fifo);
 void GX_SaveCPUFifo(GXFifoObj *fifo);
 void GX_SetGPFifo(GXFifoObj *fifo);
 GXFifoObj* GX_GetCPUFifo();
+GXFifoObj* GX_GetGPFifo();
 GXDrawDoneCallback GX_SetDrawDoneCallback(GXDrawDoneCallback cb);
 GXDrawSyncCallback GX_SetDrawSyncCallback(GXDrawSyncCallback cb);
 GXBreakPtCallback GX_SetBreakPtCallback(GXBreakPtCallback cb);
