@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: cond.c,v 1.14 2006-05-06 18:07:25 shagkur Exp $
+$Id: cond.c,v 1.15 2006-05-06 19:41:44 shagkur Exp $
 
 cond.c -- Thread subsystem V
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.14  2006/05/06 18:07:25  shagkur
+- fixed bugs in gx.c
+
 Revision 1.13  2006/05/02 11:56:10  shagkur
 - changed object handling & thread protection
 
@@ -193,16 +196,18 @@ s32 LWP_CondBroadcast(cond_t cond)
 
 s32 LWP_CondTimedWait(cond_t cond,mutex_t mutex,const struct timespec *abstime)
 {
-	u64 timeout;
+	u64 timeout = LWP_THREADQ_NOTIMEOUT;
 	struct timespec curr_time;
 	struct timespec diff;
 	boolean timedout = FALSE;
 	
-	clock_gettime(&curr_time);
-	timespec_substract(&curr_time,abstime,&diff);
-	if(diff.tv_sec<0 || (diff.tv_sec==0&& diff.tv_nsec<0)) timedout = TRUE;
+	if(abstime) {
+		clock_gettime(&curr_time);
+		timespec_substract(&curr_time,abstime,&diff);
+		if(diff.tv_sec<0 || (diff.tv_sec==0 && diff.tv_nsec<0)) timedout = TRUE;
 
-	timeout = __lwp_wd_calc_ticks(&diff);
+		timeout = __lwp_wd_calc_ticks(&diff);
+	}
 	return __lwp_cond_waitsupp(cond,mutex,timeout,timedout);
 }
 
