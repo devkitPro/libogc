@@ -20,8 +20,7 @@ OBJCOPY		:=	$(PREFIX)-objcopy
 
 BUILD		:=	build
 
-SPECS		:=	$(shell $(DEVKITPPC)/bin/$(CC) -v 2>&1)
-INSTALLPATH	:=	$(shell echo "$(SPECS)" | sed -n -e 's/Reading specs from //p' | sed -e 's/\/bin.*//')
+INSTALLPATH	:=	$(DEVKITPPC)
 GCC_VERSION	:=	$(shell $(DEVKITPPC)/bin/$(CC) -dumpversion)
 DATESTRING	:=	$(shell date +%Y)$(shell date +%m)$(shell date +%d)
 
