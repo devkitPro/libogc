@@ -9,6 +9,7 @@
 
 void MP3Player_Init();
 s32 MP3Player_Play(const void *MP3Stream,u32 Length);
+s32 MP3Player_PlayFile(s32 (*reader)(void *,s32));
 void MP3Player_Stop();
 BOOL MP3Player_IsPlaying();
 

@@ -50,7 +50,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uipopt.h,v 1.13 2005-12-09 09:31:25 shagkur Exp $
+ * $Id: uipopt.h,v 1.14 2006-12-01 15:21:53 wntrmute Exp $
  *
  */
 
@@ -235,7 +235,7 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_TCP_PCBS				64
+#define UIP_TCP_PCBS				4
 
 /**
  * The maximum number of simultaneously listening TCP ports.
@@ -244,7 +244,7 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_LISTEN_TCP_PCBS			8
+#define UIP_LISTEN_TCP_PCBS			2
 
 /**
  * The size of the advertised receiver's window.
@@ -257,13 +257,8 @@ typedef u16 uip_stats_t;
  */
 #define UIP_TCPIP_SOCKS				32
 
-#define UIP_TCP_SEGS				128
+#define UIP_TCP_SEGS				32
 
-#define UIP_TCP_WND					(1500)
-
-#define UIP_TCP_SND_BUF				(4*1024)
-
-#define UIP_TCP_SND_QUEUELEN		(16*UIP_TCP_SND_BUF/UIP_TCP_MSS)
 	
 /**
  * Determines if support for TCP urgent data notification should be
@@ -305,7 +300,14 @@ typedef u16 uip_stats_t;
  *
  * This is should not be to set to more than UIP_BUFSIZE - UIP_LLH_LEN - 40.
  */
-#define UIP_TCP_MSS				(1476)
+#define UIP_TCP_MSS				(1460)
+
+
+#define UIP_TCP_SND_BUF			(4*UIP_TCP_MSS)
+
+#define UIP_TCP_SND_QUEUELEN	(4*UIP_TCP_SND_BUF/UIP_TCP_MSS)
+
+#define UIP_TCP_WND				(4*UIP_TCP_MSS)
 
 /**
  * How long a connection should stay in the TIME_WAIT state.
@@ -359,10 +361,10 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_MEM_SIZE				(128*1024)
+#define UIP_MEM_SIZE				(28*1024)
 
-#define UIP_PBUF_POOL_NUM			128
-#define UIP_PBUF_POOL_BUFSIZE		1024
+#define UIP_PBUF_POOL_NUM			16
+#define UIP_PBUF_POOL_BUFSIZE		1600
 
 #define UIP_PBUF_ROM_NUM			128
 

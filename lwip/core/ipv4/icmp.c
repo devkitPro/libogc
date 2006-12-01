@@ -33,22 +33,21 @@
 /* Some ICMP messages should be passed to the transport protocols. This
    is not implemented. */
 
-#include "lwip/opt.h"
+#include <string.h>
 
+#include "lwip/opt.h"
 #include "lwip/icmp.h"
 #include "lwip/inet.h"
 #include "lwip/ip.h"
 #include "lwip/def.h"
-
 #include "lwip/stats.h"
-
 #include "lwip/snmp.h"
 
 void
 icmp_input(struct pbuf *p, struct netif *inp)
 {
-  unsigned char type;
-  unsigned char code;
+  u8_t type;
+  u8_t code;
   struct icmp_echo_hdr *iecho;
   struct ip_hdr *iphdr;
   struct ip_addr tmpaddr;
@@ -61,7 +60,7 @@ icmp_input(struct pbuf *p, struct netif *inp)
   iphdr = p->payload;
   hlen = IPH_HL(iphdr) * 4;
   if (pbuf_header(p, -((s16_t)hlen)) || (p->tot_len < sizeof(u16_t)*2)) {
-    LWIP_DEBUGF(ICMP_DEBUG, ("icmp_input: short ICMP (%u bytes) received\n", p->tot_len));
+    LWIP_DEBUGF(ICMP_DEBUG, ("icmp_input: short ICMP (%"U16_F" bytes) received\n", p->tot_len));
     pbuf_free(p);
     ICMP_STATS_INC(icmp.lenerr);
     snmp_inc_icmpinerrors();
@@ -117,7 +116,7 @@ icmp_input(struct pbuf *p, struct netif *inp)
 		 IPH_TTL(iphdr), 0, IP_PROTO_ICMP, inp);
     break;
   default:
-  LWIP_DEBUGF(ICMP_DEBUG, ("icmp_input: ICMP type %d code %d not supported.\n", (int)type, (int)code));
+  LWIP_DEBUGF(ICMP_DEBUG, ("icmp_input: ICMP type %"S16_F" code %"S16_F" not supported.\n", (s16_t)type, (s16_t)code));
     ICMP_STATS_INC(icmp.proterr);
     ICMP_STATS_INC(icmp.drop);
   }
@@ -140,7 +139,7 @@ icmp_dest_unreach(struct pbuf *p, enum icmp_dur_type t)
   ICMPH_TYPE_SET(idur, ICMP_DUR);
   ICMPH_CODE_SET(idur, t);
 
-  memcpy((char *)q->payload + 8, p->payload, IP_HLEN + 8);
+  memcpy((u8_t *)q->payload + 8, p->payload, IP_HLEN + 8);
 
   /* calculate checksum */
   idur->chksum = 0;
@@ -178,7 +177,7 @@ icmp_time_exceeded(struct pbuf *p, enum icmp_te_type t)
   ICMPH_CODE_SET(tehdr, t);
 
   /* copy fields from original packet */
-  memcpy((char *)q->payload + 8, (char *)p->payload, IP_HLEN + 8);
+  memcpy((u8_t *)q->payload + 8, (u8_t *)p->payload, IP_HLEN + 8);
 
   /* calculate checksum */
   tehdr->chksum = 0;

@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: mutex.c,v 1.13 2006-05-06 18:07:25 shagkur Exp $
+$Id: mutex.c,v 1.14 2006-12-01 15:21:53 wntrmute Exp $
 
 mutex.c -- Thread subsystem III
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.13  2006/05/06 18:07:25  shagkur
+- fixed bugs in gx.c
+
 Revision 1.12  2006/05/02 11:56:10  shagkur
 - changed object handling & thread protection
 
@@ -74,7 +77,9 @@ static s32 __lwp_mutex_locksupp(mutex_t lock,u32 timeout,u8 block)
 	u32 level;
 	mutex_st *p;
 
-	p = (mutex_st*)__lwp_objmgr_get_isrdisable(&_lwp_mutex_objects,lock,&level);
+	if(lock==LWP_MUTEX_NULL || LWP_OBJTYPE(lock)!=LWP_OBJTYPE_MUTEX) return -1;
+	
+	p = (mutex_st*)__lwp_objmgr_getisrdisable(&_lwp_mutex_objects,LWP_OBJMASKID(lock),&level);
 	if(!p) return -1;
 
 	__lwp_mutex_seize(&p->mutex,p->object.id,block,timeout,level);

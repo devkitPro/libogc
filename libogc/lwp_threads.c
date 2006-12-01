@@ -29,6 +29,7 @@ void **__lwp_thr_libc_reent = NULL;
 static void (*_lwp_exitfunc)(void);
 
 extern void _cpu_context_switch(void *,void *);
+extern void _cpu_context_switch_ex(void *,void *);
 extern void _cpu_context_save(void *);
 extern void _cpu_context_restore(void *);
 extern void _cpu_context_save_fp(void *);
@@ -145,9 +146,11 @@ void __thread_dispatch()
 			exec->libc_reent = *__lwp_thr_libc_reent;
 			*__lwp_thr_libc_reent = heir->libc_reent;
 		}
-
+#ifdef _DEBUG
+		_cpu_context_switch_ex((void*)&exec->context,(void*)&heir->context);
+#else
 		_cpu_context_switch((void*)&exec->context,(void*)&heir->context);
-
+#endif
 		exec = _thr_executing;
 		_CPU_ISR_Disable(level);
 	}
@@ -554,7 +557,7 @@ void __lwp_thread_close(lwp_cntrl *thethread)
 
 	if(!__lwp_threadqueue_extractproxy(thethread)) {
 		if(__lwp_wd_isactive(&thethread->timer))
-			__lwp_wd_remove(&thethread->timer);
+			__lwp_wd_remove_ticks(&thethread->timer);
 	}
 	
 	_CPU_ISR_Disable(level);
@@ -571,9 +574,8 @@ void __lwp_thread_close(lwp_cntrl *thethread)
 
 	__lwp_stack_free(thethread);
 
-	__lwp_objmgr_close(thethread->information,&thethread->object);
-	__lwp_objmgr_free(thethread->information,&thethread->object);
-	thethread->information = NULL;
+	__lwp_objmgr_close(thethread->object.information,&thethread->object);
+	__lwp_objmgr_free(thethread->object.information,&thethread->object);
 }
 
 void __lwp_thread_closeall()

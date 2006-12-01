@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: system.c,v 1.58 2005-12-09 09:35:45 shagkur Exp $
+$Id: system.c,v 1.59 2006-12-01 15:21:53 wntrmute Exp $
 
 system.c -- OS functions and initialization
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.58  2005/12/09 09:35:45  shagkur
+no message
+
 Revision 1.57  2005/11/22 07:18:36  shagkur
 - Added function for console window initialization
 
@@ -57,7 +60,7 @@ no message
 #include "system.h"
 
 #define SYSMEM_SIZE				0x1800000
-#define KERNEL_HEAP				(512*1024)
+#define KERNEL_HEAP				(1*1024*1024)
 
 // DSPCR bits
 #define DSPCR_DSPRESET      0x0800        // Reset DSP
@@ -74,6 +77,14 @@ no message
 
 #define FONT_SIZE_ANSI		(288 + 131072)
 #define FONT_SIZE_SJIS		(3840 + 1179648)
+
+#define LWP_OBJTYPE_SYSWD			6
+
+#define LWP_CHECK_SYSWD(hndl)		\
+{									\
+	if(((hndl)==SYS_WD_NULL) || (LWP_OBJTYPE(hndl)!=LWP_OBJTYPE_SYSWD))	\
+		return NULL;				\
+}
 
 #define _SHIFTL(v, s, w)	\
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
@@ -92,6 +103,10 @@ typedef struct _alarm_st
 {
 	lwp_obj object;
 	wd_cntrl alarm;
+	u64 ticks;
+	u64 periodic;
+	u64 start_per;
+	alarmcallback alarmhandler;
 } alarm_st;
 
 typedef struct _yay0header {
@@ -195,6 +210,32 @@ static sys_resetinfo mem_resetinfo = {
 	127
 };
 
+static __inline__ alarm_st* __lwp_syswd_open(syswd_t wd)
+{
+	LWP_CHECK_SYSWD(wd);
+	return (alarm_st*)__lwp_objmgr_get(&sys_alarm_objects,LWP_OBJMASKID(wd));
+}
+
+static __inline__ void __lwp_syswd_free(alarm_st *alarm)
+{
+	__lwp_objmgr_close(&sys_alarm_objects,&alarm->object);
+	__lwp_objmgr_free(&sys_alarm_objects,&alarm->object);
+}
+
+static alarm_st* __lwp_syswd_allocate()
+{
+	alarm_st *alarm;
+
+	__lwp_thread_dispatchdisable();
+	alarm = (alarm_st*)__lwp_objmgr_allocate(&sys_alarm_objects);
+	if(alarm) {
+		__lwp_objmgr_open(&sys_alarm_objects,&alarm->object);
+		return alarm;
+	}
+	__lwp_thread_dispatchenable();
+	return NULL;
+}
+
 static s32 __mem_onreset(s32 final)
 {
 	if(final==TRUE) {
@@ -206,12 +247,16 @@ static s32 __mem_onreset(s32 final)
 
 static void __sys_alarmhandler(void *arg)
 {
-	sysalarm *alarm = (sysalarm*)arg;
+	alarm_st *alarm;
+	syswd_t thealarm = (syswd_t)arg;
 
+	if(thealarm==SYS_WD_NULL || LWP_OBJTYPE(thealarm)!=LWP_OBJTYPE_SYSWD) return;
+	
 	__lwp_thread_dispatchdisable();
+	alarm = (alarm_st*)__lwp_objmgr_getnoprotection(&sys_alarm_objects,LWP_OBJMASKID(thealarm));
 	if(alarm) {
-		if(alarm->alarmhandler) alarm->alarmhandler(alarm);
-		if(alarm->periodic) __lwp_wd_insert_ticks(alarm->handle,alarm->periodic);
+		if(alarm->alarmhandler) alarm->alarmhandler(thealarm);
+		if(alarm->periodic) __lwp_wd_insert_ticks(&alarm->alarm,alarm->periodic);
 	}
 	__lwp_thread_dispatchunnest();
 }
@@ -970,7 +1015,7 @@ void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)
 
 void* SYS_AllocateFramebuffer(GXRModeObj *rmode)
 {
-	return memalign(32,VIDEO_PadFramebufferWidth(rmode->fbWidth)*rmode->xfbHeight*VI_DISPLAY_PIX_SZ);
+	return memalign(32,(VIDEO_PadFramebufferWidth(rmode->fbWidth)*rmode->xfbHeight*VI_DISPLAY_PIX_SZ));
 }
 
 s32 SYS_ConsoleInit(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidth,s32 conHeight)
@@ -1094,97 +1139,89 @@ void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width)
 	*width = sys_fontwidthtab[c];
 }
 
-void SYS_CreateAlarm(sysalarm *alarm)
+s32 SYS_CreateAlarm(syswd_t *thealarm)
 {
-	u32 level;
+	alarm_st *alarm;
 
-	_CPU_ISR_Disable(level);
+	alarm = __lwp_syswd_allocate();
+	if(!alarm) return -1;
+
 	alarm->alarmhandler = NULL;
-	alarm->handle = NULL;
 	alarm->ticks = 0;
 	alarm->start_per = 0;
 	alarm->periodic = 0;
-	_CPU_ISR_Restore(level);
+
+	*thealarm = (LWP_OBJMASKTYPE(LWP_OBJTYPE_SYSWD)|LWP_OBJMASKID(alarm->object.id));
+	__lwp_thread_dispatchenable();
+	return 0;
 }
 
-void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb)
+s32 SYS_SetAlarm(syswd_t thealarm,const struct timespec *tp,alarmcallback cb)
 {
-	u32 level;
-	alarm_st *ptr;
+	alarm_st *alarm;
 
-	_CPU_ISR_Disable(level);
+	alarm = __lwp_syswd_open(thealarm);
+	if(!alarm) return -1;
+
 	alarm->alarmhandler = cb;
 	alarm->ticks = __lwp_wd_calc_ticks(tp);
 
 	alarm->periodic = 0;
 	alarm->start_per = 0;
 
-	ptr = (alarm_st*)alarm->handle;
-	if(!ptr) ptr = (alarm_st*)__lwp_objmgr_allocate(&sys_alarm_objects);
-	if(ptr) {
-		__lwp_wd_initialize(&ptr->alarm,__sys_alarmhandler,alarm);
-		__lwp_wd_insert_ticks(&ptr->alarm,alarm->ticks);
-		__lwp_objmgr_open(&sys_alarm_objects,&ptr->object);
-		alarm->handle = ptr;
-	}
-	_CPU_ISR_Restore(level);
+	__lwp_wd_initialize(&alarm->alarm,__sys_alarmhandler,alarm->object.id,(void*)thealarm);
+	__lwp_wd_insert_ticks(&alarm->alarm,alarm->ticks);
+	__lwp_thread_dispatchenable();
+	return 0;
 }
 
-void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb)
+s32 SYS_SetPeriodicAlarm(syswd_t thealarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb)
 {
-	u32 level;
-	alarm_st *ptr;
+	alarm_st *alarm;
 
-	_CPU_ISR_Disable(level);
+	alarm = __lwp_syswd_open(thealarm);
+	if(!alarm) return -1;
+
 	alarm->start_per = __lwp_wd_calc_ticks(tp_start);
 	alarm->periodic = __lwp_wd_calc_ticks(tp_period);
 	alarm->alarmhandler = cb;
 
 	alarm->ticks = 0;
 
-	ptr = (alarm_st*)alarm->handle;
-	if(!ptr) ptr = (alarm_st*)__lwp_objmgr_allocate(&sys_alarm_objects);
-	if(ptr) {
-		__lwp_wd_initialize(&ptr->alarm,__sys_alarmhandler,alarm);
-		__lwp_wd_insert_ticks(&ptr->alarm,alarm->start_per);
-		__lwp_objmgr_open(&sys_alarm_objects,&ptr->object);
-		alarm->handle = ptr;
-	}
-	_CPU_ISR_Restore(level);
+	__lwp_wd_initialize(&alarm->alarm,__sys_alarmhandler,alarm->object.id,(void*)thealarm);
+	__lwp_wd_insert_ticks(&alarm->alarm,alarm->start_per);
+	__lwp_thread_dispatchenable();
+	return 0;
 }
 
-void SYS_RemoveAlarm(sysalarm *alarm)
+s32 SYS_RemoveAlarm(syswd_t thealarm)
 {
-	u32 level;
-	alarm_st *ptr;
+	alarm_st *alarm;
 
-	_CPU_ISR_Disable(level);
-	ptr = (alarm_st*)alarm->handle;
-	alarm->handle = NULL;
+	alarm = __lwp_syswd_open(thealarm);
+	if(!alarm) return -1;
+
 	alarm->alarmhandler = NULL;
 	alarm->ticks = 0;
 	alarm->periodic = 0;
 	alarm->start_per = 0;
 	
-	if(ptr) {
-		__lwp_wd_remove(&ptr->alarm);
-		__lwp_objmgr_close(&sys_alarm_objects,&ptr->object);
-		__lwp_objmgr_free(&sys_alarm_objects,&ptr->object);
-	}
-	_CPU_ISR_Restore(level);
+	__lwp_wd_remove_ticks(&alarm->alarm);
+	__lwp_syswd_free(alarm);
+	__lwp_thread_dispatchenable();
+	return 0;
 }
 
-void SYS_CancelAlarm(sysalarm *alarm)
+s32 SYS_CancelAlarm(syswd_t thealarm)
 {
-	u32 level;
-	alarm_st *ptr = (alarm_st*)alarm->handle;
+	alarm_st *alarm;
 
-	_CPU_ISR_Disable(level);
-	if(ptr) {
-		__lwp_wd_remove(&ptr->alarm);
-		__lwp_objmgr_close(&sys_alarm_objects,&ptr->object);
-	}
-	_CPU_ISR_Restore(level);
+	alarm = __lwp_syswd_open(thealarm);
+	if(!alarm) return -1;
+
+	__lwp_wd_remove_ticks(&alarm->alarm);
+	__lwp_thread_dispatchenable();
+	return 0;
 }
 
 resetcallback SYS_SetResetCallback(resetcallback cb)

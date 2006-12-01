@@ -7,7 +7,9 @@
 #define CARDIO_ERROR_BUSY				-1
 #define CARDIO_ERROR_WRONGDEVICE		-2
 #define CARDIO_ERROR_NOCARD				-3
+#define CARDIO_ERROR_IDLE				-4
 #define CARDIO_ERROR_IOERROR			-5
+#define CARDIO_ERROR_IOTIMEOUT			-6
 
 #define CARDIO_ERROR_NOTPERMITTED		-107
 #define CARDIO_ERROR_ROOTENTRY			-108
@@ -36,7 +38,8 @@
 #define SECTOR_SIZE						512
 
 #define NOT_INITIALIZED					0
-#define INITIALIZED						10
+#define INITIALIZING					1
+#define INITIALIZED						2
 
 #ifdef __cplusplus
    extern "C" {

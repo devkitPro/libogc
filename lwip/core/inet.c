@@ -48,43 +48,190 @@
 
 #include "lwip/sys.h"
 
-/* This is a reference implementation of the checksum algorithm
-
- - it may not work on all architectures, and all processors, particularly
-   if they have issues with alignment and 16 bit access.
-
- - in this case you will need to port it to your architecture and 
-   #define LWIP_CHKSUM <your_checksum_routine> 
-   in your sys_arch.h
+/* This is a reference implementation of the checksum algorithm, with the
+ * aim of being simple, correct and fully portable. Checksumming is the
+ * first thing you would want to optimize for your platform. You will
+ * need to port it to your architecture and in your sys_arch.h:
+ * 
+ * #define LWIP_CHKSUM <your_checksum_routine> 
 */
 #ifndef LWIP_CHKSUM
 #define LWIP_CHKSUM lwip_standard_chksum
+
+/**
+ * lwip checksum
+ *
+ * @param dataptr points to start of data to be summed at any boundary
+ * @param len length of data to be summed
+ * @return host order (!) lwip checksum (non-inverted Internet sum) 
+ *
+ * @note accumulator size limits summable lenght to 64k
+ * @note host endianess is irrelevant (p3 RFC1071)
+ */
 static u16_t
-lwip_standard_chksum(void *dataptr, int len)
+lwip_standard_chksum(void *dataptr, u16_t len)
 {
   u32_t acc;
+  u16_t src;
+  u8_t *octetptr;
 
-  LWIP_DEBUGF(INET_DEBUG, ("lwip_chksum(%p, %d)\n", (void *)dataptr, len));
-  for(acc = 0; len > 1; len -= 2) {
-      /*    acc = acc + *((u16_t *)dataptr)++;*/
-    acc += *(u16_t *)dataptr;
-    dataptr = (void *)((u16_t *)dataptr + 1);
+  acc = 0;
+  /* dataptr may be at odd or even addresses */
+  octetptr = (u8_t*)dataptr;
+  while (len > 1)
+  {
+    /* declare first octet as most significant
+       thus assume network order, ignoring host order */
+    src = (*octetptr) << 8;
+    octetptr++;
+    /* declare second octet as least significant */
+    src |= (*octetptr);
+    octetptr++;
+    acc += src;
+    len -= 2;
   }
-
-  /* add up any odd byte */
-  if (len == 1) {
-    acc += htons((u16_t)((*(u8_t *)dataptr) & 0xff) << 8);
-    LWIP_DEBUGF(INET_DEBUG, ("inet: chksum: odd byte %d\n", (unsigned int)(*(u8_t *)dataptr)));
-  } else {
-    LWIP_DEBUGF(INET_DEBUG, ("inet: chksum: no odd byte\n"));
+  if (len > 0)
+  {
+    /* accumulate remaining octet */
+    src = (*octetptr) << 8;
+    acc += src;
   }
-  acc = (acc >> 16) + (acc & 0xffffUL);
-
+  /* add deferred carry bits */
+  acc = (acc >> 16) + (acc & 0x0000ffffUL);
   if ((acc & 0xffff0000) != 0) {
-    acc = (acc >> 16) + (acc & 0xffffUL);
+    acc = (acc >> 16) + (acc & 0x0000ffffUL);
+  }
+  /* This maybe a little confusing: reorder sum using htons()
+     instead of ntohs() since it has a little less call overhead.
+     The caller must invert bits for Internet sum ! */
+  return htons((u16_t)acc);
+}
+
+#endif
+
+#if 0
+/*
+ * Curt McDowell
+ * Broadcom Corp.
+ * csm@broadcom.com
+ *
+ * IP checksum two bytes at a time with support for
+ * unaligned buffer.
+ * Works for len up to and including 0x20000.
+ * by Curt McDowell, Broadcom Corp. 12/08/2005
+ */
+
+static u16_t
+lwip_standard_chksum2(void *dataptr, int len)
+{
+  u8_t *pb = dataptr;
+  u16_t *ps, t = 0;
+  u32_t sum = 0;
+  int odd = ((u32_t)pb & 1);
+
+  /* Get aligned to u16_t */
+  if (odd && len > 0) {
+    ((u8_t *)&t)[1] = *pb++;
+    len--;
   }
 
-  return (u16_t)acc;
+  /* Add the bulk of the data */
+  ps = (u16_t *)pb;
+  while (len > 1) {
+    sum += *ps++;
+    len -= 2;
+  }
+
+  /* Consume left-over byte, if any */
+  if (len > 0)
+    ((u8_t *)&t)[0] = *(u8_t *)ps;;
+
+  /* Add end bytes */
+  sum += t;
+
+  /*  Fold 32-bit sum to 16 bits */
+  while (sum >> 16)
+    sum = (sum & 0xffff) + (sum >> 16);
+
+  /* Swap if alignment was odd */
+  if (odd)
+    sum = ((sum & 0xff) << 8) | ((sum & 0xff00) >> 8);
+
+  return sum;
+}
+
+/**
+ * An optimized checksum routine. Basically, it uses loop-unrolling on
+ * the checksum loop, treating the head and tail bytes specially, whereas
+ * the inner loop acts on 8 bytes at a time. 
+ *
+ * @arg start of buffer to be checksummed. May be an odd byte address.
+ * @len number of bytes in the buffer to be checksummed.
+ * 
+ * @todo First argument type conflicts with generic checksum routine.
+ * 
+ * by Curt McDowell, Broadcom Corp. December 8th, 2005
+ */
+
+static u16_t
+lwip_standard_chksum4(u8_t *pb, int len)
+{
+  u16_t *ps, t = 0;
+  u32_t *pl;
+  u32_t sum = 0, tmp;
+  /* starts at odd byte address? */
+  int odd = ((u32_t)pb & 1);
+
+  if (odd && len > 0) {
+    ((u8_t *)&t)[1] = *pb++;
+    len--;
+  }
+
+  ps = (u16_t *)pb;
+
+  if (((u32_t)ps & 3) && len > 1) {
+    sum += *ps++;
+    len -= 2;
+  }
+
+  pl = (u32_t *)ps;
+
+  while (len > 7)  {
+    tmp = sum + *pl++;          /* ping */
+    if (tmp < sum)
+      tmp++;                    /* add back carry */
+
+    sum = tmp + *pl++;          /* pong */
+    if (sum < tmp)
+      sum++;                    /* add back carry */
+
+    len -= 8;
+  }
+
+  /* make room in upper bits */
+  sum = (sum >> 16) + (sum & 0xffff);
+
+  ps = (u16_t *)pl;
+
+  /* 16-bit aligned word remaining? */
+  while (len > 1) {
+    sum += *ps++;
+    len -= 2;
+  }
+
+  /* dangling tail byte remaining? */
+  if (len > 0)                  /* include odd byte */
+    ((u8_t *)&t)[0] = *(u8_t *)ps;
+
+  sum += t;                     /* add end bytes */
+
+  while (sum >> 16)             /* combine halves */
+    sum = (sum >> 16) + (sum & 0xffff);
+
+  if (odd)
+    sum = ((sum & 0xff) << 8) | ((sum & 0xff00) >> 8);
+
+  return sum;
 }
 #endif
 
@@ -109,7 +256,7 @@ inet_chksum_pseudo(struct pbuf *p,
     LWIP_DEBUGF(INET_DEBUG, ("inet_chksum_pseudo(): checksumming pbuf %p (has next %p) \n",
       (void *)q, (void *)q->next));
     acc += LWIP_CHKSUM(q->payload, q->len);
-    /*LWIP_DEBUGF(INET_DEBUG, ("inet_chksum_pseudo(): unwrapped lwip_chksum()=%lx \n", acc));*/
+    /*LWIP_DEBUGF(INET_DEBUG, ("inet_chksum_pseudo(): unwrapped lwip_chksum()=%"X32_F" \n", acc));*/
     while (acc >> 16) {
       acc = (acc & 0xffffUL) + (acc >> 16);
     }
@@ -117,7 +264,7 @@ inet_chksum_pseudo(struct pbuf *p,
       swapped = 1 - swapped;
       acc = ((acc & 0xff) << 8) | ((acc & 0xff00UL) >> 8);
     }
-    /*LWIP_DEBUGF(INET_DEBUG, ("inet_chksum_pseudo(): wrapped lwip_chksum()=%lx \n", acc));*/
+    /*LWIP_DEBUGF(INET_DEBUG, ("inet_chksum_pseudo(): wrapped lwip_chksum()=%"X32_F" \n", acc));*/
   }
 
   if (swapped) {
@@ -133,7 +280,7 @@ inet_chksum_pseudo(struct pbuf *p,
   while (acc >> 16) {
     acc = (acc & 0xffffUL) + (acc >> 16);
   }
-  LWIP_DEBUGF(INET_DEBUG, ("inet_chksum_pseudo(): pbuf chain lwip_chksum()=%lx\n", acc));
+  LWIP_DEBUGF(INET_DEBUG, ("inet_chksum_pseudo(): pbuf chain lwip_chksum()=%"X32_F"\n", acc));
   return (u16_t)~(acc & 0xffffUL);
 }
 
@@ -218,10 +365,11 @@ inet_chksum_pbuf(struct pbuf *p)
   */
  /*  */
  /* inet_aton */
- int inet_aton(const char *cp, struct in_addr *addr)
+ s8_t
+ inet_aton(const char *cp, struct in_addr *addr)
  {
      u32_t val;
-     int base, n;
+     s32_t base, n;
      char c;
      u32_t parts[4];
      u32_t* pp = parts;
@@ -245,11 +393,11 @@ inet_chksum_pbuf(struct pbuf *p)
          }
          for (;;) {
              if (isdigit(c)) {
-                 val = (val * base) + (int)(c - '0');
+                 val = (val * base) + (s16_t)(c - '0');
                  c = *++cp;
              } else if (base == 16 && isxdigit(c)) {
                  val = (val << 4) |
-                     (int)(c + 10 - (islower(c) ? 'a' : 'A'));
+                     (s16_t)(c + 10 - (islower(c) ? 'a' : 'A'));
                  c = *++cp;
              } else
              break;

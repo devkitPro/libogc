@@ -153,7 +153,7 @@ static SICallback typeCallback[4][4] = {{NULL,NULL,NULL,NULL},
 										{NULL,NULL,NULL,NULL},
 										{NULL,NULL,NULL,NULL},
 										{NULL,NULL,NULL,NULL}};
-static sysalarm si_alarm[4];
+static syswd_t si_alarm[4];
 
 static vu32* const _siReg = (u32*)0xCC006400;
 static vu16* const _viReg = (u16*)0xCC002000;
@@ -185,7 +185,7 @@ static __inline__ void __si_cleartcinterrupt()
 	_siReg[13] = (_siReg[13]|SICOMCSR_TCINT)&SICOMCSR_TCINT;
 }
 
-static void __si_alarmhandler(sysalarm *alarm)
+static void __si_alarmhandler(syswd_t thealarm)
 {
 	u32 chn;
 #ifdef _SI_DEBUG
@@ -193,7 +193,7 @@ static void __si_alarmhandler(sysalarm *alarm)
 #endif
 	chn = 0;
 	while(chn<4) {
-		if((&si_alarm[chn])==alarm) break;
+		if(si_alarm[chn]==thealarm) break;
 		chn++;
 	}
 	if(chn==4) return;
@@ -379,7 +379,7 @@ static void __si_transfernext(u32 chan)
 #endif
 		if(sipacket[chan].chan!=-1) {
 			if(!__si_transfer(sipacket[chan].chan,sipacket[chan].out,sipacket[chan].out_bytes,sipacket[chan].in,sipacket[chan].in_bytes,sipacket[chan].callback)) break;
-			SYS_CancelAlarm(&si_alarm[chan]);
+			SYS_CancelAlarm(si_alarm[chan]);
 			sipacket[chan].chan = -1;
 		}
 		cnt++;
@@ -595,7 +595,7 @@ u32 SI_Transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb
 		if(us_delay) {
 			tb.tv_sec = 0;
 			tb.tv_nsec = us_delay*TB_NSPERUS;
-			SYS_SetAlarm(&si_alarm[chan],&tb,__si_alarmhandler);
+			SYS_SetAlarm(si_alarm[chan],&tb,__si_alarmhandler);
 		} else if(__si_transfer(chan,out,out_len,in,in_len,cb)) {
 			_CPU_ISR_Restore(level);
 			return ret;

@@ -53,4 +53,10 @@ static __inline__ mq_buffercntrl* __lwpmq_get_pendingmsg(mq_cntrl *mqueue)
 	return (mq_buffercntrl*)__lwp_queue_getI(&mqueue->pending_msgs);
 }
 
+static __inline__ void __lwpmq_buffer_copy(void *dest,const void *src,u32 size)
+{
+	if(size==sizeof(u32)) *(u32*)dest = *(u32*)src;
+	else memcpy(dest,src,size);
+}
+
 #endif

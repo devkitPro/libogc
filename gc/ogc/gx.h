@@ -2,6 +2,7 @@
 #define __GX_H__
 
 #include <gctypes.h>
+#include "lwp.h"
 #include "gx_struct.h"
 #include "gu.h"
 
@@ -786,6 +787,12 @@
 #define GX_BIGTLUT2						18
 #define GX_BIGTLUT3						19
 
+#define GX_MAX_VTXDESC					GX_VA_MAXATTR
+#define GX_MAX_VTXDESC_LISTSIZE			(GX_VA_MAXATTR+1)
+
+#define GX_MAX_VTXATTRFMT				GX_VA_MAXATTR
+#define GX_MAX_VTXATTRFMT_LISTSIZE		(GX_VA_MAXATTR+1)
+
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
@@ -824,6 +831,18 @@ typedef struct _vtx {
 } Vtx;
 
 typedef struct {
+	u8 attr;
+	u8 type;
+} GXVtxDesc;
+
+typedef struct {
+	u32 vtxattr;
+	u32 comptype;
+	u32 compsize;
+	u32 frac;
+} GXVtxAttrFmt;
+
+typedef struct {
 	u8 pad[GX_FIFO_OBJSIZE];
 } GXFifoObj;
 
@@ -855,6 +874,7 @@ GXDrawDoneCallback GX_SetDrawDoneCallback(GXDrawDoneCallback cb);
 GXDrawSyncCallback GX_SetDrawSyncCallback(GXDrawSyncCallback cb);
 GXBreakPtCallback GX_SetBreakPtCallback(GXBreakPtCallback cb);
 
+void GX_AbortFrame();
 void GX_Flush();
 void GX_SetMisc(u32 token,u32 value);
 void GX_SetDrawDone();
@@ -876,13 +896,15 @@ void GX_SetChanAmbColor(s32 channel,GXColor color);
 void GX_SetChanMatColor(s32 channel,GXColor color);
 void GX_SetArray(u32 attr,void *ptr,u8 stride);
 void GX_SetVtxAttrFmt(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac);
+void GX_SetVtxAttrFmtv(u8 vtxfmt,GXVtxAttrFmt *attr_list);
 void GX_SetVtxDesc(u8 attr,u8 type);
+void GX_SetVtxDescv(GXVtxDesc *attr_list);
 
+u32 GX_EndDispList();
 void GX_Begin(u8 primitve,u8 vtxfmt,u16 vtxcnt);
 void GX_End();
 void GX_BeginDispList(void *list,u32 size);
 void GX_CallDispList(void *list,u32 nbytes);
-u32 GX_EndDispList();
 
 void GX_MatrixIndex1x8(u8 index);
 
@@ -984,9 +1006,9 @@ void GX_SetDstAlpha(u8 enable,u8 a);
 void GX_SetFieldMask(u8 even_mask,u8 odd_mask);
 void GX_SetFieldMode(u8 field_mode,u8 half_aspect_ratio);
 
-void GX_SetDispCopyDst(u16 wd,u16 ht);
 f32 GX_GetYScaleFactor(u16 efbHeight,u16 xfbHeight);
 u32 GX_SetDispCopyYScale(f32 yscale);
+void GX_SetDispCopyDst(u16 wd,u16 ht);
 void GX_SetCopyClamp(u8 clamp);
 void GX_SetDispCopyGamma(u8 gamma);
 void GX_SetCopyFilter(u8 aa,u8 sample_pattern[12][2],u8 vf,u8 vfilter[7]);
@@ -1041,17 +1063,24 @@ void GX_InitSpecularDirHA(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz,f32 hx,f32 hy
 void GX_InitSpecularDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz);
 void GX_InitLightSpot(GXLightObj *lit_obj,f32 cut_off,u8 spotfn);
 
+u16 GX_GetDrawSync();
+u32 GX_ReadClksPerVtx();
+u32 GX_GetOverflowCount();
+u32 GX_ResetOverflowCount();
+lwp_t GX_GetCurrentGXThread();
+lwp_t GX_SetCurrentGXThread();
+void GX_RestoreWriteGatherPipe();
 void GX_SetGPMetric(u32 perf0,u32 perf1);
 void GX_ClearGPMetric();
 void GX_InitXfRasMetric();
 void GX_ReadXfRasMetric(u32 *xfwaitin,u32 *xfwaitout,u32 *rasbusy,u32 *clks);
-u32 GX_ReadClksPerVtx();
 void GX_ClearVCacheMetric();
 void GX_ReadVCacheMetric(u32 *check,u32 *miss,u32 *stall);
 void GX_SetVCacheMetric(u32 attr);
 void GX_GetGPStatus(u8 *overhi,u8 *underlow,u8 *readIdle,u8 *cmdIdle,u8 *brkpt);
-u32 GX_GetOverflowCount();
 void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1);
+void GX_GetFifoPtrs(GXFifoObj *fifo,void **rd_ptr,void **wt_ptr);
+volatile void* GX_RedirectWriteGatherPipe(void *ptr);
 
 #define GX_InitLightPosv(lo,vec) \
     (GX_InitLightPos((lo), *(f32*)(vec), *((f32*)(vec)+1), *((f32*)(vec)+2)))

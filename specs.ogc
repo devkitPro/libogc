@@ -63,7 +63,7 @@ cc1 -E %{traditional|ftraditional|traditional-cpp:-traditional-cpp}
 1
 
 *version:
-3.4.6
+4.0.1
 
 *multilib:
 . ;

@@ -3,6 +3,7 @@
 
 #include <gctypes.h>
 #include <limits.h>
+#include <string.h>
 #include <lwp_threadq.h>
 
 //#define _LWPMQ_DEBUG
@@ -57,15 +58,15 @@ typedef struct _mqcntrl {
 	lwp_queue inactive_msgs;
 } mq_cntrl;
 
-u32 __lwpmq_initialize(mq_cntrl *,mq_attr *,u32,u32);
-void __lwpmq_close(mq_cntrl *,u32);
-u32 __lwpmq_seize(mq_cntrl *,u32,void *,u32 *,u32,u32);
-u32 __lwpmq_submit(mq_cntrl *,u32,void *,u32,u32,u32,u32);
-u32 __lwpmq_broadcast(mq_cntrl *,void *,u32,u32,u32 *);
-void __lwpmq_msg_insert(mq_cntrl *,mq_buffercntrl *,u32);
-u32 __lwpmq_flush(mq_cntrl *);
-u32 __lwpmq_flush_support(mq_cntrl *);
-void __lwpmq_flush_waitthreads(mq_cntrl *);
+u32 __lwpmq_initialize(mq_cntrl *mqueue,mq_attr *attrs,u32 max_pendingmsgs,u32 max_msgsize);
+void __lwpmq_close(mq_cntrl *mqueue,u32 status);
+u32 __lwpmq_seize(mq_cntrl *mqueue,u32 id,void *buffer,u32 *size,u32 wait,u64 timeout);
+u32 __lwpmq_submit(mq_cntrl *mqueue,u32 id,void *buffer,u32 size,u32 type,u32 wait,u64 timeout);
+u32 __lwpmq_broadcast(mq_cntrl *mqueue,void *buffer,u32 size,u32 id,u32 *count);
+void __lwpmq_msg_insert(mq_cntrl *mqueue,mq_buffercntrl *msg,u32 type);
+u32 __lwpmq_flush(mq_cntrl *mqueue);
+u32 __lwpmq_flush_support(mq_cntrl *mqueue);
+void __lwpmq_flush_waitthreads(mq_cntrl *mqueue);
 
 #ifdef LIBOGC_INTERNAL
 #include <libogc/lwp_messages.inl>

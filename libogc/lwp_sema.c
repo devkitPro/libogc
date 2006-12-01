@@ -27,7 +27,7 @@ u32 __lwp_sema_surrender(lwp_sema *sema,u32 id)
 	return ret;
 }
 
-u32 __lwp_sema_seize(lwp_sema *sema,u32 id,u32 wait,u32 timeout)
+u32 __lwp_sema_seize(lwp_sema *sema,u32 id,u32 wait,u64 timeout)
 {
 	u32 level;
 	lwp_cntrl *exec;

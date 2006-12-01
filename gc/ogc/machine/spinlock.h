@@ -73,31 +73,33 @@ static __inline__ void spin_lock(spinlock_t *lock)
         bne-    2b\n\
         isync"
         : "=&r"(tmp)
-        : "r"(&lock->lock), "r"(1)
+        : "r"(lock), "r"(1)
         : "cr0", "memory");
 }
 
-static __inline__ void spin_lock_irqsave(spinlock_t *lock,register u32 isr_level)
+static __inline__ void spin_lock_irqsave(spinlock_t *lock,register u32 *p_isr_level)
 {
-        register u32 tmp;
+	register u32 level;
+    register u32 tmp;
 
-		_CPU_ISR_Disable(isr_level);
-		__lwp_thread_dispatchdisable();
+	_CPU_ISR_Disable(level);
 		
-        __asm__ __volatile__(
-	   "b       1f                      # spin_lock\n\
-2:      lwzx    %0,0,%1\n\
-        cmpwi   0,%0,0\n\
-        bne+    2b\n\
-1:      lwarx   %0,0,%1\n\
-        cmpwi   0,%0,0\n\
-        bne-    2b\n\
-        stwcx.  %2,0,%1\n\
-        bne-    2b\n\
-        isync"
-        : "=&r"(tmp)
-        : "r"(&lock->lock), "r"(1)
-        : "cr0", "memory");
+    __asm__ __volatile__(
+   "	b       1f                      # spin_lock\n\
+	2:  lwzx    %0,0,%1\n\
+		cmpwi   0,%0,0\n\
+		bne+    2b\n\
+	1:	lwarx   %0,0,%1\n\
+		cmpwi   0,%0,0\n\
+		bne-    2b\n\
+		stwcx.  %2,0,%1\n\
+		bne-    2b\n\
+		isync"
+    : "=&r"(tmp)
+    : "r"(lock), "r"(1)
+    : "cr0", "memory");
+	
+	*p_isr_level = level;
 }
 
 static __inline__ void spin_unlock(spinlock_t *lock)
@@ -114,7 +116,6 @@ static __inline__ void spin_unlock_irqrestore(spinlock_t *lock,register u32 isr_
     lock->lock = 0;
 
 	_CPU_ISR_Restore(isr_level);
-	__lwp_thread_dispatchenable();
 }
 
 typedef struct {

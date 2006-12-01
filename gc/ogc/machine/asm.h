@@ -312,6 +312,6 @@
 #define MSR_POW				0x00004000
 #define MSR_EE				0x00008000
 
-#define PPC_ALIGNMENT		4
+#define PPC_ALIGNMENT		8
 
 #endif		//__ASM_H__

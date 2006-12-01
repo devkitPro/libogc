@@ -13,6 +13,18 @@ u32 card_convertStrToUni(u16 *dest,u8 *src,u32 len)
 	return (len*2);
 }
 
+u32 card_convertUniToStr(u8 *dest,u16 *src)
+{
+	u32 len;
+
+	for(len=0;*src!=0;len++) {
+		*dest = (u8)*src;
+		dest++; src++;
+	}
+	*dest = 0;
+	return len;
+}
+
 void card_uniToUpper(u16 *dest,u16 *src,u32 len)
 {
 	u32 i;

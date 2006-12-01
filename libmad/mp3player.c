@@ -18,8 +18,9 @@
 #define STACKSIZE				(4*8192)
 
 #define INPUT_BUFFER_SIZE		(5*8192)
-#define OUTPUT_BUFFER_SIZE		(8192)
+#define OUTPUT_BUFFER_SIZE		(32768)
 
+static u8 TempBuffer[OUTPUT_BUFFER_SIZE];
 static u8 InputBuffer[INPUT_BUFFER_SIZE+MAD_BUFFER_GUARD];
 static u8 OutputBuffer[2][OUTPUT_BUFFER_SIZE] ATTRIBUTE_ALIGN(32);
 
@@ -37,9 +38,7 @@ static lwp_t hStreamPlay;
 static lwpq_t thQueue;
 
 static s32 (*mp3read)(void *,s32);
-
-static s16 FixedToShort(mad_fixed_t Fixed);
-static s32 Resample(struct mad_pcm *Pcm,u8 *pOutput,u32 stereo);
+static s32 Resample(struct mad_pcm *Pcm,u8 *pOutput,u32 stereo,u32 src_samplerate);
 static void DataTransferCallback();
 static u32 DSPSampleRate(u32 Input);
 
@@ -50,24 +49,24 @@ struct MP3Source
 	u32 Position;
 } mp3_source;
 
+static __inline__ s16 FixedToShort(mad_fixed_t Fixed)
+{
+	Fixed=Fixed>>(MAD_F_FRACBITS-14);
+	return((signed short)Fixed);
+}
+
 static s32 mp3_ramread(void *buffer,s32 len)
 {
-	void *pGuard;
 	const void *pStream = mp3_source.MP3Stream + mp3_source.Position;
 
 	if((mp3_source.Position + len)>mp3_source.Length) {
 		len = mp3_source.Length - mp3_source.Position;
 	}
-	if(len<=0) return len;
+	if(len<=0) return 0;
 
 	memcpy(buffer,pStream,len);
 	mp3_source.Position += len;
 
-	if((mp3_source.Length - (mp3_source.Position + len))==0) {
-		pGuard = buffer + len;
-		memset(pGuard,0,MAD_BUFFER_GUARD);
-		len += MAD_BUFFER_GUARD;
-	}
 	return len;
 }
 
@@ -159,10 +158,17 @@ BOOL MP3Player_IsPlaying()
 
 static void *StreamPlay(void *arg)
 {
+	BOOL atend;
+	u8 *GuardPtr = NULL;
 	struct mad_stream Stream;
 	struct mad_frame Frame;
 	struct mad_synth Synth;
 	mad_timer_t Timer;
+	s32 samplerate = 0;
+	s32 FrameCount = 0;
+	s32 outputsize = 0;
+	u16 *sp = (u16*)TempBuffer;
+	s32 i,pos = 0;
 
 	thr_running = TRUE;
 
@@ -176,6 +182,7 @@ static void *StreamPlay(void *arg)
 	mad_synth_init(&Synth);
 	mad_timer_reset(&Timer);
 
+	atend = FALSE;
 	while(MP3Playing==TRUE) {
 		LWP_ThreadSleep(thQueue);
 		if(Stream.buffer==NULL || Stream.error==MAD_ERROR_BUFLEN) {
@@ -194,24 +201,33 @@ static void *StreamPlay(void *arg)
 			}
 
 
-			if(mp3read(ReadStart,ReadSize)<=0) break;
+			ReadSize = mp3read(ReadStart,ReadSize);
+			if(ReadSize<=0) {
+				if(atend==TRUE)	break;
+				
+				GuardPtr = (ReadStart+ReadSize);
+				memset(GuardPtr,0,MAD_BUFFER_GUARD);
+				ReadSize += MAD_BUFFER_GUARD;
+				atend = TRUE;
+			}
 
 			mad_stream_buffer(&Stream,InputBuffer,(ReadSize + Remaining));
 			Stream.error = 0;
 		}
 
 		if(mad_frame_decode(&Frame,&Stream)) {
-			if(MAD_RECOVERABLE(Stream.error)) continue;
-			else {
-				if(Stream.error==MAD_ERROR_BUFLEN)continue;
-				else break;
+			if(MAD_RECOVERABLE(Stream.error)) {
+		      if(Stream.error!=MAD_ERROR_LOSTSYNC
+				|| Stream.this_frame!=GuardPtr) continue;
+			} else {
+				if(Stream.error!=MAD_ERROR_BUFLEN) break;
 			}
 		}
 
 		mad_timer_add(&Timer,Frame.header.duration);
 		mad_synth_frame(&Synth,&Frame);
 
-		CurrentTXLen = Resample(&Synth.pcm,OutputBuffer[CurrentBuffer],(MAD_NCHANNELS(&Frame.header)==2));
+		CurrentTXLen = Resample(&Synth.pcm,OutputBuffer[CurrentBuffer],(MAD_NCHANNELS(&Frame.header)==2),Frame.header.samplerate);
 	}
 
 	mad_synth_finish(&Synth);
@@ -228,13 +244,6 @@ static void *StreamPlay(void *arg)
 	return 0;
 }
 
-static __inline__ s16 FixedToShort(mad_fixed_t Fixed)
-{
-	Fixed=Fixed>>(MAD_F_FRACBITS-14);
-	return((signed short)Fixed);
-}
-
-#define FRAC		65536
 #define FRACSHIFT	16
 
 typedef union {
@@ -246,9 +255,9 @@ typedef union {
 } dword;
 
 /* Simple Linear Interpolation */
-static s32 Resample(struct mad_pcm *Pcm,u8 *pOutput,u32 stereo)
+static s32 Resample(struct mad_pcm *Pcm,u8 *pOutput,u32 stereo,u32 src_samplerate)
 {
-	u32 len; 
+	u32 len,incr; 
 	dword pos;
 	s16 Sample[2][2] = {{0,0},{0,0}};
 	s16 fs[2] = {0,0};
@@ -256,6 +265,7 @@ static s32 Resample(struct mad_pcm *Pcm,u8 *pOutput,u32 stereo)
 
 	len = 0;
 	pos.adword = 0;
+	incr = (u32)(((f32)src_samplerate/48000.0F)*65536.0F);
 	while(pos.aword.hi<Pcm->length) {
 		Sample[0][0] = Sample[1][0];
 		Sample[0][1] = Sample[1][1];
@@ -271,7 +281,7 @@ static s32 Resample(struct mad_pcm *Pcm,u8 *pOutput,u32 stereo)
 		pOut[len++] = (fs[1]>>8);
 		pOut[len++] = (fs[1]&0xff);
 
-		pos.adword += 60211;
+		pos.adword += incr;
 	}
 
 	DCFlushRange(pOutput,len);

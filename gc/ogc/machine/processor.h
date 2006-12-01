@@ -31,10 +31,14 @@
 		asm volatile("mfdec %0" : "=r" (_rval)); _rval;})
 #define mtdec(_val)  asm volatile("mtdec %0" : : "r" (_val))
 
-#define mfspr(_rn) ({register u32 _rval; \
-		asm volatile("mfspr %0," __stringify(_rn) \
-             : "=r" (_rval)); _rval;})
-#define mtspr(_rn, _val)  asm volatile("mtspr " __stringify(_rn) ",%0" : : "r" (_val))
+#define mfspr(_rn) \
+({	register u32 _rval = 0; \
+	asm volatile("mfspr %0," __stringify(_rn) \
+	: "=r" (_rval));\
+	_rval; \
+})
+
+#define mtspr(_rn, _val) asm volatile("mtspr " __stringify(_rn) ",%0" : : "r" (_val))
 
 #define mfwpar()		mfspr(921)
 #define mtwpar(_val)	mtspr(921,_val)

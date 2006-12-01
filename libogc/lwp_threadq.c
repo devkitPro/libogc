@@ -41,7 +41,7 @@ lwp_cntrl* __lwp_threadqueue_firstpriority(lwp_thrqueue *queue)
 	return NULL;
 }
 
-void __lwp_threadqueue_enqueuefifo(lwp_thrqueue *queue,lwp_cntrl *thethread,u32 timeout)
+void __lwp_threadqueue_enqueuefifo(lwp_thrqueue *queue,lwp_cntrl *thethread,u64 timeout)
 {
 	u32 level,sync_state;
 
@@ -67,7 +67,7 @@ void __lwp_threadqueue_enqueuefifo(lwp_thrqueue *queue,lwp_cntrl *thethread,u32 
 			if(__lwp_wd_isactive(&thethread->timer)) {
 				__lwp_wd_deactivate(&thethread->timer);
 				_CPU_ISR_Restore(level);
-				__lwp_wd_remove(&thethread->timer);
+				__lwp_wd_remove_ticks(&thethread->timer);
 			} else
 				_CPU_ISR_Restore(level);
 
@@ -90,7 +90,7 @@ lwp_cntrl* __lwp_threadqueue_dequeuefifo(lwp_thrqueue *queue)
 		} else {
 			__lwp_wd_deactivate(&ret->timer);
 			_CPU_ISR_Restore(level);
-			__lwp_wd_remove(&ret->timer);
+			__lwp_wd_remove_ticks(&ret->timer);
 			__lwp_thread_unblock(ret);
 		}
 		return ret;
@@ -110,7 +110,7 @@ lwp_cntrl* __lwp_threadqueue_dequeuefifo(lwp_thrqueue *queue)
 	return NULL;
 }
 
-void __lwp_threadqueue_enqueuepriority(lwp_thrqueue *queue,lwp_cntrl *thethread,u32 timeout)
+void __lwp_threadqueue_enqueuepriority(lwp_thrqueue *queue,lwp_cntrl *thethread,u64 timeout)
 {
 	u32 level,search_prio,header_idx,prio,block_state,sync_state;
 	lwp_cntrl *search_thread;
@@ -229,7 +229,7 @@ synchronize:
 			if(__lwp_wd_isactive(&thethread->timer)) {
 				__lwp_wd_deactivate(&thethread->timer);
 				_CPU_ISR_Restore(level);
-				__lwp_wd_remove(&thethread->timer);
+				__lwp_wd_remove_ticks(&thethread->timer);
 			} else
 				_CPU_ISR_Restore(level);
 			break;
@@ -299,7 +299,7 @@ dequeue:
 	} else {
 		__lwp_wd_deactivate(&ret->timer);
 		_CPU_ISR_Restore(level);
-		__lwp_wd_remove(&ret->timer);
+		__lwp_wd_remove_ticks(&ret->timer);
 		__lwp_thread_unblock(ret);
 	}
 	return ret;
@@ -346,7 +346,7 @@ lwp_cntrl* __lwp_threadqueue_first(lwp_thrqueue *queue)
 	return ret;
 }
 
-void __lwp_threadqueue_enqueue(lwp_thrqueue *queue,u32 timeout)
+void __lwp_threadqueue_enqueue(lwp_thrqueue *queue,u64 timeout)
 {
 	lwp_cntrl *thethread;
 
@@ -354,7 +354,7 @@ void __lwp_threadqueue_enqueue(lwp_thrqueue *queue,u32 timeout)
 	__lwp_thread_setstate(thethread,queue->state);
 	
 	if(timeout) {
-		__lwp_wd_initialize(&thethread->timer,__lwp_threadqueue_timeout,thethread);
+		__lwp_wd_initialize(&thethread->timer,__lwp_threadqueue_timeout,thethread->object.id,thethread);
 		__lwp_wd_insert_ticks(&thethread->timer,timeout);
 	}
 	
@@ -432,7 +432,7 @@ void __lwp_threadqueue_extractfifo(lwp_thrqueue *queue,lwp_cntrl *thethread)
 	} else {
 		__lwp_wd_deactivate(&thethread->timer);
 		_CPU_ISR_Restore(level);
-		__lwp_wd_remove(&thethread->timer);
+		__lwp_wd_remove_ticks(&thethread->timer);
 	}
 	__lwp_thread_unblock(thethread);
 }
@@ -477,7 +477,7 @@ void __lwp_threadqueue_extractpriority(lwp_thrqueue *queue,lwp_cntrl *thethread)
 		} else {
 			__lwp_wd_deactivate(&thethread->timer);
 			_CPU_ISR_Restore(level);
-			__lwp_wd_remove(&thethread->timer);
+			__lwp_wd_remove_ticks(&thethread->timer);
 			__lwp_thread_unblock(thethread);
 		}
 	} else

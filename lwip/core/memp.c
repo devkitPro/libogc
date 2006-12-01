@@ -117,14 +117,14 @@ static u8_t memp_memory[(MEMP_NUM_PBUF *
 
 
 #if !SYS_LIGHTWEIGHT_PROT
-static sem_t mutex;
+static sys_sem mutex;
 #endif
 
 #if MEMP_SANITY_CHECK
 static int
 memp_sanity(void)
 {
-  int i, c;
+  s16_t i, c;
   struct memp *m, *n;
 
   for(i = 0; i < MEMP_MAX; i++) {
@@ -201,7 +201,6 @@ memp_malloc(memp_t type)
 #endif /* SYS_LIGHTWEIGHT_PROT */  
 
   memp = memp_tab[type];
-  
   if (memp != NULL) {    
     memp_tab[type] = memp->next;    
     memp->next = NULL;
@@ -222,14 +221,14 @@ memp_malloc(memp_t type)
     mem = MEM_ALIGN((u8_t *)memp + sizeof(struct memp));
     return mem;
   } else {
-    LWIP_DEBUGF(MEMP_DEBUG | 2, ("memp_malloc: out of memory in pool %d\n", type));
+    LWIP_DEBUGF(MEMP_DEBUG | 2, ("memp_malloc: out of memory in pool %"S16_F"\n", type));
 #if MEMP_STATS
     ++lwip_stats.memp[type].err;
 #endif /* MEMP_STATS */
 #if SYS_LIGHTWEIGHT_PROT
   SYS_ARCH_UNPROTECT(old_level);
 #else /* SYS_LIGHTWEIGHT_PROT */
-  LWP_SemPost(mutex);
+    LWP_SemPost(mutex);
 #endif /* SYS_LIGHTWEIGHT_PROT */  
     return NULL;
   }
@@ -251,7 +250,7 @@ memp_free(memp_t type, void *mem)
 #if SYS_LIGHTWEIGHT_PROT
     SYS_ARCH_PROTECT(old_level);
 #else /* SYS_LIGHTWEIGHT_PROT */  
-  LWP_SemPost(mutex);
+  LWP_SemWait(mutex);
 #endif /* SYS_LIGHTWEIGHT_PROT */  
 
 #if MEMP_STATS
@@ -268,7 +267,7 @@ memp_free(memp_t type, void *mem)
 #if SYS_LIGHTWEIGHT_PROT
   SYS_ARCH_UNPROTECT(old_level);
 #else /* SYS_LIGHTWEIGHT_PROT */
-  LWP_SemPost(mutex);
+    LWP_SemPost(mutex);
 #endif /* SYS_LIGHTWEIGHT_PROT */  
 }
 

@@ -40,16 +40,16 @@ static int __sdcardio_allocfd(sd_file *sdfile)
 
 	if(!sdcardio_inited) return -1;
 
-	LWP_MutexLock(&sdfds_lck);
+	LWP_MutexLock(sdfds_lck);
 	for(i=0;i<MAX_SDCARD_FD;i++) {
 		if(!sdfds[i].sdfile) {
 			sdfds[i].locked = 0;
 			sdfds[i].sdfile = sdfile;
-			LWP_MutexUnlock(&sdfds_lck);
+			LWP_MutexUnlock(sdfds_lck);
 			return i;
 		}
 	}
-	LWP_MutexUnlock(&sdfds_lck);
+	LWP_MutexUnlock(sdfds_lck);
 	return -1;
 }
 
@@ -59,11 +59,11 @@ static sd_file* __sdcardio_getfd(int fd)
 
 	if(!sdcardio_inited) return NULL;
 
-	LWP_MutexLock(&sdfds_lck);
+	LWP_MutexLock(sdfds_lck);
 	if(fd>=0 && fd<MAX_SDCARD_FD) {
 		sdfile = sdfds[fd].sdfile;
 	}
-	LWP_MutexUnlock(&sdfds_lck);
+	LWP_MutexUnlock(sdfds_lck);
 
 	return sdfile;
 }
@@ -72,12 +72,12 @@ static void __sdcardio_freefd(int fd)
 {
 	if(!sdcardio_inited) return;
 
-	LWP_MutexLock(&sdfds_lck);
+	LWP_MutexLock(sdfds_lck);
 	if(fd>=0 && fd<MAX_SDCARD_FD) {
 		sdfds[fd].locked = 0;
 		sdfds[fd].sdfile = NULL;
 	}
-	LWP_MutexUnlock(&sdfds_lck);
+	LWP_MutexUnlock(sdfds_lck);
 }
 
 static void __sdcardio_init()

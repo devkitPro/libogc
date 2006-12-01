@@ -48,6 +48,8 @@
 
 #include "lwp_watchdog.h"
 
+#define LOOP_TIMER_ID			0x00050000
+
 static u64 loopif_ticks;
 static wd_cntrl loopif_tmr_cntrl;
 
@@ -100,7 +102,7 @@ loopif_output(struct netif *netif, struct pbuf *p,
 	 * 
 	 * TODO: Is there still a race condition here? Leon
 	 */
-	__lwp_wd_initialize(&loopif_tmr_cntrl,loopif_input,arg);
+	__lwp_wd_initialize(&loopif_tmr_cntrl,loopif_input,LOOP_TIMER_ID,arg);
 	__lwp_wd_insert_ticks(&loopif_tmr_cntrl,loopif_ticks);
 	
     return ERR_OK;    

@@ -9,6 +9,7 @@
 #include "system.h"
 #include "video.h"
 #include "video_types.h"
+#include "lwp_watchdog.h"
 #include "gx.h"
 
 //#define _GP_DEBUG
@@ -73,6 +74,7 @@ struct __gxfifo {
 	u32 rd_ptr;
 	u32 wt_ptr;
 	u32 rdwt_dst;
+	u8 pad0[96];
 };
 
 static void *_gxcurrbp = NULL;
@@ -119,52 +121,54 @@ static u32 *_gx = (u32*)__gxregs;
 
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
+extern long long gettime();
 
 #ifdef _GP_DEBUG
 extern int printk(const char *fmt,...);
 #endif
 
-static s32 IsWriteGatherBufferEmpty()
+static __inline__ s32 IsWriteGatherBufferEmpty()
 {
-	return !(mfwpar()&1);
+	_sync();
+	return (mfwpar()&0x0001);
 }
 
-static void DisableWriteGatherPipe()
+static __inline__ void DisableWriteGatherPipe()
 {
 	mtspr(920,(mfspr(920)&~0x40000000));
 }
 
-static void EnableWriteGatherPipe()
+static __inline__ void EnableWriteGatherPipe()
 {
 	mtwpar(0x0C008000);
 	mtspr(920,(mfspr(920)|0x40000000));
 }
 
-static void __GX_FifoLink(u8 enable)
+static __inline__ void __GX_FifoLink(u8 enable)
 {
 	((u16*)_gx)[1] = ((((u16*)_gx)[1]&~0x10)|(_SHIFTL(enable,4,1)));
 	_cpReg[1] = ((u16*)_gx)[1];
 }
 
-static void __GX_WriteFifoIntReset(u8 inthi,u8 intlo)
+static __inline__ void __GX_WriteFifoIntReset(u8 inthi,u8 intlo)
 {
 	((u16*)_gx)[2] = ((((u16*)_gx)[2]&~0x03)|(_SHIFTL(intlo,1,1))|(inthi&1));
 	_cpReg[2] = ((u16*)_gx)[2];
 }
 
-static void __GX_WriteFifoIntEnable(u8 inthi, u8 intlo)
+static __inline__ void __GX_WriteFifoIntEnable(u8 inthi, u8 intlo)
 {
 	((u16*)_gx)[1] = ((((u16*)_gx)[1]&~0x0C)|(_SHIFTL(intlo,3,1))|(_SHIFTL(inthi,2,1)));
 	_cpReg[1] = ((u16*)_gx)[1];
 }
 
-static void __GX_FifoReadEnable()
+static __inline__ void __GX_FifoReadEnable()
 {
 	((u16*)_gx)[1] = ((((u16*)_gx)[1]&~0x01)|1);
 	_cpReg[1] = ((u16*)_gx)[1];
 }
 
-static void __GX_FifoReadDisable()
+static __inline__ void __GX_FifoReadDisable()
 {
 	((u16*)_gx)[1] = ((((u16*)_gx)[1]&~0x01)|0);
 	_cpReg[1] = ((u16*)_gx)[1];
@@ -179,7 +183,7 @@ static void __GX_SaveCPUFifoAux(struct __gxfifo *fifo)
 	
 	fifo->buf_start = (u32)MEM_PHYSICAL_TO_K0(_piReg[0x03]);
 	fifo->buf_end = (u32)MEM_PHYSICAL_TO_K0(_piReg[0x04]);
-	fifo->wt_ptr = (u32)MEM_PHYSICAL_TO_K0((_piReg[0x05]&~0x04000000));
+	fifo->wt_ptr = (u32)MEM_PHYSICAL_TO_K0(((_piReg[0x05]&~0x04000000)));
 
 	if(_cpgplinked) {
 		fifo->rd_ptr = (u32)MEM_PHYSICAL_TO_K0(_SHIFTL(_cpReg[29],16,16)|(_cpReg[28]&0xffff));
@@ -190,6 +194,38 @@ static void __GX_SaveCPUFifoAux(struct __gxfifo *fifo)
 	}
 	
 	_CPU_ISR_Restore(level);
+}
+
+static void __GX_CleanGPFifo()
+{
+	u32 level,buf_start;
+	struct __gxfifo tmp_fifo;
+	struct __gxfifo *gpfifo;
+	struct __gxfifo *cpufifo;
+
+	gpfifo = (struct __gxfifo*)GX_GetGPFifo();
+	cpufifo = (struct __gxfifo*)GX_GetCPUFifo();
+
+	buf_start = gpfifo->buf_start;
+	memcpy(&tmp_fifo,gpfifo,sizeof(struct __gxfifo));
+	
+	_CPU_ISR_Disable(level);
+	tmp_fifo.rd_ptr = buf_start;
+	tmp_fifo.wt_ptr = buf_start;
+	tmp_fifo.rdwt_dst = 0;
+	_CPU_ISR_Restore(level);
+
+	GX_SetGPFifo((GXFifoObj*)&tmp_fifo);
+	if(gpfifo==cpufifo) GX_SetCPUFifo((GXFifoObj*)&tmp_fifo);
+	
+	_CPU_ISR_Disable(level);
+	gpfifo->rd_ptr = buf_start;
+	gpfifo->wt_ptr = buf_start;
+	gpfifo->rdwt_dst = 0;
+	_CPU_ISR_Restore(level);
+	
+	GX_SetGPFifo((GXFifoObj*)gpfifo);
+	if(gpfifo==cpufifo) GX_SetCPUFifo((GXFifoObj*)cpufifo);
 }
 
 static void __GXOverflowHandler()
@@ -246,12 +282,12 @@ static void __GXFinishInterruptHandler(u32 irq,void *ctx)
 #ifdef _GP_DEBUG
 	printf("__GXFinishInterruptHandler()\n");
 #endif
+	_peReg[5] = (_peReg[5]&~0x08)|0x08;	
 	_gxfinished = 1;
 
 	if(drawDoneCB)
 		drawDoneCB();
 	
-	_peReg[5] = (_peReg[5]&~0x08)|0x08;	
 	LWP_ThreadBroadcast(_gxwaitfinish);
 }
 
@@ -950,6 +986,22 @@ void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr)
 	_CPU_ISR_Restore(level);
 }
 
+void GX_GetFifoPtrs(GXFifoObj *fifo,void **rd_ptr,void **wt_ptr)
+{
+	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
+
+	if(_cpufifo==ptr) ptr->wt_ptr = (u32)MEM_PHYSICAL_TO_K0((_piReg[5]&~0x04000000));
+	if(_gpfifo==ptr) {
+		ptr->rd_ptr = MEM_VIRTUAL_TO_PHYSICAL(_SHIFTL(_cpReg[29],16,16)|(_cpReg[28]&0xffff));
+		ptr->rdwt_dst = (_SHIFTL(_cpReg[25],16,16)|(_cpReg[24]&0xffff));
+	} else {
+		ptr->rdwt_dst = (ptr->wt_ptr - ptr->rd_ptr);
+		if(ptr->rd_ptr<0) ptr->rdwt_dst += ptr->size;
+	}
+	*rd_ptr = (void*)ptr->rd_ptr;
+	*wt_ptr = (void*)ptr->wt_ptr;
+}
+
 void GX_SetCPUFifo(GXFifoObj *fifo)
 {
 	u32 level;
@@ -1049,6 +1101,91 @@ void GX_SaveCPUFifo(GXFifoObj *fifo)
 	__GX_SaveCPUFifoAux(ptr);
 }
 
+u32 GX_GetOverflowCount()
+{
+	return _gxoverflowcount;
+}
+
+u32 GX_ResetOverflowCount()
+{
+	u32 ret = _gxoverflowcount;
+	_gxoverflowcount = 0;
+	return ret;
+}
+
+lwp_t GX_GetCurrentGXThread()
+{
+	return _gxcurrentlwp;
+}
+
+lwp_t GX_SetCurrentGXThread()
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	lwp_t ret = _gxcurrentlwp;
+	_gxcurrentlwp = LWP_GetSelf();
+	_CPU_ISR_Restore(level);
+
+	return ret;
+}
+
+volatile void* GX_RedirectWriteGatherPipe(void *ptr)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	GX_Flush();
+	while(!IsWriteGatherBufferEmpty());
+
+	mtwpar(0x0C008000);
+	if(_cpgplinked) {
+		__GX_FifoLink(GX_FALSE);
+		__GX_WriteFifoIntEnable(GX_DISABLE,GX_DISABLE);
+	}
+	_cpufifo->wt_ptr = (u32)MEM_PHYSICAL_TO_K0(_piReg[5]&~0x04000000);
+	
+	_piReg[3] = 0;
+	_piReg[4] = 0x04000000;
+	_piReg[5] = (((u32)ptr&0x3FFFFFE0)&~0x04000000);
+	_sync();
+	
+	_CPU_ISR_Restore(level);
+
+	return (volatile void*)0x0C008000;
+}
+
+void GX_RestoreWriteGatherPipe()
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	
+	FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	FIFO_PUTU32(0);
+	
+	ppcsync();
+	while(!IsWriteGatherBufferEmpty());
+	
+	mtwpar(0x0C008000);
+	_piReg[3] = MEM_VIRTUAL_TO_PHYSICAL(_cpufifo->buf_start);
+	_piReg[4] = MEM_VIRTUAL_TO_PHYSICAL(_cpufifo->buf_end);
+	_piReg[5] = (((u32)_cpufifo->wt_ptr&0x3FFFFFE0)&~0x04000000);
+	if(_cpgplinked) {
+		__GX_WriteFifoIntReset(GX_TRUE,GX_TRUE);
+		__GX_WriteFifoIntEnable(GX_ENABLE,GX_DISABLE);
+		__GX_FifoLink(GX_TRUE);
+	}	
+	_sync();
+	_CPU_ISR_Restore(level);
+}
+
 void GX_Flush()
 {
 	if(_gx[0x09]) 
@@ -1090,6 +1227,20 @@ void GX_DisableBreakPt()
 	_CPU_ISR_Restore(level);
 }
 
+void GX_AbortFrame()
+{
+	u64 start;
+
+	_piReg[6] = 1;
+	start = gettime();
+	while(diff_ticks(start,gettime())<50);
+	_piReg[6] = 0;
+	start = gettime();
+	while(diff_ticks(start,gettime())<5);
+	
+	__GX_CleanGPFifo();
+}
+
 void GX_SetDrawSync(u16 token)
 {
 	u32 level = 0;
@@ -1098,6 +1249,11 @@ void GX_SetDrawSync(u16 token)
 	GX_LOAD_BP_REG(0x47000000 | token);
 	GX_Flush();
 	_CPU_ISR_Restore(level);
+}
+
+u16 GX_GetDrawSync()
+{
+	return _peReg[7];
 }
 
 void GX_SetDrawDone()
@@ -1443,7 +1599,7 @@ void GX_SetDispCopySrc(u16 left,u16 top,u16 wd,u16 ht)
 void GX_CopyDisp(void *dest,u8 clear)
 {
 	u8 clflag;
-	u32 val,p;
+	u32 val;
 
 	if(clear) {
 		val= (_gx[0xb8]&~0xf)|0xf;
@@ -1466,8 +1622,7 @@ void GX_CopyDisp(void *dest,u8 clear)
 
 	GX_LOAD_BP_REG(_gx[0xcd]);
 
-	p = MEM_VIRTUAL_TO_PHYSICAL(dest);
-	val = 0x4b000000|(_SHIFTR(p,5,24));
+	val = 0x4b000000|(_SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(dest),5,24));
 	GX_LOAD_BP_REG(val);
 
 	_gx[0xab] = (_gx[0xab]&~0x800)|(_SHIFTL(clear,11,1));
@@ -1486,7 +1641,7 @@ void GX_CopyDisp(void *dest,u8 clear)
 void GX_CopyTex(void *dest,u8 clear)
 {
 	u8 clflag;
-	u32 val,p;
+	u32 val;
 
 	if(clear) {
 		val = (_gx[0xb8]&~0xf)|0xf;
@@ -1509,8 +1664,7 @@ void GX_CopyTex(void *dest,u8 clear)
 	}
 	if(clflag) GX_LOAD_BP_REG(val);
 
-	p = ((u32)dest)&~0xC0000000;
-	val = 0x4b000000|(_SHIFTR(p,5,24));
+	val = 0x4b000000|(_SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(dest),5,24));
 	
 	GX_LOAD_BP_REG(_gx[0xd8]);
 	GX_LOAD_BP_REG(_gx[0xd9]);
@@ -1706,7 +1860,7 @@ void GX_SetArray(u32 attr,void *ptr,u8 stride)
 	}
 }
 
-void GX_SetVtxDesc(u8 attr,u8 type)
+static __inline__ void __SETVCDATTR(u8 attr,u8 type)
 {
 	switch(attr) {
 		case GX_VA_PTNMTXIDX:
@@ -1778,10 +1932,29 @@ void GX_SetVtxDesc(u8 attr,u8 type)
 			_gx[0x07] = (_gx[0x07]&~0xc000)|(_SHIFTL(type,14,2));
 			break;
 	}
+}
+
+void GX_SetVtxDesc(u8 attr,u8 type)
+{
+	__SETVCDATTR(attr,type);
 	_gx[0x09] |= 0x0008;
 }
 
-void GX_SetVtxAttrFmt(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac)
+void GX_SetVtxDescv(GXVtxDesc *attr_list)
+{
+	u32 i;
+
+	if(!attr_list) return;
+
+	for(i=0;i<GX_MAX_VTXDESC_LISTSIZE;i++){
+		if(attr_list[i].attr==GX_VA_NULL) break;
+		
+		__SETVCDATTR(attr_list[i].attr,attr_list[i].type);
+	}
+	_gx[0x09] |= 0x0008;
+}
+
+static __inline__ void __SETVCDFMT(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac)
 {
 	u8 vat0 = 0x10+vtxfmt;
 	u8 vat1 = 0x18+vtxfmt;
@@ -1869,6 +2042,24 @@ void GX_SetVtxAttrFmt(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac)
 		_gx[vat2] = (_gx[vat2]&~0xF8000000)|(_SHIFTL(frac,27,5));
 		if(frac)
 			_gx[vat0] = (_gx[vat0]&~0x40000000)|0x40000000;
+	}
+}
+
+void GX_SetVtxAttrFmt(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac)
+{
+	__SETVCDFMT(vtxfmt,vtxattr,comptype,compsize,frac);
+	_gx[0x02] |= (1<<vtxfmt);
+	_gx[0x09] |= 0x0010;
+}
+
+void GX_SetVtxAttrFmtv(u8 vtxfmt,GXVtxAttrFmt *attr_list)
+{
+	u32 i;
+
+	for(i=0;i<GX_MAX_VTXATTRFMT_LISTSIZE;i++) {
+		if(attr_list[i].vtxattr==GX_VA_NULL) break;
+
+		__SETVCDFMT(vtxfmt,attr_list[i].vtxattr,attr_list[i].comptype,attr_list[i].compsize,attr_list[i].frac);
 	}
 	_gx[0x02] |= (1<<vtxfmt);
 	_gx[0x09] |= 0x0010;
@@ -2442,7 +2633,7 @@ u8 GX_GetTexFmt(GXTexObj *obj)
 
 u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 {
-	u32 xshift,yshift,xtiles,ytiles,bitsize,size = 0;
+	u32 xshift,yshift,xtiles,ytiles,bitsize,size;
 	
 	switch(fmt) {
 		case GX_TF_I4:
@@ -2486,7 +2677,24 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 	bitsize = 32;
 	if(fmt==GX_TF_RGBA8 || fmt==GX_TF_Z24X8) bitsize = 64;
 
+	size = 0;
 	if(mipmap) {
+		u32 cnt = (maxlod&0xff);
+		while(cnt) {
+			u32 w = wd&0xffff;
+			u32 h = ht&0xffff;
+			xtiles = (w+((1<<xshift)-1))>>xshift;
+			ytiles = (h+((1<<yshift)-1))>>yshift;
+			if(cnt==0) return size;
+
+			size += ((xtiles*ytiles)*bitsize);
+			if(w==0x0001 && h==0x0001) return size;
+			if(wd>0x0001) wd = (w>>1);
+			else wd = 0x0001;
+			if(ht>0x0001) ht = (h>>1);
+			else ht = 0x0001;
+		}
+		return size;
 	}
 
 	wd &= 0xffff;
@@ -2495,7 +2703,7 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 	ht &= 0xffff;
 	ytiles = (ht+((1<<yshift)-1))>>yshift;
 
-	size = (xtiles*ytiles)*bitsize;
+	size = ((xtiles*ytiles)*bitsize);
 
 	return size;
 }
@@ -3952,11 +4160,6 @@ void GX_GetGPStatus(u8 *overhi,u8 *underlow,u8 *readIdle,u8 *cmdIdle,u8 *brkpt)
 	*readIdle = !!(_gxgpstatus&4);
 	*cmdIdle = !!(_gxgpstatus&8);
 	*brkpt = !!(_gxgpstatus&16);	
-}
-
-u32 GX_GetOverflowCount()
-{
-	return _gxoverflowcount;
 }
 
 void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1)

@@ -259,9 +259,20 @@ _cpu_context_switch:
 	mfspr	r6,919
 	stw	r6,GQR7_OFFSET-8(r3)
 
-	lwz sp,GPR1_OFFSET-8(r4)
-	lwz toc,GPR2_OFFSET-8(r4)
-	lmw r13,GPR13_OFFSET-8(r4)
+	lwz	r6, GQR1_OFFSET-8(r4)
+	mtspr	913,r6
+	lwz	r6, GQR2_OFFSET-8(r4)
+	mtspr	914,r6
+	lwz	r6, GQR3_OFFSET-8(r4)
+	mtspr	915,r6
+	lwz	r6, GQR4_OFFSET-8(r4)
+	mtspr	916,r6
+	lwz	r6, GQR5_OFFSET-8(r4)
+	mtspr	917,r6
+	lwz	r6, GQR6_OFFSET-8(r4)
+	mtspr	918,r6
+	lwz	r6, GQR7_OFFSET-8(r4)
+	mtspr	919,r6
 
 	lwz	r6, CTR_OFFSET-8(r4)
 	mtctr	r6
@@ -271,6 +282,53 @@ _cpu_context_switch:
 	mtlr	r7
 	lwz	r8, MSR_OFFSET-8(r4)
 	mtmsr	r8
+
+	lmw r13,GPR13_OFFSET-8(r4)
+	lwz toc,GPR2_OFFSET-8(r4)
+	lwz sp,GPR1_OFFSET-8(r4)
+
+	blr
+
+	.globl _cpu_context_switch_ex
+_cpu_context_switch_ex:
+	sync
+	isync
+
+	stw sp,GPR1_OFFSET-8(r3)
+	stw toc,GPR2_OFFSET-8(r3)
+	stmw r5,GPR5_OFFSET-8(r3)
+
+	mfctr	r6
+	stw	r6, CTR_OFFSET-8(r3)
+	mfcr	r6
+	stw	r6, CR_OFFSET-8(r3)
+	mflr	r7
+	stw	r7, LR_OFFSET-8(r3)
+	mfxer	r7
+	stw	r8, XER_OFFSET-8(r3)
+	mfmsr	r8
+	stw	r8, MSR_OFFSET-8(r3)
+	mfdar	r8
+	stw	r8, DAR_OFFSET-8(r3)
+	mfsrr0	r8
+	stw	r8, SRR0_OFFSET-8(r3)
+	mfsrr1	r8
+	stw	r8, SRR1_OFFSET-8(r3)
+
+	mfspr	r6,913
+	stw	r6,GQR1_OFFSET-8(r3)
+	mfspr	r6,914
+	stw	r6,GQR2_OFFSET-8(r3)
+	mfspr	r6,915
+	stw	r6,GQR3_OFFSET-8(r3)
+	mfspr	r6,916
+	stw	r6,GQR4_OFFSET-8(r3)
+	mfspr	r6,917
+	stw	r6,GQR5_OFFSET-8(r3)
+	mfspr	r6,918
+	stw	r6,GQR6_OFFSET-8(r3)
+	mfspr	r6,919
+	stw	r6,GQR7_OFFSET-8(r3)
 
 	lwz	r6, GQR1_OFFSET-8(r4)
 	mtspr	913,r6
@@ -286,6 +344,25 @@ _cpu_context_switch:
 	mtspr	918,r6
 	lwz	r6, GQR7_OFFSET-8(r4)
 	mtspr	919,r6
+
+	lwz	r6, CTR_OFFSET-8(r4)
+	mtctr	r6
+	lwz	r6, CR_OFFSET-8(r4)
+	mtcrf	255, r6
+	lwz	r7, LR_OFFSET-8(r4)
+	mtlr	r7
+	lwz	r7, XER_OFFSET-8(r4)
+	mtxer	r7
+	lwz	r8, MSR_OFFSET-8(r4)
+	mtmsr	r8
+	lwz	r8, SRR0_OFFSET-8(r4)
+	mtsrr0	r8
+	lwz	r8, SRR1_OFFSET-8(r4)
+	mtsrr1	r8
+
+	lmw r5,GPR5_OFFSET-8(r4)
+	lwz toc,GPR2_OFFSET-8(r4)
+	lwz sp,GPR1_OFFSET-8(r4)
 
 	blr
 

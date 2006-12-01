@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <string.h>
 #include "asm.h"
 #include "lwp_messages.h"
 #include "lwp_wkspace.h"
@@ -74,7 +73,7 @@ u32 __lwpmq_initialize(mq_cntrl *mqueue,mq_attr *attrs,u32 max_pendingmsgs,u32 m
 	return 1;
 }
 
-u32 __lwpmq_seize(mq_cntrl *mqueue,u32 id,void *buffer,u32 *size,u32 wait,u32 timeout)
+u32 __lwpmq_seize(mq_cntrl *mqueue,u32 id,void *buffer,u32 *size,u32 wait,u64 timeout)
 {
 	u32 level;
 	mq_buffercntrl *msg;
@@ -94,7 +93,7 @@ u32 __lwpmq_seize(mq_cntrl *mqueue,u32 id,void *buffer,u32 *size,u32 wait,u32 ti
 		
 		*size = msg->contents.size;
 		exec->wait.cnt = msg->prio;
-		memcpy(buffer,msg->contents.buffer,*size);
+		__lwpmq_buffer_copy(buffer,msg->contents.buffer,*size);
 
 		thread = __lwp_threadqueue_dequeue(&mqueue->wait_queue);
 		if(!thread) {
@@ -104,7 +103,7 @@ u32 __lwpmq_seize(mq_cntrl *mqueue,u32 id,void *buffer,u32 *size,u32 wait,u32 ti
 
 		msg->prio = thread->wait.cnt;
 		msg->contents.size = (u32)thread->wait.ret_arg_1;
-		memcpy(msg->contents.buffer,thread->wait.ret_arg,msg->contents.size);
+		__lwpmq_buffer_copy(msg->contents.buffer,thread->wait.ret_arg,msg->contents.size);
 		
 		__lwpmq_msg_insert(mqueue,msg,msg->prio);
 		return LWP_MQ_STATUS_SUCCESSFUL;
@@ -127,7 +126,7 @@ u32 __lwpmq_seize(mq_cntrl *mqueue,u32 id,void *buffer,u32 *size,u32 wait,u32 ti
 	return LWP_MQ_STATUS_SUCCESSFUL;
 }
 
-u32 __lwpmq_submit(mq_cntrl *mqueue,u32 id,void *buffer,u32 size,u32 type,u32 wait,u32 timeout)
+u32 __lwpmq_submit(mq_cntrl *mqueue,u32 id,void *buffer,u32 size,u32 type,u32 wait,u64 timeout)
 {
 	u32 level;
 	lwp_cntrl *thread;
@@ -142,7 +141,7 @@ u32 __lwpmq_submit(mq_cntrl *mqueue,u32 id,void *buffer,u32 size,u32 type,u32 wa
 	if(mqueue->num_pendingmsgs==0) {
 		thread = __lwp_threadqueue_dequeue(&mqueue->wait_queue);
 		if(thread) {
-			memcpy(thread->wait.ret_arg,buffer,size);
+			__lwpmq_buffer_copy(thread->wait.ret_arg,buffer,size);
 			*(u32*)thread->wait.ret_arg_1 = size;
 			thread->wait.cnt = type;
 			return LWP_MQ_STATUS_SUCCESSFUL;
@@ -153,7 +152,7 @@ u32 __lwpmq_submit(mq_cntrl *mqueue,u32 id,void *buffer,u32 size,u32 type,u32 wa
 		msg = __lwpmq_allocate_msg(mqueue);
 		if(!msg) return LWP_MQ_STATUS_UNSATISFIED;
 
-		memcpy(msg->contents.buffer,buffer,size);
+		__lwpmq_buffer_copy(msg->contents.buffer,buffer,size);
 		msg->contents.size = size;
 		msg->prio = type;
 		__lwpmq_msg_insert(mqueue,msg,type);
@@ -203,7 +202,7 @@ u32 __lwpmq_broadcast(mq_cntrl *mqueue,void *buffer,u32 size,u32 id,u32 *count)
 		if(size>mqueue->max_msgsize)
 			rsize = mqueue->max_msgsize;
 
-		memcpy(waitp->ret_arg,buffer,rsize);
+		__lwpmq_buffer_copy(waitp->ret_arg,buffer,rsize);
 		*(u32*)waitp->ret_arg_1 = size;
 	}
 	*count = num_broadcast;

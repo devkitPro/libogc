@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: dvd.h,v 1.25 2006-01-18 18:21:44 shagkur Exp $
+$Id: dvd.h,v 1.26 2006-12-01 15:21:53 wntrmute Exp $
 
 dvd.h -- DVD subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.25  2006/01/18 18:21:44  shagkur
+- Added DVD_SetAutoInvalidation
+
 Revision 1.24  2005/12/09 09:21:32  shagkur
 no message
 
@@ -55,6 +58,11 @@ Revision 1.22  2005/11/23 07:51:59  shagkur
 #include <gctypes.h>
 #include <ogc/lwp_queue.h>
 
+/*! 
+ * \addtogroup dvd_statecodes DVD state codes
+ * @{
+ */
+
 #define  DVD_STATE_FATAL_ERROR			-1 
 #define  DVD_STATE_END					0 
 #define  DVD_STATE_BUSY					1 
@@ -73,6 +81,12 @@ Revision 1.22  2005/11/23 07:51:59  shagkur
 #define  DVD_ERROR_IGNORED				-2 
 #define  DVD_ERROR_CANCELED				-3 
 #define  DVD_ERROR_COVER_CLOSED			-4 
+
+/*!
+ * @}
+ */
+
+
 /*! 
  * \addtogroup dvd_resetmode DVD reset modes
  * @{
@@ -311,6 +325,34 @@ s32 DVD_ControlDrive(dvdcmdblk *block,u32 cmd);
  */
 s32 DVD_ControlDriveAsync(dvdcmdblk *block,u32 cmd,dvdcbcallback cb);
 
+
+/*! 
+ * \fn s32 DVD_SetGCMOffset(dvdcmdblk *block,u32 offset)
+ * \brief Sets the offset to the GCM. Used for multigame discs.
+ *
+ *        This is a synchronous version of DVD_SetGCMOffsetAsync().
+ *
+ * \param[in] block pointer to a dvdcmdblk structure used to process the operation
+ * \param[in] offset offset to the GCM on disc.
+ *
+ * \return \ref dvd_errorcodes "dvd error code"
+ */
+s32 DVD_SetGCMOffset(dvdcmdblk *block,u32 offset);
+
+
+/*! 
+ * \fn s32 DVD_SetGCMOffsetAsync(dvdcmdblk *block,u32 offset,dvdcbcallback cb)
+ * \brief Sets the offset to the GCM. Used for multigame discs.
+ *
+ *        This is a synchronous version of DVD_SetGCMOffsetAsync().
+ *
+ * \param[in] block pointer to a dvdcmdblk structure used to process the operation
+ * \param[in] offset offset to the GCM on disc.
+ * \param[in] cb callback to be invoked upon completion of operation.
+ *
+ * \return \ref dvd_errorcodes "dvd error code"
+ */
+s32 DVD_SetGCMOffsetAsync(dvdcmdblk *block,u32 offset,dvdcbcallback cb);
 
 s32 DVD_GetCmdBlockStatus(dvdcmdblk *block);
 s32 DVD_SpinUpDrive(dvdcmdblk *block);

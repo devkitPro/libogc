@@ -375,16 +375,10 @@ static __inline__ u32 __linkstate()
 
 static u32 __bba_getlink_state_async()
 {
-	u32 level,ret;
+	u32 ret;
 
 
-	_CPU_ISR_Disable(level);
-	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==0) {
-		_CPU_ISR_Restore(level);
-		return 0;
-	}
-	_CPU_ISR_Restore(level);
-
+	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==0) return 0;
 	ret = __linkstate();
 	EXI_Unlock(EXI_CHANNEL_0);
 	return ret;
@@ -663,7 +657,7 @@ static u32 bba_calc_response(struct uip_netif *dev,u32 val)
 static void bba_devpoll(u16 *pstatus)
 {
 	u8 status;
-	u32 ret,level;
+	u32 ret;
 	s64 now;
 
 	now = gettime();
@@ -675,7 +669,6 @@ static void bba_devpoll(u16 *pstatus)
 	ret = 0;
 	status = 0;
 	*pstatus = 0;
-	_CPU_ISR_Disable(level);
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==1) {
 		status = bba_cmd_in8(0x03);
 		if(status) {
@@ -686,7 +679,6 @@ static void bba_devpoll(u16 *pstatus)
 				bba_cmd_out8(0x03,0x80);
 				bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
 				EXI_Unlock(EXI_CHANNEL_0);
-				_CPU_ISR_Restore(level);
 				return;
 			}
 			if(status&0x40) {
@@ -695,7 +687,6 @@ static void bba_devpoll(u16 *pstatus)
 				bba_cmd_out8(0x03, 0x40);
 				bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
 				EXI_Unlock(EXI_CHANNEL_0);
-				_CPU_ISR_Restore(level);
 				return;
 			}
 			if(status&0x20) {
@@ -703,7 +694,6 @@ static void bba_devpoll(u16 *pstatus)
 				bba_cmd_out8(0x03, 0x20);
 				bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
 				EXI_Unlock(EXI_CHANNEL_0);
-				_CPU_ISR_Restore(level);
 				return;
 			}
 			if(status&0x10) {
@@ -717,7 +707,6 @@ static void bba_devpoll(u16 *pstatus)
 				bba_cmd_out8(0x03, 0x10);
 				bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
 				EXI_Unlock(EXI_CHANNEL_0);
-				_CPU_ISR_Restore(level);
 				return;
 			}
 			if(status&0x08) {
@@ -725,7 +714,6 @@ static void bba_devpoll(u16 *pstatus)
 				bba_cmd_out8(0x03, 0x08);
 				bba_cmd_out8(0x02,BBA_CMD_IRMASKNONE);
 				EXI_Unlock(EXI_CHANNEL_0);
-				_CPU_ISR_Restore(level);
 				return;
 			}
 
@@ -735,7 +723,6 @@ static void bba_devpoll(u16 *pstatus)
 		}
 		EXI_Unlock(EXI_CHANNEL_0);
 	}
-	_CPU_ISR_Restore(level);
 }
 
 static s8_t __bba_start_tx(struct uip_netif *dev,struct uip_pbuf *p,struct uip_ip_addr *ipaddr)
@@ -746,25 +733,19 @@ static s8_t __bba_start_tx(struct uip_netif *dev,struct uip_pbuf *p,struct uip_i
 static s8_t __bba_link_tx(struct uip_netif *dev,struct uip_pbuf *p)
 {
 	u8 pad[60];
-	u32 level,len;
+	u32 len;
 	struct uip_pbuf *tmp;
 	
-	_CPU_ISR_Disable(level);
-	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==0) {
-		_CPU_ISR_Restore(level);
-		return UIP_ERR_IF;
-	}
+	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==0) return UIP_ERR_IF;
 
 	if(p->tot_len>BBA_TX_MAX_PACKET_SIZE) {
 		UIP_LOG("__bba_link_tx: packet dropped due to big buffer.\n");
 		EXI_Unlock(EXI_CHANNEL_0);
-		_CPU_ISR_Restore(level);
 		return UIP_ERR_PKTSIZE;
 	}
 	
 	if(!__linkstate()) {
 		EXI_Unlock(EXI_CHANNEL_0);
-		_CPU_ISR_Restore(level);
 		return UIP_ERR_ABRT;
 	}
 
@@ -786,8 +767,6 @@ static s8_t __bba_link_tx(struct uip_netif *dev,struct uip_pbuf *p)
 
 	bba_out8(BBA_NCRA,((bba_in8(BBA_NCRA)&~BBA_NCRA_ST0)|BBA_NCRA_ST1));		//&~BBA_NCRA_ST0
 	EXI_Unlock(EXI_CHANNEL_0);
-
-	_CPU_ISR_Restore(level);
 	return UIP_ERR_OK;
 }
 

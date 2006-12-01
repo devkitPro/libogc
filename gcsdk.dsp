@@ -184,6 +184,14 @@ SOURCE=.\libogc\lwp_handler.S
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\lwp_heap.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\lwp_heap.inl
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\lwp_messages.c
 # End Source File
 # Begin Source File
@@ -344,10 +352,6 @@ SOURCE=.\libogc\video_asm.S
 SOURCE=.\lwip\arch\gc\netif\gcif.c
 # End Source File
 # End Group
-# Begin Source File
-
-SOURCE=.\lwip\arch\gc\lib_arch.c
-# End Source File
 # End Group
 # End Group
 # Begin Group "core"
@@ -839,6 +843,22 @@ SOURCE=.\lockstubs\lock_supp_stub.c
 SOURCE=.\lockstubs\malloc_lock_stub.c
 # End Source File
 # End Group
+# Begin Group "libtinysmb.c"
+
+# PROP Default_Filter ".c"
+# Begin Source File
+
+SOURCE=.\libtinysmb\des.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libtinysmb\lmhash.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libtinysmb\smb.c
+# End Source File
+# End Group
 # End Group
 # Begin Group "Header Files"
 
@@ -937,6 +957,10 @@ SOURCE=.\gc\ogc\lwp.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\lwp_config.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\lwp_heap.h
 # End Source File
 # Begin Source File
 
@@ -1058,6 +1082,14 @@ SOURCE=.\gc\ipv4\lwip\ip_addr.h
 # Begin Group "lwip.h"
 
 # PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\gc\lwip\api.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\lwip\api_msg.h
+# End Source File
 # Begin Source File
 
 SOURCE=.\gc\lwip\arch.h
@@ -1291,6 +1323,18 @@ SOURCE=.\gc\sdcard\card_fat.h
 SOURCE=.\gc\sdcard\card_io.h
 # End Source File
 # End Group
+# Begin Group "tinysmb.h"
+
+# PROP Default_Filter ".h"
+# Begin Source File
+
+SOURCE=.\gc\tinysmb\DES.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\tinysmb\LMhash.h
+# End Source File
+# End Group
 # Begin Source File
 
 SOURCE=.\gc\debug.h
@@ -1326,6 +1370,10 @@ SOURCE=.\gc\ogcsys.h
 # Begin Source File
 
 SOURCE=.\gc\sdcard.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\smb.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"

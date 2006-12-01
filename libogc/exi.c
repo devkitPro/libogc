@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: exi.c,v 1.31 2006-04-10 05:32:31 shagkur Exp $
+$Id: exi.c,v 1.32 2006-12-01 15:21:53 wntrmute Exp $
 
 exi.c -- EXI subsystem
 
@@ -28,6 +28,10 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.31  2006/04/10 05:32:31  shagkur
+- changed calls to thread queue functions to meet the new prototypes.
+- added queueing for device operation requests
+
 Revision 1.30  2005/12/09 09:35:45  shagkur
 no message
 
@@ -51,6 +55,8 @@ no message
 #include "exi.h"
 
 //#define _EXI_DEBUG
+
+#define EXI_LOCK_DEVS				32
 
 #define EXI_MAX_CHANNELS			3
 #define EXI_MAX_DEVICES				3
@@ -89,10 +95,11 @@ typedef struct _exibus_priv {
 	u32 exi_id;
 	u64 exi_idtime;
 	lwp_queue lckd_dev;
+	u32 lckd_dev_bits;
 } exibus_priv;
 
 static lwp_queue _lckdev_queue;
-static struct _lck_dev lckdevs[256];
+static struct _lck_dev lckdevs[EXI_LOCK_DEVS];
 static exibus_priv eximap[EXI_MAX_CHANNELS];
 static u64 last_exi_idtime[EXI_MAX_CHANNELS];
 
@@ -128,12 +135,31 @@ static __inline__ void __exi_clearirqs(s32 nChn,u32 nEXIIrq,u32 nTCIrq,u32 nEXTI
 	_exiReg[nChn*5] = d;
 }
 
+static __inline__ void __exi_setinterrupts(s32 nChn,exibus_priv *exi)
+{
+	exibus_priv *pexi = &eximap[EXI_CHANNEL_2];
+#ifdef _EXI_DEBUG
+	printf("__exi_setinterrupts(%d,%p)\n",nChn,exi);
+#endif
+	if(nChn==EXI_CHANNEL_0) {
+		__MaskIrq((IRQMASK(IRQ_EXI0_EXI)|IRQMASK(IRQ_EXI2_EXI)));
+		if(!(exi->flags&EXI_FLAG_LOCKED) && (exi->CallbackEXI || pexi->CallbackEXI))
+			__UnmaskIrq((IRQMASK(IRQ_EXI0_EXI)|IRQMASK(IRQ_EXI2_EXI)));
+	} else if(nChn==EXI_CHANNEL_1) {
+		__MaskIrq(IRQMASK(IRQ_EXI1_EXI));
+		if(!(exi->flags&EXI_FLAG_LOCKED) && exi->CallbackEXI) __UnmaskIrq(IRQMASK(IRQ_EXI1_EXI));
+	} else if(nChn==EXI_CHANNEL_2) {				//explicitly use of channel 2 only if debugger is attached.
+		__MaskIrq(IRQMASK(IRQ_EXI0_EXI));
+		if(!(exi->flags&EXI_FLAG_LOCKED) && IRQ_GetHandler(IRQ_PI_DEBUG)) __UnmaskIrq(IRQMASK(IRQ_EXI2_EXI));
+	}
+}
+
 static void __exi_initmap(exibus_priv *exim)
 {
 	s32 i;
 	exibus_priv *m;
 
-	__lwp_queue_initialize(&_lckdev_queue,lckdevs,256,sizeof(struct _lck_dev));
+	__lwp_queue_initialize(&_lckdev_queue,lckdevs,EXI_LOCK_DEVS,sizeof(struct _lck_dev));
 	
 	for(i=0;i<EXI_MAX_CHANNELS;i++) {
 		m = &exim[i];
@@ -147,6 +173,7 @@ static void __exi_initmap(exibus_priv *exim)
 		m->imm_len = 0;
 		m->lck_cnt = 0;
 		m->lockeddev = 0;
+		m->lckd_dev_bits = 0;
 		__lwp_queue_init_empty(&m->lckd_dev);
 	}
 }
@@ -196,25 +223,6 @@ static s32 __exi_probe(s32 nChn)
 	return ret;
 }
 
-static inline void __exi_setinterrupts(s32 nChn,exibus_priv *exi)
-{
-	exibus_priv *pexi = &eximap[EXI_CHANNEL_2];
-#ifdef _EXI_DEBUG
-	printf("__exi_setinterrupts(%d,%p)\n",nChn,exi);
-#endif
-	if(nChn==EXI_CHANNEL_0) {
-		__MaskIrq((IRQMASK(IRQ_EXI0_EXI)|IRQMASK(IRQ_EXI2_EXI)));
-		if(!(exi->flags&EXI_FLAG_LOCKED) && (exi->CallbackEXI || pexi->CallbackEXI))
-			__UnmaskIrq((IRQMASK(IRQ_EXI0_EXI)|IRQMASK(IRQ_EXI2_EXI)));
-	} else if(nChn==EXI_CHANNEL_1) {
-		__MaskIrq(IRQMASK(IRQ_EXI1_EXI));
-		if(!(exi->flags&EXI_FLAG_LOCKED) && exi->CallbackEXI) __UnmaskIrq(IRQMASK(IRQ_EXI1_EXI));
-	} else if(nChn==EXI_CHANNEL_2) {				//explicitly use of channel 2 only if debugger is attached.
-		__MaskIrq(IRQMASK(IRQ_EXI0_EXI));
-		if(!(exi->flags&EXI_FLAG_LOCKED) && IRQ_GetHandler(IRQ_PI_DEBUG)) __UnmaskIrq(IRQMASK(IRQ_EXI2_EXI));
-	}
-}
-
 static s32 __exi_attach(s32 nChn,EXICallback ext_cb)
 {
 	s32 ret;
@@ -248,13 +256,14 @@ s32 EXI_Lock(s32 nChn,s32 nDev,EXICallback unlockCB)
 #endif
 	_CPU_ISR_Disable(level);
 	if(exi->flags&EXI_FLAG_LOCKED) {
-		if(unlockCB) {
+		if(unlockCB && !(exi->lckd_dev_bits&(1<<nDev))) {
 			lckd = (struct _lck_dev*)__lwp_queue_getI(&_lckdev_queue);
 			if(lckd) {
+				exi->lck_cnt++;
+				exi->lckd_dev_bits |= (1<<nDev);
 				lckd->dev = nDev;
 				lckd->unlockcb = unlockCB;
 				__lwp_queue_appendI(&exi->lckd_dev,&lckd->node);
-				++exi->lck_cnt;
 			}
 		}
 		_CPU_ISR_Restore(level);
@@ -292,12 +301,13 @@ s32 EXI_Unlock(s32 nChn)
 		return 1;
 	}
 
+	exi->lck_cnt--;
 	lckd = (struct _lck_dev*)__lwp_queue_getI(&exi->lckd_dev);
 	__lwp_queue_appendI(&_lckdev_queue,&lckd->node);
-	--exi->lck_cnt;
 
 	cb = lckd->unlockcb;
 	dev = lckd->dev;
+	exi->lckd_dev_bits &= ~(1<<dev);
 	if(cb) cb(nChn,dev);
 
 	_CPU_ISR_Restore(level);

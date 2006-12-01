@@ -20,7 +20,8 @@ OBJCOPY		:=	$(PREFIX)-objcopy
 
 BUILD		:=	build
 
-INSTALLPATH	:=	$(DEVKITPPC)
+SPECS		:=	$(shell $(DEVKITPPC)/bin/$(CC) -v 2>&1)
+INSTALLPATH	:=	$(shell echo $(SPECS) | sed -n -e 's/Reading specs from //p' | sed -e 's/\/bin.*//')
 GCC_VERSION	:=	$(shell $(DEVKITPPC)/bin/$(CC) -dumpversion)
 DATESTRING	:=	$(shell date +%Y)$(shell date +%m)$(shell date +%d)
 
@@ -38,6 +39,8 @@ export SAMPLEDIR	:= $(BASEDIR)/libsamplerate
 export DBDIR		:= $(BASEDIR)/libdb
 export SDCARDDIR	:= $(BASEDIR)/libsdcard
 export GCSYSDIR		:= $(BASEDIR)/libogcsys
+export TINYSMBDIR	:= $(BASEDIR)/libtinysmb
+export LIBZDIR		:= $(BASEDIR)/libz
 export STUBSDIR		:= $(BASEDIR)/lockstubs
 
 export DEPSDIR		:=	$(BASEDIR)/deps
@@ -54,16 +57,19 @@ MADLIB		:= $(LIBDIR)/libmad
 DBLIB		:= $(LIBDIR)/libdb
 SDCARDLIB	:= $(LIBDIR)/libsdcard
 GCSYSLIB	:= $(LIBDIR)/libogcsys
+TINYSMBLIB	:= $(LIBDIR)/libtinysmb
+ZLIB		:= $(LIBDIR)/libz
 STUBSLIB	:= $(LIBDIR)/libgclibstubs
 GCN_CRT0	:= $(LIBDIR)/gcn_crt0
 #---------------------------------------------------------------------------------
 DEFINCS		:= -I$(BASEDIR) -I$(BASEDIR)/gc
 INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
-				-I$(BASEDIR)/gc/ogc -I$(BASEDIR)/gc/ogc/machine \
-				-I$(BASEDIR)/gc/modplay -I$(BASEDIR)/gc/mad -I$(BASEDIR)/gc/sdcard
+				-I$(BASEDIR)/gc/ogc -I$(BASEDIR)/gc/ogc/machine -I$(BASEDIR)/gc/tinysmb \
+				-I$(BASEDIR)/gc/modplay -I$(BASEDIR)/gc/mad -I$(BASEDIR)/gc/sdcard \
+				-I$(BASEDIR)/gc/z
 
 MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -ffunction-sections -fdata-sections
-CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -O2 $(MACHDEP) -Wall $(INCLUDES)
+CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -O2 -Wall $(MACHDEP) $(INCLUDES)
 LDFLAGS		:=
 
 #---------------------------------------------------------------------------------
@@ -81,11 +87,13 @@ VPATH :=	$(LWIPDIR)				\
 			$(DBDIR)/uIP		\
 			$(SDCARDDIR)			\
 			$(GCSYSDIR)		\
+			$(TINYSMBDIR)		\
+			$(LIBZDIR)		\
 			$(STUBSDIR)
 
 
 #---------------------------------------------------------------------------------
-LWIPOBJ		:=	network.o netio.o gcif.o lib_arch.o		\
+LWIPOBJ		:=	network.o netio.o gcif.o	\
 			inet.o mem.o dhcp.o raw.o		\
 			memp.o netif.o pbuf.o stats.o	\
 			sys.o tcp.o tcp_in.o tcp_out.o	\
@@ -95,7 +103,7 @@ LWIPOBJ		:=	network.o netio.o gcif.o lib_arch.o		\
 #---------------------------------------------------------------------------------
 OGCOBJ		:=	lwp_priority.o lwp_queue.o lwp_threadq.o lwp_threads.o lwp_sema.o	\
 			lwp_messages.o lwp.o lwp_handler.o lwp_stack.o lwp_mutex.o 	\
-			lwp_watchdog.o lwp_wkspace.o lwp_objmgr.o sys_state.o \
+			lwp_watchdog.o lwp_wkspace.o lwp_objmgr.o lwp_heap.o sys_state.o \
 			exception_handler.o exception.o irq.o irq_handler.o semaphore.o \
 			video_asm.o video.o pad.o dvd.o exi.o mutex.o arqueue.o	arqmgr.o	\
 			cache_asm.o system.o system_asm.o cond.o			\
@@ -127,6 +135,15 @@ GCSYSOBJ	:=	newlibc.o sbrk.o open.o write.o close.o \
 			stdin_fake.o sdcardio_fake.o flock_supp.o \
 			lock_supp.o dvd_supp.o malloc_lock.o
 				
+#---------------------------------------------------------------------------------
+TINYSMBOBJ	:=	des.o lmhash.o smb.o nbt.o
+
+#---------------------------------------------------------------------------------
+ZLIBOBJ		:=	adler32.o compress.o crc32.o gzio.o uncompr.o \
+			deflate.o trees.o zutil.o inflate.o infback.o \
+			inftrees.o inffast.o
+
+#---------------------------------------------------------------------------------
 STUBSOBJ	:=	malloc_lock_stub.o flock_supp_stub.o lock_supp_stub.o gcn_crt0.o
 
 #---------------------------------------------------------------------------------
@@ -186,6 +203,10 @@ $(SDCARDLIB).a: $(SDCARDOBJ)
 #---------------------------------------------------------------------------------
 $(GCSYSLIB).a: $(GCSYSOBJ)
 #---------------------------------------------------------------------------------
+$(TINYSMBLIB).a: $(TINYSMBOBJ)
+#---------------------------------------------------------------------------------
+$(ZLIB).a: $(ZLIBOBJ)
+#---------------------------------------------------------------------------------
 $(STUBSLIB).a: $(STUBSOBJ)
 #---------------------------------------------------------------------------------
  
@@ -224,7 +245,8 @@ dist: install-headers
 	@tar -cvjf libogc-$(DATESTRING).tar.bz2 include lib license.txt
 
 #---------------------------------------------------------------------------------
-libs: $(OGCLIB).a $(BBALIB).a $(MODLIB).a $(MADLIB).a $(DBLIB).a $(SDCARDLIB).a $(GCSYSLIB).a $(STUBSLIB).a
+libs: $(OGCLIB).a $(BBALIB).a $(MODLIB).a $(MADLIB).a $(DBLIB).a $(SDCARDLIB).a $(GCSYSLIB).a \
+	$(ZLIB).a $(TINYSMBLIB).a $(STUBSLIB).a
 #---------------------------------------------------------------------------------
 
 #---------------------------------------------------------------------------------

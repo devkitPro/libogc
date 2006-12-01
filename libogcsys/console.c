@@ -10,6 +10,7 @@ extern int errno;
 #include "color.h"
 #include "cache.h"
 #include "video.h"
+#include "system.h"
 
 #include "console.h"
 
@@ -43,9 +44,8 @@ static void __console_viprecb(u32 retraceCnt)
 
 	do_xfb_copy = TRUE;
 		
-	fb = (u8*)__VIDEO_GetNextFramebuffer()+(curr_con->target_y*curr_con->tgt_stride+(curr_con->target_x*4));
 	ptr = curr_con->destbuffer;
-	DCFlushRange(ptr,curr_con->con_yres*curr_con->con_stride);
+	fb = (u8*)MEM_K0_TO_K1(__VIDEO_GetNextFramebuffer()+(curr_con->target_y*curr_con->tgt_stride+(curr_con->target_x*4)));
 	for(ycnt=0;ycnt<curr_con->con_yres;ycnt++) {
 		for(xcnt=0;xcnt<curr_con->con_stride;xcnt++) fb[xcnt] = ptr[xcnt];
 

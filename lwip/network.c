@@ -32,16 +32,20 @@
 #include "network.h"
 
 //#define _NET_DEBUG
+#define ARP_TIMER_ID			0x00010000
+#define TCP_TIMER_ID			0x00020000
+#define DHCPCOARSE_TIMER_ID		0x00030000
+#define DHCPFINE_TIMER_ID		0x00040000
 
-#define STACKSIZE		32768
-#define MQBOX_SIZE		256
-#define NUM_SOCKETS		MEMP_NUM_NETCONN
+#define STACKSIZE				32768
+#define MQBOX_SIZE				256
+#define NUM_SOCKETS				MEMP_NUM_NETCONN
 
 struct netsocket {
 	struct netconn *conn;
 	struct netbuf *lastdata;
-	u32 lastoffset,rcvevt,sendevt,flags;
-	u32 err;
+	u16 lastoffset,rcvevt,sendevt,flags;
+	s32 err;
 };
 
 struct netselect_cb {
@@ -212,19 +216,19 @@ void tcp_timer_needed(void)
 }
 
 /* netbuf part */
-static inline u16 netbuf_len(struct netbuf *buf)
+static __inline__ u16 netbuf_len(struct netbuf *buf)
 {
-	return buf->p->tot_len;
+	return ((buf && buf->p)?buf->p->tot_len:0);
 }
 
-static inline struct ip_addr* netbuf_fromaddr(struct netbuf *buf)
+static __inline__ struct ip_addr* netbuf_fromaddr(struct netbuf *buf)
 {
-	return buf->fromaddr;
+	return (buf?buf->fromaddr:NULL);
 }
 
-static inline u16 netbuf_fromport(struct netbuf *buf)
+static __inline__ u16 netbuf_fromport(struct netbuf *buf)
 {
-	return buf->fromport;
+	return (buf?buf->fromport:0);
 }
 
 static void netbuf_copypartial(struct netbuf *buf,void *dataptr,u32 len,u32 offset)
@@ -1348,13 +1352,13 @@ static void* net_thread(void *arg)
 	tb.tv_sec = ARP_TMR_INTERVAL/TB_MSPERSEC;
 	tb.tv_nsec = 0;
 	net_arp_ticks = __lwp_wd_calc_ticks(&tb);
-	__lwp_wd_initialize(&arp_time_cntrl,__arp_timer,NULL);
+	__lwp_wd_initialize(&arp_time_cntrl,__arp_timer,ARP_TIMER_ID,NULL);
 	__lwp_wd_insert_ticks(&arp_time_cntrl,net_arp_ticks);
 
 	tb.tv_sec = 0;
 	tb.tv_nsec = TCP_TMR_INTERVAL*TB_NSPERMS;
 	net_tcp_ticks = __lwp_wd_calc_ticks(&tb);
-	__lwp_wd_initialize(&tcp_timer_cntrl,__tcp_timer,NULL);
+	__lwp_wd_initialize(&tcp_timer_cntrl,__tcp_timer,TCP_TIMER_ID,NULL);
 	
 	LWP_SemPost(sem);
 	
@@ -1532,14 +1536,14 @@ s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 			tb.tv_sec = DHCP_COARSE_TIMER_SECS;
 			tb.tv_nsec = 0;
 			net_dhcpcoarse_ticks = __lwp_wd_calc_ticks(&tb);
-			__lwp_wd_initialize(&dhcp_coarsetimer_cntrl,__dhcpcoarse_timer,NULL);
+			__lwp_wd_initialize(&dhcp_coarsetimer_cntrl,__dhcpcoarse_timer,DHCPCOARSE_TIMER_ID,NULL);
 			__lwp_wd_insert_ticks(&dhcp_coarsetimer_cntrl,net_dhcpcoarse_ticks);
 			
 			//setup fine timer
 			tb.tv_sec = 0;
 			tb.tv_nsec = DHCP_FINE_TIMER_MSECS*TB_NSPERMS;
 			net_dhcpfine_ticks = __lwp_wd_calc_ticks(&tb);
-			__lwp_wd_initialize(&dhcp_finetimer_cntrl,__dhcpfine_timer,NULL);
+			__lwp_wd_initialize(&dhcp_finetimer_cntrl,__dhcpfine_timer,DHCPFINE_TIMER_ID,NULL);
 			__lwp_wd_insert_ticks(&dhcp_finetimer_cntrl,net_dhcpfine_ticks);
 
 			//now start dhcp client
@@ -1561,7 +1565,7 @@ s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 	return ret;
 }
 
-s32 if_configex(struct ip_addr *pIP,struct ip_addr *pGW,struct ip_addr *pMask,boolean use_dhcp)
+s32 if_configex(struct in_addr *pIP,struct in_addr *pGW,struct in_addr *pMask,boolean use_dhcp)
 {
 	s32 ret = 0;
 	struct ip_addr loc_ip, netmask, gw;
@@ -1591,10 +1595,10 @@ s32 if_configex(struct ip_addr *pIP,struct ip_addr *pGW,struct ip_addr *pMask,bo
 	loc_ip.addr = 0;
 	netmask.addr = 0;
 	if(!use_dhcp) {
-		gw.addr = pGW->addr;
+		gw.addr = pGW->s_addr;
 		if(pIP && pMask) {
-			loc_ip.addr = pIP->addr;
-			netmask.addr = pMask->addr;
+			loc_ip.addr = pIP->s_addr;
+			netmask.addr = pMask->s_addr;
 		} else
 			return -1;
 	}
@@ -1610,14 +1614,14 @@ s32 if_configex(struct ip_addr *pIP,struct ip_addr *pGW,struct ip_addr *pMask,bo
 			tb.tv_sec = DHCP_COARSE_TIMER_SECS;
 			tb.tv_nsec = 0;
 			net_dhcpcoarse_ticks = __lwp_wd_calc_ticks(&tb);
-			__lwp_wd_initialize(&dhcp_coarsetimer_cntrl,__dhcpcoarse_timer,NULL);
+			__lwp_wd_initialize(&dhcp_coarsetimer_cntrl,__dhcpcoarse_timer,DHCPCOARSE_TIMER_ID,NULL);
 			__lwp_wd_insert_ticks(&dhcp_coarsetimer_cntrl,net_dhcpcoarse_ticks);
 			
 			//setup fine timer
 			tb.tv_sec = 0;
 			tb.tv_nsec = DHCP_FINE_TIMER_MSECS*TB_NSPERMS;
 			net_dhcpfine_ticks = __lwp_wd_calc_ticks(&tb);
-			__lwp_wd_initialize(&dhcp_finetimer_cntrl,__dhcpfine_timer,NULL);
+			__lwp_wd_initialize(&dhcp_finetimer_cntrl,__dhcpfine_timer,DHCPFINE_TIMER_ID,NULL);
 			__lwp_wd_insert_ticks(&dhcp_finetimer_cntrl,net_dhcpfine_ticks);
 
 			//now start dhcp client
@@ -1660,14 +1664,14 @@ s32 net_init()
 		LWP_SemDestroy(netsocket_sem);
 		LWP_SemDestroy(sockselect_sem);
 		LWP_SemDestroy(sem);
-		return 0;
+		return -1;
 	}
 	LWP_SemWait(sem);
 	LWP_SemDestroy(sem);
 
 	tcpiplayer_inited = 1;
 	
-	return 1;
+	return 0;
 }
 
 s32 net_socket(u32 domain,u32 type,u32 protocol)
@@ -1677,12 +1681,15 @@ s32 net_socket(u32 domain,u32 type,u32 protocol)
 	
 	switch(type) {
 		case SOCK_RAW:
+			LWIP_DEBUGF(SOCKETS_DEBUG, ("net_socket(SOCK_RAW)\n"));
 			conn = netconn_new_with_proto_and_callback(NETCONN_RAW,protocol,evt_callback);
 			break;
 		case SOCK_DGRAM:
+			LWIP_DEBUGF(SOCKETS_DEBUG, ("net_socket(SOCK_DGRAM)\n"));
 			conn = netconn_new_with_callback(NETCONN_UDP,evt_callback);
 			break;
 		case SOCK_STREAM:
+			LWIP_DEBUGF(SOCKETS_DEBUG, ("net_socket(SOCK_STREAM)\n"));
 			conn = netconn_new_with_callback(NETCONN_TCP,evt_callback);
 			break;
 		default:
@@ -1780,7 +1787,7 @@ s32 net_listen(s32 s,u32 backlog)
 	return 0;
 }
 
-s32 net_recvfrom(s32 s,void *mem,u32 len,u32 flags,struct sockaddr *from,socklen_t *fromlen)
+s32 net_recvfrom(s32 s,void *mem,s32 len,u32 flags,struct sockaddr *from,socklen_t *fromlen)
 {
 	struct netsocket *sock;
 	struct netbuf *buf;
@@ -1789,6 +1796,8 @@ s32 net_recvfrom(s32 s,void *mem,u32 len,u32 flags,struct sockaddr *from,socklen
 	u16 port;
 	
 	LWIP_DEBUGF(SOCKETS_DEBUG, ("net_recvfrom(%d, %p, %d, 0x%x, ..)\n", s, mem, len, flags));
+	if(mem==NULL || len<=0) return -1;
+
 	sock = get_socket(s);
 	if(!sock) return -1;
 
@@ -1808,7 +1817,8 @@ s32 net_recvfrom(s32 s,void *mem,u32 len,u32 flags,struct sockaddr *from,socklen
 	
 	buflen = netbuf_len(buf);
 	buflen -= sock->lastoffset;
-
+	if(buflen<=0)
+		return 0;
 	if(len>buflen)
 		copylen = buflen;
 	else
@@ -1848,22 +1858,25 @@ s32 net_recvfrom(s32 s,void *mem,u32 len,u32 flags,struct sockaddr *from,socklen
 	return copylen;
 }
 
-s32 net_read(s32 s,void *mem,u32 len)
+s32 net_read(s32 s,void *mem,s32 len)
 {
 	return net_recvfrom(s,mem,len,0,NULL,NULL);
 }
 
-s32 net_recv(s32 s,void *mem,u32 len,u32 flags)
+s32 net_recv(s32 s,void *mem,s32 len,u32 flags)
 {
 	return net_recvfrom(s,mem,len,flags,NULL,NULL);
 }
 
-s32 net_sendto(s32 s,void *data,u32 len,u32 flags,struct sockaddr *to,socklen_t tolen)
+s32 net_sendto(s32 s,void *data,s32 len,u32 flags,struct sockaddr *to,socklen_t tolen)
 {
 	struct netsocket *sock;
 	struct ip_addr remote_addr, addr;
 	u16_t remote_port, port;
 	s32 ret,connected;
+
+	LWIP_DEBUGF(SOCKETS_DEBUG, ("net_sendto(%d, data=%p, size=%d, flags=0x%x)\n", s, data, len, flags));
+	if(data==NULL || len<=0) return -1;
 
 	sock = get_socket(s);
 	if (!sock) return -1;
@@ -1891,13 +1904,14 @@ s32 net_sendto(s32 s,void *data,u32 len,u32 flags,struct sockaddr *to,socklen_t 
 	return ret;
 }
 
-s32 net_send(s32 s,void *data,u32 len,u32 flags)
+s32 net_send(s32 s,void *data,s32 len,u32 flags)
 {
 	struct netsocket *sock;
 	struct netbuf *buf;
 	err_t err;
 
 	LWIP_DEBUGF(SOCKETS_DEBUG, ("net_send(%d, data=%p, size=%d, flags=0x%x)\n", s, data, len, flags));
+	if(data==NULL || len<=0) return -1;
 
 	sock = get_socket(s);
 	if(!sock) return -1;
@@ -1932,7 +1946,7 @@ s32 net_send(s32 s,void *data,u32 len,u32 flags)
 	return len;
 }
 
-s32 net_write(s32 s,void *data,u32 size)
+s32 net_write(s32 s,void *data,s32 size)
 {
 	return net_send(s,data,size,0);
 }
@@ -2101,10 +2115,10 @@ s32 net_select(s32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset,st
 				}
 			}
 		}
-		LWP_SemPost(sockselect_sem);
-		
 		LWP_CondDestroy(sel_cb.cond);
 		LWP_MutexDestroy(sel_cb.cond_lck);
+
+		LWP_SemPost(sockselect_sem);
 
 		if(i==ETIMEDOUT) {
 			if(readset)
@@ -2261,4 +2275,33 @@ s32 net_setsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optl
 		}
 	}
 	return err?-1:0;
+}
+
+s32 net_ioctl(s32 s, u32 cmd, void *argp)
+{
+	struct netsocket *sock = get_socket(s);
+
+	if(!sock) return -1;
+
+	switch (cmd) {
+		case FIONREAD:
+			if(!argp) return -1;
+
+			*((u16_t*)argp) = sock->conn->recvavail;
+
+			LWIP_DEBUGF(SOCKETS_DEBUG, ("net_ioctl(%d, FIONREAD, %p) = %u\n", s, argp, *((u16*)argp)));
+			return 0;
+
+		case FIONBIO:
+			if(argp && *(u32*)argp)
+				sock->flags |= O_NONBLOCK;
+			else
+				sock->flags &= ~O_NONBLOCK;
+			LWIP_DEBUGF(SOCKETS_DEBUG, ("net_ioctl(%d, FIONBIO, %d)\n", s, !!(sock->flags&O_NONBLOCK)));
+			return 0;
+
+		default:
+			LWIP_DEBUGF(SOCKETS_DEBUG, ("net_ioctl(%d, UNIMPL: 0x%lx, %p)\n", s, cmd, argp));
+			return -1;
+	}
 }

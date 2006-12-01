@@ -201,6 +201,7 @@ extern "C" {
 #endif
 
 #ifndef HAVE_IN_ADDR
+#define HAVE_IN_ADDR
 struct in_addr {
   u32 s_addr;
 };
@@ -221,7 +222,7 @@ struct sockaddr {
 };
 
 s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean use_dhcp);
-s32 if_configex(struct ip_addr *pIP,struct ip_addr *pGW,struct ip_addr *pMask,boolean use_dhcp);
+s32 if_configex(struct in_addr *pIP,struct in_addr *pGW,struct in_addr *pMask,boolean use_dhcp);
 u32 inet_addr(const char *cp);
 
 s32 net_init();
@@ -230,15 +231,16 @@ s32 net_bind(s32 s,struct sockaddr *name,socklen_t namelen);
 s32 net_listen(s32 s,u32 backlog);
 s32 net_accept(s32 s,struct sockaddr *addr,socklen_t *addrlen);
 s32 net_connect(s32 s,struct sockaddr *,socklen_t);
-s32 net_write(s32 s,void *data,u32 size);
-s32 net_send(s32 s,void *data,u32 size,u32 flags);
-s32 net_sendto(s32 s,void *data,u32 len,u32 flags,struct sockaddr *to,socklen_t tolen);
-s32 net_recv(s32 s,void *mem,u32 len,u32 flags);
-s32 net_recvfrom(s32 s,void *mem,u32 len,u32 flags,struct sockaddr *from,socklen_t *fromlen);
-s32 net_read(s32 s,void *mem,u32 len);
+s32 net_write(s32 s,void *data,s32 size);
+s32 net_send(s32 s,void *data,s32 size,u32 flags);
+s32 net_sendto(s32 s,void *data,s32 len,u32 flags,struct sockaddr *to,socklen_t tolen);
+s32 net_recv(s32 s,void *mem,s32 len,u32 flags);
+s32 net_recvfrom(s32 s,void *mem,s32 len,u32 flags,struct sockaddr *from,socklen_t *fromlen);
+s32 net_read(s32 s,void *mem,s32 len);
 s32 net_close(s32 s);
 s32 net_select(s32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset,struct timeval *timeout);
 s32 net_setsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optlen);
+s32 net_ioctl(s32 s, u32 cmd, void *argp);
 
 #ifdef __cplusplus
 	}

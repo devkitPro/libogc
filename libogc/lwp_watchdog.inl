@@ -1,9 +1,10 @@
 #ifndef __LWP_WATCHDOG_INL__
 #define __LWP_WATCHDOG_INL__
 
-static __inline__ void __lwp_wd_initialize(wd_cntrl *wd,wd_service_routine routine,void *usr_data)
+static __inline__ void __lwp_wd_initialize(wd_cntrl *wd,wd_service_routine routine,u32 id,void *usr_data)
 {
 	wd->state = LWP_WD_INACTIVE;
+	wd->id = id;
 	wd->routine = routine;
 	wd->usr_data = usr_data;
 }
@@ -58,38 +59,26 @@ static __inline__ void __lwp_wd_tickle_ticks()
 	__lwp_wd_tickle(&_wd_ticks_queue);
 }
 
-static __inline__ void __lwp_wd_tickle_secs()
+static __inline__ void __lwp_wd_insert_ticks(wd_cntrl *wd,s64 interval)
 {
-	__lwp_wd_tickle(&_wd_secs_queue);
-}
-
-static __inline__ void __lwp_wd_insert_ticks(wd_cntrl *wd,u64 interval)
-{
-	wd->init_interval = interval;
-	wd->start_time = 0;
+	wd->start = gettime();
+	wd->fire = (wd->start+LWP_WD_ABS(interval));
 	__lwp_wd_insert(&_wd_ticks_queue,wd);
 }
 
-static __inline__ void __lwp_wd_insert_secs(wd_cntrl *wd,u64 interval)
-{
-	wd->init_interval = interval;
-	wd->start_time = 0;
-	__lwp_wd_insert(&_wd_secs_queue,wd);
-}
-
-static __inline__ void __lwp_wd_adjust_ticks(u32 dir,u64 interval)
+static __inline__ void __lwp_wd_adjust_ticks(u32 dir,s64 interval)
 {
 	__lwp_wd_adjust(&_wd_ticks_queue,dir,interval);
 }
 
-static __inline__ void __lwp_wd_adjust_secs(u32 dir,u64 interval)
+static __inline__ void __lwp_wd_remove_ticks(wd_cntrl *wd)
 {
-	__lwp_wd_adjust(&_wd_secs_queue,dir,interval);
+	__lwp_wd_remove(&_wd_ticks_queue,wd);
 }
 
 static __inline__ void __lwp_wd_reset(wd_cntrl *wd)
 {
-	__lwp_wd_remove(wd);
+	__lwp_wd_remove(&_wd_ticks_queue,wd);
 	__lwp_wd_insert(&_wd_ticks_queue,wd);
 }
 #endif

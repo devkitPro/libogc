@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: cond.c,v 1.15 2006-05-06 19:41:44 shagkur Exp $
+$Id: cond.c,v 1.16 2006-12-01 15:21:53 wntrmute Exp $
 
 cond.c -- Thread subsystem V
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.15  2006/05/06 19:41:44  shagkur
+no message
+
 Revision 1.14  2006/05/06 18:07:25  shagkur
 - fixed bugs in gx.c
 
@@ -106,7 +109,7 @@ static cond_st* __lwp_cond_allocate()
 	return NULL;
 }
 
-static s32 __lwp_cond_waitsupp(cond_t cond,mutex_t mutex,u32 timeout,u8 timedout)
+static s32 __lwp_cond_waitsupp(cond_t cond,mutex_t mutex,u64 timeout,u8 timedout)
 {
 	u32 status,mstatus,level;
 	cond_st *thecond;
@@ -119,6 +122,7 @@ static s32 __lwp_cond_waitsupp(cond_t cond,mutex_t mutex,u32 timeout,u8 timedout
 		return EINVAL;
 	}
 
+
 	LWP_MutexUnlock(mutex);
 	if(!timedout) {
 		thecond->lock = mutex;
@@ -126,7 +130,7 @@ static s32 __lwp_cond_waitsupp(cond_t cond,mutex_t mutex,u32 timeout,u8 timedout
 		__lwp_threadqueue_csenter(&thecond->wait_queue);
 		_thr_executing->wait.ret_code = 0;
 		_thr_executing->wait.queue = &thecond->wait_queue;
-		_thr_executing->wait.id = thecond->object.id;
+		_thr_executing->wait.id = cond;
 		_CPU_ISR_Restore(level);
 		__lwp_threadqueue_enqueue(&thecond->wait_queue,timeout);
 		__lwp_thread_dispatchenable();
@@ -138,6 +142,7 @@ static s32 __lwp_cond_waitsupp(cond_t cond,mutex_t mutex,u32 timeout,u8 timedout
 		__lwp_thread_dispatchenable();
 		status = ETIMEDOUT;
 	}
+
 	mstatus = LWP_MutexLock(mutex);
 	if(mstatus)
 		return EINVAL;
@@ -197,17 +202,9 @@ s32 LWP_CondBroadcast(cond_t cond)
 s32 LWP_CondTimedWait(cond_t cond,mutex_t mutex,const struct timespec *abstime)
 {
 	u64 timeout = LWP_THREADQ_NOTIMEOUT;
-	struct timespec curr_time;
-	struct timespec diff;
 	boolean timedout = FALSE;
-	
-	if(abstime) {
-		clock_gettime(&curr_time);
-		timespec_substract(&curr_time,abstime,&diff);
-		if(diff.tv_sec<0 || (diff.tv_sec==0 && diff.tv_nsec<0)) timedout = TRUE;
 
-		timeout = __lwp_wd_calc_ticks(&diff);
-	}
+	if(abstime) timeout = __lwp_wd_calc_ticks(abstime);
 	return __lwp_cond_waitsupp(cond,mutex,timeout,timedout);
 }
 

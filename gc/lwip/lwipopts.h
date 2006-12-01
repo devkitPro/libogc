@@ -34,6 +34,7 @@
 
 #include <string.h>
 
+#define BYTE_ORDER						BIG_ENDIAN
 #define NO_SYS							1
 #define LWIP_CALLBACK_API				1
 #undef  LWIP_EVENT_API
@@ -48,18 +49,18 @@
 
 /* MEM_SIZE: the size of the heap memory. If the application will send
 a lot of data that needs to be copied, this should be set high. */
-#define MEM_SIZE				(128*1024)
+#define MEM_SIZE				(192*1024)
 
 /* MEMP_NUM_PBUF: the number of memp struct pbufs. If the application
    sends a lot of data out of ROM (or other static memory), this
    should be set high. */
-#define MEMP_NUM_PBUF           64
+#define MEMP_NUM_PBUF           128
 /* MEMP_NUM_UDP_PCB: the number of UDP protocol control blocks. One
    per active UDP "connection". */
-#define MEMP_NUM_UDP_PCB        4
+#define MEMP_NUM_UDP_PCB        16
 /* MEMP_NUM_TCP_PCB: the number of simulatenously active TCP
    connections. */
-#define MEMP_NUM_TCP_PCB        8
+#define MEMP_NUM_TCP_PCB        16
 /* MEMP_NUM_TCP_PCB_LISTEN: the number of listening TCP
    connections. */
 #define MEMP_NUM_TCP_PCB_LISTEN 8
@@ -90,7 +91,7 @@ a lot of data that needs to be copied, this should be set high. */
 #define PBUF_POOL_SIZE          128			//128
 
 /* PBUF_POOL_BUFSIZE: the size of each pbuf in the pbuf pool. */
-#define PBUF_POOL_BUFSIZE       2048
+#define PBUF_POOL_BUFSIZE       1600
 
 /* PBUF_LINK_HLEN: the number of bytes that should be allocated for a
    link level header. */
@@ -108,14 +109,14 @@ a lot of data that needs to be copied, this should be set high. */
 #define TCP_MSS					1460
 
 /* TCP sender buffer space (bytes). */
-#define TCP_SND_BUF				(32*TCP_MSS)
+#define TCP_SND_BUF				(36*TCP_MSS)
 
 /* TCP sender buffer space (pbufs). This must be at least = 2 *
    TCP_SND_BUF/TCP_MSS for things to work. */
-#define TCP_SND_QUEUELEN        (8*TCP_SND_BUF/TCP_MSS)
+#define TCP_SND_QUEUELEN        (36*TCP_SND_BUF/TCP_MSS)
 
 /* TCP receive window. */
-#define TCP_WND                 (12*TCP_MSS)
+#define TCP_WND                 (36*TCP_MSS)
 
 /* Maximum number of retransmissions of data segments. */
 #define TCP_MAXRTX              12
@@ -176,8 +177,6 @@ a lot of data that needs to be copied, this should be set high. */
 #define SYS_STATS				0
 #define RAW_STATS				0
 #endif
-
-#define BYTE_ORDER				BIG_ENDIAN
 
 #ifdef LWIP_DEBUG 
 #define DBG_TYPES_ON                    -1

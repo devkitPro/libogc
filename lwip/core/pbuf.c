@@ -62,24 +62,22 @@
  *
  */
 
+#include <string.h>
+
 #include "lwip/opt.h"
-
 #include "lwip/stats.h"
-
 #include "lwip/def.h"
 #include "lwip/mem.h"
 #include "lwip/memp.h"
 #include "lwip/pbuf.h"
-
 #include "lwip/sys.h"
-
 #include "arch/perf.h"
 
-static u8_t pbuf_pool_memory[(PBUF_POOL_SIZE * MEM_ALIGN_SIZE(PBUF_POOL_BUFSIZE + sizeof(struct pbuf)))];
+static u8_t pbuf_pool_memory[MEM_ALIGNMENT - 1 + PBUF_POOL_SIZE * MEM_ALIGN_SIZE(PBUF_POOL_BUFSIZE + sizeof(struct pbuf))];
 
 #if !SYS_LIGHTWEIGHT_PROT
 static volatile u8_t pbuf_pool_free_lock, pbuf_pool_alloc_lock;
-static sem_t pbuf_pool_free_sem;
+static sys_sem pbuf_pool_free_sem;
 #endif
 
 static struct pbuf *pbuf_pool = NULL;
@@ -102,8 +100,7 @@ pbuf_init(void)
   struct pbuf *p, *q = NULL;
   u16_t i;
 
-  pbuf_pool = (struct pbuf *)&pbuf_pool_memory[0];
-  LWIP_ASSERT("pbuf_init: pool aligned", (mem_ptr_t)pbuf_pool % MEM_ALIGNMENT == 0);
+  pbuf_pool = (struct pbuf *)MEM_ALIGN(pbuf_pool_memory);
 
 #if PBUF_STATS
   lwip_stats.pbuf.avail = PBUF_POOL_SIZE;
@@ -217,7 +214,7 @@ pbuf_alloc(pbuf_layer l, u16_t length, pbuf_flag flag)
   struct pbuf *p, *q, *r;
   u16_t offset;
   s32_t rem_len; /* remaining length */
-  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE, ("pbuf_alloc(length=%u)\n", length));
+  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 3, ("pbuf_alloc(length=%"U16_F")\n", length));
 
   /* determine header offset */
   offset = 0;
@@ -245,7 +242,7 @@ pbuf_alloc(pbuf_layer l, u16_t length, pbuf_flag flag)
   case PBUF_POOL:
     /* allocate head of pbuf chain into p */
     p = pbuf_pool_alloc();
-    LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE, ("pbuf_alloc: allocated pbuf %p\n", (void *)p));
+    LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 3, ("pbuf_alloc: allocated pbuf %p\n", (void *)p));
     if (p == NULL) {
 #if PBUF_STATS
       ++lwip_stats.pbuf.err;
@@ -341,7 +338,7 @@ pbuf_alloc(pbuf_layer l, u16_t length, pbuf_flag flag)
   }
   /* set reference count */
   p->ref = 1;
-  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE, ("pbuf_alloc(length=%u) == %p\n", length, (void *)p));
+  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 3, ("pbuf_alloc(length=%"U16_F") == %p\n", length, (void *)p));
   return p;
 }
 
@@ -505,7 +502,7 @@ pbuf_header(struct pbuf *p, s16_t header_size_increment)
   p->len += header_size_increment;
   p->tot_len += header_size_increment;
 
-  LWIP_DEBUGF( PBUF_DEBUG, ("pbuf_header: old %p new %p (%d)\n",
+  LWIP_DEBUGF( PBUF_DEBUG, ("pbuf_header: old %p new %p (%"S16_F")\n",
     (void *)payload, (void *)p->payload, header_size_increment));
 
   return 0;
@@ -557,7 +554,7 @@ pbuf_free(struct pbuf *p)
     LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 2, ("pbuf_free(p == NULL) was called.\n"));
     return 0;
   }
-  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE, ("pbuf_free(%p)\n", (void *)p));
+  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 3, ("pbuf_free(%p)\n", (void *)p));
 
   PERF_START;
 
@@ -581,7 +578,7 @@ pbuf_free(struct pbuf *p)
     if (p->ref == 0) {
       /* remember next pbuf in chain for next iteration */
       q = p->next;
-      LWIP_DEBUGF( PBUF_DEBUG | DBG_TRACE, ("pbuf_free: deallocating %p\n", (void *)p));
+      LWIP_DEBUGF( PBUF_DEBUG | 2, ("pbuf_free: deallocating %p\n", (void *)p));
       /* is this a pbuf from the pool? */
       if (p->flags == PBUF_FLAG_POOL) {
         p->len = p->tot_len = PBUF_POOL_BUFSIZE;
@@ -600,7 +597,7 @@ pbuf_free(struct pbuf *p)
     /* p->ref > 0, this pbuf is still referenced to */
     /* (and so the remaining pbufs in chain as well) */
     } else {
-      LWIP_DEBUGF( PBUF_DEBUG | DBG_TRACE, ("pbuf_free: %p has ref %u, ending here.\n", (void *)p, (unsigned int)p->ref));
+      LWIP_DEBUGF( PBUF_DEBUG | 2, ("pbuf_free: %p has ref %"U16_F", ending here.\n", (void *)p, (u16_t)p->ref));
       /* stop walking through the chain */
       p = NULL;
     }
@@ -838,7 +835,7 @@ pbuf_take(struct pbuf *p)
 {
   struct pbuf *q , *prev, *head;
   LWIP_ASSERT("pbuf_take: p != NULL\n", p != NULL);
-  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE, ("pbuf_take(%p)\n", (void*)p));
+  LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 3, ("pbuf_take(%p)\n", (void*)p));
 
   prev = NULL;
   head = p;

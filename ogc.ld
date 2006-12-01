@@ -15,17 +15,18 @@ OUTPUT_ARCH(powerpc:common);
 EXTERN(_start);
 ENTRY(_start);
 
+base_address = 0x80003100;
+
 SECTIONS
 {
 
 	/* DOL header (from TITANIK's GC docs) */
 
-	. = 0x80003000;
+	file_start = (base_address - 0x100);
+	. = file_start;
 
 	.header	:
 	{
-		file_start = .;
-
 		/*    0000-001B  Text[0..6] sections File Positions */
 		LONG(text_file_start);
 		LONG(0);
@@ -102,8 +103,7 @@ SECTIONS
 	}
 
 	/* Program */
-	. = file_start + 0x100;
-
+	. = base_address;
 	text_mem_start = .;
 
 	.init          :

@@ -35,7 +35,6 @@ typedef struct _lwpcntrl {
 	u32 cur_state;
 	boolean is_preemptible;
 	lwp_waitinfo wait;
-	lwp_objinfo *information;
 	prio_cntrl priomap;
 	wd_cntrl timer;
 

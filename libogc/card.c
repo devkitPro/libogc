@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: card.c,v 1.58 2006-04-10 05:30:55 shagkur Exp $
+$Id: card.c,v 1.59 2006-12-01 15:21:53 wntrmute Exp $
 
 card.c -- Memory card subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.58  2006/04/10 05:30:55  shagkur
+- changed calls to thread queue functions to meet the new prototypes.
+
 Revision 1.57  2005/12/26 11:09:15  shagkur
 - fixed string problem with filenames in DAT
 
@@ -160,7 +163,7 @@ typedef struct _card_block {
 	void *workarea;
 	void *cmd_usr_buf;
 	lwpq_t wait_sync_queue;
-	sysalarm timeout_svc;
+	syswd_t timeout_svc;
 	dsptask_t dsp_task;
 	
 	cardcallback card_ext_cb;
@@ -980,7 +983,7 @@ static s32 __card_txhandler(s32 chn,s32 dev)
 	return 1;
 }
 
-static void __timeouthandler(sysalarm *alarm)
+static void __timeouthandler(syswd_t alarm)
 {
 	u32 chn;
 	s32 ret = CARD_ERROR_READY;
@@ -992,7 +995,7 @@ static void __timeouthandler(sysalarm *alarm)
 	chn = 0;
 	while(chn<EXI_CHANNEL_2) {
 		card = &cardmap[chn];
-		if((&card->timeout_svc)==alarm) break;
+		if(card->timeout_svc==alarm) break;
 		chn++;
 	}
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return;
@@ -1015,7 +1018,7 @@ static void __setuptimeout(card_block *card)
 #ifdef _CARD_DEBUG
 	printf("__setuptimeout(%p)\n",&card->timeout_svc);
 #endif
-	SYS_CancelAlarm(&card->timeout_svc);
+	SYS_CancelAlarm(card->timeout_svc);
 
 	if(card->cmd[0]==0xf1 || card->cmd[0]==0xf4) {
 #ifdef _CARD_DEBUG
@@ -1023,14 +1026,14 @@ static void __setuptimeout(card_block *card)
 #endif
 		tb.tv_sec = 1*(card->sector_size/8192);
 		tb.tv_nsec = 0;
-		SYS_SetAlarm(&card->timeout_svc,&tb,__timeouthandler);
+		SYS_SetAlarm(card->timeout_svc,&tb,__timeouthandler);
 	} else if(card->cmd[0]==0xf2) {
 #ifdef _CARD_DEBUG
 		printf("__setuptimeout(0xf2, 100ms)\n");
 #endif
 		tb.tv_sec = 0;
 		tb.tv_nsec = 100*TB_NSPERMS;
-		SYS_SetAlarm(&card->timeout_svc,&tb,__timeouthandler);
+		SYS_SetAlarm(card->timeout_svc,&tb,__timeouthandler);
 	}
 }
 
@@ -1101,7 +1104,7 @@ static s32 __card_exihandler(s32 chn,s32 dev)
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return 1;
 	card = &cardmap[chn];
 
-	SYS_CancelAlarm(&card->timeout_svc);
+	SYS_CancelAlarm(card->timeout_svc);
 	if(card->attached) {
 		if(EXI_Lock(chn,EXI_DEVICE_0,NULL)==1) {
 			if((ret=__card_readstatus(chn,&status))>=0
@@ -1145,7 +1148,7 @@ static s32 __card_exthandler(s32 chn,s32 dev)
 		}
 		card->attached = 0;
 		EXI_RegisterEXICallback(chn,NULL);
-		SYS_CancelAlarm(&card->timeout_svc);
+		SYS_CancelAlarm(card->timeout_svc);
 		
 		cb = card->card_exi_cb;
 		if(cb) {
@@ -1895,7 +1898,7 @@ static void __card_dounmount(s32 chn,s32 result)
 		card->result = result;
 		EXI_RegisterEXICallback(chn,NULL);
 		EXI_Detach(chn);
-		SYS_CancelAlarm(&card->timeout_svc);
+		SYS_CancelAlarm(card->timeout_svc);
 	}
 	_CPU_ISR_Restore(level);
 }
@@ -2544,7 +2547,7 @@ s32 CARD_MountAsync(s32 chn,void *workarea,cardcallback detach_cb,cardcallback a
 		printf("card->attached = %d,%08x\n",card->attached,EXI_GetState(chn));
 #endif
 		EXI_RegisterEXICallback(chn,NULL);
-		SYS_CancelAlarm(&card->timeout_svc);
+		SYS_CancelAlarm(card->timeout_svc);
 		card->curr_dir = NULL;
 		card->curr_fat = NULL;
 		_CPU_ISR_Restore(level);

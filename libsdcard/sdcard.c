@@ -4,6 +4,7 @@
 #include <time.h>
 #include <fcntl.h>
 
+#include "lwp_queue.h"
 #include "lwp_wkspace.h"
 #include "card_cmn.h"
 #include "card_buf.h"
@@ -14,20 +15,25 @@
 
 #include "sdcard.h"
 
+#define SDCARD_FILEHANDLE_MAX			64
+
 struct _sd_file {
-	u32 pos;
+	lwp_node node;
+	u32 offset;
 	u32 size;
 	u8 mode;
 	u8 path[SDCARD_MAX_PATH_LEN];
 	F_HANDLE handle;
-	void *wbuffer;
 };
 
 static u32 sdcard_inited = 0;
+static lwp_queue sdcard_filehandle_queue;
+static struct _sd_file filehandle_array[SDCARD_FILEHANDLE_MAX];
 
 //#define _SDCARD_DEBUG
 
 extern const devoptab_t dotab_sdcardio;
+extern u32 card_convertUniToStr(u8 *dest,u16 *src);
 
 s32 SDCARD_Init()
 {
@@ -48,30 +54,33 @@ s32 SDCARD_Init()
 
 		card_initIODefault();
 		card_initFATDefault();
+
+		__lwp_queue_initialize(&sdcard_filehandle_queue,filehandle_array,SDCARD_FILEHANDLE_MAX,sizeof(struct _sd_file));
 	}	
 	return CARDIO_ERROR_READY;
 }
 
 sd_file* SDCARD_OpenFile(const char *filename,const char *mode)
 {
-	s32 err;
+	u32 created;
+	s32 err,oldoffset;
 	struct _sd_file *rfile = NULL;
 #ifdef _SDCARD_DEBUG
 	printf("SDCARD_OpenFile(%s,%c)\n",filename,mode[0]);
 #endif
-	rfile = (struct _sd_file*)malloc(sizeof(struct _sd_file));
-	if(!rfile)
-		return NULL;
+	rfile = (struct _sd_file*)__lwp_queue_get(&sdcard_filehandle_queue);
+	if(!rfile) return NULL;
 
+	created = 0;
 	rfile->handle = -1;
 	if(mode[0]=='r') {
 		err = card_openFile(filename,OPEN_R,&rfile->handle);
 		if(err==CARDIO_ERROR_READY) {
-			card_getFileSize(filename,&rfile->size);
-			strncpy(rfile->path,filename,SDCARD_MAX_PATH_LEN);
-			rfile->pos = 0;
+			rfile->size = 0;
+			rfile->offset = 0;
 			rfile->mode = 'r';
-			rfile->wbuffer = NULL;
+			strncpy(rfile->path,filename,SDCARD_MAX_PATH_LEN);
+			card_getFileSize(filename,&rfile->size);
 #ifdef _SDCARD_DEBUG
 			printf("filesize = %d, handle = %d\n",rfile->size,rfile->handle);
 #endif
@@ -80,17 +89,25 @@ sd_file* SDCARD_OpenFile(const char *filename,const char *mode)
 	}
 	if(mode[0]=='w') {
 		err = card_openFile(filename,OPEN_W,&rfile->handle);
-		if(err==CARDIO_ERROR_NOTFOUND) err = card_createFile(filename,ALWAYS_CREATE,&rfile->handle);
+		if(err==CARDIO_ERROR_NOTFOUND) {
+			err = card_createFile(filename,ALWAYS_CREATE,&rfile->handle);
+			if(err==CARDIO_ERROR_READY) created = 1;
+		}
 		if(err==CARDIO_ERROR_READY) {
-			strncpy(rfile->path,filename,SDCARD_MAX_PATH_LEN);
-			rfile->pos = 0;
+			rfile->offset = 0;
 			rfile->size = 0;
 			rfile->mode = 'w';
-			rfile->wbuffer = NULL;
+			strncpy(rfile->path,filename,SDCARD_MAX_PATH_LEN);
+
+			if(!created && mode[1]=='+') {
+				card_getFileSize(filename,&rfile->size);
+				card_seekFile(rfile->handle,FROM_BEGIN,rfile->size,&oldoffset);
+				rfile->offset = rfile->size;
+			}
 			return (sd_file*)rfile;
 		}
 	}
-	free(rfile);
+	__lwp_queue_append(&sdcard_filehandle_queue,&rfile->node);
 	return NULL;
 }
 
@@ -106,7 +123,8 @@ s32 SDCARD_ReadFile(sd_file *pfile,void *buf,u32 len)
 		ret = card_readFile(ifile->handle,buf,len,&readcnt);
 		if(ret!=CARDIO_ERROR_READY && ret!=CARDIO_ERROR_EOF) return SDCARD_ERROR_IOERROR;
 		else if(ret==CARDIO_ERROR_EOF && (s32)readcnt<=0) return SDCARD_ERROR_EOF;
-		ifile->pos += readcnt;
+		
+		ifile->offset += readcnt;
 	}
 	return readcnt;
 }
@@ -121,37 +139,39 @@ s32 SDCARD_WriteFile(sd_file *pfile,const void *buf,u32 len)
 	if(ifile && ifile->mode=='w' && ifile->handle!=-1) {
 		ret = card_writeFile(ifile->handle,buf,len);
 		if(ret!=SDCARD_ERROR_READY) return SDCARD_ERROR_EOF;
+
+		ifile->offset += len;
+		ifile->size += len;
 	}
 	return len;
 }
 
 s32 SDCARD_SeekFile(sd_file *pfile,s32 offset,u32 whence)
 {
-	s32 len;
-	u32 sd_offset = -1;
-	u32 mode = FROM_BEGIN;
+	s32 oldoffset;
+	s32 len,ret;
 	struct _sd_file *ifile = (struct _sd_file*)pfile;
 #ifdef _SDCARD_DEBUG
 	printf("SDCARD_SeekFile(%p,%d,%d)\n",ifile,offset,whence);
 #endif
 	if(ifile) {
 		if(whence==SDCARD_SEEK_SET) {
-			if(offset>0 && offset<=ifile->size) ifile->pos = offset;
-			else ifile->pos = 0;
+			if(offset>0 && offset<=ifile->size) ifile->offset = offset;
+			else ifile->offset = 0;
 		} else if(whence==SDCARD_SEEK_CUR) {
-			len = offset+ifile->pos;
-			if(len>0 && len<ifile->size) ifile->pos = len;
+			len = ifile->offset+offset;
+			if(len>0 && len<ifile->size) ifile->offset = len;
 		} else if(whence==SDCARD_SEEK_END) {
 			len = ifile->size+offset;
-			if(len>0 && len<ifile->size) ifile->pos = len;
+			if(len>0 && len<ifile->size) ifile->offset = len;
+			else ifile->offset = ifile->size;
 		} else
 			return SDCARD_ERROR_EOF;
 
-		card_seekFile(ifile->handle,mode,ifile->pos,&sd_offset);
-#ifdef _SDCARD_DEBUG
-		printf("SDCARD_SeekFile(%d,%d)\n",ifile->pos,sd_offset);
-#endif
-		return ifile->pos;
+		ret = card_seekFile(ifile->handle,FROM_BEGIN,ifile->offset,&oldoffset);
+		if(ret!=CARDIO_ERROR_READY && ret!=CARDIO_ERROR_EOF) return SDCARD_ERROR_IOERROR;
+
+		return SDCARD_ERROR_READY;
 	}
 	return SDCARD_ERROR_EOF;
 }
@@ -164,30 +184,44 @@ s32 SDCARD_GetFileSize(sd_file *pfile)
 	return SDCARD_ERROR_EOF;
 }
 
-s32 SDCARD_ReadDir(const char *dirname,DIR *pdir_list)
+s32 SDCARD_ReadDir(const char *dirname,DIR **pdir_list)
 {
 	s32 ret;
 	u32 size;
-	u8 buffer[32+16];
+	u8 buffer[SDCARD_MAX_PATH_LEN];
 	u32 count = 0;
 	u32 cnt,entries = 0;
-	dir_entry dent;
+	file_stat stats;
+	dir_entryex dent;
+	DIR *pdir,*ent;
 
+	if(!pdir_list) return SDCARD_ERROR_FATALERROR;
+
+	*pdir_list = NULL;
 	ret = card_getListNumDir(dirname,&entries);
 	if(ret!=0) return SDCARD_ERROR_FATALERROR;
 	
-	if(entries>128) entries = 128;
-
+	pdir = (DIR*)malloc(entries*sizeof(DIR));
+	if(!pdir) return SDCARD_ERROR_FATALERROR;
+	
 	cnt = 0;
 	while(cnt<entries) {
+		ent = &pdir[cnt];
 		card_readDir(dirname,cnt,1,&dent,&count);
-		strcpy(pdir_list->name[cnt],dent.name);
+		card_convertUniToStr(ent->fname,dent.long_name);
+		if(ent->fname[0]==0) strncpy(ent->fname,dent.name,16);
 
 		sprintf(buffer,"%s%s",dirname,dent.name);
 		card_getFileSize(buffer,&size);
-		pdir_list->size[cnt] = size;
+		ent->fsize = size;
+
+		card_readStat(buffer,&stats);
+		ent->fattr = stats.attr;
+		
 		cnt++;
 	}
+	
+	*pdir_list = pdir;
 	return entries;
 }
 
@@ -197,7 +231,7 @@ s32 SDCARD_CloseFile(sd_file *pfile)
 
 	if(ifile) {
 		if(ifile->handle!=-1) card_closeFile(ifile->handle);
-		free(ifile);
+		__lwp_queue_append(&sdcard_filehandle_queue,&ifile->node);
 	}
 	return SDCARD_ERROR_READY;
 }

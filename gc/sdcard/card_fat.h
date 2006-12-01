@@ -49,7 +49,7 @@
 #define MAX_PATH_NAME_LEN				256
 #define MAX_OPENED_FILE_NUM				10
 
-#define MAX_FILE_NAME_LEN				80
+#define MAX_FILE_NAME_LEN				256
 
 #define FAT2CPU16(x)					((u16)(((x&0x00ff)<<8)|((x&0xff00)>>8)))
 #define FAT2CPU32(x)					((u32)(((x&0x000000ff)<<24)|((x&0x0000ff00)<<8)|((x&0x00ff0000)>>8)|((x&0xff000000)>>24)))
@@ -170,7 +170,8 @@ s32 card_setCluster(s32 drv_no,u32 cluster_no,u8 val);
 s32 card_expandClusterSpace(s32 drv_no,F_HANDLE handle,u32 cluster,u32 offset,u32 len);
 s32 card_writeCluster(s32 drv_no,u32 cluster_no,u32 offset,const void *buf,u32 len);
 s32 card_readCluster(s32 drv_no,u32 cluster_no,u32 offset,void *buf,u32 len);
-s32 card_updateBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len);
+s32 card_writeBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len);
+s32 card_readBlock(s32 drv_no,u32 block_no,u32 offset,void *buf,u32 len);
 
 s32 card_createFile(const char *filename,u32 create_mode,F_HANDLE *p_handle);
 s32 card_openFile(const char *filename,u32 open_mode,F_HANDLE *p_handle);
@@ -179,7 +180,7 @@ s32 card_seekFile(F_HANDLE h_file,u32 seek_mode,s32 offset,s32 *p_oldoffset);
 
 s32 card_getFileSize(const char *filename,u32 *p_size);
 s32 card_getListNumDir(const char *p_dirname,u32 *p_num);
-s32 card_readDir(const char *dirname,u32 entry_start,u32 entry_cnt,dir_entry *dir_buf,u32 *read_cnt);
+s32 card_readDir(const char *dirname,u32 entry_start,u32 entry_cnt,dir_entryex *dir_buf,u32 *read_cnt);
 s32 card_readStat(const char *p_entry_name,file_stat *p_stat);
 
 s32 card_readFile(F_HANDLE h_file,void *buf,u32 cnt,u32 *p_cnt);

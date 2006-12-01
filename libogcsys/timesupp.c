@@ -59,33 +59,33 @@ void _DEFUN(settime,(t),
 
 u32 diff_sec(long long start,long long end)
 {
-	s64 diff;
+	u64 diff;
 
-	diff = diff_ticks(end,start);
+	diff = diff_ticks(start,end);
 	return ticks_to_secs(diff);
 }
 
 u32 diff_msec(long long start,long long end)
 {
-	s64 diff;
+	u64 diff;
 
-	diff = diff_ticks(end,start);
+	diff = diff_ticks(start,end);
 	return ticks_to_millisecs(diff);
 }
 
 u32 diff_usec(long long start,long long end)
 {
-	s64 diff;
+	u64 diff;
 
-	diff = diff_ticks(end,start);
+	diff = diff_ticks(start,end);
 	return ticks_to_microsecs(diff);
 }
 
 u32 diff_nsec(long long start,long long end)
 {
-	s64 diff;
+	u64 diff;
 
-	diff = diff_ticks(end,start);
+	diff = diff_ticks(start,end);
 	return ticks_to_nanosecs(diff);
 }
 
@@ -166,7 +166,7 @@ unsigned int _DEFUN(nanosleep,(tb),
 
 	timeout = __lwp_wd_calc_ticks(tb);
 	__lwp_thread_setstate(_thr_executing,LWP_STATES_DELAYING|LWP_STATES_INTERRUPTIBLE_BY_SIGNAL);
-	__lwp_wd_initialize(&_thr_executing->timer,__lwp_thread_delayended,_thr_executing);
+	__lwp_wd_initialize(&_thr_executing->timer,__lwp_thread_delayended,_thr_executing->object.id,_thr_executing);
 	__lwp_wd_insert_ticks(&_thr_executing->timer,timeout);
 
 	__lwp_thread_dispatchenable();
@@ -181,14 +181,12 @@ static s32 __time_exi_unlock(s32 chn,s32 dev)
 
 static void __time_exi_wait()
 {
-	u32 ret,level;
+	u32 ret;
 
-	_CPU_ISR_Disable(level);
 	do {
 		if((ret=EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_1,__time_exi_unlock))==1) break;
 		LWP_ThreadSleep(time_exi_wait);
 	}while(ret==0);
-	_CPU_ISR_Restore(level);
 }
 
 time_t _DEFUN(time,(timer),

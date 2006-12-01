@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: system.h,v 1.27 2006-04-11 18:18:06 wntrmute Exp $
+$Id: system.h,v 1.28 2006-12-01 15:21:53 wntrmute Exp $
 
 system.h -- OS functions and initialization
 
@@ -58,6 +58,7 @@ Added copyright header(taken from libnds).
 #include <ogc/lwp_queue.h>
 #include "gx_struct.h"
 
+#define SYS_WD_NULL						0xffffffff
 
 /*!
  * \addtogroup sys_resettypes OS reset types
@@ -126,6 +127,13 @@ Added copyright header(taken from libnds).
 
 
 /*!
+ * \typedef u32 syswd_t
+ * \brief handle typedef for the alarm context
+ */
+typedef u32 syswd_t;
+
+
+ /*!
  * \typedef struct _syssram syssram
  * \brief holds the stored configuration value from the system SRAM area
  * \param checksum holds the block checksum.
@@ -139,16 +147,16 @@ Added copyright header(taken from libnds).
  * \param flags device and operations flag
  */
 typedef struct _syssram {
-	u16 checksum;
-	u16 checksum_inv;
-	u32 ead0;
-	u32 ead1;
-	u32 counter_bias;
-	s8 display_offsetH;
-	u8 ntd;
-	u8 lang;
-	u8 flags;
-}ATTRIBUTE_PACKED syssram;
+	u16 checksum ATTRIBUTE_PACKED;
+	u16 checksum_inv ATTRIBUTE_PACKED;
+	u32 ead0 ATTRIBUTE_PACKED;
+	u32 ead1 ATTRIBUTE_PACKED;
+	u32 counter_bias ATTRIBUTE_PACKED;
+	s8 display_offsetH ATTRIBUTE_PACKED;
+	u8 ntd ATTRIBUTE_PACKED;
+	u8 lang ATTRIBUTE_PACKED;
+	u8 flags ATTRIBUTE_PACKED;
+} syssram;
 
 
 /*!
@@ -163,52 +171,42 @@ typedef struct _syssram {
  * \param __padding1[4] padding
  */
 typedef struct _syssramex {
-	u8 flash_id[2][12];
-	u32 wirelessKbd_id;
-	u16 wirelessPad_id[4];
-	u8 dvderr_code;
-	u8 __padding0;
-	u16 flashID_chksum[2];
-	u8 __padding1[4];
-} ATTRIBUTE_PACKED syssramex;
+	u8 flash_id[2][12] ATTRIBUTE_PACKED;
+	u32 wirelessKbd_id ATTRIBUTE_PACKED;
+	u16 wirelessPad_id[4] ATTRIBUTE_PACKED;
+	u8 dvderr_code ATTRIBUTE_PACKED;
+	u8 __padding0 ATTRIBUTE_PACKED;
+	u16 flashID_chksum[2] ATTRIBUTE_PACKED;
+	u8 __padding1[4] ATTRIBUTE_PACKED;
+} syssramex;
 
-typedef struct _sysalarm sysalarm;
-
-typedef void (*alarmcallback)(sysalarm *alarm);
-
-struct _sysalarm {
-	alarmcallback alarmhandler;
-	void* handle;
-	u64 ticks;
-	u64 periodic;
-	u64 start_per;
-};
+typedef void (*alarmcallback)(syswd_t alarm);
 
 typedef struct _sys_fontheader {
-	u16 font_type;
-	u16 first_char;
-	u16 last_char;
-	u16 inval_char;
-	u16 asc;
-	u16 desc;
-	u16 width;
-	u16 leading;
-	u16 cell_width;
-	u16 cell_height;
-	u32 sheet_size;
-	u16 sheet_format;
-	u16 sheet_column;
-	u16 sheet_row;
-	u16 sheet_width;
-	u16 sheet_height;
-	u16 width_table;
-	u32 sheet_image;
-	u32 sheet_fullsize;
-	u8  c0;
-	u8  c1;
-	u8  c2;
-	u8  c3;
-} ATTRIBUTE_PACKED sys_fontheader;
+	u16 font_type ATTRIBUTE_PACKED;
+	u16 first_char ATTRIBUTE_PACKED;
+	u16 last_char ATTRIBUTE_PACKED;
+	u16 inval_char ATTRIBUTE_PACKED;
+	u16 asc ATTRIBUTE_PACKED;
+	u16 desc ATTRIBUTE_PACKED;
+	u16 width ATTRIBUTE_PACKED;
+	u16 leading ATTRIBUTE_PACKED;
+    u16 cell_width ATTRIBUTE_PACKED;
+    u16 cell_height ATTRIBUTE_PACKED;
+    u32 sheet_size ATTRIBUTE_PACKED;
+    u16 sheet_format ATTRIBUTE_PACKED;
+    u16 sheet_column ATTRIBUTE_PACKED;
+    u16 sheet_row ATTRIBUTE_PACKED;
+    u16 sheet_width ATTRIBUTE_PACKED;
+    u16 sheet_height ATTRIBUTE_PACKED;
+    u16 width_table ATTRIBUTE_PACKED;
+    u32 sheet_image ATTRIBUTE_PACKED;
+    u32 sheet_fullsize ATTRIBUTE_PACKED;
+    u8  c0 ATTRIBUTE_PACKED;
+    u8  c1 ATTRIBUTE_PACKED;
+    u8  c2 ATTRIBUTE_PACKED;
+    u8  c3 ATTRIBUTE_PACKED;
+} sys_fontheader;
 
 typedef void (*resetcallback)(void);
 typedef s32 (*resetfunction)(s32 final);
@@ -259,54 +257,54 @@ void SYS_DumpPMC();
 void SYS_StopPMC();
 
 
-/*! \fn void SYS_CreateAlarm(sysalarm *alarm)
+/*! \fn s32 SYS_CreateAlarm(syswd_t *thealarm)
 \brief Create/initialize sysalarm structure
-\param[in] alarm pointer to a sysalarm structure to initialize/create.
+\param[in] thealarm pointer to the handle to store the created alarm context identifier
 
-\return none
+\return 0 on succuess, non-zero on error
 */
-void SYS_CreateAlarm(sysalarm *alarm);
+s32 SYS_CreateAlarm(syswd_t *thealarm);
 
 
-/*! \fn void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb)
+/*! \fn s32 SYS_SetAlarm(syswd_t thealarm,const struct timespec *tp,alarmcallback cb)
 \brief Set the alarm parameters for a one-shot alarm, add to the list of alarms and start.
-\param[in] alarm pointer to a sysalarm struture to use.
+\param[in] thealarm identifier to the alarm context to be initialize for a one-shot alarm
 \param[in] tp pointer to timespec structure holding the time to fire the alarm
 \param[in] cb pointer to callback which is called when the alarm fires.
 
-\return none
+\return 0 on succuess, non-zero on error
 */
-void SYS_SetAlarm(sysalarm *alarm,const struct timespec *tp,alarmcallback cb);
+s32 SYS_SetAlarm(syswd_t thealarm,const struct timespec *tp,alarmcallback cb);
 
 
-/*! \fn void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb)
+/*! \fn s32 SYS_SetPeriodicAlarm(syswd_t thealarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb)
 \brief Set the alarm parameters for a periodioc alarm, add to the list of alarms and start. The alarm and interval persists as long as SYS_CancelAlarm() isn't called.
-\param[in] alarm pointer to a sysalarm struture to use.
+\param[in] thealarm identifier to the alarm context to be initialized for a periodic alarm
 \param[in] tp_start pointer to timespec structure holding the time to fire first time the alarm
 \param[in] tp_period pointer to timespec structure holding the interval for all following alarm triggers.
 \param[in] cb pointer to callback which is called when the alarm fires.
 
-\return none
+\return 0 on succuess, non-zero on error
 */
-void SYS_SetPeriodicAlarm(sysalarm *alarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb);
+s32 SYS_SetPeriodicAlarm(syswd_t thealarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb);
 
 
-/*! \fn void SYS_RemoveAlarm(sysalarm *alarm)
-\brief Set the alarm parameters for a periodioc alarm and start. The alarm and interval persists as long as SYS_CancelAlarm() isn't called.
-\param[in] alarm pointer to a sysalarm structure to remove from the list.
+/*! \fn s32 SYS_RemoveAlarm(syswd_t thealarm)
+\brief Remove the given alarm context from the list of contexts and destroy it
+\param[in] thealarm identifier to the alarm context to be removed and destroyed
 
-\return none
+\return 0 on succuess, non-zero on error
 */
-void SYS_RemoveAlarm(sysalarm *alarm);
+s32 SYS_RemoveAlarm(syswd_t thealarm);
 
 
-/*! \fn void SYS_CancelAlarm(sysalarm *alarm)
-\brief Cancel the alarm, but do not remove from the list.
-\param[in] alarm pointer to a sysalarm structure to cancel.
+/*! \fn s32 SYS_CancelAlarm(syswd_t thealarm)
+\brief Cancel the alarm, but do not remove from the list of contexts.
+\param[in] thealarm identifier to the alram context to be canceled
 
-\return none
+\return 0 on succuess, non-zero on error
 */
-void SYS_CancelAlarm(sysalarm *alarm);
+s32 SYS_CancelAlarm(syswd_t thealarm);
 
 
 void SYS_SetWirelessID(u32 chan,u32 id);
