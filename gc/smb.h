@@ -103,19 +103,6 @@ typedef struct
   char name[256];
 } SMBDIRENTRY;
 
-typedef struct
-{
-	char gcip[16];
-	char gwip[16];
-	char mask[16];
-	char smbip[16];
-	char smbuser[20];
-	char smbpwd[20];
-	char smbgcid[20];
-	char smbsvid[20];
-	char smbshare[20];
-} SMBINFO;
-
 /**
  * Prototypes
  */

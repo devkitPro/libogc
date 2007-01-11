@@ -99,7 +99,9 @@ INPUT                  = include/ogc/card.h \
                          include/gccore.h \
                          include/ogc/gx_struct.h \
                          include/ogc/video_types.h \
-                         include/ogc/dvd.h
+                         include/ogc/dvd.h \
+                         include/ogc/gx.h \
+                         include/gctypes.h
 FILE_PATTERNS          = *.c \
                          *.cc \
                          *.cxx \

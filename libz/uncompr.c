@@ -3,7 +3,7 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
-/* @(#) $Id: uncompr.c,v 1.1 2006-12-01 15:21:54 wntrmute Exp $ */
+/* @(#) $Id: uncompr.c,v 1.2 2007-01-11 10:51:56 wntrmute Exp $ */
 
 #define ZLIB_INTERNAL
 #include "zlib.h"

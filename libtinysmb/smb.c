@@ -34,8 +34,6 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  ****************************************************************************/
 
-/** 24 August 2006 - 0.3 - Addition of DiscoverURI NBT **/
-
 #include <asm.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -51,7 +49,7 @@
 #include "des.h"
 #include "lmhash.h"
 #include "smb.h"
-#include "nbt.h"
+
 
 /**
  * Field offsets.
@@ -143,12 +141,6 @@ struct _smbfile
 	u16 sfid;
 	SMBCONN conn;
 };
-
-/*** Extern shadow values ***/
-extern char GCIP[128];
-extern char GCMASK[128];
-extern char GCGW[128];
-/*** End shadow ***/
 
 /**
  * NBT/SMB Wrapper 
@@ -279,14 +271,21 @@ static void __smb_init()
 	__lwp_queue_initialize(&smb_filehandle_queue,smb_filehandles,SMB_FILEHANDLES_MAX,sizeof(struct _smbfile));
 }
 
-static SMBHANDLE* __smb_handle_allocate()
+static SMBHANDLE* __smb_allocate_handle()
 {
 	u32 level;
 	SMBHANDLE *handle;
 
 	_CPU_ISR_Disable(level);
 	handle = (SMBHANDLE*)__lwp_objmgr_allocate(&smb_handle_objects);
-	if(handle) __lwp_objmgr_open(&smb_handle_objects,&handle->object);
+	if(handle) {
+		handle->user = NULL;
+		handle->pwd = NULL;
+		handle->server_name = NULL;
+		handle->share_name = NULL;
+		handle->sck_server = INVALID_SOCKET;
+		__lwp_objmgr_open(&smb_handle_objects,&handle->object);
+	}
 	_CPU_ISR_Restore(level);
 	return handle;
 }
@@ -297,6 +296,11 @@ static void __smb_free_handle(SMBHANDLE *handle)
 	if(handle->pwd) free(handle->pwd);
 	if(handle->server_name) free(handle->server_name);
 	if(handle->share_name) free(handle->share_name);
+
+	handle->user = NULL;
+	handle->pwd = NULL;
+	handle->server_name = NULL;
+	handle->share_name = NULL;
 	handle->sck_server = INVALID_SOCKET;
 	
 	__smb_handle_free(handle);
@@ -603,16 +607,63 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 	return ret;
 }
 
+static s32 do_netconnect(SMBHANDLE *handle)
+{
+	u32 nodelay;
+	s32 ret;
+	s32 sock;
+
+	/*** Create the global net_socket ***/
+	sock = net_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+	if(sock==INVALID_SOCKET) return -1;
+
+	/*** Switch off Nagle, ON TCP_NODELAY ***/
+	nodelay = 1;
+	ret = net_setsockopt(sock,IPPROTO_TCP,TCP_NODELAY,&nodelay,sizeof(nodelay));
+
+	ret = net_connect(sock,(struct sockaddr*)&handle->server_addr,sizeof(handle->server_addr));
+	if(ret) {
+		net_close(sock);
+		return -1;
+	}
+
+	handle->sck_server = sock;
+	return 0;
+}
+
+static s32 do_smbconnect(SMBHANDLE *handle)
+{
+	s32 ret;
+
+	ret = SMB_NegotiateProtocol(smb_dialects,smb_dialectcnt,handle);
+	if(ret!=SMB_SUCCESS) {
+		net_close(handle->sck_server);
+		return -1;
+	}
+	
+	ret = SMB_SetupAndX(handle);
+	if(ret!=SMB_SUCCESS) {
+		net_close(handle->sck_server);
+		return -1;
+	}
+
+	ret = SMB_TreeAndX(handle);
+	if(ret!=SMB_SUCCESS) {
+		net_close(handle->sck_server);
+		return -1;
+	}
+	return 0;
+}
+
 /****************************************************************************
  * Primary setup, logon and connection all in one :)
  ****************************************************************************/
 s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const char *client, const char *server, const char *share, const char *IP)
 {
 	s32 ret;
-	u8 nodelay;
-	s32 sock;
 	SMBHANDLE *handle;
-	struct sockaddr_in clnt_addr;
+
+	*smbhndl = SMB_HANDLE_NULL;
 
 	if(smb_inited==FALSE) {
 		u32 level;
@@ -621,88 +672,28 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 		_CPU_ISR_Restore(level);
 	}
 	
-	handle = __smb_handle_allocate();
+	handle = __smb_allocate_handle();
 	if(!handle) return SMB_ERROR;
 
-	memset(handle,0,sizeof(SMBHANDLE));
-
-	/*** Create the global net_socket ***/
-	sock = net_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-	if(sock==INVALID_SOCKET) {
-		__smb_free_handle(handle);
-		return SMB_ERROR;
-	}
-
-	/*** Switch off Nagle, ON TCP_NODELAY ***/
-	nodelay = 1;
-	ret = net_setsockopt(sock,IPPROTO_TCP,TCP_NODELAY,(char *)&nodelay,sizeof(char));
-
-	/*** Attempt to connect to the server IP ***/
-	clnt_addr.sin_family = AF_INET;
-	clnt_addr.sin_port = htons(445);
-	clnt_addr.sin_addr.s_addr = inet_addr(IP);
-
-	ret = net_connect(sock,(struct sockaddr*)&clnt_addr,sizeof(clnt_addr));
-	if(ret) {
-		net_close(sock);
-		__smb_free_handle(handle);
-		return SMB_ERROR;
-	}
-
-	handle->sck_server = sock;
 	handle->user = strdup(user);
 	handle->pwd = strdup(password);
 	handle->server_name = strdup(server);
 	handle->share_name = strdup(share);
-	handle->server_addr = clnt_addr;
 
-	ret = SMB_NegotiateProtocol(smb_dialects,smb_dialectcnt,handle);
-	if(ret!=SMB_SUCCESS) {
-		net_close(sock);
-		__smb_free_handle(handle);
-		return ret;
-	}
-	
-	ret = SMB_SetupAndX(handle);
-	if(ret!=SMB_SUCCESS) {
-		net_close(sock);
-		__smb_free_handle(handle);
-		return ret;
-	}
+	handle->server_addr.sin_family = AF_INET;
+	handle->server_addr.sin_port = htons(445);
+	handle->server_addr.sin_addr.s_addr = inet_addr(IP);
 
-	ret = SMB_TreeAndX(handle);
-	if(ret!=SMB_SUCCESS) {
-		net_close(sock);
+	ret = do_netconnect(handle);
+	if(ret==0) ret = do_smbconnect(handle);
+	if(ret!=0) {
 		__smb_free_handle(handle);
-		return ret;
+		return SMB_ERROR;
 	}
-	
 	*smbhndl =(SMBCONN)(LWP_OBJMASKTYPE(SMB_OBJTYPE_HANDLE)|LWP_OBJMASKID(handle->object.id));
 	return SMB_SUCCESS;
 }
 
-/****************************************************************************
- * SMB_ConnectURI
- *
- * Connect via URI
- ****************************************************************************/
-s32 SMB_ConnectURI( SMBCONN *smbhndl, const char *user, const char *password,
-		    const char *client, char *URI )
-{
-	char serverIP[32];
-	char server[1024];
-	char share[1024];
-
-	SplitURI( URI, server, share );
-
-	if ( DiscoverURI( GCIP, GCMASK, URI, serverIP ) )
-	{
-		return SMB_Connect(smbhndl, user, password, client, server,
-				   share, serverIP );
-	}
-
-	return SMB_ERROR;
-}
 
 /****************************************************************************
  * SMB_Destroy
@@ -968,11 +959,7 @@ s32 SMB_WriteFile(const char *buffer, int size, int offset, SMBFILE sfid)
 	ret = 0;
 	if(SMBCheck(SMB_WRITE_ANDX,sizeof(NBTSMB),handle)==SMB_SUCCESS) {
 		ptr = handle->message.smb;
-		
-		/*** 0.3 - XP Home has garbage data at HDR+7! ***/
-		//if(getUShort(ptr,(SMB_HEADER_SIZE+7))==0) {
-			ret = getUShort(ptr,(SMB_HEADER_SIZE+5));
-		//}
+		ret = getUShort(ptr,(SMB_HEADER_SIZE+5));
 	}
 
 	return ret;

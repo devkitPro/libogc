@@ -92,6 +92,10 @@ void c_guQuatMultiply(Quaternion *a,Quaternion *b,Quaternion *ab);
 #ifdef GEKKO
 void ps_guQuatAdd(register Quaternion *a,register Quaternion *b,register Quaternion *ab);
 void ps_guQuatSub(register Quaternion *a,register Quaternion *b,register Quaternion *ab);
+void ps_guQuatMultiply(Quaternion *a,Quaternion *b,Quaternion *ab);
+void ps_guQuatScale(Quaternion *q,Quaternion *r,register f32 scale);
+void ps_guQuatNormalize(Quaternion *src,Quaternion *r,register Quaternion *unit);
+f32 ps_guQuatDotProduct(Quaternion *p,Quaternion *q);
 #endif
 
 void c_guMtxIdentity(Mtx mt);

@@ -610,9 +610,83 @@ ps_guQuatSub:
 	.globl ps_guQuatMultiply
 	//r3 = a, r4 = b, r5 = ab
 ps_guQuatMultiply:
+	psq_l		fr0,0(r3),0,0
+	psq_l		fr1,8(r3),0,0
+	psq_l		fr2,0(r4),0,0
+	ps_neg		fr4,fr0
+	psq_l		fr3,8(r4),0,0
+	ps_neg		fr5,fr1
+	ps_merge01	fr6,fr4,fr0
+	ps_muls0	fr8,fr1,fr2
+	ps_muls0	fr9,fr4,fr2
+	ps_merge01	fr7,fr5,fr1
+	ps_muls1	fr11,fr6,fr2
+	ps_madds0	fr8,fr6,fr3,fr8
+	ps_muls1	fr10,fr7,fr2
+	ps_madds0	fr9,fr7,fr3,fr9
+	ps_madds1	fr11,fr5,fr3,fr11
+	ps_merge10	fr8,fr8,fr8
+	ps_madds1	fr10,fr0,fr3,fr10
+	ps_merge10	fr9,fr9,fr9
+	ps_add		fr8,fr8,fr8
+	psq_st		fr8,0(r5),0,0
+	ps_sub		fr9,fr9,fr9
+	psq_st		fr9,8(r5),0,0
+	blr
+
+	.globl ps_quQuatScale
+	//r3 = q,r4 = r, fr1 = scale
+ps_guQuatScale:
+	psq_l		fr4,0(r3),0,0
+	psq_l		fr5,8(r3),0,0
+	ps_muls0	fr4,fr4,fr1
+	psq_st		fr4,0(r4),0,0
+	ps_muls0	fr5,fr5,fr1
+	psq_st		fr5,8(r4),0,0
+	blr
+
+	.globl ps_guQuatDotProduct
+	//r3 = p, r4 = q ; fr1 = res
+ps_guQuatDotProduct:
+	psq_l		fr2,0(r3),0,0
+	psq_l		fr4,0(r4),0,0
+	ps_mul		fr1,fr2,fr4
+	psq_l		fr3,8(r3),0,0
+	psq_l		fr5,8(r4),0,0
+	ps_madd		fr1,fr3,fr5,fr1
+	ps_sum0		fr1,fr1,fr1,fr1
+	blr
+
+	.globl ps_guQuatNormalize
+	//r3 = src, r4 = unit
+ps_guQuatNormalize:
+	lis			r9,NrmData@ha
+	addi		r9,r9,NrmData@l
+	lfs			fr9,0(r9)
+	lfs			fr10,4(r9)
+	lis			r9,QuatEpsilon@ha
+	lfs			fr8,QuatEpsilon@l(r9)
+	psq_l		fr0,0(r3),0,0
+	ps_mul		fr2,fr0,fr0
+	psq_l		fr1,8(r3),0,0
+	ps_sub		fr5,fr8,fr8
+	ps_madd		fr2,fr2,fr2,fr2
+	frsqrte		fr3,fr2
+	ps_sub		fr4,fr2,fr8
+	fmul		fr6,fr3,fr3
+	fmul		fr7,fr3,fr9
+	fnmsub		fr6,fr6,fr2,fr10
+	fmul		fr3,fr6,fr7
+	ps_sel		fr3,fr4,fr3,fr5
+	ps_muls0	fr0,fr0,fr3
+	ps_muls0	fr1,fr1,fr3
+	psq_st		fr0,0(r4),0,0
+	psq_st		fr1,8(r4),0,0
 	blr
 
 	.section .data
+QuatEpsilon:
+	.float	0.00001
 Unit01:
 	.float	0.0, 1.0
 NrmData:

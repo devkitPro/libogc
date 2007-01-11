@@ -223,7 +223,6 @@ static struct uip_netif *bba_netif = NULL;
 static struct bba_priv bba_device;
 static struct bba_descr cur_descr;
 
-static u8 rx_buffer[BBA_RX_MAX_PACKET_SIZE];
 
 static vu32* const _siReg = (u32*)0xCC006400;
 
@@ -448,63 +447,68 @@ static void bba_process(struct uip_pbuf *p,struct uip_netif *dev)
 	}
 }
 
-static s8_t bba_start_rx(struct uip_netif *dev)
+static s8_t bba_start_rx(struct uip_netif *dev,u32 budget)
 {
-	u8 *ptr;
-	u16 rwp,rrp;
-	u32 j,size,pkt_status,pos,top,copy;
+	s32 size;
+	u16 top,pos,rwp,rrp;
+	u32 pkt_status,recvd;
 	struct uip_pbuf *p,*q;
 
+	recvd = 0;
 	rwp = bba_in12(BBA_RWP);
 	rrp = bba_in12(BBA_RRP);
-	while(rrp!=rwp) {
+	while(recvd<budget && rrp!=rwp) {
 		bba_ins(rrp<<8,(void*)(&cur_descr),sizeof(struct bba_descr));
 		le32_to_cpus((u32*)((void*)(&cur_descr)));
 
 		size = cur_descr.packet_len - 4;
 		pkt_status = cur_descr.status;
-		if(size>(BBA_RX_MAX_PACKET_SIZE+4) || (pkt_status&(BBA_RX_STATUS_RERR|BBA_RX_STATUS_FAE))) {
-			return UIP_ERR_PKTSIZE;
+		if(size>(BBA_RX_MAX_PACKET_SIZE+4)) {
+			UIP_LOG("bba_start_rx: packet dropped due to big buffer.\n");
+			continue;
 		}
 
-		ptr = rx_buffer;
+		if(pkt_status&(BBA_RX_STATUS_RERR|BBA_RX_STATUS_FAE)) {
+			UIP_LOG("bba_start_rx: packet dropped due to receive errors.\n");
+			rwp = bba_in12(BBA_RWP);
+			rrp = bba_in12(BBA_RRP);
+			continue;
+		}
+		
 		pos = (rrp<<8)+4;
 		top = (BBA_INIT_RHBP+1)<<8;
 		
-		bba_select();
-		bba_insregister(pos);
-		if((pos+size)<top) {
-			bba_insdata(ptr,size);
-		} else {
-			u32 chunk = top-pos;
-			
-			bba_insdata(ptr,chunk);
-			bba_deselect();
-
-			rrp = BBA_INIT_RRP;
-			bba_select();
-			bba_insregister(rrp<<8);
-			bba_insdata(ptr+chunk,(size-chunk));
-		}
-		bba_deselect();
-		
-		ptr = rx_buffer;
 		p = uip_pbuf_alloc(UIP_PBUF_RAW,size,UIP_PBUF_POOL);
 		if(p) {
-			for(q=p,j=0;q!=NULL && size>0;q=q->next) {
-				copy = (size>q->len)?q->len:size;
-				UIP_MEMCPY(q->payload,ptr,copy);
-				
-				ptr += copy;
-				size -= copy;
-			}
+			for(q=p;q!=NULL;q=q->next) {
+				bba_select();
+				bba_insregister(pos);
+				if((pos+size)<top) {
+					bba_insdata(q->payload,size);
+				} else {
+					s32 chunk = top-pos;
+					
+					size -= chunk;
+					pos = BBA_INIT_RRP<<8;
+					bba_insdata(q->payload,chunk);
+					bba_deselect();
 
+					bba_select();
+					bba_insregister(pos);
+					bba_insdata(q->payload+chunk,size);
+				}
+				bba_deselect();
+				pos += size;
+			}
 			if(bba_recv_pbufs==NULL) bba_recv_pbufs = p;
 			else uip_pbuf_chain(bba_recv_pbufs,p);
-		}
-		bba_out12(BBA_RRP,cur_descr.next_packet_ptr);
+		} else
+			break;
+
+		recvd++;
+		
+		bba_out12(BBA_RRP,(rrp=cur_descr.next_packet_ptr));
 		rwp = bba_in12(BBA_RWP);
-		rrp = bba_in12(BBA_RRP);
 	}
 	return UIP_ERR_OK;
 }
@@ -521,7 +525,7 @@ static inline void bba_interrupt(u16 *pstatus)
 		bba_out8(BBA_IR,BBA_IR_FRAGI);
 	}
 	if(status&BBA_IR_RI) {
-		bba_start_rx(bba_netif);
+		bba_start_rx(bba_netif,0x10);
 		bba_out8(BBA_IR,BBA_IR_RI);
 	}
 	if(status&BBA_IR_REI) {
@@ -540,7 +544,7 @@ static inline void bba_interrupt(u16 *pstatus)
 		bba_out8(BBA_IR,BBA_IR_BUSEI);
 	}
 	if(status&BBA_IR_RBFI) {
-		bba_start_rx(bba_netif);
+		bba_start_rx(bba_netif,0x10);
 		bba_out8(BBA_IR,BBA_IR_RBFI);
 	}
 	*pstatus |= status;
@@ -557,9 +561,9 @@ static s8_t bba_dochallengeresponse()
 		cnt++;
 		bba_devpoll(&status);
 		if(status==0x1000) cnt = 0;
-	} while(cnt<10 && !(status&0x0800));
+	} while(cnt<100 && !(status&0x0800));
 	
-	if(cnt>=10) return UIP_ERR_IF;
+	if(cnt>=1000) return UIP_ERR_IF;
 	return UIP_ERR_OK;
 }
 
@@ -660,6 +664,8 @@ static void bba_devpoll(u16 *pstatus)
 	u32 ret;
 	s64 now;
 
+	UIP_LOG("bba_devpoll()\n");
+	
 	now = gettime();
 	if(diff_msec(bba_arp_tmr,now)>=UIP_ARP_TMRINTERVAL) {
 		uip_arp_timer();
@@ -779,7 +785,7 @@ s8_t uip_bba_init(struct uip_netif *dev)
 
 	ret = bba_probe(dev);
 	if(ret<0) return ret;
-	
+
 	ret = bba_dochallengeresponse();
 	if(ret<0) return ret;
 
@@ -790,6 +796,7 @@ s8_t uip_bba_init(struct uip_netif *dev)
 	} while((ret=__bba_getlink_state_async())==0 && cnt<10000);
 	if(!ret) return UIP_ERR_IF;
 
+	dev->flags |= UIP_NETIF_FLAG_LINK_UP; 
 	uip_netif_setup(dev);
 	uip_arp_init();
 	
@@ -822,6 +829,8 @@ void uip_bba_poll(struct uip_netif *dev)
 	u16 status;
 	struct uip_pbuf *p;
 
+	UIP_LOG("uip_bba_poll()\n");
+	
 	bba_devpoll(&status);
 	
 	while((p=bba_recv_pbufs)!=NULL) {

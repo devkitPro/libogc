@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: aram.h,v 1.8 2005-12-09 09:20:49 shagkur Exp $
+$Id: aram.h,v 1.9 2007-01-11 10:51:56 wntrmute Exp $
 
 aram.h -- ARAM subsystem
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.8  2005/12/09 09:20:49  shagkur
+no message
+
 Revision 1.7  2005/11/23 16:46:21  shagkur
 - more detailed description to certain functions done
 
@@ -155,7 +158,7 @@ u32 AR_GetDMAStatus();
  *               AR_Init(NULL, 0);<br>
  *
  *        The AR_Init() function also calculates the total size of the ARAM aggregate. Note that this procedure is <b><i>destructive</i></b> - i.e., any data stored in ARAM will be corrupted.<br>
- *        AR_Init()may be invoked multiple times. This function checks the state of an initialization flag; if asserted, this function will simply exit on subsequent calls. To perform another initialization of the ARAM driver, call AR_Reset() before invoking AR_Init()again.
+ *        AR_Init()may be invoked multiple times. This function checks the state of an initialization flag; if asserted, this function will simply exit on subsequent calls. To perform another initialization of the ARAM driver, call AR_Reset() before invoking AR_Init() again.
  *
  * \param[in] stack_idx_array pointer to an array of u32 integer
  * \param[in] num_entries number of entries in the specified array

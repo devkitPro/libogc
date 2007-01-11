@@ -859,6 +859,58 @@ SOURCE=.\libtinysmb\lmhash.c
 SOURCE=.\libtinysmb\smb.c
 # End Source File
 # End Group
+# Begin Group "libz.c"
+
+# PROP Default_Filter ".c"
+# Begin Source File
+
+SOURCE=.\libz\adler32.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libz\compress.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libz\crc32.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libz\deflate.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libz\gzio.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libz\infback.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libz\inffast.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libz\inflate.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libz\inftrees.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libz\trees.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libz\uncompr.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libz\zutil.c
+# End Source File
+# End Group
 # End Group
 # Begin Group "Header Files"
 
@@ -1335,6 +1387,46 @@ SOURCE=.\gc\tinysmb\DES.h
 SOURCE=.\gc\tinysmb\LMhash.h
 # End Source File
 # End Group
+# Begin Group "libz.h"
+
+# PROP Default_Filter ".h"
+# Begin Source File
+
+SOURCE=.\gc\z\crc32.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\z\deflate.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\z\inffast.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\z\inffixed.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\z\inflate.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\z\inftrees.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\z\trees.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\z\zconf.in.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\z\zutil.h
+# End Source File
+# End Group
 # Begin Source File
 
 SOURCE=.\gc\debug.h
@@ -1374,6 +1466,14 @@ SOURCE=.\gc\sdcard.h
 # Begin Source File
 
 SOURCE=.\gc\smb.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\zconf.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\zlib.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"

@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: exception_handler.S,v 1.13 2005-11-21 12:15:46 shagkur Exp $
+$Id: exception_handler.S,v 1.14 2007-01-11 10:51:56 wntrmute Exp $
 
 exception_handler.S -- PPC exception handling support
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.13  2005/11/21 12:15:46  shagkur
+no message
+
 
 -------------------------------------------------------------*/
 
@@ -136,6 +139,36 @@ default_exceptionhandler_transfer:
 	addi	r3,sp,0x08
 	blrl
 	
+	lwz		r5,CR_OFFSET(sp)
+	mtcr	r5
+	lwz		r5,LR_OFFSET(sp)
+	mtlr	r5
+	lwz		r5,SRR0_OFFSET(sp)
+	mtsrr0	r5
+	lwz		r5,SRR1_OFFSET(sp)
+	mtsrr1	r5
+	lwz		r5,CTR_OFFSET(sp)
+	mtctr	r5
+	lwz		r5,XER_OFFSET(sp)
+	mtxer	r5
+
+	EXCEPTION_EPILOG
+
+	lmw		r6,GPR6_OFFSET(sp)
+	lwz		toc,GPR2_OFFSET(sp)
+	lwz		r0,GPR0_OFFSET(sp)
+
+	mfmsr	r4
+	rlwinm	r4,r4,0,31,29
+	mtmsr	r4
+	isync
+
+	lwz		r5,GPR5_OFFSET(sp)
+	lwz		r4,GPR4_OFFSET(sp)
+	lwz		r3,GPR3_OFFSET(sp)
+	addi	sp,sp,EXCEPTION_FRAME_END
+	rfi
+
 	.global systemcall_handler_start,systemcall_handler_end
 systemcall_handler_start:
 	mfspr  r9,HID0
@@ -151,42 +184,27 @@ systemcall_handler_end:
 	.extern _cpu_context_save_fp,_cpu_context_restore_fp
 	.globl fpu_exception_handler
 fpu_exception_handler:
+	mflr	r0
+	stw		r0,4(sp)
+	lwz		r5,SRR1_OFFSET(sp)
+	ori		r5,r5,MSR_FP
+	stw		r5,SRR1_OFFSET(sp)
+	stwu	sp,-8(sp)
+
 	mfmsr	r5
 	ori		r5,r5,MSR_FP
 	mtmsr	r5
 	isync
-	lwz		r5,SRR1_OFFSET(sp)
-	ori		r5,r5,MSR_FP
-	mtsrr1	r5
 
 	bl		__thread_dispatch_fp
 
-	lwz		r5,CR_OFFSET(sp)
-	mtcr	r5
-	lwz		r5,LR_OFFSET(sp)
-	mtlr	r5
-	lwz		r5,SRR0_OFFSET(sp)
-	mtsrr0	r5
-	lwz		r5,CTR_OFFSET(sp)
-	mtctr	r5
-	lwz		r5,XER_OFFSET(sp)
-	mtxer	r5
-
-	EXCEPTION_EPILOG
-
-	lmw		r6,GPR6_OFFSET(sp)
-	lwz		toc,GPR2_OFFSET(sp)
-	lwz		r0,GPR0_OFFSET(sp)
-
 	mfmsr	r4
 	rlwinm	r4,r4,0,19,17
-	rlwinm	r4,r4,0,31,29
 	mtmsr	r4
 	isync
 
-	lwz		r5,GPR5_OFFSET(sp)
-	lwz		r4,GPR4_OFFSET(sp)
-	lwz		r3,GPR3_OFFSET(sp)
-	addi	sp,sp,EXCEPTION_FRAME_END
-	rfi
+	lwz		r0,12(sp)
+	addi	sp,sp,8
+	mtlr	r0
+	blr
 

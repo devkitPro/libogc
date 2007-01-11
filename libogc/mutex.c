@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: mutex.c,v 1.14 2006-12-01 15:21:53 wntrmute Exp $
+$Id: mutex.c,v 1.15 2007-01-11 10:51:56 wntrmute Exp $
 
 mutex.c -- Thread subsystem III
 

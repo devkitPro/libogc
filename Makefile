@@ -136,7 +136,7 @@ GCSYSOBJ	:=	newlibc.o sbrk.o open.o write.o close.o \
 			lock_supp.o dvd_supp.o malloc_lock.o
 				
 #---------------------------------------------------------------------------------
-TINYSMBOBJ	:=	des.o lmhash.o smb.o nbt.o
+TINYSMBOBJ	:=	des.o lmhash.o smb.o
 
 #---------------------------------------------------------------------------------
 ZLIBOBJ		:=	adler32.o compress.o crc32.o gzio.o uncompr.o \
@@ -225,7 +225,7 @@ install-headers:
 	@cp ./gc/modplay/*.h $(INCDIR)/modplay
 	@cp ./gc/mad/*.h $(INCDIR)/mad
 	@cp ./gc/sdcard/*.h $(INCDIR)/sdcard
-
+	@cp ./*.ld $(LIBDIR)
 #---------------------------------------------------------------------------------
 install: install-headers
 #---------------------------------------------------------------------------------
@@ -245,8 +245,7 @@ dist: install-headers
 	@tar -cvjf libogc-$(DATESTRING).tar.bz2 include lib license.txt
 
 #---------------------------------------------------------------------------------
-libs: $(OGCLIB).a $(BBALIB).a $(MODLIB).a $(MADLIB).a $(DBLIB).a $(SDCARDLIB).a $(GCSYSLIB).a \
-	$(ZLIB).a $(TINYSMBLIB).a $(STUBSLIB).a
+libs: $(OGCLIB).a $(BBALIB).a $(MODLIB).a $(MADLIB).a $(DBLIB).a $(SDCARDLIB).a $(GCSYSLIB).a $(ZLIB).a $(TINYSMBLIB).a $(STUBSLIB).a
 #---------------------------------------------------------------------------------
 
 #---------------------------------------------------------------------------------

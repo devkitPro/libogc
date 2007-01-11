@@ -1,6 +1,12 @@
 #ifndef __GCTYPES_H__
 #define __GCTYPES_H__
 
+/*! \file gctypes.h 
+\brief Data type definitions
+
+*/ 
+
+
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */

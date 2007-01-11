@@ -34,6 +34,13 @@
 
 #define STR_BPCODE		"7d821008"
 
+#if UIP_LOGGING == 1
+#include <stdio.h>
+#define UIP_LOG(m) uip_log(__FILE__,__LINE__,m)
+#else
+#define UIP_LOG(m)
+#endif /* UIP_LOGGING == 1 */
+
 static s32 dbg_currthr = -1;
 static s32 dbg_active = 0;
 static s32 dbg_instep = 0;
@@ -77,6 +84,7 @@ static struct bp_entry {
 static struct bp_entry *p_bpentries = NULL;
 
 void __breakinst();
+void c_debug_handler(frame_context *ctx);
 
 extern lwp_t __lwp_thread_currentid();
 extern BOOL __lwp_thread_exists(u32 id);
@@ -84,6 +92,7 @@ extern BOOL __lwp_thread_isalive(s32 thr_id);
 extern frame_context* __lwp_thread_context(s32 thr_id);
 
 extern void __exception_load(u32,void *,u32,void*);
+extern void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
 extern void __excpetion_close(u32);
 
 extern u8 __text_start[],__data_start[],__bss_start[];
@@ -98,13 +107,17 @@ void DEBUG_Init(u16 port)
 	struct sockaddr_in name;
 	socklen_t namelen = sizeof(struct sockaddr);
 
+	UIP_LOG("DEBUG_Init()\n");
+
+	__lwp_thread_dispatchdisable();
+
 	memr_init();
 	uip_ipinit();
 	uip_pbuf_init();
 	uip_netif_init();
 
 	tcpip_init();
-
+	
 	local_ip.addr = uip_ipaddr(dbg_local_ip);
 	netmask.addr = uip_ipaddr(dbg_netmask);
 	gw.addr = uip_ipaddr(dbg_gw);
@@ -115,7 +128,10 @@ void DEBUG_Init(u16 port)
 		uip_netif_setdefault(pnet);
 
 		dbg_listensock = tcpip_socket();
-		if(dbg_listensock<0) return ;
+		if(dbg_listensock<0) {
+			__lwp_thread_dispatchenable();
+			return;
+		}
 
 		name.sin_addr.s_addr = INADDR_ANY;
 		name.sin_port = htons(port);
@@ -124,20 +140,24 @@ void DEBUG_Init(u16 port)
 		if(tcpip_bind(dbg_listensock,(struct sockaddr*)&name,&namelen)<0){
 			tcpip_close(dbg_listensock);
 			dbg_listensock = -1;
+			__lwp_thread_dispatchenable();
 			return;
 		}
 		if(tcpip_listen(dbg_listensock,1)<0) {
 			tcpip_close(dbg_listensock);
 			dbg_listensock = -1;
+			__lwp_thread_dispatchenable();
 			return;
 		}
 
-		__exception_load(EX_DSI,debug_handler_start,(debug_handler_end-debug_handler_start),debug_handler_patch);
-		__exception_load(EX_PRG,debug_handler_start,(debug_handler_end-debug_handler_start),debug_handler_patch);
-		__exception_load(EX_TRACE,debug_handler_start,(debug_handler_end-debug_handler_start),debug_handler_patch);
+		__exception_sethandler(EX_DSI,c_debug_handler);
+		__exception_sethandler(EX_PRG,c_debug_handler);
+		__exception_sethandler(EX_TRACE,c_debug_handler);
 
 		dbg_initialized = 1;
+		
 	}
+	__lwp_thread_dispatchenable();
 }
 
 static s32 hex(u8 ch)
@@ -423,6 +443,8 @@ void c_debug_handler(frame_context *ctx)
 	u32 except_thr;
 	frame_context *pctx = NULL;
 
+	UIP_LOG("c_debug_handler()\n");
+	
 	msr = mfmsr();
 	mtmsr(msr&~MSR_EE);
 

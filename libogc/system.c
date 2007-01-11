@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: system.c,v 1.59 2006-12-01 15:21:53 wntrmute Exp $
+$Id: system.c,v 1.60 2007-01-11 10:51:56 wntrmute Exp $
 
 system.c -- OS functions and initialization
 

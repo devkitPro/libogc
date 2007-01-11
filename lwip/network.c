@@ -140,36 +140,15 @@ static void* net_thread(void *);
 
 static void tmr_callback(void *arg)
 {
-	u32 flag = (u32)arg;
-
-	if(flag&0x01) {
-		LWIP_DEBUGF(TCPIP_DEBUG|1,("etharp_tmr()\n"));
-		etharp_tmr();
-		return;
-	}
-	if(flag&0x02) {
-		LWIP_DEBUGF(TCPIP_DEBUG|1,("tcp_tmr()\n"));
-		tcp_tmr();
-		return;
-	}
-	if(flag&0x04) {
-		LWIP_DEBUGF(TCPIP_DEBUG|1,("dhcp_fine_tmr()\n"));
-		dhcp_fine_tmr();
-		return;
-	}
-	if(flag&0x08) {
-		LWIP_DEBUGF(TCPIP_DEBUG|1,("dhcp_coarse_tmr()\n"));
-		dhcp_coarse_tmr();
-		return;
-	}
-	return;
+	void (*functor)() = (void(*)())arg;
+	if(functor) functor();
 }
 
 /* low level stuff */
 static void __dhcpcoarse_timer(void *arg)
 {
 	__lwp_thread_dispatchdisable();
-	net_callback(tmr_callback,(void*)0x08);
+	net_callback(tmr_callback,(void*)dhcp_coarse_tmr);
 	__lwp_wd_insert_ticks(&dhcp_coarsetimer_cntrl,net_dhcpcoarse_ticks);
 	__lwp_thread_dispatchunnest();
 }
@@ -177,7 +156,7 @@ static void __dhcpcoarse_timer(void *arg)
 static void __dhcpfine_timer(void *arg)
 {
 	__lwp_thread_dispatchdisable();
-	net_callback(tmr_callback,(void*)0x04);
+	net_callback(tmr_callback,(void*)dhcp_fine_tmr);
 	__lwp_wd_insert_ticks(&dhcp_finetimer_cntrl,net_dhcpfine_ticks);
 	__lwp_thread_dispatchunnest();
 }
@@ -188,7 +167,7 @@ static void __tcp_timer(void *arg)
 	printf("__tcp_timer(%d,%p,%p)\n",tcp_timer_active,tcp_active_pcbs,tcp_tw_pcbs);
 #endif
 	__lwp_thread_dispatchdisable();
-	net_callback(tmr_callback,(void*)0x02);
+	net_callback(tmr_callback,(void*)tcp_tmr);
 	if (tcp_active_pcbs || tcp_tw_pcbs) {
 		__lwp_wd_insert_ticks(&tcp_timer_cntrl,net_tcp_ticks);
 	} else
@@ -199,7 +178,7 @@ static void __tcp_timer(void *arg)
 static void __arp_timer(void *arg)
 {
 	__lwp_thread_dispatchdisable();
-	net_callback(tmr_callback,(void*)0x01);
+	net_callback(tmr_callback,(void*)etharp_tmr);
 	__lwp_wd_insert_ticks(&arp_time_cntrl,net_arp_ticks);
 	__lwp_thread_dispatchunnest();
 }

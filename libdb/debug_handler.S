@@ -87,10 +87,25 @@ debug_handler_transfer:
 	stwu	sp,-EXCEPTION_FRAME_END(sp)		//now we're able to adjust the stackpointer with it's cached address
 	mtlr	r5								//move passed handler func adress to LR
 
-	stmw r6,GPR6_OFFSET(sp)
+	EXCEPTION_PROLOG
 
+	stmw r6,GPR6_OFFSET(sp)
+/*	
+	addi	r14,sp,0
+
+	lis		sp,__debugstack@h
+	ori		sp,sp,__debugstack@l
+	
+	lis		r0,0
+	stw		r0,0(sp)
+	stwu	sp,-16(sp)
+
+	addi	r3,r14,0x08
+*/
 	addi	r3,sp,0x08
 	blrl
+
+//	addi	sp,r14,0
 
 	lwz		r5,CR_OFFSET(sp)
 	mtcr	r5
@@ -104,6 +119,8 @@ debug_handler_transfer:
 	mtctr	r5
 	lwz		r5,XER_OFFSET(sp)
 	mtxer	r5
+
+	EXCEPTION_EPILOG
 
 	lmw		r6,GPR6_OFFSET(sp)
 	lwz		toc,GPR2_OFFSET(sp)
@@ -171,10 +188,9 @@ __clr_ibar:
 	blr
 
 	.section .bss
-	.align 4
-debug_context:
-	.space 0x200
+	.balign 8
 
-debug_stack:
-	.space 0x2000
-debug_stack_end:
+	.globl __debugstack_end,__debugstack
+__debugstack_end:
+	.space 0x4000
+__debugstack:

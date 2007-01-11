@@ -43,11 +43,7 @@ _start:
 	sub		r5,r5,r3
 	bl		_memset
 
-1:	lis		r0,0
-	stw		r0,0(sp)
-	stwu	sp,-64(sp)
-
-	bl		__init
+1:	bl		__init
 	bl      SYS_Init # Branch to the user code!
 	bl		__fini
 
@@ -89,6 +85,9 @@ InitGPRS:
 
 	lis		sp,__crt0stack@h		    # we take 0x8173FFF0 as the topmost starting point for our stack,this gives us ~128Kb Stack
 	ori		sp,sp,__crt0stack@l
+	addi	sp,sp,-4
+	stw		r0,0(sp)
+	stwu	sp,-56(sp)
 
 	lis     r2,_SDA2_BASE_@h
 	ori     r2,r2,_SDA2_BASE_@l  # Set the Small Data 2 (Read Only) base register.
@@ -166,7 +165,7 @@ video_line:
 	bdnz	1b
 	blr
 
-	.section .sbss
+	.section .bss
 	.balign 8
 __crt0stack_end:
 	.space 0x4000

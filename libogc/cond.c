@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: cond.c,v 1.16 2006-12-01 15:21:53 wntrmute Exp $
+$Id: cond.c,v 1.17 2007-01-11 10:51:56 wntrmute Exp $
 
 cond.c -- Thread subsystem V
 

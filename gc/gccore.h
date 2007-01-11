@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: gccore.h,v 1.14 2005-12-09 09:24:32 shagkur Exp $
+$Id: gccore.h,v 1.15 2007-01-11 10:51:56 wntrmute Exp $
 
 gccore.h -- GC core header
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.14  2005/12/09 09:24:32  shagkur
+no message
+
 Revision 1.13  2005/11/24 14:28:50  shagkur
 - added copyright header(taken from libnds)
 - introduced RCS ID and LOG token
@@ -111,6 +114,7 @@ Revision 1.13  2005/11/24 14:28:50  shagkur
  * - \ref irq.h "IRQ subsystem"
  * - \ref dsp.h "DSP subsystem"
  * - \ref dvd.h "DVD subsystem"
+ * - \ref gx.h "GX subsystem"
  * - \ref video.h "VIDEO subsystem"
  * - \ref cache.h "Cache subsystem"
  * - \ref card.h "Memory card subsystem"

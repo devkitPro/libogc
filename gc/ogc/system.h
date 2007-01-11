@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: system.h,v 1.28 2006-12-01 15:21:53 wntrmute Exp $
+$Id: system.h,v 1.29 2007-01-11 10:51:56 wntrmute Exp $
 
 system.h -- OS functions and initialization
 
