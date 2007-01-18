@@ -6,7 +6,7 @@ Signature=UE Proj: v.1
 
 Filter=*.*
 
-Project Directory=C:\projects\devkitPro\libogc\
+Project Directory=E:\projects\devkitPro\libogc\
 
 Use Relative Directory=1
 
@@ -24,6 +24,27 @@ Include Sub Directories=1
 
 Open File0=
 Active File Display Mode=-1
+Open File Pos0=0
+Open File Line0=0
+Open File Window Pos0=0,1,-1,-1,-4,-23,0,0,787,407
+Open File1=E:\projects\devkitPro\libogc\include\ogc\dvd.h
+Open File Pos1=3755
+Open File Line1=0
+Open File Window Pos1=0,1,-1,-1,-4,-23,22,22,813,433
+Open File2=E:\projects\devkitPro\libogc\include\ogc\color.h
+Open File Pos2=0
+Open File Line2=0
+Open File Window Pos2=0,1,-1,-1,-4,-23,44,44,835,455
+Open File3=E:\projects\devkitPro\libogc\include\ogc\cond.h
+Open File Pos3=0
+Open File Line3=0
+Open File Window Pos3=0,1,-1,-1,-4,-23,66,66,857,477
+Open File4=E:\projects\devkitPro\dswifi\makefile
+Open File Pos4=170
+Open File Line4=0
+Active File Index=4
+Open File Window Pos4=2,3,-1,-1,-4,-23,88,88,879,499
+Open File5=
 [File View]
 Current Select=Project Files
 Scroll Position=0
@@ -93,20 +114,25 @@ Scroll Position=0
 20=libogcsys\usleep.c
 21=libogcsys\write.c
 [Files]
-0=gc\
-1=include\
-2=libdb\
-3=libmad\
-4=libmodplay\
-5=libogc.dox
+0=\
+1=gc\
+2=include\
+3=libdb\
+4=libmad\
+5=libmodplay\
 6=libogc\
 7=libogcsys\
 8=libsamplerate\
 9=libsdcard\
-10=license.txt
-11=lockstubs\
-12=lwip\
-13=Makefile
-14=ogc.ld
-15=specs.ogc
-16=vgcogc.ld
+10=libtinysmb\
+11=libz\
+12=lockstubs\
+13=lwip\
+14=libogc.dox
+15=license.txt
+16=Makefile
+17=ogc.ld
+18=specs.ogc
+19=vgcogc.ld
+[Group]
+0=
