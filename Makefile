@@ -184,7 +184,7 @@ all:
 	@[ -d $(INCDIR) ] || mkdir -p $(INCDIR)
 	@[ -d $(DEPSDIR) ] || mkdir -p $(DEPSDIR)
 	@[ -d $(BUILDDIR) ] || mkdir -p $(BUILDDIR)
-	@make libs -C $(BUILDDIR) -f $(CURDIR)/Makefile
+	@$(MAKE) libs -C $(BUILDDIR) -f $(CURDIR)/Makefile
 
 #---------------------------------------------------------------------------------
 $(BBALIB).a: $(LWIPOBJ)
