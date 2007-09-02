@@ -21,7 +21,6 @@ OBJCOPY		:=	$(PREFIX)-objcopy
 BUILD		:=	build
 
 SPECS		:=	$(shell $(DEVKITPPC)/bin/$(CC) -v 2>&1)
-INSTALLPATH	:=	$(shell echo $(SPECS) | sed -n -e 's/Reading specs from //p' | sed -e 's/\/bin.*//')
 GCC_VERSION	:=	$(shell $(DEVKITPPC)/bin/$(CC) -dumpversion)
 DATESTRING	:=	$(shell date +%Y)$(shell date +%m)$(shell date +%d)
 
@@ -229,12 +228,12 @@ install-headers:
 #---------------------------------------------------------------------------------
 install: install-headers
 #---------------------------------------------------------------------------------
-	@cp -frv include $(INSTALLPATH)/$(PREFIX)
-	@cp -frv lib $(INSTALLPATH)/$(PREFIX)
-	@cp -fv ogc.ld $(INSTALLPATH)/$(PREFIX)/lib/ogc.ld
-	@cp -fv vgcogc.ld $(INSTALLPATH)/$(PREFIX)/lib/vgcogc.ld
-	@cp -fv gcbogc.ld $(INSTALLPATH)/$(PREFIX)/lib/gcbogc.ld
-	@cp -fv specs.ogc $(INSTALLPATH)/lib/gcc/$(PREFIX)/$(GCC_VERSION)/specs
+	@cp -frv include $(DEVKITPPC)/$(PREFIX)
+	@cp -frv lib $(DEVKITPPC)/$(PREFIX)
+	@cp -fv ogc.ld $(DEVKITPPC)/$(PREFIX)/lib/ogc.ld
+	@cp -fv vgcogc.ld $(DEVKITPPC)/$(PREFIX)/lib/vgcogc.ld
+	@cp -fv gcbogc.ld $(DEVKITPPC)/$(PREFIX)/lib/gcbogc.ld
+	@cp -fv specs.ogc $(DEVKITPPC)/lib/gcc/$(PREFIX)/$(GCC_VERSION)/specs
 
 #---------------------------------------------------------------------------------
 dist: install-headers
