@@ -190,7 +190,7 @@ s32 card_readFromDisk(s32 drv_no,opendfile_list *p_list,void *buf,u32 cnt,u32 *p
 s32 card_writeToDisk(s32 drv_no,opendfile_list *p_list,const u8 *p_buf,u32 count);
 s32 card_writeCacheToDisk(s32 drv_no,opendfile_list *p_list);
 
-s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const u8* long_name,const u16* p_unicode_name,file_stat* p_stat,u32 b_insert,u32 cluster,u32 offset);
+s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const char* long_name,const u16* p_unicode_name,file_stat* p_stat,u32 b_insert,u32 cluster,u32 offset);
 void card_prepareFileClose(s32 drv_no, const opendfile_list* p_list) ;
 void card_registerCallback(u32 drv_no,void (*pFuncIN)(s32),void (*pFuncOUT)(s32));
 
