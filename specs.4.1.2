@@ -18,22 +18,22 @@
 %{posix: -D_POSIX_SOURCE} %{mgcn         : %(cpp_os_gcn)         ;   mogc|mvgc|mgcbios         : %(cpp_os_ogc);   mads         : %(cpp_os_ads)         ;   myellowknife : %(cpp_os_yellowknife) ;   mmvme        : %(cpp_os_mvme)        ;   msim         : %(cpp_os_sim)         ;   mwindiss     : %(cpp_os_windiss)     ;   mcall-freebsd: %(cpp_os_freebsd)     ;   mcall-linux  : %(cpp_os_linux)       ;   mcall-gnu    : %(cpp_os_gnu)         ;   mcall-netbsd : %(cpp_os_netbsd)      ;   mcall-openbsd: %(cpp_os_openbsd)     ;                : %(cpp_os_default)     }
 
 *cpp_options:
-%(cpp_unique_options) %1 %{m*} %{std*} %{ansi} %{W*&pedantic*} %{w} %{f*} %{g*:%{!g0:%{!fno-working-directory:-fworking-directory}}} %{O*} %{undef}
+%(cpp_unique_options) %1 %{m*} %{std*&ansi&trigraphs} %{W*&pedantic*} %{w} %{f*} %{g*:%{!g0:%{!fno-working-directory:-fworking-directory}}} %{O*} %{undef} %{save-temps:-fpch-preprocess}
 
 *cpp_debug_options:
 %{d*}
 
 *cpp_unique_options:
-%{C|CC:%{!E:%eGCC does not support -C or -CC without -E}} %{!Q:-quiet} %{nostdinc*} %{C} %{CC} %{v} %{I*} %{P} %I %{MD:-MD %{!o:%b.d}%{o*:%.d%*}} %{MMD:-MMD %{!o:%b.d}%{o*:%.d%*}} %{M} %{MM} %{MF*} %{MG} %{MP} %{MQ*} %{MT*} %{!E:%{!M:%{!MM:%{MD|MMD:%{o*:-MQ %*}}}}} %{trigraphs} %{remap} %{g3:-dD} %{H} %C %{D*&U*&A*} %{i*} %Z %i %{E|M|MM:%W{o*}}
+%{C|CC:%{!E:%eGCC does not support -C or -CC without -E}} %{!Q:-quiet} %{nostdinc*} %{C} %{CC} %{v} %{I*&F*} %{P} %I %{MD:-MD %{!o:%b.d}%{o*:%.d%*}} %{MMD:-MMD %{!o:%b.d}%{o*:%.d%*}} %{M} %{MM} %{MF*} %{MG} %{MP} %{MQ*} %{MT*} %{!E:%{!M:%{!MM:%{MD|MMD:%{o*:-MQ %*}}}}} %{remap} %{g3:-dD} %{H} %C %{D*&U*&A*} %{i*} %Z %i %{fmudflap:-D_MUDFLAP -include mf-runtime.h} %{fmudflapth:-D_MUDFLAP -D_MUDFLAPTH -include mf-runtime.h} %{E|M|MM:%W{o*}}
 
 *trad_capable_cpp:
 cc1 -E %{traditional|ftraditional|traditional-cpp:-traditional-cpp}
 
 *cc1:
-%{G*} %{mogc|mvgc|mgcbios: %(cc1_os_ogc)} %{mlittle|mlittle-endian: %(cc1_endian_little);             mbig   |mbig-endian   : %(cc1_endian_big);                mcall-aixdesc |					    mcall-freebsd |					    mcall-netbsd  |					    mcall-openbsd |					    mcall-linux   |					    mcall-gnu             : -mbig %(cc1_endian_big);          mcall-i960-old        : -mlittle %(cc1_endian_little);                          : %(cc1_endian_default)}          %{mno-sdata: -msdata=none } %{meabi: %{!mcall-*: -mcall-sysv }} %{!meabi: %{!mno-eabi:     %{mrelocatable: -meabi }     %{mcall-freebsd: -mno-eabi }     %{mcall-i960-old: -meabi }     %{mcall-linux: -mno-eabi }     %{mcall-gnu: -mno-eabi }     %{mcall-netbsd: -mno-eabi }     %{mcall-openbsd: -mno-eabi }}} %{msdata: -msdata=default} %{mno-sdata: -msdata=none} %{profile: -p}
+%{G*} %{mogc|mvgc|mgcbios: %(cc1_os_ogc)} %{mlittle|mlittle-endian: %(cc1_endian_little);             mbig   |mbig-endian   : %(cc1_endian_big);                mcall-aixdesc |					    mcall-freebsd |					    mcall-netbsd  |					    mcall-openbsd |					    mcall-linux   |					    mcall-gnu             : -mbig %(cc1_endian_big);          mcall-i960-old        : -mlittle %(cc1_endian_little);                          : %(cc1_endian_default)}          %{meabi: %{!mcall-*: -mcall-sysv }} %{!meabi: %{!mno-eabi:     %{mrelocatable: -meabi }     %{mcall-freebsd: -mno-eabi }     %{mcall-i960-old: -meabi }     %{mcall-linux: -mno-eabi }     %{mcall-gnu: -mno-eabi }     %{mcall-netbsd: -mno-eabi }     %{mcall-openbsd: -mno-eabi }}} %{msdata: -msdata=default} %{mno-sdata: -msdata=none} %{!mbss-plt: %{!msecure-plt: %(cc1_secure_plt_default)}} %{profile: -p}
 
 *cc1_options:
-%{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}} %1 %{!Q:-quiet} -dumpbase %B %{d*} %{m*} %{a*} %{c|S:%{o*:-auxbase-strip %*}%{!o*:-auxbase %b}}%{!c:%{!S:-auxbase %b}} %{g*} %{O*} %{W*&pedantic*} %{w} %{std*} %{ansi} %{v:-version} %{pg:-p} %{p} %{f*} %{undef} %{Qn:-fno-ident} %{--help:--help} %{--target-help:--target-help} %{!fsyntax-only:%{S:%W{o*}%{!o*:-o %b.s}}} %{fsyntax-only:-o %j} %{-param*}
+%{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}} %1 %{!Q:-quiet} -dumpbase %B %{d*} %{m*} %{a*} %{c|S:%{o*:-auxbase-strip %*}%{!o*:-auxbase %b}}%{!c:%{!S:-auxbase %b}} %{g*} %{O*} %{W*&pedantic*} %{w} %{std*&ansi&trigraphs} %{v:-version} %{pg:-p} %{p} %{f*} %{undef} %{Qn:-fno-ident} %{--help:--help} %{--target-help:--target-help} %{!fsyntax-only:%{S:%W{o*}%{!o*:-o %b.s}}} %{fsyntax-only:-o %j} %{-param*} %{fmudflap|fmudflapth:-fno-builtin -fno-merge-constants} %{coverage:-fprofile-arcs -ftest-coverage}
 
 *cc1plus:
 %{mogc|mvgc|mgcbios: %(cc1plus_os_ogc)}
@@ -41,20 +41,29 @@ cc1 -E %{traditional|ftraditional|traditional-cpp:-traditional-cpp}
 *link_gcc_c_sequence:
 %G %L %G
 
+*link_ssp:
+%{fstack-protector|fstack-protector-all:-lssp_nonshared -lssp}
+
 *endfile:
-%{mgcn  : crtsavres.o%s %(endfile_gcn);  mogc|mvgc|mgcbios : crtsavres.o%s  %(endfile_ogc);  mads : crtsavres.o%s  %(endfile_ads); myellowknife : crtsavres.o%s        %(endfile_yellowknife) ;   mmvme        : crtsavres.o%s        %(endfile_mvme)        ;   msim         : crtsavres.o%s        %(endfile_sim)         ;   mwindiss     :                      %(endfile_windiss)     ;   mcall-freebsd: crtsavres.o%s        %(endfile_freebsd)     ;   mcall-linux  : crtsavres.o%s        %(endfile_linux)       ;   mcall-gnu    : crtsavres.o%s        %(endfile_gnu)         ;   mcall-netbsd : crtsavres.o%s        %(endfile_netbsd)      ;   mcall-openbsd: crtsavres.o%s        %(endfile_openbsd)     ;                : %(crtsavres_default) %(endfile_default)     }
+%{mgcn  : crtsavres.o%s %(endfile_gcn);  mogc|mvgc|mgcbios : crtsavres.o%s  %(endfile_ogc);  mads         : crtsavres.o%s        %(endfile_ads)         ;   myellowknife : crtsavres.o%s        %(endfile_yellowknife) ;   mmvme        : crtsavres.o%s        %(endfile_mvme)        ;   msim         : crtsavres.o%s        %(endfile_sim)         ;   mwindiss     :                      %(endfile_windiss)     ;   mcall-freebsd: crtsavres.o%s        %(endfile_freebsd)     ;   mcall-linux  : crtsavres.o%s        %(endfile_linux)       ;   mcall-gnu    : crtsavres.o%s        %(endfile_gnu)         ;   mcall-netbsd : crtsavres.o%s        %(endfile_netbsd)      ;   mcall-openbsd: crtsavres.o%s        %(endfile_openbsd)     ;                : %(crtsavres_default) %(endfile_default)     }
 
 *link:
-%{h*} %{v:-V} %{!msdata=none:%{G*}} %{msdata=none:-G0} %{YP,*} %{R*} %{Qy:} %{!Qn:-Qy} %(link_shlib) %{!Wl,-T*: %{!T*: %(link_start) }} %(link_target) %(link_os)
+%{!static:--eh-frame-hdr} %{h*} %{v:-V} %{!msdata=none:%{G*}} %{msdata=none:-G0} %{YP,*} %{R*} %{Qy:} %{!Qn:-Qy} %(link_shlib) %{!Wl,-T*: %{!T*: %(link_start) }} %(link_target) %(link_os)
 
 *lib:
-%{mgcn  : %(lib_gcn); mogc|mvgc|mgcbios  : %(lib_ogc); mads  : %(lib_ads);  myellowknife : %(lib_yellowknife) ;   mmvme        : %(lib_mvme)        ;   msim         : %(lib_sim)         ;   mwindiss     : %(lib_windiss)     ;   mcall-freebsd: %(lib_freebsd)     ;   mcall-linux  : %(lib_linux)       ;   mcall-gnu    : %(lib_gnu)         ;   mcall-netbsd : %(lib_netbsd)      ;   mcall-openbsd: %(lib_openbsd)     ;                : %(lib_default)     }
+%{mgcn  : %(lib_gcn); mogc|mvgc|mgcbios  : %(lib_ogc); mads         : %(lib_ads)         ;   myellowknife : %(lib_yellowknife) ;   mmvme        : %(lib_mvme)        ;   msim         : %(lib_sim)         ;   mwindiss     : %(lib_windiss)     ;   mcall-freebsd: %(lib_freebsd)     ;   mcall-linux  : %(lib_linux)       ;   mcall-gnu    : %(lib_gnu)         ;   mcall-netbsd : %(lib_netbsd)      ;   mcall-openbsd: %(lib_openbsd)     ;                : %(lib_default)     }
+
+*mfwrap:
+ %{static: %{fmudflap|fmudflapth:  --wrap=malloc --wrap=free --wrap=calloc --wrap=realloc --wrap=mmap --wrap=munmap --wrap=alloca} %{fmudflapth: --wrap=pthread_create}} %{fmudflap|fmudflapth: --wrap=main}
+
+*mflib:
+%{fmudflap|fmudflapth: -export-dynamic}
 
 *libgcc:
 -lgcc
 
 *startfile:
-%{mgcn    : %(startfile_gcn) ; mogc|mvgc|mgcbios : %(startfile_ogc); mads : %(startfile_ads) ;  myellowknife : %(startfile_yellowknife) ;   mmvme        : %(startfile_mvme)        ;   msim         : %(startfile_sim)         ;   mwindiss     : %(startfile_windiss)     ;   mcall-freebsd: %(startfile_freebsd)     ;   mcall-linux  : %(startfile_linux)       ;   mcall-gnu    : %(startfile_gnu)         ;   mcall-netbsd : %(startfile_netbsd)      ;   mcall-openbsd: %(startfile_openbsd)     ;                : %(startfile_default)     }
+%{mgcn    : %(startfile_gcn) ; mogc|mvgc|mgcbios : %(startfile_ogc); mads         : %(startfile_ads)         ;   myellowknife : %(startfile_yellowknife) ;   mmvme        : %(startfile_mvme)        ;   msim         : %(startfile_sim)         ;   mwindiss     : %(startfile_windiss)     ;   mcall-freebsd: %(startfile_freebsd)     ;   mcall-linux  : %(startfile_linux)       ;   mcall-gnu    : %(startfile_gnu)         ;   mcall-netbsd : %(startfile_netbsd)      ;   mcall-openbsd: %(startfile_openbsd)     ;                : %(startfile_default)     }
 
 *switches_need_spaces:
 
@@ -63,7 +72,7 @@ cc1 -E %{traditional|ftraditional|traditional-cpp:-traditional-cpp}
 1
 
 *version:
-4.0.1
+4.1.2
 
 *multilib:
 . ;
@@ -101,6 +110,9 @@ collect2
 *startfile_prefix_spec:
 
 
+*sysroot_spec:
+--sysroot=%R
+
 *sysroot_suffix_spec:
 
 
@@ -111,7 +123,7 @@ collect2
 
 
 *asm_cpu:
-%{!mcpu*:   %{mpower: %{!mpower2: -mpwr}}   %{mpower2: -mpwrx}   %{mpowerpc*: -mppc}   %{mno-power: %{!mpowerpc*: -mcom}}   %{!mno-power: %{!mpower2: %(asm_default)}}} %{mcpu=common: -mcom} %{mcpu=power: -mpwr} %{mcpu=power2: -mpwrx} %{mcpu=power3: -m604} %{mcpu=power4: -mpower4} %{mcpu=powerpc: -mppc} %{mcpu=rios: -mpwr} %{mcpu=rios1: -mpwr} %{mcpu=rios2: -mpwrx} %{mcpu=rsc: -mpwr} %{mcpu=rsc1: -mpwr} %{mcpu=401: -mppc} %{mcpu=403: -m403} %{mcpu=405: -m405} %{mcpu=405fp: -m405} %{mcpu=440: -m440} %{mcpu=440fp: -m440} %{mcpu=505: -mppc} %{mcpu=601: -m601} %{mcpu=602: -mppc} %{mcpu=603: -mppc} %{mcpu=603e: -mppc} %{mcpu=ec603e: -mppc} %{mcpu=604: -mppc} %{mcpu=604e: -mppc} %{mcpu=620: -mppc} %{mcpu=630: -m604} %{mcpu=740: -mppc} %{mcpu=7400: -mppc} %{mcpu=7450: -mppc} %{mcpu=G4: -mppc} %{mcpu=750: -mppc} %{mcpu=G3: -mppc} %{mcpu=801: -mppc} %{mcpu=821: -mppc} %{mcpu=823: -mppc} %{mcpu=860: -mppc} %{mcpu=970: -mpower4} %{mcpu=G5: -mpower4} %{mcpu=8540: -me500} %{maltivec: -maltivec}
+%{!mcpu*:   %{mpower: %{!mpower2: -mpwr}}   %{mpower2: -mpwrx}   %{mpowerpc64*: -mppc64}   %{!mpowerpc64*: %{mpowerpc*: -mppc}}   %{mno-power: %{!mpowerpc*: -mcom}}   %{!mno-power: %{!mpower*: %(asm_default)}}} %{mcpu=common: -mcom} %{mcpu=power: -mpwr} %{mcpu=power2: -mpwrx} %{mcpu=power3: -mppc64} %{mcpu=power4: -mpower4} %{mcpu=power5: -mpower4} %{mcpu=power5+: -mpower4} %{mcpu=power6: -mpower4 -maltivec} %{mcpu=powerpc: -mppc} %{mcpu=rios: -mpwr} %{mcpu=rios1: -mpwr} %{mcpu=rios2: -mpwrx} %{mcpu=rsc: -mpwr} %{mcpu=rsc1: -mpwr} %{mcpu=rs64a: -mppc64} %{mcpu=401: -mppc} %{mcpu=403: -m403} %{mcpu=405: -m405} %{mcpu=405fp: -m405} %{mcpu=440: -m440} %{mcpu=440fp: -m440} %{mcpu=505: -mppc} %{mcpu=601: -m601} %{mcpu=602: -mppc} %{mcpu=603: -mppc} %{mcpu=603e: -mppc} %{mcpu=ec603e: -mppc} %{mcpu=604: -mppc} %{mcpu=604e: -mppc} %{mcpu=620: -mppc64} %{mcpu=630: -mppc64} %{mcpu=740: -mppc} %{mcpu=750: -mppc} %{mcpu=G3: -mppc} %{mcpu=7400: -mppc -maltivec} %{mcpu=7450: -mppc -maltivec} %{mcpu=G4: -mppc -maltivec} %{mcpu=801: -mppc} %{mcpu=821: -mppc} %{mcpu=823: -mppc} %{mcpu=860: -mppc} %{mcpu=970: -mpower4 -maltivec} %{mcpu=G5: -mpower4 -maltivec} %{mcpu=8540: -me500} %{maltivec: -maltivec} -many
 
 *asm_default:
 -mppc
@@ -183,7 +195,7 @@ ecrti.o%s sim-crt0.o%s crtbegin.o%s
 %{!shared: %{!static: %{pg:gcrt1.o%s} %{!pg:%{p:gcrt1.o%s} %{!p:crt1.o%s}}}} %{static: %{pg:gcrt0.o%s} %{!pg:%{p:gcrt0.o%s} %{!p:crt0.o%s}}} %{mnewlib: ecrti.o%s} %{!mnewlib: crti.o%s} %{!shared:crtbegin.o%s} %{shared:crtbeginS.o%s}
 
 *startfile_linux:
-%{!shared: %{pg|p:gcrt1.o%s;pie:Scrt1.o%s;:crt1.o%s}} %{mnewlib:ecrti.o%s;:crti.o%s} %{static:crtbeginT.o%s;shared|pie:crtbeginS.o%s;:crtbegin.o%s}
+%{!shared: %{pg|p|profile:gcrt1.o%s;pie:Scrt1.o%s;:crt1.o%s}} %{mnewlib:ecrti.o%s;:crti.o%s} %{static:crtbeginT.o%s;shared|pie:crtbeginS.o%s;:crtbegin.o%s}
 
 *startfile_netbsd:
 ncrti.o%s crt0.o%s %{!shared:crtbegin.o%s} %{shared:crtbeginS.o%s}
@@ -222,7 +234,7 @@ crtend.o%s ecrtn.o%s
 %{!shared:crtend.o%s} %{shared:crtendS.o%s} %{mnewlib: ecrtn.o%s} %{!mnewlib: crtn.o%s}
 
 *endfile_linux:
-%{!shared:crtend.o%s} %{shared:crtendS.o%s} %{mnewlib: ecrtn.o%s} %{!mnewlib: crtn.o%s}
+%{shared|pie:crtendS.o%s;:crtend.o%s} %{mnewlib:ecrtn.o%s;:crtn.o%s}
 
 *endfile_netbsd:
 %{!shared:crtend.o%s} %{shared:crtendS.o%s} ncrtn.o%s
@@ -246,7 +258,7 @@ crtend.o%s
 %{mlittle: --oformat elf32-powerpcle } %{mlittle-endian: --oformat elf32-powerpcle } %{!mlittle: %{!mlittle-endian: %{!mbig: %{!mbig-endian:     %{mcall-i960-old: --oformat elf32-powerpcle}   }}}}
 
 *link_start:
-%{mgcn         : %(link_start_gcn); mogc   : %(link_start_ogc); mvgc   : %(link_start_vgc); mgcbios   : %(link_start_gcb); mads   : %(link_start_ads);   myellowknife : %(link_start_yellowknife) ;   mmvme        : %(link_start_mvme)        ;   msim         : %(link_start_sim)         ;   mwindiss     : %(link_start_windiss)     ;   mcall-freebsd: %(link_start_freebsd)     ;   mcall-linux  : %(link_start_linux)       ;   mcall-gnu    : %(link_start_gnu)         ;   mcall-netbsd : %(link_start_netbsd)      ;   mcall-openbsd: %(link_start_openbsd)     ;                : %(link_start_default)     }
+%{mgcn         : %(link_start_gcn); mogc   : %(link_start_ogc); mvgc   : %(link_start_vgc); mgcbios   : %(link_start_gcb); mads         : %(link_start_ads)         ;   myellowknife : %(link_start_yellowknife) ;   mmvme        : %(link_start_mvme)        ;   msim         : %(link_start_sim)         ;   mwindiss     : %(link_start_windiss)     ;   mcall-freebsd: %(link_start_freebsd)     ;   mcall-linux  : %(link_start_linux)       ;   mcall-gnu    : %(link_start_gnu)         ;   mcall-netbsd : %(link_start_netbsd)      ;   mcall-openbsd: %(link_start_openbsd)     ;                : %(link_start_default)     }
 
 *link_start_gcn:
 -T ogc.ld%s
@@ -315,7 +327,7 @@ crtend.o%s
 -m elf32ppcsim
 
 *link_os_freebsd:
-  %{p:%e`-p' not supported; use `-pg' and gprof(1)}   %{Wl,*:%*}   %{v:-V}   %{assert*} %{R*} %{rpath*} %{defsym*}   %{shared:-Bshareable %{h*} %{soname*}}   %{!shared:     %{!static:       %{rdynamic: -export-dynamic}       %{!dynamic-linker:-dynamic-linker %(fbsd_dynamic_linker) }}     %{static:-Bstatic}}   %{symbolic:-Bsymbolic}
+  %{p:%nconsider using `-pg' instead of `-p' with gprof(1)}   %{v:-V}   %{assert*} %{R*} %{rpath*} %{defsym*}   %{shared:-Bshareable %{h*} %{soname*}}   %{!shared:     %{!static:       %{rdynamic: -export-dynamic}       %{!dynamic-linker:-dynamic-linker %(fbsd_dynamic_linker) }}     %{static:-Bstatic}}   %{symbolic:-Bsymbolic}
 
 *link_os_linux:
 -m elf32ppclinux %{!shared: %{!static:   %{rdynamic:-export-dynamic}   %{!dynamic-linker:-dynamic-linker /lib/ld.so.1}}}
@@ -347,7 +359,7 @@ crtend.o%s
 *cc1_endian_default:
 %(cc1_endian_big)
 
-*cc1plus_os_ogc:
+*cc1_secure_plt_default:
 
 
 *cpp_os_gcn:
@@ -384,7 +396,7 @@ crtend.o%s
 %{posix:-D_POSIX_SOURCE} %{pthread:-D_POSIX_THREADS}
 
 *cpp_os_windiss:
--D__rtasim -D__EABI__ -D__ppc %{!msoft-float: -D__hardfp}
+-D__rtasim -D__EABI__ -D__ppc %{!msoft-float: -D__hardfp} 
 
 *cpp_os_default:
 
@@ -393,5 +405,5 @@ crtend.o%s
 /usr/libexec/ld-elf.so.1
 
 *link_command:
-%{!fsyntax-only:%{!c:%{!M:%{!MM:%{!E:%{!S:    %(linker) %l %{pie:-pie} %X %{o*} %{A} %{d} %{e*} %{m} %{N} %{n} %{r}    %{s} %{t} %{u*} %{x} %{z} %{Z} %{!A:%{!nostdlib:%{!nostartfiles:%S}}}    %{static:} %{L*} %(link_libgcc) %o %{fprofile-arcs|fprofile-generate:-lgcov}    %{!nostdlib:%{!nodefaultlibs:%(link_gcc_c_sequence)}}    %{!A:%{!nostdlib:%{!nostartfiles:%E}}} %{T*} }}}}}}
+%{!fsyntax-only:%{!c:%{!M:%{!MM:%{!E:%{!S:    %(linker) %l %{pie:-pie} %X %{o*} %{A} %{d} %{e*} %{m} %{N} %{n} %{r}    %{s} %{t} %{u*} %{x} %{z} %{Z} %{!A:%{!nostdlib:%{!nostartfiles:%S}}}    %{static:} %{L*} %(mfwrap) %(link_libgcc) %o %(mflib)    %{fprofile-arcs|fprofile-generate|coverage:-lgcov}    %{!nostdlib:%{!nodefaultlibs:%(link_ssp) %(link_gcc_c_sequence)}}    %{!A:%{!nostdlib:%{!nostartfiles:%E}}} %{T*} }}}}}}
 
