@@ -20,7 +20,6 @@ OBJCOPY		:=	$(PREFIX)-objcopy
 
 BUILD		:=	build
 
-SPECS		:=	$(shell $(DEVKITPPC)/bin/$(CC) -v 2>&1)
 GCC_VERSION	:=	$(shell $(DEVKITPPC)/bin/$(CC) -dumpversion)
 DATESTRING	:=	$(shell date +%Y)$(shell date +%m)$(shell date +%d)
 
@@ -68,7 +67,7 @@ INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/z
 
 MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -ffunction-sections -fdata-sections
-CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -O2 -Wall $(MACHDEP) $(INCLUDES)
+CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -O2 -Wall $(MACHDEP) -fno-strict-aliasing $(INCLUDES)
 LDFLAGS		:=
 
 #---------------------------------------------------------------------------------
@@ -163,7 +162,7 @@ STUBSOBJ	:=	malloc_lock_stub.o flock_supp_stub.o lock_supp_stub.o gcn_crt0.o
 %.o : %.S
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
-	@$(CC) -MMD -MF $(DEPSDIR)/$*.d $(CFLAGS) -D_LANGUAGE_ASSEMBLY -Wa,-mgekko -c $< -o $@
+	@$(CC) -MMD -MF $(DEPSDIR)/$*.d $(CFLAGS) -D_LANGUAGE_ASSEMBLY  -c $< -o $@
 
 #---------------------------------------------------------------------------------
 %.o : %.s
@@ -233,7 +232,7 @@ install: install-headers
 	@cp -fv ogc.ld $(DEVKITPPC)/$(PREFIX)/lib/ogc.ld
 	@cp -fv vgcogc.ld $(DEVKITPPC)/$(PREFIX)/lib/vgcogc.ld
 	@cp -fv gcbogc.ld $(DEVKITPPC)/$(PREFIX)/lib/gcbogc.ld
-	@cp -fv specs.ogc $(DEVKITPPC)/lib/gcc/$(PREFIX)/$(GCC_VERSION)/specs
+	@cp -fv specs.$(GCC_VERSION) $(DEVKITPPC)/lib/gcc/$(PREFIX)/$(GCC_VERSION)/specs
 
 #---------------------------------------------------------------------------------
 dist: install-headers
