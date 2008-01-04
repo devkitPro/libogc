@@ -1056,6 +1056,8 @@ static s32 __card_setblocklen(s32 drv_no,u32 block_len)
 #ifdef _CARDIO_DEBUG
 	printf("__card_setblocklen(%d,%d)\n",drv_no,block_len);
 #endif
+	if(block_len>512)
+		block_len = 512;    // it's in the specs
 	cmd[0] = 0x10;
 	cmd[1] = (block_len>>24)&0xff;
 	cmd[2] = (block_len>>16)&0xff;
@@ -1314,7 +1316,7 @@ s32 card_readSector(s32 drv_no,u32 sector_no,u8 *buf,u32 len)
 	if(ret!=0) return ret;
 
 	read_len = (1<<READ_BL_LEN(drv_no));
-	if(len<1 || len>read_len) return CARDIO_ERROR_INTERNAL;
+	if(len<1 || len>512) return CARDIO_ERROR_INTERNAL;
 #ifdef _CARDIO_DEBUG
 	printf("card_readSector(%d,%d,%d(%d),%d)\n",drv_no,sector_no,len,read_len,_ioPageSize[drv_no]);
 #endif
@@ -1345,7 +1347,7 @@ s32 card_writeSector(s32 drv_no,u32 sector_no,const void *buf,u32 len)
 	if(ret!=0) return ret;
 
 	write_len = (1<<WRITE_BL_LEN(drv_no));
-	if(len!=write_len) return CARDIO_ERROR_INTERNAL;
+	if(len!=512) return CARDIO_ERROR_INTERNAL;
 #ifdef _CARDIO_DEBUG
 	printf("card_writeSector(%d,%d,%d(%d),%d)\n",drv_no,sector_no,len,write_len,_ioPageSize[drv_no]);
 #endif
@@ -1354,8 +1356,8 @@ s32 card_writeSector(s32 drv_no,u32 sector_no,const void *buf,u32 len)
 	arg[2] = (sector_no<<1)&0xff;
 	arg[3] = (sector_no<<9)&0xff;
 
-	if(write_len!=_ioPageSize[drv_no]) {
-		_ioPageSize[drv_no] = write_len;
+	if(len!=_ioPageSize[drv_no]) {
+		_ioPageSize[drv_no] = len;
 		if((ret=__card_setblocklen(drv_no,_ioPageSize[drv_no]))!=0) return ret;
 	}
 	if((ret=__card_sendcmd(drv_no,0x18,arg))!=0) return ret;
@@ -1383,14 +1385,14 @@ s32 card_erasePartialBlock(s32 drv_no,u32 block_no,u32 offset,u32 len)
 	printf("card_eraseBlock(%d,%d,%d,%d)\n",drv_no,block_no,offset,len);
 #endif
 	write_len = (1<<WRITE_BL_LEN(drv_no));
-	if(len<write_len || len%write_len) return CARDIO_ERROR_INTERNAL; 
+	if(len<512 || len%512) return CARDIO_ERROR_INTERNAL;
 
 	sects_per_block = (1<<(C_SIZE_MULT(drv_no)+2));
 
 	sect_start = block_no*sects_per_block;
-	sect_start += (offset/write_len);
+	sect_start += (offset/512);
 
-	sect_end = (sect_start+(len/write_len));
+	sect_end = (sect_start+(len/512));
 
 	arg[0] = (sect_start>>15)&0xff;
 	arg[1] = (sect_start>>7)&0xff;
