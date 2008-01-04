@@ -1,6 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: aram.c,v 1.9 2006-04-10 05:23:59 shagkur Exp $
 
 aram.c -- ARAM subsystem
 
@@ -26,16 +25,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.8  2005/12/09 09:35:45  shagkur
-no message
-
-Revision 1.7  2005/11/23 16:36:03  shagkur
-- moved a define from .h
-
-Revision 1.6  2005/11/21 10:49:32  shagkur
-no message
 
 
 -------------------------------------------------------------*/
