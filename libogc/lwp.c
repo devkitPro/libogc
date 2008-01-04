@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-$Id: lwp.c,v 1.30 2007-01-11 10:51:56 wntrmute Exp $
+$Id: lwp.c,v 1.31 2008-01-04 22:02:42 wntrmute Exp $
 
 lwp.c -- Thread subsystem I
 
@@ -28,6 +28,9 @@ must not be misrepresented as being the original software.
 distribution.
 
 $Log: not supported by cvs2svn $
+Revision 1.30  2007/01/11 10:51:56  wntrmute
+sychronise with Shagkur's tree
+
 Revision 1.28  2006/05/06 18:07:25  shagkur
 - fixed bugs in gx.c
 
@@ -161,6 +164,8 @@ static void* idle_func(void *arg)
 	return 0;
 }
 
+void __main();
+
 void __lwp_sysinit()
 {
 	__lwp_objmgr_initinfo(&_lwp_thr_objects,LWP_MAX_THREADS,sizeof(lwp_cntrl));
@@ -178,7 +183,7 @@ void __lwp_sysinit()
 	_thr_main = (lwp_cntrl*)__lwp_objmgr_allocate(&_lwp_thr_objects);
 	__lwp_thread_init(_thr_main,__stack_end,((u32)__stack_addr-(u32)__stack_end),191,0,TRUE);
 	_thr_executing = _thr_heir = _thr_main;
-	__lwp_thread_start(_thr_main,(void*)main,NULL);
+	__lwp_thread_start(_thr_main,(void*)__main,NULL);
 	__lwp_objmgr_open(&_lwp_thr_objects,&_thr_main->object);
 }
 

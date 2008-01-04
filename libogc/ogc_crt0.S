@@ -21,7 +21,7 @@
 	.extern __CacheInit
 	.extern __SystemInit
 	.extern __sbss_start, __bss_end
-	.globl _start
+	.globl _start, __main
 _start:
 	bl		InitGPRS			# Initialize the General Purpose Registers
 	bl      FPRInit			 	# Initialize the FPR's
@@ -43,13 +43,18 @@ _start:
 	sub		r5,r5,r3
 	bl		_memset
 
-1:	bl		__init
+1:	
 	bl      SYS_Init # Branch to the user code!
-	bl		__fini
 
 eloop:
 //	bl __sdloader_boot
 	b eloop			# If the main function returns, which should never happen then just loop endlessly.
+
+__main:
+	bl		__init
+	bl		main
+	bl		__fini
+	blr
 
 InitGPRS:
 	# Clear all of the GPR's to 0
