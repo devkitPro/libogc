@@ -30,7 +30,6 @@
  * 
  * Author: Adam Dunkels <adam@sics.se>
  *
- * $Id: cc.h,v 1.4 2005-06-06 07:23:52 shagkur Exp $
  */
 #ifndef __ARCH_CC_H__
 #define __ARCH_CC_H__
@@ -50,7 +49,7 @@ typedef s32		s32_t;
 typedef u32		mem_ptr_t;
 
 
-#define PACK_STRUCT_FIELD(x) x __attribute__((packed))
+#define PACK_STRUCT_FIELD(x) x
 #define PACK_STRUCT_STRUCT __attribute__((packed))
 #define PACK_STRUCT_BEGIN
 #define PACK_STRUCT_END

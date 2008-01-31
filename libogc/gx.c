@@ -1392,7 +1392,7 @@ void GX_LoadProjectionMtx(Mtx44 mt,u8 type)
 {
 	f32 tmp[7];
 
-	((u32*)tmp)[6] = (u32)type;
+	((u32*)((void*)tmp))[6] = (u32)type;
 	tmp[0] = mt[0][0];
 	tmp[2] = mt[1][1];
 	tmp[4] = mt[2][2];
@@ -1748,6 +1748,7 @@ void GX_BeginDispList(void *list,u32 size)
 
 u32 GX_EndDispList()
 {
+	u32 val;
 	u32 level,ret = 0;
 	
 	if(_gx[0x09])
@@ -1756,7 +1757,7 @@ u32 GX_EndDispList()
 	__GX_SaveCPUFifoAux(&_gx_dl_fifo);
 	GX_SetCPUFifo(_gxoldcpufifo);
 
-	_SHIFTR(_piReg[5],26,1);
+	val = _SHIFTR(_piReg[5],26,1);
 	if(((u8*)_gx)[0x371]) {
 		_CPU_ISR_Disable(level);
 		memcpy(_gx,_gx_saved_data,1272);
@@ -3040,14 +3041,28 @@ void GX_SetTexCoordBias(u8 texcoord,u8 s_enable,u8 t_enable)
 
 GXTexRegionCallback GX_SetTexRegionCallback(GXTexRegionCallback cb)
 {
+	u32 level;
+	GXTexRegionCallback ret;
+
+	_CPU_ISR_Disable(level);
+	ret = regionCB;
 	regionCB = cb;
-	return cb;
+	_CPU_ISR_Restore(level);
+
+	return ret;
 }
 
 GXTlutRegionCallback GX_SetTlutRegionCallback(GXTlutRegionCallback cb)
 {
+	u32 level;
+	GXTlutRegionCallback ret;
+
+	_CPU_ISR_Disable(level);
+	ret = tlut_regionCB;
 	tlut_regionCB = cb;
-	return cb;
+	_CPU_ISR_Restore(level);
+
+	return ret;
 }
 
 void GX_SetBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op)
@@ -3098,6 +3113,51 @@ void GX_SetTevColor(u8 tev_regid,GXColor color)
 	GX_LOAD_BP_REG(reg);
 
 	reg = (_SHIFTL((0xe1+(tev_regid<<1)),24,8)|(_SHIFTL(color.g,12,8))|(color.b&0xff));
+	GX_LOAD_BP_REG(reg);
+	
+	//this two calls should obviously flush the Write Gather Pipe.
+	GX_LOAD_BP_REG(reg);
+	GX_LOAD_BP_REG(reg);
+}
+
+void GX_SetTevColorS10(u8 tev_regid,GXColor color)
+{
+	u32 reg;
+
+	reg = (_SHIFTL((0xe0+(tev_regid<<1)),24,8)|(_SHIFTL(color.a,12,11))|(color.r&0x7ff));
+	GX_LOAD_BP_REG(reg);
+
+	reg = (_SHIFTL((0xe1+(tev_regid<<1)),24,8)|(_SHIFTL(color.g,12,11))|(color.b&0x7ff));
+	GX_LOAD_BP_REG(reg);
+	
+	//this two calls should obviously flush the Write Gather Pipe.
+	GX_LOAD_BP_REG(reg);
+	GX_LOAD_BP_REG(reg);
+}
+
+void GX_SetTevKColor(u8 tev_regid,GXColor color)
+{
+	u32 reg;
+
+	reg = (_SHIFTL((0xe0+(tev_regid<<1)),24,8)|(_SHIFTL(1,23,1))|(_SHIFTL(color.a,12,8))|(color.r&0xff));
+	GX_LOAD_BP_REG(reg);
+
+	reg = (_SHIFTL((0xe1+(tev_regid<<1)),24,8)|(_SHIFTL(1,23,1))|(_SHIFTL(color.g,12,8))|(color.b&0xff));
+	GX_LOAD_BP_REG(reg);
+	
+	//this two calls should obviously flush the Write Gather Pipe.
+	GX_LOAD_BP_REG(reg);
+	GX_LOAD_BP_REG(reg);
+}
+
+void GX_SetTevKColorS10(u8 tev_regid,GXColor color)
+{
+	u32 reg;
+
+	reg = (_SHIFTL((0xe0+(tev_regid<<1)),24,8)|(_SHIFTL(1,23,1))|(_SHIFTL(color.a,12,11))|(color.r&0x7ff));
+	GX_LOAD_BP_REG(reg);
+
+	reg = (_SHIFTL((0xe1+(tev_regid<<1)),24,8)|(_SHIFTL(1,23,1))|(_SHIFTL(color.g,12,11))|(color.b&0x7ff));
 	GX_LOAD_BP_REG(reg);
 	
 	//this two calls should obviously flush the Write Gather Pipe.

@@ -15,7 +15,7 @@
 #define EX_SYS_CALL			 9
 #define EX_TRACE			10
 #define EX_PERF				11
-#define EX_IBAR				12
+#define EX_IABR				12
 #define EX_RESV				13
 #define EX_THERM			14
 
@@ -38,7 +38,8 @@ typedef struct _excption_frame {
 	u16 mode;		//unused
 
 	f64 FPR[32];
-	f64	FPSCR;
+	u32 FPSCR_PAD;
+	u32	FPSCR;
 	f64 PSFPR[32];
 } frame_context;
 

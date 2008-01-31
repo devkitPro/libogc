@@ -55,6 +55,6 @@ struct uip_netif;
 
 
 void uip_icmpinput(struct uip_pbuf *p,struct uip_netif *inp);
-void uip_icpm_destunreach(struct uip_pbuf *p,enum uip_icmp_dur_type t);
+void uip_icmp_destunreach(struct uip_pbuf *p,enum uip_icmp_dur_type t);
 
 #endif

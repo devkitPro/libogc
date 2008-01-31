@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: video.c,v 1.46 2006-05-06 18:07:48 shagkur Exp $
-
 video.c -- VIDEO subsystem
 
 Copyright (C) 2004
@@ -26,23 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.45  2006/05/02 09:38:59  shagkur
-- made VIDEO_Init(), ISR safe
-
-Revision 1.44  2006/04/10 05:30:55  shagkur
-- changed calls to thread queue functions to meet the new prototypes.
-
-Revision 1.43  2005/12/09 09:35:45  shagkur
-no message
-
-Revision 1.42  2005/11/22 07:19:15  shagkur
-- added internal function to retrieve the next framebuffer address. used for the console window initialization.
-
-Revision 1.41  2005/11/21 12:35:32  shagkur
-no message
-
 
 -------------------------------------------------------------*/
 

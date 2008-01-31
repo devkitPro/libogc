@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: dvd.h,v 1.27 2007-01-11 10:51:56 wntrmute Exp $
-
 dvd.h -- DVD subsystem
 
 Copyright (C) 2004
@@ -26,22 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.25  2006/01/18 18:21:44  shagkur
-- Added DVD_SetAutoInvalidation
-
-Revision 1.24  2005/12/09 09:21:32  shagkur
-no message
-
-Revision 1.23  2005/11/24 14:29:22  shagkur
-- added more function documentation
-
-Revision 1.22  2005/11/23 07:51:59  shagkur
-- Added copyright header(taken from libnds).
-- Introduced RCS ID and LOG tokens.
-- documentation started in doxygen style
-
 
 -------------------------------------------------------------*/
 
@@ -94,6 +76,7 @@ Revision 1.22  2005/11/23 07:51:59  shagkur
 
 #define DVD_RESETHARD					0			/*!< Performs a hard reset. Complete new boot of FW. */
 #define DVD_RESETSOFT					1			/*!< Performs a soft reset. FW restart and drive spinup */
+#define DVD_RESETNONE					2			/*!< Only initiate DI registers */
 
 /*!
  * @}
@@ -371,6 +354,9 @@ s32 DVD_ReadDiskID(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb);
 u32 DVD_SetAutoInvalidation(u32 auto_inv);
 dvddiskid* DVD_GetCurrentDiskID();
 dvddrvinfo* DVD_GetDriveInfo();
+
+#define DVD_SetUserData(block, data) ((block)->usrdata = (data))
+#define DVD_GetUserData(block)       ((block)->usrdata)
 
 #ifdef __cplusplus
    }

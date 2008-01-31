@@ -1,6 +1,5 @@
 /*-------------------------------------------------------------
 
-
 aram.c -- ARAM subsystem
 
 Copyright (C) 2004
@@ -25,7 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
 
 -------------------------------------------------------------*/
 
@@ -96,7 +94,7 @@ u32 AR_GetDMAStatus()
 {
 	u32 level,ret;
 	_CPU_ISR_Disable(level);
-	ret = (_dspReg[5]&DSPCR_ARDMA);
+	ret = ((_dspReg[5]&DSPCR_ARDMA)==DSPCR_ARDMA);
 	_CPU_ISR_Restore(level);
 	return ret;
 }

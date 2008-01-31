@@ -30,6 +30,7 @@ typedef struct _keyinput {
 	u16 down;
 	u16 state;
 	u16 oldstate;
+	u32 chan;
 } keyinput;
 
 typedef void (*SPECCallback)(u32,u32*,PADStatus*);
@@ -296,7 +297,7 @@ static void __pad_originupdatecallback(s32 chan,u32 type)
 
 	if(en_bits) {
 		if(!(type&0x0f)) __pad_updateorigin(chan);
-		if(type&0x08) __pad_disable(chan);
+		if(type&SI_ERROR_NO_RESPONSE) __pad_disable(chan);
 	}
 }
 
@@ -316,8 +317,8 @@ static void __pad_typeandstatuscallback(s32 chan,u32 type)
 	}
 	
 	__pad_type[__pad_resettingchan] = (type&~0xff);
-	if(((type&0x18000000)-0x08000000)
-		|| !(type&0x01000000)) {
+	if(((type&SI_TYPE_MASK)-SI_TYPE_GC)
+		|| !(type&SI_GC_STANDARD)) {
 		__pad_doreset();
 		return;
 	}
@@ -328,11 +329,11 @@ static void __pad_typeandstatuscallback(s32 chan,u32 type)
 		return;
 	}
 	
-	if(!(type&0x80000000) || type&0x04000000) {
+	if(!(type&SI_GC_WIRELESS) || type&SI_WIRELESS_IR) {
 		if(recal_bits) ret = SI_Transfer(__pad_resettingchan,&__pad_cmdcalibrate,3,__pad_origin[__pad_resettingchan],10,__pad_origincallback,0);
 		else ret = SI_Transfer(__pad_resettingchan,&__pad_cmdreadorigin,1,__pad_origin[__pad_resettingchan],10,__pad_origincallback,0);
-	} else if(type&0x00100000 && !(type&0x00080000) && !(type&0x00040000)) {
-		if(type&0x40000000) ret = SI_Transfer(__pad_resettingchan,&__pad_cmdreadorigin,1,__pad_origin[__pad_resettingchan],10,__pad_origincallback,0);
+	} else if(type&SI_WIRELESS_FIX_ID && !(type&SI_WIRELESS_CONT_MASK) && !(type&SI_WIRELESS_LITE)) {
+		if(type&SI_WIRELESS_RECEIVED) ret = SI_Transfer(__pad_resettingchan,&__pad_cmdreadorigin,1,__pad_origin[__pad_resettingchan],10,__pad_origincallback,0);
 		else ret = SI_Transfer(__pad_resettingchan,&__pad_cmdprobedevice[__pad_resettingchan],3,__pad_origin[__pad_resettingchan],8,__pad_probecallback,0);
 	}
 	if(!ret) {
@@ -353,7 +354,9 @@ static void __pad_receivecheckcallback(s32 chan,u32 type)
 		type &= ~0xff;
 		__pad_waitingbits &= ~mask;
 		__pad_checkingbits &= ~mask;
-		if(!(tmp&0x0f) && type&0x80100000 && !(type&0x040C0000))  SI_Transfer(chan,&__pad_cmdreadorigin,1,__pad_origin[chan],10,__pad_originupdatecallback,0);
+		if(!(tmp&0x0f) 
+			&& (type&SI_GC_WIRELESS) && (type&SI_WIRELESS_RECEIVED) && (type&SI_WIRELESS_FIX_ID) 
+			&& !(type&SI_WIRELESS_IR) && !(type&SI_WIRELESS_CONT_MASK) && !(type&SI_WIRELESS_LITE))  SI_Transfer(chan,&__pad_cmdreadorigin,1,__pad_origin[chan],10,__pad_originupdatecallback,0);
 		else __pad_disable(chan);
 	}
 }
@@ -383,6 +386,7 @@ static void __pad_disable(u32 chan)
 	__pad_waitingbits &= ~mask;
 	__pad_pendingbits &= ~mask;
 	__pad_checkingbits &= ~mask;
+	SYS_SetWirelessID(chan,0);
 	_CPU_ISR_Restore(level);
 }
 
@@ -438,6 +442,7 @@ u32 PAD_Init()
 
 	chan = 0;
 	while(chan<4) {
+		__pad_keys[chan].chan = -1;
 		__pad_cmdprobedevice[chan] = 0x4d000000|(chan<<22)|_SHIFTL(prodpads,8,14);
 		chan++;
 	}
@@ -463,7 +468,7 @@ u32 PAD_Read(PADStatus *status)
 	while(chan<4) {
 		mask = PAD_ENABLEDMASK(chan);
 #ifdef _PAD_DEBUG
-		printf("PAD_Read(%d,%d,%d,%d,%d)\n",chan,__pad_resettingchan,!!(__pad_pendingbits&mask),!!(__pad_resettingbits&mask),!(__pad_enabledbits&mask));
+		printf("PAD_Read(%d,%d,%08x,%08x,%08x)\n",chan,__pad_resettingchan,(__pad_pendingbits&mask),(__pad_resettingbits&mask),(__pad_enabledbits&mask));
 #endif
 		if(__pad_pendingbits&mask) {
 			PAD_Reset(0);
@@ -484,7 +489,7 @@ u32 PAD_Read(PADStatus *status)
 #ifdef _PAD_DEBUG
 				printf("PAD_Read(%08x)\n",sistatus);
 #endif
-				if(sistatus&0x08) {
+				if(sistatus&SI_ERROR_NO_RESPONSE) {
 #ifdef _PAD_DEBUG
 					printf("PAD_Read(%08x)\n",sistatus);
 #endif
@@ -506,7 +511,7 @@ u32 PAD_Read(PADStatus *status)
 #ifdef _PAD_DEBUG
 					printf("PAD_Read(%08x)\n",type);
 #endif
-					if(!(type&0x02000000)) ret |= mask;
+					if(!(type&SI_WIRELESS_STATE)) ret |= mask;
 					if(!SI_GetResponse(chan,buf)
 						|| buf[0]&0x80000000) {
 #ifdef _PAD_DEBUG
@@ -608,7 +613,7 @@ void PAD_ControlMotor(s32 chan,u32 cmd)
 	mask = PAD_ENABLEDMASK(chan);
 	if(__pad_enabledbits&mask) {
 		type = SI_GetType(chan);
-		if(!(type&0x20000000)) {
+		if(!(type&SI_GC_NOMOTOR)) {
 			if(__pad_spec<2 && cmd==PAD_MOTOR_STOP_HARD) cmd = 0;
 
 			cmd = 0x00400000|__pad_analogmode|(cmd&0x03);
@@ -634,119 +639,99 @@ sampling_callback PAD_SetSamplingCallback(sampling_callback cb)
 	return ret;
 }
 
-void PAD_ScanPads(u32 dummy)
+u32 PAD_ScanPads()
 {
 	s32 i;
-	u32 level;
+	u32 padBit,connected;
+	u32 connBits,resetBits;
 	u16 state,oldstate;
 	PADStatus padstatus[PAD_CHANMAX];
 	
-	PAD_Read(padstatus);
+	connBits = 0;
+	resetBits = 0;
+	connected = 0;
 
-	_CPU_ISR_Disable(level);
+	PAD_Read(padstatus);
 	for(i=0;i<PAD_CHANMAX;i++) {
-		oldstate				= __pad_keys[i].state; 
-		state					= padstatus[i].button;
-		__pad_keys[i].stickX	= padstatus[i].stickX;
-		__pad_keys[i].stickY	= padstatus[i].stickY;
-		__pad_keys[i].substickX	= padstatus[i].substickX;
-		__pad_keys[i].substickY	= padstatus[i].substickY;
-		__pad_keys[i].up		= (oldstate^state)&oldstate;
-		__pad_keys[i].down		= (oldstate^state)&state;
-		__pad_keys[i].oldstate	= oldstate;
-		__pad_keys[i].state		= state;
-	}			
-	_CPU_ISR_Restore(level);
+		padBit = PAD_CHAN0_BIT>>i;
+		if(padstatus[i].err==PAD_ERR_NONE
+			|| padstatus[i].err==PAD_ERR_TRANSFER) {
+			if(padstatus[i].err==PAD_ERR_NONE) {
+				oldstate				= __pad_keys[i].state; 
+				state					= padstatus[i].button;
+				__pad_keys[i].stickX	= padstatus[i].stickX;
+				__pad_keys[i].stickY	= padstatus[i].stickY;
+				__pad_keys[i].substickX	= padstatus[i].substickX;
+				__pad_keys[i].substickY	= padstatus[i].substickY;
+				__pad_keys[i].up		= (oldstate^state)&oldstate;
+				__pad_keys[i].down		= (oldstate^state)&state;
+				__pad_keys[i].oldstate	= oldstate;
+				__pad_keys[i].state		= state;
+				__pad_keys[i].chan		= i;
+			}
+			connBits |= padBit;
+			connected |= (1<<i);
+		} else if(padstatus[i].err==PAD_ERR_NO_CONTROLLER) {
+			if(__pad_keys[i].chan!=-1) memset(&__pad_keys[i],0,sizeof(keyinput));
+			__pad_keys[i].chan = -1;
+			resetBits |= padBit;
+		} else {
+			if(__pad_keys[i].chan!=-1) memset(&__pad_keys[i],0,sizeof(keyinput));
+			__pad_keys[i].chan = -1;
+			break;
+		}
+	}
+	if(connBits) {
+		resetBits &= connBits;
+	}
+#ifdef _PAD_DEBUG
+	printf("connBits = %08x, resetBits = %08x\n",connBits,resetBits);
+#endif
+	if(resetBits) {
+		PAD_Reset(resetBits);
+	}
+	return connected;
 }
 
 
 u16 PAD_ButtonsUp(int pad)
 {
-	u16 ret;
-	u32 level;
-
-	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
-
-	_CPU_ISR_Disable(level);
-	ret = __pad_keys[pad].up;
-	_CPU_ISR_Restore(level);
-	return ret;
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1) return 0;
+	return __pad_keys[pad].up;
 }
 
 u16 PAD_ButtonsDown(int pad)
 {
-	u16 ret;
-	u32 level;
-
-	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
-
-	_CPU_ISR_Disable(level);
-	ret = __pad_keys[pad].down;
-	_CPU_ISR_Restore(level);
-	return ret;
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1) return 0;
+	return __pad_keys[pad].down;
 }
 
 u16 PAD_ButtonsHeld(int pad)
 {
-	u16 ret;
-	u32 level;
-
-	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
-
-	_CPU_ISR_Disable(level);
-	ret = __pad_keys[pad].state;
-	_CPU_ISR_Restore(level);
-	return ret;
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1) return 0;
+	return __pad_keys[pad].state;
 }
 
 s8 PAD_SubStickX(int pad)
 {
-	s8 ret;
-	u32 level;
-
-	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
-
-	_CPU_ISR_Disable(level);
-	ret = __pad_keys[pad].substickX;
-	_CPU_ISR_Restore(level);
-	return ret;
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1) return 0;
+	return __pad_keys[pad].substickX;
 }
 
 s8 PAD_SubStickY(int pad)
 {
-	s8 ret;
-	u32 level;
-
-	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
-
-	_CPU_ISR_Disable(level);
-	ret = __pad_keys[pad].substickY;
-	_CPU_ISR_Restore(level);
-	return ret;
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1) return 0;
+	return __pad_keys[pad].substickY;
 }
 
 s8 PAD_StickX(int pad)
 {
-	s8 ret;
-	u32 level;
-
-	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
-
-	_CPU_ISR_Disable(level);
-	ret = __pad_keys[pad].stickX;
-	_CPU_ISR_Restore(level);
-	return ret;
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1) return 0;
+	return __pad_keys[pad].stickX;
 }
 
 s8 PAD_StickY(int pad)
 {
-	s8 ret;
-	u32 level;
-
-	if(pad<PAD_CHAN0 || pad>PAD_CHAN3) return 0;
-
-	_CPU_ISR_Disable(level);
-	ret = __pad_keys[pad].stickY;
-	_CPU_ISR_Restore(level);
-	return ret;
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1) return 0;
+	return __pad_keys[pad].stickY;
 }

@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: irq.c,v 1.17 2006-05-06 18:07:48 shagkur Exp $
-
 irq.h -- Interrupt subsystem
 
 Copyright (C) 2004
@@ -26,14 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.16  2005/12/09 09:35:45  shagkur
-no message
-
-Revision 1.15  2005/11/21 12:15:46  shagkur
-no message
-
 
 -------------------------------------------------------------*/
 
@@ -127,13 +117,7 @@ static void __irq_dump(u32 irqmask,u32 irq_idx)
 }
 #endif
 
-
-static void __irqhandler_init()
-{
-	__exception_load(EX_INT,irqhandler_start,(irqhandler_end-irqhandler_start),NULL);
-}
-
-void c_irqdispatcher()
+void c_irqdispatcher(frame_context *ctx)
 {
 	u32 i,icause,intmask,irq = 0;
 	u32 cause,mask;
@@ -410,7 +394,6 @@ void __irq_init()
 	_piReg[1] = 0xf0;
 
 	__MaskIrq(-32);
-	__irqhandler_init();
 
 	_piReg[0] = 0x01;
 	__UnmaskIrq(IM_PI_ERROR);

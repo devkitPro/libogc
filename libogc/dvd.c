@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: dvd.c,v 1.52 2007-01-11 10:51:56 wntrmute Exp $
-
 dvd.h -- DVD subsystem
 
 Copyright (C) 2004
@@ -32,34 +30,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.49  2006/01/18 18:22:03  shagkur
-- Added DVD_SetAutoInvalidation
-
-Revision 1.48  2006/01/10 06:48:43  shagkur
-- changed the patching routine to not set the reset flag again
-
-Revision 1.47  2005/12/23 12:53:45  shagkur
-- added audio-streamfix and offset patching to dvd FW patchcodes. introduced with a new patchcode project
-
-Revision 1.46  2005/12/16 16:53:52  shagkur
-- fixed a bug in DVD_Read
-
-Revision 1.45  2005/12/16 07:18:30  shagkur
-- changed audio buffer config
-
-Revision 1.44  2005/12/14 06:17:26  shagkur
-- removed drive spindown after reset
-
-Revision 1.43  2005/12/09 09:35:45  shagkur
-no message
-
-Revision 1.42  2005/11/24 14:25:42  shagkur
-- added copyright notice for the FW patch and procedure used.
-
-Revision 1.41  2005/11/23 19:45:13  shagkur
-- moved a define to .c
 
 
 -------------------------------------------------------------*/
@@ -130,7 +100,7 @@ Revision 1.41  2005/11/23 19:45:13  shagkur
 #define DVD_STATUS(s)					((u8)((s)>>24))
 										
 #define DVD_STATUS_READY				0x00
-#define DVDSTATUS_COVER_OPENED			0x01
+#define DVD_STATUS_COVER_OPENED			0x01
 #define DVD_STATUS_DISK_CHANGE			0x02
 #define DVD_STATUS_NO_DISK				0x03
 #define DVD_STATUS_MOTOR_STOP			0x04
@@ -145,10 +115,16 @@ Revision 1.41  2005/11/23 19:45:13  shagkur
 #define DVD_ERROR_MEDIUM_NOT_PRESENT	0x023a00
 #define DVD_ERROR_SEEK_INCOMPLETE		0x030200
 #define DVD_ERROR_UNRECOVERABLE_READ	0x031100
+#define DVD_ERROR_TRANSFER_PROTOCOL		0x040800
 #define DVD_ERROR_INVALID_COMMAND		0x052000
+#define DVD_ERROR_AUDIOBUFFER_NOTSET	0x052001
 #define DVD_ERROR_BLOCK_OUT_OF_RANGE	0x052100
 #define DVD_ERROR_INVALID_FIELD			0x052400
+#define DVD_ERROR_INVALID_AUDIO_CMD		0x052401
+#define DVD_ERROR_INVALID_CONF_PERIOD	0x052402
+#define DVD_ERROR_END_OF_USER_AREA		0x056300
 #define DVD_ERROR_MEDIUM_CHANGED		0x062800
+#define DVD_ERROR_MEDIUM_CHANGE_REQ		0x0B5A01
 
 #define DVD_SPINMOTOR_MASK				0x0000ff00
 
@@ -549,9 +525,9 @@ static u32 __dvd_categorizeerror(u32 errorcode)
 		return 1;
 	}
 
-	if((DVD_ERROR(errorcode)-0x60000)==0x2800 
-		|| (DVD_ERROR(errorcode)-0x20000)==0x3a00 
-		|| (DVD_ERROR(errorcode)-0xb0000)==0x5a01
+	if(DVD_ERROR(errorcode)==DVD_ERROR_MEDIUM_CHANGED 
+		|| DVD_ERROR(errorcode)==DVD_ERROR_MEDIUM_NOT_PRESENT 
+		|| DVD_ERROR(errorcode)==DVD_ERROR_MEDIUM_CHANGE_REQ
 		|| (DVD_ERROR(errorcode)-0x40000)==0x3100) return 0;
 
 	__dvd_internalretries++;
@@ -565,7 +541,7 @@ static u32 __dvd_categorizeerror(u32 errorcode)
 	}
 	
 	__dvd_lasterror = DVD_ERROR(errorcode);
-	if((DVD_ERROR(errorcode)-0x30000)!=0x1100) {
+	if(DVD_ERROR(errorcode)!=DVD_ERROR_UNRECOVERABLE_READ) {
 		if(__dvd_executing->cmd!=0x0005) return 3;
 	}
 	return 2;
@@ -779,7 +755,7 @@ static void __dvd_stategettingerrorcb(s32 result)
 			return;
 		} else if(ret==2 || ret==3) cnclpt = 0;
 		else {
-			if(DVD_STATUS(val)==DVDSTATUS_COVER_OPENED) cnclpt = 4;
+			if(DVD_STATUS(val)==DVD_STATUS_COVER_OPENED) cnclpt = 4;
 			else if(DVD_STATUS(val)==DVD_STATUS_DISK_CHANGE) cnclpt = 6;
 			else if(DVD_STATUS(val)==DVD_STATUS_NO_DISK) cnclpt = 3;
 			else cnclpt = 5;
@@ -809,7 +785,7 @@ static void __dvd_stategettingerrorcb(s32 result)
 				__dvd_laststate(__dvd_executing);
 				return;
 			}
-		} else if(DVD_STATUS(val)==DVDSTATUS_COVER_OPENED) {
+		} else if(DVD_STATUS(val)==DVD_STATUS_COVER_OPENED) {
 			__dvd_executing->state = 5;
 			__dvd_statemotorstopped();
 			return;
@@ -928,6 +904,16 @@ static void __dvd_statebusycb(s32 result)
 			if(block->cb) block->cb(0,block);
 			__dvd_stateready();
 			return;
+		}
+		if(__dvd_currcmd==0x0010) {
+			if(__dvd_drivestate&DVD_CHIPPRESENT) {
+				block = __dvd_executing;
+				__dvd_executing = &__dvd_dummycmdblk;
+				block->state = 0;
+				if(block->cb) block->cb(DVD_DISKIDSIZE,block);
+				__dvd_stateready();
+				return;
+			}
 		}
 
 		block = __dvd_executing;
@@ -1226,37 +1212,27 @@ static void __dvd_fwpatchcb(s32 result)
 
 static void __dvd_checkaddonscb(s32 result)
 {
-	static u32 irq_handler = 0;
-	static u32 fingerprint = 0;
+	u32 txdsize;
 	dvdcallbacklow cb;
 #ifdef _DVD_DEBUG
 	printf("__dvd_checkaddonscb(%d)\n",result);
 #endif
-	if(result==0x0010) {
-		__dvd_statetimeout();
-		return;
-	}
-	if(result==0x0001) {
-		if(!irq_handler) {
+	__dvd_drivechecked = 1;
+	txdsize = (DVD_DISKIDSIZE-_diReg[6]);
+	if(result&0x0001) {
+		// if the read was successful but was interrupted by a break we issue the read again.
+		if(txdsize!=DVD_DISKIDSIZE) {
 			_diReg[1] = _diReg[1];
-			DVD_LowReadmem(DVD_FWIRQVECTOR,&irq_handler,__dvd_checkaddonscb);
+			DCInvalidateRange(&__dvd_tmpid0,DVD_DISKIDSIZE);
+			DVD_LowReadId(&__dvd_tmpid0,__dvd_checkaddonscb);
 			return;
 		}
-		if((cpu_to_le32(irq_handler)&0xffff0000)!=0x00080000) {
-			if(!fingerprint) {
-				_diReg[1] = _diReg[1];
-				DVD_LowReadmem(0x40c60a,&fingerprint,__dvd_checkaddonscb);
-				return;
-			}
-			if(fingerprint==0xf710fff7) __dvd_drivestate |= DVD_CHIPPRESENT;
-		}
-		__dvd_drivechecked = 1;
-		cb = __dvd_finaladdoncb;
-		__dvd_finaladdoncb = NULL;
-		if(cb) cb(result);
-		return;
+		__dvd_drivestate |= DVD_CHIPPRESENT;
 	}
-	__dvd_stategettingerror();
+
+	cb = __dvd_finaladdoncb;
+	__dvd_finaladdoncb = NULL;
+	if(cb) cb(0x01);
 }
 
 static void __dvd_checkaddons(dvdcallbacklow cb)
@@ -1266,8 +1242,10 @@ static void __dvd_checkaddons(dvdcallbacklow cb)
 #endif
 	__dvd_finaladdoncb = cb;
 
+	// try to read disc ID.
 	_diReg[1] = _diReg[1];
-	DVD_LowUnlockDrive(__dvd_checkaddonscb);
+	DCInvalidateRange(&__dvd_tmpid0,DVD_DISKIDSIZE);
+	DVD_LowReadId(&__dvd_tmpid0,__dvd_checkaddonscb);
 	return;
 }
 
@@ -1297,10 +1275,8 @@ static void __dvd_handlespinup()
 static void __dvd_spinupdrivecb(s32 result)
 {
 #ifdef _DVD_DEBUG
-	printf("__dvd_spinupdrivecb(%d,%02x)\n",result,__dvd_resetoccured);
+	printf("__dvd_spinupdrivecb(%d,%02x,%02x)\n",result,__dvd_resetoccured,__dvd_drivestate);
 #endif
-	if(__dvd_resetoccured) __dvd_drivestate |= DVD_DRIVERESET;
-	
 	if(result==0x0010) {
 		__dvd_statetimeout();
 		return;
@@ -1311,17 +1287,18 @@ static void __dvd_spinupdrivecb(s32 result)
 			return;
 		}
 		if(!(__dvd_drivestate&DVD_CHIPPRESENT)) {
-			__dvd_drivestate &= ~DVD_DRIVERESET;
 			if(!(__dvd_drivestate&DVD_INTEROPER)) {
+				if(!(__dvd_drivestate&DVD_DRIVERESET)) {
+					DVD_Reset(DVD_RESETHARD);
+					udelay(1150*1000);
+				}
 				__dvd_fwpatchmem(__dvd_spinupdrivecb);
 				return;
 			}
 			__dvd_handlespinup();
 			return;
-		} else if(!(__dvd_drivestate&DVD_DRIVERESET))
-			DVD_Reset(DVD_RESETHARD);
+		}
 		
-		__dvd_drivestate &= ~DVD_DRIVERESET;
 		__dvd_finalsudcb(result);
 		return;
 	}
@@ -1808,27 +1785,23 @@ s32 DVD_LowPatchDriveCode(dvdcallbacklow cb)
 	__dvd_finalpatchcb = cb;
 	__dvd_stopnextint = 0;
 
-	switch(__dvd_driveinfo.rel_date) {
-		case DVD_MODEL04:
-			__dvdpatchcode = __dvd_patchcode04;
-			__dvdpatchcode_size = __dvd_patchcode04_size;
-			break;
-		case DVD_MODEL06:
-			__dvdpatchcode = __dvd_patchcode06;
-			__dvdpatchcode_size = __dvd_patchcode06_size;
-			break;
-		case DVD_MODEL08:
-			__dvdpatchcode = __dvd_patchcode08;
-			__dvdpatchcode_size = __dvd_patchcode08_size;
-			break;
-		case DVD_MODEL08Q:
-			__dvdpatchcode = __dvd_patchcodeQ08;
-			__dvdpatchcode_size = __dvd_patchcodeQ08_size;
-			break;
-		default:
-			__dvdpatchcode = NULL;
-			__dvdpatchcode_size = 0;
-			break;
+	if(__dvd_driveinfo.rel_date==DVD_MODEL04) {
+		__dvdpatchcode = __dvd_patchcode04;
+		__dvdpatchcode_size = __dvd_patchcode04_size;
+	} else if((__dvd_driveinfo.rel_date&0x0000ff00)==0x00000500) {		// for wii: since i don't know the real date i have to mask & compare.
+	} else if(__dvd_driveinfo.rel_date==DVD_MODEL06) {
+		__dvdpatchcode = __dvd_patchcode06;
+		__dvdpatchcode_size = __dvd_patchcode06_size;
+	} else if(__dvd_driveinfo.rel_date==DVD_MODEL08) {
+		__dvdpatchcode = __dvd_patchcode08;
+		__dvdpatchcode_size = __dvd_patchcode08_size;
+	} else if(__dvd_driveinfo.rel_date==DVD_MODEL08Q) {
+		__dvdpatchcode = __dvd_patchcodeQ08;
+		__dvdpatchcode_size = __dvd_patchcodeQ08_size;
+	} else if((__dvd_driveinfo.rel_date&0x0000ff00)==0x00000900) {		// for wii: since i don't know the real date i have to mask & compare.
+	} else {
+		__dvdpatchcode = NULL;
+		__dvdpatchcode_size = 0;
 	}
 
 	__dvd_patchdrivecb(0);
@@ -2136,6 +2109,7 @@ void DVD_LowReset(u32 reset_mode)
 
 	__dvd_resetoccured = 1;
 	__dvd_lastresetend = gettime();
+	__dvd_drivestate |= DVD_DRIVERESET;
 }
 
 s32 DVD_LowAudioStream(u32 subcmd,u32 len,u32 offset,dvdcallbacklow cb)
@@ -2229,7 +2203,7 @@ s32 DVD_ReadDiskID(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb)
 
 	block->cmd = 0x0005;
 	block->buf = id;
-	block->len = 0x0020;
+	block->len = DVD_DISKIDSIZE;
 	block->offset = 0;
 	block->txdsize = 0;
 	block->cb = cb;
@@ -2414,6 +2388,8 @@ s32 DVD_SpinUpDriveAsync(dvdcmdblk *block,dvdcbcallback cb)
 #ifdef _DVD_DEBUG
 	printf("DVD_SpinUpDriveAsync(%p,%p)\n",block,cb);
 #endif
+	DVD_Reset(DVD_RESETNONE);
+	
 	block->cmd = 0x10;
 	block->cb = cb;
 	return __issuecommand(1,block);
@@ -2549,16 +2525,18 @@ void DVD_Pause()
 void DVD_Reset(u32 reset_mode)
 {
 #ifdef _DVD_DEBUG
-	printf("DVD_Reset()\n");
+	printf("DVD_Reset(%d)\n",reset_mode);
 #endif
-	DVD_LowReset(reset_mode);
+	__dvd_drivestate &= ~(DVD_INTEROPER|DVD_CHIPPRESENT|DVD_DRIVERESET);
+
+	if(reset_mode!=DVD_RESETNONE)
+		DVD_LowReset(reset_mode);
 
 	_diReg[0] = (DVD_DE_MSK|DVD_TC_MSK|DVD_BRK_MSK);
 	_diReg[1] = _diReg[1];
 
 	__dvd_resetrequired = 0;
 	__dvd_internalretries = 0;
-	__dvd_drivestate &= ~DVD_INTEROPER;
 }
 
 void callback(s32 result,dvdcmdblk *block)
@@ -2570,7 +2548,7 @@ void callback(s32 result,dvdcmdblk *block)
 		DVD_ReadDiskID(block,&__dvd_tmpid0,callback);
 		return;
 	}
-	else if(result>0x00) {
+	else if(result>=DVD_DISKIDSIZE) {
 		memcpy(__dvd_diskID,&__dvd_tmpid0,DVD_DISKIDSIZE);
 	} else if(result==-4) {
 		DVD_SpinUpDriveAsync(block,callback);
@@ -2586,7 +2564,7 @@ s32 DVD_MountAsync(dvdcmdblk *block,dvdcbcallback cb)
 #endif
 	__dvd_mountusrcb = cb;
 	DVD_Reset(DVD_RESETHARD);
-	usleep(1150*1000);
+	udelay(1150*1000);
 	return DVD_SpinUpDriveAsync(block,callback);
 }
 

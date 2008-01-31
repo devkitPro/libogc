@@ -33,8 +33,6 @@ extern "C" {
 # define SIZEOF_LONG_LONG 8
 
 
-/* Id: version.h,v 1.24 2003/05/27 22:40:37 rob Exp */
-
 # ifndef LIBMAD_VERSION_H
 # define LIBMAD_VERSION_H
 
@@ -61,8 +59,6 @@ extern s8 const mad_author[];
 extern s8 const mad_build[];
 
 # endif
-
-/* Id: fixed.h,v 1.36 2003/05/28 04:36:00 rob Exp */
 
 # ifndef LIBMAD_FIXED_H
 # define LIBMAD_FIXED_H
@@ -528,8 +524,6 @@ mad_fixed_t mad_f_div(mad_fixed_t, mad_fixed_t);
 
 # endif
 
-/* Id: bit.h,v 1.11 2003/05/27 22:40:36 rob Exp */
-
 # ifndef LIBMAD_BIT_H
 # define LIBMAD_BIT_H
 
@@ -556,8 +550,6 @@ void mad_bit_write(struct mad_bitptr *, u32, u32);
 u16 mad_bit_crc(struct mad_bitptr, u32, u16);
 
 # endif
-
-/* Id: timer.h,v 1.15 2003/05/27 22:40:37 rob Exp */
 
 # ifndef LIBMAD_TIMER_H
 # define LIBMAD_TIMER_H
@@ -638,8 +630,6 @@ void mad_timer_string(mad_timer_t, s8 *, s8 const *,
 		      enum mad_units, enum mad_units, u32);
 
 # endif
-
-/* Id: stream.h,v 1.18 2003/05/27 22:40:37 rob Exp */
 
 # ifndef LIBMAD_STREAM_H
 # define LIBMAD_STREAM_H
@@ -726,8 +716,6 @@ s32 mad_stream_sync(struct mad_stream *);
 s8 const *mad_stream_errorstr(struct mad_stream const *);
 
 # endif
-
-/* Id: frame.h,v 1.19 2003/05/27 22:40:36 rob Exp */
 
 # ifndef LIBMAD_FRAME_H
 # define LIBMAD_FRAME_H
@@ -824,8 +812,6 @@ void mad_frame_mute(struct mad_frame *);
 
 # endif
 
-/* Id: synth.h,v 1.14 2003/05/27 22:40:37 rob Exp */
-
 # ifndef LIBMAD_SYNTH_H
 # define LIBMAD_SYNTH_H
 
@@ -872,8 +858,6 @@ void mad_synth_mute(struct mad_synth *);
 void mad_synth_frame(struct mad_synth *, struct mad_frame const *);
 
 # endif
-
-/* Id: decoder.h,v 1.16 2003/05/27 22:40:36 rob Exp */
 
 # ifndef LIBMAD_DECODER_H
 # define LIBMAD_DECODER_H

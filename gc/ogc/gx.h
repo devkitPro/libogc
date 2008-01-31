@@ -223,6 +223,10 @@
 #define _GX_TF_ZTF			0x10
 #define _GX_TF_CTF			0x20
 
+/*! \addtogroup texfmt Texture format
+ * @{
+ */
+
 #define GX_TF_I4			0x0
 #define GX_TF_I8			0x1
 #define GX_TF_IA4			0x2
@@ -246,9 +250,17 @@
 #define GX_CTF_RG8			(0xB|_GX_TF_CTF)
 #define GX_CTF_GB8			(0xC|_GX_TF_CTF)
 
+/*! \addtogroup ztexfmt Z Texture format
+ * @{
+ */
+
 #define GX_TF_Z8			(0x1|_GX_TF_ZTF)
 #define GX_TF_Z16			(0x3|_GX_TF_ZTF)
 #define GX_TF_Z24X8			(0x6|_GX_TF_ZTF)
+
+/*! @} */
+
+/*! @} */
 
 #define GX_CTF_Z4			(0x0|_GX_TF_ZTF|_GX_TF_CTF)
 #define GX_CTF_Z8M			(0x9|_GX_TF_ZTF|_GX_TF_CTF)
@@ -488,6 +500,19 @@
 #define GX_TB_ADDHALF			1
 #define GX_TB_SUBHALF			2
 #define GX_MAX_TEVBIAS			3
+
+/*! @} */
+
+
+/*! \addtogroup tevbias TEV clamp mode value
+ * @{
+ */
+
+#define GX_TC_LINEAR			0
+#define GX_TC_GE				1
+#define GX_TC_EQ				2
+#define GX_TC_LE				3
+#define GX_MAX_TEVCLAMPMODE		4
 
 /*! @} */
 
@@ -948,9 +973,23 @@ typedef struct {
 
 typedef void (*GXBreakPtCallback)(void);
 typedef void (*GXDrawDoneCallback)(void);
+
+/*! \typedef void (*GXDrawSyncCallback)(u16 token)
+\brief function pointer typedef for the drawsync-token callback
+\param[out] token tokenvalue most recently encountered.
+*/
 typedef void (*GXDrawSyncCallback)(u16 token);
 
+/*! \typedef GXTexRegion* (*GXTexRegionCallback)(GXTexObj *obj,u8 mapid)
+\brief function pointer typedef for the texture region callback
+\param[out] token tokenvalue most recently encountered.
+*/
 typedef GXTexRegion* (*GXTexRegionCallback)(GXTexObj *obj,u8 mapid);
+
+/*! \typedef GXTlutRegion* (*GXTlutRegionCallback)(u32 tlut_name)
+\brief function pointer typedef for the TLUT region callback
+\param[out] token tokenvalue most recently encountered.
+*/
 typedef GXTlutRegion* (*GXTlutRegionCallback)(u32 tlut_name);
 
 /*! 
@@ -1008,7 +1047,7 @@ void GX_SetDrawSync(u16 token);
  *        is the value of the token most recently encountered. Since it is possible to miss tokens(graphics processing does not stop while
  *        the callback is running), your code should be capable of deducing if any tokens have been missed.
  *
- * \param[in] callback to be invoked when the DrawSnyc tokens are encountered in the graphics pipeline.
+ * \param[in] cb callback to be invoked when the DrawSnyc tokens are encountered in the graphics pipeline.
  *
  * \return pointer to the previously set callback function.
  */
@@ -1127,8 +1166,22 @@ void GX_SetTevOp(u8 tevstage,u8 mode);
 void GX_SetTevColor(u8 tev_regid,GXColor color);
 
 /*! 
+ * \fn void GX_SetTevColorS10(u8 tev_regid,GXColor color)
+ * \brief Sets the vertical clamping mode to use during the EFB to XFB or texture copy.
+ *
+ * \param[in] tev_regid \ref tevcoloutreg.
+ * \param[in] color Constant color value in S10 format.
+ *
+ * \return none
+ */
+void GX_SetTevColorS10(u8 tev_regid,GXColor color);
+
+/*! 
  * \fn void GX_SetTevColorIn(u8 tevstage,u8 a,u8 b,u8 c,u8 d)
- * \brief Sets the input operands for one <b><i>tevstage</i></b> of the Texture Environment (TEV) color combiner unit.
+ * \brief Sets the color input sources for one <b><i>tevstage</i></b> of the Texture Environment (TEV) color combiner.
+ *	      This includes constant (register) colors and alphas, texture color/alpha, rasterized color/alpha (the result
+ *        of per-vertex lighting), and a few useful constants.<br><br>
+ *        <b><i>Note:</i></b> The input controls are independent for each TEV stage.
  *
  * \param[in] tevstage \ref tevstage
  * \param[in] a \ref tevcolorarg
@@ -1142,7 +1195,9 @@ void GX_SetTevColorIn(u8 tevstage,u8 a,u8 b,u8 c,u8 d);
 
 /*! 
  * \fn void GX_SetTevAlphaIn(u8 tevstage,u8 a,u8 b,u8 c,u8 d)
- * \brief Sets the input operands for one <b><i>tevstage</i></b> of the Texture Environment (TEV) alpha combiner unit.
+ * \brief Sets the alpha input sources for one <b><i>tevstage</i></b> of the Texture Environment (TEV) alpha combiner.
+ *        There are fewer alpha inputs than color inputs, and there are no color channels available in the alpha combiner.<br><br>
+ *        <b><i>Note:</i></b> The input controls are independent for each TEV stage.
  *
  * \param[in] tevstage \ref tevstage
  * \param[in] a \ref tevalphaarg
@@ -1158,11 +1213,9 @@ void GX_SetTevAlphaIn(u8 tevstage,u8 a,u8 b,u8 c,u8 d);
  * \fn void GX_SetTevColorOp(u8 tevstage,u8 tevop,u8 tevbias,u8 tevscale,u8 clamp,u8 tevregid)
  * \brief Sets the <b><i>tevop</i></b>, <b><i>tevbias</i></b>, <b><i>tevscale</i></b> and <b><i>clamp</i></b>-mode operation for the color combiner 
  *        for this <b><i>tevstage</i></b> of the Texture Environment (TEV) unit. This function also specifies the register, <b><i>tevregid</i></b>, that
- *        will contain the result of the color combiner function. The color combiner function is:<br>
- *
- *		  <b><i>tevregid</i></b> = (d (<b><i>tevop</i></b>) ((1.0 - c)*a + c*b) + <b><i>tevbias</i></b>) * <b><i>tevscale</i></b>;<br><br>
- *
- *        The input parameters a,b,c and d are set using GX_SetTevColorIn().
+ *        will contain the result of the color combiner function. The color combiner function is:<br><br>
+ *		  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b><i>tevregid</i></b> = (d (<b><i>tevop</i></b>) ((1.0 - c)*a + c*b) + <b><i>tevbias</i></b>) * <b><i>tevscale</i></b>;<br><br>
+ *        The input sources a,b,c and d are set using GX_SetTevColorIn().
  *
  * \param[in] tevstage \ref tevstage.
  * \param[in] tevop \ref tevop
@@ -1180,11 +1233,9 @@ void GX_SetTevColorOp(u8 tevstage,u8 tevop,u8 tevbias,u8 tevscale,u8 clamp,u8 te
  * \fn void GX_SetTevAlphaOp(u8 tevstage,u8 tevop,u8 tevbias,u8 tevscale,u8 clamp,u8 tevregid)
  * \brief Sets the <b><i>tevop</i></b>, <b><i>tevbias</i></b>, <b><i>tevscale</i></b> and <b><i>clamp</i></b>-mode operation for the alpha combiner 
  *        for this <b><i>tevstage</i></b> of the Texture Environment (TEV) unit. This function also specifies the register, <b><i>tevregid</i></b>, that
- *        will contain the result of the alpha combiner function. The alpha combiner function is:<br>
- *
- *        <b><i>tevregid</i></b> = (d (<b><i>tevop</i></b>) ((1.0 - c)*a + c*b) + <b><i>tevbias</i></b>) * <b><i>tevscale</i></b>;<br><br>
- *
- *        The input parameters a,b,c and d are set using GX_SetTevAlphaIn().
+ *        will contain the result of the alpha combiner function. The alpha combiner function is:<br><br>
+ *        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b><i>tevregid</i></b> = (d (<b><i>tevop</i></b>) ((1.0 - c)*a + c*b) + <b><i>tevbias</i></b>) * <b><i>tevscale</i></b>;<br><br>
+ *        The input sources a,b,c and d are set using GX_SetTevAlphaIn().
  *
  * \param[in] tevstage \ref tevstage.
  * \param[in] tevop \ref tevop
@@ -1205,7 +1256,7 @@ void GX_SetTexCoordGen2(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc,u32 no
  * \brief Sets the vertical clamping mode to use during the EFB to XFB or texture copy.
  *
  * \param[in] op \ref ztexop
- * \param[in] fmt \ref texfmt (Accepted values: GX_TF_Z8, GX_TF_Z16, GX_TF_Z28X8).
+ * \param[in] fmt \ref ztexfmt
  * \param[in] bias Bias value. Format is 24bit unsigned.
  *
  * \return none
@@ -1229,8 +1280,10 @@ void GX_SetTevOrder(u8 tevstage,u8 texcoord,u32 texmap,u8 color);
 void GX_SetNumTevStages(u8 num);
 
 void GX_SetAlphaCompare(u8 comp0,u8 ref0,u8 aop,u8 comp1,u8 ref1);
+void GX_SetTevKColor(u8 sel, GXColor col);
 void GX_SetTevKColorSel(u8 tevstage,u8 sel);
 void GX_SetTevKAlphaSel(u8 tevstage,u8 sel);
+void GX_SetTevKColorS10(u8 sel, GXColor col);
 
 /*! 
  * \fn void GX_SetTevSwapMode(u8 tevstage,u8 ras_sel,u8 tex_sel)
@@ -1379,6 +1432,21 @@ void GX_SetCopyClear(GXColor color,u32 zvalue);
 void GX_CopyDisp(void *dest,u8 clear);
 
 void GX_SetTexCopySrc(u16 left,u16 top,u16 wd,u16 ht);
+
+/*! 
+ * \fn void GX_SetTexCopyDst(u16 wd,u16 ht,u32 fmt,u8 mipmap)
+ * \brief Copies the embedded framebuffer(XFB) to the texture image buffer <b><i>dest</i></b> in main memory. This is useful
+ *        when creating textures using the Graphics Processor(CP).
+ *        If the <b><i>clear</i></b> flag is set to GX_TRUE, the EFB will be cleared to the current color(see GX_SetCopyClear()) 
+ *        during the copy operation.
+ *
+ * \param[in] wd pointer to the image buffer in main memory. <b><i>dest</i></b> should be 32B aligned.
+ * \param[in] ht flag that indicates framebuffer should be cleared if GX_TRUE.
+ * \param[in] fmt \ref texfmt
+ * \param[in] mipmap 
+ *
+ * \return none
+ */
 void GX_SetTexCopyDst(u16 wd,u16 ht,u32 fmt,u8 mipmap);
 
 /*! 

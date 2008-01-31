@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: card.h,v 1.21 2005-12-26 11:06:44 shagkur Exp $
-
 card.h -- Memory card subsystem
 
 Copyright (C) 2004
@@ -26,14 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.20  2005/12/09 09:20:49  shagkur
-no message
-
-Revision 1.19  2005/11/21 12:14:01  shagkur
-no message
-
 
 -------------------------------------------------------------*/
 
@@ -192,12 +182,14 @@ typedef struct _card_stat {
 	u8 banner_fmt;
 	u32 icon_addr;
 	u16 icon_fmt;
+	u16 iconfmt[CARD_MAXICONS];
 	u16 icon_speed;
+	u16 iconspeed[CARD_MAXICONS];
 	u32 comment_addr;
 	u32 offset_banner;
 	u32 offset_banner_tlut;
 	u32 offset_icon[CARD_MAXICONS];
-	u32 offset_icon_tlut;
+	u32 offset_icon_tlut[CARD_MAXICONS];
 	u32 offset_data;
 } card_stat;
 
@@ -502,6 +494,16 @@ s32 CARD_GetDirectory(s32 chn, card_dir *dir_entries, s32 *count, bool showall);
 s32 CARD_GetSectorSize(s32 chn,u32 *sector_size);
 
 
+/*! \fn s32 CARD_GetBlockCount(s32 chn,u32 *block_count)
+\brief Returns the next directory entry from the memory cards directory structure.
+\param[in] chn CARD slot.
+\param[out] sector_size pointer to receive the result.
+
+\return \ref card_errors "card error codes"
+*/
+s32 CARD_GetBlockCount(s32 chn,u32 *block_count);
+
+
 /*! \fn s32 CARD_GetStatus(s32 chn,s32 fileno,card_stat *stats)
 \brief Get additional file statistic informations.
 \param[in] chn CARD slot.
@@ -577,6 +579,24 @@ s32 CARD_Format(s32 chn);
  * Not finished function
 */
 s32 CARD_FormatAsync(s32 chn,cardcallback callback);
+
+
+/*! \fn s32 CARD_SetCompany(const char *company)
+\brief Set additional file attributes. This function returns immediately. Asynchronous version.
+\param[in] chn CARD slot.
+
+\return \ref card_errors "card error codes"
+*/
+s32 CARD_SetCompany(const char *company);
+
+
+/*! \fn s32 CARD_SetGamecode(const char *gamecode)
+\brief Set additional file attributes. This function returns immediately. Asynchronous version.
+\param[in] chn CARD slot.
+
+\return \ref card_errors "card error codes"
+*/
+s32 CARD_SetGamecode(const char *gamecode);
 
 #ifdef __cplusplus
    }

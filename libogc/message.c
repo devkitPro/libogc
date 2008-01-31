@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: message.c,v 1.13 2006-05-06 18:07:25 shagkur Exp $
-
 message.c -- Thread subsystem II
 
 Copyright (C) 2004
@@ -26,27 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.12  2006/05/04 05:46:43  shagkur
-no message
-
-Revision 1.11  2006/05/03 11:03:34  shagkur
-- function body of __lwpmq_submit()
-- changed function call according to lwp_messages changes
-
-Revision 1.10  2006/05/02 11:56:10  shagkur
-- changed object handling & thread protection
-
-Revision 1.9  2006/05/02 09:38:21  shagkur
-- changed object handling and handle typedef
-- removed ISR disabling
-
-Revision 1.8  2005/12/09 09:35:45  shagkur
-no message
-
-Revision 1.7  2005/11/21 12:35:32  shagkur
-no message
 
 
 -------------------------------------------------------------*/
@@ -73,7 +50,7 @@ typedef struct _mqbox_st
 	mq_cntrl mqueue;
 } mqbox_st;
 
-static lwp_objinfo _lwp_mqbox_objects;
+lwp_objinfo _lwp_mqbox_objects;
 
 void __lwp_mqbox_init()
 {

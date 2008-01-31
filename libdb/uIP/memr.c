@@ -4,8 +4,15 @@
 #include "uip.h"
 #include "memr.h"
 
+#if UIP_ERRORING == 1
+#include <stdio.h>
+#define UIP_ERROR(m) uip_log(__FILE__,__LINE__,m)
+#else
+#define UIP_ERROR(m)
+#endif /* UIP_ERRORING == 1 */
+
 #define MIN_SIZE				12
-#define SIZEOF_STRUCT_MEM		(sizeof(struct mem)+((sizeof(struct mem)%MEM_ALIGNMENT)==0?0:(4-(sizeof(struct mem)%MEM_ALIGNMENT))))
+#define SIZEOF_STRUCT_MEM		(sizeof(struct mem)+(((sizeof(struct mem)%MEM_ALIGNMENT)==0)?0:(4-(sizeof(struct mem)%MEM_ALIGNMENT))))
 
 struct mem {
 	u32 next,prev;
@@ -45,7 +52,7 @@ void memr_init()
 	rmem = (struct mem*)ram_block;
 	rmem->next = UIP_MEM_SIZE;
 	rmem->prev = 0;
-	rmem->next = 0;
+	rmem->used = 0;
 	
 	ram_end = (struct mem*)&ram_block[UIP_MEM_SIZE];
 	ram_end->used = 1;
@@ -111,8 +118,10 @@ void* memr_realloc(void *ptr,u32 newsize)
 	
 	if(newsize%MEM_ALIGNMENT) newsize += MEM_ALIGNMENT - ((newsize + SIZEOF_STRUCT_MEM)%MEM_ALIGNMENT);
 	if(newsize>UIP_MEM_SIZE) return NULL;
-	if((u8_t*)ptr<(u8_t*)ram_block || (u8_t*)ptr>=(u8_t*)ram_end) return ptr;
-
+	if((u8_t*)ptr<(u8_t*)ram_block || (u8_t*)ptr>=(u8_t*)ram_end) {
+		UIP_ERROR("memr_realloc: illegal memory.\n");
+		return ptr;
+	}
 	rmem = (struct mem*)((u8_t*)ptr - SIZEOF_STRUCT_MEM);
 	ptr1 = (u8_t*)rmem - ram_block;
 	size = rmem->next - ptr1 - SIZEOF_STRUCT_MEM;

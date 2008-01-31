@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: dsp.c,v 1.6 2005-11-21 12:15:46 shagkur Exp $
-
 dsp.c -- DSP subsystem
 
 Copyright (C) 2004
@@ -27,7 +25,6 @@ must not be misrepresented as being the original software.
 3.	This notice may not be removed or altered from any source
 distribution.
 
-$Log: not supported by cvs2svn $
 
 -------------------------------------------------------------*/
 
@@ -61,6 +58,7 @@ $Log: not supported by cvs2svn $
 
 static u32 __dsp_inited = FALSE;
 static u32 __dsp_rudetask_pend = FALSE;
+static DSPCallback __dsp_intcb = NULL;
 static dsptask_t *curr_task,*last_task,*first_task,*tmp_task,*rude_task;
 
 static vu16* const _dspReg = (u16*)0xCC005000;
@@ -214,11 +212,11 @@ static void __dsp_exectask(dsptask_t *exec,dsptask_t *hire)
 	while(DSP_CheckMailTo());
 }
 
-static void __dsp_handler(u32 nIrq,void *pCtx)
+static void __dsp_def_taskcb()
 {
 	u32 mail;
 #ifdef _DSP_DEBUG
-	printf("__dsp_handler()\n");
+	printf("__dsp_def_taskcb()\n");
 #endif
 	_dspReg[5] = (_dspReg[5]&~(DSPCR_AIINT|DSPCR_ARINT))|DSPCR_DSPINT;
 	
@@ -226,7 +224,7 @@ static void __dsp_handler(u32 nIrq,void *pCtx)
 	
 	mail = DSP_ReadMailFrom();
 #ifdef _DSP_DEBUG
-	printf("__dsp_handler(mail = 0x%08x)\n",mail);
+	printf("__dsp_def_taskcb(mail = 0x%08x)\n",mail);
 #endif
 	if(curr_task->flags&DSPTASK_CANCEL) {
 		if(mail==0xDCD10002) mail = 0xDCD10003;
@@ -323,6 +321,12 @@ static void __dsp_handler(u32 nIrq,void *pCtx)
 
 }
 
+static void __dsp_inthandler(u32 nIrq,void *pCtx)
+{
+
+	if(__dsp_intcb) __dsp_intcb();
+}
+
 void DSP_Init()
 {
 	u32 level;
@@ -331,7 +335,9 @@ void DSP_Init()
 #endif
 	_CPU_ISR_Disable(level);	
 	if(__dsp_inited==FALSE) {
-		IRQ_Request(IRQ_DSP_DSP,__dsp_handler,NULL);
+		__dsp_intcb= __dsp_def_taskcb;
+
+		IRQ_Request(IRQ_DSP_DSP,__dsp_inthandler,NULL);
 		__UnmaskIrq(IRQMASK(IRQ_DSP_DSP));
 
 		_dspReg[5] = (_dspReg[5]&~(DSPCR_AIINT|DSPCR_ARINT|DSPCR_DSPINT))|DSPCR_DSPRESET;
@@ -344,6 +350,21 @@ void DSP_Init()
 		__dsp_inited = TRUE;
 	}
 	_CPU_ISR_Restore(level);	
+}
+
+DSPCallback DSP_RegisterCallback(DSPCallback usr_cb)
+{
+	u32 level;
+	DSPCallback ret;
+#ifdef _DSP_DEBUG
+	printf("DSP_RegisterCallback()\n");
+#endif
+	_CPU_ISR_Disable(level);	
+	ret = __dsp_intcb;
+	__dsp_intcb = usr_cb;
+	_CPU_ISR_Restore(level);	
+
+	return ret;
 }
 
 u32 DSP_CheckMailTo()
@@ -403,6 +424,25 @@ void DSP_AssertInt()
 #endif
 	_CPU_ISR_Disable(level);
 	_dspReg[5] = (_dspReg[5]&~(DSPCR_AIINT|DSPCR_ARINT|DSPCR_DSPINT))|DSPCR_PIINT;
+	_CPU_ISR_Restore(level);
+}
+
+void DSP_Halt()
+{
+	u32 level,old;
+
+	_CPU_ISR_Disable(level);
+	old = _dspReg[5];
+	_dspReg[5] = (old&~(DSPCR_AIINT|DSPCR_ARINT|DSPCR_DSPINT))|DSPCR_HALT;
+	_CPU_ISR_Restore(level);
+}
+
+void DSP_Unhalt()
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	_dspReg[5] = (_dspReg[5]&~(DSPCR_AIINT|DSPCR_ARINT|DSPCR_DSPINT|DSPCR_HALT));
 	_CPU_ISR_Restore(level);
 }
 

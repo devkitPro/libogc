@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: lwp.h,v 1.14 2006-05-06 18:10:07 shagkur Exp $
-
 lwp.h -- Thread subsystem I
 
 Copyright (C) 2004
@@ -27,18 +25,6 @@ must not be misrepresented as being the original software.
 3.	This notice may not be removed or altered from any source
 distribution.
 
-$Log: not supported by cvs2svn $
-Revision 1.13  2006/05/02 09:39:34  shagkur
-- changed handle typedef
-
-Revision 1.12  2006/04/10 05:35:24  shagkur
-- changed function prototypes
-
-Revision 1.11  2005/12/09 09:21:32  shagkur
-no message
-
-Revision 1.10  2005/11/21 12:13:33  shagkur
-no message
 
 
 -------------------------------------------------------------*/

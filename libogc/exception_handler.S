@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: exception_handler.S,v 1.14 2007-01-11 10:51:56 wntrmute Exp $
-
 exception_handler.S -- PPC exception handling support
 
 Copyright (C) 2004
@@ -27,11 +25,6 @@ must not be misrepresented as being the original software.
 3.	This notice may not be removed or altered from any source
 distribution.
 
-$Log: not supported by cvs2svn $
-Revision 1.13  2005/11/21 12:15:46  shagkur
-no message
-
-
 -------------------------------------------------------------*/
 
 
@@ -53,7 +46,17 @@ no message
 	mfspr    r0,918;				\
 	stw      r0,GQR6_OFFSET(sp);    \
 	mfspr    r0,919;				\
-	stw      r0,GQR7_OFFSET(sp)
+	stw      r0,GQR7_OFFSET(sp);	\
+	stw      r6,GPR6_OFFSET(sp);	\
+	stw      r7,GPR7_OFFSET(sp);	\
+	stw      r8,GPR8_OFFSET(sp);	\
+	stw      r9,GPR9_OFFSET(sp);	\
+	stw      r10,GPR10_OFFSET(sp);	\
+	stw      r11,GPR11_OFFSET(sp);	\
+	stw      r12,GPR12_OFFSET(sp);	\
+	stw      r13,GPR13_OFFSET(sp);	\
+	stw      r14,GPR14_OFFSET(sp);	\
+	stw      r15,GPR15_OFFSET(sp);
 	
 #define EXCEPTION_EPILOG			\
 	lwz		r4,GQR0_OFFSET(sp);		\
@@ -71,106 +74,157 @@ no message
 	lwz		r4,GQR6_OFFSET(sp);		\
 	mtspr	918,r4;					\
 	lwz		r4,GQR7_OFFSET(sp);		\
-	mtspr	919,r4
+	mtspr	919,r4;					\
+	lwz		r15,GPR15_OFFSET(sp);	\
+	lwz		r14,GPR14_OFFSET(sp);	\
+	lwz		r13,GPR13_OFFSET(sp);	\
+	lwz		r12,GPR12_OFFSET(sp);	\
+	lwz		r11,GPR11_OFFSET(sp);	\
+	lwz		r10,GPR10_OFFSET(sp);	\
+	lwz		r9,GPR9_OFFSET(sp);		\
+	lwz		r8,GPR8_OFFSET(sp);		\
+	lwz		r7,GPR7_OFFSET(sp);		\
+	lwz		r6,GPR6_OFFSET(sp);		\
+	lwz		r5,GPR5_OFFSET(sp)
 
-	.globl default_exceptionhandler_start,default_exceptionhandler_end,default_exceptionhandler_patch
-default_exceptionhandler_start:
-	mtspr	SPRG3,r4
-	clrlwi	r4,sp,2			//make sp physical and move new value to r4
-	stwu	r4,-EXCEPTION_FRAME_END(r4)
-	stw		r0,GPR0_OFFSET(r4)
-	stw		sp,GPR1_OFFSET(r4)
-	stw		toc,GPR2_OFFSET(r4)
-	stw		r3,GPR3_OFFSET(r4)
-	mfspr	r3,SPRG3
-	stw		r3,GPR4_OFFSET(r4)
-	stw		r5,GPR5_OFFSET(r4)
-	mfcr	r3
-	stw		r3,CR_OFFSET(r4)
-	mflr	r3
-	stw		r3,LR_OFFSET(r4)
-	mfctr	r3
-	stw		r3,CTR_OFFSET(r4)
-	mfxer	r3
-	stw		r3,XER_OFFSET(r4)
-	mfmsr	r3
-	stw		r3,MSR_OFFSET(r4)
-	mfdar	r3
-	stw		r3,DAR_OFFSET(r4)
-	mfsrr0	r3
-	stw		r3,SRR0_OFFSET(r4)
-	mfsrr1	r3
-	stw		r3,SRR1_OFFSET(r4)
-	mr		r5,r3
-	nop
-	mfmsr	r3
-	ori		r3,r3,MSR_IR|MSR_DR|MSR_RI
-	mtsrr1	r3
+
+	.globl exceptionhandler_start,exceptionhandler_end,exceptionhandler_patch
+exceptionhandler_start:
+	mtspr		SPRG3,r4
+	clrlwi		r4,sp,2			//make sp physical and move new value to r4
+	stwu		r4,-EXCEPTION_FRAME_END(r4)
+	stw			r0,GPR0_OFFSET(r4)
+	stw			sp,GPR1_OFFSET(r4)
+	stw			toc,GPR2_OFFSET(r4)
+	stw			r3,GPR3_OFFSET(r4)
+	mfspr		r3,SPRG3
+	stw			r3,GPR4_OFFSET(r4)
+	stw			r5,GPR5_OFFSET(r4)
+	mfcr		r3
+	stw			r3,CR_OFFSET(r4)
+	mflr		r3
+	stw			r3,LR_OFFSET(r4)
+	mfctr		r3
+	stw			r3,CTR_OFFSET(r4)
+	mfxer		r3
+	stw			r3,XER_OFFSET(r4)
+	mfmsr		r3
+	stw			r3,MSR_OFFSET(r4)
+	mfdar		r3
+	stw			r3,DAR_OFFSET(r4)
+	mfsrr0		r3
+	stw			r3,SRR0_OFFSET(r4)
+	mfsrr1		r3
+	stw			r3,SRR1_OFFSET(r4)
+	mr			r5,r3
+	nop		
+	mfmsr		r3
+	ori			r3,r3,MSR_IR|MSR_DR|MSR_FP
+	mtsrr1		r3
 	
-default_exceptionhandler_patch:
-	li		r3,0
-	stw		r3,EXCEPTION_NUMBER(r4)
+exceptionhandler_patch:
+	li			r3,0
+	stw			r3,EXCEPTION_NUMBER(r4)
 
-	rlwinm.	r5,r5,0,30,30
-	lis		r5,default_exceptionhandler_transfer@h
-	ori		r5,r5,default_exceptionhandler_transfer@l
-	mtsrr0	r5
-	bne		1f
-	lis		r5,c_default_exceptionhandler@h
-	ori		r5,r5,c_default_exceptionhandler@l
-	rfi
-1:	
+	rlwinm.		r5,r5,0,30,30
+	lis			r5,default_exceptionhandler@h
+	ori			r5,r5,default_exceptionhandler@l
+	beq			1f
 	lis			r5,_exceptionhandlertable@h
 	ori			r5,r5,_exceptionhandlertable@l
 	clrlwi		r5,r5,2
 	clrlslwi	r3,r3,24,2
 	lwzx		r5,r3,r5
+1:	
+	mtsrr0		r5
 	rfi
-default_exceptionhandler_end:
-
-default_exceptionhandler_transfer:
-	stwu	sp,-EXCEPTION_FRAME_END(sp)		//now we're able to adjust the stackpointer with it's cached address
-	mtlr	r5								//move passed handler func adress to LR
+exceptionhandler_end:
+	nop
+	
+	.extern		c_default_exceptionhandler
+	.globl		default_exceptionhandler
+default_exceptionhandler:
+	stwu		sp,-EXCEPTION_FRAME_END(sp)		//now we're able to adjust the stackpointer with it's cached address
 
 	EXCEPTION_PROLOG
-
-	stmw r6,GPR6_OFFSET(sp)
-
-	addi	r3,sp,0x08
-	blrl
 	
-	lwz		r5,CR_OFFSET(sp)
-	mtcr	r5
-	lwz		r5,LR_OFFSET(sp)
-	mtlr	r5
-	lwz		r5,SRR0_OFFSET(sp)
-	mtsrr0	r5
-	lwz		r5,SRR1_OFFSET(sp)
-	mtsrr1	r5
-	lwz		r5,CTR_OFFSET(sp)
-	mtctr	r5
-	lwz		r5,XER_OFFSET(sp)
-	mtxer	r5
+	stmw		r16,GPR16_OFFSET(sp)
+
+	addi		r3,sp,0x08
+	bl			c_default_exceptionhandler
+
+	lwz			r4,CR_OFFSET(sp)
+	mtcr		r4
+	lwz			r4,LR_OFFSET(sp)
+	mtlr		r4
+	lwz			r4,CTR_OFFSET(sp)
+	mtctr		r4
+	lwz			r4,XER_OFFSET(sp)
+	mtxer		r4
 
 	EXCEPTION_EPILOG
 
-	lmw		r6,GPR6_OFFSET(sp)
-	lwz		toc,GPR2_OFFSET(sp)
-	lwz		r0,GPR0_OFFSET(sp)
+	lmw			r16,GPR16_OFFSET(sp)
 
-	mfmsr	r4
-	rlwinm	r4,r4,0,31,29
-	mtmsr	r4
+	mfmsr		r4
+	rlwinm		r4,r4,0,19,17
+	mtmsr		r4
 	isync
 
-	lwz		r5,GPR5_OFFSET(sp)
-	lwz		r4,GPR4_OFFSET(sp)
-	lwz		r3,GPR3_OFFSET(sp)
-	addi	sp,sp,EXCEPTION_FRAME_END
+	lwz			toc,GPR2_OFFSET(sp)
+	lwz			r0,GPR0_OFFSET(sp)
+
+	lwz			r4,SRR0_OFFSET(sp)
+	mtsrr0		r4
+	lwz			r4,SRR1_OFFSET(sp)
+	mtsrr1		r4
+
+	lwz			r4,GPR4_OFFSET(sp)
+	lwz			r3,GPR3_OFFSET(sp)
+	addi		sp,sp,EXCEPTION_FRAME_END
 	rfi
 
-	.global systemcall_handler_start,systemcall_handler_end
-systemcall_handler_start:
+	.extern _cpu_context_save_fp,_cpu_context_restore_fp
+	.globl fpu_exceptionhandler
+fpu_exceptionhandler:
+	stwu		sp,-EXCEPTION_FRAME_END(sp)		//now we're able to adjust the stackpointer with it's cached address
+
+	EXCEPTION_PROLOG
+
+	bl			__thread_dispatch_fp
+
+	lwz			r4,CR_OFFSET(sp)
+	mtcr		r4
+	lwz			r4,LR_OFFSET(sp)
+	mtlr		r4
+	lwz			r4,CTR_OFFSET(sp)
+	mtctr		r4
+	lwz			r4,XER_OFFSET(sp)
+	mtxer		r4
+
+	EXCEPTION_EPILOG
+
+	mfmsr		r4
+	rlwinm		r4,r4,0,19,17
+	mtmsr		r4
+	isync
+
+	lwz			toc,GPR2_OFFSET(sp)
+	lwz			r0,GPR0_OFFSET(sp)
+
+	lwz			r4,SRR0_OFFSET(sp)
+	mtsrr0		r4
+	lwz			r4,SRR1_OFFSET(sp)
+	ori			r4,r4,MSR_FP
+	mtsrr1		r4
+
+	lwz			r4,GPR4_OFFSET(sp)
+	lwz			r3,GPR3_OFFSET(sp)
+	addi		sp,sp,EXCEPTION_FRAME_END
+	rfi
+
+	.global systemcallhandler_start,systemcallhandler_end
+systemcallhandler_start:
 	mfspr  r9,HID0
 	ori    r10,r9,0x0008
 	mtspr  HID0,r10
@@ -178,33 +232,8 @@ systemcall_handler_start:
 	sync
 	mtspr  HID0,r9
 	rfi
-systemcall_handler_end:
+systemcallhandler_end:
 	nop
 
-	.extern _cpu_context_save_fp,_cpu_context_restore_fp
-	.globl fpu_exception_handler
-fpu_exception_handler:
-	mflr	r0
-	stw		r0,4(sp)
-	lwz		r5,SRR1_OFFSET(sp)
-	ori		r5,r5,MSR_FP
-	stw		r5,SRR1_OFFSET(sp)
-	stwu	sp,-8(sp)
 
-	mfmsr	r5
-	ori		r5,r5,MSR_FP
-	mtmsr	r5
-	isync
-
-	bl		__thread_dispatch_fp
-
-	mfmsr	r4
-	rlwinm	r4,r4,0,19,17
-	mtmsr	r4
-	isync
-
-	lwz		r0,12(sp)
-	addi	sp,sp,8
-	mtlr	r0
-	blr
 

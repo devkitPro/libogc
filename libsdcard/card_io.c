@@ -72,6 +72,8 @@ static u32 _ioError[MAX_DRIVE];
 static boolean _ioCardInserted[MAX_DRIVE];
 
 static u8 _ioResponse[MAX_DRIVE][128];
+static u8 _ioCrc7Table[256];
+static u16 _ioCrc16Table[256];
 
 extern unsigned long gettick();
 
@@ -92,6 +94,40 @@ static __inline__ u32 __check_response(s32 drv_no,u8 res)
 	return ((_ioError[drv_no]&CARDIO_OP_IOERR_FATAL)?CARDIO_ERROR_INTERNAL:CARDIO_ERROR_READY);
 }
 
+static void __init_crc7()
+{
+	s32 i,j;
+	u8 c,crc7;
+
+	crc7 = 0;
+	for(i=0;i<256;i++) {
+		c = i;
+		crc7 = 0;
+		for(j=0;j<8;j++) {
+			crc7 <<= 1;
+			if((crc7^c)&0x80) crc7 ^= 0x09;
+			c <<= 1;
+		}
+		crc7 &= 0x7f;
+		_ioCrc7Table[i] = crc7;
+	}
+}
+
+static u8 __make_crc7(void *buffer,u32 len)
+{
+	s32 i;
+	u8 crc7;
+	u8 *ptr;
+
+	crc7 = 0;
+	ptr = buffer;
+	for(i=0;i<len;i++)
+		crc7 = _ioCrc7Table[(u8)((crc7<<1)^ptr[i])];
+
+	return ((crc7<<1)|1);
+}
+
+/* Old way, realtime
 static u8 __make_crc7(void *buffer,u32 len)
 {
 	u32 mask,cnt,bcnt;
@@ -122,7 +158,41 @@ static u8 __make_crc7(void *buffer,u32 len)
 	}
 	return (res<<1)&0xff;
 }
+*/
+static void __init_crc16()
+{
+	s32 i,j;
+	u16 crc16,c;
 
+	for(i=0;i<256;i++) {
+		crc16 = 0;
+		c = ((u16)i)<<8;
+		for(j=0;j<8;j++) {
+			if((crc16^c)&0x8000) crc16 = (crc16<<1)^0x1021;
+			else crc16 <<= 1;
+
+			c <<= 1;
+		}
+
+		_ioCrc16Table[i] = crc16;
+	}
+}
+
+static u16 __make_crc16(void *buffer,u32 len)
+{
+	s32 i;
+	u8 *ptr;
+	u16 crc16;
+
+	crc16 = 0;
+	ptr = buffer;
+	for(i=0;i<len;i++)
+		crc16 = (crc16<<8)^_ioCrc16Table[((crc16>>8)^(u16)(ptr[i]))];
+
+	return crc16;
+}
+
+/* Old way, realtime
 static u16 __make_crc16(void *buffer,u32 len)
 {
 	u32 mask,cnt,bcnt;
@@ -158,6 +228,40 @@ static u16 __make_crc16(void *buffer,u32 len)
 	}
 	
 	return (res&0xffff);
+}
+*/
+
+static s32 __card_writedata_fast(s32 drv_no,void *buffer,s32 len)
+{
+	s32 ret;
+	u32 roundlen;
+	s32 missalign;
+	u8 *ptr = buffer;
+
+	if(!ptr || len<=0) return 0;
+
+	missalign = -((u32)ptr)&0x1f;
+	if((len-missalign)<32) return EXI_ImmEx(drv_no,ptr,len,EXI_WRITE);
+
+	if(missalign>0) {
+		if(EXI_ImmEx(drv_no,ptr,missalign,EXI_WRITE)==0) return 0;
+
+		len -= missalign;
+		ptr += missalign;
+	}
+
+	ret = 0;
+	roundlen = (len&~0x1f);
+	DCStoreRange(ptr,roundlen);
+	if(EXI_Dma(drv_no,ptr,roundlen,EXI_WRITE,NULL)==0) ret |= 0x01;
+	if(EXI_Sync(drv_no)==0) ret |= 0x02;
+	if(ret) return 0;
+
+	len -= roundlen;
+	ptr += roundlen;
+	if(len>0)  return EXI_ImmEx(drv_no,ptr,len,EXI_WRITE);
+
+	return 1;
 }
 
 static u32 __card_checktimeout(s32 drv_no,u32 startT,u32 timeout)
@@ -808,7 +912,7 @@ static s32 __card_datawrite(s32 drv_no,void *buf,u32 len)
 		return CARDIO_ERROR_IOERROR;
 	}
 
-	if(EXI_ImmEx(drv_no,buf,len,EXI_WRITE)==0) {
+	if(__card_writedata_fast(drv_no,buf,len)==0) {
 		EXI_Deselect(drv_no);
 		EXI_Unlock(drv_no);
 		return CARDIO_ERROR_IOERROR;
@@ -852,12 +956,12 @@ static s32 __card_multidatawrite(s32 drv_no,void *buf,u32 len)
 		return CARDIO_ERROR_IOERROR;
 	}
 
-	if(EXI_ImmEx(drv_no,buf,len,EXI_WRITE)==0) {
+	if(__card_writedata_fast(drv_no,buf,len)==0) {
 		EXI_Deselect(drv_no);
 		EXI_Unlock(drv_no);
 		return CARDIO_ERROR_IOERROR;
 	}
-
+	
 	/* sleep 1us*/
 	usleep(1);
 
@@ -1056,8 +1160,8 @@ static s32 __card_setblocklen(s32 drv_no,u32 block_len)
 #ifdef _CARDIO_DEBUG
 	printf("__card_setblocklen(%d,%d)\n",drv_no,block_len);
 #endif
-	if(block_len>512)
-		block_len = 512;    // it's in the specs
+	if(block_len>PAGE_SIZE512) block_len = PAGE_SIZE512;
+
 	cmd[0] = 0x10;
 	cmd[1] = (block_len>>24)&0xff;
 	cmd[2] = (block_len>>16)&0xff;
@@ -1202,6 +1306,8 @@ void card_initIODefault()
 #ifdef _CARDIO_DEBUG	
 	printf("card_initIODefault()\n");
 #endif
+	__init_crc7();
+	__init_crc16();
 	for(i=0;i<MAX_DRIVE;++i) {
 		_ioRetryCnt = 0;
 		_ioError[i] = 0;
@@ -1308,17 +1414,15 @@ s32 card_readSector(s32 drv_no,u32 sector_no,u8 *buf,u32 len)
 {
 	s32 ret;
 	u8 arg[4];
-	u32 read_len;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
 	ret = card_preIO(drv_no);
 	if(ret!=0) return ret;
 
-	read_len = (1<<READ_BL_LEN(drv_no));
-	if(len<1 || len>512) return CARDIO_ERROR_INTERNAL;
+	if(len<1 || len>PAGE_SIZE512) return CARDIO_ERROR_INTERNAL;
 #ifdef _CARDIO_DEBUG
-	printf("card_readSector(%d,%d,%d(%d),%d)\n",drv_no,sector_no,len,read_len,_ioPageSize[drv_no]);
+	printf("card_readSector(%d,%d,%d,%d)\n",drv_no,sector_no,len,_ioPageSize[drv_no]);
 #endif
 	arg[0] = (sector_no>>15)&0xff;
 	arg[1] = (sector_no>>7)&0xff;
@@ -1339,17 +1443,15 @@ s32 card_writeSector(s32 drv_no,u32 sector_no,const void *buf,u32 len)
 {
 	s32 ret;
 	u8 arg[4];
-	u32 write_len;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
 	ret = card_preIO(drv_no);
 	if(ret!=0) return ret;
 
-	write_len = (1<<WRITE_BL_LEN(drv_no));
-	if(len!=512) return CARDIO_ERROR_INTERNAL;
+	if(len!=PAGE_SIZE512) return CARDIO_ERROR_INTERNAL;
 #ifdef _CARDIO_DEBUG
-	printf("card_writeSector(%d,%d,%d(%d),%d)\n",drv_no,sector_no,len,write_len,_ioPageSize[drv_no]);
+	printf("card_writeSector(%d,%d,%d,%d)\n",drv_no,sector_no,len,_ioPageSize[drv_no]);
 #endif
 	arg[0] = (sector_no>>15)&0xff;
 	arg[1] = (sector_no>>7)&0xff;
@@ -1375,7 +1477,6 @@ s32 card_erasePartialBlock(s32 drv_no,u32 block_no,u32 offset,u32 len)
 	u8 arg[4];
 	u32 sect_start,sect_end;
 	u32 sects_per_block;
-	u32 write_len;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
@@ -1384,15 +1485,14 @@ s32 card_erasePartialBlock(s32 drv_no,u32 block_no,u32 offset,u32 len)
 #ifdef _CARDIO_DEBUG
 	printf("card_eraseBlock(%d,%d,%d,%d)\n",drv_no,block_no,offset,len);
 #endif
-	write_len = (1<<WRITE_BL_LEN(drv_no));
-	if(len<512 || len%512) return CARDIO_ERROR_INTERNAL;
+	if(len<PAGE_SIZE512 || len%PAGE_SIZE512) return CARDIO_ERROR_INTERNAL; 
 
 	sects_per_block = (1<<(C_SIZE_MULT(drv_no)+2));
 
 	sect_start = block_no*sects_per_block;
-	sect_start += (offset/512);
+	sect_start += (offset/PAGE_SIZE512);
 
-	sect_end = (sect_start+(len/512));
+	sect_end = (sect_start+(len/PAGE_SIZE512));
 
 	arg[0] = (sect_start>>15)&0xff;
 	arg[1] = (sect_start>>7)&0xff;

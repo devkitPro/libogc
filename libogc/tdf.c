@@ -13,36 +13,42 @@
 #define SwapShort(n)		(LOBYTE(n)<<8) + HIBYTE(n);
 
 // texture header
-typedef struct _tdimgheader {
-	u16 height ATTRIBUTE_PACKED;
-	u16 width ATTRIBUTE_PACKED;
-	u32 fmt ATTRIBUTE_PACKED;
-	u32 data_offset ATTRIBUTE_PACKED;
-	u32 wraps ATTRIBUTE_PACKED;
-	u32 wrapt ATTRIBUTE_PACKED;
-	u32 minfilter ATTRIBUTE_PACKED;
-	u32 magfilter ATTRIBUTE_PACKED;
-	f32 lodbias ATTRIBUTE_PACKED;
-	u8 edgelod ATTRIBUTE_PACKED;
-	u8 minlod ATTRIBUTE_PACKED;
-	u8 maxlod ATTRIBUTE_PACKED;
-	u8 unpacked ATTRIBUTE_PACKED;
-} TDImgHeader;
+typedef struct _tdimgheader TDImgHeader;
+
+struct _tdimgheader {
+	u16 height;
+	u16 width;
+	u32 fmt;
+	u32 data_offset;
+	u32 wraps;
+	u32 wrapt;
+	u32 minfilter;
+	u32 magfilter;
+	f32 lodbias;
+	u8 edgelod;
+	u8 minlod;
+	u8 maxlod;
+	u8 unpacked;
+} ATTRIBUTE_PACKED;
 
 // texture palette header
-typedef struct _tdpalheader {
-	u16 nitems ATTRIBUTE_PACKED;
-	u8 unpacked ATTRIBUTE_PACKED;
-	u8 pad ATTRIBUTE_PACKED;
-	u32 fmt ATTRIBUTE_PACKED;
-	u32 data_offset ATTRIBUTE_PACKED;
-} TDPalHeader;
+typedef struct _tdpalheader TDPalHeader;
+
+struct _tdpalheader {
+	u16 nitems;
+	u8 unpacked;
+	u8 pad;
+	u32 fmt;
+	u32 data_offset;
+} ATTRIBUTE_PACKED;
 
 // texture descriptor
-typedef struct _tddesc {
-	TDImgHeader *imghead ATTRIBUTE_PACKED;
-	TDPalHeader *palhead ATTRIBUTE_PACKED;
-} TDDescHeader;
+typedef struct _tddesc TDDescHeader;
+
+struct _tddesc {
+	TDImgHeader *imghead;
+	TDPalHeader *palhead;
+} ATTRIBUTE_PACKED;
 
 static u32 TDF_GetTextureSize(u32 width,u32 height,u32 fmt)
 {

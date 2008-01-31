@@ -15,6 +15,13 @@
 #define UIP_LOG(m)
 #endif /* UIP_LOGGING == 1 */
 
+#if UIP_ERRORING == 1
+#include <stdio.h>
+#define UIP_ERROR(m) uip_log(__FILE__,__LINE__,m)
+#else
+#define UIP_ERROR(m)
+#endif /* UIP_ERRORING == 1 */
+
 #if UIP_STATISTICS == 1
 struct uip_stats uip_stat;
 #define UIP_STAT(s) s
@@ -278,7 +285,7 @@ s8_t uip_ipinput(struct uip_pbuf *p,struct uip_netif *inp)
 
 	iphdr = p->payload;
 	if(UIP_IPH_V(iphdr)!=4) {
-		UIP_LOG("uip_ipinput: ip packet dropped due to bad version number.\n");
+		UIP_ERROR("uip_ipinput: ip packet dropped due to bad version number.\n");
 		uip_pbuf_free(p);
 		return 0;
 	}
@@ -287,7 +294,7 @@ s8_t uip_ipinput(struct uip_pbuf *p,struct uip_netif *inp)
 	iphdr_len *= 4;
 
 	if(iphdr_len>p->len) {
-		UIP_LOG("uip_ipinput: ip packet dropped due to too small packet size.\n");
+		UIP_ERROR("uip_ipinput: ip packet dropped due to too small packet size.\n");
 		uip_pbuf_free(p);
 		return 0;
 	}
@@ -295,7 +302,7 @@ s8_t uip_ipinput(struct uip_pbuf *p,struct uip_netif *inp)
 	if(uip_ipchksum(iphdr,iphdr_len)!=0) {
 	    UIP_STAT(++uip_stat.ip.drop);
 	    UIP_STAT(++uip_stat.ip.chkerr);
-		UIP_LOG("uip_ipinput: bad checksum.\n");
+		UIP_ERROR("uip_ipinput: bad checksum.\n");
 		uip_pbuf_free(p);
 		return 0;
 	}
@@ -310,7 +317,7 @@ s8_t uip_ipinput(struct uip_pbuf *p,struct uip_netif *inp)
 	}
 
 	if(!netif) {
-		UIP_LOG("uip_ipinput: no route found.\n");
+		UIP_ERROR("uip_ipinput: no route found.\n");
 		uip_pbuf_free(p);
 		return 0;
 	}
@@ -324,7 +331,7 @@ s8_t uip_ipinput(struct uip_pbuf *p,struct uip_netif *inp)
 #else
 		uip_pbuf_free(p);
 	    UIP_STAT(++uip_stat.ip.drop);
-		UIP_LOG("ip: fragment dropped.\n");
+		UIP_ERROR("ip: fragment dropped.\n");
 		return 0;
 #endif
 	}
@@ -335,6 +342,15 @@ s8_t uip_ipinput(struct uip_pbuf *p,struct uip_netif *inp)
 			break;
 		case UIP_PROTO_ICMP:
 			uip_icmpinput(p,inp);
+			break;
+		default:
+			UIP_LOG("uip_ipinput: Unsupported protocol.\n");
+			if(!ip_addr_isbroadcast(&(iphdr->dst),inp)
+				&& !ip_addr_ismulticast(&(iphdr->dst))) {
+				p->payload = iphdr;
+				uip_icmp_destunreach(p,UIP_ICMP_DUR_PROTO);
+			}
+			uip_pbuf_free(p);
 			break;
 	}
 	return 0;
@@ -347,7 +363,7 @@ s8_t uip_ipoutput_if(struct uip_pbuf *p,struct uip_ip_addr *src,struct uip_ip_ad
 
 	if(dst!=NULL) {
 		if(uip_pbuf_header(p,UIP_IP_HLEN)) {
-			UIP_LOG("uip_ipoutput_if: not enough room for IP header in pbuf.\n");
+			UIP_ERROR("uip_ipoutput_if: not enough room for IP header in pbuf.\n");
 			return UIP_ERR_BUF;
 		}
 
@@ -385,7 +401,7 @@ s8_t uip_ipoutput(struct uip_pbuf *p,struct uip_ip_addr *src,struct uip_ip_addr 
 	struct uip_netif *netif;
 
 	if((netif=uip_iproute(dst))==NULL) {
-		UIP_LOG("uip_ipoutput: No route found.\n");
+		UIP_ERROR("uip_ipoutput: No route found.\n");
 		return UIP_ERR_RTE;
 	}
 	return uip_ipoutput_if(p,src,dst,ttl,tos,proto,netif);

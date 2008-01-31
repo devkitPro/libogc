@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: cond.c,v 1.17 2007-01-11 10:51:56 wntrmute Exp $
-
 cond.c -- Thread subsystem V
 
 Copyright (C) 2004
@@ -26,26 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.15  2006/05/06 19:41:44  shagkur
-no message
-
-Revision 1.14  2006/05/06 18:07:25  shagkur
-- fixed bugs in gx.c
-
-Revision 1.13  2006/05/02 11:56:10  shagkur
-- changed object handling & thread protection
-
-Revision 1.12  2006/05/02 09:32:18  shagkur
-- changed object handling and handle typedef
-
-Revision 1.11  2005/12/09 09:35:45  shagkur
-no message
-
-Revision 1.10  2005/11/21 12:15:46  shagkur
-no message
-
 
 -------------------------------------------------------------*/
 
@@ -73,7 +51,7 @@ typedef struct _cond_st {
 	lwp_thrqueue wait_queue;
 } cond_st;
 
-static lwp_objinfo _lwp_cond_objects;
+lwp_objinfo _lwp_cond_objects;
 
 extern int clock_gettime(struct timespec *tp);
 extern void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);

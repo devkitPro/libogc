@@ -30,7 +30,6 @@
  * 
  * Author: Adam Dunkels <adam@sics.se>
  *
- * $Id: cpu.h,v 1.3 2005-12-09 09:27:40 shagkur Exp $
  */
 #ifndef __CPU_H__
 #define __CPU_H__

@@ -67,7 +67,7 @@ INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/z
 
 MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -ffunction-sections -fdata-sections
-CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -O2 -Wall $(MACHDEP) -fno-strict-aliasing $(INCLUDES)
+CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -g -O2 -Wall $(MACHDEP) -fno-strict-aliasing $(INCLUDES)
 LDFLAGS		:=
 
 #---------------------------------------------------------------------------------
@@ -119,7 +119,8 @@ MADOBJ		:=	mp3player.o bit.o decoder.o fixed.o frame.o huffman.o \
 
 #---------------------------------------------------------------------------------
 DBOBJ		:=	uip_ip.o uip_tcp.o uip_pbuf.o uip_netif.o uip_arp.o uip_arch.o \
-				uip_icmp.o memb.o memr.o bba.o tcpip.o debug.o debug_handler.o
+				uip_icmp.o memb.o memr.o bba.o tcpip.o debug.o debug_handler.o \
+				debug_supp.o
 
 #---------------------------------------------------------------------------------
 SDCARDOBJ	:=	sdcard.o sdcardio.o card_fat.o card_buf.o card_io.o card_uni.o
@@ -162,7 +163,7 @@ STUBSOBJ	:=	malloc_lock_stub.o flock_supp_stub.o lock_supp_stub.o gcn_crt0.o
 %.o : %.S
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
-	@$(CC) -MMD -MF $(DEPSDIR)/$*.d $(CFLAGS) -D_LANGUAGE_ASSEMBLY  -c $< -o $@
+	@$(CC) -MMD -MF $(DEPSDIR)/$*.d $(CFLAGS) -D_LANGUAGE_ASSEMBLY -Wa,-mgekko -c $< -o $@
 
 #---------------------------------------------------------------------------------
 %.o : %.s

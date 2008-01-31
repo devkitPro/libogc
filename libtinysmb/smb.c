@@ -411,8 +411,8 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	strcpy(pwd, handle->pwd);
 	for(i=0;i<strlen(pwd);i++)pwd[i] = toupper(pwd[i]);
 
-	auth_LMhash(LMh,pwd,strlen(pwd));
-	auth_LMresponse (LMr,LMh,sess->challenge);
+	auth_LMhash((u8*)LMh,(u8*)pwd,strlen(pwd));
+	auth_LMresponse((u8*)LMr,(u8*)LMh,sess->challenge);
 
 	/*** Build information ***/
 	memcpy(&ptr[pos],LMr,24);
@@ -425,8 +425,8 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	pos += strlen(pwd)+1;
 
 	/*** Primary Domain ***/
-	memcpy(&ptr[pos],sess->p_domain,strlen(sess->p_domain));
-	pos += strlen(sess->p_domain)+1;
+	memcpy(&ptr[pos],sess->p_domain,strlen((const char*)sess->p_domain));
+	pos += strlen((const char*)sess->p_domain)+1;
 
 	/*** Native OS ***/
 	strcpy(pwd,"Unix (libOGC)");
@@ -484,19 +484,19 @@ static s32 SMB_TreeAndX(SMBHANDLE *handle)
 	pos++;    /*** NULL Password ***/
 
 	/*** Build server share path ***/
-	strcpy (path, "\\\\");
-	strcat (path, handle->server_name);
-	strcat (path, "\\");
-	strcat (path, handle->share_name);
-	for(ret=0;ret<strlen(path);ret++) path[ret] = toupper(path[ret]);
+	strcpy ((char*)path, "\\\\");
+	strcat ((char*)path, handle->server_name);
+	strcat ((char*)path, "\\");
+	strcat ((char*)path, handle->share_name);
+	for(ret=0;ret<strlen((const char*)path);ret++) path[ret] = toupper(path[ret]);
 
-	memcpy(&ptr[pos],path,strlen(path));
-	pos += strlen(path)+1;
+	memcpy(&ptr[pos],path,strlen((const char*)path));
+	pos += strlen((const char*)path)+1;
 
 	/*** Service ***/
-	strcpy(path,"?????");
-	memcpy(&ptr[pos],path,strlen(path));
-	pos += strlen(path)+1;
+	strcpy((char*)path,"?????");
+	memcpy(&ptr[pos],path,strlen((const char*)path));
+	pos += strlen((const char*)path)+1;
 
 	/*** Update byte count ***/
 	setUShort(ptr,bcpos,(pos-bcpos)-2);
@@ -600,7 +600,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 
 		/*** Primary domain ***/
 		pos += 8;
-		strcpy(sess->p_domain,&ptr[pos]);
+		strcpy((char*)sess->p_domain,(const char*)&ptr[pos]);
 		return SMB_SUCCESS;
 	}
 
@@ -1038,7 +1038,7 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 			pos += 8;
 			sdir->attributes = getUInt(ptr, pos);
 			pos += 38;
-			strcpy(sdir->name, &ptr[pos]);
+			strcpy(sdir->name, (const char*)&ptr[pos]);
 
 			ret = SMB_SUCCESS;
 		}
@@ -1113,7 +1113,7 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 			pos += 8;
 			sdir->attributes = getUInt(ptr, pos);
 			pos += 38;
-			strcpy (sdir->name, &ptr[pos]);
+			strcpy (sdir->name, (const char*)&ptr[pos]);
 
 			ret = SMB_SUCCESS;
 		}

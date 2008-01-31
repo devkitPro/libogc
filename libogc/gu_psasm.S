@@ -685,6 +685,7 @@ ps_guQuatNormalize:
 	blr
 
 	.section .data
+	.balign 4
 QuatEpsilon:
 	.float	0.00001
 Unit01:

@@ -16,6 +16,13 @@
 #define UIP_LOG(m)
 #endif /* UIP_LOGGING == 1 */
 
+#if UIP_ERRORING == 1
+#include <stdio.h>
+#define UIP_ERROR(m) uip_log(__FILE__,__LINE__,m)
+#else
+#define UIP_ERROR(m)
+#endif /* UIP_ERRORING == 1 */
+
 #if UIP_STATISTICS == 1
 struct uip_stats uip_stat;
 #define UIP_STAT(s) s
@@ -64,6 +71,18 @@ s8_t uip_tcp_sendctrl(struct uip_tcp_pcb *pcb,u8_t flags)
 	return uip_tcpenqueue(pcb,NULL,0,flags,1,NULL,0);
 }
 
+s8_t uip_tcp_write(struct uip_tcp_pcb *pcb,const void *arg,u16_t len,u8_t copy)
+{
+	if(pcb->state==UIP_ESTABLISHED || pcb->state==UIP_CLOSE_WAIT ||
+		pcb->state==UIP_SYN_SENT || pcb->state==UIP_SYN_RCVD) {
+		if(len>0) {
+			return uip_tcpenqueue(pcb,(void*)arg,len,0,copy,NULL,0);
+		}
+		return UIP_ERR_OK;
+	}
+	return UIP_ERR_CONN;
+}
+
 s8_t uip_tcpenqueue(struct uip_tcp_pcb *pcb,void *arg,u16_t len,u8_t flags,u8_t copy,u8_t *optdata,u8_t optlen)
 {
 	struct uip_pbuf *p;
@@ -74,7 +93,7 @@ s8_t uip_tcpenqueue(struct uip_tcp_pcb *pcb,void *arg,u16_t len,u8_t flags,u8_t 
 	u8_t queue_len;
 
 	if(len>pcb->snd_buf) {
-		UIP_LOG("uip_tcpenqueue: too much data (len>pcb->snd_buf).\n");
+		UIP_ERROR("uip_tcpenqueue: too much data (len>pcb->snd_buf).\n");
 		return UIP_ERR_MEM;
 	}
 
@@ -85,7 +104,7 @@ s8_t uip_tcpenqueue(struct uip_tcp_pcb *pcb,void *arg,u16_t len,u8_t flags,u8_t 
 	queue_len = pcb->snd_queuelen;
 	
 	if(queue_len>=UIP_TCP_SND_QUEUELEN) {
-		UIP_LOG("uip_tcpenqueue: too long queue.");
+		UIP_ERROR("uip_tcpenqueue: too long queue.");
 		goto memerr;
 	}
 	useg = seg = queue = NULL;
@@ -94,7 +113,7 @@ s8_t uip_tcpenqueue(struct uip_tcp_pcb *pcb,void *arg,u16_t len,u8_t flags,u8_t 
 		seglen = left>pcb->mss?pcb->mss:len;
 		seg = memb_alloc(&uip_tcp_segs);
 		if(seg==NULL) {
-			UIP_LOG("uip_tcpenqueue: could not allocate memory for tcp_seg.");
+			UIP_ERROR("uip_tcpenqueue: could not allocate memory for tcp_seg.");
 			goto memerr;
 		}
 		
@@ -107,13 +126,15 @@ s8_t uip_tcpenqueue(struct uip_tcp_pcb *pcb,void *arg,u16_t len,u8_t flags,u8_t 
 		useg = seg;
 		
 		if(optdata!=NULL) {
-			if((seg->p=uip_pbuf_alloc(UIP_PBUF_TRANSPORT,optlen,UIP_PBUF_RAM))==NULL) goto memerr;
-
+			if((seg->p=uip_pbuf_alloc(UIP_PBUF_TRANSPORT,optlen,UIP_PBUF_RAM))==NULL) {
+				UIP_ERROR("uip_tcpenqueue: could not allocate memory for pbuf opdata.");
+				goto memerr;
+			}
 			++queue_len;
 			seg->dataptr = seg->p->payload;
 		} else if(copy) {
 			if((seg->p=uip_pbuf_alloc(UIP_PBUF_TRANSPORT,seglen,UIP_PBUF_RAM))==NULL) {
-				UIP_LOG("uip_tcpenqueue: could not allocate memory for pbuf copy size.");
+				UIP_ERROR("uip_tcpenqueue: could not allocate memory for pbuf copy size.");
 				goto memerr;
 			}
 
@@ -123,7 +144,7 @@ s8_t uip_tcpenqueue(struct uip_tcp_pcb *pcb,void *arg,u16_t len,u8_t flags,u8_t 
 			seg->dataptr = seg->p->payload;
 		} else {
 			if((p=uip_pbuf_alloc(UIP_PBUF_TRANSPORT,seglen,UIP_PBUF_ROM))==NULL) {
-				UIP_LOG("uip_tcpenqueue: could not allocate memory for zero-copy pbuf.");
+				UIP_ERROR("uip_tcpenqueue: could not allocate memory for zero-copy pbuf.");
 				goto memerr;
 			}
 			
@@ -142,13 +163,13 @@ s8_t uip_tcpenqueue(struct uip_tcp_pcb *pcb,void *arg,u16_t len,u8_t flags,u8_t 
 		}
 
 		if(queue_len>UIP_TCP_SND_QUEUELEN) {
-			UIP_LOG("uip_tcpenqueue: queue too long.");
+			UIP_ERROR("uip_tcpenqueue: queue too long.");
 			goto memerr;
 		}
 		
 		seg->len = seglen;
 		if(uip_pbuf_header(seg->p,UIP_TCP_HLEN)) {
-			UIP_LOG("uip_tcpenqueue: no room for TCP header in pbuf.");
+			UIP_ERROR("uip_tcpenqueue: no room for TCP header in pbuf.");
 			goto memerr;
 		}
 		
@@ -195,7 +216,7 @@ s8_t uip_tcpenqueue(struct uip_tcp_pcb *pcb,void *arg,u16_t len,u8_t flags,u8_t 
 	if(flags&UIP_TCP_SYN || flags&UIP_TCP_FIN) len++;
 	
 	pcb->snd_lbb += len;
-	pcb->snd_buf -= ((len+1)&~0x01);
+	pcb->snd_buf -= len;
 	pcb->snd_queuelen = queue_len;
 	
 	if(seg!=NULL && seglen>0 && seg->tcphdr!=NULL) UIP_TCPH_SET_FLAG(seg->tcphdr,UIP_TCP_PSH);
@@ -221,7 +242,8 @@ void uip_tcpinput(struct uip_pbuf *p,struct uip_netif *inp)
 		uip_pbuf_free(p);
 		return;
 	}
-	if(ip_addr_isbroadcast(&uip_iphdr->dst,inp)) {
+	if(ip_addr_isbroadcast(&uip_iphdr->dst,inp) ||
+		ip_addr_ismulticast(&uip_iphdr->dst)) {
 		uip_pbuf_free(p);
 		return;
 	}
@@ -355,8 +377,10 @@ s8_t uip_tcpoutput(struct uip_tcp_pcb *pcb)
 		(seg==NULL || ntohl(seg->tcphdr->seqno)-pcb->lastack+seg->len>wnd)) {
 		//printf("uip_tcpout: ACK - seqno = %u, ackno = %u\n",pcb->snd_nxt,pcb->rcv_nxt);
 		p = uip_pbuf_alloc(UIP_PBUF_IP,UIP_TCP_HLEN,UIP_PBUF_RAM);
-		if(p==NULL) return UIP_ERR_BUF;
-
+		if(p==NULL) {
+			UIP_ERROR("uip_tcpoutput: (ACK) could not allocate pbuf.");
+			return UIP_ERR_BUF;
+		}
 		pcb->flags &= ~(UIP_TF_ACK_DELAY|UIP_TF_ACK_NOW);
 
 		tcphdr = p->payload;
@@ -596,18 +620,6 @@ void uip_tcp_recved(struct uip_tcp_pcb *pcb,u16_t len)
 	} else if(pcb->flags&UIP_TF_ACK_DELAY && pcb->rcv_wnd>=UIP_TCP_WND/2) {
 		uip_tcp_acknow(pcb);
 	}
-}
-
-s8_t uip_tcp_write(struct uip_tcp_pcb *pcb,const void *arg,u16_t len,u8_t copy)
-{
-	if(pcb->state==UIP_ESTABLISHED || pcb->state==UIP_CLOSE_WAIT ||
-		pcb->state==UIP_SYN_SENT || pcb->state==UIP_SYN_RCVD) {
-		if(len>0) {
-			return uip_tcpenqueue(pcb,(void*)arg,len,0,copy,NULL,0);
-		}
-		return UIP_ERR_OK;
-	}
-	return UIP_ERR_CONN;
 }
 
 s8_t uip_tcp_close(struct uip_tcp_pcb *pcb)
@@ -999,7 +1011,7 @@ static void uip_tcpoutput_segments(struct uip_tcpseg *seg,struct uip_tcp_pcb *pc
 	if(ip_addr_isany(&pcb->local_ip)) {
 		netif = uip_iproute(&pcb->remote_ip);
 		if(netif==NULL) {
-			UIP_LOG("uip_tcpoutput_segments: no route found.");
+			UIP_ERROR("uip_tcpoutput_segments: no route found.");
 			return;
 		}
 		ip_addr_set(&pcb->local_ip,&netif->ip_addr);
@@ -1332,7 +1344,7 @@ static void uip_tcpreceive(struct uip_tcp_pcb *pcb)
 				}
 				
 				uip_tcplen = UIP_TCP_TCPLEN(&uip_inseg);
-				pcb->rcv_nxt += uip_tcplen;
+				if(pcb->state!=UIP_CLOSE_WAIT) pcb->rcv_nxt += uip_tcplen;
 				//printf("uip_tcpreceive: uip_tcplen = %u, rcv_nxt = %u\n",uip_tcplen,pcb->rcv_nxt);
 				
 				if(pcb->rcv_wnd<uip_tcplen) pcb->rcv_wnd = 0;

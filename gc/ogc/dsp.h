@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: dsp.h,v 1.7 2005-12-09 09:21:32 shagkur Exp $
-
 dsp.h -- DSP subsystem
 
 Copyright (C) 2004
@@ -26,16 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.6  2005/11/22 07:14:55  shagkur
-- Added copyright header(taken from libnds).
-- Introduced RCS $Id: dsp.h,v 1.7 2005-12-09 09:21:32 shagkur Exp $ and $Log: not supported by cvs2svn $ token in project files.
-- documentation started in doxygen style
-
-Revision 1.5  2005/11/21 12:13:45  shagkur
-no message
-
 
 -------------------------------------------------------------*/
 
@@ -92,11 +80,17 @@ no message
 typedef struct _dsp_task dsptask_t;
 
 
-/*! \typedef void (*DSPCallback)(void *task)
-\brief function pointer typedef for the user's DSP interrupt handler callback
+/*! \typedef void (*DSPTaskCallback)(dsptask_t *task)
+\brief function pointer typedef for the user's DSP task callbacks
 \param[in] task pointer to the dsp_task structure.
 */
-typedef void (*DSPCallback)(dsptask_t *task);
+typedef void (*DSPTaskCallback)(dsptask_t *task);
+
+
+/*! \typedef void (*DSPCallback)(void)
+\brief function pointer typedef for the user's DSP interrupt callback
+*/
+typedef void (*DSPCallback)(void);
 
 
 /*! \typedef struct _dsp_task dsptask_t
@@ -134,10 +128,10 @@ struct _dsp_task {
 	u32 dram_len;
 	u16 dram_addr;
 	
-	DSPCallback init_cb;
-	DSPCallback res_cb;
-	DSPCallback done_cb;
-	DSPCallback req_cb;
+	DSPTaskCallback init_cb;
+	DSPTaskCallback res_cb;
+	DSPTaskCallback done_cb;
+	DSPTaskCallback req_cb;
 
 	struct _dsp_task *next;
 	struct _dsp_task *prev;
@@ -208,6 +202,18 @@ u32 DSP_ReadCPUtoDSP();
 \return current task
 */
 dsptask_t* DSP_AddTask(dsptask_t *task);
+
+void DSP_Halt();
+
+void DSP_Unhalt();
+
+/*! \fn DSPCallback DSP_RegisterCallback(DSPCallback usr_cb)
+\brief Register an user's interrupt callback. This may be used to handle DSP interrupts on its own. By default a system default callback is installed on DSP_Init().
+\param[in] user_cb pointer to the user's interrupt callback function.
+\
+\return pointer to old interrupt callback function.
+*/
+DSPCallback DSP_RegisterCallback(DSPCallback usr_cb);
 
 #ifdef __cplusplus
    }

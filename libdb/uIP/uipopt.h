@@ -50,7 +50,6 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uipopt.h,v 1.15 2007-01-11 10:51:56 wntrmute Exp $
  *
  */
 
@@ -152,9 +151,9 @@ typedef u16 uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_IP_REASSEMBLY 1
+#define UIP_IP_REASSEMBLY 0
 
-#define UIP_IP_FRAG 1
+#define UIP_IP_FRAG 0
 
 /**
  * The maximum time an IP fragment should wait in the reassembly
@@ -388,6 +387,7 @@ typedef u16 uip_stats_t;
  * \hideinitializer
  */
 #define UIP_LOGGING     0
+#define UIP_ERRORING	0
 
 /**
  * Print out a uIP log message.

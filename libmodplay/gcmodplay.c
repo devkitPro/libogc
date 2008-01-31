@@ -7,15 +7,15 @@
 //#define _GCMOD_DEBUG
 
 #define STACKSIZE		8192
-#define SNDBUFFERSIZE	3750<<2			//that's the maximum buffer size for one VBlank we need.
+#define SNDBUFFERSIZE	(3840<<2)			//that's the maximum buffer size for one VBlank we need.
 
 static BOOL thr_running = FALSE;
 static BOOL sndPlaying = FALSE;
 static MODSNDBUF sndBuffer;
 
-static u32 curr_datalen = 0;
 static u32 shiftVal = 0;
-static vu32 curaudio = 0;
+static vu32 curr_audio = 0;
+static u32 curr_datalen[2] = {0,0};
 static u8 audioBuf[2][SNDBUFFERSIZE] ATTRIBUTE_ALIGN(32);
 
 static lwpq_t player_queue;
@@ -39,16 +39,15 @@ static void* player(void *arg)
 	while(sndPlaying==TRUE) {
 		LWP_ThreadSleep(player_queue);
 
-		if(curr_datalen>0 && sndPlaying==TRUE) {
+		if(curr_datalen[curr_audio]>0 && sndPlaying==TRUE) {
 #ifdef _GCMOD_DEBUG
 			printf("player(run callback)\n\n");
 			start = gettime();
 #endif
-			sndBuffer.callback(sndBuffer.usr_data,(u8*)audioBuf[curaudio],curr_datalen);
-			DCFlushRange(audioBuf[curaudio],curr_datalen);
+			sndBuffer.callback(sndBuffer.usr_data,(u8*)audioBuf[curr_audio],curr_datalen[curr_audio]);
 #ifdef _GCMOD_DEBUG
 			end = gettime();
-			printf("player(end callback,%d - %d us)\n\n",curaudio,diff_usec(start,end));
+			printf("player(end callback,%d - %d us)\n\n",curr_audio,diff_usec(start,end));
 #endif
 		}
 	}
@@ -68,18 +67,18 @@ static void dmaCallback()
 	static long long start = 0,end = 0;
 
 	end = gettime();
-	if(start) printf("dmaCallback(%p,%d,%d - after %d ms)\n",(void*)audioBuf[curaudio],curr_datalen,curaudio,diff_msec(start,end));
+	if(start) printf("dmaCallback(%p,%d,%d - after %d ms)\n",(void*)audioBuf[curr_audio],curr_datalen,curr_audio,diff_msec(start,end));
 #endif
 	AUDIO_StopDMA();
-	AUDIO_InitDMA((u32)audioBuf[curaudio],curr_datalen);
+	AUDIO_InitDMA((u32)audioBuf[curr_audio],curr_datalen[curr_audio]);
 	AUDIO_StartDMA();
 
-	curaudio ^= 1;
-	curr_datalen = mod->samplespertick<<2;
+	curr_audio ^= 1;
+	curr_datalen[curr_audio] = (mod->samplespertick<<shiftVal);
 	LWP_ThreadSignal(player_queue);
 #ifdef _GCMOD_DEBUG
 	start = gettime();
-	printf("dmaCallback(%p,%d,%d,%d us) leave\n",(void*)audioBuf[curaudio],curr_datalen,curaudio,diff_usec(end,start));
+	printf("dmaCallback(%p,%d,%d,%d us) leave\n",(void*)audioBuf[curr_audio],curr_datalen,curr_audio,diff_usec(end,start));
 #endif
 }
 
@@ -99,6 +98,8 @@ static void mixCallback(void *usrdata,u8 *stream,u32 len)
 			((u16*)stream)[i] = 0;
 	} else
 		MOD_Player(mod);
+
+	DCFlushRange(stream,len);
 #ifdef _GCMOD_DEBUG
 	printf("mixCallback(%p,%p,%d,%d) leave\n",stream,usrdata,len,mp->paused);
 #endif
@@ -106,9 +107,6 @@ static void mixCallback(void *usrdata,u8 *stream,u32 len)
 
 static s32 SndBufStart(MODSNDBUF *sndbuf)
 {
-	MODPlay *mp = (MODPlay*)sndbuf->usr_data;
-	MOD *mod = &mp->mod;
-
 	if(sndPlaying) return -1;
 #ifdef _GCMOD_DEBUG
 	printf("SndBufStart(%p) enter\n",sndbuf);
@@ -121,8 +119,6 @@ static s32 SndBufStart(MODSNDBUF *sndbuf)
 	if(sndBuffer.fmt==16)
 		shiftVal++;
 
-	sndBuffer.data_len = curr_datalen = mod->samplespertick<<2;
-
 	memset(audioBuf[0],0,SNDBUFFERSIZE);
 	memset(audioBuf[1],0,SNDBUFFERSIZE);
 
@@ -131,12 +127,15 @@ static s32 SndBufStart(MODSNDBUF *sndbuf)
 
 	while(thr_running);
 
-	curaudio = 0;
+	curr_audio = 0;
 	sndPlaying = TRUE;
+	curr_datalen[0] = SNDBUFFERSIZE;
+	curr_datalen[1] = SNDBUFFERSIZE;
 	if(LWP_CreateThread(&hplayer,player,NULL,player_stack,STACKSIZE,80)!=-1) {
 		AUDIO_RegisterDMACallback(dmaCallback);
-		AUDIO_InitDMA((u32)audioBuf[curaudio],curr_datalen);
+		AUDIO_InitDMA((u32)audioBuf[curr_audio],curr_datalen[curr_audio]);
 		AUDIO_StartDMA();
+		curr_audio ^= 1;
 		return 1;
 	}
 	sndPlaying = FALSE;
@@ -151,9 +150,10 @@ static void SndBufStop()
 	AUDIO_StopDMA();
 	AUDIO_RegisterDMACallback(NULL);
 
-	curr_datalen = 0;
-	curaudio = 0;
+	curr_audio = 0;
 	sndPlaying = FALSE;
+	curr_datalen[0] = 0;
+	curr_datalen[1] = 0;
 	LWP_ThreadSignal(player_queue);
 	LWP_JoinThread(hplayer,NULL);
 }
@@ -182,11 +182,10 @@ static s32 updateWaveFormat(MODPlay *mod)
 		mod->mod.samplespertick = mod->mod.bpmtab[mod->mod.bpm-32];
 	}
 	
-	mod->soundBuf.data_len = 0;
 	mod->soundBuf.fmt = 16;
 	mod->soundBuf.usr_data = mod;
 	mod->soundBuf.callback = mixCallback;
-	mod->soundBuf.samples = (f32)mod->playfreq/50.0;
+	mod->soundBuf.samples = (f32)mod->playfreq/50.0F;
 	
 	if(p)
 		SndBufStart(&mod->soundBuf);

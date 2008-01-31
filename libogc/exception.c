@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: exception.c,v 1.25 2005-12-09 09:35:45 shagkur Exp $
-
 exception.c -- PPC exception handling support
 
 Copyright (C) 2004
@@ -26,11 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.24  2005/11/21 12:15:46  shagkur
-no message
-
 
 -------------------------------------------------------------*/
 
@@ -60,15 +53,17 @@ typedef struct _framerec {
 static void *exception_xfb = (void*)0xC1710000;			//we use a static address above ArenaHi.
 static console_data_s exception_con;
 
-void c_default_exceptionhandler(frame_context *);
 void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
 
-extern void fpu_exception_handler(frame_context*);
+extern void fpu_exceptionhandler();
+extern void irq_exceptionhandler();
+extern void dec_exceptionhandler();
+extern void default_exceptionhandler();
 extern void VIDEO_SetFramebuffer(void *);
 extern void __console_init(console_data_s *con,void *framebuffer,int xstart,int ystart,int xres,int yres,int stride);
 
-extern s8 default_exceptionhandler_start[],default_exceptionhandler_end[],default_exceptionhandler_patch[];
-extern s8 systemcall_handler_start[],systemcall_handler_end[];
+extern s8 exceptionhandler_start[],exceptionhandler_end[],exceptionhandler_patch[];
+extern s8 systemcallhandler_start[],systemcallhandler_end[];
 
 void (*_exceptionhandlertable[NUM_EXCEPTIONS])(frame_context*);
 
@@ -92,14 +87,14 @@ void __exception_load(u32 nExc,void *data,u32 len,void *patch)
 		*(u32*)((u32)pAddr+(patch-data)) |= nExc;
 
 	DCFlushRangeNoSync(pAddr,len);
-	_sync();
 	ICInvalidateRange(pAddr,len);
+	_sync();
 }
 
 
 void __systemcall_init()
 {
-	__exception_load(EX_SYS_CALL,systemcall_handler_start,(systemcall_handler_end-systemcall_handler_start),NULL);
+	__exception_load(EX_SYS_CALL,systemcallhandler_start,(systemcallhandler_end-systemcallhandler_start),NULL);
 }
 
 void __exception_init()
@@ -111,11 +106,14 @@ void __exception_init()
 	// init all exceptions with the default handler & vector code
 	for(i=0;i<NUM_EXCEPTIONS;i++) {
 		// load default exception vector handler code
-		__exception_load(i,default_exceptionhandler_start,(default_exceptionhandler_end-default_exceptionhandler_start),default_exceptionhandler_patch);
+		__exception_load(i,exceptionhandler_start,(exceptionhandler_end-exceptionhandler_start),exceptionhandler_patch);
 		//set default exception handler into table
-		__exception_sethandler(i,c_default_exceptionhandler);
+		__exception_sethandler(i,default_exceptionhandler);
 	}
-	__exception_sethandler(EX_FP,fpu_exception_handler);
+	__exception_sethandler(EX_FP,fpu_exceptionhandler);
+	__exception_sethandler(EX_INT,irq_exceptionhandler);
+	__exception_sethandler(EX_DEC,dec_exceptionhandler);
+	
 	mtmsr(mfmsr()|MSR_RI);
 }
 
@@ -124,8 +122,8 @@ void __exception_close(u32 except)
 	void *pAdd = (void*)(0x80000000|exception_location[except]);
 	*(u32*)pAdd = 0x4C000064;
 	DCFlushRangeNoSync(pAdd,0x100);
-	_sync();
 	ICInvalidateRange(pAdd,0x100);
+	_sync();
 }
 
 void __exception_closeall()

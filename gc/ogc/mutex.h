@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: mutex.h,v 1.8 2006-05-02 09:39:34 shagkur Exp $
-
 mutex.h -- Thread subsystem III
 
 Copyright (C) 2004
@@ -26,18 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.7  2005/12/09 09:21:32  shagkur
-no message
-
-Revision 1.6  2005/11/21 12:37:51  shagkur
-Added copyright header(taken from libnds).
-Introduced RCS $Id: mutex.h,v 1.8 2006-05-02 09:39:34 shagkur Exp $ and $Log: not supported by cvs2svn $
-Introduced RCS $Id: mutex.h,v 1.8 2006-05-02 09:39:34 shagkur Exp $ and Revision 1.7  2005/12/09 09:21:32  shagkur
-Introduced RCS $Id: mutex.h,v 1.8 2006-05-02 09:39:34 shagkur Exp $ and no message
-Introduced RCS $Id: mutex.h,v 1.8 2006-05-02 09:39:34 shagkur Exp $ and token in project files.
-
 
 -------------------------------------------------------------*/
 

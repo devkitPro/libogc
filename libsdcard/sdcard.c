@@ -73,13 +73,14 @@ sd_file* SDCARD_OpenFile(const char *filename,const char *mode)
 
 	created = 0;
 	rfile->handle = -1;
+	err = CARDIO_ERROR_FATALERROR;
 	if(mode[0]=='r') {
 		err = card_openFile(filename,OPEN_R,&rfile->handle);
 		if(err==CARDIO_ERROR_READY) {
 			rfile->size = 0;
 			rfile->offset = 0;
 			rfile->mode = 'r';
-			strncpy(rfile->path,filename,SDCARD_MAX_PATH_LEN);
+			strncpy((char*)rfile->path,filename,SDCARD_MAX_PATH_LEN);
 			card_getFileSize(filename,&rfile->size);
 #ifdef _SDCARD_DEBUG
 			printf("filesize = %d, handle = %d\n",rfile->size,rfile->handle);
@@ -88,8 +89,8 @@ sd_file* SDCARD_OpenFile(const char *filename,const char *mode)
 		}
 	}
 	if(mode[0]=='w') {
-		err = card_openFile(filename,OPEN_W,&rfile->handle);
-		if(err==CARDIO_ERROR_NOTFOUND) {
+		if(mode[1]=='+') err = card_openFile(filename,OPEN_W,&rfile->handle);
+		if(err!=CARDIO_ERROR_READY) {
 			err = card_createFile(filename,ALWAYS_CREATE,&rfile->handle);
 			if(err==CARDIO_ERROR_READY) created = 1;
 		}
@@ -97,7 +98,7 @@ sd_file* SDCARD_OpenFile(const char *filename,const char *mode)
 			rfile->offset = 0;
 			rfile->size = 0;
 			rfile->mode = 'w';
-			strncpy(rfile->path,filename,SDCARD_MAX_PATH_LEN);
+			strncpy((char*)rfile->path,filename,SDCARD_MAX_PATH_LEN);
 
 			if(!created && mode[1]=='+') {
 				card_getFileSize(filename,&rfile->size);
@@ -186,19 +187,28 @@ s32 SDCARD_GetFileSize(sd_file *pfile)
 
 s32 SDCARD_ReadDir(const char *dirname,DIR **pdir_list)
 {
-	s32 ret;
+	s32 ret,slen;
 	u32 size;
-	u8 buffer[SDCARD_MAX_PATH_LEN];
 	u32 count = 0;
 	u32 cnt,entries = 0;
 	file_stat stats;
 	dir_entryex dent;
 	DIR *pdir,*ent;
+	u8 fpath[SDCARD_MAX_PATH_LEN];
+	u8 buffer[SDCARD_MAX_PATH_LEN];
 
-	if(!pdir_list) return SDCARD_ERROR_FATALERROR;
+	if(!pdir_list || !dirname) return SDCARD_ERROR_FATALERROR;
+
+	strcpy((char*)fpath,dirname);
+	slen = strlen((const char*)fpath);
+
+	if(slen<SDCARD_MAX_PATH_LEN && fpath[slen-1]!='\\') {
+		fpath[slen++] = '\\';
+		fpath[slen] = 0;
+	}
 
 	*pdir_list = NULL;
-	ret = card_getListNumDir(dirname,&entries);
+	ret = card_getListNumDir((const char*)fpath,&entries);
 	if(ret!=0) return SDCARD_ERROR_FATALERROR;
 	
 	pdir = (DIR*)malloc(entries*sizeof(DIR));
@@ -207,15 +217,15 @@ s32 SDCARD_ReadDir(const char *dirname,DIR **pdir_list)
 	cnt = 0;
 	while(cnt<entries) {
 		ent = &pdir[cnt];
-		card_readDir(dirname,cnt,1,&dent,&count);
+		card_readDir((const char*)fpath,cnt,1,&dent,&count);
 		card_convertUniToStr(ent->fname,dent.long_name);
-		if(ent->fname[0]==0) strncpy(ent->fname,dent.name,16);
+		if(ent->fname[0]==0) strncpy((char*)ent->fname,(const char*)dent.name,16);
 
-		sprintf(buffer,"%s%s",dirname,dent.name);
-		card_getFileSize(buffer,&size);
+		sprintf((char*)buffer,"%s%s",fpath,dent.name);
+		card_getFileSize((const char*)buffer,&size);
 		ent->fsize = size;
 
-		card_readStat(buffer,&stats);
+		card_readStat((const char*)buffer,&stats);
 		ent->fattr = stats.attr;
 		
 		cnt++;
@@ -251,7 +261,7 @@ s32 SDCARD_GetStats(sd_file *file,SDSTAT *st)
 	
 	ret = SDCARD_ERROR_EOF;
 	memset(st,0,sizeof(SDSTAT));
-	if(card_readStat(ifile->path,&stats)==CARDIO_ERROR_READY) {
+	if(card_readStat((const char*)ifile->path,&stats)==CARDIO_ERROR_READY) {
 		st->dev = (ifile->handle>>24)&0x7f;
 		st->ino = stats.cluster;
 		st->size = stats.size;

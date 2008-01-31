@@ -30,7 +30,6 @@
  * 
  * Author: Adam Dunkels <adam@sics.se>
  *
- * $Id: sys_arch.h,v 1.4 2006-05-02 09:41:40 shagkur Exp $
  */
 #ifndef __SYS_GC_H__
 #define __SYS_GC_H__

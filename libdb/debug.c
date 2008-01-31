@@ -8,6 +8,7 @@
 #include "spinlock.h"
 #include "lwp.h"
 #include "lwp_threads.h"
+#include "sys_state.h"
 #include "context.h"
 #include "cache.h"
 #include "video.h"
@@ -24,15 +25,19 @@
 
 #include "lwp_config.h"
 
-#define GEKKO_MAX_BP	1024
+#include "debug_supp.h"
 
-#define PC_REGNUM		64
-#define SP_REGNUM		1
+#define GEKKO_MAX_BP	64
 
-#define STACKSIZE		32768
+#define SP_REGNUM		1			//register no. for stackpointer
+#define PC_REGNUM		64			//register no. for programcounter (srr0)
+
 #define BUFMAX			2048		//we take the same as in ppc-stub.c
 
-#define STR_BPCODE		"7d821008"
+#define BPCODE			0x7d821008
+
+#define highhex(x)		hexchars [((x)>>4)&0xf]
+#define lowhex(x)		hexchars [(x)&0xf]
 
 #if UIP_LOGGING == 1
 #include <stdio.h>
@@ -41,7 +46,6 @@
 #define UIP_LOG(m)
 #endif /* UIP_LOGGING == 1 */
 
-static s32 dbg_currthr = -1;
 static s32 dbg_active = 0;
 static s32 dbg_instep = 0;
 static s32 dbg_initialized = 0;
@@ -53,7 +57,7 @@ static struct uip_netif g_netif;
 static u8 remcomInBuffer[BUFMAX];
 static u8 remcomOutBuffer[BUFMAX];
 
-static const u8 hexchars[]="0123456789abcdef";
+const u8 hexchars[]="0123456789abcdef";
 
 static struct hard_trap_info {
 	u32 tt;
@@ -70,37 +74,49 @@ static struct hard_trap_info {
 	{EX_SYS_CALL,SIGSYS},	/* System Call */			
 	{EX_TRACE,SIGTRAP},		/* Singel-Step/Watch */
 	{0xB,SIGILL},			/* Reserved */
-	{EX_IBAR,SIGTRAP},		/* Instruction Address Breakpoint (GEKKO) */
+	{EX_IABR,SIGTRAP},		/* Instruction Address Breakpoint (GEKKO) */
 	{0xD,SIGFPE},			/* FP assist */			
 	{0,0}					/* MUST be the last */
 };
 
 static struct bp_entry {
-	u8 *mem;
-	u8 val[8];
+	u32 *address;
+	u32 instr;
 	struct bp_entry *next;
 } bp_entries[GEKKO_MAX_BP];
 
 static struct bp_entry *p_bpentries = NULL;
 
+static frame_context current_thread_registers;
+
 void __breakinst();
 void c_debug_handler(frame_context *ctx);
 
-extern lwp_t __lwp_thread_currentid();
-extern BOOL __lwp_thread_exists(u32 id);
-extern BOOL __lwp_thread_isalive(s32 thr_id);
-extern frame_context* __lwp_thread_context(s32 thr_id);
-
-extern void __exception_load(u32,void *,u32,void*);
+extern void dbg_exceptionhandler();
 extern void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
-extern void __excpetion_close(u32);
+
+extern void __clr_iabr();
+extern void __enable_iabr();
+extern void __disable_iabr();
+extern void __set_iabr(void *);
 
 extern u8 __text_start[],__data_start[],__bss_start[];
 extern u8 __text_fstart[],__data_fstart[],__bss_fstart[];
-extern u8 debug_handler_start[],debug_handler_end[],debug_handler_patch[];
+
+static __inline__ void bp_init()
+{
+	s32 i;
+
+	for(i=0;i<GEKKO_MAX_BP;i++) {
+		bp_entries[i].address = NULL;
+		bp_entries[i].instr = 0xffffffff;
+		bp_entries[i].next = NULL;
+	}
+}
 
 void DEBUG_Init(u16 port)
 {
+	u32 level;
 	uipdev_s hbba;
 	struct uip_ip_addr local_ip,netmask,gw;
 	struct uip_netif *pnet ;
@@ -111,6 +127,7 @@ void DEBUG_Init(u16 port)
 
 	__lwp_thread_dispatchdisable();
 
+	bp_init();
 	memr_init();
 	uip_ipinit();
 	uip_pbuf_init();
@@ -118,9 +135,9 @@ void DEBUG_Init(u16 port)
 
 	tcpip_init();
 	
-	local_ip.addr = uip_ipaddr(dbg_local_ip);
-	netmask.addr = uip_ipaddr(dbg_netmask);
-	gw.addr = uip_ipaddr(dbg_gw);
+	local_ip.addr = uip_ipaddr((const u8_t*)dbg_local_ip);
+	netmask.addr = uip_ipaddr((const u8_t*)dbg_netmask);
+	gw.addr = uip_ipaddr((const u8_t*)dbg_gw);
 
 	hbba = uip_bba_create(&g_netif);
 	pnet = uip_netif_add(&g_netif,&local_ip,&netmask,&gw,hbba,uip_bba_init,uip_ipinput);
@@ -149,10 +166,13 @@ void DEBUG_Init(u16 port)
 			__lwp_thread_dispatchenable();
 			return;
 		}
-
-		__exception_sethandler(EX_DSI,c_debug_handler);
-		__exception_sethandler(EX_PRG,c_debug_handler);
-		__exception_sethandler(EX_TRACE,c_debug_handler);
+		
+		_CPU_ISR_Disable(level);
+		__exception_sethandler(EX_DSI,dbg_exceptionhandler);
+		__exception_sethandler(EX_PRG,dbg_exceptionhandler);
+		__exception_sethandler(EX_TRACE,dbg_exceptionhandler);
+		__exception_sethandler(EX_IABR,dbg_exceptionhandler);
+		_CPU_ISR_Restore(level);
 
 		dbg_initialized = 1;
 		
@@ -171,78 +191,24 @@ static s32 hex(u8 ch)
 	return -1;
 }
 
-static u8* mem2hex(u8 *mem, u8 *buf, u32 count)
+static s32 hexToInt(u8 **ptr, s32 *ival)
 {
-	u8 ch;
-	u16 tmp_s;
-	u32 tmp_l;
-	
-	if ((count==2) && (((s32)mem&1)==0)) {
-		tmp_s = *(u16*)mem;
-		mem += 2;
-		*buf++ = hexchars[(tmp_s>>12)& 0xf];
-		*buf++ = hexchars[(tmp_s>>8)&0xf];
-		*buf++ = hexchars[(tmp_s>>4)&0xf];
-		*buf++ = hexchars[tmp_s&0xf];
+	s32 cnt;
+	s32 val,nibble;
 
-	} else if((count==4) && (((s32)mem&3)==0)) {
-		tmp_l = *(u32*)mem;
-		mem += 4;
-		*buf++ = hexchars[(tmp_l>>28)&0xf];
-		*buf++ = hexchars[(tmp_l>>24)&0xf];
-		*buf++ = hexchars[(tmp_l>>20)&0xf];
-		*buf++ = hexchars[(tmp_l>>16)&0xf];
-		*buf++ = hexchars[(tmp_l>>12)&0xf];
-		*buf++ = hexchars[(tmp_l>>8)&0xf];
-		*buf++ = hexchars[(tmp_l>>4)&0xf];
-		*buf++ = hexchars[tmp_l & 0xf];
+	val = 0;
+	cnt = 0;
+	while(**ptr) {
+		nibble = hex(**ptr);
+		if(nibble<0) break;
 
-	} else {
-		while (count-- > 0) {
-			ch = *mem++;
-			*buf++ = hexchars[ch >> 4];
-			*buf++ = hexchars[ch & 0xf];
-		}
-	}
-	*buf = 0;
-	return buf;
-}
-
-static s8* hex2mem(u8 *buf, u8 *mem, u32 count)
-{
-	s32 i;
-	u8 ch;
-
-	for (i=0; i<count; i++) {
-		ch = hex(*buf++) << 4;
-		ch |= hex(*buf++);
-		*mem++ = ch;
-	}
-	DCFlushRangeNoSync(mem, count);
-	ICInvalidateRange(mem,count);
-
-	return mem;
-}
-
-static s32 hexToInt(u8 **ptr, u32 *intValue)
-{
-	s32 numChars = 0;
-	s32 hexValue;
-
-	*intValue = 0;
-
-	while (**ptr) {
-		hexValue = hex(**ptr);
-		if (hexValue < 0)
-				break;
-
-		*intValue = (*intValue << 4) | hexValue;
-		numChars ++;
+		val = (val<<4)|nibble;
+		cnt++;
 
 		(*ptr)++;
 	}
-
-	return (numChars);
+	*ival = val;
+	return cnt;
 }
 
 static s32 computeSignal(s32 excpt)
@@ -254,70 +220,74 @@ static s32 computeSignal(s32 excpt)
 	return SIGHUP;
 }
 
-u32 insert_bp(u8 *mem)
+u32 insert_bp(void *mem)
 {
 	u32 i;
 	struct bp_entry *p;
 
 	for(p=p_bpentries;p;p=p->next) {
-		if(p->mem == mem) return EINVAL;
+		if(p->address==mem && p->instr==0xffffffff) goto setbreak;
 	}
 	for(i=0;i<GEKKO_MAX_BP;i++) {
-		if(bp_entries[i].mem == NULL) break;
+		if(bp_entries[i].address == NULL) break;
 	}
-	if(i==GEKKO_MAX_BP) return EINVAL;
+	if(i==GEKKO_MAX_BP) return 0;
 	
-	if(!mem2hex(mem,bp_entries[i].val,4)) return EINVAL;
-	if(!hex2mem(STR_BPCODE,mem,4)) return EINVAL;
+	p = &bp_entries[i];
+	p->next = p_bpentries;
+	p->address = mem;
+	p_bpentries = p;
 
-	bp_entries[i].mem = mem;
-	bp_entries[i].next = p_bpentries;
-	p_bpentries = &bp_entries[i];
+setbreak:
+	p->instr = *(p->address);
+	*(p->address) = BPCODE;
+	
+	DCStoreRangeNoSync((void*)((u32)mem&~0x1f),32);
+	ICInvalidateRange((void*)((u32)mem&~0x1f),32);
+	_sync();
 
-	ICFlashInvalidate();
-	DCFlushRangeNoSync((void*)bp_entries[i].mem,4);
-	ICInvalidateRange((void*)bp_entries[i].mem,4);
-
-	return 0;
+	return 1;
 }
 
-u32 remove_bp(u8 *mem)
+u32 remove_bp(void *mem)
 {
 	struct bp_entry *e = p_bpentries;
 	struct bp_entry *f = NULL;
 
-	if(!e) return EINVAL;
-	if(e->mem==mem) {
+	if(!e) return 0;
+	if(e->address==mem) {
 		p_bpentries = e->next;
 		f = e;
 	} else {
 		for(;e->next;e=e->next) {
-			if(e->next->mem==mem) {
+			if(e->next->address==mem) {
 				f = e->next;
 				e->next = f->next;
 				break;
 			}
 		}
 	}
-	if(!f) return EINVAL;
+	if(!f) return 0;
 
-	hex2mem(f->val,f->mem,4);
-	ICFlashInvalidate();
-	DCFlushRangeNoSync((void*)f->mem,4);
-	ICInvalidateRange((void*)f->mem,4);
-	
-	return 0;
+	*(f->address) = f->instr;
+	f->instr = 0xffffffff;
+
+	DCStoreRangeNoSync((void*)((u32)mem&~0x1f),32);
+	ICInvalidateRange((void*)((u32)mem&~0x1f),32);
+	_sync();
+
+	return 1;
 }
 
 static u8 getdbgchar()
 {
-	u8 ch = 0xff;
+	u8 ch = 0;
 	s32 len = 0;
 
 	if(dbg_datasock>=0)
 		len = tcpip_read(dbg_datasock,&ch,1);
 
-	return (len>0)?ch:0xff;
+	return (len>0)?ch:0;
 }
 
 static void putdbgchar(u8 ch)
@@ -329,7 +299,39 @@ static void putdbgchar(u8 ch)
 static void putdbgstr(const u8 *str)
 {
 	if(dbg_datasock>=0)
-		tcpip_write(dbg_datasock,str,strlen(str));
+		tcpip_write(dbg_datasock,str,strlen((const char*)str));
+}
+
+static void putpacket(const u8 *buffer)
+{
+	u8 recv;
+	u8 chksum,ch;
+	u8 *ptr;
+	const u8 *inp;
+	static u8 outbuf[2048];
+
+	outbuf[0] = '+';
+	do {
+		inp = buffer;
+		ptr = &outbuf[1];
+		
+		*ptr++ = '$';
+		
+		chksum = 0;
+		while((ch=*inp++)!='\0') {
+			*ptr++ = ch;
+			chksum += ch;
+		}
+		
+		*ptr++ = '#';
+		*ptr++ = hexchars[chksum>>4];
+		*ptr++ = hexchars[chksum&0x0f];
+		*ptr = '\0';
+	
+		putdbgstr(outbuf);
+
+		recv = getdbgchar();
+	} while((recv&0x7f)!='+');
 }
 
 static void getpacket(u8 *buffer)
@@ -362,13 +364,11 @@ static void getpacket(u8 *buffer)
 			
 			if(chksum!=xmitsum) putdbgchar('-');
 			else {
-				putdbgchar('+');
-				
 				if(buffer[2]==':') {
 					putdbgchar(buffer[0]);
 					putdbgchar(buffer[1]);
 
-					cnt = strlen(buffer);
+					cnt = strlen((const char*)buffer);
 					for(i=3;i<=cnt;i++) buffer[i-3] = buffer[i];
 				}
 			}
@@ -376,205 +376,344 @@ static void getpacket(u8 *buffer)
 	} while(chksum!=xmitsum);
 }
 
-static void putpacket(const u8 *buffer)
+static void process_query(const char *inp,char *outp,s32 thread)
 {
-	u8 recv;
-	u8 chksum,ch;
-	u8 *ptr,out[1024];
-	const u8 *inp;
+	char *optr;
 
-	do {
-		inp = buffer;
-		ptr = out;
-		
-		*ptr++ = '$';
-		
-		chksum = 0;
-		while((ch=*inp++)!='\0') {
-			*ptr++ = ch;
-			chksum += ch;
-		}
-		
-		*ptr++ = '#';
-		*ptr++ = hexchars[chksum>>4];
-		*ptr++ = hexchars[chksum&0x0f];
-		*ptr = '\0';
-	
-		putdbgstr(out);
+	switch(inp[1]) {
+		case 'C':
+			optr = outp;
+			*optr++ = 'Q';
+			*optr++ = 'C';
+			optr = thread2vhstr(optr,thread);
+			*optr++ = 0;
+			break;
+		case 'P':
+			{
+				s32 ret,rthread,mask;
+				struct gdbstub_threadinfo info;
 
-		while((recv= getdbgchar())==0xff);
-	} while((recv&0x7f)!='+');
-}
-
-static void handle_query()
-{
-	u32 id;
-	u8 *ptr;
-
-//	printf("%s\n",remcomInBuffer);
-
-	if(remcomInBuffer[1]=='C') 
-		sprintf(remcomOutBuffer,"QC%04x",dbg_currthr);
-	else if(strncmp(&remcomInBuffer[2],"ThreadInfo",10)==0) {
-		ptr = remcomOutBuffer;
-		if(remcomInBuffer[1]=='f') {
-			*ptr = 'm';
-			for(id=0;id<LWP_MAX_THREADS;id++) {
-				if(__lwp_thread_exists(id)) {
-					ptr++;
-					ptr = mem2hex((u8*)&id,ptr,4);
-					*ptr =  ',';
-				}
-			}
-		} else if(remcomInBuffer[1]=='s') *ptr++ = 'l';
-		*ptr = 0;
-	} else if(strncmp(&remcomInBuffer[1],"Symbol::",8)==0) 
-		strcpy(remcomOutBuffer,"OK");
-	else if(strncmp(&remcomInBuffer[1],"Offsets",7)==0)
-		sprintf(remcomOutBuffer,"Text=%08x;Data=%08x;Bss=%08x",((u32)__text_fstart-(u32)__text_fstart),((u32)__data_fstart-(u32)__text_fstart),((u32)__bss_fstart-(u32)__text_fstart));
-}
-
-void c_debug_handler(frame_context *ctx)
-{
-	u8* ptr;
-	s32 thrid;
-	u32 addr,len,msr;
-	u32 sigval,res;
-	u32 except_thr;
-	frame_context *pctx = NULL;
-
-	UIP_LOG("c_debug_handler()\n");
-	
-	msr = mfmsr();
-	mtmsr(msr&~MSR_EE);
-
-	if(ctx->SRR0==(u32)__breakinst) ctx->SRR0 += 4;
-	
-	if(dbg_listensock>=0 && (dbg_datasock<0 || dbg_active==0))
-		dbg_datasock = tcpip_accept(dbg_listensock);
-	if(dbg_datasock<0) {
-		mtmsr(msr);
-		return;
-	} else 
-		tcpip_starttimer(dbg_datasock);
-	
-	sigval = computeSignal(ctx->EXCPT_Number);
-	
-	dbg_active = 1;
-
-	ptr = remcomOutBuffer;
-	*ptr++ = 'T';
-	*ptr++ = hexchars[sigval>>4];
-	*ptr++ = hexchars[sigval&0x0f];
-	*ptr++ = hexchars[PC_REGNUM>>4];
-	*ptr++ = hexchars[PC_REGNUM&0x0f];
-	*ptr++ = ':';
-	ptr = mem2hex((u8*)&ctx->SRR0,ptr,4);
-	*ptr++ = ';';
-	*ptr++ = hexchars[SP_REGNUM>>4];
-	*ptr++ = hexchars[SP_REGNUM&0x0f];
-	*ptr++ = ':';
-	ptr = mem2hex((u8*)&ctx->GPR[1],ptr,4);
-	*ptr++ = ';';
-	*ptr++ = 0;
-	
-	putpacket(remcomOutBuffer);
-
-	pctx = ctx;
-	except_thr = __lwp_thread_currentid();
-
-	while(1) {
-		remcomOutBuffer[0] = 0;
-		getpacket(remcomInBuffer);
-		switch(remcomInBuffer[0]) {
-			case '?':
-				remcomOutBuffer[0] = 'S';
-				remcomOutBuffer[1] = hexchars[sigval>>4];
-				remcomOutBuffer[2] = hexchars[sigval&0x0f];
-				remcomOutBuffer[3] = 0;
-				break;
-			case 'H':
-				if(remcomInBuffer[2]=='-') dbg_currthr = except_thr;
-				else dbg_currthr = strtoul(remcomInBuffer+2,0,16);
-				if(dbg_currthr!=except_thr) pctx = __lwp_thread_context(dbg_currthr);
-				else pctx = ctx;
-				strcpy(remcomOutBuffer,"OK");
-				break;
-			case 'g':
-				ptr = remcomOutBuffer;
-				ptr = mem2hex((u8*)pctx->GPR,ptr,32*4);
-				ptr = mem2hex((u8*)pctx->FPR,ptr,32*8);
-				if(pctx==ctx) 
-					ptr = mem2hex((u8*)&pctx->SRR0,ptr,4);
-				else 
-					ptr = mem2hex((u8*)&pctx->LR,ptr,4);
-				ptr = mem2hex((u8*)&pctx->MSR,ptr,4);
-				ptr = mem2hex((u8*)&pctx->CR,ptr,4);
-				ptr = mem2hex((u8*)&pctx->LR,ptr,4);
-				ptr = mem2hex((u8*)&pctx->CTR,ptr,4);
-				ptr = mem2hex((u8*)&pctx->XER,ptr,4);
-				break;
-			case 'm':
-				ptr = &remcomInBuffer[1];
-				if(hexToInt(&ptr,&addr) && (addr&0xC0000000) 
-					&& *ptr++==',' && hexToInt(&ptr,&len)) {
-					if(mem2hex((u8*)addr,remcomOutBuffer,len)) break;
-					strcpy(remcomOutBuffer,"E03");
-				} else
-					strcpy(remcomOutBuffer,"E01");
-				break;
-			case 'q':
-				handle_query();
-				break;
-			case 'k':
-			case 'D':
-				ctx->SRR1 &= ~MSR_SE;
-				dbg_instep = 0;
-				dbg_active = 0;
-				mtmsr(msr);
-				tcpip_close(dbg_datasock);
-				dbg_datasock = -1;
-				return;
-			case 'c':
-				ctx->SRR1 &= ~MSR_SE;
-				dbg_instep = 0;
-				dbg_active = 1;
-				mtmsr(msr);
-				tcpip_stoptimer(dbg_datasock);
-				return;
-			case 's':
-				ctx->SRR1 |= MSR_SE; 
-				dbg_instep = 1;
-				dbg_active = 1;
-				mtmsr(msr);
-				tcpip_stoptimer(dbg_datasock);
-				return;
-			case 'T':
-				ptr = &remcomInBuffer[1];
-				hexToInt(&ptr,&thrid);
-				if(__lwp_thread_isalive(thrid)) strcpy(remcomOutBuffer,"OK");
-				else strcpy(remcomOutBuffer,"E01");
-				break;
-			case 'z':
-			case 'Z':
-				if(remcomInBuffer[1]!='0') {
-					strcpy(remcomOutBuffer,"E01");
+				ret = parseqp(inp,&mask,&rthread);
+				if(!ret || mask&~0x1f) {
+					strcpy(outp,"E01");
 					break;
 				}
 
-				ptr = remcomInBuffer+3;
-				hexToInt(&ptr,&addr);
+				ret = gdbstub_getthreadinfo(rthread,&info);
+				if(!ret) {
+					strcpy(outp,"E02");
+					break;
+				}
+				packqq(outp,mask,rthread,&info);
+			}
+			break;
+		case 'L':
+			{
+				s32 ret,athread,first,max_cnt,i,done,rthread;
 
-				res =  0;
-				if(remcomInBuffer[0]=='Z') res = insert_bp((u8*)addr);
-				else remove_bp((u8*)addr);
+				ret = parseql(inp,&first,&max_cnt,&athread);
+				if(!ret) {
+					strcpy(outp,"E02");
+					break;
+				}
+				if(max_cnt==0) {
+					strcpy(outp,"E02");
+					break;
+				}
+				if(max_cnt>QM_MAXTHREADS) max_cnt = QM_MAXTHREADS;
 
+				optr = reserve_qmheader(outp);
+				if(first) rthread = 0;
+				else rthread = athread;
+
+				done = 0;
+				for(i=0;i<max_cnt;i++) {
+					rthread = gdbstub_getnextthread(rthread);
+					if(rthread<=0) {
+						done = 1;
+						break;
+					}
+					optr = packqmthread(optr,rthread);
+				}
+				*optr = 0;
+				packqmheader(outp,i,done,athread);
+			}
+			break;
+		default:
+			if(memcmp(&inp[1],"Offsets",8)==0) {
+				char *t,*d,*b;
+
+				optr = outp;
+				if(!gdbstub_getoffsets(&t,&d,&b)) break;
+
+				*optr++ = 'T';
+				*optr++ = 'e';
+				*optr++ = 'x';
+				*optr++ = 't';
+				*optr++ = '=';
+
+				optr = int2vhstr(optr, (s32)t);
+
+				*optr++ = ';';
+				*optr++ = 'D';
+				*optr++ = 'a';
+				*optr++ = 't';
+				*optr++ = 'a';
+				*optr++ = '=';
+
+				optr = int2vhstr(optr, (s32)d);
+
+				*optr++ = ';';
+				*optr++ = 'B';
+				*optr++ = 's';
+				*optr++ = 's';
+				*optr++ = '=';
+
+				optr = int2vhstr(optr, (s32)b);
+
+				*optr++ = ';';
+				*optr++ = 0;
+			}
+			break;
+	}
+}
+
+static s32 gdbstub_setthreadregs(s32 thread,frame_context *frame)
+{
+	return 1;
+}
+
+static s32 gdbstub_getthreadregs(s32 thread,frame_context *frame)
+{
+	lwp_cntrl *th;
+
+	th = gdbstub_indextoid(thread);
+	if(th) {
+		memcpy(frame->GPR,th->context.GPR,(32*4));
+		memcpy(frame->FPR,th->context.FPR,(32*8));
+		frame->SRR0 = th->context.LR;
+		frame->SRR1 = th->context.MSR;
+		frame->CR = th->context.CR;
+		frame->LR = th->context.LR;
+		frame->CTR = th->context.CTR;
+		frame->XER = th->context.XER;
+		frame->FPSCR = th->context.FPSCR;
+		return 1;
+	}
+	return 0;
+}
+
+static void gdbstub_report_exception(frame_context *frame,s32 thread)
+{
+	u8 *ptr;
+	s32 sigval;
+
+	ptr = remcomOutBuffer;
+	sigval = computeSignal(frame->EXCPT_Number);
+	*ptr++ = 'T';
+	*ptr++ = highhex(sigval);
+	*ptr++ = lowhex(sigval);
+	*ptr++ = highhex(SP_REGNUM);
+	*ptr++ = lowhex(SP_REGNUM);
+	*ptr++ = ':';
+	ptr = mem2hstr(ptr,(u8*)&frame->GPR[1],4);
+	*ptr++ = ';';
+	*ptr++ = highhex(PC_REGNUM);
+	*ptr++ = lowhex(PC_REGNUM);
+	*ptr++ = ':';
+	ptr = mem2hstr(ptr,(u8*)&frame->SRR0,4);
+	*ptr++ = ';';
+
+	*ptr++ = 't';
+	*ptr++ = 'h';
+	*ptr++ = 'r';
+	*ptr++ = 'e';
+	*ptr++ = 'a';
+	*ptr++ = 'd';
+	*ptr++ = ':';
+	ptr = thread2vhstr(ptr,thread);
+	*ptr++ = ';';
+
+	*ptr++ = '\0';
+
+}
+
+
+void c_debug_handler(frame_context *frame)
+{
+	u8 *ptr;
+	s32 addr,len;
+	s32 thread,current_thread;
+	s32 host_has_detached;
+	frame_context *regptr;
+
+	thread = gdbstub_getcurrentthread();
+	current_thread = thread;
+
+	if(dbg_listensock>=0 && (dbg_datasock<0 || dbg_active==0))
+		dbg_datasock = tcpip_accept(dbg_listensock);
+	if(dbg_datasock<0) return;
+	else tcpip_starttimer(dbg_datasock);
+
+	if(dbg_active) {
+		gdbstub_report_exception(frame,thread);
+		putpacket(remcomOutBuffer);
+	}
+
+	if(frame->SRR0==(u32)__breakinst) frame->SRR0 += 4;
+
+	host_has_detached = 0;
+	while(!host_has_detached) {
+		remcomOutBuffer[0]= 0;
+		getpacket(remcomInBuffer);
+		switch(remcomInBuffer[0]) {
+			case '?':
+				gdbstub_report_exception(frame,thread);
+				break;
+			case 'D':
+				dbg_instep = 0;
+				dbg_active = 0;
+				frame->SRR1 &= ~MSR_SE;
 				strcpy(remcomOutBuffer,"OK");
+				host_has_detached = 1;
+				break;
+			case 'g':
+				regptr = frame;
+				ptr = remcomOutBuffer;
+				if(current_thread!=thread) regptr = &current_thread_registers;
+
+				ptr = mem2hstr(ptr,(u8*)regptr->GPR,32*4);
+				ptr = mem2hstr(ptr,(u8*)regptr->FPR,32*8);
+				ptr = mem2hstr(ptr,(u8*)&regptr->SRR0,4);
+				ptr = mem2hstr(ptr,(u8*)&regptr->SRR1,4);
+				ptr = mem2hstr(ptr,(u8*)&regptr->CR,4);
+				ptr = mem2hstr(ptr,(u8*)&regptr->LR,4);
+				ptr = mem2hstr(ptr,(u8*)&regptr->CTR,4);
+				ptr = mem2hstr(ptr,(u8*)&regptr->XER,4);
+				ptr = mem2hstr(ptr,(u8*)&regptr->FPSCR,4);
+				break;
+			case 'm':
+				ptr = &remcomInBuffer[1];
+				if(hexToInt(&ptr,&addr) && ((addr&0xC0000000)==0xC0000000 || (addr&0xC0000000)==0x80000000)
+					&& *ptr++==','
+					&& hexToInt(&ptr,&len) && len<=((BUFMAX - 4)/2))
+					mem2hstr(remcomOutBuffer,(void*)addr,len);
+				else
+					strcpy(remcomOutBuffer,"E00");
+				break;
+			case 'q':
+				process_query(remcomInBuffer,remcomOutBuffer,thread);
+				break;
+			case 'c':
+				dbg_instep = 0;
+				dbg_active = 1;
+				frame->SRR1 &= ~MSR_SE;
+				tcpip_stoptimer(dbg_datasock);
+				goto exit;
+			case 's':
+				dbg_instep = 1;
+				dbg_active = 1;
+				frame->SRR1 |= MSR_SE; 
+				tcpip_stoptimer(dbg_datasock);
+				goto exit;
+			case 'z':
+				{
+					s32 ret,type,len;
+					u8 *addr;
+
+					ret = parsezbreak(remcomInBuffer,&type,&addr,&len);
+					if(!ret) {
+						strcpy(remcomOutBuffer,"E01");
+						break;
+					}
+					if(type!=0) break;
+
+					if(len<4) {
+						strcpy(remcomOutBuffer,"E02");
+						break;
+					}
+
+					ret = remove_bp(addr);
+					if(!ret) {
+						strcpy(remcomOutBuffer,"E03");
+						break;
+					}
+					strcpy(remcomOutBuffer,"OK");
+				}
+				break;
+			case 'H':
+				if(remcomInBuffer[1]!='g') break;
+				{
+					s32 tmp,ret;
+
+					if(vhstr2thread(&remcomInBuffer[2],&tmp)==NULL) {
+						strcpy(remcomOutBuffer,"E01");
+						break;
+					}
+					if(!tmp) tmp = thread;
+					if(tmp==current_thread) {
+						strcpy(remcomOutBuffer,"OK");
+						break;
+					}
+
+					if(current_thread!=thread) ret = gdbstub_setthreadregs(current_thread,&current_thread_registers);
+					if(tmp!=thread) {
+						ret = gdbstub_getthreadregs(tmp,&current_thread_registers);
+						if(!ret) {
+							strcpy(remcomOutBuffer,"E02");
+							break;
+						}
+					}
+					current_thread= tmp;
+					strcpy(remcomOutBuffer,"OK");
+				}
+				break;
+			case 'T':
+				{
+					s32 tmp;
+
+					if(vhstr2thread(&remcomInBuffer[1],&tmp)==NULL) {
+						strcpy(remcomOutBuffer,"E01");
+						break;
+					}
+					if(gdbstub_indextoid(tmp)==NULL) strcpy(remcomOutBuffer,"E02");
+					else strcpy(remcomOutBuffer,"OK");
+				}
+				break;
+			case 'Z':
+				{
+					s32 ret,type,len;
+					u8 *addr;
+
+					ret = parsezbreak(remcomInBuffer,&type,&addr,&len);
+					if(!ret) {
+						strcpy(remcomOutBuffer,"E01");
+						break;
+					}
+					if(type!=0) {
+						strcpy(remcomOutBuffer,"E02");
+						break;
+					}
+					if(len<4) {
+						strcpy(remcomOutBuffer,"E03");
+						break;
+					}
+
+					ret = insert_bp(addr);
+					if(!ret) {
+						strcpy(remcomOutBuffer,"E04");
+						break;
+					}
+					strcpy(remcomOutBuffer,"OK");
+				}
 				break;
 		}
 		putpacket(remcomOutBuffer);
 	}
-	
+	tcpip_close(dbg_datasock);
+	dbg_datasock = -1;
+exit:
+	return;
 }
 
 void _break(void)

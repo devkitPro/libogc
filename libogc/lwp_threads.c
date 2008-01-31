@@ -66,8 +66,8 @@ void __lwp_dumpcontext_fp(lwp_cntrl *thrA,lwp_cntrl *thrB)
 {
 	printf("_cpu_contextfp_dump(%p,%p)\n",thrA,thrB);
 }
-
 #endif
+
 /*
 void __lwp_getthreadlist(lwp_obj **thrs)
 {

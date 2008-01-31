@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: system.c,v 1.60 2007-01-11 10:51:56 wntrmute Exp $
-
 system.c -- OS functions and initialization
 
 Copyright (C) 2004
@@ -27,17 +25,6 @@ must not be misrepresented as being the original software.
 3.	This notice may not be removed or altered from any source
 distribution.
 
-$Log: not supported by cvs2svn $
-Revision 1.58  2005/12/09 09:35:45  shagkur
-no message
-
-Revision 1.57  2005/11/22 07:18:36  shagkur
-- Added function for console window initialization
-
-Revision 1.56  2005/11/21 12:35:32  shagkur
-no message
-
-
 -------------------------------------------------------------*/
 
 
@@ -58,6 +45,7 @@ no message
 #include "lwp_objmgr.h"
 #include "lwp_config.h"
 #include "system.h"
+#include "libversion.h"
 
 #define SYSMEM_SIZE				0x1800000
 #define KERNEL_HEAP				(1*1024*1024)
@@ -209,6 +197,9 @@ static sys_resetinfo mem_resetinfo = {
 	__mem_onreset,
 	127
 };
+
+static const char *__sys_versiondate;
+static const char *__sys_versionbuild;
 
 static __inline__ alarm_st* __lwp_syswd_open(syswd_t wd)
 {
@@ -852,6 +843,9 @@ u32 __SYS_LoadFont(void *src,void *dest)
 	return 1;
 }
 
+void _V_EXPORTNAME(void) 
+{ __sys_versionbuild = _V_STRING; __sys_versiondate = _V_DATE_; }
+
 void __sdloader_boot()
 {
 	void (*reload)() = (void(*)())0x80001800;
@@ -867,6 +861,8 @@ void SYS_Init()
 	if(system_initialized) return;
 	system_initialized = 1;
 
+	_V_EXPORTNAME();
+
 	__lowmem_init();
 	__lwp_wkspace_init(KERNEL_HEAP);
 	__lwp_queue_init_empty(&sys_reset_func_queue);
@@ -879,8 +875,8 @@ void SYS_Init()
 	__decrementer_init();
 	__irq_init();
 	__exi_init();
-	__si_init();
 	__sram_init();
+	__si_init();
 	__lwp_thread_coreinit();
 	__lwp_sysinit();
 	__memlock_init();
@@ -967,22 +963,55 @@ void SYS_RegisterResetFunc(sys_resetinfo *info)
 
 void SYS_SetArenaLo(void *newLo)
 {
+	u32 level;
+
+	_CPU_ISR_Disable(level);
 	__sysarenalo = newLo;
+	_CPU_ISR_Restore(level);
 }
 
 void* SYS_GetArenaLo()
 {
-	return __sysarenalo;
+	u32 level;
+	void *arenalo;
+
+	_CPU_ISR_Disable(level);
+	arenalo = __sysarenalo;
+	_CPU_ISR_Restore(level);
+
+	return arenalo;
 }
 
 void SYS_SetArenaHi(void *newHi)
 {
+	u32 level;
+
+	_CPU_ISR_Disable(level);
 	__sysarenahi = newHi;
+	_CPU_ISR_Restore(level);
 }
 
 void* SYS_GetArenaHi()
 {
-	return __sysarenahi;
+	u32 level;
+	void *arenahi;
+
+	_CPU_ISR_Disable(level);
+	arenahi = __sysarenahi;
+	_CPU_ISR_Restore(level);
+
+	return arenahi;
+}
+
+u32 SYS_GetArenaSize()
+{
+	u32 level,size;
+
+	_CPU_ISR_Disable(level);
+	size = ((u32)__sysarenahi - (u32)__sysarenalo);
+	_CPU_ISR_Restore(level);
+
+	return size;
 }
 
 void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)

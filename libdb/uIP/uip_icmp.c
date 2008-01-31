@@ -40,7 +40,7 @@ void uip_icmpinput(struct uip_pbuf *p,struct uip_netif *inp)
 	code = *((u8_t*)p->payload+1);
 	switch(type) {
 		case UIP_ICMP_ECHO:
-			if(ip_addr_isbroadcast(&iphdr->dst,inp)) {
+			if(ip_addr_isbroadcast(&iphdr->dst,inp) || ip_addr_ismulticast(&iphdr->dst)) {
 				UIP_LOG("uip_icmpinput: Not echoing to broadcast pings.\n");
 				uip_pbuf_free(p);
 				return;
@@ -77,7 +77,7 @@ void uip_icmpinput(struct uip_pbuf *p,struct uip_netif *inp)
 	uip_pbuf_free(p);
 }
 
-void uip_icpm_destunreach(struct uip_pbuf *p,enum uip_icmp_dur_type t)
+void uip_icmp_destunreach(struct uip_pbuf *p,enum uip_icmp_dur_type t)
 {
 	struct uip_pbuf *q;
 	struct uip_ip_hdr *iphdr;

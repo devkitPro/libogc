@@ -13,7 +13,6 @@ typedef struct _modsndbuf {
 	u16 fmt;
 	u32 chans;
 	f32 samples;
-	u32 data_len;
 	void *usr_data;
 	void (*callback)(void *,u8 *,u32);
 } MODSNDBUF;

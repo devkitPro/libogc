@@ -31,6 +31,11 @@
 #define PAD_BUTTON_Y				0x0800
 #define PAD_BUTTON_MENU				0x1000
 #define PAD_BUTTON_START			0x1000
+
+#define PAD_CHAN0_BIT				0x80000000
+#define PAD_CHAN1_BIT				0x40000000
+#define PAD_CHAN2_BIT				0x20000000
+#define PAD_CHAN3_BIT				0x10000000
 /*+----------------------------------------------------------------------------------------------+*/
 /*+----------------------------------------------------------------------------------------------+*/
 /*+----------------------------------------------------------------------------------------------+*/
@@ -63,7 +68,7 @@ u32 PAD_Reset(u32 mask);
 u32 PAD_Recalibrate(u32 mask);
 void PAD_ControlMotor(s32 chan,u32 cmd);
 void PAD_SetSpec(u32 spec);
-void PAD_ScanPads(u32 dummy);
+u32 PAD_ScanPads();
 u16 PAD_ButtonsUp(int pad);
 u16 PAD_ButtonsDown(int pad);
 u16 PAD_ButtonsHeld(int pad);

@@ -485,8 +485,8 @@ etharp_arp_input(struct netif *netif, struct eth_addr *ethaddr, struct pbuf *p)
   hdr = p->payload;
  
   /* get aligned copies of addresses */
-  *(struct ip_addr2 *)&sipaddr = hdr->sipaddr;
-  *(struct ip_addr2 *)&dipaddr = hdr->dipaddr;
+  *(struct ip_addr2 *)((void*)&sipaddr) = hdr->sipaddr;
+  *(struct ip_addr2 *)((void*)&dipaddr) = hdr->dipaddr;
 
   /* this interface is not configured? */
   if (netif->ip_addr.addr == 0) {
@@ -524,7 +524,7 @@ etharp_arp_input(struct netif *netif, struct eth_addr *ethaddr, struct pbuf *p)
       hdr->opcode = htons(ARP_REPLY);
 
       hdr->dipaddr = hdr->sipaddr;
-      hdr->sipaddr = *(struct ip_addr2 *)&netif->ip_addr;
+      hdr->sipaddr = *(struct ip_addr2 *)((void*)&netif->ip_addr);
 
       for(i = 0; i < netif->hwaddr_len; ++i) {
         hdr->dhwaddr.addr[i] = hdr->shwaddr.addr[i];
@@ -803,7 +803,7 @@ err_t etharp_request(struct netif *netif, struct ip_addr *ipaddr)
       hdr->dhwaddr.addr[k] = 0x00;
     }
     hdr->dipaddr = *(struct ip_addr2 *)ipaddr;
-    hdr->sipaddr = *(struct ip_addr2 *)&netif->ip_addr;
+    hdr->sipaddr = *(struct ip_addr2 *)((void*)&netif->ip_addr);
 
     hdr->hwtype = htons(HWTYPE_ETHERNET);
     ARPH_HWLEN_SET(hdr, netif->hwaddr_len);

@@ -92,6 +92,8 @@ static s8_t tcpip_sent(void *arg,struct uip_tcp_pcb *pcb,u16_t space)
 	return UIP_ERR_OK;
 }
 
+//static u32 qcnt = 0;
+
 static s8_t tcpip_recved(void *arg,struct uip_tcp_pcb *pcb,struct uip_pbuf *p,s8_t err)
 {
 	u16_t len;
@@ -108,7 +110,11 @@ static s8_t tcpip_recved(void *arg,struct uip_tcp_pcb *pcb,struct uip_pbuf *p,s8
 		if(sock->lastdata==NULL) {
 			sock->lastdata = p;
 		} else {
-			uip_pbuf_chain(sock->lastdata,p);
+/*
+			qcnt++;
+			printf("tcpip_recved(queuing %d)\n",qcnt);
+*/
+			uip_pbuf_queue(sock->lastdata,p);
 		}
 	} else
 		len = 1;
@@ -286,8 +292,13 @@ s32_t tcpip_read(s32_t s,void *buffer,u32_t len)
 
 			if(sock->lastoffset>=p->len) {
 				sock->lastoffset = 0;
-				sock->lastdata = uip_pbuf_dechain(p);
+				sock->lastdata = uip_pbuf_dequeue(p);
 				uip_pbuf_free(p);
+/*
+				if(qcnt>0) {
+					printf("tcpip_read(dequeuing %d)\n",--qcnt);
+				}
+*/
 			}
 		}
 		return off;
@@ -306,14 +317,15 @@ s32_t tcpip_write(s32_t s,const void *buffer,u32_t len)
 
 //	printf("tcpip_write()\n");
 	while(len>0) {
-		while((snd_buf=uip_tcp_sndbuf(sock->pcb))<=16)
+		do {
 			__tcpip_poll();
+		} while((snd_buf=uip_tcp_sndbuf(sock->pcb))==0);
 		
 		if(len>snd_buf) copy = snd_buf;
 		else copy = len;
 		
 		err = uip_tcp_write(sock->pcb,buffer,copy,1);
-		if(err==UIP_ERR_OK && (!sock->pcb->unacked || sock->pcb->flags&UIP_TF_NODELAY))
+		if(err==UIP_ERR_OK && (!sock->pcb->unacked || sock->pcb->flags&UIP_TF_NODELAY || sock->pcb->snd_queuelen>1))
 			uip_tcpoutput(sock->pcb);
 		
 		buffer = buffer+copy;

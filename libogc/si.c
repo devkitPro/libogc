@@ -9,6 +9,7 @@
 #include "video.h"
 #include "irq.h"
 #include "si.h"
+#include "lwp_watchdog.h"
 
 //#define _SI_DEBUG
 
@@ -17,58 +18,15 @@
 #define _SHIFTR(v, s, w)	\
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
-#define SICHAN_0					0x80000000
-#define SICHAN_1					0x40000000
-#define SICHAN_2					0x20000000
-#define SICHAN_3					0x10000000
-#define SICHAN_BIT(chn)				(SICHAN_0>>chn)
-
-//
-// CMD_TYPE_AND_STATUS response data
-//
-#define SI_TYPE_MASK            0x18000000u
-#define SI_TYPE_N64             0x00000000u
-#define SI_TYPE_DOLPHIN         0x08000000u
-#define SI_TYPE_GC              SI_TYPE_DOLPHIN
-
-// GameCube specific
-#define SI_GC_WIRELESS          0x80000000u
-#define SI_GC_NOMOTOR           0x20000000u // no rumble motor
-#define SI_GC_STANDARD          0x01000000u // dolphin standard controller
-
-// WaveBird specific
-#define SI_WIRELESS_RECEIVED    0x40000000u // 0: no wireless unit
-#define SI_WIRELESS_IR          0x04000000u // 0: IR  1: RF
-#define SI_WIRELESS_STATE       0x02000000u // 0: variable  1: fixed
-#define SI_WIRELESS_ORIGIN      0x00200000u // 0: invalid  1: valid
-#define SI_WIRELESS_FIX_ID      0x00100000u // 0: not fixed  1: fixed
-#define SI_WIRELESS_TYPE        0x000f0000u
-#define SI_WIRELESS_LITE_MASK   0x000c0000u // 0: normal 1: lite controller
-#define SI_WIRELESS_LITE        0x00040000u // 0: normal 1: lite controller
-#define SI_WIRELESS_CONT_MASK   0x00080000u // 0: non-controller 1: non-controller
-#define SI_WIRELESS_CONT        0x00000000u
-#define SI_WIRELESS_ID          0x00c0ff00u
-#define SI_WIRELESS_TYPE_ID     (SI_WIRELESS_TYPE | SI_WIRELESS_ID)
-
-#define SI_N64_CONTROLLER       (SI_TYPE_N64 | 0x05000000)
-#define SI_N64_MIC              (SI_TYPE_N64 | 0x00010000)
-#define SI_N64_KEYBOARD         (SI_TYPE_N64 | 0x00020000)
-#define SI_N64_MOUSE            (SI_TYPE_N64 | 0x02000000)
-#define SI_GBA                  (SI_TYPE_N64 | 0x00040000)
-#define SI_GC_CONTROLLER        (SI_TYPE_GC | SI_GC_STANDARD)
-#define SI_GC_RECEIVER          (SI_TYPE_GC | SI_GC_WIRELESS)
-#define SI_GC_WAVEBIRD          (SI_TYPE_GC | SI_GC_WIRELESS | SI_GC_STANDARD | SI_WIRELESS_STATE | SI_WIRELESS_FIX_ID)
-#define SI_GC_KEYBOARD          (SI_TYPE_GC | 0x00200000)
-#define SI_GC_STEERING          (SI_TYPE_GC | 0x00000000)
-
-#define SISR_ERRORMASK(chn)			(0x0f000000>>(chn<<3))
-#define SIPOLL_ENABLE(chn)			(0x80000000>>(chn+24))
+#define SISR_ERRORMASK(chn)			(0x0f000000>>((chn)<<3))
+#define SIPOLL_ENABLE(chn)			(0x80000000>>((chn)+24))
 
 #define SICOMCSR_TCINT				(1<<31)
 #define SICOMCSR_TCINT_ENABLE		(1<<30)
 #define SICOMCSR_COMERR				(1<<29)
 #define SICOMCSR_RDSTINT			(1<<28)
 #define SICOMCSR_RDSTINT_ENABLE		(1<<27)
+#define SICOMCSR_TSTART				(1<<0)
 
 #define SISR_UNDERRUN				0x0001
 #define SISR_OVERRUN				0x0002
@@ -102,7 +60,7 @@ static struct _sipacket {
 	void *in;
 	u32 in_bytes;
 	SICallback callback;
-	u32 fire;
+	u64 fire;
 } sipacket[4];
 
 static struct _sicntrl {
@@ -189,7 +147,7 @@ static void __si_alarmhandler(syswd_t thealarm)
 {
 	u32 chn;
 #ifdef _SI_DEBUG
-	printf("__si_alarmhandler(%p)\n",alarm);
+	printf("__si_alarmhandler(%08x)\n",thealarm);
 #endif
 	chn = 0;
 	while(chn<4) {
@@ -219,7 +177,8 @@ static u32 __si_completetransfer()
 	xferTime[sicntrl.chan] = gettime();
 	
 	in = (u32*)sicntrl.in;
-	for(cnt=0;cnt<(sicntrl.in_bytes/4);cnt++) in[cnt] = _siReg[32+cnt];
+	cnt = (sicntrl.in_bytes/4);
+	for(i=0;i<cnt;i++) in[i] = _siReg[32+i];
 	if(sicntrl.in_bytes&0x03) {
 		val = _siReg[32+cnt];
 		for(i=0;i<(sicntrl.in_bytes&0x03);i++) ((u8*)in)[(cnt*4)+i] = (val>>((3-i)*8))&0xff;
@@ -229,8 +188,8 @@ static u32 __si_completetransfer()
 #endif
 	if(_siReg[13]&SICOMCSR_COMERR) {
 		sisr = (sisr>>((3-sicntrl.chan)*8))&0x0f;
-		if(sisr&SISR_NORESPONSE && !(si_type[sicntrl.chan]&0x80)) si_type[sicntrl.chan] = 8;
-		if(!sisr) sisr = 4;
+		if(sisr&SISR_NORESPONSE && !(si_type[sicntrl.chan]&SI_ERR_BUSY)) si_type[sicntrl.chan] = SI_ERROR_NO_RESPONSE;
+		if(!sisr) sisr = SISR_COLLISION;
 	} else {
 		typeTime[sicntrl.chan] = gettime();
 		sisr = 0;
@@ -242,7 +201,7 @@ static u32 __si_completetransfer()
 
 static u32 __si_transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb)
 {
-	u32 level,cnt;
+	u32 level,cnt,i;
 	sicomcsr csr;
 #ifdef _SI_DEBUG
 	printf("__si_transfer(%d,%p,%d,%p,%d,%p)\n",chan,out,out_len,in,in_len,cb);
@@ -264,7 +223,8 @@ static u32 __si_transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICa
 #ifdef _SI_DEBUG
 	printf("__si_transfer(csr = %08x,sr = %08x)\n",_siReg[13],_siReg[14]);
 #endif
-	for(cnt=0;cnt<((out_len+3)/4);cnt++)  _siReg[32+cnt] = ((u32*)out)[cnt];
+	cnt = ((out_len+3)/4);
+	for(i=0;i<cnt;i++)  _siReg[32+i] = ((u32*)out)[i];
 
 	csr.val = _siReg[13];
 	csr.csrmap.tcint = 1;
@@ -310,13 +270,13 @@ static void __si_gettypecallback(s32 chan,u32 type)
 {
 	u32 sipad_en,id;
 
-	si_type[chan] = (si_type[chan]&~0x80)|type;
+	si_type[chan] = (si_type[chan]&~SI_ERR_BUSY)|type;
 	typeTime[chan] = gettime();
 #ifdef _SI_DEBUG
 	printf("__si_gettypecallback(%d,%08x,%08x)\n",chan,type,si_type[chan]);
 #endif
-	sipad_en = __PADFixBits&SICHAN_BIT(chan);
-	__PADFixBits &= ~SICHAN_BIT(chan);
+	sipad_en = __PADFixBits&SI_CHAN_BIT(chan);
+	__PADFixBits &= ~SI_CHAN_BIT(chan);
 	
 	if(type&0x0f || ((si_type[chan]&SI_TYPE_MASK)-SI_TYPE_GC)
 		|| !(si_type[chan]&SI_GC_WIRELESS) || si_type[chan]&SI_WIRELESS_IR) {
@@ -325,13 +285,13 @@ static void __si_gettypecallback(s32 chan,u32 type)
 		return;
 	}
 
-	id = ((SYS_GetWirelessID(chan)<<8)&0x00ffff00);
+	id = _SHIFTL(SYS_GetWirelessID(chan),8,16);
 #ifdef _SI_DEBUG
 	printf("__si_gettypecallback(id = %08x)\n",id);
 #endif
 	if(sipad_en && id&SI_WIRELESS_FIX_ID) {
 		cmdfixdevice[chan] = 0x4e100000|(id&0x00CFFF00);
-		si_type[chan] = 128;
+		si_type[chan] = SI_ERR_BUSY;
 		SI_Transfer(chan,&cmdfixdevice[chan],3,&si_type[chan],3,__si_gettypecallback,0);
 		return;
 	}
@@ -343,17 +303,17 @@ static void __si_gettypecallback(s32 chan,u32 type)
 			SYS_SetWirelessID(chan,_SHIFTR(id,8,16));
 		}
 		cmdfixdevice[chan] = 0x4e000000|id;
-		si_type[chan] = 128;
+		si_type[chan] = SI_ERR_BUSY;
 		SI_Transfer(chan,&cmdfixdevice[chan],3,&si_type[chan],3,__si_gettypecallback,0);
 		return;
 	}
 	
 	if(si_type[chan]&SI_WIRELESS_RECEIVED) {
-		id = 0x00100000|(si_type[chan]&0x00CFFF00);
+		id = SI_WIRELESS_FIX_ID|(si_type[chan]&0x00CFFF00);
 		SYS_SetWirelessID(chan,_SHIFTR(id,8,16));
 
 		cmdfixdevice[chan] = 0x4e000000|id;
-		si_type[chan] = 128;
+		si_type[chan] = SI_ERR_BUSY;
 		SI_Transfer(chan,&cmdfixdevice[chan],3,&si_type[chan],3,__si_gettypecallback,0);
 		return;
 	}
@@ -366,7 +326,8 @@ exit:
 static void __si_transfernext(u32 chan)
 {
 	u32 cnt;
-
+	u64 now;
+	s64 diff;
 #ifdef _SI_DEBUG
 	printf("__si_transfernext(%d)\n",chan);
 #endif
@@ -378,9 +339,13 @@ static void __si_transfernext(u32 chan)
 		printf("__si_transfernext(chan = %d,sipacket.chan = %d)\n",chan,sipacket[chan].chan);
 #endif
 		if(sipacket[chan].chan!=-1) {
-			if(!__si_transfer(sipacket[chan].chan,sipacket[chan].out,sipacket[chan].out_bytes,sipacket[chan].in,sipacket[chan].in_bytes,sipacket[chan].callback)) break;
-			SYS_CancelAlarm(si_alarm[chan]);
-			sipacket[chan].chan = -1;
+			now = gettime();
+			diff = (now - sipacket[chan].fire);
+			if(diff>=0) {
+				if(!__si_transfer(sipacket[chan].chan,sipacket[chan].out,sipacket[chan].out_bytes,sipacket[chan].in,sipacket[chan].in_bytes,sipacket[chan].callback)) break;
+				SYS_CancelAlarm(si_alarm[chan]);
+				sipacket[chan].chan = -1;
+			}
 		}
 		cnt++;
 	}
@@ -408,7 +373,7 @@ static void __si_interrupthandler(u32 irq,void *ctx)
 		
 		_siReg[14] &= SISR_ERRORMASK(chn);
 
-		if(si_type[chn]==128 && !SI_IsChanBusy(chn)) SI_Transfer(chn,&cmdtypeandstatus$47,1,&si_type[chn],3,__si_gettypecallback,65);
+		if(si_type[chn]==SI_ERR_BUSY && !SI_IsChanBusy(chn)) SI_Transfer(chn,&cmdtypeandstatus$47,1,&si_type[chn],3,__si_gettypecallback,65);
 	}
 
 	if(csr.csrmap.rdstintmsk && csr.csrmap.rdstint) {
@@ -439,6 +404,20 @@ static void __si_interrupthandler(u32 irq,void *ctx)
 			chn++;
 		}
 	}
+}
+
+u32 SI_Sync()
+{
+	u32 level,ret;
+
+	while(_siReg[13]&SICOMCSR_TSTART);
+
+	_CPU_ISR_Disable(level);
+	ret = __si_completetransfer();
+	__si_transfernext(4);
+	_CPU_ISR_Restore(level);
+
+	return ret;
 }
 
 u32 SI_Busy()
@@ -478,7 +457,7 @@ void SI_EnablePolling(u32 poll)
 	mask = (poll>>4)&0x0f;
 	sicntrl.poll &= ~mask;
 	
-	poll &= (0x03ffffff|mask);
+	poll &= (0x03fffff0|mask);
 	
 	sicntrl.poll |= (poll&~0x03ffff00);
 	SI_TransferCommands();
@@ -531,7 +510,7 @@ u32 SI_GetStatus(s32 chan)
 
 	_CPU_ISR_Disable(level);
 	sisr = (_siReg[14]>>((3-chan)<<3));
-	if(sisr&SISR_NORESPONSE && !(si_type[chan]&0x80)) si_type[chan] = 8;
+	if(sisr&SISR_NORESPONSE && !(si_type[chan]&SI_ERR_BUSY)) si_type[chan] = SI_ERROR_NO_RESPONSE;
 	_CPU_ISR_Restore(level);
 	return sisr;
 }
@@ -544,7 +523,7 @@ u32 SI_GetResponseRaw(s32 chan)
 #endif
 	ret = 0;
 	status = SI_GetStatus(chan);
-	if(status&0x0020) {
+	if(status&SISR_RDST) {
 		inputBuffer[chan][0] = _siReg[(chan*3)+1];
 		inputBuffer[chan][1] = _siReg[(chan*3)+2];
 		inputBufferValid[chan] = 1;
@@ -585,6 +564,8 @@ u32 SI_Transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb
 {
 	u32 ret = 0;
 	u32 level;
+	s64 diff;
+	u64 now,fire;
 	struct timespec tb;
 #ifdef _SI_DEBUG
 	printf("SI_Transfer(%d,%p,%d,%p,%d,%p,%d)\n",chan,out,out_len,in,in_len,cb,us_delay);
@@ -592,9 +573,12 @@ u32 SI_Transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb
 	_CPU_ISR_Disable(level);
 	if(sipacket[chan].chan==-1 && sicntrl.chan!=chan) {
 		ret = 1;
-		if(us_delay) {
+		fire = now = gettime();
+		if(us_delay) fire = xferTime[chan]+microsecs_to_ticks(us_delay);
+		diff = (now - fire);
+		if(diff<0) {
 			tb.tv_sec = 0;
-			tb.tv_nsec = us_delay*TB_NSPERUS;
+			tb.tv_nsec = ticks_to_nanosecs((fire - now));
 			SYS_SetAlarm(si_alarm[chan],&tb,__si_alarmhandler);
 		} else if(__si_transfer(chan,out,out_len,in,in_len,cb)) {
 			_CPU_ISR_Restore(level);
@@ -606,9 +590,9 @@ u32 SI_Transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb
 		sipacket[chan].in = in;
 		sipacket[chan].in_bytes = in_len;
 		sipacket[chan].callback = cb;
-		sipacket[chan].fire = us_delay;
+		sipacket[chan].fire = fire;
 #ifdef _SI_DEBUG
-		printf("SI_Transfer(%d,%p,%d,%p,%d,%p,%d)\n",sipacket[chan].chan,sipacket[chan].out,sipacket[chan].out_bytes,sipacket[chan].in,sipacket[chan].in_bytes,sipacket[chan].callback,sipacket[chan].fire);
+		printf("SI_Transfer(%d,%p,%d,%p,%d,%p,%08x%08x)\n",sipacket[chan].chan,sipacket[chan].out,sipacket[chan].out_bytes,sipacket[chan].in,sipacket[chan].in_bytes,sipacket[chan].callback,(u32)(sipacket[chan].fire>>32),(u32)sipacket[chan].fire);
 #endif
 	}
 	_CPU_ISR_Restore(level);
@@ -618,24 +602,28 @@ u32 SI_Transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb
 u32 SI_GetType(s32 chan)
 {
 	u32 level,type;
-	u64 time;
+	u64 now;
+	s64 diff;
 #ifdef _SI_DEBUG
 	printf("SI_GetType(%d)\n",chan);
 #endif
 	_CPU_ISR_Disable(level);
+	now = gettime();
 	type = si_type[chan];
-	time = gettime();
+	diff = (now - typeTime[chan]);
 	if(sicntrl.poll&(0x80>>chan)) {
-		if(type!=8) {
+		if(type!=SI_ERROR_NO_RESPONSE) {
 			typeTime[chan] = gettime();
 			_CPU_ISR_Restore(level);
 			return type;
 		}
-		si_type[chan] = 128;
-	} else if(diff_usec(typeTime[chan],time)!=50 || type==8) { 
-		if(diff_usec(typeTime[chan],time)==75) si_type[chan] = 128;
-		else si_type[chan] = 128;
-	}
+		si_type[chan] = type = SI_ERR_BUSY;
+	} else if(diff==millisecs_to_ticks(50) && type!=SI_ERROR_NO_RESPONSE) {
+		_CPU_ISR_Restore(level);
+		return type;
+	} else if(diff==millisecs_to_ticks(75)) si_type[chan] = SI_ERR_BUSY;
+	else si_type[chan] = type = SI_ERR_BUSY;
+
 	typeTime[chan] = gettime();
 	
 	SI_Transfer(chan,&cmdtypeandstatus$223,1,&si_type[chan],3,__si_gettypecallback,65);
@@ -653,7 +641,7 @@ u32 SI_GetTypeAsync(s32 chan,SICallback cb)
 #endif
 	_CPU_ISR_Disable(level);
 	type = SI_GetType(chan);
-	if(si_type[chan]&0x80) {
+	if(si_type[chan]&SI_ERR_BUSY) {
 		i=0;
 		for(i=0;i<4;i++) {
 			if(!typeCallback[chan][i] && typeCallback[chan][i]!=cb) {
@@ -725,22 +713,23 @@ u32 SI_UnregisterPollingHandler(RDSTHandler handler)
 
 u32 SI_EnablePollingInterrupt(s32 enable)
 {
-	u32 level,ret,val,i;
+	sicomcsr csr;
+	u32 level,ret,i;
 
 	_CPU_ISR_Disable(level);
 
 	ret = 0;
-	val = _siReg[13];
-	if(val&0x08000000) ret = 1;
+	csr.val = _siReg[13];
+	if(csr.csrmap.rdstintmsk) ret = 1;
 
 	if(enable) {
-		val |= 0x0800;
+		csr.csrmap.rdstintmsk = 1;
 		for(i=0;i<4;i++) inputBufferVCount[i] = 0;
 	} else
-		val &= ~0x08000000;
+		csr.csrmap.rdstintmsk = 0;
 	
-	val &= 0x7ffffffe;
-	_siReg[13] = val;
+	csr.val &= 0x7ffffffe;
+	_siReg[13] = csr.val;
 
 	_CPU_ISR_Restore(level);
 	return ret;

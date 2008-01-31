@@ -13,6 +13,13 @@
 #define UIP_LOG(m)
 #endif /* UIP_LOGGING == 1 */
 
+#if UIP_ERRORING == 1
+#include <stdio.h>
+#define UIP_ERROR(m) uip_log(__FILE__,__LINE__,m)
+#else
+#define UIP_ERROR(m)
+#endif /* UIP_ERRORING == 1 */
+
 #if UIP_STATISTICS == 1
 struct uip_stats uip_stat;
 #define UIP_STAT(s) s

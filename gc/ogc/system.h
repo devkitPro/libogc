@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: system.h,v 1.30 2008-01-04 22:08:40 wntrmute Exp $
-
 system.h -- OS functions and initialization
 
 Copyright (C) 2004
@@ -27,21 +25,6 @@ must not be misrepresented as being the original software.
 3.	This notice may not be removed or altered from any source
 distribution.
 
-$Log: not supported by cvs2svn $
-Revision 1.29  2007/01/11 10:51:56  wntrmute
-sychronise with Shagkur's tree
-
-Revision 1.26  2005/12/17 22:25:30  shagkur
-no message
-
-Revision 1.25  2005/12/09 09:21:32  shagkur
-no message
-
-Revision 1.24  2005/11/22 07:15:22  shagkur
-- Added function for console window initialization
-
-Revision 1.23  2005/11/21 12:37:51  shagkur
-Added copyright header(taken from libnds).
 
 -------------------------------------------------------------*/
 
@@ -149,7 +132,9 @@ typedef u32 syswd_t;
  * \param lang language of system
  * \param flags device and operations flag
  */
-typedef struct _syssram {
+typedef struct _syssram syssram;
+
+struct _syssram {
 	u16 checksum;
 	u16 checksum_inv;
 	u32 ead0;
@@ -159,7 +144,7 @@ typedef struct _syssram {
 	u8 ntd;
 	u8 lang;
 	u8 flags;
-} syssram;
+} ATTRIBUTE_PACKED;
 
 
 /*!
@@ -173,7 +158,9 @@ typedef struct _syssram {
  * \param flashID_chksum[2] 16bit checksum of unlock flash ID
  * \param __padding1[4] padding
  */
-typedef struct _syssramex {
+typedef struct _syssramex syssramex;
+
+struct _syssramex {
 	u8 flash_id[2][12];
 	u32 wirelessKbd_id;
 	u16 wirelessPad_id[4];
@@ -181,11 +168,13 @@ typedef struct _syssramex {
 	u8 __padding0;
 	u16 flashID_chksum[2];
 	u8 __padding1[4];
-} syssramex;
+} ATTRIBUTE_PACKED;
 
 typedef void (*alarmcallback)(syswd_t alarm);
 
-typedef struct _sys_fontheader {
+typedef struct _sys_fontheader sys_fontheader;
+
+struct _sys_fontheader {
 	u16 font_type;
 	u16 first_char;
 	u16 last_char;
@@ -209,7 +198,7 @@ typedef struct _sys_fontheader {
     u8  c1;
     u8  c2;
     u8  c3;
-} sys_fontheader;
+} ATTRIBUTE_PACKED;
 
 typedef void (*resetcallback)(void);
 typedef s32 (*resetfunction)(s32 final);
@@ -318,6 +307,7 @@ void SYS_GetFontTexture(s32 c,void **image,s32 *xpos,s32 *ypos,s32 *width);
 void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width);
 void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu);
 void SYS_RegisterResetFunc(sys_resetinfo *info);
+u32 SYS_GetArenaSize();
 
 #ifdef __cplusplus
    }

@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: audio.h,v 1.6 2005-12-09 09:20:49 shagkur Exp $
-
 audio.h -- Audio subsystem
 
 Copyright (C) 2004
@@ -27,12 +25,6 @@ must not be misrepresented as being the original software.
 3.	This notice may not be removed or altered from any source
 distribution.
 
-$Log: not supported by cvs2svn $
-Revision 1.5  2005/11/22 11:19:33  shagkur
-- adjusted doxygen documentation style in file.
-
-Revision 1.4  2005/11/21 10:51:21  shagkur
-no message
 
 
 -------------------------------------------------------------*/
@@ -197,7 +189,7 @@ AIDCallback AUDIO_RegisterDMACallback(AIDCallback callback);
  * \brief Initialize an audio DMA transfer
  *
  * \param[in] startaddr start address of the memory region to load into the audio DMA. <b><i>NOTE:</i></b> Has to be aligned on a 32byte boundery!
- * \param[in] len lenght of data to load into the audio DMA. <b><i>NOTE:</i></b> Sould be a multiple of 32
+ * \param[in] len lenght of data to load into the audio DMA. <b><i>NOTE:</i></b> Should be a multiple of 32
  *
  * \return none
  */

@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: lwp.c,v 1.31 2008-01-04 22:02:42 wntrmute Exp $
-
 lwp.c -- Thread subsystem I
 
 Copyright (C) 2004
@@ -26,39 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.30  2007/01/11 10:51:56  wntrmute
-sychronise with Shagkur's tree
-
-Revision 1.28  2006/05/06 18:07:25  shagkur
-- fixed bugs in gx.c
-
-Revision 1.27  2006/05/02 14:39:55  shagkur
-no message
-
-Revision 1.26  2006/05/02 14:18:14  shagkur
-- changed LWP_GetSelf() to not issue a context switch
-
-Revision 1.25  2006/05/02 11:56:10  shagkur
-- changed object handling & thread protection
-
-Revision 1.24  2006/05/02 09:34:08  shagkur
-- changed object handling and handle typedef
-- removed useless ISR disabling
-
-Revision 1.23  2006/04/10 05:29:59  shagkur
-- changed function prototypes of thread queue functions
-- added LWP_ThreadSignal to wake up a single thread
-- changed LWP_WakeThread to LWP_ThreadBroadcast
-  (used to wake up all threads waiting on this particular thread queue)
-
-Revision 1.22  2005/12/09 09:35:45  shagkur
-no message
-
-Revision 1.21  2005/11/21 12:15:46  shagkur
-no message
-
 
 -------------------------------------------------------------*/
 
@@ -94,10 +59,10 @@ typedef struct _tqueue_st {
 	lwp_thrqueue tqueue;
 } tqueue_st;
 
-static lwp_objinfo _lwp_thr_objects;
-static lwp_objinfo _lwp_tqueue_objects;
+lwp_objinfo _lwp_thr_objects;
+lwp_objinfo _lwp_tqueue_objects;
 
-extern int main();
+extern int __main();
 
 extern u8 __stack_addr[],__stack_end[];
 
@@ -163,8 +128,6 @@ static void* idle_func(void *arg)
 	while(1);
 	return 0;
 }
-
-void __main();
 
 void __lwp_sysinit()
 {

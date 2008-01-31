@@ -54,7 +54,6 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.c,v 1.4 2005-12-09 09:31:25 shagkur Exp $
  *
  */
 
@@ -184,7 +183,7 @@ static s8_t uip_arp_findentry(struct uip_ip_addr *ipaddr,u8_t flags)
 	
 	if(empty<UIP_ARPTAB_SIZE) i = empty;
 	else if(old_stable<UIP_ARPTAB_SIZE) i = old_stable;
-	else if(old_pending<UIP_ARPTAB_SIZE) i = old_stable;
+	else if(old_pending<UIP_ARPTAB_SIZE) i = old_pending;
 	else return UIP_ERR_MEM;
 
 	arp_table[i].time = 0;
@@ -200,7 +199,8 @@ static s8_t uip_arp_update(struct uip_netif *netif,struct uip_ip_addr *ipaddr, s
 	s8_t i,k;
 
 	if(ip_addr_isany(ipaddr) ||
-		ip_addr_isbroadcast(ipaddr,netif)) return UIP_ERR_ARG;
+		ip_addr_isbroadcast(ipaddr,netif) ||
+		ip_addr_ismulticast(ipaddr)) return UIP_ERR_ARG;
 
 	i = uip_arp_findentry(ipaddr,flags);
 	if(i<0) return i;
@@ -346,7 +346,7 @@ uip_arp_arpin(struct uip_netif *netif,struct uip_eth_addr *ethaddr,struct uip_pb
 s8_t uip_arp_out(struct uip_netif *netif,struct uip_ip_addr *ipaddr,struct uip_pbuf *q)
 {
 	u8_t i;
-	struct uip_eth_addr *dest,*srcaddr;
+	struct uip_eth_addr *dest,*srcaddr,mcastaddr;
 	struct uip_eth_hdr *ethhdr;
 
 	if(uip_pbuf_header(q,sizeof(struct uip_eth_hdr))!=0) {
@@ -357,6 +357,16 @@ s8_t uip_arp_out(struct uip_netif *netif,struct uip_ip_addr *ipaddr,struct uip_p
 	dest = NULL;
 	if(ip_addr_isbroadcast(ipaddr,netif)) {
 		dest = (struct uip_eth_addr*)&ethbroadcast;
+	} else if(ip_addr_ismulticast(ipaddr)) {
+		/* Hash IP multicast address to MAC address.*/
+		mcastaddr.addr[0] = 0x01;
+		mcastaddr.addr[1] = 0x00;
+		mcastaddr.addr[2] = 0x5e;
+		mcastaddr.addr[3] = ip4_addr2(ipaddr) & 0x7f;
+		mcastaddr.addr[4] = ip4_addr3(ipaddr);
+		mcastaddr.addr[5] = ip4_addr4(ipaddr);
+		/* destination Ethernet address is multicast */
+	   dest = &mcastaddr;
 	} else {
 		if(!ip_addr_netcmp(ipaddr,&netif->ip_addr,&netif->netmask)) {
 			if(netif->gw.addr!=0) ipaddr = &netif->gw;
@@ -383,7 +393,9 @@ s8_t uip_arp_arpquery(struct uip_netif *netif,struct uip_ip_addr *ipaddr,struct 
 	s8_t err = UIP_ERR_MEM;
 	struct uip_eth_addr *srcaddr = (struct uip_eth_addr*)netif->hwaddr;
 
-	if(ip_addr_isany(ipaddr) || ip_addr_isbroadcast(ipaddr,netif)) return UIP_ERR_ARG;
+	if(ip_addr_isbroadcast(ipaddr,netif) || 
+		ip_addr_ismulticast(ipaddr) ||
+		ip_addr_isany(ipaddr)) return UIP_ERR_ARG;
 
 	i = uip_arp_findentry(ipaddr,ARP_TRY_HARD);
 	if(i<0) return i;

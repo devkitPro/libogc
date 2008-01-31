@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: arqmgr.c,v 1.9 2006-04-10 05:25:41 shagkur Exp $
-
 arqmgr.c -- ARAM task request queue management
 
 Copyright (C) 2004
@@ -26,19 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.8  2005/12/09 09:35:45  shagkur
-no message
-
-Revision 1.7  2005/11/22 13:53:46  shagkur
-no message
-
-Revision 1.6  2005/11/22 13:52:51  shagkur
-- moved internal defines to .c file
-
-Revision 1.5  2005/11/21 12:42:30  shagkur
-- moved internal defines to .c file
 
 
 -------------------------------------------------------------*/

@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: gccore.h,v 1.15 2007-01-11 10:51:56 wntrmute Exp $
-
 gccore.h -- GC core header
 
 Copyright (C) 2004
@@ -27,16 +25,6 @@ must not be misrepresented as being the original software.
 3.	This notice may not be removed or altered from any source
 distribution.
 
-$Log: not supported by cvs2svn $
-Revision 1.14  2005/12/09 09:24:32  shagkur
-no message
-
-Revision 1.13  2005/11/24 14:28:50  shagkur
-- added copyright header(taken from libnds)
-- introduced RCS ID and LOG token
-- added DVD section to the API description list
-
-
 -------------------------------------------------------------*/
 
 
@@ -48,6 +36,7 @@ Revision 1.13  2005/11/24 14:28:50  shagkur
 
 */ 
 
+#include "ogc/dsp.h"
 #include "ogc/aram.h"
 #include "ogc/arqueue.h"
 #include "ogc/arqmgr.h"
@@ -64,6 +53,7 @@ Revision 1.13  2005/11/24 14:28:50  shagkur
 #include "ogc/gx_struct.h"
 #include "ogc/irq.h"
 #include "ogc/lwp.h"
+#include "ogc/mutex.h"
 #include "ogc/message.h"
 #include "ogc/semaphore.h"
 #include "ogc/pad.h"

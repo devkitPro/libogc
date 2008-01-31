@@ -49,7 +49,6 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arch.h,v 1.5 2005-08-18 06:31:44 shagkur Exp $
  *
  */
 
@@ -65,7 +64,7 @@
 #define MEM_ALIGN_SIZE(size)	(((size)+MEM_ALIGNMENT-1)&~(u32_t)(MEM_ALIGNMENT-1))
 
 #define PACK_STRUCT_STRUCT		__attribute__((packed))
-#define PACK_STRUCT_FIELD(x)	x __attribute__((packed))
+#define PACK_STRUCT_FIELD(x)	x
 #define PACK_STRUCT_BEGIN
 #define PACK_STRUCT_END
 

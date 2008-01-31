@@ -454,6 +454,8 @@ static s8_t bba_start_rx(struct uip_netif *dev,u32 budget)
 	u32 pkt_status,recvd;
 	struct uip_pbuf *p,*q;
 
+	UIP_LOG("bba_start_rx()\n");
+	
 	recvd = 0;
 	rwp = bba_in12(BBA_RWP);
 	rrp = bba_in12(BBA_RRP);
@@ -500,8 +502,10 @@ static s8_t bba_start_rx(struct uip_netif *dev,u32 budget)
 				bba_deselect();
 				pos += size;
 			}
-			if(bba_recv_pbufs==NULL) bba_recv_pbufs = p;
-			else uip_pbuf_chain(bba_recv_pbufs,p);
+		
+			EXI_Unlock(EXI_CHANNEL_0);
+			bba_process(p,dev);
+			EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL);
 		} else
 			break;
 
@@ -555,6 +559,7 @@ static s8_t bba_dochallengeresponse()
 	u16 status;
 	s32 cnt;
 	
+	UIP_LOG("bba_dochallengeresponse()\n");
 	/* as we do not have interrupts we've to poll the irqs */
 	cnt = 0;
 	do {
@@ -634,6 +639,8 @@ static u32 bba_calc_response(struct uip_netif *dev,u32 val)
 {
 	u8 revid_0, revid_eth_0, revid_eth_1;
 	struct bba_priv *priv = (struct bba_priv*)dev->state;
+
+	UIP_LOG("bba_calc_response()\n");
 
 	revid_0 = priv->revid;
 	revid_eth_0 = _SHIFTR(priv->devid,8,8);
@@ -827,14 +834,9 @@ uipdev_s uip_bba_create(struct uip_netif *dev)
 void uip_bba_poll(struct uip_netif *dev)
 {
 	u16 status;
-	struct uip_pbuf *p;
 
 	UIP_LOG("uip_bba_poll()\n");
 	
 	bba_devpoll(&status);
-	
-	while((p=bba_recv_pbufs)!=NULL) {
-		bba_recv_pbufs = uip_pbuf_dechain(p);
-		bba_process(p,dev);
-	}
+
 }

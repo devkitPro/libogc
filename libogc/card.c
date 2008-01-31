@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: card.c,v 1.61 2008-01-04 22:13:12 wntrmute Exp $
-
 card.c -- Memory card subsystem
 
 Copyright (C) 2004
@@ -26,35 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.60  2007/01/11 10:51:56  wntrmute
-sychronise with Shagkur's tree
-
-Revision 1.58  2006/04/10 05:30:55  shagkur
-- changed calls to thread queue functions to meet the new prototypes.
-
-Revision 1.57  2005/12/26 11:09:15  shagkur
-- fixed string problem with filenames in DAT
-
-Revision 1.56  2005/12/21 06:46:31  shagkur
-- fixded filename problem in the file creation functions
-
-Revision 1.55  2005/12/17 23:10:57  shagkur
-- finished format function
-
-Revision 1.54  2005/12/17 22:42:48  shagkur
-- fixed a bug in card_bat structure
-
-Revision 1.53  2005/12/09 09:35:45  shagkur
-no message
-
-Revision 1.52  2005/11/22 07:18:13  shagkur
-- changes done accordingly to changes in dsp.h/.c
-
-Revision 1.51  2005/11/21 12:15:46  shagkur
-no message
-
 
 -------------------------------------------------------------*/
 
@@ -364,10 +333,9 @@ static void __card_synccallback(s32 chn,s32 result)
 
 static void __card_updateiconoffsets(struct card_direntry *entry,card_stat *stats)
 {
-	s32 i,isci;
-	u8 bnrfmt;
-	u16 iconfmt;
-	u32 iconaddr;
+	s32 i;
+	u8 bnrfmt,nicons;
+	u32 iconaddr,iconbase;
 
 	iconaddr = entry->iconaddr;
 	if(iconaddr==-1) {
@@ -377,44 +345,61 @@ static void __card_updateiconoffsets(struct card_direntry *entry,card_stat *stat
 		iconaddr = 0;
 	}
 	
-	isci = 0;
-	bnrfmt = (entry->bannerfmt&CARD_BANNER_MASK);
-	if(bnrfmt==CARD_BANNER_CI) {
-		stats->offset_banner = iconaddr;
-		stats->offset_banner_tlut = iconaddr+3072;
-		iconaddr = (iconaddr+3072+512);
-	} else if(bnrfmt==CARD_BANNER_RGB) {
-		stats->offset_banner = iconaddr;
-		stats->offset_banner_tlut = -1;
-		iconaddr += 6144;
-	} else {
-		stats->offset_banner = -1;
-		stats->offset_banner_tlut = -1;
-	}
-	
-	i = 0;
-	while(i<CARD_MAXICONS) {
-		iconfmt = ((entry->iconfmt>>(i<<1))&CARD_ICON_MASK);
-		stats->offset_icon[i] = iconaddr;
+	if(entry->bannerfmt&CARD_BANNER_MASK) {
+		if(!(entry->bannerfmt&0x10)) {
+			bnrfmt = (entry->bannerfmt&CARD_BANNER_MASK);
+			if(bnrfmt==CARD_BANNER_CI) {
+				stats->banner_fmt = bnrfmt;
+				stats->offset_banner = iconaddr;
+				stats->offset_banner_tlut = iconaddr+3072;
+				iconaddr += (3072+512);
+			} else if(bnrfmt==CARD_BANNER_RGB) {
+				stats->banner_fmt = bnrfmt;
+				stats->offset_banner = iconaddr;
+				stats->offset_banner_tlut = -1;
+				iconaddr += 6144;
+			}
+		} else {
+			stats->offset_banner = -1;
+			stats->offset_banner_tlut = -1;
+		}
+	}	
 
-		if(iconfmt==CARD_ICON_CI) {
-			iconaddr += 1024;
-			isci = 1;
-		} else if(iconfmt==CARD_ICON_RGB) {
-			iconaddr += 2048;
-		} else 
-			stats->offset_icon[i] = -1;
-		
-		i++;
+	nicons = 0;
+	for(i=0;i<CARD_MAXICONS;i++) {
+		stats->iconfmt[i] = ((entry->iconfmt>>(i<<1))&CARD_ICON_MASK);
+		stats->iconspeed[i] = ((entry->iconspeed>>(i<<1))&CARD_SPEED_MASK);
+		if(stats->iconspeed[i]==0) stats->iconfmt[i] = 0;
+		if(stats->iconfmt[i]) nicons++;
 	}
-	
-	if(isci) {
-		stats->offset_icon_tlut = iconaddr;
-		iconaddr += 512;
-	} else
-		stats->offset_icon_tlut = -1;
 
-	stats->offset_data = iconaddr;
+	iconbase = iconaddr;
+	for(i=0;i<CARD_MAXICONS;i++) {
+		switch(stats->iconfmt[i]) {
+			case 1:			//CARD_ICON_CI with shared palette							
+				stats->offset_icon[i] = iconaddr;
+				stats->offset_icon_tlut[i] = iconbase + (nicons*1024);
+				iconaddr += 1024;
+				break;
+			case 2:			//CARD_ICON_RGB
+				stats->offset_icon[i] = iconaddr;
+				stats->offset_icon_tlut[i] = -1;
+				iconaddr += 3072;
+				break;
+			case 3:			//CARD_ICON_CI with own palette
+				stats->offset_icon[i] = iconaddr;
+				stats->offset_icon_tlut[i] = iconaddr + 1024;
+				iconaddr += 1536;
+				break;
+			default:		//CARD_ICON_NONE
+				stats->offset_icon[i] = -1;
+				stats->offset_icon_tlut[i] = -1;
+				break;
+
+
+		}
+	}
+//	stats->offset_data = iconaddr;
 }
 
 static s32 __card_getstatusex(s32 chn,s32 fileno,struct card_direntry *entry)
@@ -446,8 +431,6 @@ static s32 __card_setstatusexasync(s32 chn,s32 fileno,struct card_direntry *entr
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD; 
 	if(fileno<0 || fileno>=CARD_MAXFILES) return CARD_ERROR_FATAL_ERROR;
 	if(entry->filename[0]==0xff || entry->filename[0]==0) return CARD_ERROR_FATAL_ERROR;
-	if(entry->iconaddr!=-1 && entry->iconaddr>CARD_READSIZE) return CARD_ERROR_FATAL_ERROR;
-	if(entry->commentaddr!=-1 && entry->commentaddr>8128) return CARD_ERROR_FATAL_ERROR;
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
 
 	ret = CARD_ERROR_BROKEN;
@@ -470,9 +453,9 @@ static s32 __card_setstatusexasync(s32 chn,s32 fileno,struct card_direntry *entr
 			i = 0;
 			while(i<CARD_MAXFILES) {
 				if(i!=fileno && entries[i].gamecode[0]!=0xff
-					&& memcmp(entries[i].filename,entry->filename,CARD_FILENAMELEN)==0
 					&& memcmp(entries[i].gamecode,entry->gamecode,4)==0
-					&& memcmp(entries[i].company,entry->company,2)==0) {
+					&& memcmp(entries[i].company,entry->company,2)==0
+					&& memcmp(entries[i].filename,entry->filename,CARD_FILENAMELEN)==0) {
 					return __card_putcntrlblock(card,CARD_ERROR_EXIST);
 				}
 				i++;
@@ -482,15 +465,14 @@ static s32 __card_setstatusexasync(s32 chn,s32 fileno,struct card_direntry *entr
 			memcpy(entries[fileno].company,entry->company,2);
 		}
 		
-		entries[fileno].permission = entry->permission;
-		entries[fileno].copytimes = entry->copytimes;
-		entries[fileno].bannerfmt = entry->bannerfmt;
 		entries[fileno].lastmodified = entry->lastmodified;
+		entries[fileno].bannerfmt = entry->bannerfmt;
 		entries[fileno].iconaddr = entry->iconaddr;
 		entries[fileno].iconfmt = entry->iconfmt;
 		entries[fileno].iconspeed = entry->iconspeed;
-		entries[fileno].iconaddr = entry->iconaddr;
 		entries[fileno].commentaddr = entry->commentaddr;
+		entries[fileno].permission = entry->permission;
+		entries[fileno].copytimes = entry->copytimes;
 
 		if((ret=__card_updatedir(chn,callback))>=0) return ret;
 	}
@@ -521,7 +503,7 @@ static s32 __card_getfilenum(card_block *card,const char *filename,const char *g
 	entries = dirblock->entries;
 	for(i=0;i<CARD_MAXFILES;i++) {
 		if(entries[i].gamecode[0]!=0xff) {
-			if(strnicmp((char*)entries[i].filename,filename,strlen(filename))==0) {
+			if(strnicmp((const char*)entries[i].filename,filename,strlen(filename))==0) {
 				if((gamecode && gamecode[0]!=0xff && memcmp(entries[i].gamecode,gamecode,4)!=0)
 					|| (company && company[0]!=0xff && memcmp(entries[i].company,company,2)!=0)) continue;
 
@@ -1673,10 +1655,10 @@ static s32 __card_formatregion(s32 chn,u32 encode,cardcallback callback)
 	rnd_val = time = gettime();
 	sramex = __SYS_LockSramEx();
 	while(cnt<12) {
-		rnd_val += (((rnd_val*0x41c64e6d)+0x3039)>>16);
+		rnd_val = (((rnd_val*(u64)0x0000000041c64e6d)+(u64)0x0000000000003039)>>16);
 		((u8*)header->serial)[cnt] = (sramex->flash_id[chn][cnt]+(u32)rnd_val);
 
-		rnd_val += (((rnd_val*0x41c64e6d)+0x3039)>>16);
+		rnd_val = (((rnd_val*(u64)0x0000000041c64e6d)+(u64)0x0000000000003039)>>16);
 		rnd_val &= (u64)0x0000000000007fff;
 		
 		cnt++;
@@ -1826,12 +1808,12 @@ static void __card_createfatcallback(s32 chn,s32 result)
 	if(card_gamecode[0]!=0xff) memcpy(entry->company,card_company,2);
 	entry->block = card->curr_fileblock;
 	entry->permission = CARD_ATTRIB_PUBLIC;
-	entry->pad_00 = 0;
+	entry->pad_00 = 0xff;
 	entry->copytimes = 0;
 	entry->iconaddr = -1;
 	entry->iconfmt = 0;
 	entry->iconspeed = 0;
-	entry->pad_01 = -1;
+	entry->pad_01 = 0xffff;
 	entry->iconspeed = (entry->iconspeed&~CARD_SPEED_MASK)|CARD_SPEED_FAST;
 	entry->lastmodified = time(NULL);
 
@@ -1963,7 +1945,8 @@ static s32 __card_domount(s32 chn)
 						sum += kval;
 						cnt++;
 					}
-					sramex->flashID_chksum[chn] = (sum^-1)&0xff;
+					sum = (sum^-1)&0xff;
+					sramex->flashID_chksum[chn] = (sum<<8)|sum;
 					__SYS_UnlockSramEx(1);
 					return ret;
 				}
@@ -1980,6 +1963,7 @@ static s32 __card_domount(s32 chn)
 				__SYS_UnlockSramEx(0);
 				
 				sum = (sum^-1)&0xff;
+				sum |= (sum<<8);
 				if(cnt!=sum) {
 					ret = CARD_ERROR_IOERROR;
 					goto exit;
@@ -2748,7 +2732,7 @@ s32 CARD_CreateEntryAsync(s32 chn,card_dir *direntry,card_file *file,cardcallbac
 #ifdef _CARD_DEBUG
 	printf("CARD_CreateEntryAsync(%d,%p,%p,%p)\n",chn,direntry,file,callback);
 #endif
-	len = strlen((char *)direntry->filename);
+	len = strlen((const char*)direntry->filename);
 	if(len>CARD_FILENAMELEN) return CARD_ERROR_NAMETOOLONG;
 	
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
@@ -2820,7 +2804,7 @@ s32 CARD_Open(s32 chn,const char *filename,card_file *file)
 	
 	file->filenum = -1;
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
-	if((ret=__card_getfilenum(card,filename,(char *)card_gamecode,(char *)card_company,&fileno))<0) {
+	if((ret=__card_getfilenum(card,filename,(const char*)card_gamecode,(const char*)card_company,&fileno))<0) {
 		__card_putcntrlblock(card,ret);
 		return ret;
 	}
@@ -2849,7 +2833,7 @@ s32 CARD_OpenEntry(s32 chn,card_dir *entry,card_file *file)
 	
 	file->filenum = -1;
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
-	if((ret=__card_getfilenum(card,(char *)entry->filename,(char *)entry->gamecode,(char *)entry->company,&fileno))<0) {
+	if((ret=__card_getfilenum(card,(const char*)entry->filename,(const char*)entry->gamecode,(const char*)entry->company,&fileno))<0) {
 		__card_putcntrlblock(card,ret);
 		return ret;
 	}
@@ -2895,7 +2879,7 @@ s32 CARD_DeleteAsync(s32 chn,const char *filename,cardcallback callback)
 	printf("CARD_DeleteAsync(%d,%s,%p)\n",chn,filename,callback);
 #endif
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
-	if((ret=__card_getfilenum(card,filename,(char *)card_gamecode,(char *)card_company,&fileno))<0) {
+	if((ret=__card_getfilenum(card,filename,(const char*)card_gamecode,(const char*)card_company,&fileno))<0) {
 		__card_putcntrlblock(card,ret);
 		return ret;
 	}
@@ -3102,6 +3086,20 @@ s32 CARD_GetSectorSize(s32 chn,u32 *sector_size)
 	return ret;
 }
 
+s32 CARD_GetBlockCount(s32 chn,u32 *block_count)
+{
+	s32 ret; 
+	card_block *card = NULL; 
+
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD; 
+	if((ret=__card_getcntrlblock(chn,&card))<0) return ret; 
+
+	*block_count = card->blocks;
+	ret = __card_putcntrlblock(card,CARD_ERROR_READY); 
+
+	return ret;
+}
+
 s32 CARD_GetStatus(s32 chn,s32 fileno,card_stat *stats)
 {
 	s32 ret; 
@@ -3194,7 +3192,7 @@ s32 CARD_SetAttributesAsync(s32 chn,s32 fileno,u8 attr,cardcallback callback)
 
 	if((ret=__card_getstatusex(chn,fileno,&entry))>=0) {
 		entry.permission = attr;
-		ret = __card_setstatusex(chn,fileno,&entry);
+		ret = __card_setstatusexasync(chn,fileno,&entry,callback);
 	}
 	return ret;
 }
@@ -3207,4 +3205,28 @@ s32 CARD_SetAttributes(s32 chn,s32 fileno,u8 attr)
 		ret = __card_sync(chn);
 	}
 	return ret;
+}
+
+s32 CARD_SetCompany(const char *company)
+{
+	u32 level,i;
+
+	_CPU_ISR_Disable(level);
+	for(i=0;i<2;i++) card_company[i] = 0xff;
+	if(company && strlen(company)<=2) memcpy(card_company,company,2) ;
+	_CPU_ISR_Restore(level);
+	
+	return CARD_ERROR_READY;
+}
+
+s32 CARD_SetGamecode(const char *gamecode)
+{
+	u32 level,i;
+
+	_CPU_ISR_Disable(level);
+	for(i=0;i<4;i++) card_gamecode[i] = 0xff;
+	if(gamecode && strlen(gamecode)<=4) memcpy(card_gamecode,gamecode,4) ;
+	_CPU_ISR_Restore(level);
+	
+	return CARD_ERROR_READY;
 }

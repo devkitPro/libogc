@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: arqueue.c,v 1.6 2006-04-10 05:26:45 shagkur Exp $
-
 arqueue.c -- ARAM task request queue implementation
 
 Copyright (C) 2004
@@ -26,12 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.5  2005/11/21 12:42:30  shagkur
-- Added copyright header(taken from libnds).
-- Introduced RCS $Id: arqueue.c,v 1.6 2006-04-10 05:26:45 shagkur Exp $ and $Log: not supported by cvs2svn $ token in project files.
-
 
 -------------------------------------------------------------*/
 

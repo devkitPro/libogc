@@ -30,7 +30,6 @@
  * 
  * Author: Adam Dunkels <adam@sics.se>
  *
- * $Id: lib.h,v 1.3 2005-12-09 09:27:40 shagkur Exp $
  */
 #ifndef __LIB_H__
 #define __LIB_H__

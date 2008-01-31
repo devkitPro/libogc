@@ -43,7 +43,7 @@ _start:
 	sub		r5,r5,r3
 	bl		_memset
 
-1:	
+1:
 	bl      SYS_Init # Branch to the user code!
 
 eloop:
@@ -177,6 +177,6 @@ __crt0stack_end:
 __crt0stack:
 
 	.section .data
-	.balign	8
+	.balign	4
 zfloat:
 	.double 0.0

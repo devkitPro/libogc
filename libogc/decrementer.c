@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: decrementer.c,v 1.4 2005-11-21 12:15:46 shagkur Exp $
-
 decrementer.c -- PPC decrementer exception support
 
 Copyright (C) 2004
@@ -27,7 +25,6 @@ must not be misrepresented as being the original software.
 3.	This notice may not be removed or altered from any source
 distribution.
 
-$Log: not supported by cvs2svn $
 
 -------------------------------------------------------------*/
 
@@ -42,21 +39,18 @@ $Log: not supported by cvs2svn $
 
 //#define _DECEX_DEBUG
 
-extern u8 dechandler_start[],dechandler_end[];
-
-extern void __exception_load(u32,void *,u32,void *);
 #ifdef _DECEX_DEBUG
 extern int printk(const char *fmt,...);
 #endif
+
 void __decrementer_init()
 {
 #ifdef _DECEX_DEBUG
 	printf("__decrementer_init()\n\n");
 #endif
-	__exception_load(EX_DEC,dechandler_start,(dechandler_end-dechandler_start),NULL);
 }
 
-void c_decrementer_handler()
+void c_decrementer_handler(frame_context *ctx)
 {
 #ifdef _DECEX_DEBUG
 	printk("c_decrementer_handler(%d)\n",_wd_ticks_since_boot);

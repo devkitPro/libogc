@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: cond.h,v 1.7 2006-05-06 18:10:07 shagkur Exp $
-
 cond.h -- Thread subsystem V
 
 Copyright (C) 2004
@@ -26,17 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.6  2006/05/02 09:39:34  shagkur
-- changed handle typedef
-
-Revision 1.5  2005/12/09 09:21:32  shagkur
-no message
-
-Revision 1.4  2005/11/21 12:14:01  shagkur
-no message
-
 
 -------------------------------------------------------------*/
 

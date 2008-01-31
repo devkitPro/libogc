@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------
 
-$Id: cache.c,v 1.5 2005-12-09 09:35:45 shagkur Exp $
-
 cache.c -- Cache interface
 
 Copyright (C) 2004
@@ -26,11 +24,6 @@ must not be misrepresented as being the original software.
 
 3.	This notice may not be removed or altered from any source
 distribution.
-
-$Log: not supported by cvs2svn $
-Revision 1.4  2005/11/21 12:15:46  shagkur
-no message
-
 
 -------------------------------------------------------------*/
 

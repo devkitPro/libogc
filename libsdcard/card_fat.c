@@ -51,28 +51,28 @@ static opendfile_list *_fatOpenedFile[MAX_DRIVE] = {NULL,NULL};
 static void (*pfCallbackIN[MAX_DRIVE])(s32) = {NULL, NULL};
 static void (*pfCallbackOUT[MAX_DRIVE])(s32) = {NULL, NULL};
 
-s32 card_removeFile(s32 drv_no,F_HANDLE h_dir,const char* p_name);
+s32 card_removeFile(s32 drv_no,F_HANDLE h_dir,const u8* p_name);
 s32 card_fatUpdate(s32 drv_no);
 s32 card_findEntryInDirectory(u32 drv_no,u32 find_mode,F_HANDLE h_parent,u32 var_par,u8* p_info,u32* p_cluster,u32* p_offset);
-s32 card_deleteDirEntry(s32 drv_no,F_HANDLE h_dir,const char *long_name);
+s32 card_deleteDirEntry(s32 drv_no,F_HANDLE h_dir,const u8 *long_name);
 s32 card_eraseSectors(s32 drv_no,u32 start_sect,u32 cnt);
 
-extern u32 card_convertStrToUni(u16 *dest,char *src,u32 len);
+extern u32 card_convertStrToUni(u16 *dest,u8 *src,u32 len);
 extern void card_uniToUpper(u16 *dest,u16 *src,u32 len);
 
-static boolean card_extractLastName(const char *p_name,char *p_last_name)
+static boolean card_extractLastName(const u8 *p_name,u8 *p_last_name)
 {
 	u32 len;
 	s32 i;
 
-	len = strlen(p_name);
+	len = strlen((const char*)p_name);
 	for(i=len-2;i>=0;--i) {
 		if(p_name[i]=='\\') break;
 	}
 	
-	strcpy(p_last_name,&p_name[i+1]);
+	strcpy((char*)p_last_name,(char*)&p_name[i+1]);
 	
-	len = strlen(p_last_name);
+	len = strlen((const char*)p_last_name);
 	if(p_last_name[len-1]=='\\')
 		p_last_name[len-1] = 0;
 
@@ -115,6 +115,8 @@ s32 card_initFAT(s32 drv_no)
 #ifdef _CARDFAT_DEBUG
 	printf("card_initFAT(%d)\n",drv_no);
 #endif	
+	memset(&_sdInfo[drv_no],0,sizeof(sd_info));
+
 	fat_buf = card_allocBuffer();
 	ret = card_readSector(drv_no,0,fat_buf,SECTOR_SIZE);
 	if(ret!=0) {
@@ -128,41 +130,43 @@ s32 card_initFAT(s32 drv_no)
 #endif	
 	if(signature!=0x55aa) return CARDIO_ERROR_INVALIDMBR;
 
-	pbr_offset = 0x1be;
-	_sdInfo[drv_no].smbr.signature = signature;
-	_sdInfo[drv_no].smbr.partition_entries[0].def_boot = fat_buf[pbr_offset+0];
-	_sdInfo[drv_no].smbr.partition_entries[0].start_cyl = ((u32)(fat_buf[pbr_offset+2]&0xc0)<<2)|fat_buf[pbr_offset+3];
-	_sdInfo[drv_no].smbr.partition_entries[0].start_head = fat_buf[pbr_offset+1];
-	_sdInfo[drv_no].smbr.partition_entries[0].start_sector = (fat_buf[pbr_offset + 2]&0x3f)-1;
-	_sdInfo[drv_no].smbr.partition_entries[0].pt_type = fat_buf[pbr_offset+4];
-	_sdInfo[drv_no].smbr.partition_entries[0].end_cyl = ((u32)(fat_buf[pbr_offset+6]&0xc0)<<2)|fat_buf[pbr_offset+7];
-	_sdInfo[drv_no].smbr.partition_entries[0].end_head = fat_buf[pbr_offset+5];
-	_sdInfo[drv_no].smbr.partition_entries[0].end_sector = (fat_buf[pbr_offset+6]&0x3f)-1;
-	_sdInfo[drv_no].smbr.partition_entries[0].start_lba_sector = ((u32)fat_buf[pbr_offset+11]<<24)|((u32)fat_buf[pbr_offset+10]<<16)
-																 |((u32)fat_buf[pbr_offset+9]<<8)|fat_buf[pbr_offset+8];
-	_sdInfo[drv_no].smbr.partition_entries[0].total_avail_sectors = ((u32)fat_buf[pbr_offset+15]<<24)|((u32)fat_buf[pbr_offset+14]<<16)
-                                                                    |((u32)fat_buf[pbr_offset+13]<<8)|fat_buf[pbr_offset+12];
+	if(fat_buf[0x26]!=0x29) {
+		pbr_offset = 0x1be;
+		_sdInfo[drv_no].smbr.signature = signature;
+		_sdInfo[drv_no].smbr.partition_entries[0].def_boot = fat_buf[pbr_offset+0];
+		_sdInfo[drv_no].smbr.partition_entries[0].start_cyl = ((u32)(fat_buf[pbr_offset+2]&0xc0)<<2)|fat_buf[pbr_offset+3];
+		_sdInfo[drv_no].smbr.partition_entries[0].start_head = fat_buf[pbr_offset+1];
+		_sdInfo[drv_no].smbr.partition_entries[0].start_sector = (fat_buf[pbr_offset + 2]&0x3f)-1;
+		_sdInfo[drv_no].smbr.partition_entries[0].pt_type = fat_buf[pbr_offset+4];
+		_sdInfo[drv_no].smbr.partition_entries[0].end_cyl = ((u32)(fat_buf[pbr_offset+6]&0xc0)<<2)|fat_buf[pbr_offset+7];
+		_sdInfo[drv_no].smbr.partition_entries[0].end_head = fat_buf[pbr_offset+5];
+		_sdInfo[drv_no].smbr.partition_entries[0].end_sector = (fat_buf[pbr_offset+6]&0x3f)-1;
+		_sdInfo[drv_no].smbr.partition_entries[0].start_lba_sector = ((u32)fat_buf[pbr_offset+11]<<24)|((u32)fat_buf[pbr_offset+10]<<16)
+																	 |((u32)fat_buf[pbr_offset+9]<<8)|fat_buf[pbr_offset+8];
+		_sdInfo[drv_no].smbr.partition_entries[0].total_avail_sectors = ((u32)fat_buf[pbr_offset+15]<<24)|((u32)fat_buf[pbr_offset+14]<<16)
+																		|((u32)fat_buf[pbr_offset+13]<<8)|fat_buf[pbr_offset+12];
 #ifdef _CARDFAT_DEBUG
-	printf("mbr.start_lba = %08x\n",_sdInfo[drv_no].smbr.partition_entries[0].start_lba_sector);
+		printf("mbr.start_lba = %08x\n",_sdInfo[drv_no].smbr.partition_entries[0].start_lba_sector);
 #endif	
 
-	ret = card_readSector(drv_no,_sdInfo[drv_no].smbr.partition_entries[0].start_lba_sector,fat_buf,SECTOR_SIZE);
-	if(ret!=0) {
-		card_freeBuffer(fat_buf);
-		return CARDIO_ERROR_INTERNAL;
-	}
-
-	// read in signature first
-	signature = ((u16)fat_buf[0x1fe]<<8)|fat_buf[0x1ff];
-	if(signature!=0x55aa) {
-		// invalid signature, pbr must be mbr. try to read sector 0 again
-		_sdInfo[drv_no].smbr.partition_entries[0].start_lba_sector = 0;
-		ret = card_readSector(drv_no,0,fat_buf,SECTOR_SIZE);
+		ret = card_readSector(drv_no,_sdInfo[drv_no].smbr.partition_entries[0].start_lba_sector,fat_buf,SECTOR_SIZE);
 		if(ret!=0) {
 			card_freeBuffer(fat_buf);
 			return CARDIO_ERROR_INTERNAL;
 		}
+
+		// read in signature first
 		signature = ((u16)fat_buf[0x1fe]<<8)|fat_buf[0x1ff];
+		if(signature!=0x55aa) {
+			// invalid signature, pbr must be mbr. try to read sector 0 again
+			_sdInfo[drv_no].smbr.partition_entries[0].start_lba_sector = 0;
+			ret = card_readSector(drv_no,0,fat_buf,SECTOR_SIZE);
+			if(ret!=0) {
+				card_freeBuffer(fat_buf);
+				return CARDIO_ERROR_INTERNAL;
+			}
+			signature = ((u16)fat_buf[0x1fe]<<8)|fat_buf[0x1ff];
+		}
 	}
 
 
@@ -385,7 +389,7 @@ s32 card_allocCluster(s32 drv_no,u32 *p_cluster)
 	bpb *sbpb = &_sdInfo[drv_no].spbr.sbpb;
 
 	tot_cluster = (u16)(sbpb->total_sects/sbpb->sects_per_cluster);
-	for(i=0;i<tot_cluster;++i) {
+	for(i=3;i<tot_cluster;++i) {
 		if(GET_FAT_TBL(drv_no,i)==UNUSED_CLUSTER) {
 			*p_cluster = i;
 			return CARDIO_ERROR_READY;
@@ -405,7 +409,7 @@ s32 card_searchCluster(s32 drv_no,u32 count, u32 *pmax_cnt)
 
     curCount = 0;
     totalClusters = (u16)(sbpb->total_sects/sbpb->sects_per_cluster);
-    for(i=2;i<totalClusters;++i) {
+    for(i=3;i<totalClusters;++i) {
         if (GET_FAT_TBL(drv_no, i) == UNUSED_CLUSTER) {
             if(curCount++==0) rv = i;
             if(curCount==count) return rv;
@@ -849,6 +853,7 @@ s32 card_readBlock(s32 drv_no,u32 block_no,u32 offset,void *buf,u32 len)
 	read_offset = 0;
 	buf_offset = 0;
 	while(sec_cnt<sectorsPerBlock && len>0) {
+		ptr = NULL;
 		doRead = FALSE;
 		read_count = SECTOR_SIZE;
 
@@ -934,6 +939,7 @@ s32 card_writeBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len)
 	read_offset = 0;
 	buf_offset = 0;
 	while(sec_cnt<sectorsPerBlock && len>0) {
+		ptr = NULL;
 		doWrite = FALSE;
 		write_count = SECTOR_SIZE;
 
@@ -998,8 +1004,9 @@ s32 card_writeBlock(s32 drv_no,u32 block_no,u32 offset,const void *buf,u32 len)
 	return CARDIO_ERROR_READY;
 }
 
-boolean card_convertToFATName(const char* p_name, char* p_short_name) 
+boolean card_convertToFATName(const u8* p_name, u8* p_short_name) 
 {
+	s32 i;
 	u8 ext[3];
 	u8 base[8];
 	s32 len;
@@ -1008,7 +1015,7 @@ boolean card_convertToFATName(const char* p_name, char* p_short_name)
 	s32 extIndex;
 	boolean converted = FALSE;
 	boolean ext_converted = FALSE;
-	s32 i;
+	const char *fat32only = "+,;=[]";
 
 	memset(p_short_name,' ',11);
 	p_short_name[11] = '\0';
@@ -1031,6 +1038,8 @@ boolean card_convertToFATName(const char* p_name, char* p_short_name)
 			u8 c;
 
 			c = p_name[i];
+			if(strchr(fat32only,c)!=NULL) c = '_';
+
 			if(c!=' ') {
 				ext[extLen] = toupper(c);
 				if(++extLen==3) {
@@ -1049,6 +1058,8 @@ boolean card_convertToFATName(const char* p_name, char* p_short_name)
 		u8 c;
 
 		c = p_name[i];
+		if(strchr(fat32only,c)!=NULL) c = '_';
+
 		if(c!=' ' && c!='.') {
 			base[baseLen] = toupper(c);
 			if(++baseLen==8) break;
@@ -1152,7 +1163,7 @@ s32 card_findEntryInDirectory(u32 drv_no,u32 find_mode,F_HANDLE h_parent,u32 var
 {
 	s32 ret;
     u32 j;
-    char short_name[13];
+    u8 short_name[13];
     u8* buf;
 	u16 *p_unicode = NULL;
 	u16 *p_unicode_read = NULL;
@@ -1185,8 +1196,8 @@ s32 card_findEntryInDirectory(u32 drv_no,u32 find_mode,F_HANDLE h_parent,u32 var
 			return CARDIO_ERROR_OUTOFMEMORY;
 		}
 
-		if(card_convertToFATName((const char*)var_par,short_name)) {
-			unicode_namelen = card_convertStrToUni(p_unicode,(char*)var_par,strlen((char*)var_par)+1);
+		if(card_convertToFATName((const u8*)var_par,short_name)) {
+			unicode_namelen = card_convertStrToUni(p_unicode,(u8*)var_par,strlen((char*)var_par)+1);
 			card_uniToUpper(p_unicode,p_unicode,unicode_namelen);
 			
 			for(after_tilde_index=7;after_tilde_index>0;after_tilde_index--) {
@@ -1447,12 +1458,12 @@ s32 card_fatUpdate(s32 drv_no)
     return CARDIO_ERROR_READY;
 }
 
-s32 card_checkPath(s32 drv_no,const char *p_filename,u32 check_mode,F_HANDLE *p_handle)
+s32 card_checkPath(s32 drv_no,const u8 *p_filename,u32 check_mode,F_HANDLE *p_handle)
 {
 	s32 ret;
 	u32 len;
 	u32 dummy_cluster,dummy_offset;
-	char *p_found;
+	u8 *p_found;
 	u8 lname[MAX_FILE_NAME_LEN+1];
 	u8 file_info[32];
 	F_HANDLE lhandle;
@@ -1466,9 +1477,9 @@ s32 card_checkPath(s32 drv_no,const char *p_filename,u32 check_mode,F_HANDLE *p_
 	p_str = (char*)p_filename;
 	lhandle = lhandle_old = ROOT_HANDLE;
 
-	p_found = strchr(p_str,':');
+	p_found = (u8*)strchr(p_str,':');
 	if(p_found) {
-		p_str = p_found+1;
+		p_str = (const char*)p_found+1;
 #ifdef _CARDFAT_DEBUG
 		printf("p_found = %s, p_str = %s\n",p_found,p_str);
 #endif
@@ -1485,12 +1496,12 @@ s32 card_checkPath(s32 drv_no,const char *p_filename,u32 check_mode,F_HANDLE *p_
 		}
 
 		for(;;) {
-			p_found = strchr(p_str,'\\');
+			p_found = (u8*)strchr(p_str,'\\');
 			if(!p_found) {
 #ifdef _CARDFAT_DEBUG
 				printf("p_str = %s\n",p_str);
 #endif
-				len = strlen((char*)p_str);
+				len = strlen(p_str);
 				if(len>MAX_FILE_NAME_LEN) return CARDIO_ERROR_INVALIDPARAM;
 				
 				if(p_str[0]==0) {
@@ -1525,7 +1536,7 @@ s32 card_checkPath(s32 drv_no,const char *p_filename,u32 check_mode,F_HANDLE *p_
 			lhandle_found = file_info[26]|((u32)file_info[27]<<8);
 			lhandle_old = lhandle;
 			lhandle = lhandle_found;
-			p_str = p_found+1;
+			p_str = (const char*)p_found+1;
 		}
 	}
 	return CARDIO_ERROR_READY;
@@ -1608,14 +1619,14 @@ s32 card_getFileSize(const char *filename,u32 *p_size)
 	s32 drv_no;
 	u32 cluster,offset;
 	u8 file_info[32];
-	char long_name[MAX_FILE_NAME_LEN+1];
+	u8 long_name[MAX_FILE_NAME_LEN+1];
 	F_HANDLE h_dir;
-	char *p_filename = (char *)filename;
+	u8 *p_filename = (u8*)filename;
 
 #ifdef _CARDFAT_DEBUG
 	printf("p_filename = %s\n",p_filename);
 #endif
-	drv_no = card_getDriveNo(p_filename);
+	drv_no = card_getDriveNo((const char*)p_filename);
 	if(drv_no>=MAX_DRIVE)
 		return CARDIO_ERROR_INVALIDPARAM;
 
@@ -1961,7 +1972,7 @@ void card_prepareFileClose(s32 drv_no, const opendfile_list* p_list)
 */
 }
 
-s32 card_removeFile(s32 drv_no,F_HANDLE h_dir,const char* p_name)
+s32 card_removeFile(s32 drv_no,F_HANDLE h_dir,const u8* p_name)
 {
 	s32 ret;
     u8 file_info[32];
@@ -2012,13 +2023,13 @@ s32 card_readStat(const char *p_entry_name,file_stat *p_stat)
 {
 	u32 drv_no,ret;
 	F_HANDLE h_dir;
-	char long_name[MAX_FILE_NAME_LEN + 1];
+	u8 long_name[MAX_FILE_NAME_LEN + 1];
 	u8 file_info[32];
 	u32 cluster;
 	u32 offset;
-	char *p_name = (char*)p_entry_name;
+	u8 *p_name = (u8*)p_entry_name;
 
-	drv_no = card_getDriveNo(p_name);
+	drv_no = card_getDriveNo((const char*)p_name);
 	if(drv_no>=MAX_DRIVE)
 		return CARDIO_ERROR_INVALIDPARAM;
 
@@ -2065,12 +2076,12 @@ s32 card_openFile(const char *filename,u32 open_mode,F_HANDLE *p_handle)
 	F_HANDLE h_dir;
 	opendfile_list *p_list;
 	u8 file_info[32];
-	char long_name[MAX_FILE_NAME_LEN+1];
-	char *p_filename = (char*)filename;
+	u8 long_name[MAX_FILE_NAME_LEN+1];
+	u8 *p_filename = (u8*)filename;
 #ifdef _CARDFAT_DEBUG
 	printf("card_openFile(%s,%d,%p)\n",filename,open_mode,p_handle);
 #endif
-	drv_no = card_getDriveNo(p_filename);
+	drv_no = card_getDriveNo((const char*)p_filename);
 	if(drv_no>=MAX_DRIVE) return CARDIO_ERROR_INVALIDPARAM;
 
 	ret = card_preFAT(drv_no);
@@ -2493,9 +2504,9 @@ s32 card_getListNumDir(const char *p_dirname,u32 *p_num)
     u32 i, j;
     u32 entry_count;
     u8 *buf;
-    char *p_dir_name = (char*)p_dirname;
+    u8 *p_dir_name = (u8*)p_dirname;
 
-    drv_no = card_getDriveNo(p_dir_name);
+    drv_no = card_getDriveNo((const char*)p_dir_name);
     if(drv_no>=MAX_DRIVE)
         return CARDIO_ERROR_INVALIDPARAM;
 #ifdef _CARDFAT_DEBUG
@@ -2585,9 +2596,9 @@ s32 card_readDir(const char *dirname,u32 entry_start,u32 entry_cnt,dir_entryex *
     u32 cluster;
     u32 offset;
     u32 i, j, k;
-    char *p_dirname = (char *)dirname;
+    u8 *p_dirname = (u8 *)dirname;
 
-    drv_no = card_getDriveNo(p_dirname);
+    drv_no = card_getDriveNo((const char*)p_dirname);
     if(drv_no>=MAX_DRIVE)
         return CARDIO_ERROR_INVALIDPARAM;
 
@@ -2637,19 +2648,19 @@ s32 card_createFile(const char *filename,u32 create_mode,F_HANDLE *p_handle)
     F_HANDLE h_dir;
     u32 cluster;
     opendfile_list* p_list;
-    char long_name[MAX_FILE_NAME_LEN + 1];
+    u8 long_name[MAX_FILE_NAME_LEN + 1];
     u8 dummy_info[32];
     u32 offset;
-    char *p_filename = (char *)filename;
+    u8 *p_filename = (u8 *)filename;
     file_stat sStat;
     u16* p_unicode;
-    char fat_name[13];
+    u8 fat_name[13];
 	time_t now;
 	struct tm *ltime;
 #ifdef _CARDFAT_DEBUG
 	printf("card_createFile(%s,%d,%p)\n",filename,create_mode,p_handle);
 #endif
-    drv_no = card_getDriveNo(p_filename);
+    drv_no = card_getDriveNo((const char*)p_filename);
     if(drv_no>=MAX_DRIVE) 
         return CARDIO_ERROR_INVALIDPARAM;
 
@@ -2734,7 +2745,7 @@ s32 card_createFile(const char *filename,u32 create_mode,F_HANDLE *p_handle)
 	sStat.time = *ltime;
     
     if(card_convertToFATName(long_name, fat_name)) {
-        card_convertStrToUni(p_unicode, long_name, strlen(long_name)+1);     
+        card_convertStrToUni(p_unicode, long_name, strlen((const char*)long_name)+1);     
         ret = card_addDirEntry(drv_no, h_dir, long_name, p_unicode, &sStat, 0, 0, 0);
     } else
         ret = card_addDirEntry(drv_no, h_dir, long_name, NULL, &sStat, 0, 0, 0);
@@ -2751,7 +2762,7 @@ s32 card_createFile(const char *filename,u32 create_mode,F_HANDLE *p_handle)
     FAT_RETURN(drv_no, CARDIO_ERROR_READY);
 }
 
-s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const char* long_name,const u16* p_unicode_name,file_stat* p_stat,u32 b_insert,u32 cluster,u32 offset)
+s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const u8* long_name,const u16* p_unicode_name,file_stat* p_stat,u32 b_insert,u32 cluster,u32 offset)
 {
 	s32 ret;
 	u8 file_info[32*((MAX_FILE_NAME_LEN-1)/13+2)];
@@ -3087,7 +3098,7 @@ s32 card_addDirEntry(s32 drv_no,F_HANDLE h_dir,const char* long_name,const u16* 
     return CARDIO_ERROR_READY;
 }
 
-s32 card_deleteDirEntry(s32 drv_no,F_HANDLE h_dir,const char *long_name)
+s32 card_deleteDirEntry(s32 drv_no,F_HANDLE h_dir,const u8 *long_name)
 {
 	s32 ret;
     u32 cluster;
@@ -3125,9 +3136,9 @@ s32 card_updateFAT(const char *p_volname)
 {
 	s32 ret;
     u32 drv_no;
-    char *p_vol_name = (char*)p_volname;
+    u8 *p_vol_name = (u8*)p_volname;
 
-    drv_no = card_getDriveNo(p_vol_name);
+    drv_no = card_getDriveNo((const char*)p_vol_name);
     if(drv_no>=MAX_DRIVE)
         return CARDIO_ERROR_INVALIDPARAM;
 
@@ -3145,11 +3156,11 @@ s32 card_unmountFAT(const char *p_devname)
 {
 	s32 ret = CARDIO_ERROR_READY;
     u32 drv_no;
-    char *p_dev_name = (char*)p_devname;
+    u8 *p_dev_name = (u8*)p_devname;
 #ifdef _CARDFAT_DEBUG
 	printf("card_unmountFAT(%s)\n",p_devname);
 #endif
-    drv_no = card_getDriveNo(p_dev_name);
+    drv_no = card_getDriveNo((const char*)p_dev_name);
     if(drv_no>=MAX_DRIVE)
         return CARDIO_ERROR_INVALIDPARAM;
 
