@@ -70,7 +70,7 @@ INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/modplay -I$(BASEDIR)/gc/mad -I$(BASEDIR)/gc/sdcard \
 				-I$(BASEDIR)/gc/z
 
-MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -ffunction-sections -fdata-sections
+MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -fmodulo-sched -ffunction-sections -fdata-sections
 CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -g -O2 -Wall $(MACHDEP) -fno-strict-aliasing $(INCLUDES)
 LDFLAGS		:=
 
@@ -124,7 +124,7 @@ MADOBJ		:=	mp3player.o bit.o decoder.o fixed.o frame.o huffman.o \
 #---------------------------------------------------------------------------------
 DBOBJ		:=	uip_ip.o uip_tcp.o uip_pbuf.o uip_netif.o uip_arp.o uip_arch.o \
 				uip_icmp.o memb.o memr.o bba.o tcpip.o debug.o debug_handler.o \
-				debug_supp.o
+				debug_supp.o usb.o
 
 #---------------------------------------------------------------------------------
 SDCARDOBJ	:=	sdcard.o sdcardio.o card_fat.o card_buf.o card_io.o card_uni.o
