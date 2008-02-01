@@ -7,6 +7,10 @@ endif
 
 export PATH	:=	$(DEVKITPPC)/bin:$(PATH)
 
+export LIBOGC_MAJOR	:= 1
+export LIBOGC_MINOR	:= 5
+export LIBOGC_PATCH	:= 0
+
 #---------------------------------------------------------------------------------
 PREFIX	:=	powerpc-gekko
 #---------------------------------------------------------------------------------
@@ -177,13 +181,28 @@ STUBSOBJ	:=	malloc_lock_stub.o flock_supp_stub.o lock_supp_stub.o gcn_crt0.o
 	$(AR) -rc $@ $^
 
 #---------------------------------------------------------------------------------
-all:
+all: gc/ogc/libversion.h
 #---------------------------------------------------------------------------------
 	@[ -d $(LIBDIR) ] || mkdir -p $(LIBDIR)
 	@[ -d $(INCDIR) ] || mkdir -p $(INCDIR)
 	@[ -d $(DEPSDIR) ] || mkdir -p $(DEPSDIR)
 	@[ -d $(BUILDDIR) ] || mkdir -p $(BUILDDIR)
 	@$(MAKE) libs -C $(BUILDDIR) -f $(CURDIR)/Makefile
+
+gc/ogc/libversion.h : Makefile
+	@echo "#ifndef __LIBVERSION_H__" > $@
+	@echo "#define __LIBVERSION_H__" >> $@
+	@echo >> $@
+	@echo "#define _V_MAJOR_	$(LIBOGC_MAJOR)" >> $@
+	@echo "#define _V_MINOR_	$(LIBOGC_MINOR)" >> $@
+	@echo "#define _V_PATCH_	$(LIBOGC_PATCH)" >> $@
+	@echo >> $@
+	@echo "#define _V_DATE_			__DATE__" >> $@
+	@echo "#define _V_TIME_			__TIME__" >> $@
+	@echo >> $@
+	@echo '#define _V_STRING "libOGC Release '$(LIBOGC_MAJOR).$(LIBOGC_MINOR).$(LIBOGC_PATCH)'"' >> $@
+	@echo >> $@
+	@echo "#endif // __LIBVERSION_H__" >> $@
 
 #---------------------------------------------------------------------------------
 $(BBALIB).a: $(LWIPOBJ)
