@@ -5,13 +5,17 @@
 #include "asm.h"
 #include "processor.h"
 
+#include "uIP/bba.h"
+#include "uIP/memr.h"
+#include "uIP/memb.h"
 #include "uIP/uip_ip.h"
 #include "uIP/uip_arp.h"
 #include "uIP/uip_tcp.h"
+#include "uIP/uip_pbuf.h"
 #include "uIP/uip_netif.h"
-#include "uIP/bba.h"
+
 #include "tcpip.h"
-#include "uIP/memb.h"
+#include "debug_if.h"
 
 #if UIP_LOGGING == 1
 #include <stdio.h>
@@ -37,6 +41,9 @@ struct tcpip_sock {
 } tcpip_socks[UIP_TCPIP_SOCKS];
 
 static s64 tcpip_time = 0;
+static s32 listensock = -1;
+static struct uip_netif netif;
+static struct dbginterface netif_device;
 static struct tcpip_sock *tcpip_accepted_sockets = NULL;
 
 extern s64 gettime();
@@ -74,6 +81,49 @@ static struct tcpip_sock* tcpip_getsocket(s32_t s)
 	return sock;
 }
 
+//device callbacks
+static int opentcpip(struct dbginterface *device)
+{
+	if(listensock>=0 && (device->fhndl<0 ))
+		device->fhndl = tcpip_accept(listensock);
+
+	if(device->fhndl<0) 
+		return -1;
+	else 
+		tcpip_starttimer(device->fhndl);
+
+	return 0;
+}
+
+static int closetcpip(struct dbginterface *device)
+{
+	tcpip_stoptimer(device->fhndl);
+	tcpip_close(device->fhndl);
+	device->fhndl = -1;
+	return 0;
+}
+
+static int waittcpip(struct dbginterface *device)
+{
+	tcpip_stoptimer(device->fhndl);
+	return 0;
+}
+
+static int readtcpip(struct dbginterface *device,void *buffer,int size)
+{
+	if(device->fhndl>=0)
+		return tcpip_read(device->fhndl,buffer,size);
+
+	return 0;
+}
+
+static int writetcpip(struct dbginterface *device,const void *buffer,int size)
+{
+	if(device->fhndl>=0)
+		return tcpip_write(device->fhndl,buffer,size);
+
+	return 0;
+}
 
 static void tcpip_err(void *arg,s8_t err)
 {
@@ -183,10 +233,54 @@ void tcpip_tmr_needed()
 	}
 }
 
-void tcpip_init()
+struct dbginterface* tcpip_init(struct uip_ip_addr *localip,struct uip_ip_addr *netmask,struct uip_ip_addr *gateway,u16 port)
 {
+	uipdev_s hbba;
+	struct uip_netif *pnet ;
+	struct sockaddr_in name;
+	socklen_t namelen = sizeof(struct sockaddr);
+
+	memr_init();
+	uip_ipinit();
+	uip_pbuf_init();
+	uip_netif_init();
 	uip_tcp_init();
+
 	UIP_MEMSET(tcpip_socks,0,(UIP_TCPIP_SOCKS*sizeof(struct tcpip_sock)));
+
+	hbba = uip_bba_create(&netif);
+	pnet = uip_netif_add(&netif,localip,netmask,gateway,hbba,uip_bba_init,uip_ipinput);
+	if(pnet) {
+		uip_netif_setdefault(pnet);
+
+		listensock = tcpip_socket();
+		if(listensock<0) return NULL;
+
+		name.sin_addr.s_addr = INADDR_ANY;
+		name.sin_port = htons(port);
+		name.sin_family = AF_INET;
+
+		if(tcpip_bind(listensock,(struct sockaddr*)&name,&namelen)<0){
+			tcpip_close(listensock);
+			listensock = -1;
+			return NULL;
+		}
+		if(tcpip_listen(listensock,1)<0) {
+			tcpip_close(listensock);
+			listensock = -1;
+			return NULL;
+		}
+
+		netif_device.fhndl = -1;
+		netif_device.wait = waittcpip;
+		netif_device.open = opentcpip;
+		netif_device.close = closetcpip;
+		netif_device.read = readtcpip;
+		netif_device.write = writetcpip;
+
+		return &netif_device;
+	}
+	return NULL;
 }
 
 s32_t tcpip_socket()
@@ -366,3 +460,4 @@ void tcpip_starttimer(s32_t s)
 	
 	if(tcpip_time==0 && sock->pcb && (uip_tcp_active_pcbs || uip_tcp_tw_pcbs)) tcpip_time = gettime();
 }
+

@@ -6,6 +6,13 @@
 #include "lwp_threads.h"
 #include "debug_supp.h"
 
+extern lwp_objinfo _lwp_cond_objects;
+extern lwp_objinfo _lwp_thr_objects;
+extern lwp_objinfo _lwp_tqueue_objects;
+extern lwp_objinfo _lwp_mqbox_objects;
+extern lwp_objinfo _lwp_mutex_objects;
+extern lwp_objinfo _lwp_sema_objects;
+
 extern const u8 hexchars[];
 
 extern u8 __text_start[],__data_start[],__bss_start[];
@@ -117,10 +124,10 @@ char* int2vhstr(char *buf,s32 val)
 	return buf;
 }
 
-char* mem2hstr(char *buf,const u8 *mem,s32 count)
+char* mem2hstr(char *buf,const char *mem,s32 count)
 {
 	s32 i;
-	u8 ch;
+	char ch;
 
 	for(i=0;i<count;i++,mem++) {
 		ch = *mem;
@@ -331,7 +338,7 @@ s32 gdbstub_getthreadinfo(s32 thread,struct gdbstub_threadinfo *info)
 	return 0;
 }
 
-s32 parsezbreak(const char *in,int *type,u8 **addr,int *len)
+s32 parsezbreak(const char *in,int *type,char **addr,int *len)
 {
 	s32 ttmp,atmp,ltmp;
 
@@ -347,7 +354,7 @@ s32 parsezbreak(const char *in,int *type,u8 **addr,int *len)
 	if(in==NULL || ltmp<1) return 0;
 
 	*type = ttmp;
-	*addr = (u8*)atmp;
+	*addr = (char*)atmp;
 	*len = ltmp;
 
 	return 1;

@@ -13,18 +13,12 @@
 #include "cache.h"
 #include "video.h"
 #include "ogcsys.h"
-#include "debug.h"
-
-#include "uIP/bba.h"
-#include "uIP/memr.h"
-#include "tcpip.h"
-#include "uIP/uip_ip.h"
-#include "uIP/uip_arp.h"
-#include "uIP/uip_pbuf.h"
-#include "uIP/uip_netif.h"
 
 #include "lwp_config.h"
 
+#include "usb.h"
+#include "tcpip.h"
+#include "debug_if.h"
 #include "debug_supp.h"
 
 #define GEKKO_MAX_BP	64
@@ -50,14 +44,12 @@ static s32 dbg_active = 0;
 static s32 dbg_instep = 0;
 static s32 dbg_initialized = 0;
 
-static s32 dbg_datasock = -1;
-static s32 dbg_listensock = -1;
-static struct uip_netif g_netif;
+static struct dbginterface *current_device = NULL;
 
-static u8 remcomInBuffer[BUFMAX];
-static u8 remcomOutBuffer[BUFMAX];
+static char remcomInBuffer[BUFMAX];
+static char remcomOutBuffer[BUFMAX];
 
-const u8 hexchars[]="0123456789abcdef";
+const char hexchars[]="0123456789abcdef";
 
 static struct hard_trap_info {
 	u32 tt;
@@ -86,7 +78,6 @@ static struct bp_entry {
 } bp_entries[GEKKO_MAX_BP];
 
 static struct bp_entry *p_bpentries = NULL;
-
 static frame_context current_thread_registers;
 
 void __breakinst();
@@ -100,6 +91,9 @@ extern void __enable_iabr();
 extern void __disable_iabr();
 extern void __set_iabr(void *);
 
+extern const char *tcp_localip;
+extern const char *tcp_netmask;
+extern const char *tcp_gateway;
 extern u8 __text_start[],__data_start[],__bss_start[];
 extern u8 __text_fstart[],__data_fstart[],__bss_fstart[];
 
@@ -114,73 +108,7 @@ static __inline__ void bp_init()
 	}
 }
 
-void DEBUG_Init(u16 port)
-{
-	u32 level;
-	uipdev_s hbba;
-	struct uip_ip_addr local_ip,netmask,gw;
-	struct uip_netif *pnet ;
-	struct sockaddr_in name;
-	socklen_t namelen = sizeof(struct sockaddr);
-
-	UIP_LOG("DEBUG_Init()\n");
-
-	__lwp_thread_dispatchdisable();
-
-	bp_init();
-	memr_init();
-	uip_ipinit();
-	uip_pbuf_init();
-	uip_netif_init();
-
-	tcpip_init();
-	
-	local_ip.addr = uip_ipaddr((const u8_t*)dbg_local_ip);
-	netmask.addr = uip_ipaddr((const u8_t*)dbg_netmask);
-	gw.addr = uip_ipaddr((const u8_t*)dbg_gw);
-
-	hbba = uip_bba_create(&g_netif);
-	pnet = uip_netif_add(&g_netif,&local_ip,&netmask,&gw,hbba,uip_bba_init,uip_ipinput);
-	if(pnet) {
-		uip_netif_setdefault(pnet);
-
-		dbg_listensock = tcpip_socket();
-		if(dbg_listensock<0) {
-			__lwp_thread_dispatchenable();
-			return;
-		}
-
-		name.sin_addr.s_addr = INADDR_ANY;
-		name.sin_port = htons(port);
-		name.sin_family = AF_INET;
-
-		if(tcpip_bind(dbg_listensock,(struct sockaddr*)&name,&namelen)<0){
-			tcpip_close(dbg_listensock);
-			dbg_listensock = -1;
-			__lwp_thread_dispatchenable();
-			return;
-		}
-		if(tcpip_listen(dbg_listensock,1)<0) {
-			tcpip_close(dbg_listensock);
-			dbg_listensock = -1;
-			__lwp_thread_dispatchenable();
-			return;
-		}
-		
-		_CPU_ISR_Disable(level);
-		__exception_sethandler(EX_DSI,dbg_exceptionhandler);
-		__exception_sethandler(EX_PRG,dbg_exceptionhandler);
-		__exception_sethandler(EX_TRACE,dbg_exceptionhandler);
-		__exception_sethandler(EX_IABR,dbg_exceptionhandler);
-		_CPU_ISR_Restore(level);
-
-		dbg_initialized = 1;
-		
-	}
-	__lwp_thread_dispatchenable();
-}
-
-static s32 hex(u8 ch)
+static s32 hex(char ch)
 {
 	if (ch >= 'a' && ch <= 'f')
 		return ch-'a'+10;
@@ -191,7 +119,7 @@ static s32 hex(u8 ch)
 	return -1;
 }
 
-static s32 hexToInt(u8 **ptr, s32 *ival)
+static s32 hexToInt(char **ptr, s32 *ival)
 {
 	s32 cnt;
 	s32 val,nibble;
@@ -220,7 +148,7 @@ static s32 computeSignal(s32 excpt)
 	return SIGHUP;
 }
 
-u32 insert_bp(void *mem)
+static u32 insert_bp(void *mem)
 {
 	u32 i;
 	struct bp_entry *p;
@@ -249,7 +177,7 @@ setbreak:
 	return 1;
 }
 
-u32 remove_bp(void *mem)
+static u32 remove_bp(void *mem)
 {
 	struct bp_entry *e = p_bpentries;
 	struct bp_entry *f = NULL;
@@ -279,36 +207,33 @@ u32 remove_bp(void *mem)
 	return 1;
 }
 
-static u8 getdbgchar()
+static char getdbgchar()
 {
-	u8 ch = 0;
+	char ch = 0;
 	s32 len = 0;
 
-	if(dbg_datasock>=0)
-		len = tcpip_read(dbg_datasock,&ch,1);
+	len = current_device->read(current_device,&ch,1);
 
 	return (len>0)?ch:0;
 }
 
-static void putdbgchar(u8 ch)
+static void putdbgchar(char ch)
 {
-	if(dbg_datasock>=0)
-		tcpip_write(dbg_datasock,&ch,1);
+	current_device->write(current_device,&ch,1);
 }
 
-static void putdbgstr(const u8 *str)
+static void putdbgstr(const char *str)
 {
-	if(dbg_datasock>=0)
-		tcpip_write(dbg_datasock,str,strlen((const char*)str));
+	current_device->write(current_device,str,strlen(str));
 }
 
-static void putpacket(const u8 *buffer)
+static void putpacket(const char *buffer)
 {
 	u8 recv;
 	u8 chksum,ch;
-	u8 *ptr;
-	const u8 *inp;
-	static u8 outbuf[2048];
+	char *ptr;
+	const char *inp;
+	static char outbuf[2048];
 
 	outbuf[0] = '+';
 	do {
@@ -334,9 +259,9 @@ static void putpacket(const u8 *buffer)
 	} while((recv&0x7f)!='+');
 }
 
-static void getpacket(u8 *buffer)
+static void getpacket(char *buffer)
 {
-	u8 ch;
+	char ch;
 	u8 chksum,xmitsum;
 	s32 i,cnt;
 
@@ -505,8 +430,8 @@ static s32 gdbstub_getthreadregs(s32 thread,frame_context *frame)
 
 static void gdbstub_report_exception(frame_context *frame,s32 thread)
 {
-	u8 *ptr;
 	s32 sigval;
+	char *ptr;
 
 	ptr = remcomOutBuffer;
 	sigval = computeSignal(frame->EXCPT_Number);
@@ -516,12 +441,12 @@ static void gdbstub_report_exception(frame_context *frame,s32 thread)
 	*ptr++ = highhex(SP_REGNUM);
 	*ptr++ = lowhex(SP_REGNUM);
 	*ptr++ = ':';
-	ptr = mem2hstr(ptr,(u8*)&frame->GPR[1],4);
+	ptr = mem2hstr(ptr,(char*)&frame->GPR[1],4);
 	*ptr++ = ';';
 	*ptr++ = highhex(PC_REGNUM);
 	*ptr++ = lowhex(PC_REGNUM);
 	*ptr++ = ':';
-	ptr = mem2hstr(ptr,(u8*)&frame->SRR0,4);
+	ptr = mem2hstr(ptr,(char*)&frame->SRR0,4);
 	*ptr++ = ';';
 
 	*ptr++ = 't';
@@ -541,7 +466,7 @@ static void gdbstub_report_exception(frame_context *frame,s32 thread)
 
 void c_debug_handler(frame_context *frame)
 {
-	u8 *ptr;
+	char *ptr;
 	s32 addr,len;
 	s32 thread,current_thread;
 	s32 host_has_detached;
@@ -550,10 +475,7 @@ void c_debug_handler(frame_context *frame)
 	thread = gdbstub_getcurrentthread();
 	current_thread = thread;
 
-	if(dbg_listensock>=0 && (dbg_datasock<0 || dbg_active==0))
-		dbg_datasock = tcpip_accept(dbg_listensock);
-	if(dbg_datasock<0) return;
-	else tcpip_starttimer(dbg_datasock);
+	if(current_device->open(current_device)<0) return;
 
 	if(dbg_active) {
 		gdbstub_report_exception(frame,thread);
@@ -582,15 +504,15 @@ void c_debug_handler(frame_context *frame)
 				ptr = remcomOutBuffer;
 				if(current_thread!=thread) regptr = &current_thread_registers;
 
-				ptr = mem2hstr(ptr,(u8*)regptr->GPR,32*4);
-				ptr = mem2hstr(ptr,(u8*)regptr->FPR,32*8);
-				ptr = mem2hstr(ptr,(u8*)&regptr->SRR0,4);
-				ptr = mem2hstr(ptr,(u8*)&regptr->SRR1,4);
-				ptr = mem2hstr(ptr,(u8*)&regptr->CR,4);
-				ptr = mem2hstr(ptr,(u8*)&regptr->LR,4);
-				ptr = mem2hstr(ptr,(u8*)&regptr->CTR,4);
-				ptr = mem2hstr(ptr,(u8*)&regptr->XER,4);
-				ptr = mem2hstr(ptr,(u8*)&regptr->FPSCR,4);
+				ptr = mem2hstr(ptr,(char*)regptr->GPR,32*4);
+				ptr = mem2hstr(ptr,(char*)regptr->FPR,32*8);
+				ptr = mem2hstr(ptr,(char*)&regptr->SRR0,4);
+				ptr = mem2hstr(ptr,(char*)&regptr->SRR1,4);
+				ptr = mem2hstr(ptr,(char*)&regptr->CR,4);
+				ptr = mem2hstr(ptr,(char*)&regptr->LR,4);
+				ptr = mem2hstr(ptr,(char*)&regptr->CTR,4);
+				ptr = mem2hstr(ptr,(char*)&regptr->XER,4);
+				ptr = mem2hstr(ptr,(char*)&regptr->FPSCR,4);
 				break;
 			case 'm':
 				ptr = &remcomInBuffer[1];
@@ -608,18 +530,18 @@ void c_debug_handler(frame_context *frame)
 				dbg_instep = 0;
 				dbg_active = 1;
 				frame->SRR1 &= ~MSR_SE;
-				tcpip_stoptimer(dbg_datasock);
+				current_device->wait(current_device);
 				goto exit;
 			case 's':
 				dbg_instep = 1;
 				dbg_active = 1;
 				frame->SRR1 |= MSR_SE; 
-				tcpip_stoptimer(dbg_datasock);
+				current_device->wait(current_device);
 				goto exit;
 			case 'z':
 				{
 					s32 ret,type,len;
-					u8 *addr;
+					char *addr;
 
 					ret = parsezbreak(remcomInBuffer,&type,&addr,&len);
 					if(!ret) {
@@ -683,7 +605,7 @@ void c_debug_handler(frame_context *frame)
 			case 'Z':
 				{
 					s32 ret,type,len;
-					u8 *addr;
+					char *addr;
 
 					ret = parsezbreak(remcomInBuffer,&type,&addr,&len);
 					if(!ret) {
@@ -710,8 +632,7 @@ void c_debug_handler(frame_context *frame)
 		}
 		putpacket(remcomOutBuffer);
 	}
-	tcpip_close(dbg_datasock);
-	dbg_datasock = -1;
+	current_device->close(current_device);
 exit:
 	return;
 }
@@ -721,5 +642,40 @@ void _break(void)
 	if(!dbg_initialized) return;
 	__asm__ __volatile__ (".globl __breakinst\n\
 						   __breakinst: .long 0x7d821008");
+}
+
+void DEBUG_Init(s32 device_type,s32 channel_port)
+{
+	u32 level;
+	struct uip_ip_addr localip,netmask,gateway;
+
+	UIP_LOG("DEBUG_Init()\n");
+
+	__lwp_thread_dispatchdisable();
+
+	bp_init();
+
+	if(device_type==GDBSTUB_DEVICE_USB) {
+		current_device = usb_init(channel_port);
+	} else {
+		localip.addr = uip_ipaddr((const u8_t*)tcp_localip);
+		netmask.addr = uip_ipaddr((const u8_t*)tcp_netmask);
+		gateway.addr = uip_ipaddr((const u8_t*)tcp_gateway);
+
+		current_device = tcpip_init(&localip,&netmask,&gateway,(u16)channel_port);
+	}
+
+	if(current_device!=NULL) {
+		_CPU_ISR_Disable(level);
+		__exception_sethandler(EX_DSI,dbg_exceptionhandler);
+		__exception_sethandler(EX_PRG,dbg_exceptionhandler);
+		__exception_sethandler(EX_TRACE,dbg_exceptionhandler);
+		__exception_sethandler(EX_IABR,dbg_exceptionhandler);
+		_CPU_ISR_Restore(level);
+
+		dbg_initialized = 1;
+		
+	}
+	__lwp_thread_dispatchenable();
 }
 

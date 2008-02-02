@@ -11,23 +11,15 @@ struct gdbstub_threadinfo {
 	char name[256];
 };
 
-extern lwp_objinfo _lwp_cond_objects;
-extern lwp_objinfo _lwp_thr_objects;
-extern lwp_objinfo _lwp_tqueue_objects;
-extern lwp_objinfo _lwp_mqbox_objects;
-extern lwp_objinfo _lwp_mutex_objects;
-extern lwp_objinfo _lwp_sema_objects;
-
-
 s32 gdbstub_getcurrentthread();
 s32 hstr2nibble(const char *buf,s32 *nibble);
 char* int2vhstr(char *buf,s32 val);
-char* mem2hstr(char *buf,const u8 *mem,s32 count);
+char* mem2hstr(char *buf,const char *mem,s32 count);
 char* thread2vhstr(char *buf,s32 thread);
 const char* vhstr2thread(const char *buf,s32 *thread);
 lwp_cntrl* gdbstub_indextoid(s32 thread);
 s32 gdbstub_getoffsets(char **textaddr,char **dataaddr,char **bssaddr);
-s32 parsezbreak(const char *in,int *type,u8 **addr,int *len);
+s32 parsezbreak(const char *in,int *type,char **addr,int *len);
 s32 gdbstub_getthreadinfo(s32 thread,struct gdbstub_threadinfo *info);
 s32 parseqp(const char *in,s32 *mask,s32 *thread);
 void packqq(char *out,s32 mask,s32 thread,struct gdbstub_threadinfo *info);

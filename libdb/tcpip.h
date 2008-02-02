@@ -38,7 +38,8 @@ struct sockaddr {
   s8 sa_data[14];
 };
 
-void tcpip_init();
+struct dbginterface* tcpip_init(struct uip_ip_addr *localip,struct uip_ip_addr *netmask,struct uip_ip_addr *gateway,u16 port);
+
 void tcpip_close(s32_t s);
 void tcpip_starttimer(s32_t s);
 void tcpip_stoptimer(s32_t s);
