@@ -5,13 +5,13 @@
 #include "asm.h"
 #include "processor.h"
 
-#include "uip_ip.h"
-#include "uip_arp.h"
-#include "uip_tcp.h"
-#include "uip_netif.h"
-#include "bba.h"
+#include "uIP/uip_ip.h"
+#include "uIP/uip_arp.h"
+#include "uIP/uip_tcp.h"
+#include "uIP/uip_netif.h"
+#include "uIP/bba.h"
 #include "tcpip.h"
-#include "memb.h"
+#include "uIP/memb.h"
 
 #if UIP_LOGGING == 1
 #include <stdio.h>

@@ -17,7 +17,7 @@
 
 #include "uIP/bba.h"
 #include "uIP/memr.h"
-#include "uIP/tcpip.h"
+#include "tcpip.h"
 #include "uIP/uip_ip.h"
 #include "uIP/uip_arp.h"
 #include "uIP/uip_pbuf.h"

@@ -1,7 +1,7 @@
 #ifndef __TCPIP_H__
 #define __TCPIP_H__
 
-#include "uip.h"
+#include "uIP/uip.h"
 #include <sys/time.h>
 #include <sys/types.h>
 
