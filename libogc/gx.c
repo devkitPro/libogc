@@ -18,23 +18,37 @@
 #define BIG_NUMBER		(1024*1024)
 #define WGPIPE			(0xCC008000)
 
+#define GXWGPipe		(*__GXWGPipe)
+
 #define _SHIFTL(v, s, w)	\
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
 #define _SHIFTR(v, s, w)	\
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
-#define FIFO_PUTU8(x)	*(vu8*)WGPIPE = (u8)(x)
-#define FIFO_PUTS8(x)	*(vs8*)WGPIPE = (s8)(x)
-#define FIFO_PUTU16(x)	*(vu16*)WGPIPE = (u16)(x)
-#define FIFO_PUTS16(x)	*(vs16*)WGPIPE = (s16)(x)
-#define FIFO_PUTU32(x)	*(vu32*)WGPIPE = (u32)(x)
-#define FIFO_PUTS32(x)	*(vs32*)WGPIPE = (s32)(x)
-#define FIFO_PUTF32(x)	*(vf32*)WGPIPE = (f32)(x)
+#define FIFO_PUTU8(x)		*(vu8*)WGPIPE = (u8)(x)
+#define FIFO_PUTS8(x)		*(vs8*)WGPIPE = (s8)(x)
+#define FIFO_PUTU16(x)		*(vu16*)WGPIPE = (u16)(x)
+#define FIFO_PUTS16(x)		*(vs16*)WGPIPE = (s16)(x)
+#define FIFO_PUTU32(x)		*(vu32*)WGPIPE = (u32)(x)
+#define FIFO_PUTS32(x)		*(vs32*)WGPIPE = (s32)(x)
+#define FIFO_PUTF32(x)		*(vf32*)WGPIPE = (f32)(x)
+#define FIFO_PUTF64(x)		*(vf64*)WGPIPE = (f64)(x)
+
+/*
+#define FIFO_PUTU8(x)	GXWGPipe.U8 = (u8)(x)
+#define FIFO_PUTS8(x)	GXWGPipe.S8 = (s8)(x)
+#define FIFO_PUTU16(x)	GXWGPipe.U16 = (u16)(x)
+#define FIFO_PUTS16(x)	GXWGPipe.S16 = (s16)(x)
+#define FIFO_PUTU32(x)	GXWGPipe.U32 = (u32)(x)
+#define FIFO_PUTS32(x)	GXWGPipe.S32 = (s32)(x)
+#define FIFO_PUTF32(x)	GXWGPipe.F32 = (f32)(x)
+#define FIFO_PUTF64(x)	GXWGPipe.F64 = (f64)(x)
+*/
 
 #define GX_LOAD_BP_REG(x)				\
 	do {								\
 		FIFO_PUTU8(0x61);				\
-		FIFO_PUTU32(x);					\
+		FIFO_PUTU32(x);				\
 	} while(0)
 
 #define GX_LOAD_CP_REG(x, y)			\
@@ -77,10 +91,25 @@ struct __gxfifo {
 	u8 pad0[96];
 };
 
-static void *_gxcurrbp = NULL;
-static lwp_t _gxcurrentlwp = LWP_THREAD_NULL;
+typedef union __ppc_wgpipe
+{
+	u8	U8;
+	u16 U16;
+	u32 U32;
+	u64 U64;
+	s8	S8;
+	s16 S16;
+	s32 S32;
+	s64 S64;
+	f32 F32;
+	f64 F64;
+} PPCWGPipe;
+
+volatile PPCWGPipe *__GXWGPipe = (PPCWGPipe*)WGPIPE;
 
 static GXFifoObj _gxdefiniobj;
+static void *_gxcurrbp = NULL;
+static lwp_t _gxcurrentlwp = LWP_THREAD_NULL;
 
 static u8 _cpgplinked = 0;
 static u16 _gxgpstatus = 0;

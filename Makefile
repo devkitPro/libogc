@@ -70,8 +70,8 @@ INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/modplay -I$(BASEDIR)/gc/mad -I$(BASEDIR)/gc/sdcard \
 				-I$(BASEDIR)/gc/z
 
-MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -fmodulo-sched -ffunction-sections -fdata-sections
-CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -g -O2 -Wall $(MACHDEP) -fno-strict-aliasing $(INCLUDES)
+MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -ffunction-sections -fdata-sections
+CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -O2 -Wall $(MACHDEP) -fno-strict-aliasing $(INCLUDES)
 LDFLAGS		:=
 
 #---------------------------------------------------------------------------------

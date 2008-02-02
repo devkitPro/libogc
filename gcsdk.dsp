@@ -583,14 +583,6 @@ SOURCE=.\libdb\uIP\memr.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\libdb\uip\tcpip.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libdb\uip\tcpip.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\libdb\uIP\uip.h
 # End Source File
 # Begin Source File
@@ -661,6 +653,34 @@ SOURCE=.\libdb\debug.c
 # Begin Source File
 
 SOURCE=.\libdb\debug_handler.S
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\debug_if.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\debug_supp.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\debug_supp.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\tcpip.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\tcpip.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\usb.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\usb.h
 # End Source File
 # End Group
 # Begin Group "libogcsys.c"
