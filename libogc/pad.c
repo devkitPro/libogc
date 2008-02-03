@@ -59,6 +59,8 @@ static s8 __pad_origin[PAD_CHANMAX][12];
 static u32 __pad_cmdprobedevice[PAD_CHANMAX];
 
 static keyinput __pad_keys[PAD_CHANMAX];
+static u8 __pad_clampregion[8] = {30, 180, 15, 72, 40, 15, 59, 31};
+
 static vu32* const _siReg = (u32*)0xCC006400;
 static vu16* const _viReg = (u16*)0xCC002000;
 
@@ -239,6 +241,60 @@ static void SPEC2_MakeStatus(u32 chan,u32 *data,PADStatus *status)
 	status->substickY = __pad_clampS8(status->substickY,__pad_origin[chan][5]);
 	status->triggerL = __pad_clampU8(status->triggerL,__pad_origin[chan][6]);
 	status->triggerR = __pad_clampU8(status->triggerR,__pad_origin[chan][7]);
+}
+
+static void __pad_clampstick(s8 *px,s8 *py,s8 max,s8 xy,s8 min)
+{
+	s32 x,y,signX,signY,d;
+
+	x = *px;
+	y = *py;
+	if(x>=0) signX = 1;
+	else { signX = -1; x = -(x); }
+
+	if(y>=0) signY = 1;
+	else { signY = -1; y = -(y); }
+	
+	if(x<=min) x = 0;
+	else x -= min;
+
+	if(y<=min) y = 0;
+	else y -= min;
+	
+	if(x!=0 || y!=0) {
+		s32 xx,yy,maxy;
+
+		xx = (x * xy);
+		yy= (y * xy);
+		maxy = (max * xy);
+		if(yy<=xx) {
+			d = ((x * xy) + (y * (max - xy)));
+			if(maxy<d) {
+				x = ((x * maxy)/d);
+				y = ((y * maxy)/d);
+			}
+		} else {
+			d = ((y * xy) + (x * (max - xy)));
+			if(maxy<d) {
+				x = ((x * maxy)/d);
+				y = ((y * maxy)/d);
+			}
+		}
+		*px = (s8)(x * signX);
+		*py = (s8)(y * signY);
+	} else
+		*px = *py = 0;
+}
+
+static void __pad_clamptrigger(u8 *trigger)
+{
+	u8 min, max;
+
+	min = __pad_clampregion[0];
+	max = __pad_clampregion[1];
+	if(min>*trigger) *trigger = 0;
+	else if(max<*trigger) *trigger = (max - min);
+	else *trigger -= min;
 }
 
 static void __pad_updateorigin(s32 chan)
@@ -639,21 +695,35 @@ sampling_callback PAD_SetSamplingCallback(sampling_callback cb)
 	return ret;
 }
 
+void PAD_Clamp(PADStatus *status)
+{
+	s32 i;
+
+	for(i=0;i<PAD_CHANMAX;i++) {
+		if(status[i].err==PAD_ERR_NONE) {
+			__pad_clampstick(&status[i].stickX,&status[i].stickY,__pad_clampregion[3],__pad_clampregion[4],__pad_clampregion[2]);
+			__pad_clampstick(&status[i].substickX,&status[i].substickY,__pad_clampregion[6],__pad_clampregion[7],__pad_clampregion[5]);
+			__pad_clamptrigger(&status[i].triggerL);
+			__pad_clamptrigger(&status[i].triggerR);
+		}
+	}
+}
+
 u32 PAD_ScanPads()
 {
 	s32 i;
+	u32 resetBits;
 	u32 padBit,connected;
-	u32 connBits,resetBits;
 	u16 state,oldstate;
 	PADStatus padstatus[PAD_CHANMAX];
 	
-	connBits = 0;
 	resetBits = 0;
 	connected = 0;
 
 	PAD_Read(padstatus);
+	PAD_Clamp(padstatus);
 	for(i=0;i<PAD_CHANMAX;i++) {
-		padBit = PAD_CHAN0_BIT>>i;
+		padBit = (PAD_CHAN0_BIT>>i);
 		if(padstatus[i].err==PAD_ERR_NONE
 			|| padstatus[i].err==PAD_ERR_TRANSFER) {
 			if(padstatus[i].err==PAD_ERR_NONE) {
@@ -669,7 +739,6 @@ u32 PAD_ScanPads()
 				__pad_keys[i].state		= state;
 				__pad_keys[i].chan		= i;
 			}
-			connBits |= padBit;
 			connected |= (1<<i);
 		} else if(padstatus[i].err==PAD_ERR_NO_CONTROLLER) {
 			if(__pad_keys[i].chan!=-1) memset(&__pad_keys[i],0,sizeof(keyinput));
@@ -681,11 +750,8 @@ u32 PAD_ScanPads()
 			break;
 		}
 	}
-	if(connBits) {
-		resetBits &= connBits;
-	}
 #ifdef _PAD_DEBUG
-	printf("connBits = %08x, resetBits = %08x\n",connBits,resetBits);
+	printf("resetBits = %08x\n",resetBits);
 #endif
 	if(resetBits) {
 		PAD_Reset(resetBits);

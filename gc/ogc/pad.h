@@ -66,6 +66,7 @@ u32 PAD_Sync();
 u32 PAD_Read(PADStatus *status);
 u32 PAD_Reset(u32 mask);
 u32 PAD_Recalibrate(u32 mask);
+void PAD_Clamp(PADStatus *status);
 void PAD_ControlMotor(s32 chan,u32 cmd);
 void PAD_SetSpec(u32 spec);
 u32 PAD_ScanPads();
