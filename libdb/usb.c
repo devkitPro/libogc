@@ -126,7 +126,7 @@ static int usbread(struct dbginterface *device,void *buffer,int size)
 static int usbwrite(struct dbginterface *device,const void *buffer,int size)
 {
 	int ret;
-	ret = usb_sendbuffer(device->fhndl,buffer,size);
+	ret = usb_sendbuffer_safe(device->fhndl,buffer,size);
 	return ret;
 }
 
