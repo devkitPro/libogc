@@ -564,7 +564,7 @@ void c_debug_handler(frame_context *frame)
 				}
 				break;
 			case 'H':
-				if(remcomInBuffer[1]!='g') break;
+				if(remcomInBuffer[1]=='g')
 				{
 					s32 tmp,ret;
 
@@ -587,8 +587,8 @@ void c_debug_handler(frame_context *frame)
 						}
 					}
 					current_thread= tmp;
-					strcpy(remcomOutBuffer,"OK");
 				}
+				strcpy(remcomOutBuffer,"OK");
 				break;
 			case 'T':
 				{
