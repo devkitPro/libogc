@@ -120,15 +120,13 @@ static int usbread(struct dbginterface *device,void *buffer,int size)
 {
 	int ret;
 	ret = usb_recvbuffer_safe(device->fhndl,buffer,size);
-	printf("usbread(%p,%s,%d) = %d\n",device,(char*)buffer,size,ret);
 	return ret;
 }
 
 static int usbwrite(struct dbginterface *device,const void *buffer,int size)
 {
 	int ret;
-	ret = usb_sendbuffer_safe(device->fhndl,buffer,size);
-	printf("usbwrite(%p,%s,%d) = %d\n",device,(char*)buffer,size,ret);
+	ret = usb_sendbuffer(device->fhndl,buffer,size);
 	return ret;
 }
 
