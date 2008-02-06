@@ -17,14 +17,14 @@ static struct dbginterface usb_device;
 
 extern void udelay(int us);
 
-static __inline__ int __send_command(s32 chn,u32 *cmd)
+static __inline__ int __send_command(s32 chn,u16 *cmd)
 {
 	s32 ret;
 
 	ret = 0;
 	if(EXI_Lock(chn,EXI_DEVICE_0,NULL)) {
 		if(!EXI_Select(chn,EXI_DEVICE_0,EXI_SPEED32MHZ)) ret |= 0x01;
-		if(!EXI_Imm(chn,cmd,sizeof(u32),EXI_READWRITE,NULL)) ret |= 0x02;
+		if(!EXI_Imm(chn,cmd,sizeof(u16),EXI_READWRITE,NULL)) ret |= 0x02;
 		if(!EXI_Sync(chn)) ret |= 0x04;
 		if(!EXI_Deselect(chn)) ret |= 0x08;
 		if(!EXI_Unlock(chn)) ret |= 0x10;
@@ -38,11 +38,11 @@ static __inline__ int __send_command(s32 chn,u32 *cmd)
 static int __usb_sendbyte(s32 chn,char ch)
 {
 	s32 ret;
-	u32 val;
+	u16 val;
 
-	val = (0xB0000000|_SHIFTL(ch,20,8));
+	val = (0xB000|_SHIFTL(ch,4,8));
 	ret = __send_command(chn,&val);
-	if(ret==1 && !(val&0x04000000)) ret = 0;
+	if(ret==1 && !(val&0x0400)) ret = 0;
 
 	return ret;
 }
@@ -50,13 +50,13 @@ static int __usb_sendbyte(s32 chn,char ch)
 static int __usb_recvbyte(s32 chn,char *ch)
 {
 	s32 ret;
-	u32 val;
+	u16 val;
 
 	*ch = 0;
-	val = 0xA0000000;
+	val = 0xA000;
 	ret = __send_command(chn,&val);
-	if(ret==1 && !(val&0x08000000)) ret = 0;
-	else if(ret==1) *ch = _SHIFTR(val,16,8);
+	if(ret==1 && !(val&0x0800)) ret = 0;
+	else if(ret==1) *ch = (val&0xff);
 
 	return ret;
 }
@@ -64,11 +64,11 @@ static int __usb_recvbyte(s32 chn,char *ch)
 static int __usb_checksend(s32 chn)
 {
 	s32 ret;
-	u32 val;
+	u16 val;
 
-	val = 0xC0000000;
+	val = 0xC000;
 	ret = __send_command(chn,&val);
-	if(ret==1 && !(val&0x04000000)) ret = 0;
+	if(ret==1 && !(val&0x0400)) ret = 0;
 
 	return ret;
 }
@@ -76,11 +76,11 @@ static int __usb_checksend(s32 chn)
 static int __usb_checkrecv(s32 chn)
 {
 	s32 ret;
-	u32 val;
+	u16 val;
 
-	val = 0xD0000000;
+	val = 0xD000;
 	ret = __send_command(chn,&val);
-	if(ret==1 && !(val&0x04000000)) ret = 0;
+	if(ret==1 && !(val&0x0400)) ret = 0;
 
 	return ret;
 }
@@ -88,11 +88,11 @@ static int __usb_checkrecv(s32 chn)
 static int __usb_isgeckoalive(s32 chn)
 {
 	s32 ret;
-	u32 val;
+	u16 val;
 
-	val = 0x90000000;
+	val = 0x9000;
 	ret = __send_command(chn,&val);
-	if(ret==1 && !(val&0x04700000)) ret = 0;
+	if(ret==1 && !(val&0x0470)) ret = 0;
 
 	return ret;
 }
