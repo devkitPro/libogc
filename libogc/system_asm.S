@@ -9,7 +9,7 @@ __realmode:
 	mtsrr1	r3
 	rfi
 
-	.globl __config24Mb
+	.globl __configMEM1_24Mb
 __configMEM1_24Mb:
 	li		r7,0
 	lis		r4,0
@@ -44,7 +44,7 @@ __configMEM1_24Mb:
 	mtsrr0	r3
 	rfi
 
-	.globl __config48Mb
+	.globl __configMEM1_48Mb
 __configMEM1_48Mb:
 	li		r7,0
 	lis		r4,0
