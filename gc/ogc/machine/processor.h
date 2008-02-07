@@ -57,6 +57,8 @@
 #define mfpmc4()		mfspr(958)
 #define mtpmc4(_val)	mtspr(958,_val)
 
+#define mfhid4()		mfspr(1017)
+
 #define cntlzw(_val) ({register u32 _rval; \
 					  asm volatile("cntlzw %0, %1" : "=r"((_rval)) : "r"((_val))); _rval;})
 

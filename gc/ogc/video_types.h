@@ -153,8 +153,9 @@ extern GXRModeObj TVNtsc240Int;				/*!< Video and render mode configuration for 
 extern GXRModeObj TVNtsc240IntAa;			/*!< Video and render mode configuration for 240 lines,interlaced,antialiased NTSC mode */ 
 extern GXRModeObj TVNtsc480IntDf;			/*!< Video and render mode configuration for 480 lines,interlaced,doublefield NTSC mode */ 
 extern GXRModeObj TVNtsc480IntAa;			/*!< Video and render mode configuration for 480 lines,interlaced,doublefield,antialiased NTSC mode */ 
+extern GXRModeObj TVNtsc480Prog;            /*!< Video and render mode configuration for 480 lines,progressive,singlefield NTSC mode */ 
 extern GXRModeObj TVMpal480IntDf;			/*!< Video and render mode configuration for 480 lines,interlaced,doublefield,antialiased PAL mode */ 
-extern GXRModeObj TVPal264Ds;					/*!< Video and render mode configuration for 264 lines,singlefield PAL mode */ 
+extern GXRModeObj TVPal264Ds;				/*!< Video and render mode configuration for 264 lines,singlefield PAL mode */ 
 extern GXRModeObj TVPal264DsAa;				/*!< Video and render mode configuration for 264 lines,singlefield,antialiased PAL mode */ 
 extern GXRModeObj TVPal264Int;				/*!< Video and render mode configuration for 264 lines,interlaced PAL mode */ 
 extern GXRModeObj TVPal264IntAa;			/*!< Video and render mode configuration for 264 lines,interlaced,antialiased PAL mode */ 

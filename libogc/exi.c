@@ -97,7 +97,13 @@ static void __exi_irq_handler(u32,void *);
 static void __tc_irq_handler(u32,void *);
 static void __ext_irq_handler(u32,void *);
 
-static vu32* const _exiReg = (u32*)0xCC006800;
+#if defined(HW_DOL)
+	static vu32* const _exiReg = (u32*)0xCC006800;
+#elif defined(HW_RVL)
+	static vu32* const _exiReg = (u32*)0xCD006800;
+#else
+	#error HW model unknown. 
+#endif
 
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);

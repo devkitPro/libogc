@@ -10,7 +10,7 @@ __realmode:
 	rfi
 
 	.globl __config24Mb
-__config24Mb:
+__configMEM1_24Mb:
 	li		r7,0
 	lis		r4,0
 	addi	r4,r4,2
@@ -45,7 +45,7 @@ __config24Mb:
 	rfi
 
 	.globl __config48Mb
-__config48Mb:
+__configMEM1_48Mb:
 	li		r7,0
 	lis		r4,0
 	addi	r4,r4,2
@@ -78,6 +78,194 @@ __config48Mb:
 	mflr	r3
 	mtsrr0	r3
 	rfi
+
+#if defined(HW_RVL)
+	.globl __configMEM2_56Mb
+__configMEM2_56Mb:
+	li		r7,0
+	lis		r4,0x1000
+	addi	r4,r4,2
+	lis		r3,0x9000
+	addi	r3,r3,0x3ff
+	lis		r6,0x1000
+	addi	r6,r6,0x2a
+	lis		r5,0xd000
+	addi	r5,r5,0x7ff
+	isync
+	mtspr	DBAT4U,r7
+	mtspr	DBAT4L,r4
+	mtspr	DBAT4U,r3
+	isync
+	mtspr	IBAT4U,r7
+	mtspr	IBAT4L,r4
+	mtspr	IBAT4U,r3
+	isync
+	mtspr	DBAT5U,r7
+	mtspr	DBAT5L,r6
+	mtspr	DBAT5U,r5
+	isync
+	mtspr	IBAT5U,r7
+	mtspr	IBAT5L,r7
+	isync
+	lis		r4,0x1200
+	addi	r4,r4,2
+	lis		r3,0x9200
+	addi	r3,r3,0x1ff
+	lis		r6,0x1300
+	addi	r6,r6,2
+	lis		r5,0x9300
+	addi	r5,r5,0xff
+	isync
+	mtspr	DBAT6U,r7
+	mtspr	DBAT6L,r4
+	mtspr	DBAT6U,r3
+	isync
+	mtspr	IBAT6U,r7
+	mtspr	IBAT6L,r4
+	mtspr	IBAT6U,r3
+	isync
+	mtspr	DBAT7U,r7
+	mtspr	DBAT7L,r6
+	mtspr	DBAT7U,r5
+	isync
+	mtspr	IBAT7U,r7
+	mtspr	IBAT7L,r6
+	mtspr	IBAT7U,r5
+	isync
+	mfmsr	r3
+	ori		r3,r3,MSR_DR|MSR_IR
+	mtsrr1	r3
+	mflr	r3
+	mtsrr0	r3
+	rfi
+
+	.globl __configMEM2_64Mb
+__configMEM2_64Mb:
+	li		r7,0
+	lis		r4,0x1000
+	addi	r4,r4,2
+	lis		r3,0x9000
+	addi	r3,r3,0x7ff
+	lis		r6,0x1000
+	addi	r6,r6,0x2a
+	lis		r5,0xd000
+	addi	r5,r5,0x7ff
+	isync
+	mtspr	DBAT4U,r7
+	mtspr	DBAT4L,r4
+	mtspr	DBAT4U,r3
+	isync
+	mtspr	IBAT4U,r7
+	mtspr	IBAT4L,r4
+	mtspr	IBAT4U,r3
+	isync
+	mtspr	DBAT5U,r7
+	mtspr	DBAT5L,r6
+	mtspr	DBAT5U,r5
+	isync
+	mtspr	IBAT5U,r7
+	mtspr	IBAT5L,r7
+	isync
+	mfmsr	r3
+	ori		r3,r3,MSR_DR|MSR_IR
+	mtsrr1	r3
+	mflr	r3
+	mtsrr0	r3
+	rfi	
+
+	.globl __configMEM2_112Mb
+__configMEM2_112Mb:
+	li		r7,0
+	lis		r4,0x1000
+	addi	r4,r4,2
+	lis		r3,0x9000
+	addi	r3,r3,0x7ff
+	lis		r6,0x1000
+	addi	r6,r6,0x2a
+	lis		r5,0xd000
+	addi	r5,r5,0xfff
+	isync
+	mtspr	DBAT4U,r7
+	mtspr	DBAT4L,r4
+	mtspr	DBAT4U,r3
+	isync
+	mtspr	IBAT4U,r7
+	mtspr	IBAT4L,r4
+	mtspr	IBAT4U,r3
+	isync
+	mtspr	DBAT5U,r7
+	mtspr	DBAT5L,r6
+	mtspr	DBAT5U,r5
+	isync
+	mtspr	IBAT5U,r7
+	mtspr	IBAT5L,r7
+	isync
+	lis		r4,0x1400
+	addi	r4,r4,2
+	lis		r3,0x9400
+	addi	r3,r3,0x3ff
+	lis		r6,0x1600
+	addi	r6,r6,2
+	lis		r5,0x9600
+	addi	r5,r5,0x1ff
+	isync
+	mtspr	DBAT6U,r7
+	mtspr	DBAT6L,r4
+	mtspr	DBAT6U,r3
+	isync
+	mtspr	IBAT6U,r7
+	mtspr	IBAT6L,r4
+	mtspr	IBAT6U,r3
+	isync
+	mtspr	DBAT7U,r7
+	mtspr	DBAT7L,r6
+	mtspr	DBAT7U,r5
+	isync
+	mtspr	IBAT7U,r7
+	mtspr	IBAT7L,r6
+	mtspr	IBAT7U,r5
+	isync
+	mfmsr	r3
+	ori		r3,r3,MSR_DR|MSR_IR
+	mtsrr1	r3
+	mflr	r3
+	mtsrr0	r3
+	rfi
+
+	.globl __configMEM2_128Mb
+__configMEM2_128Mb:
+	li		r7,0
+	lis		r4,0x1000
+	addi	r4,r4,2
+	lis		r3,0x9000
+	addi	r3,r3,0xfff
+	lis		r6,0x1000
+	addi	r6,r6,0x2a
+	lis		r5,0xd000
+	addi	r5,r5,0xfff
+	isync
+	mtspr	DBAT4U,r7
+	mtspr	DBAT4L,r4
+	mtspr	DBAT4U,r3
+	isync
+	mtspr	IBAT4U,r7
+	mtspr	IBAT4L,r4
+	mtspr	IBAT4U,r3
+	isync
+	mtspr	DBAT5U,r7
+	mtspr	DBAT5L,r6
+	mtspr	DBAT5U,r5
+	isync
+	mtspr	IBAT5U,r7
+	mtspr	IBAT5L,r7
+	isync
+	mfmsr	r3
+	ori		r3,r3,MSR_DR|MSR_IR
+	mtsrr1	r3
+	mflr	r3
+	mtsrr0	r3
+	rfi	
+#endif
 
 	.extern ICFlashInvalidate
 	.globl __PSInit
@@ -162,6 +350,11 @@ __SystemInit:
 	mtspr   954, r3
 	mtspr   957, r3
 	mtspr   958, r3
+
+#if defined(HW_RVL)
+	lis		r3,0x8390		//bits set: H4A(HID4 access), SBE(2nd BAT enabled),  SR0(store 0), LPE(PS LE exception), L2CFI(L2 castout prior to L2 inv. flash)
+	mtspr	HID4,r3
+#endif
 
 	# Disable Speculative Bus Accesses to non-guarded space from both caches.
 	mfspr   r3, HID0

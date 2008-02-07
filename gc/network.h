@@ -221,9 +221,10 @@ struct sockaddr {
   s8 sa_data[14];
 };
 
-s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean use_dhcp);
-s32 if_configex(struct in_addr *pIP,struct in_addr *pGW,struct in_addr *pMask,boolean use_dhcp);
 u32 inet_addr(const char *cp);
+
+s32 if_config(const char *local_ip,const char *netmask,const char *gateway,boolean use_dhcp);
+s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr *gateway,boolean use_dhcp);
 
 s32 net_init();
 s32 net_socket(u32 domain,u32 type,u32 protocol);

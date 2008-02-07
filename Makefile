@@ -70,8 +70,9 @@ INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/modplay -I$(BASEDIR)/gc/mad -I$(BASEDIR)/gc/sdcard \
 				-I$(BASEDIR)/gc/z
 
-MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -fmodulo-sched -ffunction-sections -fdata-sections
-CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -g -O2 -Wall $(MACHDEP) -fno-strict-aliasing $(INCLUDES)
+MACHDEP		:= -DBIGENDIAN -DGEKKO -DHW_DOL -mcpu=750 -meabi -msdata=eabi -mhard-float -fmodulo-sched -ffunction-sections -fdata-sections
+CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -O2 -Wall $(MACHDEP) -fno-strict-aliasing $(INCLUDES)
+
 LDFLAGS		:=
 
 #---------------------------------------------------------------------------------
@@ -111,7 +112,7 @@ OGCOBJ		:=	lwp_priority.o lwp_queue.o lwp_threadq.o lwp_threads.o lwp_sema.o	\
 			cache_asm.o system.o system_asm.o cond.o			\
 			gx.o gu.o gu_psasm.o audio.o cache.o decrementer.o			\
 			message.o card.o aram.o depackrnc.o decrementer_handler.o	\
-			depackrnc1.o dsp.o si.o tdf.o ogc_crt0.o
+			depackrnc1.o dsp.o si.o tdf.o ipc.o ogc_crt0.o
 
 #---------------------------------------------------------------------------------
 MODOBJ		:=	freqtab.o mixer.o modplay.o semitonetab.o gcmodplay.o

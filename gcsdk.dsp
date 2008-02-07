@@ -168,6 +168,10 @@ SOURCE=.\libogc\gx.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\ipc.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\irq.c
 # End Source File
 # Begin Source File
@@ -1017,6 +1021,10 @@ SOURCE=.\gc\ogc\gx.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\gx_struct.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\ipc.h
 # End Source File
 # Begin Source File
 

@@ -113,7 +113,14 @@ static SICallback typeCallback[4][4] = {{NULL,NULL,NULL,NULL},
 										{NULL,NULL,NULL,NULL}};
 static syswd_t si_alarm[4];
 
-static vu32* const _siReg = (u32*)0xCC006400;
+#if defined(HW_DOL)
+	static vu32* const _siReg = (u32*)0xCC006400;
+#elif defined(HW_RVL)
+	static vu32* const _siReg = (u32*)0xCD006400;
+#else
+	#error HW model unknown.
+#endif
+
 static vu16* const _viReg = (u16*)0xCC002000;
 
 static u32 __si_transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb);

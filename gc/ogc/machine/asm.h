@@ -272,6 +272,10 @@
 #define	IBAT2L		533	
 #define	IBAT3U		534	
 #define	IBAT3L		535	
+#define	IBAT4U		560
+#define	IBAT4L		561
+#define	IBAT5U		562
+#define	IBAT5L		563
 
 #define	DBAT0U		536
 #define	DBAT0L		537	
@@ -281,10 +285,17 @@
 #define	DBAT2L		541	
 #define	DBAT3U		542	
 #define	DBAT3L		543
+#define DBAT4U		568
+#define DBAT4L		569
+#define DBAT5U		570
+#define DBAT5L		571
+#define DBAT6U		572
+#define DBAT6L		573
 
 #define HID0		1008
 #define HID1		1009
 #define HID2		920	
+#define HID4		1011
 
 #define GQR0		912
 #define GQR1		913

@@ -4,8 +4,13 @@
 #include <gccore.h>
 #include <sys/types.h>
 
-#define TB_BUS_CLOCK					162000000u
-#define TB_CORE_CLOCK					486000000u
+#if defined(HW_RVL)
+	#define TB_BUS_CLOCK				243000000u
+	#define TB_CORE_CLOCK				729000000u
+#elif defined(HW_DOL)
+	#define TB_BUS_CLOCK				162000000u
+	#define TB_CORE_CLOCK				486000000u
+#endif
 #define TB_TIMER_CLOCK					(TB_BUS_CLOCK/4000)			//4th of the bus frequency
 
 #define TB_MSPERSEC						1000

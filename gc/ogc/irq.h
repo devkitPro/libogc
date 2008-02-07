@@ -68,6 +68,9 @@ distribution.
 #define IRQ_PI_VI			 24
 #define IRQ_PI_DEBUG		 25
 #define IRQ_PI_HSP			 26
+#if defined(HW_RVL)
+#define IRQ_PI_ACR			 27
+#endif
 #define IRQ_MAX				 32
 
 #define IRQMASK(irq)		 (0x80000000u>>irq)
@@ -111,7 +114,12 @@ distribution.
 #define IM_PI_VI			 IRQMASK(IRQ_PI_VI)
 #define IM_PI_DEBUG			 IRQMASK(IRQ_PI_DEBUG)
 #define IM_PI_HSP			 IRQMASK(IRQ_PI_HSP)
+#if defined(HW_DOL)
 #define IM_PI				 (IM_PI_CP|IM_PI_PETOKEN|IM_PI_PEFINISH|IM_PI_SI|IM_PI_DI|IM_PI_RSW|IM_PI_ERROR|IM_PI_VI|IM_PI_DEBUG|IM_PI_HSP)
+#elif defined(HW_RVL)
+#define IM_PI_ACR			 IRQMASK(IRQ_PI_ACR)
+#define IM_PI				 (IM_PI_CP|IM_PI_PETOKEN|IM_PI_PEFINISH|IM_PI_SI|IM_PI_DI|IM_PI_RSW|IM_PI_ERROR|IM_PI_VI|IM_PI_DEBUG|IM_PI_HSP|IM_PI_ACR)
+#endif
 
 #ifdef __cplusplus
    extern "C" {

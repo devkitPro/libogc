@@ -60,14 +60,24 @@ static struct irq_handler_s g_IRQHandler[32];
 static vu32* const _piReg = (u32*)0xCC003000;
 static vu16* const _memReg = (u16*)0xCC004000;
 static vu16* const _dspReg = (u16*)0xCC005000;
+
+#if defined(HW_DOL)
 static vu32* const _exiReg = (u32*)0xCC006800;
 static vu32* const _aiReg = (u32*)0xCC006C00;
+#elif defined(HW_RVL)
+static vu32* const _exiReg = (u32*)0xCD006800;
+static vu32* const _aiReg = (u32*)0xCD006C00;
+#endif
 
 static u32 const _irqPrio[] = {IM_PI_ERROR,IM_PI_DEBUG,IM_MEM,IM_PI_RSW,
 							   IM_PI_VI,(IM_PI_PETOKEN|IM_PI_PEFINISH),
 							   IM_PI_HSP,
 							   (IM_DSP_ARAM|IM_DSP_DSP|IM_AI|IM_EXI|IM_PI_SI|IM_PI_DI),
-							   IM_DSP_AI,IM_PI_CP,0xffffffff};
+							   IM_DSP_AI,IM_PI_CP,
+#if defined(HW_RVL)
+							   IM_PI_ACR,
+#endif
+							   0xffffffff};
 
 extern void __exception_load(u32,void *,u32,void *);
 
@@ -229,7 +239,11 @@ void c_irqdispatcher(frame_context *ctx)
 	if(cause&0x00000001) {		//GP Runtime Error
 		intmask |= IRQMASK(IRQ_PI_ERROR);
 	}
-
+#if defined(HW_RVL)
+	if(cause&0x00004000) {
+		intmask |= IRQMASK(IRQ_PI_ACR);
+	}
+#endif
 	mask = intmask&~(prevIrqMask|currIrqMask);
 	if(mask) {
 		i=0;
@@ -308,8 +322,11 @@ static u32 __SetInterrupts(u32 iMask,u32 nMask)
 		return (iMask&~IM_EXI2);
 	}
 	
-	
+#if defined(HW_DOL)
 	if(irq>=IRQ_PI_CP && irq<=IRQ_PI_HSP) {
+#elif defined(HW_RVL)
+	if(irq>=IRQ_PI_CP && irq<=IRQ_PI_ACR) {
+#endif
 		imask = 0xf0;
 		if(!(nMask&IM_PI_ERROR)) {
 			imask |= 0x00000001;
@@ -341,6 +358,11 @@ static u32 __SetInterrupts(u32 iMask,u32 nMask)
 		if(!(nMask&IM_PI_HSP)) {
 			imask |= 0x00002000;
 		}
+#if defined(HW_RVL)
+		if(!(nMask&IM_PI_ACR)) {
+			imask |= 0x00004000;
+		}
+#endif
 		_piReg[1] = imask;
 		return (iMask&~IM_PI);
 	}

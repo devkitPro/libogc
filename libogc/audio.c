@@ -55,8 +55,15 @@ distribution.
 #define _SHIFTR(v, s, w)	\
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
+#if defined(HW_DOL)
+	static vu32* const _aiReg = (u32*)0xCC006C00;
+#elif defined(HW_RVL)
+	static vu32* const _aiReg = (u32*)0xCD006C00;
+#else
+	#error HW model not supported.
+#endif
+
 static vu16* const _dspReg = (u16*)0xCC005000;
-static vu32* const _aiReg = (u32*)0xCC006C00;
 
 static u32 __AIInitFlag = 0;
 static u8 *__CallbackStack = NULL;

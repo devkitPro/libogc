@@ -1466,10 +1466,10 @@ static void evt_callback(struct netconn *conn,enum netconn_evt evt,u32 len)
 }
 
 extern const devoptab_t dotab_net;
-s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean use_dhcp)
+s32 if_config(const char *local_ip,const char *netmask,const char *gateway,boolean use_dhcp)
 {
 	s32 ret = 0;
-	struct ip_addr loc_ip, netmask, gw;
+	struct ip_addr loc_ip, mask, gw;
 	struct netif *pnet;
 	struct timespec tb;
 	dev_s hbba = NULL;
@@ -1492,20 +1492,18 @@ s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 	if(MQ_Init(&netthread_mbox,MQBOX_SIZE)!=MQ_ERROR_SUCCESSFUL) return -1;
 
 	// create & setup interface 
-	gw.addr = 0;
 	loc_ip.addr = 0;
-	netmask.addr = 0;
-	if(!use_dhcp) {
-		gw.addr = inet_addr(pszGW);
-		if(pszIP && pszMASK) {
-			loc_ip.addr = inet_addr(pszIP);
-			netmask.addr = inet_addr(pszMASK);
-		} else
-			return -1;
-	}
+	mask.addr = 0;
+	gw.addr = 0;
+	if(!use_dhcp && (!gateway || gateway[0]=='\0')) return -1;
+	if(!local_ip || !netmask || local_ip[0]=='\0' || netmask[0]=='\0') return -1;
+
+	loc_ip.addr = inet_addr(local_ip);
+	mask.addr = inet_addr(netmask);
+	if(!use_dhcp) gw.addr = inet_addr(gateway);
 
 	hbba = bba_create(&g_hNetIF);
-	pnet = netif_add(&g_hNetIF,&loc_ip, &netmask, &gw, hbba, bba_init, net_input);
+	pnet = netif_add(&g_hNetIF,&loc_ip, &mask, &gw, hbba, bba_init, net_input);
 	if(pnet) {
 		netif_set_up(pnet);
 		netif_set_default(pnet);
@@ -1533,10 +1531,10 @@ s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 		return -1;
 	
 	// setup loopinterface
-	IP4_ADDR(&gw, 127,0,0,1);
 	IP4_ADDR(&loc_ip, 127,0,0,1);
-	IP4_ADDR(&netmask, 255,0,0,0);
-	pnet = netif_add(&g_hLoopIF,&loc_ip,&netmask,&gw,NULL,loopif_init,net_input);
+	IP4_ADDR(&mask, 255,0,0,0);
+	IP4_ADDR(&gw, 127,0,0,1);
+	pnet = netif_add(&g_hLoopIF,&loc_ip,&mask,&gw,NULL,loopif_init,net_input);
 
 	//last and least start the tcpip layer
 	ret = net_init();
@@ -1544,10 +1542,10 @@ s32 if_config(const char *pszIP,const char *pszGW,const char *pszMASK,boolean us
 	return ret;
 }
 
-s32 if_configex(struct in_addr *pIP,struct in_addr *pGW,struct in_addr *pMask,boolean use_dhcp)
+s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr *gateway,boolean use_dhcp)
 {
 	s32 ret = 0;
-	struct ip_addr loc_ip, netmask, gw;
+	struct ip_addr loc_ip, mask, gw;
 	struct netif *pnet;
 	struct timespec tb;
 	dev_s hbba = NULL;
@@ -1570,20 +1568,18 @@ s32 if_configex(struct in_addr *pIP,struct in_addr *pGW,struct in_addr *pMask,bo
 	if(MQ_Init(&netthread_mbox,MQBOX_SIZE)!=MQ_ERROR_SUCCESSFUL) return -1;
 
 	// create & setup interface 
-	gw.addr = 0;
 	loc_ip.addr = 0;
-	netmask.addr = 0;
-	if(!use_dhcp) {
-		gw.addr = pGW->s_addr;
-		if(pIP && pMask) {
-			loc_ip.addr = pIP->s_addr;
-			netmask.addr = pMask->s_addr;
-		} else
-			return -1;
-	}
+	mask.addr = 0;
+	gw.addr = 0;
+	if(!use_dhcp && (!gateway || gateway->s_addr==0)) return -1;
+	if(!local_ip || !netmask || local_ip->s_addr==0 || netmask->s_addr==0) return -1;
+
+	loc_ip.addr = local_ip->s_addr;
+	mask.addr = netmask->s_addr;
+	if(!use_dhcp) gw.addr = gateway->s_addr;
 
 	hbba = bba_create(&g_hNetIF);
-	pnet = netif_add(&g_hNetIF,&loc_ip, &netmask, &gw, hbba, bba_init, net_input);
+	pnet = netif_add(&g_hNetIF,&loc_ip, &mask, &gw, hbba, bba_init, net_input);
 	if(pnet) {
 		netif_set_up(pnet);
 		netif_set_default(pnet);
@@ -1611,10 +1607,10 @@ s32 if_configex(struct in_addr *pIP,struct in_addr *pGW,struct in_addr *pMask,bo
 		return -1;
 	
 	// setup loopinterface
-	IP4_ADDR(&gw, 127,0,0,1);
 	IP4_ADDR(&loc_ip, 127,0,0,1);
-	IP4_ADDR(&netmask, 255,0,0,0);
-	pnet = netif_add(&g_hLoopIF,&loc_ip,&netmask,&gw,NULL,loopif_init,net_input);
+	IP4_ADDR(&mask, 255,0,0,0);
+	IP4_ADDR(&gw, 127,0,0,1);
+	pnet = netif_add(&g_hLoopIF,&loc_ip,&mask,&gw,NULL,loopif_init,net_input);
 
 	//last and least start the tcpip layer
 	ret = net_init();

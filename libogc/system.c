@@ -156,8 +156,8 @@ extern void __memlock_init();
 extern void __libc_init(int);
 
 extern void __realmode(void*);
-extern void __config24Mb();
-extern void __config48Mb();
+extern void __configMEM1_24Mb();
+extern void __configMEM1_48Mb();
 extern void __reset(u32 reset_code);
 
 extern void __UnmaskIrq(u32);
@@ -366,8 +366,8 @@ static void __memprotect_init()
 
 	_CPU_ISR_Disable(level);
 
-	if(simmem<=0x1800000) __realmode(__config24Mb);
-	else if(simmem<=0x3000000) __realmode(__config48Mb);
+	if(simmem<=0x1800000) __realmode(__configMEM1_24Mb);
+	else if(simmem<=0x3000000) __realmode(__configMEM1_48Mb);
 
 	_memReg[16] = 0;
 	_memReg[8] = 255;
