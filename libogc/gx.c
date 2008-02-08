@@ -48,29 +48,27 @@
 #define GX_LOAD_BP_REG(x)				\
 	do {								\
 		FIFO_PUTU8(0x61);				\
-		FIFO_PUTU32(x);				\
+		FIFO_PUTU32((x));				\
 	} while(0)
 
 #define GX_LOAD_CP_REG(x, y)			\
 	do {								\
 		FIFO_PUTU8(0x08);				\
-		FIFO_PUTU8(x);					\
-		FIFO_PUTU32(y);					\
+		FIFO_PUTU8((x));				\
+		FIFO_PUTU32((y));				\
 	} while(0)
 
 #define GX_LOAD_XF_REG(x, y)			\
 	do {								\
 		FIFO_PUTU8(0x10);				\
-		FIFO_PUTU16(0);					\
-		FIFO_PUTU16(x);					\
-		FIFO_PUTU32(y);					\
+		FIFO_PUTU32(((x)&0xffff));		\
+		FIFO_PUTU32((y));				\
 	} while(0)
 
 #define GX_LOAD_XF_REGS(x, n)			\
 	do {								\
 		FIFO_PUTU8(0x10);				\
-		FIFO_PUTU16(n-1);				\
-		FIFO_PUTU16(x);					\
+		FIFO_PUTU32(((((n)-1)<<16)|((x)&0xffff)));				\
 	} while(0)
 
 #define XY(x, y)   (((y) << 10) | (x))
@@ -2466,7 +2464,7 @@ void GX_SetZTexture(u8 op,u8 fmt,u32 bias)
 	GX_LOAD_BP_REG(0xF5000000|(val&0x00FFFFFF));
 }
 
-static void WriteMtxPS4x3(register Mtx mt,register void *wgpipe)
+static inline void WriteMtxPS4x3(register Mtx mt,register void *wgpipe)
 {
 	__asm__ __volatile__
 		("psq_l 0,0(%0),0,0\n\
@@ -2484,51 +2482,51 @@ static void WriteMtxPS4x3(register Mtx mt,register void *wgpipe)
 		  : : "r"(mt), "r"(wgpipe));
 }
 
-static void WriteMtxPS3x3from4x3(register Mtx mt,register void *wgpipe)
+static inline void WriteMtxPS3x3from4x3(register Mtx mt,register void *wgpipe)
 {
 	__asm__ __volatile__
-		("psq_l 0,0(%0),0,0\n\
-		  lfs 1,8(%0)\n\
-		  psq_l 2,16(%0),0,0\n\
-		  lfs 3,24(%0)\n\
-		  psq_l 4,32(%0),0,0\n\
-		  lfs 5,40(%0)\n\
-		  psq_st 0,0(%1),0,0\n\
-		  stfs 1,0(%1)\n\
-		  psq_st 2,0(%1),0,0\n\
-		  stfs 3,0(%1)\n\
-		  psq_st 4,0(%1),0,0\n\
-		  stfs 5,0(%1)"
+		("psq_l		0,0(%0),0,0\n\
+		  lfs		1,8(%0)\n\
+		  psq_l		2,16(%0),0,0\n\
+		  lfs		3,24(%0)\n\
+		  psq_l		4,32(%0),0,0\n\
+		  lfs		5,40(%0)\n\
+		  psq_st	0,0(%1),0,0\n\
+		  stfs		1,0(%1)\n\
+		  psq_st	2,0(%1),0,0\n\
+		  stfs		3,0(%1)\n\
+		  psq_st	4,0(%1),0,0\n\
+		  stfs		5,0(%1)"
 		  : : "r"(mt), "r"(wgpipe));
 }
 
-static void WriteMtxPS3x3(register Mtx33 mt,register void *wgpipe)
+static inline void WriteMtxPS3x3(register Mtx33 mt,register void *wgpipe)
 {
 	__asm__ __volatile__
-		("psq_l 0,0(%0),0,0\n\
-		  psq_l 1,8(%0),0,0\n\
-		  psq_l 2,16(%0),0,0\n\
-		  psq_l 3,24(%0),0,0\n\
-		  lfs 4,32(%0)\n\
-		  psq_st 0,0(%1),0,0\n\
-		  psq_st 1,0(%1),0,0\n\
-		  psq_st 2,0(%1),0,0\n\
-		  psq_st 3,0(%1),0,0\n\
-		  stfs 4,0(%1)"
+		("psq_l		0,0(%0),0,0\n\
+		  psq_l		1,8(%0),0,0\n\
+		  psq_l		2,16(%0),0,0\n\
+		  psq_l		3,24(%0),0,0\n\
+		  lfs		4,32(%0)\n\
+		  psq_st	0,0(%1),0,0\n\
+		  psq_st	1,0(%1),0,0\n\
+		  psq_st	2,0(%1),0,0\n\
+		  psq_st	3,0(%1),0,0\n\
+		  stfs		4,0(%1)"
 		  : : "r"(mt), "r"(wgpipe));
 }
 
-static void WriteMtxPS4x2(register Mtx mt,register void *wgpipe)
+static inline void WriteMtxPS4x2(register Mtx mt,register void *wgpipe)
 {
 	__asm__ __volatile__
-		("psq_l 0,0(%0),0,0\n\
-		  psq_l 1,8(%0),0,0\n\
-		  psq_l 2,16(%0),0,0\n\
-		  psq_l 3,24(%0),0,0\n\
-		  psq_st 0,0(%1),0,0\n\
-		  psq_st 1,0(%1),0,0\n\
-		  psq_st 2,0(%1),0,0\n\
-		  psq_st 3,0(%1),0,0"
+		("psq_l		0,0(%0),0,0\n\
+		  psq_l		1,8(%0),0,0\n\
+		  psq_l		2,16(%0),0,0\n\
+		  psq_l		3,24(%0),0,0\n\
+		  psq_st	0,0(%1),0,0\n\
+		  psq_st	1,0(%1),0,0\n\
+		  psq_st	2,0(%1),0,0\n\
+		  psq_st	3,0(%1),0,0"
 		  : : "r"(mt), "r"(wgpipe));
 }
 
@@ -2541,7 +2539,7 @@ void GX_LoadPosMtxImm(Mtx mt,u32 pnidx)
 void GX_LoadPosMtxIdx(u16 mtxidx,u32 pnidx)
 {
 	FIFO_PUTU8(0x20);
-	FIFO_PUTU32(((_SHIFTL(mtxidx,16,16))|0xb000|(_SHIFTL(pnidx,2,8))));
+	FIFO_PUTU32(((_SHIFTL(mtxidx,16,16))|0xb000|(_SHIFTL(pnidx,2,12))));
 }
 
 void GX_LoadNrmMtxImm(Mtx mt,u32 pnidx)
@@ -3149,7 +3147,7 @@ void GX_SetTevColor(u8 tev_regid,GXColor color)
 	GX_LOAD_BP_REG(reg);
 }
 
-void GX_SetTevColorS10(u8 tev_regid,GXColor color)
+void GX_SetTevColorS10(u8 tev_regid,GXColorS10 color)
 {
 	u32 reg;
 
@@ -3179,7 +3177,7 @@ void GX_SetTevKColor(u8 tev_regid,GXColor color)
 	GX_LOAD_BP_REG(reg);
 }
 
-void GX_SetTevKColorS10(u8 tev_regid,GXColor color)
+void GX_SetTevKColorS10(u8 tev_regid,GXColorS10 color)
 {
 	u32 reg;
 
