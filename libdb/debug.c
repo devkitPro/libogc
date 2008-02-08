@@ -365,40 +365,6 @@ static void process_query(const char *inp,char *outp,s32 thread)
 			}
 			break;
 		default:
-			if(memcmp(&inp[1],"Offsets",8)==0) {
-				char *t,*d,*b;
-
-				optr = outp;
-				if(!gdbstub_getoffsets(&t,&d,&b)) break;
-
-				*optr++ = 'T';
-				*optr++ = 'e';
-				*optr++ = 'x';
-				*optr++ = 't';
-				*optr++ = '=';
-
-				optr = int2vhstr(optr, (s32)t);
-
-				*optr++ = ';';
-				*optr++ = 'D';
-				*optr++ = 'a';
-				*optr++ = 't';
-				*optr++ = 'a';
-				*optr++ = '=';
-
-				optr = int2vhstr(optr, (s32)d);
-
-				*optr++ = ';';
-				*optr++ = 'B';
-				*optr++ = 's';
-				*optr++ = 's';
-				*optr++ = '=';
-
-				optr = int2vhstr(optr, (s32)b);
-
-				*optr++ = ';';
-				*optr++ = 0;
-			}
 			break;
 	}
 }
