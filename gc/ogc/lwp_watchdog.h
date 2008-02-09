@@ -2,7 +2,7 @@
 #define __LWP_WATCHDOG_H__
 
 #include <gctypes.h>
-#include <lwp_queue.h>
+#include "lwp_queue.h"
 #include <time.h>
 
 #define TB_BUS_CLOCK				162000000u
