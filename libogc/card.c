@@ -2572,8 +2572,9 @@ s32 CARD_Unmount(s32 chn)
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
 
 	if((ret=__card_getcntrlblock(chn,&card))<0) ret = CARD_ERROR_NOCARD;
-	__card_dounmount(chn,ret);
 
+	__card_dounmount(chn,ret);
+	card_inited = 0;
 	return CARD_ERROR_READY;
 }
 
