@@ -110,6 +110,22 @@ static u8 _gxteximg2ids[8] = {0x90,0x91,0x92,0x93,0xB0,0xB1,0xB2,0xB3};
 static u8 _gxteximg3ids[8] = {0x94,0x95,0x96,0x97,0xB4,0xB5,0xB6,0xB7};
 static u8 _gxtextlutids[8] = {0x98,0x99,0x9A,0x9B,0xB8,0xB9,0xBA,0xBB};
 
+static u32 _gxtexregionaddrtable[48] =
+{
+	0x00000000,0x00010000,0x00020000,0x00030000,
+	0x00040000,0x00050000,0x00060000,0x00070000,
+	0x00008000,0x00018000,0x00028000,0x00038000,
+	0x00048000,0x00058000,0x00068000,0x00078000,
+	0x00000000,0x00090000,0x00020000,0x000B0000,
+	0x00040000,0x00098000,0x00060000,0x000B8000,
+	0x00080000,0x00010000,0x000A0000,0x00030000,
+	0x00088000,0x00050000,0x000A8000,0x00070000,
+	0x00000000,0x00090000,0x00020000,0x000B0000,
+	0x00040000,0x00090000,0x00060000,0x000B0000,
+	0x00080000,0x00010000,0x000A0000,0x00030000,
+	0x00080000,0x00050000,0x000A0000,0x00070000
+};
+
 struct __gxfifo _gx_dl_fifo;
 u8 _gx_saved_data[1280];
 
@@ -723,6 +739,7 @@ static void __GX_SetSUTexRegs()
 static void __GX_SetGenMode()
 {
 	GX_LOAD_BP_REG(_gx[0xac]);
+	((u16*)_gx)[29] = 0;
 }
 
 static void __GX_UpdateBPMask()
@@ -865,7 +882,7 @@ static u32 __GX_GetNumXfbLines(u16 efbHeight,u32 yscale)
 GXFifoObj* GX_Init(void *base,u32 size)
 {
 	s32 i,re0,re1,addr;
-	u32 tmem_even,tmem_odd;
+	u32 tmem;
 	u32 divis,res;
 	u32 divid = 162000000;
 	GXTexRegion *region = NULL;
@@ -972,26 +989,33 @@ GXFifoObj* GX_Init(void *base,u32 size)
 		i++;
 	}
 
-	for(i=0;i<8;i++) {
-		tmem_even = tmem_odd = (i<<15);
+	i = 0;
+	while(i<8) {
 		region = (GXTexRegion*)(&_gx[0x100+(i*(sizeof(GXTexRegion)>>2))]);
-		GX_InitTexCacheRegion(region,GX_FALSE,tmem_even,GX_TEXCACHE_32K,(tmem_odd+0x00080000),GX_TEXCACHE_32K);
-	}
-	for(i=0;i<4;i++) {
-		tmem_even = ((0x08+(i<<1))<<15);
-		tmem_odd = ((0x09+(i<<1))<<15);
+		GX_InitTexCacheRegion(region,GX_FALSE,_gxtexregionaddrtable[i+0],GX_TEXCACHE_32K,_gxtexregionaddrtable[i+8],GX_TEXCACHE_32K);
+
 		region = (GXTexRegion*)(&_gx[0x120+(i*(sizeof(GXTexRegion)>>2))]);
-		GX_InitTexCacheRegion(region,GX_FALSE,tmem_even,GX_TEXCACHE_32K,tmem_odd,GX_TEXCACHE_32K);
+		GX_InitTexCacheRegion(region,GX_FALSE,_gxtexregionaddrtable[i+16],GX_TEXCACHE_32K,_gxtexregionaddrtable[i+24],GX_TEXCACHE_32K);
+
+		i++;
 	}
-	for(i=0;i<16;i++) {
-		tmem_even = (i<<13)+0x000C0000;
+
+	i=0;
+	tmem = 0x000C0000;
+	while(i<16) {
 		tregion = (GXTlutRegion*)(&_gx[0x150+(i*(sizeof(GXTlutRegion)>>2))]);
-		GX_InitTlutRegion(tregion,tmem_even,GX_TLUT_256);
+		GX_InitTlutRegion(tregion,tmem,GX_TLUT_256);
+		tmem += 0x2000;
+		i++;
 	}
-	for(i=0;i<4;i++) {
-		tmem_even = (i<<15)+0x000E0000;
-		tregion = (GXTlutRegion*)(&_gx[0x150+((i+16)*(sizeof(GXTlutRegion)>>2))]);
-		GX_InitTlutRegion(tregion,tmem_even,GX_TLUT_1K);
+
+	i=0;
+	tmem = 0x000E0000;
+	while(i<4) {
+		tregion = (GXTlutRegion*)(&_gx[0x160+(i*(sizeof(GXTlutRegion)>>2))]);
+		GX_InitTlutRegion(tregion,tmem,GX_TLUT_1K);
+		tmem += 0x8000;
+		i++;
 	}
 
 	_cpReg[3] = 0;
@@ -1838,7 +1862,7 @@ void GX_CallDispList(void *list,u32 nbytes)
 	if(_gx[0x09]) 
 		__GX_SetDirtyState();
 
-	if(!_gx[0x0e])
+	if(!_gx[0xf8])
 		__GX_SendFlushPrim();
 	
 	FIFO_PUTU8(0x40);			//call displaylist
@@ -2157,9 +2181,6 @@ void GX_Begin(u8 primitve,u8 vtxfmt,u16 vtxcnt)
 	
 	if(_gx[0x09]) 
 		__GX_SetDirtyState();
-
-	if(!_gx[0x0e])
-		__GX_SendFlushPrim();
 
 	FIFO_PUTU8(reg);
 	FIFO_PUTU16(vtxcnt);
@@ -3169,7 +3190,7 @@ void GX_SetBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op)
 void GX_ClearVtxDesc()
 {
 	_gx[0x08] = 0;
-	_gx[0x0e] = ((_gx[0x0e]&~0x0600)|0x0200);
+	_gx[0xf8] = ((_gx[0xf8]&~0x0600)|0x0200);
 	_gx[0x06] = _gx[0x07] = 0;
 	_gx[0x09] |= 0x0008;
 }
