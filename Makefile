@@ -261,7 +261,7 @@ dist: install-headers
 	@tar    --exclude=*CVS* --exclude=*build* --exclude=*deps* \
 		--exclude=*.bz2  --exclude=*include* --exclude=*lib/* --exclude=*docs/*\
 		-cvjf libogc-src-$(DATESTRING).tar.bz2 *
-	@tar -cvjf libogc-$(DATESTRING).tar.bz2 include lib license.txt
+	@tar -cvjf libogc-$(DATESTRING).tar.bz2 include lib libogc_license.txt
 
 #---------------------------------------------------------------------------------
 libs: $(OGCLIB).a $(BBALIB).a $(MODLIB).a $(MADLIB).a $(DBLIB).a $(SDCARDLIB).a $(GCSYSLIB).a $(ZLIB).a $(TINYSMBLIB).a $(STUBSLIB).a
