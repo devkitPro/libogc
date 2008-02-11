@@ -1443,6 +1443,7 @@ s32 card_writeSector(s32 drv_no,u32 sector_no,const void *buf,u32 len)
 {
 	s32 ret;
 	u8 arg[4];
+	char *dbuf = (char*)buf;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
@@ -1464,7 +1465,7 @@ s32 card_writeSector(s32 drv_no,u32 sector_no,const void *buf,u32 len)
 	}
 	if((ret=__card_sendcmd(drv_no,0x18,arg))!=0) return ret;
 	if((ret=__card_response1(drv_no))!=0) return ret;
-	if((ret=__card_datawrite(drv_no,(void*)buf,_ioPageSize[drv_no]))!=0) return ret;
+	if((ret=__card_datawrite(drv_no,dbuf,_ioPageSize[drv_no]))!=0) return ret;
 	if((ret=__card_dataresponse(drv_no))!=0) return ret;
 	if((ret=__card_sendcmd(drv_no,0x0d,NULL))!=0) return ret;
 	ret = __card_response2(drv_no);
