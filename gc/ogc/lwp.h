@@ -72,7 +72,7 @@ typedef u32 lwpq_t;
 \param[out] thethread pointer to a lwp_t handle
 \param[in] entry pointer to the thread's entry function.
 \param[in] arg pointer to an argument for the thread's entry function.
-\param[in] stackbase pointer to the threads stackbase address. If NULL, the default STACKSIZE of 8Kb is taken.
+\param[in] stackbase pointer to the threads stackbase address. If NULL, the stack is allocated by the thread system.
 \param[in] stack_size size of the provided stack. If 0, the default STACKSIZE of 8Kb is taken.
 \param[in] prio priority on which the newly created thread runs.
 
