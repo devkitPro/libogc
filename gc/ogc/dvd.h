@@ -157,7 +157,7 @@ struct _dvdcmdblk {
 	lwp_node node;
 	u32 cmd;
 	s32 state;
-	s32 offset;
+	s64 offset;
 	u32 len;
 	void *buf;
 	u32 currtxsize;
@@ -320,7 +320,7 @@ s32 DVD_ControlDriveAsync(dvdcmdblk *block,u32 cmd,dvdcbcallback cb);
  *
  * \return \ref dvd_errorcodes "dvd error code"
  */
-s32 DVD_SetGCMOffset(dvdcmdblk *block,u32 offset);
+s32 DVD_SetGCMOffset(dvdcmdblk *block,s64 offset);
 
 
 /*! 
@@ -335,18 +335,18 @@ s32 DVD_SetGCMOffset(dvdcmdblk *block,u32 offset);
  *
  * \return \ref dvd_errorcodes "dvd error code"
  */
-s32 DVD_SetGCMOffsetAsync(dvdcmdblk *block,u32 offset,dvdcbcallback cb);
+s32 DVD_SetGCMOffsetAsync(dvdcmdblk *block,s64 offset,dvdcbcallback cb);
 
 s32 DVD_GetCmdBlockStatus(dvdcmdblk *block);
 s32 DVD_SpinUpDrive(dvdcmdblk *block);
 s32 DVD_SpinUpDriveAsync(dvdcmdblk *block,dvdcbcallback cb);
 s32 DVD_Inquiry(dvdcmdblk *block,dvddrvinfo *info);
 s32 DVD_InquiryAsync(dvdcmdblk *block,dvddrvinfo *info,dvdcbcallback cb);
-s32 DVD_ReadPrio(dvdcmdblk *block,void *buf,u32 len,u32 offset,s32 prio);
-s32 DVD_ReadAbsAsyncPrio(dvdcmdblk *block,void *buf,u32 len,u32 offset,dvdcbcallback cb,s32 prio);
-s32 DVD_ReadAbsAsyncForBS(dvdcmdblk *block,void *buf,u32 len,u32 offset,dvdcbcallback cb);
-s32 DVD_SeekPrio(dvdcmdblk *block,u32 offset,s32 prio);
-s32 DVD_SeekAbsAsyncPrio(dvdcmdblk *block,u32 offset,dvdcbcallback cb,s32 prio);
+s32 DVD_ReadPrio(dvdcmdblk *block,void *buf,u32 len,s64 offset,s32 prio);
+s32 DVD_ReadAbsAsyncPrio(dvdcmdblk *block,void *buf,u32 len,s64 offset,dvdcbcallback cb,s32 prio);
+s32 DVD_ReadAbsAsyncForBS(dvdcmdblk *block,void *buf,u32 len,s64 offset,dvdcbcallback cb);
+s32 DVD_SeekPrio(dvdcmdblk *block,s64 offset,s32 prio);
+s32 DVD_SeekAbsAsyncPrio(dvdcmdblk *block,s64 offset,dvdcbcallback cb,s32 prio);
 s32 DVD_CancelAllAsync(dvdcbcallback cb);
 s32 DVD_StopStreamAtEndAsync(dvdcmdblk *block,dvdcbcallback cb);
 s32 DVD_StopStreamAtEnd(dvdcmdblk *block);

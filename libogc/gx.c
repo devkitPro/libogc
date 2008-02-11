@@ -18,32 +18,18 @@
 #define BIG_NUMBER		(1024*1024)
 #define WGPIPE			(0xCC008000)
 
-#define GXWGPipe		(*__GXWGPipe)
-
 #define _SHIFTL(v, s, w)	\
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
 #define _SHIFTR(v, s, w)	\
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
-#define FIFO_PUTU8(x)		*(vu8*)WGPIPE = (u8)(x)
-#define FIFO_PUTS8(x)		*(vs8*)WGPIPE = (s8)(x)
-#define FIFO_PUTU16(x)		*(vu16*)WGPIPE = (u16)(x)
-#define FIFO_PUTS16(x)		*(vs16*)WGPIPE = (s16)(x)
-#define FIFO_PUTU32(x)		*(vu32*)WGPIPE = (u32)(x)
-#define FIFO_PUTS32(x)		*(vs32*)WGPIPE = (s32)(x)
-#define FIFO_PUTF32(x)		*(vf32*)WGPIPE = (f32)(x)
-#define FIFO_PUTF64(x)		*(vf64*)WGPIPE = (f64)(x)
-
-/*
-#define FIFO_PUTU8(x)	GXWGPipe.U8 = (u8)(x)
-#define FIFO_PUTS8(x)	GXWGPipe.S8 = (s8)(x)
-#define FIFO_PUTU16(x)	GXWGPipe.U16 = (u16)(x)
-#define FIFO_PUTS16(x)	GXWGPipe.S16 = (s16)(x)
-#define FIFO_PUTU32(x)	GXWGPipe.U32 = (u32)(x)
-#define FIFO_PUTS32(x)	GXWGPipe.S32 = (s32)(x)
-#define FIFO_PUTF32(x)	GXWGPipe.F32 = (f32)(x)
-#define FIFO_PUTF64(x)	GXWGPipe.F64 = (f64)(x)
-*/
+#define FIFO_PUTU8(x)	*(vu8*)WGPIPE = (u8)(x)
+#define FIFO_PUTS8(x)	*(vs8*)WGPIPE = (s8)(x)
+#define FIFO_PUTU16(x)	*(vu16*)WGPIPE = (u16)(x)
+#define FIFO_PUTS16(x)	*(vs16*)WGPIPE = (s16)(x)
+#define FIFO_PUTU32(x)	*(vu32*)WGPIPE = (u32)(x)
+#define FIFO_PUTS32(x)	*(vs32*)WGPIPE = (s32)(x)
+#define FIFO_PUTF32(x)	*(vf32*)WGPIPE = (f32)(x)
 
 #define GX_LOAD_BP_REG(x)				\
 	do {								\
@@ -68,7 +54,7 @@
 #define GX_LOAD_XF_REGS(x, n)			\
 	do {								\
 		FIFO_PUTU8(0x10);				\
-		FIFO_PUTU32(((((n)-1)<<16)|((x)&0xffff)));				\
+		FIFO_PUTU32((((((n)&0xffff)-1)<<16)|((x)&0xffff)));				\
 	} while(0)
 
 #define XY(x, y)   (((y) << 10) | (x))
@@ -88,22 +74,6 @@ struct __gxfifo {
 	u32 rdwt_dst;
 	u8 pad0[96];
 };
-
-typedef union __ppc_wgpipe
-{
-	u8	U8;
-	u16 U16;
-	u32 U32;
-	u64 U64;
-	s8	S8;
-	s16 S16;
-	s32 S32;
-	s64 S64;
-	f32 F32;
-	f64 F64;
-} PPCWGPipe;
-
-volatile PPCWGPipe *__GXWGPipe = (PPCWGPipe*)WGPIPE;
 
 static GXFifoObj _gxdefiniobj;
 static void *_gxcurrbp = NULL;
@@ -791,6 +761,57 @@ static void __GX_UpdateBPMask()
 	}
 }
 
+static void __GX_SetTexCoordGen()
+{
+	u32 i,mask;
+	u32 texcoord;
+
+	if(_gx[0x09]&0x02000000) GX_LOAD_XF_REG(0x103f,(_gx[0xac]&0xf));
+
+	i = 0;
+	texcoord = 0x1040;
+	mask = _SHIFTR(_gx[0x09],16,8);
+	while(mask) {
+		if(mask&0x0001) {
+			GX_LOAD_XF_REG(texcoord,_gx[0xe0+(i<<1)]);
+			GX_LOAD_XF_REG((texcoord+0x10),_gx[0xe1+(i<<1)]);
+		}
+		mask >>= 1;
+		texcoord++;
+		i++;
+	}
+}
+
+static void __GX_SetChanColor()
+{
+	if(_gx[0x09]&0x0100)
+		GX_LOAD_XF_REG(0x100a,_gx[0xf0]);
+	if(_gx[0x09]&0x0200)
+		GX_LOAD_XF_REG(0x100b,_gx[0xf1]);
+	if(_gx[0x09]&0x0400)
+		GX_LOAD_XF_REG(0x100c,_gx[0xf2]);
+	if(_gx[0x09]&0x0800)
+		GX_LOAD_XF_REG(0x100d,_gx[0xf3]);
+}
+
+static void __GX_SetChanCntrl()
+{
+	u32 i,chan,mask;
+
+	if(_gx[0x09]&0x01000000) GX_LOAD_XF_REG(0x1009,(_SHIFTR(_gx[0xac],4,3)));
+
+	i = 0;
+	chan = 0x100e;
+	mask = _SHIFTR(_gx[0x09],12,4);
+	while(mask) {
+		if(mask&0x0001) GX_LOAD_XF_REG(chan,_gx[0xf4+i]);
+		
+		mask >>= 1;
+		chan++;
+		i++;
+	}
+}
+
 static void __GX_SetDirtyState()
 {
 	if(_gx[0x09]&0x0001) {
@@ -807,6 +828,21 @@ static void __GX_SetDirtyState()
 	}
 	if(_gx[0x09]&0x0010) {
 		__GX_SetVAT();
+	}
+	if(_gx[0x09]&~0xff) {
+		if(_gx[0x09]&0x0f00) {
+			__GX_SetChanColor();
+		}
+		if(_gx[0x09]&0x0100f000) {
+			__GX_SetChanCntrl();
+		}
+		if(_gx[0x09]&0x02ff0000) {
+			__GX_SetTexCoordGen();
+		}
+		if(_gx[0x09]&0x04000000) {
+			__GX_SetMatrixIndex(0);
+			__GX_SetMatrixIndex(5);
+		}
 	}
 	_gx[0x09] = 0;
 }
@@ -1802,7 +1838,7 @@ void GX_CallDispList(void *list,u32 nbytes)
 	if(_gx[0x09]) 
 		__GX_SetDirtyState();
 
-	if(!_gx[0x00])
+	if(!_gx[0x0e])
 		__GX_SendFlushPrim();
 	
 	FIFO_PUTU8(0x40);			//call displaylist
@@ -1812,70 +1848,92 @@ void GX_CallDispList(void *list,u32 nbytes)
 
 void GX_SetChanCtrl(s32 channel,u8 enable,u8 ambsrc,u8 matsrc,u8 litmask,u8 diff_fn,u8 attn_fn)
 {
-	u32 difffn = (attn_fn==GX_AF_SPEC)?GX_DF_NONE:diff_fn;
+	u32 reg,difffn = (attn_fn==GX_AF_SPEC)?GX_DF_NONE:diff_fn;
 	u32 val = (matsrc&1)|(_SHIFTL(enable,1,1))|(_SHIFTL(litmask,2,4))|(_SHIFTL(ambsrc,6,1))|(_SHIFTL(difffn,7,2))|(_SHIFTL(((GX_AF_NONE-attn_fn)>0),9,1))|(_SHIFTL((attn_fn&1),10,1))|(_SHIFTL((_SHIFTR(litmask,4,4)),11,4));
-	switch(channel) {
-		case GX_COLOR0:
-			GX_LOAD_XF_REG(0x100e,val);
-			break;
-		case GX_COLOR1:
-			GX_LOAD_XF_REG(0x100f,val);
-			break;
-		case GX_ALPHA0:
-			GX_LOAD_XF_REG(0x1010,val);
-			break;
-		case GX_ALPHA1:
-			GX_LOAD_XF_REG(0x1011,val);
-			break;
-		case GX_COLOR0A0:
-			GX_LOAD_XF_REG(0x100e,val);
-			GX_LOAD_XF_REG(0x1010,val);
-			break;
-		case GX_COLOR1A1:
-			GX_LOAD_XF_REG(0x100f,val);
-			GX_LOAD_XF_REG(0x1011,val);
-			break;
+
+	reg = (channel&0x03);
+	_gx[0xf4+reg] = val;
+	_gx[0x09] |= (0x1000<<reg);
+
+	if(channel==GX_COLOR0A0) {
+		_gx[0xf6] = val;
+		_gx[0x09] |= 0x5000;
+	} else {
+		_gx[0xf7] = val;
+		_gx[0x09] |= 0xa000;
 	}
 }
 
 void GX_SetChanAmbColor(s32 channel,GXColor color)
 {
-	u32 val = (_SHIFTL(color.r,24,8))|(_SHIFTL(color.g,16,8))|(_SHIFTL(color.b,8,8))|(color.a&0xFF);
+	u32 reg,val = (_SHIFTL(color.r,24,8))|(_SHIFTL(color.g,16,8))|(_SHIFTL(color.b,8,8))|0x00;
 	switch(channel) {
 		case GX_COLOR0:
-			GX_LOAD_XF_REG(0x100a,val);
+			reg = 0;
+			val |= (_gx[0xf0]&0xff); 
 			break;
 		case GX_COLOR1:
-			GX_LOAD_XF_REG(0x100b,val);
+			reg = 1;
+			val |= (_gx[0xf1]&0xff);
+			break;
+		case GX_ALPHA0:
+			reg = 0;
+			val = ((_gx[0xf0]&~0xff)|(color.a&0xff));
+			break;
+		case GX_ALPHA1:
+			reg = 1;
+			val = ((_gx[0xf1]&~0xff)|(color.a&0xff));
 			break;
 		case GX_COLOR0A0:
-			GX_LOAD_XF_REG(0x100a,val);
+			reg = 0;
+			val |= (color.a&0xFF);
 			break;
 		case GX_COLOR1A1:
-			GX_LOAD_XF_REG(0x100b,val);
+			reg = 1;
+			val |= (color.a&0xFF);
 			break;
+		default:
+			return;
 	}
+
+	_gx[0xf0+reg] = val;
+	_gx[0x09] |= (0x0100<<reg);
 }
 
 void GX_SetChanMatColor(s32 channel,GXColor color)
 {
-	u32 val = (_SHIFTL(color.r,24,8))|(_SHIFTL(color.g,16,8))|(_SHIFTL(color.b,8,8))|0x00;
+	u32 reg,val = (_SHIFTL(color.r,24,8))|(_SHIFTL(color.g,16,8))|(_SHIFTL(color.b,8,8))|0x00;
 	switch(channel) {
 		case GX_COLOR0:
-			GX_LOAD_XF_REG(0x100c,val);
+			reg = 0;
+			val |= (_gx[0xf2]&0xff);
 			break;
 		case GX_COLOR1:
-			GX_LOAD_XF_REG(0x100d,val);
+			reg = 1;
+			val |= (_gx[0xf3]&0xff);
+			break;
+		case GX_ALPHA0:
+			reg = 0;
+			val = ((_gx[0xf2]&~0xff)|(color.a&0xff));
+			break;
+		case GX_ALPHA1:
+			reg = 1;
+			val = ((_gx[0xf3]&~0xff)|(color.a&0xff));
 			break;
 		case GX_COLOR0A0:
+			reg = 0;
 			val |= (color.a&0xFF);
-			GX_LOAD_XF_REG(0x100c,val);
 			break;
 		case GX_COLOR1A1:
+			reg = 1;
 			val |= (color.a&0xFF);
-			GX_LOAD_XF_REG(0x100d,val);
 			break;
+		default:
+			return;
 	}
+
+	_gx[0xf2+reg] = val;
+	_gx[0x09] |= (0x0400<<reg);
 }
 
 void GX_SetArray(u32 attr,void *ptr,u8 stride)
@@ -2100,7 +2158,7 @@ void GX_Begin(u8 primitve,u8 vtxfmt,u16 vtxcnt)
 	if(_gx[0x09]) 
 		__GX_SetDirtyState();
 
-	if(!_gx[0x00])
+	if(!_gx[0x0e])
 		__GX_SendFlushPrim();
 
 	FIFO_PUTU8(reg);
@@ -2441,14 +2499,13 @@ void GX_SetTexCoordGen2(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc,u32 no
 		else if(tgen_src==GX_TG_COLOR1) texcoords |= 0x30;
 	}
 
-	GX_LOAD_XF_REG(texcoord+0x1040,texcoords);
-
 	postmtx -= GX_DTTMTX0;
 	dttexcoords = (dttexcoords&~0x3f)|(postmtx&0x3f);
 	dttexcoords = (dttexcoords&~0x100)|(_SHIFTL(normalize,8,1));
-	GX_LOAD_XF_REG(texcoord+0x1050,dttexcoords);
 
-	__GX_SetMatrixIndex(texcoord+1);
+	_gx[0xe0+(texcoord<<1)] = texcoords;
+	_gx[0xe1+(texcoord<<1)] = dttexcoords;
+	_gx[0x09] |= (0x04000000|(0x00010000<<texcoord));
 }
  
 void GX_SetZTexture(u8 op,u8 fmt,u32 bias)
@@ -2485,48 +2542,48 @@ static inline void WriteMtxPS4x3(register Mtx mt,register void *wgpipe)
 static inline void WriteMtxPS3x3from4x3(register Mtx mt,register void *wgpipe)
 {
 	__asm__ __volatile__
-		("psq_l		0,0(%0),0,0\n\
-		  lfs		1,8(%0)\n\
-		  psq_l		2,16(%0),0,0\n\
-		  lfs		3,24(%0)\n\
-		  psq_l		4,32(%0),0,0\n\
-		  lfs		5,40(%0)\n\
-		  psq_st	0,0(%1),0,0\n\
-		  stfs		1,0(%1)\n\
-		  psq_st	2,0(%1),0,0\n\
-		  stfs		3,0(%1)\n\
-		  psq_st	4,0(%1),0,0\n\
-		  stfs		5,0(%1)"
+		("psq_l 0,0(%0),0,0\n\
+		  lfs 1,8(%0)\n\
+		  psq_l 2,16(%0),0,0\n\
+		  lfs 3,24(%0)\n\
+		  psq_l 4,32(%0),0,0\n\
+		  lfs 5,40(%0)\n\
+		  psq_st 0,0(%1),0,0\n\
+		  stfs 1,0(%1)\n\
+		  psq_st 2,0(%1),0,0\n\
+		  stfs 3,0(%1)\n\
+		  psq_st 4,0(%1),0,0\n\
+		  stfs 5,0(%1)"
 		  : : "r"(mt), "r"(wgpipe));
 }
 
 static inline void WriteMtxPS3x3(register Mtx33 mt,register void *wgpipe)
 {
 	__asm__ __volatile__
-		("psq_l		0,0(%0),0,0\n\
-		  psq_l		1,8(%0),0,0\n\
-		  psq_l		2,16(%0),0,0\n\
-		  psq_l		3,24(%0),0,0\n\
-		  lfs		4,32(%0)\n\
-		  psq_st	0,0(%1),0,0\n\
-		  psq_st	1,0(%1),0,0\n\
-		  psq_st	2,0(%1),0,0\n\
-		  psq_st	3,0(%1),0,0\n\
-		  stfs		4,0(%1)"
+		("psq_l 0,0(%0),0,0\n\
+		  psq_l 1,8(%0),0,0\n\
+		  psq_l 2,16(%0),0,0\n\
+		  psq_l 3,24(%0),0,0\n\
+		  lfs 4,32(%0)\n\
+		  psq_st 0,0(%1),0,0\n\
+		  psq_st 1,0(%1),0,0\n\
+		  psq_st 2,0(%1),0,0\n\
+		  psq_st 3,0(%1),0,0\n\
+		  stfs 4,0(%1)"
 		  : : "r"(mt), "r"(wgpipe));
 }
 
 static inline void WriteMtxPS4x2(register Mtx mt,register void *wgpipe)
 {
 	__asm__ __volatile__
-		("psq_l		0,0(%0),0,0\n\
-		  psq_l		1,8(%0),0,0\n\
-		  psq_l		2,16(%0),0,0\n\
-		  psq_l		3,24(%0),0,0\n\
-		  psq_st	0,0(%1),0,0\n\
-		  psq_st	1,0(%1),0,0\n\
-		  psq_st	2,0(%1),0,0\n\
-		  psq_st	3,0(%1),0,0"
+		("psq_l 0,0(%0),0,0\n\
+		  psq_l 1,8(%0),0,0\n\
+		  psq_l 2,16(%0),0,0\n\
+		  psq_l 3,24(%0),0,0\n\
+		  psq_st 0,0(%1),0,0\n\
+		  psq_st 1,0(%1),0,0\n\
+		  psq_st 2,0(%1),0,0\n\
+		  psq_st 3,0(%1),0,0"
 		  : : "r"(mt), "r"(wgpipe));
 }
 
@@ -2539,7 +2596,7 @@ void GX_LoadPosMtxImm(Mtx mt,u32 pnidx)
 void GX_LoadPosMtxIdx(u16 mtxidx,u32 pnidx)
 {
 	FIFO_PUTU8(0x20);
-	FIFO_PUTU32(((_SHIFTL(mtxidx,16,16))|0xb000|(_SHIFTL(pnidx,2,12))));
+	FIFO_PUTU32(((_SHIFTL(mtxidx,16,16))|0xb000|(_SHIFTL(pnidx,2,8))));
 }
 
 void GX_LoadNrmMtxImm(Mtx mt,u32 pnidx)
@@ -2589,14 +2646,13 @@ void GX_LoadTexMtxIdx(u16 mtxidx,u32 texidx,u8 type)
 void GX_SetCurrentMtx(u32 mtx)
 {
 	_gx[0x03] = (_gx[0x03]&~0x3f)|(mtx&0x3f);
-	__GX_SetMatrixIndex(0);
+	_gx[0x09] |= 0x04000000;
 }
 
 void GX_SetNumTexGens(u32 nr)
 {
 	_gx[0xac] = (_gx[0xac]&~0xf)|(nr&0xf);
-	GX_LOAD_XF_REG(0x0000103f,(_gx[0xac]&0xf));
-	_gx[0x09] |= 0x0004;
+	_gx[0x09] |= 0x02000004;
 }
 
 void GX_InvVtxCache()
@@ -3113,7 +3169,7 @@ void GX_SetBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op)
 void GX_ClearVtxDesc()
 {
 	_gx[0x08] = 0;
-	_gx[0x00] = ((_gx[0x00]&~0x0600)|0x0200);
+	_gx[0x0e] = ((_gx[0x0e]&~0x0600)|0x0200);
 	_gx[0x06] = _gx[0x07] = 0;
 	_gx[0x09] |= 0x0008;
 }
@@ -3342,8 +3398,7 @@ void GX_SetScissorBoxOffset(s32 xoffset,s32 yoffset)
 void GX_SetNumChans(u8 num)
 {
 	_gx[0xac] = (_gx[0xac]&~0x70)|(_SHIFTL(num,4,3));
-	GX_LOAD_XF_REG(0x1009,(num&3));
-	_gx[0x09] |= 0x0004;
+	_gx[0x09] |= 0x01000004;
 }
 
 void GX_SetTevOrder(u8 tevstage,u8 texcoord,u32 texmap,u8 color)

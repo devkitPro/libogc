@@ -239,6 +239,10 @@
 #define GX_TF_CI14			0xa
 #define GX_TF_CMPR			0xE
 
+#define GX_TL_IA8			0x00
+#define GX_TL_RGB565		0x01
+#define GX_TL_RGB5A3		0x02
+
 #define GX_CTF_R4			(0x0|_GX_TF_CTF)
 #define GX_CTF_RA4			(0x2|_GX_TF_CTF)
 #define GX_CTF_RA8			(0x3|_GX_TF_CTF)
@@ -921,6 +925,13 @@ typedef struct _gx_color {
 	u8 a;
 } GXColor;
 
+typedef struct _gx_colors10 {
+ 	s16 r;
+ 	s16 g;
+ 	s16 b;
+	s16 a;
+} GXColorS10;
+
 typedef struct _gx_texobj {
 	u32 val[8];
 } GXTexObj;
@@ -1174,7 +1185,7 @@ void GX_SetTevColor(u8 tev_regid,GXColor color);
  *
  * \return none
  */
-void GX_SetTevColorS10(u8 tev_regid,GXColor color);
+void GX_SetTevColorS10(u8 tev_regid,GXColorS10 color);
 
 /*! 
  * \fn void GX_SetTevColorIn(u8 tevstage,u8 a,u8 b,u8 c,u8 d)
@@ -1283,7 +1294,7 @@ void GX_SetAlphaCompare(u8 comp0,u8 ref0,u8 aop,u8 comp1,u8 ref1);
 void GX_SetTevKColor(u8 sel, GXColor col);
 void GX_SetTevKColorSel(u8 tevstage,u8 sel);
 void GX_SetTevKAlphaSel(u8 tevstage,u8 sel);
-void GX_SetTevKColorS10(u8 sel, GXColor col);
+void GX_SetTevKColorS10(u8 sel, GXColorS10 col);
 
 /*! 
  * \fn void GX_SetTevSwapMode(u8 tevstage,u8 ras_sel,u8 tex_sel)
