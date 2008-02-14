@@ -276,6 +276,10 @@
 #define	IBAT4L		561
 #define	IBAT5U		562
 #define	IBAT5L		563
+#define	IBAT6U		564
+#define	IBAT6L		565
+#define	IBAT7U		566
+#define	IBAT7L		567
 
 #define	DBAT0U		536
 #define	DBAT0L		537	
@@ -291,6 +295,8 @@
 #define DBAT5L		571
 #define DBAT6U		572
 #define DBAT6L		573
+#define DBAT7U		574
+#define DBAT7L		575
 
 #define HID0		1008
 #define HID1		1009
