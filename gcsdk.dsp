@@ -1526,7 +1526,19 @@ SOURCE=.\ogc.ld
 # End Source File
 # Begin Source File
 
-SOURCE=.\specs.ogc
+SOURCE=.\rvl.ld
+# End Source File
+# Begin Source File
+
+SOURCE=.\specs.3.4.6
+# End Source File
+# Begin Source File
+
+SOURCE=.\specs.4.1.2
+# End Source File
+# Begin Source File
+
+SOURCE=.\specs.4.2.3
 # End Source File
 # Begin Source File
 
