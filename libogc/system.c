@@ -47,7 +47,10 @@ distribution.
 #include "system.h"
 #include "libversion.h"
 
-#define SYSMEM_SIZE				0x1800000
+#define SYSMEM1_SIZE			0x1800000
+#if defined(HW_RVL)
+#define SYSMEM2_SIZE			0x4000000
+#endif
 #define KERNEL_HEAP				(1*1024*1024)
 
 // DSPCR bits
@@ -118,6 +121,10 @@ static lwp_objinfo sys_alarm_objects;
 
 static void *__sysarenalo = NULL;
 static void *__sysarenahi = NULL;
+#if defined(HW_RVL)
+static void *__ipcbufferlo = NULL;
+static void *__ipcbufferhi = NULL;
+#endif
 
 static resetcallback __RSWCallback = NULL;
 
@@ -158,11 +165,14 @@ extern void __libc_init(int);
 extern void __realmode(void*);
 extern void __configMEM1_24Mb();
 extern void __configMEM1_48Mb();
+extern void __configMEM2_64Mb();
+extern void __configMEM2_128Mb();
 extern void __reset(u32 reset_code);
 
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
 
+extern u32 __IPC_ClntInit();
 extern u32 __PADDisableRecalibration(s32 disable);
 
 extern void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_xres,int tgt_yres,int tgt_stride,int con_xres,int con_yres,int con_stride);
@@ -328,27 +338,36 @@ static void __RSWHandler()
 static void __lowmem_init()
 {
 	void *ram_start = (void*)0x80000000;
-	void *ram_end = (void*)(0x80000000|SYSMEM_SIZE);
+	void *ram_end = (void*)(0x80000000|SYSMEM1_SIZE);
+#if defined(HW_DOL)
 	void *arena_start = (void*)0x80003000;
+#elif defined(HW_RVL)
+	void *arena_start = (void*)0x80003f00;
+#endif
 
 	memset(ram_start,0,0x100);
 	memset(arena_start,0,0x100);
 
 	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"
 	*((u32*)(ram_start+0x24))	= 1;            // version
-	*((u32*)(ram_start+0x28))	= SYSMEM_SIZE;	// physical memory size
+	*((u32*)(ram_start+0x28))	= SYSMEM1_SIZE;	// physical memory size
 	*((u32*)(ram_start+0x2C))	= 1 + ((*(u32*)0xCC00302c)>>28);
 
 	*((u32*)(ram_start+0x30))	= 0;
 	*((u32*)(ram_start+0x34))	= 0x816ffff0;
 
 	*((u32*)(ram_start+0xEC))	= (u32)ram_end;	// ram_end (??)
-	*((u32*)(ram_start+0xF0))	= SYSMEM_SIZE;	// simulated memory size
+	*((u32*)(ram_start+0xF0))	= SYSMEM1_SIZE;	// simulated memory size
+#if defined(HW_DOL)
 	*((u32*)(ram_start+0xF8))	= 162000000;	// bus speed: 162 MHz
 	*((u32*)(ram_start+0xFC))	= 486000000;	// cpu speed: 486 Mhz
-	
-	*((u16*)(ram_start+0x30E0))	= 6; // production pads
-	*((u32*)(ram_start+0x30E4))	= 0xC0008000;
+#elif defined(HW_RVL)
+	*((u32*)(ram_start+0xF8))	= 243000000;	// bus speed: 162 MHz
+	*((u32*)(ram_start+0xFC))	= 729000000;	// cpu speed: 486 Mhz
+#endif
+
+	*((u16*)(arena_start+0xE0))	= 6; // production pads
+	*((u32*)(arena_start+0xE4))	= 0xC0008000;
 
 	DCFlushRangeNoSync(ram_start, 0x100);
 	DCFlushRangeNoSync(arena_start, 0x100);
@@ -358,16 +377,45 @@ static void __lowmem_init()
 	SYS_SetArenaHi((void*)__ArenaHi);
 }
 
+#if defined(HW_RVL)
+
+static void __ipcbuffer_init()
+{	
+	u32 *ipcbuffer = (u32*)0x80003130;
+	__ipcbufferlo = (void*)(ipcbuffer[0]);
+	__ipcbufferhi = (void*)(ipcbuffer[1]);
+}
+#endif
+
+static void __bat_config()
+{
+	u32 realmem1 = SYSMEM1_SIZE;
+	u32 simmem1 = SYSMEM1_SIZE;
+#if defined(HW_RVL)
+	u32 simmem2 = SYSMEM2_SIZE;
+#endif
+
+	if(simmem1<realmem1 && !(simmem1-0x1800000)) {
+		DCInvalidateRange((void*)0x81800000,0x01800000);
+		_memReg[20] = 2;
+	}
+
+	if(simmem1<=0x01800000) __realmode(__configMEM1_24Mb);
+	else if(simmem1<=0x03000000) __realmode(__configMEM1_48Mb);
+
+#if defined(HW_RVL)
+	if(simmem2<=0x04000000) __realmode(__configMEM2_64Mb);
+	else if(simmem2<=0x08000000) __realmode(__configMEM2_128Mb);
+#endif
+}
+
 static void __memprotect_init()
 {
 	u32 level;
-	u32 realmem = SYSMEM_SIZE;
-	u32 simmem = SYSMEM_SIZE;
 
 	_CPU_ISR_Disable(level);
 
-	if(simmem<=0x1800000) __realmode(__configMEM1_24Mb);
-	else if(simmem<=0x3000000) __realmode(__configMEM1_48Mb);
+	__MaskIrq((IM_MEM0|IM_MEM1|IM_MEM2|IM_MEM3));
 
 	_memReg[16] = 0;
 	_memReg[8] = 255;
@@ -379,9 +427,8 @@ static void __memprotect_init()
 	IRQ_Request(IRQ_MEMADDRESS,__MEMInterruptHandler,NULL);
 
 	SYS_RegisterResetFunc(&mem_resetinfo);
-	__UnmaskIrq(IRQMASK(IRQ_MEMADDRESS));		//only enable memaddress irq atm
-
-	if(simmem<=realmem && !(simmem-0x1800000)) _memReg[20] = 2;
+	__bat_config();
+	__UnmaskIrq(IM_MEMADDRESS);		//only enable memaddress irq atm
 
 	_CPU_ISR_Restore(level);
 }
@@ -662,7 +709,7 @@ static void __dsp_bootstrap()
 #endif
 }
 
-void __dsp_shutdown()
+static void __dsp_shutdown()
 {
 	u32 tick;
 
@@ -843,6 +890,18 @@ u32 __SYS_LoadFont(void *src,void *dest)
 	return 1;
 }
 
+#if defined(HW_RVL)
+void* __SYS_GetIPCBufferLo()
+{
+	return __ipcbufferlo;
+}
+
+void* __SYS_GetIPCBufferHi()
+{
+	return __ipcbufferhi;
+}
+#endif
+
 void _V_EXPORTNAME(void) 
 { __sys_versionbuild = _V_STRING; __sys_versiondate = _V_DATE_; }
 
@@ -864,6 +923,9 @@ void SYS_Init()
 	_V_EXPORTNAME();
 
 	__lowmem_init();
+#if defined(HW_RVL)
+	__ipcbuffer_init();
+#endif
 	__lwp_wkspace_init(KERNEL_HEAP);
 	__lwp_queue_init_empty(&sys_reset_func_queue);
 	__lwp_objmgr_initinfo(&sys_alarm_objects,LWP_MAX_WATCHDOGS,sizeof(alarm_st));
@@ -894,6 +956,9 @@ void SYS_Init()
 	__SYS_SetBootTime();
 #endif
 	DisableWriteGatherPipe();
+#if defined(HW_RVL)
+	__IPC_ClntInit();
+#endif
 
 	IRQ_Request(IRQ_PI_RSW,__RSWHandler,NULL);
 	__MaskIrq(IRQMASK(IRQ_PI_RSW));

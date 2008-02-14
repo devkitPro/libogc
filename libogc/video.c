@@ -738,6 +738,8 @@ static const struct _timing {
 static u16 regs[60];
 static u16 shdw_regs[60];
 static u32 encoderType,fbSet = 0;
+static u32 oldDtvStatus = 0;
+static u32 vdacFlagRegion;
 static s16 displayOffsetH;
 static s16 displayOffsetV;
 static u32 currTvMode,changeMode;
@@ -747,8 +749,11 @@ static vu32 retraceCount;
 static const struct _timing *currTiming;
 static lwpq_t video_queue;
 static horVer HorVer;
+static void *currentFb = NULL;
+static void *nextFb = NULL;
 static VIRetraceCallback preRetraceCB = NULL;
 static VIRetraceCallback postRetraceCB = NULL;
+static VIPositionCallback positionCB = NULL;
 
 static vu16* const _viReg = (u16*)0xCC002000;
 
@@ -1179,18 +1184,45 @@ static void __VIInit(u32 vimode)
 	}
 }
 
+static void __VISendI2CData(u32 cmd,u16 *val,u32 type)
+{
+}
+
+static void __VISetYUVSEL(u8 dtvstatus)
+{
+	u16 val;
+
+	vdacFlagRegion = 0x0000;
+	if(currTvMode==VI_NTSC) vdacFlagRegion = 0x0000;
+	else if(currTvMode==VI_PAL || currTvMode==VI_EURGB60) vdacFlagRegion = 0x0002;
+	else if(VI_MPAL==0x0002) vdacFlagRegion = 0x0001;
+
+	val = (_SHIFTL(0x01,8,8)|(_SHIFTL(dtvstatus,5,8)|vdacFlagRegion));
+	__VISendI2CData(0xe0,&val,2);
+}
+
+static inline void __getCurrentDisplayPosition(u32 *px,u32 *py)
+{
+	u32 hpos = 0;
+	u32 vpos = 0;
+	u32 vpos_old;
+	
+	vpos = (_viReg[22]&0x7ff);
+	do {
+		vpos_old = vpos;
+		hpos = (_viReg[23]&0x7ff);
+		vpos = (_viReg[22]&0x7ff);
+	} while(vpos_old!=vpos);
+	*px = hpos;
+	*py = vpos;
+}
+
 static inline u32 __getCurrentHalfLine()
 {
-	u32 vpos_old;
 	u32 vpos = 0;
 	u32 hpos = 0;
 
-	vpos = _viReg[22]&0x07FF;
-	do {
-		vpos_old = vpos;
-		hpos = _viReg[23]&0x07FF;
-		vpos = _viReg[22]&0x07FF;
-	} while(vpos_old!=vpos);
+	__getCurrentDisplayPosition(&hpos,&vpos);
 	
 	hpos--;
 	vpos--;
@@ -1199,7 +1231,7 @@ static inline u32 __getCurrentHalfLine()
 	return vpos+(hpos/currTiming->hlw);	
 }
 
-static inline u32 __getCurrFieldEvenOdd()
+static inline u32 __getCurrentFieldEvenOdd()
 {
 	u32 hline;
 
@@ -1215,7 +1247,7 @@ static inline u32 __VISetRegs()
 	u64 mask;
 
 	if(shdw_changeMode==1){
-		if(!__getCurrFieldEvenOdd()) return 0;
+		if(!__getCurrentFieldEvenOdd()) return 0;
 	}
 
 	while(shdw_changed) {
@@ -1228,13 +1260,98 @@ static inline u32 __VISetRegs()
 	currTiming = HorVer.timing;
 	currTvMode = HorVer.tv;
 	
+	currentFb = nextFb;
+
 	return 1;
+}
+
+static void __VIDisplayPositionToXY(s32 xpos,s32 ypos,s32 *px,s32 *py)
+{
+	u32 hpos,vpos;
+	u32 hline,val;
+
+	hpos = (xpos-1);
+	vpos = (ypos-1);
+	hline = ((vpos<<1)+(hpos/currTiming->hlw));
+
+	*px = (s32)hpos;
+	if(HorVer.nonInter==0x0000) {
+		if(hline<currTiming->nhlines) {
+			val = currTiming->prbOdd+(currTiming->equ*3);
+			if(hline>=val) {
+				val = (currTiming->nhlines-currTiming->psbOdd);
+				if(hline<val) {
+					*py = (s32)(((hline-(currTiming->equ*3))-currTiming->prbOdd)&~0x01);
+				} else
+					*py = -1;
+			} else
+				*py = -1;
+		} else {
+			hline -= currTiming->psbOdd;
+			val = (currTiming->prbEven+(currTiming->equ*3));
+			if(hline>=val) {
+				val = (currTiming->nhlines-currTiming->psbEven);
+				if(hline<val) {
+					*py = (s32)((((hline-(currTiming->equ*3))-currTiming->prbEven)&~0x01)+1);
+				} else
+					*py = -1;
+			} else
+				*py = -1;
+		}
+	} else if(HorVer.nonInter==0x0001) {
+		if(hline>=currTiming->nhlines) hline -= currTiming->nhlines;
+
+		val = (currTiming->prbOdd+(currTiming->equ*3));
+		if(hline>=val) {
+			val = (currTiming->nhlines-currTiming->psbOdd);
+			if(hline<val) {
+				*py = (s32)(((hline-(currTiming->equ*3))-currTiming->prbOdd)&~0x01);
+			} else
+				*py = -1;
+		} else
+			*py = -1;
+	} else if(HorVer.nonInter==0x0002) {
+		if(hline<currTiming->nhlines) {
+			val = currTiming->prbOdd+(currTiming->equ*3);
+			if(hline>=val) {
+				val = (currTiming->nhlines-currTiming->psbOdd);
+				if(hline<val) {
+					*py = (s32)((hline-(currTiming->equ*3))-currTiming->prbOdd);
+				} else
+					*py = -1;
+			} else
+				*py = -1;
+		} else {
+			hline -= currTiming->psbOdd;
+			val = (currTiming->prbEven+(currTiming->equ*3));
+			if(hline>=val) {
+				val = (currTiming->nhlines-currTiming->psbEven);
+				if(hline<val) {
+					*py = (s32)(((hline-(currTiming->equ*3))-currTiming->prbEven)&~0x01);
+				} else
+					*py = -1;
+			} else
+				*py = -1;
+		}
+	}
+}
+
+static inline void __VIGetCurrentPosition(s32 *px,s32 *py)
+{
+	s32 xpos,ypos;
+
+	__getCurrentDisplayPosition((u32*)&xpos,(u32*)&ypos);
+	__VIDisplayPositionToXY(xpos,ypos,px,py);
 }
 
 static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 {
+#if defined(HW_RVL)
+	u8 dtv;
+#endif
 	u32 ret = 0;
 	u32 intr;
+	s32 xpos,ypos;
 
 	intr = _viReg[24];
 	if(intr&0x8000) {
@@ -1259,7 +1376,14 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 		_viReg[30] = intr&~0x8000;
 		ret |= 0x08;
 	}
-	if(ret&0x0c) return;
+
+	intr = _viReg[30];
+	if(ret&0x04 || ret&0x08) {
+		if(positionCB!=NULL) {
+			__VIGetCurrentPosition(&xpos,&ypos);
+			positionCB(xpos,ypos);
+		}
+	}
 
 	retraceCount++;
 	if(preRetraceCB)
@@ -1271,21 +1395,27 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 			SI_RefreshSamplingRate();
 		}
 	}
-
+#if defined(HW_RVL)
+	dtv = (_viReg[55]&0x03);
+	if(dtv!=oldDtvStatus) {
+		__VISetYUVSEL(dtv);
+		oldDtvStatus = dtv;
+	}
+#endif
 	if(postRetraceCB)
 		postRetraceCB(retraceCount);
 
 	LWP_ThreadBroadcast(video_queue);
 }
 
-void* __VIDEO_GetNextFramebuffer()
+void* VIDEO_GetNextFramebuffer()
 {
-	u32 level;
+	return nextFb;
+}
 
-	_CPU_ISR_Disable(level);
-	void *ret = HorVer.bufAddr;
-	_CPU_ISR_Restore(level);
-	return ret;
+void* VIDEO_GetCurrentFramebuffer()
+{
+	return currentFb;
 }
 
 void VIDEO_Init()
@@ -1530,6 +1660,7 @@ void VIDEO_Flush()
 #ifdef _VIDEO_DEBUG
 	printRegs();
 #endif
+	nextFb = HorVer.bufAddr;
 	_CPU_ISR_Restore(level);
 }
 
@@ -1550,7 +1681,7 @@ u32 VIDEO_GetNextField()
 	u32 level,nextfield;
 
 	_CPU_ISR_Disable(level);
-	nextfield = __getCurrFieldEvenOdd()^1;		//we've to swap the result because it shows us only the current field,so we've the next field either even or odd
+	nextfield = __getCurrentFieldEvenOdd()^1;		//we've to swap the result because it shows us only the current field,so we've the next field either even or odd
 	_CPU_ISR_Restore(level);
 	
 	return nextfield^(HorVer.adjustedDispPosY&0x0001);	//if the YOrigin is at an odd position we've to swap it again, since the Fb registers are set swapped if this rule applies
