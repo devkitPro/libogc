@@ -53,6 +53,11 @@ distribution.
  */
 typedef void (*VIRetraceCallback)(u32 retraceCnt);
 
+typedef void (*VIPositionCallback)(u32 posX,u32 posY);
+
+void* VIDEO_GetNextFramebuffer();
+void* VIDEO_GetCurrentFramebuffer();
+
 
 /*! 
  * \fn void VIDEO_Init()
