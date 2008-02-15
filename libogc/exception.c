@@ -31,6 +31,7 @@ distribution.
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include "asm.h"
 #include "processor.h"
 #include "cache.h"
@@ -44,6 +45,30 @@ distribution.
 //#define _EXC_DEBUG
 
 #define CPU_STACK_TRACE_DEPTH		10
+
+#define __DOUTBUFSIZE 256
+
+char __outstr[__DOUTBUFSIZE];
+
+int con_write(struct _reent *r,int fd,const char *ptr,int len);
+
+
+//---------------------------------------------------------------------------------
+void exception_printf(char *str, ...)
+//---------------------------------------------------------------------------------
+{
+	va_list args;
+	int len;
+
+	va_start(args, str);
+	len=vsnprintf(__outstr,__DOUTBUFSIZE,str,args);
+	va_end(args);
+
+	con_write(NULL,0, __outstr, len);
+}
+
+#define printf exception_printf
+
 
 typedef struct _framerec {
 	struct _framerec *up;
