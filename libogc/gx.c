@@ -1099,7 +1099,7 @@ void GX_SetCPUFifo(GXFifoObj *fifo)
 	if(_cpufifo==_gpfifo) {
 		_piReg[3] = MEM_VIRTUAL_TO_PHYSICAL(_cpufifo->buf_start);
 		_piReg[4] = MEM_VIRTUAL_TO_PHYSICAL(_cpufifo->buf_end);
-		_piReg[5] = ((_cpufifo->wt_ptr&0x3FFFFFE0)&~0x04000000);
+		_piReg[5] = (_cpufifo->wt_ptr&0x1FFFFFE0);
 		_cpgplinked = 1;
 
 		__GX_WriteFifoIntReset(GX_TRUE,GX_TRUE);
@@ -1117,7 +1117,7 @@ void GX_SetCPUFifo(GXFifoObj *fifo)
 
 	_piReg[3] = MEM_VIRTUAL_TO_PHYSICAL(_cpufifo->buf_start);
 	_piReg[4] = MEM_VIRTUAL_TO_PHYSICAL(_cpufifo->buf_end);
-	_piReg[5] = ((_cpufifo->wt_ptr&0x3FFFFFE0)&~0x04000000);
+	_piReg[5] = (_cpufifo->wt_ptr&0x1FFFFFE0);
 	_CPU_ISR_Restore(level);
 }
 
