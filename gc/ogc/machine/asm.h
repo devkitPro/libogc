@@ -120,6 +120,8 @@
 #define	vr30	30
 #define	vr31	31
 
+#endif		//_LANGUAGE_ASSEMBLY
+
 #define SPRG0	272
 #define SPRG1	273
 #define SPRG2	274
@@ -314,10 +316,10 @@
 
 #define L2CR		1017
 
+#define WPAR		921
+
 #define DMAU		922
 #define DMAL		923
-
-#endif		//_LANGUAGE_ASSEMBLY
 
 #define MSR_RI				0x00000002
 #define MSR_DR				0x00000010

@@ -735,11 +735,14 @@ static const struct _timing {
 	}
 };
 
+#if defined(HW_RVL)
+static u32 oldDtvStatus = 0;
+static u32 vdacFlagRegion;
+#endif
+
 static u16 regs[60];
 static u16 shdw_regs[60];
 static u32 encoderType,fbSet = 0;
-static u32 oldDtvStatus = 0;
-static u32 vdacFlagRegion;
 static s16 displayOffsetH;
 static s16 displayOffsetV;
 static u32 currTvMode,changeMode;
@@ -1184,6 +1187,7 @@ static void __VIInit(u32 vimode)
 	}
 }
 
+#if defined(HW_RVL)
 static void __VISendI2CData(u32 cmd,u16 *val,u32 type)
 {
 }
@@ -1200,6 +1204,7 @@ static void __VISetYUVSEL(u8 dtvstatus)
 	val = (_SHIFTL(0x01,8,8)|(_SHIFTL(dtvstatus,5,8)|vdacFlagRegion));
 	__VISendI2CData(0xe0,&val,2);
 }
+#endif
 
 static inline void __getCurrentDisplayPosition(u32 *px,u32 *py)
 {

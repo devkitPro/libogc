@@ -343,7 +343,12 @@ static const u8 __dvd_patchcodeQ08[] =
 };
 
 static vu32* const _piReg = (u32*)0xCC003000;
-static vu32* const _diReg = (u32*)0xCC006000;
+
+#if defined(HW_RVL)
+	static vu32* const _diReg = (u32*)0xCD006000;
+#elif defined(HW_DOL)
+	static vu32* const _diReg = (u32*)0xCC006000;
+#endif
 
 static u8 __dvd_unlockcmd$221[12] = {0xff,0x01,'M','A','T','S','H','I','T','A',0x02,0x00};
 static u8 __dvd_unlockcmd$222[12] = {0xff,0x00,'D','V','D','-','G','A','M','E',0x03,0x00};

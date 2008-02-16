@@ -34,6 +34,7 @@ distribution.
 #include "processor.h"
 #include "irq.h"
 #include "audio.h"
+#include "lwp_watchdog.h"
 
 #define STACKSIZE		16384
 
@@ -166,7 +167,7 @@ AISCallback AUDIO_RegisterStreamCallback(AISCallback callback)
 
 void AUDIO_Init(u8 *stack)
 {
-	u32 busfreq = 162000000;
+	u32 busfreq = TB_BUS_CLOCK;
 
 	if(!__AIInitFlag) {
 		bound_32KHz = (u64)((((busfreq>>2)/125000)*31524)/8000)<<32;

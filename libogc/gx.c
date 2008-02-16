@@ -148,13 +148,13 @@ static __inline__ s32 IsWriteGatherBufferEmpty()
 
 static __inline__ void DisableWriteGatherPipe()
 {
-	mtspr(920,(mfspr(920)&~0x40000000));
+	mthid2((mfhid2()&~0x40000000));
 }
 
 static __inline__ void EnableWriteGatherPipe()
 {
 	mtwpar(0x0C008000);
-	mtspr(920,(mfspr(920)|0x40000000));
+	mthid2((mfhid2()|0x40000000));
 }
 
 static __inline__ void __GX_FifoLink(u8 enable)
@@ -884,7 +884,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	s32 i,re0,re1,addr;
 	u32 tmem;
 	u32 divis,res;
-	u32 divid = 162000000;
+	u32 divid = TB_BUS_CLOCK;
 	GXTexRegion *region = NULL;
 	GXTlutRegion *tregion = NULL;
 
@@ -973,6 +973,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 
 	i=0;
 	while(i<8) {
+		_gx[0x10+i] = 0x40000000;
 		_gx[0x18+i] = 0x80000000;
 		GX_LOAD_CP_REG((0x0080|i),_gx[0x18+i]);
 		i++;
