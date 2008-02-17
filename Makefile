@@ -268,7 +268,7 @@ install: install-headers
 #---------------------------------------------------------------------------------
 dist: install-headers
 #---------------------------------------------------------------------------------
-	@tar    --exclude=*CVS* --exclude=*build* --exclude=*deps* \
+	@tar    --exclude=*CVS* --exclude=wii --exclude=cube --exclude=*deps* \
 		--exclude=*.bz2  --exclude=*include* --exclude=*lib/* --exclude=*docs/*\
 		-cvjf libogc-src-$(DATESTRING).tar.bz2 *
 	@tar -cvjf libogc-$(DATESTRING).tar.bz2 include lib libogc_license.txt
