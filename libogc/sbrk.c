@@ -13,17 +13,10 @@ extern void SYS_SetArenaLo(void *newLo);
 extern void* SYS_GetArenaLo();
 extern void* SYS_GetArenaHi();
 
-#ifdef REENTRANT_SYSCALLS_PROVIDED
-void* _DEFUN(_sbrk_r,(ptr,incr),
+void* _DEFUN(__libogc_sbrk_r,(ptr,incr),
 			 struct _reent *ptr _AND
 			 ptrdiff_t incr)
 {
-#else
-void* _DEFUN(sbrk,(incr),
-			 int incr)
-{
-	struct _reent *ptr = _REENT;
-#endif
 	u32 level;
 	char *heap_end = 0;
 	char *prev_heap = 0;

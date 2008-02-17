@@ -8,15 +8,13 @@
 #include <reent.h>
 #endif
 #include <errno.h>
-#undef errno
-extern int errno;
 
 #include "asm.h"
 #include "processor.h"
 #include "mutex.h"
 
 
-int __libc_lock_init(int *lock,int recursive)
+int __libogc_lock_init(int *lock,int recursive)
 {
 	s32 ret;
 	mutex_t retlck = LWP_MUTEX_NULL;
@@ -29,7 +27,7 @@ int __libc_lock_init(int *lock,int recursive)
 	return ret;
 }
 
-int __libc_lock_close(int *lock)
+int __libogc_lock_close(int *lock)
 {
 	s32 ret;
 	mutex_t plock;
@@ -42,7 +40,7 @@ int __libc_lock_close(int *lock)
 	return ret;
 }
 
-int __libc_lock_acquire(int *lock)
+int __libogc_lock_acquire(int *lock)
 {
 	mutex_t plock;
 	
@@ -52,17 +50,8 @@ int __libc_lock_acquire(int *lock)
 	return LWP_MutexLock(plock);
 }
 
-int __libc_lock_try_acquire(int *lock)
-{
-	mutex_t plock;
-	
-	if(!lock || *lock==LWP_MUTEX_NULL) return -1;
-	
-	plock = (mutex_t)*lock;
-	return LWP_MutexTryLock(plock);
-}
 
-int __libc_lock_release(int *lock)
+int __libogc_lock_release(int *lock)
 {
 	mutex_t plock;
 	

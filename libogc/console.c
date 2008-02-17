@@ -2,8 +2,6 @@
 #include <string.h>
 #include <reent.h>
 #include <errno.h>
-#undef errno
-extern int errno;
 
 #include "asm.h"
 #include "processor.h"
@@ -14,6 +12,9 @@ extern int errno;
 
 #include "console.h"
 
+#include <stdio.h>
+#include <sys/iosupport.h>
+
 #define FONT_XSIZE			8
 #define FONT_YSIZE			16
 #define FONT_XFACTOR		1
@@ -21,12 +22,32 @@ extern int errno;
 #define FONT_XGAP			2
 #define FONT_YGAP			0
 
-int con_open(struct _reent *r,const char *path,int flags,int mode);
 int con_write(struct _reent *r,int fd,const char *ptr,int len);
-int con_read(struct _reent *r,int fd,char *ptr,int len);
-int con_close(struct _reent *r,int fd);
 
-const devoptab_t dotab_stdout = {"stdout",con_open,con_close,con_write,con_read,NULL,NULL};
+//---------------------------------------------------------------------------------
+const devoptab_t dotab_stdout = {
+//---------------------------------------------------------------------------------
+	"stdout",	// device name
+	0,			// size of file structure
+	NULL,		// device open
+	NULL,		// device close
+	con_write,	// device write
+	NULL,		// device read
+	NULL,		// device seek
+	NULL,		// device fstat
+	NULL,		// device stat
+	NULL,		// device link
+	NULL,		// device unlink
+	NULL,		// device chdir
+	NULL,		// device rename
+	NULL,		// device mkdir
+	0,			// dirStateSize
+	NULL,		// device diropen_r
+	NULL,		// device dirreset_r
+	NULL,		// device dirnext_r
+	NULL,		// device dirclose_r
+	NULL		// device statvfs_r
+};
 
 static u32 do_xfb_copy = FALSE;
 static struct _console_data_s stdcon;
@@ -122,7 +143,6 @@ void __console_init(console_data_s *con,void *framebuffer,int xstart,int ystart,
 	
 	con->foreground = COLOR_WHITE;
 	con->background = COLOR_BLACK;
-	
 	con->scrolled_lines = 0;
 	
 	unsigned int c = (con->con_xres*con->con_yres)/2;
@@ -131,6 +151,10 @@ void __console_init(console_data_s *con,void *framebuffer,int xstart,int ystart,
 		*p++ = con->background;
 
 	curr_con = con;
+
+	devoptab_list[STD_OUT] = &dotab_stdout;
+	devoptab_list[STD_ERR] = &dotab_stdout;
+	//setvbuf(stdout, NULL , _IONBF, 0);
 
 	_CPU_ISR_Restore(level);
 }
@@ -171,6 +195,10 @@ void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_xre
 		*p++ = con->background;
 
 	curr_con = con;
+
+	devoptab_list[STD_OUT] = &dotab_stdout;
+	devoptab_list[STD_ERR] = &dotab_stdout;
+	//setvbuf(stdout, NULL , _IONBF, 0);
 
 	VIDEO_SetPreRetraceCallback(__console_viprecb);
 	
@@ -240,11 +268,6 @@ int console_putc(console_data_s *con,int c)
 	return 1;
 }
 
-int con_open(struct _reent *r,const char *path,int flags,int mode)
-{
-	if(!curr_con) return -1;
-	return 0;
-}
 
 int con_write(struct _reent *r,int fd,const char *ptr,int len)
 {
@@ -263,12 +286,3 @@ int con_write(struct _reent *r,int fd,const char *ptr,int len)
 	return count;
 }
 
-int con_read(struct _reent *r,int fd,char *ptr,int len)
-{
-	return -1;
-}
-
-int con_close(struct _reent *r,int fd)
-{
-	return -1;
-}

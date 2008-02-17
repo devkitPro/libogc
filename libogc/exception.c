@@ -41,7 +41,7 @@ distribution.
 #include "system.h"
 
 #include "pad.h"
-#include "libogcsys/console.h"
+#include "console.h"
 //#define _EXC_DEBUG
 
 #define CPU_STACK_TRACE_DEPTH		10
@@ -126,7 +126,7 @@ void __exception_init()
 {
 	s32 i;
 #ifdef _EXC_DEBUG
-	printf("__exception_init()\n\n");
+	kprintf("__exception_init()\n\n");
 #endif
 	// init all exceptions with the default handler & vector code
 	for(i=0;i<NUM_EXCEPTIONS;i++) {
@@ -166,6 +166,7 @@ void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*))
 	_exceptionhandlertable[nExcept] = pHndl;
 }
 
+
 static void _cpu_print_stack(void *pc,void *lr,void *r1)
 {
 	register u32 i = 0;
@@ -176,53 +177,54 @@ static void _cpu_print_stack(void *pc,void *lr,void *r1)
 	if(!p) __asm__ __volatile__("mr %0,%%r1" : "=r"(p));
 
 	for(i=0;i<CPU_STACK_TRACE_DEPTH-1 && p->up;p=p->up,i++) {
-		if(i%4) printf("--> ");
+		if(i%4) kprintf("--> ");
 		else {
-			if(i>0) printf("-->\n");
-			else printf("\n");
+			if(i>0) kprintf("-->\n");
+			else kprintf("\n");
 		}
 
 		switch(i) {
 			case 0:
-				if(pc) printf("%p",pc);
+				if(pc) kprintf("%p",pc);
 				break;
 			case 1:
 				if(!l) l = (frame_rec_t)mfspr(8);
-				printf("%p",(void*)l);
+				kprintf("%p",(void*)l);
 				break;
 			default:
-				printf("%p",(void*)(p->up->lr));
+				kprintf("%p",(void*)(p->up->lr));
 				break;
 		}
 	}
 }
+
 //just implement core for unrecoverable exceptions.
 void c_default_exceptionhandler(frame_context *pCtx)
 {
 	VIDEO_SetFramebuffer(exception_xfb);
 	__console_init(&exception_con,exception_xfb,20,20,640,574,1280);
 
-	printf("Exception (%s) occured!\n", exception_name[pCtx->EXCPT_Number]);
+	kprintf("Exception (%s) occurred!\n", exception_name[pCtx->EXCPT_Number]);
 
-	printf("GPR00 %08x GPR08 %08x GPR16 %08x GPR24 %08x\n",pCtx->GPR[0], pCtx->GPR[8], pCtx->GPR[16], pCtx->GPR[24]);
-	printf("GPR01 %08x GPR09 %08x GPR17 %08x GPR25 %08x\n",pCtx->GPR[1], pCtx->GPR[9], pCtx->GPR[17], pCtx->GPR[25]);
-	printf("GPR02 %08x GPR10 %08x GPR18 %08x GPR26 %08x\n",pCtx->GPR[2], pCtx->GPR[10], pCtx->GPR[18], pCtx->GPR[26]);
-	printf("GPR03 %08x GPR11 %08x GPR19 %08x GPR27 %08x\n",pCtx->GPR[3], pCtx->GPR[11], pCtx->GPR[19], pCtx->GPR[27]);
-	printf("GPR04 %08x GPR12 %08x GPR20 %08x GPR28 %08x\n",pCtx->GPR[4], pCtx->GPR[12], pCtx->GPR[20], pCtx->GPR[28]);
-	printf("GPR05 %08x GPR13 %08x GPR21 %08x GPR29 %08x\n",pCtx->GPR[5], pCtx->GPR[13], pCtx->GPR[21], pCtx->GPR[29]);
-	printf("GPR06 %08x GPR14 %08x GPR22 %08x GPR30 %08x\n",pCtx->GPR[6], pCtx->GPR[14], pCtx->GPR[22], pCtx->GPR[30]);
-	printf("GPR07 %08x GPR15 %08x GPR23 %08x GPR31 %08x\n",pCtx->GPR[7], pCtx->GPR[15], pCtx->GPR[23], pCtx->GPR[31]);
-	printf("LR %08x SRR0 %08x SRR1 %08x MSR %08x\n", pCtx->LR, pCtx->SRR0, pCtx->SRR1,pCtx->MSR);
-	printf("DAR %08x DSISR %08x\n", mfspr(19), mfspr(18));
+	kprintf("GPR00 %08x GPR08 %08x GPR16 %08x GPR24 %08x\n",pCtx->GPR[0], pCtx->GPR[8], pCtx->GPR[16], pCtx->GPR[24]);
+	kprintf("GPR01 %08x GPR09 %08x GPR17 %08x GPR25 %08x\n",pCtx->GPR[1], pCtx->GPR[9], pCtx->GPR[17], pCtx->GPR[25]);
+	kprintf("GPR02 %08x GPR10 %08x GPR18 %08x GPR26 %08x\n",pCtx->GPR[2], pCtx->GPR[10], pCtx->GPR[18], pCtx->GPR[26]);
+	kprintf("GPR03 %08x GPR11 %08x GPR19 %08x GPR27 %08x\n",pCtx->GPR[3], pCtx->GPR[11], pCtx->GPR[19], pCtx->GPR[27]);
+	kprintf("GPR04 %08x GPR12 %08x GPR20 %08x GPR28 %08x\n",pCtx->GPR[4], pCtx->GPR[12], pCtx->GPR[20], pCtx->GPR[28]);
+	kprintf("GPR05 %08x GPR13 %08x GPR21 %08x GPR29 %08x\n",pCtx->GPR[5], pCtx->GPR[13], pCtx->GPR[21], pCtx->GPR[29]);
+	kprintf("GPR06 %08x GPR14 %08x GPR22 %08x GPR30 %08x\n",pCtx->GPR[6], pCtx->GPR[14], pCtx->GPR[22], pCtx->GPR[30]);
+	kprintf("GPR07 %08x GPR15 %08x GPR23 %08x GPR31 %08x\n",pCtx->GPR[7], pCtx->GPR[15], pCtx->GPR[23], pCtx->GPR[31]);
+	kprintf("LR %08x SRR0 %08x SRR1 %08x MSR %08x\n", pCtx->LR, pCtx->SRR0, pCtx->SRR1,pCtx->MSR);
+	kprintf("DAR %08x DSISR %08x\n", mfspr(19), mfspr(18));
 
 	_cpu_print_stack((void*)pCtx->SRR0,(void*)pCtx->LR,(void*)pCtx->GPR[1]);
 
 	if((pCtx->EXCPT_Number==EX_DSI) || (pCtx->EXCPT_Number==EX_FP)) {
 		u32 i;
 		u32 *pAdd = (u32*)pCtx->SRR0;
-		printf("\n\nCODE DUMP:\n\n");
+		kprintf("\n\nCODE DUMP:\n\n");
 		for (i=0; i<12; i+=4)
-			printf("%p:  %08x %08x %08x %08x\n",
+			kprintf("%p:  %08x %08x %08x %08x\n",
 			&(pAdd[i]),pAdd[i], pAdd[i+1], pAdd[i+2], pAdd[i+3]);
 	}
 

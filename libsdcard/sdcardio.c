@@ -10,7 +10,7 @@ extern int errno;
 #include "asm.h"
 #include "processor.h"
 #include "mutex.h"
-#include "libogcsys/iosupp.h"
+//#include "libogcsys/iosupp.h"
 #include "sdcard.h"
 
 //#define _SDCARDIO_DEBUG
@@ -32,7 +32,7 @@ int sdcardio_read(struct _reent *r,int fd,char *ptr,int len);
 int sdcardio_seek(struct _reent *r,int fd,int pos,int dir);
 int sdcardio_stat(struct _reent *r,int fd,struct stat *st);
 
-const devoptab_t dotab_sdcardio = {"sd",sdcardio_open,sdcardio_close,sdcardio_write,sdcardio_read,sdcardio_seek,sdcardio_stat};
+//const devoptab_t dotab_sdcardio = {"sd",sdcardio_open,sdcardio_close,sdcardio_write,sdcardio_read,sdcardio_seek,sdcardio_stat};
 
 static int __sdcardio_allocfd(sd_file *sdfile)
 {

@@ -28,7 +28,7 @@
 #include <netif/loopif.h>
 #include <netif/gcif/gcif.h>
 
-#include "libogcsys/iosupp.h"
+//#include "libogcsys/iosupp.h"
 #include "network.h"
 
 //#define _NET_DEBUG
@@ -1465,7 +1465,7 @@ static void evt_callback(struct netconn *conn,enum netconn_evt evt,u32 len)
 	
 }
 
-extern const devoptab_t dotab_net;
+//extern const devoptab_t dotab_net;
 s32 if_config(const char *local_ip,const char *netmask,const char *gateway,boolean use_dhcp)
 {
 	s32 ret = 0;
@@ -1477,7 +1477,7 @@ s32 if_config(const char *local_ip,const char *netmask,const char *gateway,boole
 	if(g_netinitiated) return 0;
 	g_netinitiated = 1;
 
-	devoptab_list[STD_NET] = &dotab_net;
+//	devoptab_list[STD_NET] = &dotab_net;
 #ifdef STATS
 	stats_init();
 #endif /* STATS */
@@ -1553,7 +1553,7 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 	if(g_netinitiated) return 0;
 	g_netinitiated = 1;
 
-	devoptab_list[STD_NET] = &dotab_net;
+//	devoptab_list[STD_NET] = &dotab_net;
 #ifdef STATS
 	stats_init();
 #endif /* STATS */

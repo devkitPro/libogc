@@ -33,7 +33,7 @@ void __memlock_init()
 }
 
 #ifndef REENTRANT_SYSCALLS_PROVIDED
-void _DEFUN(__malloc_lock,(r),
+void _DEFUN(__libogc_malloc_lock,(r),
 			struct _reent *r)
 {
 	unsigned int level;
@@ -44,7 +44,7 @@ void _DEFUN(__malloc_lock,(r),
 	__lwp_mutex_seize(&mem_lock,1,TRUE,LWP_THREADQ_NOTIMEOUT,level);
 }
 
-void _DEFUN(__malloc_unlock,(r),
+void _DEFUN(__libogc_malloc_unlock,(r),
 			struct _reent *r)
 {
 	if(!initialized) return;
@@ -55,7 +55,7 @@ void _DEFUN(__malloc_unlock,(r),
 }
 
 #else
-void _DEFUN(__malloc_lock,(ptr),
+void _DEFUN(__libogc_malloc_lock,(ptr),
 			struct _reent *ptr)
 {
 	unsigned int level;
@@ -67,7 +67,7 @@ void _DEFUN(__malloc_lock,(ptr),
 	ptr->_errno = _thr_executing->wait.ret_code;
 }
 
-void _DEFUN(__malloc_unlock,(ptr),
+void _DEFUN(__libogc_malloc_unlock,(ptr),
 			struct _reent *ptr)
 {
 	if(!initialized) return;

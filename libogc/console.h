@@ -1,7 +1,6 @@
 #ifndef __CONSOLE_H__
 #define __CONSOLE_H__
 
-#include "iosupp.h"
 
 typedef struct _console_data_s {
 	unsigned char *destbuffer;
@@ -16,6 +15,6 @@ typedef struct _console_data_s {
 	unsigned int foreground,background;
 } console_data_s;
 
-extern const devoptab_t dotab_stdout;
+//extern const devoptab_t dotab_stdout;
 
 #endif

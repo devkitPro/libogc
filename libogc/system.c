@@ -32,6 +32,8 @@ distribution.
 #include <string.h>
 #include <stdio.h>
 #include <malloc.h>
+#include <sys/iosupport.h>
+
 #include "asm.h"
 #include "irq.h"
 #include "exi.h"
@@ -162,6 +164,9 @@ extern void __timesystem_init();
 extern void __memlock_init();
 extern void __libc_init(int);
 
+void __libogc_malloc_lock( struct _reent *ptr );
+void __libogc_malloc_unlock( struct _reent *ptr );
+
 extern void __realmode(void*);
 extern void __configMEM1_24Mb();
 extern void __configMEM1_48Mb();
@@ -183,6 +188,13 @@ extern unsigned int gettick();
 extern unsigned int diff_usec(long long start,long long end);
 extern int clock_gettime(struct timespec *tp);
 extern void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
+
+
+extern int __libogc_lock_init(int *lock,int recursive);
+extern int __libogc_lock_close(int *lock);
+extern int __libogc_lock_release(int *lock);
+extern int __libogc_lock_acquire(int *lock);
+extern void * __libogc_sbrk_r(struct _reent *ptr, ptrdiff_t incr);
 
 extern u8 __text_start[];
 extern u8 __isIPL[];
@@ -221,6 +233,17 @@ static __inline__ void __lwp_syswd_free(alarm_st *alarm)
 {
 	__lwp_objmgr_close(&sys_alarm_objects,&alarm->object);
 	__lwp_objmgr_free(&sys_alarm_objects,&alarm->object);
+}
+
+static void __init_syscall_array() {
+	__syscalls.sbrk_r = __libogc_sbrk_r;
+	__syscalls.lock_init = __libogc_lock_init;
+	__syscalls.lock_close = __libogc_lock_close;
+	__syscalls.lock_release = __libogc_lock_release;
+	__syscalls.lock_acquire = __libogc_lock_acquire;
+	__syscalls.malloc_lock = __libogc_malloc_lock;
+	__syscalls.malloc_unlock = __libogc_malloc_unlock;
+	
 }
 
 static alarm_st* __lwp_syswd_allocate()
@@ -358,8 +381,13 @@ static void __lowmem_init()
 
 	*((u32*)(ram_start+0xEC))	= (u32)ram_end;	// ram_end (??)
 	*((u32*)(ram_start+0xF0))	= SYSMEM1_SIZE;	// simulated memory size
-	*((u32*)(ram_start+0xF8))	= TB_BUS_CLOCK;		// bus speed: 162 MHz
-	*((u32*)(ram_start+0xFC))	= TB_CORE_CLOCK;	// cpu speed: 486 Mhz
+#if defined(HW_DOL)
+	*((u32*)(ram_start+0xF8))	= 162000000;	// bus speed: 162 MHz
+	*((u32*)(ram_start+0xFC))	= 486000000;	// cpu speed: 486 Mhz
+#elif defined(HW_RVL)
+	*((u32*)(ram_start+0xF8))	= 243000000;	// bus speed: 162 MHz
+	*((u32*)(ram_start+0xFC))	= 729000000;	// cpu speed: 486 Mhz
+#endif
 
 	*((u16*)(arena_start+0xE0))	= 6; // production pads
 	*((u32*)(arena_start+0xE4))	= 0xC0008000;
@@ -905,6 +933,10 @@ void __sdloader_boot()
 	void (*reload)() = (void(*)())0x80001800;
 	reload();
 }
+//extern "C" {
+void __exception_console();
+void __exception_printf(const char *str, ...);
+//}
 
 void SYS_Init()
 {
@@ -917,6 +949,7 @@ void SYS_Init()
 
 	_V_EXPORTNAME();
 
+	__init_syscall_array();
 	__lowmem_init();
 #if defined(HW_RVL)
 	__ipcbuffer_init();

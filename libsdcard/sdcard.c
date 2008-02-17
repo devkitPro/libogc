@@ -11,7 +11,7 @@
 #include "card_io.h"
 #include "card_fat.h"
 
-#include "libogcsys/iosupp.h"
+//#include "libogcsys/iosupp.h"
 
 #include "sdcard.h"
 
@@ -32,7 +32,7 @@ static struct _sd_file filehandle_array[SDCARD_FILEHANDLE_MAX];
 
 //#define _SDCARD_DEBUG
 
-extern const devoptab_t dotab_sdcardio;
+//extern const devoptab_t dotab_sdcardio;
 extern u32 card_convertUniToStr(u8 *dest,u16 *src);
 
 s32 SDCARD_Init()
@@ -45,7 +45,7 @@ s32 SDCARD_Init()
 #endif
 		sdcard_inited = 1;
 
-		devoptab_list[STD_SDCARD] = &dotab_sdcardio;
+//		devoptab_list[STD_SDCARD] = &dotab_sdcardio;
 		
 		now = time(NULL);
 		srand(now);

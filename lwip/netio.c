@@ -5,7 +5,7 @@
 #undef errno
 extern int errno;
 
-#include "libogcsys/iosupp.h"
+//#include "libogcsys/iosupp.h"
 #include "lwip/ip_addr.h"
 #include "network.h"
 
@@ -14,7 +14,7 @@ int netio_close(struct _reent *r,int fd);
 int netio_write(struct _reent *r,int fd,const char *ptr,int len);
 int netio_read(struct _reent *r,int fd,char *ptr,int len);
 
-const devoptab_t dotab_net = {"stdnet",netio_open,netio_close,netio_write,netio_read,NULL,NULL};
+//const devoptab_t dotab_net = {"stdnet",netio_open,netio_close,netio_write,netio_read,NULL,NULL};
 
 int netio_open(struct _reent *r,const char *path,int flags,int mode)
 {

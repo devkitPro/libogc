@@ -314,6 +314,8 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu);
 void SYS_RegisterResetFunc(sys_resetinfo *info);
 u32 SYS_GetArenaSize();
 
+void kprintf(const char *str, ...);
+
 #ifdef __cplusplus
    }
 #endif /* __cplusplus */
