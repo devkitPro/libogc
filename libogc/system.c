@@ -49,9 +49,9 @@ distribution.
 #include "system.h"
 #include "libversion.h"
 
-#define SYSMEM1_SIZE			0x1800000
+#define SYSMEM1_SIZE			0x01800000
 #if defined(HW_RVL)
-#define SYSMEM2_SIZE			0x4000000
+#define SYSMEM2_SIZE			0x04000000
 #endif
 #define KERNEL_HEAP				(1*1024*1024)
 
@@ -381,13 +381,8 @@ static void __lowmem_init()
 
 	*((u32*)(ram_start+0xEC))	= (u32)ram_end;	// ram_end (??)
 	*((u32*)(ram_start+0xF0))	= SYSMEM1_SIZE;	// simulated memory size
-#if defined(HW_DOL)
-	*((u32*)(ram_start+0xF8))	= 162000000;	// bus speed: 162 MHz
-	*((u32*)(ram_start+0xFC))	= 486000000;	// cpu speed: 486 Mhz
-#elif defined(HW_RVL)
-	*((u32*)(ram_start+0xF8))	= 243000000;	// bus speed: 162 MHz
-	*((u32*)(ram_start+0xFC))	= 729000000;	// cpu speed: 486 Mhz
-#endif
+	*((u32*)(ram_start+0xF8))	= TB_BUS_CLOCK;	// bus speed: 162 MHz
+	*((u32*)(ram_start+0xFC))	= TB_CORE_CLOCK;	// cpu speed: 486 Mhz
 
 	*((u16*)(arena_start+0xE0))	= 6; // production pads
 	*((u32*)(arena_start+0xE4))	= 0xC0008000;
