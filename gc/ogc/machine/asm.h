@@ -333,4 +333,6 @@
 
 #define PPC_ALIGNMENT		8
 
+#define PPC_CACHE_ALIGNMENT	32
+
 #endif		//__ASM_H__
