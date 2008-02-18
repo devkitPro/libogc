@@ -16,6 +16,7 @@
 //#define DEBUG_IPC
 
 #define IPC_HEAP_SIZE			2048
+#define IPC_REQUESTSIZE			64
 
 #define IOS_OPEN				0x01
 #define IOS_CLOSE				0x02
@@ -133,7 +134,7 @@ static __inline__ void ACR_WriteReg(u32 reg,u32 val)
 
 static __inline__ void* __ipc_allocreq()
 {
-	return iosAlloc(_ipc_hid,64);
+	return iosAlloc(_ipc_hid,IPC_REQUESTSIZE);
 }
 
 static __inline__ void __ipc_freereq(void *ptr)
@@ -406,6 +407,7 @@ void __IPC_Init()
 
 u32 __IPC_ClntInit()
 {
+	s32 free;
 	u32 ipclo,ipchi;
 
 	if(!_ipc_clntinitialized) {
@@ -415,14 +417,14 @@ u32 __IPC_ClntInit()
 
 		ipclo = (u32)IPC_GetBufferLo();
 		ipchi = (u32)IPC_GetBufferHi();
-		if(ipchi>=(ipclo+IPC_HEAP_SIZE)) {
-			_ipc_hid = iosCreateHeap((void*)ipclo,IPC_HEAP_SIZE);
-			IPC_SetBufferLo((void*)(ipclo+IPC_HEAP_SIZE));
-			IRQ_Request(IRQ_PI_ACR,__ipc_interrupthandler,NULL);
-			__UnmaskIrq(IM_PI_ACR);
-			IPC_WriteReg(1,56);
-		} else 
-			return IPC_ENOMEM;
+		free = (ipchi - (ipclo+IPC_HEAP_SIZE));
+		if(free<0) return IPC_ENOMEM;
+
+		_ipc_hid = iosCreateHeap((void*)ipclo,IPC_HEAP_SIZE);
+		IPC_SetBufferLo((void*)(ipclo+IPC_HEAP_SIZE));
+		IRQ_Request(IRQ_PI_ACR,__ipc_interrupthandler,NULL);
+		__UnmaskIrq(IM_PI_ACR);
+		IPC_WriteReg(1,56);
 	}
 	return IPC_OK;
 }
@@ -444,7 +446,7 @@ s32 IOS_Open(const char *filepath,u32 mode)
 	req->cb = NULL;
 	req->relnch = 0;
 
-	DCFlushRange((void*)filepath,strnlen(filepath,64));
+	DCFlushRange((void*)filepath,strnlen(filepath,IPC_MAXPATH_LEN));
 
 	req->open.filepath	= (char*)MEM_VIRTUAL_TO_PHYSICAL(filepath);
 	req->open.mode		= mode;
@@ -479,7 +481,7 @@ s32 IOS_OpenAsync(const char *filepath,u32 mode,ipccallback ipc_cb,void *usrdata
 	req->usrdata = usrdata;
 	req->relnch = 0;
 
-	DCFlushRange((void*)filepath,strnlen(filepath,64));
+	DCFlushRange((void*)filepath,strnlen(filepath,IPC_MAXPATH_LEN));
 	
 	req->open.filepath	= (char*)MEM_VIRTUAL_TO_PHYSICAL(filepath);
 	req->open.mode		= mode;
