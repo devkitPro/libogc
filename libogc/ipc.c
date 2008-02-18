@@ -13,7 +13,7 @@
 #include "system.h"
 #include "lwp_heap.h"
 
-//#define DEBUG_IPC
+#define DEBUG_IPC
 
 #define IPC_HEAP_SIZE			2048
 #define IPC_REQUESTSIZE			64
