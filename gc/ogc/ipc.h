@@ -3,6 +3,8 @@
 
 #include <gctypes.h>
 
+#define IPC_MAXPATH_LEN		 64
+
 #define IPC_OK				  0
 #define IPC_EINVAL			 -4
 #define IPC_EQUEUEFULL       -8
