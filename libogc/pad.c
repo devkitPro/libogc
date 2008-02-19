@@ -26,6 +26,8 @@ typedef struct _keyinput {
 	s8 stickY;
 	s8 substickX;
 	s8 substickY;
+	u8 triggerL;
+	u8 triggerR;
 	u16 up;
 	u16 down;
 	u16 state;
@@ -733,6 +735,8 @@ u32 PAD_ScanPads()
 				__pad_keys[i].stickY	= padstatus[i].stickY;
 				__pad_keys[i].substickX	= padstatus[i].substickX;
 				__pad_keys[i].substickY	= padstatus[i].substickY;
+				__pad_keys[i].triggerL	= padstatus[i].triggerL;
+				__pad_keys[i].triggerR	= padstatus[i].triggerR;
 				__pad_keys[i].up		= (oldstate^state)&oldstate;
 				__pad_keys[i].down		= (oldstate^state)&state;
 				__pad_keys[i].oldstate	= oldstate;
@@ -800,4 +804,17 @@ s8 PAD_StickY(int pad)
 {
 	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1) return 0;
 	return __pad_keys[pad].stickY;
+}
+
+
+u8 PAD_TriggerL(int pad)
+{
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1) return 0;
+	return __pad_keys[pad].triggerL;
+}
+
+u8 PAD_TriggerR(int pad)
+{
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1) return 0;
+	return __pad_keys[pad].triggerR;
 }

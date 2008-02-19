@@ -69,14 +69,23 @@ u32 PAD_Recalibrate(u32 mask);
 void PAD_Clamp(PADStatus *status);
 void PAD_ControlMotor(s32 chan,u32 cmd);
 void PAD_SetSpec(u32 spec);
+
 u32 PAD_ScanPads();
+
 u16 PAD_ButtonsUp(int pad);
 u16 PAD_ButtonsDown(int pad);
 u16 PAD_ButtonsHeld(int pad);
+
 s8 PAD_SubStickX(int pad);
 s8 PAD_SubStickY(int pad);
+
 s8 PAD_StickX(int pad);
 s8 PAD_StickY(int pad);
+
+u8 PAD_TriggerL(int pad);
+u8 PAD_TriggerR(int pad);
+
+
 sampling_callback PAD_SetSamplingCallback(sampling_callback cb);
 
 /*+----------------------------------------------------------------------------------------------+*/
