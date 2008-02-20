@@ -13,7 +13,9 @@
 #include "system.h"
 #include "lwp_heap.h"
 
-#define DEBUG_IPC
+//#define DEBUG_IPC
+
+#define IPC_REQ_MAGIC			0x4C4F4743
 
 #define IPC_HEAP_SIZE			2048
 #define IPC_REQUESTSIZE			64
@@ -32,7 +34,10 @@ struct _ipcreq
 {						//ipc struct size: 32
 	u32 cmd;			//0
 	s32 result;			//4
-	s32 fd;				//8
+	union {				//8
+		s32 fd;
+		u32 req_cmd;
+	};
 	union {
 		struct {
 			char *filepath;
@@ -59,13 +64,15 @@ struct _ipcreq
 			u32 argcio;
 			struct _ioctlv *argv;
 		} ioctlv;
+		u32 args[5];
 	};
 
 	ipccallback cb;		//32
 	void *usrdata;		//36
 	u32 relnch;			//40
 	lwpq_t syncqueue;	//44
-	u8 pad1[16];		//48 - 60
+	u32 magic;			//48 - used to avoid spurious responses, like from zelda.
+	u8 pad1[12];		//52 - 60
 } ATTRIBUTE_PACKED;
 
 struct _ipcreqres
@@ -89,6 +96,7 @@ static s32 _ipc_mailboxack = 1;
 static u32 _ipc_relnchFl = 0;
 static u32 _ipc_initialized = 0;
 static u32 _ipc_clntinitialized = 0;
+static u64 _ipc_spuriousresponsecnt = 0;
 static struct _ipcreq *_ipc_relnchRpc = NULL;
 
 static void *_ipc_bufferlo = NULL;
@@ -196,6 +204,7 @@ static void __ipc_sendrequest()
 	if(cnt>0) {
 		req = _ipc_responses.reqs[_ipc_responses.req_send_no];
 		if(req!=NULL) {
+			req->magic = IPC_REQ_MAGIC;
 			if(req->relnch) {
 				_ipc_relnchFl = 1;
 				_ipc_relnchRpc = req;
@@ -231,45 +240,63 @@ static void __ipc_replyhandler()
 	req = MEM_PHYSICAL_TO_K0(req);
 	DCInvalidateRange(req,32);
 	
-	if(req->cmd==IOS_READ) {
-		if(req->read.data!=NULL) {
-			req->read.data = MEM_PHYSICAL_TO_K0(req->read.data);
-			if(req->result>0) DCInvalidateRange(req->read.data,req->result);
-		}
-	} else if(req->cmd==IOS_IOCTL) {
-		if(req->ioctl.buffer_io!=NULL) {
-			req->ioctl.buffer_io = MEM_PHYSICAL_TO_K0(req->ioctl.buffer_io);
-			DCInvalidateRange(req->ioctl.buffer_io,req->ioctl.len_io);
-		}
-		DCInvalidateRange(req->ioctl.buffer_in,req->ioctl.len_in);
-	} else if(req->cmd==IOS_IOCTLV) {
-		if(req->ioctlv.argv!=NULL) {
-			req->ioctlv.argv = MEM_PHYSICAL_TO_K0(req->ioctlv.argv);
-			DCInvalidateRange(req->ioctlv.argv,((req->ioctlv.argcin+req->ioctlv.argcio)*sizeof(struct _ioctlv)));
-		}
-
-		cnt = 0;
-		v = (ioctlv*)req->ioctlv.argv;
-		while(cnt<(req->ioctlv.argcin+req->ioctlv.argcio)) {
-			if(v[cnt].data!=NULL) {
-				v[cnt].data = MEM_PHYSICAL_TO_K0(v[cnt].data);
-				DCInvalidateRange(v[cnt].data,v[cnt].len);
+	if(req->magic==IPC_REQ_MAGIC) {
+#ifdef DEBUG_IPC
+		printf("IPC res: cmd %08x rcmd %08x res %08x\n",req->cmd,req->request_cmd,req->result);
+#endif
+		if(req->req_cmd==IOS_READ) {
+			if(req->read.data!=NULL) {
+				req->read.data = MEM_PHYSICAL_TO_K0(req->read.data);
+				if(req->result>0) DCInvalidateRange(req->read.data,req->result);
 			}
-			cnt++;
-		}
-		if(_ipc_relnchFl && _ipc_relnchRpc==req) {
-			_ipc_relnchFl = 0;
-			if(_ipc_mailboxack<1) _ipc_mailboxack++;
+		} else if(req->req_cmd==IOS_IOCTL) {
+			if(req->ioctl.buffer_io!=NULL) {
+				req->ioctl.buffer_io = MEM_PHYSICAL_TO_K0(req->ioctl.buffer_io);
+				DCInvalidateRange(req->ioctl.buffer_io,req->ioctl.len_io);
+			}
+			DCInvalidateRange(req->ioctl.buffer_in,req->ioctl.len_in);
+		} else if(req->req_cmd==IOS_IOCTLV) {
+			if(req->ioctlv.argv!=NULL) {
+				req->ioctlv.argv = MEM_PHYSICAL_TO_K0(req->ioctlv.argv);
+				DCInvalidateRange(req->ioctlv.argv,((req->ioctlv.argcin+req->ioctlv.argcio)*sizeof(struct _ioctlv)));
+			}
+
+			cnt = 0;
+			v = (ioctlv*)req->ioctlv.argv;
+			while(cnt<(req->ioctlv.argcin+req->ioctlv.argcio)) {
+				if(v[cnt].data!=NULL) {
+					v[cnt].data = MEM_PHYSICAL_TO_K0(v[cnt].data);
+					DCInvalidateRange(v[cnt].data,v[cnt].len);
+				}
+				cnt++;
+			}
+			if(_ipc_relnchFl && _ipc_relnchRpc==req) {
+				_ipc_relnchFl = 0;
+				if(_ipc_mailboxack<1) _ipc_mailboxack++;
+			}
+
 		}
 
+		if(req->cb!=NULL) {
+			req->cb(req->result,req->usrdata);
+			__ipc_freereq(req);
+		} else
+			LWP_ThreadSignal(req->syncqueue);
+	} else {
+		// NOTE: we really want to find out if this ever happens
+		// and take steps to prevent it beforehand (because it will
+		// clobber memory, among other things). I suggest leaving this in
+		// even in non-DEBUG mode. Maybe even cause a system halt.
+		// It is the responsibility of the loader to clear these things,
+		// but we want to find out if they happen so loaders can be fixed.
+#ifdef DEBUG_IPC
+		printf("Received unknown IPC response (magic %08x):\n", req->magic);
+		printf("  CMD %08x RES %08x REQCMD %08x\n", req->cmd, req->result, req->request_cmd);
+		printf("  Args: %08x %08x %08x %08x %08x\n", req->args[0], req->args[1], req->args[2], req->args[3], req->args[4]);
+		printf("  CB %08x DATA %08x REL %08x QUEUE %08x\n", (u32)req->cb, (u32)req->usrdata, req->relnch, (u32)req->syncqueue);
+#endif
+		_ipc_spuriousresponsecnt++;
 	}
-
-	if(req->cb!=NULL) {
-		req->cb(req->result,req->usrdata);
-		__ipc_freereq(req);
-	} else
-		LWP_ThreadSignal(req->syncqueue);
-
 	ipc_ack = ((IPC_ReadReg(1)&0x30)|0x08);
 	IPC_WriteReg(1,ipc_ack);
 }
