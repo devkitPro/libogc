@@ -123,9 +123,9 @@ void ps_guMtxScale(register Mtx mt,register f32 xS,register f32 yS,register f32 
 void ps_guMtxScaleApply(register Mtx src,register Mtx dst,register f32 xS,register f32 yS,register f32 zS);
 void ps_guMtxTrans(register Mtx mt,register f32 xT,register f32 yT,register f32 zT);
 void ps_guMtxTransApply(register Mtx src,register Mtx dst,register f32 xT,register f32 yT,register f32 zT);
-void ps_guMtxRotRad(register Mtx mt,register const char axis,register f32 rad);
-void ps_guMtxRotTrig(register Mtx mt,register const char axis,register f32 sinA,register f32 cosA);
-void ps_guMtxRotAxisRad(register Mtx mt,Vector *axis,register f32 tmp0);
+void ps_guMtxRotRad(register Mtx mt,const register char axis,register f32 rad);
+void ps_guMtxRotTrig(register Mtx mt,const register char axis,register f32 sinA,register f32 cosA);
+void ps_guMtxRotAxisRad(register Mtx mt,register Vector *axis,register f32 tmp0);
 void ps_guMtxReflect(register Mtx m,register Vector *p,register Vector *n);
 #endif	//GEKKO
 

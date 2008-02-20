@@ -403,6 +403,63 @@ ps_guMtxRotTrig:
 3:
 	blr
 
+	.globl __ps_guMtxRotAxisRadInternal
+	//r3 = mtx, r4 = vec, fr1 = sT, fr2 = cT
+__ps_guMtxRotAxisRadInternal:
+	stwu		r1,-64(r1)
+	frsp		fr2,fr2
+	psq_l		fr3,0(r4),0,0
+	lis			r6,NrmData@ha
+	frsp		fr1,fr1
+	stfd		fr14,8(r1)
+	addi		r6,r6,NrmData@l
+	lfs			fr11,4(r6);
+	lfs			fr12,0(r6)
+	stfd		fr31,40(r1)
+	ps_mul		fr5,fr3,fr3
+	lfs			fr4,8(r4)
+	fadds		fr10,fr12,fr12
+	ps_madd		fr6,fr4,fr4,fr5
+	fsubs		fr14,fr12,fr12
+	ps_sum0		fr7,fr6,fr4,fr5
+	fsubs		fr13,fr10,fr2
+	frsqrte		fr8,fr7
+	fmuls		fr5,fr8,fr8
+	fmuls		fr6,fr8,fr12
+	fnmsubs		fr5,fr5,fr7,fr11
+	fmuls		fr8,fr5,fr6
+	ps_merge00	fr2,fr2,fr2
+	ps_muls0	fr3,fr3,fr8
+	ps_muls0	fr4,fr4,fr8
+	ps_muls0	fr7,fr3,fr13
+	ps_muls0	fr12,fr3,fr1
+	ps_muls0	fr8,fr4,fr13
+	ps_muls1	fr6,fr7,fr3
+	ps_muls0	fr5,fr7,fr3
+	ps_muls0	fr7,fr7,fr4
+	fnmsubs		fr9,fr4,fr1,fr6
+	fmadds		fr10,fr4,fr1,fr6
+	ps_neg		fr3,fr12
+	ps_sum0		fr11,fr7,fr14,fr12
+	ps_sum0		fr5,fr5,fr9,fr2
+	ps_sum1		fr6,fr2,fr10,fr6
+	ps_sum0		fr9,fr3,fr14,fr7
+	psq_st		fr11,8(r3),0,0
+	ps_sum0		fr3,fr7,fr7,fr3
+	psq_st		fr5,0(r3),0,0
+	ps_muls0	fr8,fr8,fr4
+	psq_st		fr6,16(r3),0,0
+	ps_sum1		fr7,fr12,fr3,fr7
+	psq_st		fr9,24(r3),0,0
+	ps_sum0		fr8,fr8,fr14,fr2
+	psq_st		fr7,32(r3),0,0
+	psq_st		fr8,40(r3),0,0
+	lfd			fr31,40(r1)
+	lfd			fr15,16(r1)
+	lfd			fr14,8(r1)
+	addi		r1,r1,64
+	blr
+
 	.globl ps_guMtxReflect
 	//r3 = mtx,r4 = vec1,r5 = vec2
 ps_guMtxReflect:

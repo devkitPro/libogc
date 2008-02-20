@@ -1,6 +1,8 @@
 #include <gu.h>
 #include <math.h>
 
+extern void __ps_guMtxRotAxisRadInternal(register Mtx mt,const register Vector *axis,register f32 sT,register f32 cT);
+
 void guFrustum(Mtx44 mt,f32 t,f32 b,f32 l,f32 r,f32 n,f32 f)
 {
 	f32 tmp;
@@ -211,7 +213,7 @@ void c_guMtxRotRad(Mtx mt,const char axis,f32 rad)
 }
 
 #ifdef GEKKO
-void ps_guMtxRotRad(register Mtx mt,register const char axis,register f32 rad)
+void ps_guMtxRotRad(register Mtx mt,const register char axis,register f32 rad)
 {
 	register f32 sinA,cosA;
 
@@ -220,8 +222,8 @@ void ps_guMtxRotRad(register Mtx mt,register const char axis,register f32 rad)
 
 	ps_guMtxRotTrig(mt,axis,sinA,cosA);
 }
-
-void ps_guMtxRotAxisRad(register Mtx mt,Vector *axis,register f32 tmp0)
+/*
+void ps_guMtxRotAxisRad(register Mtx mt,register Vector *axis,register f32 tmp0)
 {
 	register f32 sT,cT,tT,fc0;
 	register f32 tmp1=0,tmp2=0,tmp3=0,tmp4=0;
@@ -263,8 +265,18 @@ void ps_guMtxRotAxisRad(register Mtx mt,Vector *axis,register f32 tmp0)
 		"psq_st			%[tmp5],40(%[mt]),0,0\n"
 		: [mt]"+r"(mt), [tmp0]"+f"(tmp0), [tmp1]"+f"(tmp1), [tmp2]"+f"(tmp2), [tmp3]"+f"(tmp3), 
 		[tmp4]"+f"(tmp4), [tmp5]"+f"(tmp5), [tmp6]"+f"(tmp6), [tmp7]"+f"(tmp7), [tmp8]"+f"(tmp8), 
-		[tmp9]"+f"(tmp9) : [axis]"r"(axis), [cT]"f"(cT), [tT]"f"(tT), [sT]"f"(sT), [fc0]"f"(fc0)
+		[tmp9]"+f"(tmp9), [cT]"+f"(cT) : [axis]"r"(axis), [tT]"f"(tT), [sT]"f"(sT), [fc0]"f"(fc0)
 	);
+}
+*/
+void ps_guMtxRotAxisRad(Mtx mt,Vector *axis,f32 rad)
+{
+	f32 sinT,cosT;
+ 
+	sinT = sinf(rad);
+	cosT = cosf(rad);
+ 
+	__ps_guMtxRotAxisRadInternal(mt,axis,sinT,cosT);
 }
 
 #endif
