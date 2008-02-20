@@ -222,53 +222,7 @@ void ps_guMtxRotRad(register Mtx mt,const register char axis,register f32 rad)
 
 	ps_guMtxRotTrig(mt,axis,sinA,cosA);
 }
-/*
-void ps_guMtxRotAxisRad(register Mtx mt,register Vector *axis,register f32 tmp0)
-{
-	register f32 sT,cT,tT,fc0;
-	register f32 tmp1=0,tmp2=0,tmp3=0,tmp4=0;
-	register f32 tmp5=0,tmp6=0,tmp7=0,tmp8=0,tmp9=0;
 
-	fc0 = 0.0F;
-	sT = sinf(tmp0);
-	cT = cosf(tmp0);
-	tT = 1.0F - cT;
-	
-	ps_guVecNormalize(axis);
-	
-	__asm__ __volatile__(
-		"psq_l			%[tmp0],0(%[axis]),0,0\n"
-		"lfs			%[tmp1],8(%[axis])\n"
-		"ps_merge00		%[cT],%[cT],%[cT]\n"
-		"ps_muls0		%[tmp4],%[tmp0],%[tT]\n"
-		"ps_muls0		%[tmp5],%[tmp1],%[tT]\n"
-		"ps_muls1		%[tmp3],%[tmp4],%[tmp0]\n"
-		"ps_muls0		%[tmp2],%[tmp4],%[tmp0]\n"
-		"ps_muls0		%[tmp0],%[tmp0],%[sT]\n"
-		"ps_muls0		%[tmp4],%[tmp4],%[tmp1]\n"
-		"fnmsubs		%[tmp6],%[tmp1],%[sT],%[tmp3]\n"
-		"fmadds			%[tmp7],%[tmp1],%[sT],%[tmp3]\n"
-		"ps_neg			%[tmp9],%[tmp0]\n"
-		"ps_sum0		%[tmp8],%[tmp4],%[fc0],%[tmp0]\n"
-		"ps_sum0		%[tmp2],%[tmp2],%[tmp6],%[cT]\n"
-		"ps_sum1		%[tmp3],%[cT],%[tmp7],%[tmp3]\n"
-		"ps_sum0		%[tmp6],%[tmp9],%[fc0],%[tmp4]\n"
-		"ps_sum0		%[tmp9],%[tmp4],%[tmp4],%[tmp9]\n"
-		"psq_st			%[tmp8],8(%[mt]),0,0\n"
-		"ps_muls0		%[tmp5],%[tmp5],%[tmp1]\n"
-		"psq_st			%[tmp2],0(%[mt]),0,0\n"
-		"ps_sum1		%[tmp4],%[tmp0],%[tmp9],%[tmp4]\n"
-		"psq_st			%[tmp3],16(%[mt]),0,0\n"
-		"ps_sum0		%[tmp5],%[tmp5],%[fc0],%[cT]\n"
-		"psq_st			%[tmp6],24(%[mt]),0,0\n"
-		"psq_st			%[tmp4],32(%[mt]),0,0\n"
-		"psq_st			%[tmp5],40(%[mt]),0,0\n"
-		: [mt]"+r"(mt), [tmp0]"+f"(tmp0), [tmp1]"+f"(tmp1), [tmp2]"+f"(tmp2), [tmp3]"+f"(tmp3), 
-		[tmp4]"+f"(tmp4), [tmp5]"+f"(tmp5), [tmp6]"+f"(tmp6), [tmp7]"+f"(tmp7), [tmp8]"+f"(tmp8), 
-		[tmp9]"+f"(tmp9), [cT]"+f"(cT) : [axis]"r"(axis), [tT]"f"(tT), [sT]"f"(sT), [fc0]"f"(fc0)
-	);
-}
-*/
 void ps_guMtxRotAxisRad(Mtx mt,Vector *axis,f32 rad)
 {
 	f32 sinT,cosT;
