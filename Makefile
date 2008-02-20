@@ -274,10 +274,10 @@ dist: install-headers
 	@tar -cvjf libogc-$(DATESTRING).tar.bz2 include lib libogc_license.txt
 
 
-LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(MADLIB).a $(DBLIB).a $(ZLIB).a $(TINYSMBLIB).a
+LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(MADLIB).a $(DBLIB).a $(ZLIB).a $(TINYSMBLIB).a $(SDCARDLIB).a
 
 ifeq ($(PLATFORM),cube)
-LIBRARIES	+=	$(BBALIB).a $(SDCARDLIB).a
+LIBRARIES	+=	$(BBALIB).a 
 endif
 
 #---------------------------------------------------------------------------------
