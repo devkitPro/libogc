@@ -757,7 +757,9 @@ void __si_init()
 	SI_SetSamplingRate(0);
 	while(_siReg[13]&0x0001);
 	_siReg[13] = 0x80000000;
-
+#if defined(HW_RVL)
+	_siReg[15] &= ~0x80000000; 
+#endif
 	IRQ_Request(IRQ_PI_SI,__si_interrupthandler,NULL);
 	__UnmaskIrq(IRQMASK(IRQ_PI_SI));
 
