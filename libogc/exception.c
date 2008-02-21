@@ -42,33 +42,13 @@ distribution.
 
 #include "pad.h"
 #include "console.h"
+#include "lwp_threads.h"
+
+#include "ogc/video_types.h"
+
 //#define _EXC_DEBUG
 
 #define CPU_STACK_TRACE_DEPTH		10
-
-#define __DOUTBUFSIZE 256
-
-char __outstr[__DOUTBUFSIZE];
-
-int con_write(struct _reent *r,int fd,const char *ptr,int len);
-
-
-//---------------------------------------------------------------------------------
-void exception_printf(char *str, ...)
-//---------------------------------------------------------------------------------
-{
-	va_list args;
-	int len;
-
-	va_start(args, str);
-	len=vsnprintf(__outstr,__DOUTBUFSIZE,str,args);
-	va_end(args);
-
-	con_write(NULL,0, __outstr, len);
-}
-
-#define printf exception_printf
-
 
 typedef struct _framerec {
 	struct _framerec *up;
@@ -198,6 +178,35 @@ static void _cpu_print_stack(void *pc,void *lr,void *r1)
 	}
 }
 
+static void waitForReload() {
+
+	PAD_Init();
+	kprintf("Waiting for pad\n");
+
+	while ( 1 )
+	{
+
+		PAD_ScanPads();
+
+		int buttonsDown = PAD_ButtonsDown(0);
+
+		if( buttonsDown & PAD_TRIGGER_Z ) {
+			kprintf("reload ...\n");
+			void ( * Reload ) () = ( void ( * ) () ) 0x80001800;
+			Reload ();
+		}
+
+		if ( buttonsDown & PAD_BUTTON_START )
+			kprintf("start\n");
+		if ( buttonsDown & PAD_BUTTON_A )
+		{
+			kprintf("Reset\n");
+			SYS_ResetSystem(SYS_HOTRESET,0,FALSE);
+		}
+	}
+}
+
+
 //just implement core for unrecoverable exceptions.
 void c_default_exceptionhandler(frame_context *pCtx)
 {
@@ -206,16 +215,16 @@ void c_default_exceptionhandler(frame_context *pCtx)
 
 	kprintf("Exception (%s) occurred!\n", exception_name[pCtx->EXCPT_Number]);
 
-	kprintf("GPR00 %08x GPR08 %08x GPR16 %08x GPR24 %08x\n",pCtx->GPR[0], pCtx->GPR[8], pCtx->GPR[16], pCtx->GPR[24]);
-	kprintf("GPR01 %08x GPR09 %08x GPR17 %08x GPR25 %08x\n",pCtx->GPR[1], pCtx->GPR[9], pCtx->GPR[17], pCtx->GPR[25]);
-	kprintf("GPR02 %08x GPR10 %08x GPR18 %08x GPR26 %08x\n",pCtx->GPR[2], pCtx->GPR[10], pCtx->GPR[18], pCtx->GPR[26]);
-	kprintf("GPR03 %08x GPR11 %08x GPR19 %08x GPR27 %08x\n",pCtx->GPR[3], pCtx->GPR[11], pCtx->GPR[19], pCtx->GPR[27]);
-	kprintf("GPR04 %08x GPR12 %08x GPR20 %08x GPR28 %08x\n",pCtx->GPR[4], pCtx->GPR[12], pCtx->GPR[20], pCtx->GPR[28]);
-	kprintf("GPR05 %08x GPR13 %08x GPR21 %08x GPR29 %08x\n",pCtx->GPR[5], pCtx->GPR[13], pCtx->GPR[21], pCtx->GPR[29]);
-	kprintf("GPR06 %08x GPR14 %08x GPR22 %08x GPR30 %08x\n",pCtx->GPR[6], pCtx->GPR[14], pCtx->GPR[22], pCtx->GPR[30]);
-	kprintf("GPR07 %08x GPR15 %08x GPR23 %08x GPR31 %08x\n",pCtx->GPR[7], pCtx->GPR[15], pCtx->GPR[23], pCtx->GPR[31]);
-	kprintf("LR %08x SRR0 %08x SRR1 %08x MSR %08x\n", pCtx->LR, pCtx->SRR0, pCtx->SRR1,pCtx->MSR);
-	kprintf("DAR %08x DSISR %08x\n", mfspr(19), mfspr(18));
+	kprintf("GPR00 %08X GPR08 %08X GPR16 %08X GPR24 %08X\n",pCtx->GPR[0], pCtx->GPR[8], pCtx->GPR[16], pCtx->GPR[24]);
+	kprintf("GPR01 %08X GPR09 %08X GPR17 %08X GPR25 %08X\n",pCtx->GPR[1], pCtx->GPR[9], pCtx->GPR[17], pCtx->GPR[25]);
+	kprintf("GPR02 %08X GPR10 %08X GPR18 %08X GPR26 %08X\n",pCtx->GPR[2], pCtx->GPR[10], pCtx->GPR[18], pCtx->GPR[26]);
+	kprintf("GPR03 %08X GPR11 %08X GPR19 %08X GPR27 %08X\n",pCtx->GPR[3], pCtx->GPR[11], pCtx->GPR[19], pCtx->GPR[27]);
+	kprintf("GPR04 %08X GPR12 %08X GPR20 %08X GPR28 %08X\n",pCtx->GPR[4], pCtx->GPR[12], pCtx->GPR[20], pCtx->GPR[28]);
+	kprintf("GPR05 %08X GPR13 %08X GPR21 %08X GPR29 %08X\n",pCtx->GPR[5], pCtx->GPR[13], pCtx->GPR[21], pCtx->GPR[29]);
+	kprintf("GPR06 %08X GPR14 %08X GPR22 %08X GPR30 %08X\n",pCtx->GPR[6], pCtx->GPR[14], pCtx->GPR[22], pCtx->GPR[30]);
+	kprintf("GPR07 %08X GPR15 %08X GPR23 %08X GPR31 %08X\n",pCtx->GPR[7], pCtx->GPR[15], pCtx->GPR[23], pCtx->GPR[31]);
+	kprintf("LR %08X SRR0 %08x SRR1 %08x MSR %08x\n", pCtx->LR, pCtx->SRR0, pCtx->SRR1,pCtx->MSR);
+	kprintf("DAR %08X DSISR %08X\n", mfspr(19), mfspr(18));
 
 	_cpu_print_stack((void*)pCtx->SRR0,(void*)pCtx->LR,(void*)pCtx->GPR[1]);
 
@@ -224,23 +233,27 @@ void c_default_exceptionhandler(frame_context *pCtx)
 		u32 *pAdd = (u32*)pCtx->SRR0;
 		kprintf("\n\nCODE DUMP:\n\n");
 		for (i=0; i<12; i+=4)
-			kprintf("%p:  %08x %08x %08x %08x\n",
+			kprintf("%p:  %08X %08X %08X %08X\n",
 			&(pAdd[i]),pAdd[i], pAdd[i+1], pAdd[i+2], pAdd[i+3]);
 	}
-
-	PADStatus pads[PAD_CHANMAX];
-
-	while ( 1 )
-	{
-		PAD_Read ( pads );
-		if ( pads[PAD_CHAN0].button & PAD_BUTTON_START )
-		{
-			void ( * Reload ) () = ( void ( * ) () ) 0x80001800;
-			Reload ();
-		}
-		if ( pads[PAD_CHAN0].button & PAD_BUTTON_A )
-		{
-			SYS_ResetSystem(SYS_HOTRESET,0,FALSE);
-		}
-	}
+	
+	waitForReload();
 }
+
+
+void __libc_wrapup();
+
+void __libogc_exit(int status)
+{
+
+	VIDEO_SetFramebuffer(exception_xfb);
+	__console_init(&exception_con,exception_xfb,20,20,640,574,1280);
+
+
+	kprintf("Return code was %d\n", status);
+
+	__libc_wrapup();
+	__lwp_thread_stopmultitasking(waitForReload);
+
+}
+

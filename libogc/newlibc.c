@@ -73,16 +73,4 @@ void __libc_wrapup()
 	}
 }
 
-void _exit(int status)
-{
-	__libc_wrapup();
-	__lwp_thread_stopmultitasking(NULL);
-	for(;;);
-}
 
-void exit(int status)
-{
-	__libc_wrapup();
-	__lwp_thread_stopmultitasking(NULL);
-	for(;;);
-}

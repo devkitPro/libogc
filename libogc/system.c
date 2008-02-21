@@ -194,6 +194,7 @@ extern int __libogc_lock_init(int *lock,int recursive);
 extern int __libogc_lock_close(int *lock);
 extern int __libogc_lock_release(int *lock);
 extern int __libogc_lock_acquire(int *lock);
+extern void __libogc_exit(int status);
 extern void * __libogc_sbrk_r(struct _reent *ptr, ptrdiff_t incr);
 
 extern u8 __text_start[];
@@ -243,6 +244,7 @@ static void __init_syscall_array() {
 	__syscalls.lock_acquire = __libogc_lock_acquire;
 	__syscalls.malloc_lock = __libogc_malloc_lock;
 	__syscalls.malloc_unlock = __libogc_malloc_unlock;
+	__syscalls.exit = __libogc_exit;
 	
 }
 
