@@ -736,8 +736,12 @@ static const struct _timing {
 };
 
 #if defined(HW_RVL)
-static u32 oldDtvStatus = 0;
 static u32 vdacFlagRegion;
+static u32 i2cIdentFirst = 0;
+static u32 i2cIdentFlag = 1;
+static u32 oldTvStatus = 0x03e7;
+static u32 oldDtvStatus = 0x03e7;
+static vu32 *_i2cReg = (u32*)0xCD800000;
 #endif
 
 static u16 regs[60];
@@ -767,6 +771,8 @@ extern syssram* __SYS_LockSram();
 extern u32 __SYS_UnlockSram(u32 write);
 
 extern void __VIClearFramebuffer(void*,u32,u32);
+
+extern void udelay(int us);
 
 #ifdef _VIDEO_DEBUG
 static u32 messages$128 = 0;
@@ -852,7 +858,7 @@ static __inline__ u32 cntlzd(u64 bit)
 
 static const struct _timing* __gettiming(u32 vimode)
 {
-	if(vimode>0x0015) return NULL;
+	if(vimode>0x1e) return NULL;
 
 	switch(vimode) {
 		case VI_TVMODE_NTSC_INT:
@@ -896,6 +902,79 @@ static const struct _timing* __gettiming(u32 vimode)
 	}
 	return NULL;
 }
+
+#if defined(HW_RVL)
+static inline void __viOpenI2C(u32 channel)
+{
+	u32 val = ((_i2cReg[49]&~0x8000)|0x4000);
+	val |= _SHIFTL(channel,15,1);
+	_i2cReg[49] = val;
+}
+
+static inline u32 __viSetSCL(u32 channel)
+{
+	u32 val = (_i2cReg[48]&~0x4000);
+	val |= _SHIFTL(channel,14,1);
+	_i2cReg[48] = val;
+	return 1;
+}
+static inline u32 __viSetSDA(u32 channel)
+{
+	u32 val = (_i2cReg[48]&~0x8000);
+	val |= _SHIFTL(channel,15,1);
+	_i2cReg[48] = val;
+	return 1;
+}
+
+static inline u32 __viGetSDA()
+{
+	return _SHIFTR(_i2cReg[50],15,1);
+}
+
+static inline void __viCheckI2C()
+{
+	__viOpenI2C(0);
+	udelay(4);
+
+	i2cIdentFlag = 0;
+	if(__viGetSDA()!=0) i2cIdentFlag = 1;
+}
+
+static u32 __sendSlaveAddress(u8 addr)
+{
+	u32 i;
+
+	__viSetSDA(i2cIdentFlag^1);
+	udelay(2);
+
+	__viSetSCL(0);
+	for(i=0;i<8;i++) {
+		if(addr&0x80) __viSetSDA(i2cIdentFlag);
+		else __viSetSDA(i2cIdentFlag^1);
+		udelay(2);
+
+		__viSetSCL(1);
+		udelay(2);
+
+		__viSetSCL(0);
+		addr <<= 1;
+	}
+
+	__viOpenI2C(0);
+	udelay(2);
+
+	__viSetSCL(1);
+	udelay(2);
+
+	if(i2cIdentFlag==1 && __viGetSDA()!=0) return 0;
+
+	__viSetSDA(i2cIdentFlag^1);
+	__viOpenI2C(1);
+	__viSetSCL(0);
+
+	return 1;
+}
+#endif
 
 static inline void __setInterruptRegs(const struct _timing *tm)
 {
@@ -1135,12 +1214,12 @@ static inline void __importAdjustingValues()
 static void __VIInit(u32 vimode)
 {
 	u32 cnt;
-	u32 vi_mode,interlace,prog;
+	u32 vi_mode,interlace,progressive;
 	const struct _timing *cur_timing = NULL;
 
-	vi_mode = vimode>>2;
-	interlace = vimode&0x01;
-	prog = vimode&0x02;
+	vi_mode = ((vimode>>2)&0x07);
+	interlace = (vimode&0x01);
+	progressive = (vimode&0x02);
 	
 	cur_timing = __gettiming(vimode);
 
@@ -1178,18 +1257,78 @@ static void __VIInit(u32 vimode)
 	_viReg[27] = 0x0001;		//set DI1
 	_viReg[36] = 0x2828;		//set HSR
 	
-	if(vimode==0x0002 || vimode==0x0003) {
+	if(vi_mode<VI_PAL && vi_mode>=VI_DEBUG_PAL) vi_mode = VI_NTSC;
+	if(progressive){
 		_viReg[1] = ((vi_mode<<8)|0x0005);		//set MODE & INT & enable
 		_viReg[54] = 0x0001;
 	} else {
-		_viReg[1] = ((vi_mode<<8)|(prog<<2)|0x0001);
+		_viReg[1] = ((vi_mode<<8)|(interlace<<2)|0x0001);
 		_viReg[54] = 0x0000;
 	}
 }
 
 #if defined(HW_RVL)
-static void __VISendI2CData(u32 cmd,u16 *val,u32 type)
+static u32 __VISendI2CData(u8 addr,void *val,u32 len)
 {
+	u8 c;
+	s32 i,j;
+	u32 level,ret;
+
+	if(i2cIdentFirst==0) {
+		__viCheckI2C();
+		i2cIdentFirst = 1;
+	}
+
+	_CPU_ISR_Disable(level);
+
+	__viOpenI2C(1);
+	__viSetSCL(1);
+
+	__viSetSDA(i2cIdentFlag);
+	udelay(4);
+
+	ret = __sendSlaveAddress(addr);
+	if(ret==0) {
+		_CPU_ISR_Restore(level);
+		return 0;
+	}
+
+	__viOpenI2C(1);
+	for(i=0;i<len;i++) {
+		c = ((u8*)val)[i];
+		for(j=0;j<8;j++) {
+			if(c&0x80) __viSetSDA(i2cIdentFlag);
+			else __viSetSDA(i2cIdentFlag^1);
+			udelay(2);
+
+			__viSetSCL(1);
+			udelay(2);
+			__viSetSCL(0);
+
+			c <<= 1;
+		}
+		__viOpenI2C(0);
+		udelay(2);
+		__viSetSCL(1);
+		udelay(2);
+
+		if(i2cIdentFlag==1 && __viGetSDA()!=0) {
+			_CPU_ISR_Restore(level);
+			return 0;
+		}
+
+		__viSetSDA(i2cIdentFlag^1);
+		__viOpenI2C(1);
+		__viSetSCL(0);
+	}
+
+	__viOpenI2C(1);
+	__viSetSDA(i2cIdentFlag^1);
+	udelay(2);
+	__viSetSDA(i2cIdentFlag);
+
+	_CPU_ISR_Restore(level);
+	return 1;
 }
 
 static void __VISetYUVSEL(u8 dtvstatus)
@@ -1202,7 +1341,17 @@ static void __VISetYUVSEL(u8 dtvstatus)
 	else if(VI_MPAL==0x0002) vdacFlagRegion = 0x0001;
 
 	val = (_SHIFTL(0x01,8,8)|(_SHIFTL(dtvstatus,5,8)|vdacFlagRegion));
-	__VISendI2CData(0xe0,&val,2);
+	__VISendI2CData(0xe0,&val,sizeof(u16));
+	udelay(2);
+}
+
+static void __VISetFilterEURGB60(u8 enable)
+{
+	u16 val;
+
+	val = (_SHIFTL(0x6e,8,8)|enable);
+	__VISendI2CData(0xe0,&val,sizeof(u16));
+	udelay(2);
 }
 #endif
 
@@ -1352,7 +1501,7 @@ static inline void __VIGetCurrentPosition(s32 *px,s32 *py)
 static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 {
 #if defined(HW_RVL)
-	u8 dtv;
+	u8 dtv, tv;
 #endif
 	u32 ret = 0;
 	u32 intr;
@@ -1401,11 +1550,16 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 		}
 	}
 #if defined(HW_RVL)
-	dtv = (_viReg[55]&0x03);
-	if(dtv!=oldDtvStatus) {
-		__VISetYUVSEL(dtv);
-		oldDtvStatus = dtv;
+	dtv = (_viReg[55]&0x01);
+	if(dtv!=oldDtvStatus) __VISetYUVSEL(dtv);
+	oldDtvStatus = dtv;
+
+	tv = VIDEO_GetCurrentTvMode();
+	if(tv!=oldTvStatus) {
+		if(tv==VI_EURGB60) __VISetFilterEURGB60(1);
+		else __VISetFilterEURGB60(0);
 	}
+	oldTvStatus = tv;
 #endif
 	if(postRetraceCB)
 		postRetraceCB(retraceCount);

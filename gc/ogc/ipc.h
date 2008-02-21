@@ -7,6 +7,7 @@
 
 #define IPC_OK				  0
 #define IPC_EINVAL			 -4
+#define IPC_ENOHEAP			 -5
 #define IPC_EQUEUEFULL       -8
 #define IPC_ENOMEM			-22
 
@@ -24,7 +25,7 @@ typedef struct _ioctlv
 
 typedef s32 (*ipccallback)(s32 result,void *usrdata);
 
-s32 iosCreateHeap(void *membase,s32 size);
+s32 iosCreateHeap(s32 size);
 s32 iosDestroyHeap(s32 hid);
 void* iosAlloc(s32 hid,s32 size);
 void iosFree(s32 hid,void *ptr);
@@ -51,6 +52,9 @@ s32 IOS_Ioctl(s32 fd,s32 ioctl,void *buffer_in,s32 len_in,void *buffer_io,s32 le
 s32 IOS_IoctlAsync(s32 fd,s32 ioctl,void *buffer_in,s32 len_in,void *buffer_io,s32 len_io,ipccallback ipc_cb,void *usrdata);
 s32 IOS_Ioctlv(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv);
 s32 IOS_IoctlvAsync(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv,ipccallback ipc_cb,void *usrdata);
+
+s32 IOS_IoctlvFormat(s32 hId,s32 fd,s32 ioctl,const char *format,...);
+s32 IOS_IoctlvFormatAsync(s32 hId,s32 fd,s32 ioctl,ipccallback usr_cb,void *usr_data,const char *format,...);
 
 #ifdef __cplusplus
    }
