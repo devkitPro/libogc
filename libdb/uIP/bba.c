@@ -223,9 +223,6 @@ static struct uip_netif *bba_netif = NULL;
 static struct bba_priv bba_device;
 static struct bba_descr cur_descr;
 
-
-static vu32* const _siReg = (u32*)0xCC006400;
-
 static void bba_cmd_ins(u32 reg,void *val,u32 len);
 static void bba_cmd_outs(u32 reg,void *val,u32 len);
 static void bba_ins(u32 reg,void *val,u32 len);
@@ -787,8 +784,6 @@ s8_t uip_bba_init(struct uip_netif *dev)
 {
 	s8_t ret;
 	s32_t cnt;
-
-	_siReg[15] = (_siReg[15]&~0x80000000);
 
 	ret = bba_probe(dev);
 	if(ret<0) return ret;

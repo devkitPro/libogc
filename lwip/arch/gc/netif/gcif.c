@@ -206,8 +206,6 @@ static struct bba_descr cur_descr;
 static struct netif *gc_netif = NULL;
 static const struct eth_addr ethbroadcast = {{0xffU,0xffU,0xffU,0xffU,0xffU,0xffU}};
 
-static vu32* const _siReg = (u32*)0xCC006400;
-
 static err_t __bba_link_tx(struct netif *dev,struct pbuf *p);
 static u32 __bba_rx_err(u8 status,struct bba_priv *priv);
 
@@ -990,8 +988,6 @@ err_t bba_init(struct netif *dev)
 	err_t ret;
 	struct bba_priv *priv = (struct bba_priv*)dev->state;
 
-	_siReg[15] = (_siReg[15]&~0x80000000);
-	
 	__bba_exi_stop(priv);
 
 	LWIP_DEBUGF(NETIF_DEBUG, ("bba_init(call EXI_RegisterEXICallback())\n"));
