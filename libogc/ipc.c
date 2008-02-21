@@ -204,10 +204,10 @@ static s32 __ioctlvfmtCB(s32 result,void *userdata)
 	free(cbdata);
 		
 	// call the user callback
-	if(user_cb)
+	if(user_cb) 
 		return user_cb(result, user_data);
-	else
-		return IPC_OK;
+	
+	return result;
 }
 
 static s32 __ipc_queuerequest(struct _ipcreq *req)
