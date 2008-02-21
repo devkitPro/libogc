@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
+#include <ctype.h>
 #include <malloc.h>
 #include <time.h>
 #include <gcutil.h>
@@ -19,6 +21,8 @@
 
 #define IPC_HEAP_SIZE			2048
 #define IPC_REQUESTSIZE			64
+
+#define IOS_MAXFMT_PARAMS		32
 
 #define IOS_OPEN				0x01
 #define IOS_CLOSE				0x02
@@ -91,6 +95,22 @@ struct _ipcheap
 	heap_cntrl heap;
 };
 
+struct _ioctlvfmt_bufent
+{
+	void *ipc_buf;
+	void *io_buf;
+	s32 copy_len;
+};
+
+struct _ioctlvfmt_cbdata
+{
+	ipccallback user_cb;
+	void *user_data;
+	s32 num_bufs;
+	u32 hId;
+	struct _ioctlvfmt_bufent *bufs;
+};
+
 static s32 _ipc_hid = -1;
 static s32 _ipc_mailboxack = 1;
 static u32 _ipc_relnchFl = 0;
@@ -148,6 +168,46 @@ static __inline__ void* __ipc_allocreq()
 static __inline__ void __ipc_freereq(void *ptr)
 {
 	iosFree(_ipc_hid,ptr);
+}
+
+static s32 __ioctlvfmtCB(s32 result,void *userdata)
+{
+	ipccallback user_cb;
+	void *user_data;
+	struct _ioctlvfmt_cbdata *cbdata;
+	struct _ioctlvfmt_bufent *pbuf;
+
+	cbdata = (struct _ioctlvfmt_cbdata*)userdata;
+	
+	// deal with data buffers
+	if(cbdata->bufs) {
+		pbuf = cbdata->bufs;
+		while(cbdata->num_bufs--) {
+			if(pbuf->ipc_buf) {
+				// copy data if needed
+				if(pbuf->io_buf && pbuf->copy_len)
+					memcpy(pbuf->io_buf, pbuf->ipc_buf, pbuf->copy_len);
+				// then free the buffer
+				iosFree(cbdata->hId, pbuf->ipc_buf);
+			}
+			pbuf++;
+		}
+	}
+	
+	user_cb = cbdata->user_cb;
+	user_data = cbdata->user_data;
+	
+	// free buffer list
+	free(cbdata->bufs);
+	
+	// free callback data
+	free(cbdata);
+		
+	// call the user callback
+	if(user_cb)
+		return user_cb(result, user_data);
+	else
+		return IPC_OK;
 }
 
 static s32 __ipc_queuerequest(struct _ipcreq *req)
@@ -340,10 +400,210 @@ static void __ipc_interrupthandler(u32 irq,void *ctx)
 	if((ipc_int&0x0022)==0x0022) __ipc_ackhandler();
 }
 
-s32 iosCreateHeap(void *membase,s32 size)
+static s32 __ios_ioctlvformat_parse(const char *format,va_list args,struct _ioctlvfmt_cbdata *cbdata,s32 *cnt_in,s32 *cnt_io,struct _ioctlv **argv,s32 hId)
 {
-	s32 i;
+	s32 ret,i;
+	void *pdata;
+	void *iodata;
+	char type,*ps;
+	s32 len,maxbufs = 0;
+	ioctlv *argp = NULL;
+	struct _ioctlvfmt_bufent *bufp;
+
+
+	maxbufs = strnlen(format,IOS_MAXFMT_PARAMS);
+	if(maxbufs>=IOS_MAXFMT_PARAMS) return IPC_EINVAL;
+
+	cbdata->hId = hId;
+	cbdata->bufs = malloc((sizeof(struct _ioctlvfmt_bufent)*(maxbufs+1)));
+	if(cbdata->bufs==NULL) return IPC_ENOMEM;
+
+	argp = iosAlloc(hId,(sizeof(struct _ioctlv)*(maxbufs+1)));
+	if(argp==NULL) return IPC_ENOMEM;
+
+	*argv = argp;
+	bufp = cbdata->bufs;
+	memset(argp,0,(sizeof(struct _ioctlv)*(maxbufs+1)));
+	memset(bufp,0,(sizeof(struct _ioctlvfmt_bufent)*(maxbufs+1)));
+
+	cbdata->num_bufs = 1;
+	bufp->ipc_buf = argp;
+	bufp++;
+
+	*cnt_in = 0;
+	*cnt_io = 0;
+
+	ret = IPC_OK;
+	while(*format) {
+		type = tolower(*format);
+		switch(type) {
+			case 'b':
+				pdata = iosAlloc(hId,sizeof(u8));
+				if(pdata==NULL) {
+					ret = IPC_ENOMEM;
+					goto free_and_error;
+				}
+				*(u8*)pdata = va_arg(args,u32);
+				argp->data = pdata;
+				argp->len = sizeof(u8);
+				bufp->ipc_buf = pdata;
+				cbdata->num_bufs++;
+				(*cnt_in)++;
+				argp++;
+				bufp++;
+				break;
+			case 'h':
+				pdata = iosAlloc(hId,sizeof(u16));
+				if(pdata==NULL) {
+					ret = IPC_ENOMEM;
+					goto free_and_error;
+				}
+				*(u16*)pdata = va_arg(args,u32);
+				argp->data = pdata;
+				argp->len = sizeof(u16);
+				bufp->ipc_buf = pdata;
+				cbdata->num_bufs++;
+				(*cnt_in)++;
+				argp++;
+				bufp++;
+				break;
+			case 'i':
+				pdata = iosAlloc(hId,sizeof(u32));
+				if(pdata==NULL) {
+					ret = IPC_ENOMEM;
+					goto free_and_error;
+				}
+				*(u32*)pdata = va_arg(args,u32);
+				argp->data = pdata;
+				argp->len = sizeof(u32);
+				bufp->ipc_buf = pdata;
+				cbdata->num_bufs++;
+				(*cnt_in)++;
+				argp++;
+				bufp++;
+				break;
+			case 'd':
+				argp->data = va_arg(args, void*);
+				argp->len = va_arg(args, u32);
+				(*cnt_in)++;
+				break;
+			case 's':
+				ps = va_arg(args, char*);
+				len = strnlen(ps,256);
+				if(len>=256) {
+					ret = IPC_EINVAL;
+					goto free_and_error;
+				}
+
+				pdata = iosAlloc(hId,(len+1));
+				if(pdata==NULL) {
+					ret = IPC_ENOMEM;
+					goto free_and_error;
+				}
+				memcpy(pdata,ps,(len+1));
+				argp->data = pdata;
+				argp->len = (len+1);
+				bufp->ipc_buf = pdata;
+				cbdata->num_bufs++;
+				(*cnt_in)++;
+				argp++;
+				bufp++;
+				break;
+			case ':':
+				format++;
+				goto parse_io_params;
+			default:
+				ret = IPC_EINVAL;
+				goto free_and_error;
+		}
+		format++;
+	}
+
+parse_io_params:
+	while(*format) {
+		type = tolower(*format);
+		switch(type) {
+			case 'b':
+				pdata = iosAlloc(hId,sizeof(u8));
+				if(pdata==NULL) {
+					ret = IPC_ENOMEM;
+					goto free_and_error;
+				}
+				iodata = va_arg(args,u8*);
+				*(u8*)pdata = *(u8*)iodata;
+				argp->data = pdata;
+				argp->len = sizeof(u8);
+				bufp->ipc_buf = pdata;
+				bufp->io_buf = iodata;
+				bufp->copy_len = sizeof(u8);
+				cbdata->num_bufs++;
+				(*cnt_io)++;
+				argp++;
+				bufp++;
+				break;
+			case 'h':
+				pdata = iosAlloc(hId,sizeof(u16));
+				if(pdata==NULL) {
+					ret = IPC_ENOMEM;
+					goto free_and_error;
+				}
+				iodata = va_arg(args,u16*);
+				*(u16*)pdata = *(u16*)iodata;
+				argp->data = pdata;
+				argp->len = sizeof(u16);
+				bufp->ipc_buf = pdata;
+				bufp->io_buf = iodata;
+				bufp->copy_len = sizeof(u16);
+				cbdata->num_bufs++;
+				(*cnt_io)++;
+				argp++;
+				bufp++;
+				break;
+			case 'i':
+				pdata = iosAlloc(hId,sizeof(u32));
+				if(pdata==NULL) {
+					ret = IPC_ENOMEM;
+					goto free_and_error;
+				}
+				iodata = va_arg(args,u32*);
+				*(u32*)pdata = *(u32*)iodata;
+				argp->data = pdata;
+				argp->len = sizeof(u32);
+				bufp->ipc_buf = pdata;
+				bufp->io_buf = iodata;
+				bufp->copy_len = sizeof(u32);
+				cbdata->num_bufs++;
+				(*cnt_io)++;
+				argp++;
+				bufp++;
+				break;
+			case 'd':
+				argp->data = va_arg(args, void*);
+				argp->len = va_arg(args, u32);
+				(*cnt_io)++;
+				break;
+			default:
+				ret = IPC_EINVAL;
+				goto free_and_error;
+		}
+		format++;
+	}
+	return IPC_OK;
+
+free_and_error:
+	for(i=0;i<cbdata->num_bufs;i++) {
+		if(cbdata->bufs[i].ipc_buf!=NULL) iosFree(hId,cbdata->bufs[i].ipc_buf);
+	}
+	free(cbdata->bufs);
+	return ret;
+}
+
+s32 iosCreateHeap(s32 size)
+{
+	s32 i,ret;
+	s32 free;
 	u32 level;
+	u32 ipclo,ipchi;
 #ifdef DEBUG_IPC
 	printf("iosCreateHeap(0x%p,%d)\n",membase,size);
 #endif
@@ -354,20 +614,31 @@ s32 iosCreateHeap(void *membase,s32 size)
 		if(_ipc_heaps[i].membase==NULL) break;
 		i++;
 	}
-	if(i>=8) return -5;
+	if(i>=8) {
+		_CPU_ISR_Restore(level);
+		return IPC_ENOHEAP;
+	}
 
-	_ipc_heaps[i].membase = membase;
+	ipclo = (((u32)IPC_GetBufferLo()+0x1f)&~0x1f);
+	ipchi = (u32)IPC_GetBufferHi();
+	free = (ipchi - (ipclo + size));
+	if(free<0) return IPC_ENOMEM;
+
+	_ipc_heaps[i].membase = (void*)ipclo;
 	_ipc_heaps[i].size = size;
-	_CPU_ISR_Restore(level);
 
-	__lwp_heap_init(&_ipc_heaps[i].heap,membase,size,PPC_CACHE_ALIGNMENT);
+	ret = __lwp_heap_init(&_ipc_heaps[i].heap,(void*)ipclo,size,PPC_CACHE_ALIGNMENT);
+	if(ret<=0) return IPC_ENOMEM;
+
+	IPC_SetBufferLo((void*)(ipclo+size));
+	_CPU_ISR_Restore(level);
 	return i;
 }
 
 s32 iosDestroyHeap(s32 hid)
 {
-	u32 level;
 	s32 ret = 0;
+	u32 level;
 #ifdef DEBUG_IPC
 	printf("iosDestroyHeap(%d)\n",hid);
 #endif
@@ -434,21 +705,12 @@ void __IPC_Init()
 
 u32 __IPC_ClntInit()
 {
-	s32 free;
-	u32 ipclo,ipchi;
-
 	if(!_ipc_clntinitialized) {
 		_ipc_clntinitialized = 1;
 
 		__IPC_Init();
 
-		ipclo = (u32)IPC_GetBufferLo();
-		ipchi = (u32)IPC_GetBufferHi();
-		free = (ipchi - (ipclo+IPC_HEAP_SIZE));
-		if(free<0) return IPC_ENOMEM;
-
-		_ipc_hid = iosCreateHeap((void*)ipclo,IPC_HEAP_SIZE);
-		IPC_SetBufferLo((void*)(ipclo+IPC_HEAP_SIZE));
+		_ipc_hid = iosCreateHeap(IPC_HEAP_SIZE);
 		IRQ_Request(IRQ_PI_ACR,__ipc_interrupthandler,NULL);
 		__UnmaskIrq(IM_PI_ACR);
 		IPC_WriteReg(1,56);
@@ -942,6 +1204,57 @@ s32 IOS_IoctlvAsync(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv,ipccallb
 	return ret;
 }
 
+s32 IOS_IoctlvFormat(s32 hId,s32 fd,s32 ioctl,const char *format,...)
+{
+	s32 ret;
+	va_list args;
+	s32 cnt_in,cnt_io;
+	struct _ioctlv *argv;
+	struct _ioctlvfmt_cbdata *cbdata;
 
+	cbdata = malloc(sizeof(struct _ioctlvfmt_cbdata));
+	if(cbdata==NULL) return IPC_ENOMEM;
+
+	memset(cbdata,0,sizeof(struct _ioctlvfmt_cbdata));
+
+	va_start(args,format);
+	ret = __ios_ioctlvformat_parse(format,args,cbdata,&cnt_in,&cnt_io,&argv,hId);
+	va_end(args);
+	if(ret<0) {
+		free(cbdata);
+		return ret;
+	}
+
+	ret = IOS_Ioctlv(fd,ioctl,cnt_in,cnt_io,argv);
+	__ioctlvfmtCB(ret,cbdata);
+
+	return ret;
+}
+
+s32 IOS_IoctlvFormatAsync(s32 hId,s32 fd,s32 ioctl,ipccallback usr_cb,void *usr_data,const char *format,...)
+{
+	s32 ret;
+	va_list args;
+	s32 cnt_in,cnt_io;
+	struct _ioctlv *argv;
+	struct _ioctlvfmt_cbdata *cbdata;
+
+	cbdata = malloc(sizeof(struct _ioctlvfmt_cbdata));
+	if(cbdata==NULL) return IPC_ENOMEM;
+
+	memset(cbdata,0,sizeof(struct _ioctlvfmt_cbdata));
+
+	va_start(args,format);
+	ret = __ios_ioctlvformat_parse(format,args,cbdata,&cnt_in,&cnt_io,&argv,hId);
+	va_end(args);
+	if(ret<0) {
+		free(cbdata);
+		return ret;
+	}
+
+	cbdata->user_cb = usr_cb;
+	cbdata->user_data = usr_data;
+	return IOS_IoctlvAsync(fd,ioctl,cnt_in,cnt_io,argv,__ioctlvfmtCB,cbdata);
+}
 
 #endif
