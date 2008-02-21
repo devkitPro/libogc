@@ -120,6 +120,18 @@ SOURCE=.\libogc\cond.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\console.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\console.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\console_font_8x16.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\decrementer.c
 # End Source File
 # Begin Source File
@@ -177,6 +189,14 @@ SOURCE=.\libogc\irq.c
 # Begin Source File
 
 SOURCE=.\libogc\irq_handler.S
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\kprintf.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\lock_supp.c
 # End Source File
 # Begin Source File
 
@@ -288,6 +308,10 @@ SOURCE=.\libogc\lwp_wkspace.inl
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\malloc_lock.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\message.c
 # End Source File
 # Begin Source File
@@ -296,11 +320,19 @@ SOURCE=.\libogc\mutex.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\newlibc.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\ogc_crt0.S
 # End Source File
 # Begin Source File
 
 SOURCE=.\libogc\pad.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\sbrk.c
 # End Source File
 # Begin Source File
 
@@ -329,6 +361,14 @@ SOURCE=.\libogc\system_asm.S
 # Begin Source File
 
 SOURCE=.\libogc\tdf.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\timesupp.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\timesupp.h
 # End Source File
 # Begin Source File
 
@@ -685,138 +725,6 @@ SOURCE=.\libdb\usb.c
 # Begin Source File
 
 SOURCE=.\libdb\usb.h
-# End Source File
-# End Group
-# Begin Group "libogcsys.c"
-
-# PROP Default_Filter ""
-# Begin Source File
-
-SOURCE=.\libogcsys\close.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\console.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\console.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\console_font.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\console_font_8x8.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\dvd_supp.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\dvd_supp.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\flock_supp.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\fstat.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\getpid.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\iosupp.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\iosupp.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\isatty.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\kill.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\lock_supp.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\lseek.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\malloc_lock.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\netio_fake.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\netio_fake.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\newlibc.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\open.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\read.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\sbrk.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\sdcardio_fake.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\sdcardio_fake.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\sleep.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\stdin_fake.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\stdin_fake.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\timesupp.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\timesupp.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\usleep.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libogcsys\write.c
 # End Source File
 # End Group
 # Begin Group "libsdcard.c"
@@ -1510,39 +1418,11 @@ SOURCE=.\gc\zlib.h
 # End Group
 # Begin Source File
 
-SOURCE=.\gcbogc.ld
-# End Source File
-# Begin Source File
-
 SOURCE=.\libogc.dox
 # End Source File
 # Begin Source File
 
 SOURCE=.\Makefile
-# End Source File
-# Begin Source File
-
-SOURCE=.\ogc.ld
-# End Source File
-# Begin Source File
-
-SOURCE=.\rvl.ld
-# End Source File
-# Begin Source File
-
-SOURCE=.\specs.3.4.6
-# End Source File
-# Begin Source File
-
-SOURCE=.\specs.4.1.2
-# End Source File
-# Begin Source File
-
-SOURCE=.\specs.4.2.3
-# End Source File
-# Begin Source File
-
-SOURCE=.\vgcogc.ld
 # End Source File
 # End Target
 # End Project
