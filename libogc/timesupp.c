@@ -214,3 +214,23 @@ time_t _DEFUN(time,(timer),
 	if (timer) *timer = gctime;
 	return gctime;
 }
+
+unsigned int _DEFUN(sleep,(s),
+		   unsigned int s)
+{
+	struct timespec tb;
+
+	tb.tv_sec = s;
+	tb.tv_nsec = 0;
+	return nanosleep(&tb);
+}
+
+unsigned int _DEFUN(usleep,(us),
+           unsigned int us)
+{
+	struct timespec tb;
+
+	tb.tv_sec = 0;
+	tb.tv_nsec = us*TB_NSPERUS;
+	return nanosleep(&tb);
+}
