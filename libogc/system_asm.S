@@ -423,3 +423,18 @@ __reset:
 7:	nop
 	b		7b
 8:	b		9b	
+
+	.globl SYS_SwitchFiber
+SYS_SwitchFiber:
+	mflr	r0
+	mr		r9,rsp
+	stwu	r9,-8(r8)
+	mr		rsp,r8
+	stw		r0,4(r9)
+	mtlr	r7
+	blrl
+	lwz		r5,0(rsp)
+	lwz		r0,4(r5)
+	mtlr	r0
+	mr		rsp,r5
+	blr
