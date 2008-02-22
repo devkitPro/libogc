@@ -427,14 +427,14 @@ __reset:
 	.globl SYS_SwitchFiber
 SYS_SwitchFiber:
 	mflr	r0
-	mr		r9,rsp
+	mr		r9,sp
 	stwu	r9,-8(r8)
-	mr		rsp,r8
+	mr		sp,r8
 	stw		r0,4(r9)
 	mtlr	r7
 	blrl
-	lwz		r5,0(rsp)
+	lwz		r5,0(sp)
 	lwz		r0,4(r5)
 	mtlr	r0
-	mr		rsp,r5
+	mr		sp,r5
 	blr
