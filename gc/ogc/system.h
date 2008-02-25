@@ -111,6 +111,11 @@ distribution.
  *@}
  */
 
+#define SYS_GetArenaLo					SYS_GetArena1Lo
+#define SYS_SetArenaLo					SYS_SetArena1Lo
+#define SYS_GetArenaHi					SYS_GetArena1Hi
+#define SYS_SetArenaHi					SYS_SetArena1Hi
+#define SYS_GetArenaSize				SYS_GetArena1Size
 
 #ifdef __cplusplus
    extern "C" {
@@ -314,6 +319,20 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu);
 void SYS_RegisterResetFunc(sys_resetinfo *info);
 u32 SYS_GetArenaSize();
 void SYS_SwitchFiber(u32 arg0,u32 arg1,u32 arg2,u32 arg3,u32 pc,u32 newsp);
+
+void* SYS_GetArena1Lo();
+void SYS_SetArena1Lo(void *newLo);
+void* SYS_GetArena1Hi();
+void SYS_SetArena1Hi(void *newHi);
+u32 SYS_GetArena1Size();
+
+#if defined(HW_RVL)
+void* SYS_GetArena2Lo();
+void SYS_SetArena2Lo(void *newLo);
+void* SYS_GetArena2Hi();
+void SYS_SetArena2Hi(void *newHi);
+u32 SYS_GetArena2Size();
+#endif
 
 void kprintf(const char *str, ...);
 
