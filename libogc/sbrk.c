@@ -8,10 +8,7 @@
 
 #include "asm.h"
 #include "processor.h"
-
-extern void SYS_SetArenaLo(void *newLo);
-extern void* SYS_GetArenaLo();
-extern void* SYS_GetArenaHi();
+#include "system.h"
 
 void* _DEFUN(__libogc_sbrk_r,(ptr,incr),
 			 struct _reent *ptr _AND

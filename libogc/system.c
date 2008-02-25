@@ -39,6 +39,7 @@ distribution.
 #include "exi.h"
 #include "cache.h"
 #include "video.h"
+#include "system.h"
 #include "sys_state.h"
 #include "lwp_threads.h"
 #include "lwp_priority.h"
@@ -121,9 +122,11 @@ static lwp_queue sys_reset_func_queue;
 static u32 system_initialized = 0;
 static lwp_objinfo sys_alarm_objects;
 
-static void *__sysarenalo = NULL;
-static void *__sysarenahi = NULL;
+static void *__sysarena1lo = NULL;
+static void *__sysarena1hi = NULL;
 #if defined(HW_RVL)
+static void *__sysarena2lo = NULL;
+static void *__sysarena2hi = NULL;
 static void *__ipcbufferlo = NULL;
 static void *__ipcbufferhi = NULL;
 #endif
@@ -135,10 +138,6 @@ static vu32* const _piReg = (u32*)0xCC003000;
 static vu16* const _memReg = (u16*)0xCC004000;
 static vu16* const _dspReg = (u16*)0xCC005000;
 
-void SYS_SetArenaLo(void *newLo);
-void* SYS_GetArenaLo();
-void SYS_SetArenaHi(void *newHi);
-void* SYS_GetArenaHi();
 void __SYS_ReadROM(void *buf,u32 len,u32 offset);
 
 static s32 __sram_sync();
@@ -199,7 +198,11 @@ extern void * __libogc_sbrk_r(struct _reent *ptr, ptrdiff_t incr);
 
 extern u8 __text_start[];
 extern u8 __isIPL[];
-extern u8 __ArenaLo[],__ArenaHi[];
+extern u8 __Arena1Lo[], __Arena1Hi[];
+#if defined(HW_RVL)
+extern u8 __Arena2Lo[], __Arena2Hi[];
+extern u8 __ipcbufferLo[], __ipcbufferHi[];
+#endif
 
 static u32 __sys_inIPL = (u32)__isIPL;
 
@@ -370,6 +373,7 @@ static void __lowmem_init()
 	void *arena_start = (void*)0x80003f00;
 #endif
 
+#if defined(HW_DOL)
 	memset(ram_start,0,0x100);
 	memset(arena_start,0,0x100);
 
@@ -378,8 +382,8 @@ static void __lowmem_init()
 	*((u32*)(ram_start+0x28))	= SYSMEM1_SIZE;	// physical memory size
 	*((u32*)(ram_start+0x2C))	= 1 + ((*(u32*)0xCC00302c)>>28);
 
-	*((u32*)(ram_start+0x30))	= 0;
-	*((u32*)(ram_start+0x34))	= 0x816ffff0;
+	*((u32*)(ram_start+0x30))	= (u32)__Arena1Lo;
+	*((u32*)(ram_start+0x34))	= (u32)__Arena1Hi;
 
 	*((u32*)(ram_start+0xEC))	= (u32)ram_end;	// ram_end (??)
 	*((u32*)(ram_start+0xF0))	= SYSMEM1_SIZE;	// simulated memory size
@@ -392,18 +396,21 @@ static void __lowmem_init()
 	DCFlushRangeNoSync(ram_start, 0x100);
 	DCFlushRangeNoSync(arena_start, 0x100);
 	_sync();
-	
-	SYS_SetArenaLo((void*)__ArenaLo);
-	SYS_SetArenaHi((void*)__ArenaHi);
+#endif
+
+	SYS_SetArenaLo((void*)__Arena1Lo);
+	SYS_SetArenaHi((void*)__Arena1Hi);
+#if defined(HW_RVL)
+	SYS_SetArena2Lo((void*)__Arena2Lo);
+	SYS_SetArena2Hi((void*)__Arena2Hi);
+#endif
 }
 
 #if defined(HW_RVL)
-
 static void __ipcbuffer_init()
 {	
-	u32 *ipcbuffer = (u32*)0x80003130;
-	__ipcbufferlo = (void*)(ipcbuffer[0]);
-	__ipcbufferhi = (void*)(ipcbuffer[1]);
+	__ipcbufferlo = (void*)__ipcbufferLo;
+	__ipcbufferhi = (void*)__ipcbufferHi;
 }
 #endif
 
@@ -1051,58 +1058,113 @@ void SYS_RegisterResetFunc(sys_resetinfo *info)
 	_CPU_ISR_Restore(level);
 }
 
-void SYS_SetArenaLo(void *newLo)
+void SYS_SetArena1Lo(void *newLo)
 {
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	__sysarenalo = newLo;
+	__sysarena1lo = newLo;
 	_CPU_ISR_Restore(level);
 }
 
-void* SYS_GetArenaLo()
+void* SYS_GetArena1Lo()
 {
 	u32 level;
 	void *arenalo;
 
 	_CPU_ISR_Disable(level);
-	arenalo = __sysarenalo;
+	arenalo = __sysarena1lo;
 	_CPU_ISR_Restore(level);
 
 	return arenalo;
 }
 
-void SYS_SetArenaHi(void *newHi)
+void SYS_SetArena1Hi(void *newHi)
 {
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	__sysarenahi = newHi;
+	__sysarena1hi = newHi;
 	_CPU_ISR_Restore(level);
 }
 
-void* SYS_GetArenaHi()
+void* SYS_GetArena1Hi()
 {
 	u32 level;
 	void *arenahi;
 
 	_CPU_ISR_Disable(level);
-	arenahi = __sysarenahi;
+	arenahi = __sysarena1hi;
 	_CPU_ISR_Restore(level);
 
 	return arenahi;
 }
 
-u32 SYS_GetArenaSize()
+u32 SYS_GetArena1Size()
 {
 	u32 level,size;
 
 	_CPU_ISR_Disable(level);
-	size = ((u32)__sysarenahi - (u32)__sysarenalo);
+	size = ((u32)__sysarena1hi - (u32)__sysarena1lo);
 	_CPU_ISR_Restore(level);
 
 	return size;
 }
+
+#if defined(HW_RVL)
+void SYS_SetArena2Lo(void *newLo)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	__sysarena2lo = newLo;
+	_CPU_ISR_Restore(level);
+}
+
+void* SYS_GetArena2Lo()
+{
+	u32 level;
+	void *arenalo;
+
+	_CPU_ISR_Disable(level);
+	arenalo = __sysarena2lo;
+	_CPU_ISR_Restore(level);
+
+	return arenalo;
+}
+
+void SYS_SetArena2Hi(void *newHi)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	__sysarena2hi = newHi;
+	_CPU_ISR_Restore(level);
+}
+
+void* SYS_GetArena2Hi()
+{
+	u32 level;
+	void *arenahi;
+
+	_CPU_ISR_Disable(level);
+	arenahi = __sysarena2hi;
+	_CPU_ISR_Restore(level);
+
+	return arenahi;
+}
+
+u32 SYS_GetArena2Size()
+{
+	u32 level,size;
+
+	_CPU_ISR_Disable(level);
+	size = ((u32)__sysarena2hi - (u32)__sysarena2lo);
+	_CPU_ISR_Restore(level);
+
+	return size;
+}
+#endif
 
 void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)
 {

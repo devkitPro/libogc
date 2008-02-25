@@ -3,6 +3,7 @@
 #include <string.h>
 #include <asm.h>
 #include <processor.h>
+#include "system.h"
 #include "lwp_wkspace.h"
 
 #define ROUND32UP(v)			(((u32)(v)+31)&~31)
@@ -10,9 +11,6 @@
 heap_cntrl __wkspace_heap;
 static heap_iblock __wkspace_iblock;
 static u32 __wkspace_heap_size = 0;
-
-extern void SYS_SetArenaLo(void *newLo);
-extern void* SYS_GetArenaLo();
 
 u32 __lwp_wkspace_heapsize()
 {
