@@ -2313,6 +2313,16 @@ void GX_Color3u8(u8 r,u8 g,u8 b)
 	FIFO_PUTU8(b);
 }
 
+void GX_Color3f32(f32 r, f32 g, f32 b)
+{
+
+	FIFO_PUTU8((u8)(r * 255.0));
+	FIFO_PUTU8((u8)(g * 255.0));
+	FIFO_PUTU8((u8)(b * 255.0));
+
+}
+
+
 void GX_Color1u32(u32 clr)
 {
 	FIFO_PUTU32(clr);

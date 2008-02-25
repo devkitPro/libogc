@@ -1126,6 +1126,7 @@ void GX_Normal1x16(u16 index);
 
 void GX_Color4u8(u8 r,u8 g,u8 b,u8 a);
 void GX_Color3u8(u8 r,u8 g,u8 b);
+void GX_Color3f32(f32 r, f32 g, f32 b);
 void GX_Color1u32(u32 clr);
 void GX_Color1u16(u16 clr);
 void GX_Color1x8(u8 index);
