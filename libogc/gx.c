@@ -110,6 +110,7 @@ static u8 _gxteximg2ids[8] = {0x90,0x91,0x92,0x93,0xB0,0xB1,0xB2,0xB3};
 static u8 _gxteximg3ids[8] = {0x94,0x95,0x96,0x97,0xB4,0xB5,0xB6,0xB7};
 static u8 _gxtextlutids[8] = {0x98,0x99,0x9A,0x9B,0xB8,0xB9,0xBA,0xBB};
 
+/* testing.
 static u32 _gxtexregionaddrtable[48] =
 {
 	0x00000000,0x00010000,0x00020000,0x00030000,
@@ -125,6 +126,7 @@ static u32 _gxtexregionaddrtable[48] =
 	0x00080000,0x00010000,0x000A0000,0x00030000,
 	0x00080000,0x00050000,0x000A0000,0x00070000
 };
+*/
 
 struct __gxfifo _gx_dl_fifo;
 u8 _gx_saved_data[1280];
@@ -882,7 +884,8 @@ static u32 __GX_GetNumXfbLines(u16 efbHeight,u32 yscale)
 GXFifoObj* GX_Init(void *base,u32 size)
 {
 	s32 i,re0,re1,addr;
-	u32 tmem;
+	//u32 tmem; --> testing
+	u32 tmem_even,tmem_odd;
 	u32 divis,res;
 	u32 divid = TB_BUS_CLOCK;
 	GXTexRegion *region = NULL;
@@ -989,7 +992,30 @@ GXFifoObj* GX_Init(void *base,u32 size)
 		_gx[0x30+i] = 0xff;
 		i++;
 	}
+	
+	for(i=0;i<8;i++) {
+		tmem_even = tmem_odd = (i<<15);
+		region = (GXTexRegion*)(&_gx[0x100+(i*(sizeof(GXTexRegion)>>2))]);
+		GX_InitTexCacheRegion(region,GX_FALSE,tmem_even,GX_TEXCACHE_32K,(tmem_odd+0x00080000),GX_TEXCACHE_32K);
+	}
+	for(i=0;i<4;i++) {
+		tmem_even = ((0x08+(i<<1))<<15);
+		tmem_odd = ((0x09+(i<<1))<<15);
+		region = (GXTexRegion*)(&_gx[0x120+(i*(sizeof(GXTexRegion)>>2))]);
+		GX_InitTexCacheRegion(region,GX_FALSE,tmem_even,GX_TEXCACHE_32K,tmem_odd,GX_TEXCACHE_32K);
+	}
+	for(i=0;i<16;i++) {
+		tmem_even = (i<<13)+0x000C0000;
+		tregion = (GXTlutRegion*)(&_gx[0x150+(i*(sizeof(GXTlutRegion)>>2))]);
+		GX_InitTlutRegion(tregion,tmem_even,GX_TLUT_256);
+	}
+	for(i=0;i<4;i++) {
+		tmem_even = (i<<15)+0x000E0000;
+		tregion = (GXTlutRegion*)(&_gx[0x150+((i+16)*(sizeof(GXTlutRegion)>>2))]);
+		GX_InitTlutRegion(tregion,tmem_even,GX_TLUT_1K);
+	}
 
+/* for testing. Do not delete!
 	i = 0;
 	while(i<8) {
 		region = (GXTexRegion*)(&_gx[0x100+(i*(sizeof(GXTexRegion)>>2))]);
@@ -1018,7 +1044,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 		tmem += 0x8000;
 		i++;
 	}
-
+*/
 	_cpReg[3] = 0;
 	GX_LOAD_CP_REG(0x20,0x00000000);
 	GX_LOAD_XF_REG(0x1006,0x0);
