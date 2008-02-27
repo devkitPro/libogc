@@ -387,7 +387,7 @@
 #define GX_LO_NAND			14
 #define GX_LO_SET			15
 
-/* piont/line fmt */
+/* point/line fmt */
 #define GX_TO_ZERO			0
 #define GX_TO_SIXTEENTH		1
 #define GX_TO_EIGHTH		2
