@@ -1854,7 +1854,9 @@ u32 VIDEO_GetCurrentTvMode()
 
 	_CPU_ISR_Disable(level);
 	mode = currTvMode;
-	if(mode==VI_DEBUG) tv = VI_NTSC;
+	
+	if(_viReg[54]&0x0001) tv = VI_PROG;
+	else if(mode==VI_DEBUG) tv = VI_NTSC;
 	else if(mode==VI_EURGB60) tv = mode;
 	else if(mode==VI_MPAL) tv = VI_MPAL;
 	else if(mode==VI_NTSC) tv = VI_NTSC;
