@@ -5,18 +5,40 @@
 #undef errno
 extern int errno;
 
-//#include "libogcsys/iosupp.h"
+#include <sys/iosupport.h>
 #include "lwip/ip_addr.h"
 #include "network.h"
-
-int netio_open(struct _reent *r,const char *path,int flags,int mode);
+int netio_open(struct _reent *r, void *fileStruct, const char *path,int flags,int mode);
 int netio_close(struct _reent *r,int fd);
 int netio_write(struct _reent *r,int fd,const char *ptr,int len);
 int netio_read(struct _reent *r,int fd,char *ptr,int len);
 
-//const devoptab_t dotab_net = {"stdnet",netio_open,netio_close,netio_write,netio_read,NULL,NULL};
+//---------------------------------------------------------------------------------
+const devoptab_t dotab_stdnet = {
+//---------------------------------------------------------------------------------
+	"stdnet",		// device name
+	0,				// size of file structure
+	netio_open,		// device open
+	netio_close,	// device close
+	netio_write,	// device write
+	netio_read,		// device read
+	NULL,			// device seek
+	NULL,			// device fstat
+	NULL,			// device stat
+	NULL,			// device link
+	NULL,			// device unlink
+	NULL,			// device chdir
+	NULL,			// device rename
+	NULL,			// device mkdir
+	0,				// dirStateSize
+	NULL,			// device diropen_r
+	NULL,			// device dirreset_r
+	NULL,			// device dirnext_r
+	NULL,			// device dirclose_r
+	NULL			// device statvfs_r
+};
 
-int netio_open(struct _reent *r,const char *path,int flags,int mode)
+int netio_open(struct _reent *r, void *fileStruct, const char *path,int flags,int mode)
 {
 	char *cport = NULL;
 	int optval = 1,nport = -1,udp_sock = INVALID_SOCKET;
