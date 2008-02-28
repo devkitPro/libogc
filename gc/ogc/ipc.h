@@ -56,6 +56,8 @@ s32 IOS_IoctlvAsync(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv,ipccallb
 s32 IOS_IoctlvFormat(s32 hId,s32 fd,s32 ioctl,const char *format,...);
 s32 IOS_IoctlvFormatAsync(s32 hId,s32 fd,s32 ioctl,ipccallback usr_cb,void *usr_data,const char *format,...);
 
+s32 IOS_IoctlvReboot(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv);
+
 #ifdef __cplusplus
    }
 #endif /* __cplusplus */

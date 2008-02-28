@@ -1257,4 +1257,58 @@ s32 IOS_IoctlvFormatAsync(s32 hId,s32 fd,s32 ioctl,ipccallback usr_cb,void *usr_
 	return IOS_IoctlvAsync(fd,ioctl,cnt_in,cnt_io,argv,__ioctlvfmtCB,cbdata);
 }
 
+s32 IOS_IoctlvReboot(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv)
+{
+	s32 i,ret;
+	u32 level;
+	struct _ipcreq *req;
+
+	req = __ipc_allocreq();
+	if(req==NULL) return IPC_ENOMEM;
+	
+	req->cmd = IOS_IOCTLV;
+	req->fd = fd;
+	req->cb = NULL;
+	req->relnch = 1;
+
+	req->ioctlv.ioctl	= ioctl;
+	req->ioctlv.argcin	= cnt_in;
+	req->ioctlv.argcio	= cnt_io;
+	req->ioctlv.argv	= (struct _ioctlv*)MEM_VIRTUAL_TO_PHYSICAL(argv);
+
+	i = 0;
+	while(i<cnt_in) {
+		if(argv[i].data!=NULL && argv[i].len>0) {
+			DCFlushRange(argv[i].data,argv[i].len);
+			argv[i].data = (void*)MEM_VIRTUAL_TO_PHYSICAL(argv[i].data);
+		}
+		i++;
+	}
+
+	i = 0;
+	while(i<cnt_io) {
+		if(argv[cnt_in+i].data!=NULL && argv[cnt_in+i].len>0) {
+			DCFlushRange(argv[cnt_in+i].data,argv[cnt_in+i].len);
+			argv[cnt_in+i].data = (void*)MEM_VIRTUAL_TO_PHYSICAL(argv[cnt_in+i].data);
+		}
+		i++;
+	}
+	DCFlushRange(argv,((cnt_in+cnt_io)<<3));
+
+	LWP_InitQueue(&req->syncqueue);
+	DCFlushRange(req,32);
+
+	_CPU_ISR_Disable(level);
+	ret = __ipc_syncqueuerequest(req);
+	if(ret==0) {
+		if(_ipc_mailboxack>0) __ipc_sendrequest();
+		LWP_ThreadSleep(req->syncqueue);
+		ret = req->result;
+	}
+	_CPU_ISR_Restore(level);
+
+	if(req!=NULL) __ipc_freereq(req);
+	return ret;
+}
+
 #endif
