@@ -60,6 +60,7 @@ static console_data_s exception_con;
 
 void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
 
+extern void udelay(int us);
 extern void fpu_exceptionhandler();
 extern void irq_exceptionhandler();
 extern void dec_exceptionhandler();
@@ -203,6 +204,8 @@ static void waitForReload() {
 			kprintf("Reset\n");
 			SYS_ResetSystem(SYS_HOTRESET,0,FALSE);
 		}
+
+		udelay(20000);
 	}
 }
 
@@ -245,11 +248,14 @@ void __libc_wrapup();
 
 void __libogc_exit(int status)
 {
+	u32 level;
+
 
 	VIDEO_SetFramebuffer(exception_xfb);
 	__console_init(&exception_con,exception_xfb,20,20,640,574,1280);
 
-
+	
+	_CPU_ISR_Disable(level);
 	kprintf("Return code was %d\n", status);
 
 	__libc_wrapup();
