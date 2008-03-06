@@ -37,6 +37,9 @@ distribution.
 #include "asm.h"
 #include "irq.h"
 #include "exi.h"
+#if defined(HW_RVL)
+#include "ipc.h"
+#endif
 #include "cache.h"
 #include "video.h"
 #include "system.h"
@@ -50,27 +53,48 @@ distribution.
 #include "system.h"
 #include "libversion.h"
 
-#define SYSMEM1_SIZE			0x01800000
+#define SYSMEM1_SIZE				0x01800000
 #if defined(HW_RVL)
-#define SYSMEM2_SIZE			0x04000000
+#define SYSMEM2_SIZE				0x04000000
 #endif
-#define KERNEL_HEAP				(1*1024*1024)
+#define KERNEL_HEAP					(1*1024*1024)
+
+#define IOCTL_ES_LAUNCH				0x08
+#define IOCTL_ES_GETVIEWCNT			0x12
+#define IOCTL_ES_GETVIEWS			0x13
+#define IOCTL_ES_GETTITLEDIR		0x1D
+#define IOCTL_ES_GETTITLEID			0x20
+
+#define IOCTL_STM_EVENTHOOK			0x1000
+#define IOCTL_STM_GET_IDLEMODE		0x3001
+#define IOCTL_STM_RELEASE_EH		0x3002
+#define IOCTL_STM_HOTRESET			0x2001
+#define IOCTL_STM_HOTRESET_FOR_PD	0x2002
+#define IOCTL_STM_SHUTDOWN			0x2003
+#define IOCTL_STM_IDLE				0x2004
+#define IOCTL_STM_WAKEUP			0x2005
+#define IOCTL_STM_VIDIMMING			0x5001
+#define IOCTL_STM_LEDFLASH			0x6001
+#define IOCTL_STM_LEDMODE			0x6002
+#define IOCTL_STM_READVER			0x7001
+#define IOCTL_STM_READDDRREG		0x4001
+#define IOCTL_STM_READDDRREG2		0x4002
 
 // DSPCR bits
-#define DSPCR_DSPRESET      0x0800        // Reset DSP
-#define DSPCR_ARDMA         0x0200        // ARAM dma in progress, if set
-#define DSPCR_DSPINTMSK     0x0100        // * interrupt mask   (RW)
-#define DSPCR_DSPINT        0x0080        // * interrupt active (RWC)
-#define DSPCR_ARINTMSK      0x0040
-#define DSPCR_ARINT         0x0020
-#define DSPCR_AIINTMSK      0x0010
-#define DSPCR_AIINT         0x0008
-#define DSPCR_HALT          0x0004        // halt DSP
-#define DSPCR_PIINT         0x0002        // assert DSP PI interrupt
-#define DSPCR_RES           0x0001        // reset DSP
-
-#define FONT_SIZE_ANSI		(288 + 131072)
-#define FONT_SIZE_SJIS		(3840 + 1179648)
+#define DSPCR_DSPRESET			    0x0800        // Reset DSP
+#define DSPCR_ARDMA				    0x0200        // ARAM dma in progress, if set
+#define DSPCR_DSPINTMSK			    0x0100        // * interrupt mask   (RW)
+#define DSPCR_DSPINT			    0x0080        // * interrupt active (RWC)
+#define DSPCR_ARINTMSK			    0x0040
+#define DSPCR_ARINT				    0x0020
+#define DSPCR_AIINTMSK			    0x0010
+#define DSPCR_AIINT				    0x0008
+#define DSPCR_HALT				    0x0004        // halt DSP
+#define DSPCR_PIINT				    0x0002        // assert DSP PI interrupt
+#define DSPCR_RES				    0x0001        // reset DSP
+								
+#define FONT_SIZE_ANSI				(288 + 131072)
+#define FONT_SIZE_SJIS				(3840 + 1179648)
 
 #define LWP_OBJTYPE_SYSWD			6
 
@@ -124,7 +148,16 @@ static lwp_objinfo sys_alarm_objects;
 
 static void *__sysarena1lo = NULL;
 static void *__sysarena1hi = NULL;
+
 #if defined(HW_RVL)
+static u32 __sys_resetdown = 0;
+
+static s32 __stm_eh_fd = -1;
+static s32 __stm_imm_fd = -1;
+static u32 __stm_vdinuse = 0;
+static u32 __stm_initialized= 0;
+static u32 __stm_ehregistered= 0;
+
 static void *__sysarena2lo = NULL;
 static void *__sysarena2hi = NULL;
 static void *__ipcbufferlo = NULL;
@@ -132,13 +165,34 @@ static void *__ipcbufferhi = NULL;
 #endif
 
 static resetcallback __RSWCallback = NULL;
+#if defined(HW_RVL)
+static powercallback __POWCallback = NULL;
+#endif
 
 static vu16* const _viReg = (u16*)0xCC002000;
 static vu32* const _piReg = (u32*)0xCC003000;
 static vu16* const _memReg = (u16*)0xCC004000;
 static vu16* const _dspReg = (u16*)0xCC005000;
 
+#if defined(HW_RVL)
+static u32 __stm_ehbufin[0x08] ATTRIBUTE_ALIGN(32) = {0,0,0,0,0,0,0,0};
+static u32 __stm_ehbufout[0x08] ATTRIBUTE_ALIGN(32) = {0,0,0,0,0,0,0,0};
+static u32 __stm_immbufin[0x08] ATTRIBUTE_ALIGN(32) = {0,0,0,0,0,0,0,0};
+static u32 __stm_immbufout[0x08] ATTRIBUTE_ALIGN(32) = {0,0,0,0,0,0,0,0};
+static u32 __stm_vdbufin[0x08] ATTRIBUTE_ALIGN(32) = {0,0,0,0,0,0,0,0};
+static u32 __stm_vdbufout[0x08] ATTRIBUTE_ALIGN(32) = {0,0,0,0,0,0,0,0};
+
+static char __es_fs[] ATTRIBUTE_ALIGN(32) = "/dev/es";
+static char __stm_eh_fs[] ATTRIBUTE_ALIGN(32) = "/dev/stm/eventhook";
+static char __stm_imm_fs[] ATTRIBUTE_ALIGN(32) = "/dev/stm/immediate";
+#endif
+
 void __SYS_ReadROM(void *buf,u32 len,u32 offset);
+void* SYS_AllocArena1MemLo(u32 size,u32 align);
+
+#if defined(HW_RVL)
+s32 __STM_RegisterEventHandler();
+#endif
 
 static s32 __sram_sync();
 static s32 __sram_writecallback(s32 chn,s32 dev);
@@ -163,8 +217,11 @@ extern void __timesystem_init();
 extern void __memlock_init();
 extern void __libc_init(int);
 
-void __libogc_malloc_lock( struct _reent *ptr );
-void __libogc_malloc_unlock( struct _reent *ptr );
+extern void __libogc_malloc_lock( struct _reent *ptr );
+extern void __libogc_malloc_unlock( struct _reent *ptr );
+
+extern void __exception_console();
+extern void __exception_printf(const char *str, ...);
 
 extern void __realmode(void*);
 extern void __configMEM1_24Mb();
@@ -237,6 +294,11 @@ static __inline__ void __lwp_syswd_free(alarm_st *alarm)
 {
 	__lwp_objmgr_close(&sys_alarm_objects,&alarm->object);
 	__lwp_objmgr_free(&sys_alarm_objects,&alarm->object);
+}
+
+static __inline__ u32 __sys_getresetbuttonraw()
+{
+	return (!(_piReg[0]&0x00010000));
 }
 
 static void __init_syscall_array() {
@@ -334,6 +396,48 @@ static void __MEMInterruptHandler()
 	_memReg[16] = 0;
 }
 
+#if defined(HW_RVL)
+static void __RSWDefaultHandler()
+{
+
+}
+
+static void __POWDefaultHandler()
+{
+}
+
+static s32 __STMEventHandler(s32 result,void *usrdata)
+{
+	s32 ret;
+	u32 level;
+	powercallback powcb;
+	resetcallback rswcb;
+
+	__stm_ehregistered = 0;
+	
+	if(__stm_ehbufout[0]==0x00020000) {
+		ret = __sys_getresetbuttonraw();
+		if(ret) {
+			_CPU_ISR_Disable(level);
+			__sys_resetdown = 1;
+			rswcb = __RSWCallback;
+			__RSWCallback = __RSWDefaultHandler;
+			rswcb();
+			_CPU_ISR_Restore(level);
+		}
+		__STM_RegisterEventHandler();
+	}
+	
+	if(__stm_ehbufout[0]==0x00000800) {
+		_CPU_ISR_Disable(level);
+		powcb = __POWCallback;
+		__POWCallback = __POWDefaultHandler;
+		powcb();
+		_CPU_ISR_Restore(level);
+	}
+	return (__stm_ehbufout[0]==0);
+}
+#elif defined(HW_DOL)
 static void __RSWHandler()
 {
 	s64 now;
@@ -362,18 +466,15 @@ static void __RSWHandler()
 	}
 	_piReg[0] = 2;
 }
+#endif
 
 static void __lowmem_init()
 {
+#if defined(HW_DOL)
 	void *ram_start = (void*)0x80000000;
 	void *ram_end = (void*)(0x80000000|SYSMEM1_SIZE);
-#if defined(HW_DOL)
 	void *arena_start = (void*)0x80003000;
-#elif defined(HW_RVL)
-	void *arena_start = (void*)0x80003f00;
-#endif
 
-#if defined(HW_DOL)
 	memset(ram_start,0,0x100);
 	memset(arena_start,0,0x100);
 
@@ -397,7 +498,7 @@ static void __lowmem_init()
 	DCFlushRangeNoSync(arena_start, 0x100);
 	_sync();
 #endif
-
+	
 	SYS_SetArenaLo((void*)__Arena1Lo);
 	SYS_SetArenaHi((void*)__Arena1Hi);
 #if defined(HW_RVL)
@@ -927,6 +1028,171 @@ void* __SYS_GetIPCBufferHi()
 {
 	return __ipcbufferhi;
 }
+
+s32 __STM_Init()
+{
+	__POWCallback = __POWDefaultHandler;
+	__RSWCallback = __RSWDefaultHandler;
+	__sys_resetdown = 0;
+
+	if(__stm_initialized==1) return 1;
+
+	__stm_vdinuse = 0;
+	__stm_imm_fd = IOS_Open(__stm_imm_fs,0);
+	if(__stm_imm_fd<0) return 0;
+
+	__stm_eh_fd = IOS_Open(__stm_eh_fs,0);
+	if(__stm_eh_fd<0) return 0;
+	
+	__STM_RegisterEventHandler();
+	__stm_initialized = 1;
+	return 1;
+}
+
+s32 __STM_RegisterEventHandler()
+{
+	s32 ret;
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	ret = IOS_IoctlAsync(__stm_imm_fd,IOCTL_STM_EVENTHOOK,__stm_ehbufin,0x20,__stm_ehbufout,0x20,__STMEventHandler,NULL);
+	if(ret<0) __stm_ehregistered = 0;
+	else __stm_ehregistered = 1;
+	_CPU_ISR_Restore(level);
+
+	return ret;
+}
+
+s32 __STM_UnregisterEventHandler()
+{
+	s32 ret;
+
+	if(__stm_ehregistered==0) return -6;
+
+	ret = IOS_Ioctl(__stm_imm_fd,IOCTL_STM_RELEASE_EH,__stm_immbufin,0x20,__stm_immbufout,0x20);
+	if(ret>=0) __stm_ehregistered = 0;
+
+	return ret;
+}
+
+void __STM_ShutdownToStandby()
+{
+	_viReg[1] = 0;
+	
+	if(__stm_initialized==0) return;
+
+	__stm_immbufin[0] = 0;
+	IOS_Ioctl(__stm_imm_fd,IOCTL_STM_SHUTDOWN,__stm_immbufin,0x20,__stm_immbufout,0x20);
+}
+
+s32 __ES_OpenLib(s32 *fd_p)
+{
+	s32 ret = 0;
+
+	ret = IOS_Open(__es_fs,0);
+	if(ret<0) return ret;
+
+	*fd_p = ret;
+
+	return 0;
+}
+
+s32 __ES_CloseLib(s32 *fd_p)
+{
+	s32 ret,fd = *fd_p;
+
+	if(fd<0) return 0;
+	
+	ret = IOS_Close(fd);
+	if(ret<0) return ret;
+	
+	*fd_p = -1;
+	return 0;
+}
+
+s32 __ES_GetTitleID(s32 fd,u64 *titleID)
+{
+	s32 ret;
+	static u64 title ATTRIBUTE_ALIGN(32);
+	static ioctlv vector ATTRIBUTE_ALIGN(32);
+
+	if(fd<0 || titleID==NULL) return -1017;
+	
+	vector.data = (void*)&title;
+	vector.len = sizeof(u64);
+	ret = IOS_Ioctlv(fd,IOCTL_ES_GETTITLEID,0,1,&vector);
+	if(ret<0) return ret;
+
+	*titleID = title;
+	return ret;
+}
+
+s32 __ES_GetDataDir(s32 fd,u64 titleID,char *filepath)
+{
+	s32 ret;
+	static u64 title_id ATTRIBUTE_ALIGN(32);
+	static ioctlv vector[2] ATTRIBUTE_ALIGN(32);
+
+	if(filepath==NULL || ((s32)filepath%32)!=0) return -1017;
+
+	title_id = titleID;
+	vector[0].data = &title_id;
+	vector[0].len = sizeof(u64);
+	vector[1].data = filepath;
+	vector[1].len = 30;
+	ret = IOS_Ioctlv(fd,IOCTL_ES_GETTITLEDIR,1,1,vector);
+
+	return ret;
+}
+
+s32 __ES_LaunchTitle(s32 fd,u64 titleID,void *view)
+{
+	static u64 title ATTRIBUTE_ALIGN(32);
+	static ioctlv vectors[2] ATTRIBUTE_ALIGN(32);
+
+	if(fd<0 || view==NULL || ((u32)view%32)!=0) return -1017;
+
+	title = titleID;
+	vectors[0].data = (void*)&title;
+	vectors[0].len = sizeof(u64);
+	vectors[1].data = view;
+	vectors[1].len = 0xd8;
+	return IOS_IoctlvReboot(fd,IOCTL_ES_LAUNCH,2,0,vectors);
+}
+
+s32 __ES_GetTicketViews(s32 fd,u64 titleID,void *views,u32 *cnt)
+{
+	s32 ret;
+	static u32 cntviews ATTRIBUTE_ALIGN(32);;
+	static u64 title ATTRIBUTE_ALIGN(32);
+	static ioctlv vectors[3] ATTRIBUTE_ALIGN(32);
+
+	if(fd<0 || cnt==NULL || (views!=NULL && ((u32)views%32)!=0)) return -1017;
+
+	title = titleID;
+	if(views==NULL) {
+		vectors[0].data = (void*)&title;
+		vectors[0].len = sizeof(u64);
+		vectors[1].data = (void*)&cntviews;
+		vectors[1].len = sizeof(u32);
+		ret = IOS_Ioctlv(fd,IOCTL_ES_GETVIEWCNT,1,1,vectors);
+		if(ret<0) return ret;
+
+		*cnt = cntviews;
+		return ret;
+	}
+
+	cntviews = *cnt;
+	if(cntviews<=0) return -1017;
+
+	vectors[0].data = (void*)&title;
+	vectors[0].len = sizeof(u64);
+	vectors[1].data = (void*)&cntviews;
+	vectors[1].len = sizeof(u32);
+	vectors[2].data = views;
+	vectors[2].len = (0xd8*cntviews);
+	return IOS_Ioctlv(fd,IOCTL_ES_GETVIEWS,2,1,vectors);
+}
 #endif
 
 void _V_EXPORTNAME(void) 
@@ -937,10 +1203,6 @@ void __sdloader_boot()
 	void (*reload)() = (void(*)())0x80001800;
 	reload();
 }
-//extern "C" {
-void __exception_console();
-void __exception_printf(const char *str, ...);
-//}
 
 void SYS_Init()
 {
@@ -990,11 +1252,10 @@ void SYS_Init()
 	DisableWriteGatherPipe();
 #if defined(HW_RVL)
 	__IPC_ClntInit();
-#endif
-
+#elif defined(HW_DOL)
 	IRQ_Request(IRQ_PI_RSW,__RSWHandler,NULL);
 	__MaskIrq(IRQMASK(IRQ_PI_RSW));
-
+#endif
 	__libc_init(1);
 	__lwp_thread_startmultitasking();
 	_CPU_ISR_Restore(level);
@@ -1111,6 +1372,19 @@ u32 SYS_GetArena1Size()
 	return size;
 }
 
+void* SYS_AllocArena1MemLo(u32 size,u32 align)
+{
+	u32 mem1lo;
+	void *ptr = NULL;
+
+	mem1lo = (u32)SYS_GetArena1Lo();
+	ptr = (void*)((mem1lo+(align-1))&~(align-1));
+	mem1lo = ((((u32)ptr+size+align)-1)&~(align-1));
+	SYS_SetArena1Lo((void*)mem1lo);
+
+	return ptr;
+}
+
 #if defined(HW_RVL)
 void SYS_SetArena2Lo(void *newLo)
 {
@@ -1163,6 +1437,19 @@ u32 SYS_GetArena2Size()
 	_CPU_ISR_Restore(level);
 
 	return size;
+}
+
+void* SYS_AllocArena2MemLo(u32 size,u32 align)
+{
+	u32 mem2lo;
+	void *ptr = NULL;
+
+	mem2lo = (u32)SYS_GetArena2Lo();
+	ptr = (void*)((mem2lo+(align-1))&~(align-1));
+	mem2lo = ((((u32)ptr+size+align)-1)&~(align-1));
+	SYS_SetArena2Lo((void*)mem2lo);
+
+	return ptr;
 }
 #endif
 
