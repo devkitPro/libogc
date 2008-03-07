@@ -181,11 +181,9 @@ static void _cpu_print_stack(void *pc,void *lr,void *r1)
 
 static void waitForReload() {
 
-	PAD_Init();
-	kprintf("Waiting for pad\n");
+	u32 level;
 
-	while ( 1 )
-	{
+	while ( 1 ) {
 
 		PAD_ScanPads();
 
@@ -193,6 +191,7 @@ static void waitForReload() {
 
 		if( buttonsDown & PAD_TRIGGER_Z ) {
 			kprintf("reload ...\n");
+			_CPU_ISR_Disable(level);
 			void ( * Reload ) () = ( void ( * ) () ) 0x80001800;
 			Reload ();
 		}
@@ -248,16 +247,8 @@ void __libc_wrapup();
 
 void __libogc_exit(int status)
 {
-	u32 level;
-
-
-	VIDEO_SetFramebuffer(exception_xfb);
-	__console_init(&exception_con,exception_xfb,20,20,640,574,1280);
-
-	
+	int level;
 	_CPU_ISR_Disable(level);
-	kprintf("Return code was %d\n", status);
-
 	__libc_wrapup();
 	__lwp_thread_stopmultitasking(waitForReload);
 
