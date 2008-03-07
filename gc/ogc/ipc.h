@@ -3,6 +3,8 @@
 
 #include <gctypes.h>
 
+#define IPC_HEAP			 -1
+
 #define IPC_MAXPATH_LEN		 64
 
 #define IPC_OK				  0
@@ -10,8 +12,6 @@
 #define IPC_ENOHEAP			 -5
 #define IPC_EQUEUEFULL       -8
 #define IPC_ENOMEM			-22
-
-#define IPC_HEAP -1
 
 #ifdef __cplusplus
    extern "C" {
