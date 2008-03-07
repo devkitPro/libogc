@@ -11,6 +11,7 @@
 #define IPC_EQUEUEFULL       -8
 #define IPC_ENOMEM			-22
 
+#define IPC_HEAP -1
 
 #ifdef __cplusplus
    extern "C" {

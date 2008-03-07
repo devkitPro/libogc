@@ -410,6 +410,8 @@ static s32 __ios_ioctlvformat_parse(const char *format,va_list args,struct _ioct
 	ioctlv *argp = NULL;
 	struct _ioctlvfmt_bufent *bufp;
 
+	if(hId == IPC_HEAP) hId = _ipc_hid;
+	if(hId < 0) return IPC_EINVAL;
 
 	maxbufs = strnlen(format,IOS_MAXFMT_PARAMS);
 	if(maxbufs>=IOS_MAXFMT_PARAMS) return IPC_EINVAL;
@@ -476,6 +478,21 @@ static s32 __ios_ioctlvformat_parse(const char *format,va_list args,struct _ioct
 				*(u32*)pdata = va_arg(args,u32);
 				argp->data = pdata;
 				argp->len = sizeof(u32);
+				bufp->ipc_buf = pdata;
+				cbdata->num_bufs++;
+				(*cnt_in)++;
+				argp++;
+				bufp++;
+				break;
+			case 'q':
+				pdata = iosAlloc(hId,sizeof(u64));
+				if(pdata==NULL) {
+					ret = IPC_ENOMEM;
+					goto free_and_error;
+				}
+				*(u64*)pdata = va_arg(args,u64);
+				argp->data = pdata;
+				argp->len = sizeof(u64);
 				bufp->ipc_buf = pdata;
 				cbdata->num_bufs++;
 				(*cnt_in)++;
@@ -572,6 +589,24 @@ parse_io_params:
 				bufp->ipc_buf = pdata;
 				bufp->io_buf = iodata;
 				bufp->copy_len = sizeof(u32);
+				cbdata->num_bufs++;
+				(*cnt_io)++;
+				argp++;
+				bufp++;
+				break;
+			case 'q':
+				pdata = iosAlloc(hId,sizeof(u64));
+				if(pdata==NULL) {
+					ret = IPC_ENOMEM;
+					goto free_and_error;
+				}
+				iodata = va_arg(args,u64*);
+				*(u64*)pdata = *(u64*)iodata;
+				argp->data = pdata;
+				argp->len = sizeof(u32);
+				bufp->ipc_buf = pdata;
+				bufp->io_buf = iodata;
+				bufp->copy_len = sizeof(u64);
 				cbdata->num_bufs++;
 				(*cnt_io)++;
 				argp++;
