@@ -19,7 +19,7 @@
 
 #define IPC_REQ_MAGIC			0x4C4F4743
 
-#define IPC_HEAP_SIZE			2048
+#define IPC_HEAP_SIZE			4096
 #define IPC_REQUESTSIZE			64
 
 #define IOS_MAXFMT_PARAMS		32
