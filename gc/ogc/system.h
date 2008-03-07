@@ -254,7 +254,6 @@ s32 SYS_ConsoleInit(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidt
 
 
 void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl);
-resetcallback SYS_SetResetCallback(resetcallback cb);
 void SYS_StartPMC(u32 mcr0val,u32 mcr1val);
 void SYS_DumpPMC();
 void SYS_StopPMC();
@@ -327,12 +326,15 @@ void* SYS_GetArena1Hi();
 void SYS_SetArena1Hi(void *newHi);
 u32 SYS_GetArena1Size();
 
+resetcallback SYS_SetResetCallback(resetcallback cb);
+
 #if defined(HW_RVL)
 void* SYS_GetArena2Lo();
 void SYS_SetArena2Lo(void *newLo);
 void* SYS_GetArena2Hi();
 void SYS_SetArena2Hi(void *newHi);
 u32 SYS_GetArena2Size();
+powercallback SYS_SetPowerCallback(powercallback cb);
 #endif
 
 void kprintf(const char *str, ...);

@@ -1695,10 +1695,10 @@ s32 SYS_CancelAlarm(syswd_t thealarm)
 resetcallback SYS_SetResetCallback(resetcallback cb)
 {
 	u32 level;
-	resetcallback old = __RSWCallback;
+	resetcallback old;
 
 	_CPU_ISR_Disable(level);
-
+	old = __RSWCallback;
 	__RSWCallback = cb;
 #if defined(HW_DOL)
 	if(__RSWCallback) {
@@ -1707,10 +1707,23 @@ resetcallback SYS_SetResetCallback(resetcallback cb)
 	} else
 		__MaskIrq(IRQMASK(IRQ_PI_RSW));
 #endif
-
 	_CPU_ISR_Restore(level);
 	return old;
 }
+
+#if defined(HW_RVL)
+powercallback SYS_SetPowerCallback(powercallback cb)
+{
+	u32 level;
+	powercallback old;
+
+	_CPU_ISR_Disable(level);
+	old = __POWCallback;
+	__POWCallback = cb;
+	_CPU_ISR_Restore(level);
+	return old;
+}
+#endif
 
 void SYS_StartPMC(u32 mcr0val,u32 mcr1val)
 {
