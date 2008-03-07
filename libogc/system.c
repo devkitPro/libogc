@@ -1055,7 +1055,7 @@ s32 __STM_RegisterEventHandler()
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	ret = IOS_IoctlAsync(__stm_imm_fd,IOCTL_STM_EVENTHOOK,__stm_ehbufin,0x20,__stm_ehbufout,0x20,__STMEventHandler,NULL);
+	ret = IOS_IoctlAsync(__stm_eh_fd,IOCTL_STM_EVENTHOOK,__stm_ehbufin,0x20,__stm_ehbufout,0x20,__STMEventHandler,NULL);
 	if(ret<0) __stm_ehregistered = 0;
 	else __stm_ehregistered = 1;
 	_CPU_ISR_Restore(level);
@@ -1700,11 +1700,13 @@ resetcallback SYS_SetResetCallback(resetcallback cb)
 	_CPU_ISR_Disable(level);
 
 	__RSWCallback = cb;
+#if defined(HW_DOL)
 	if(__RSWCallback) {
 		_piReg[0] = 2;
 		__UnmaskIrq(IRQMASK(IRQ_PI_RSW));
 	} else
 		__MaskIrq(IRQMASK(IRQ_PI_RSW));
+#endif
 
 	_CPU_ISR_Restore(level);
 	return old;
