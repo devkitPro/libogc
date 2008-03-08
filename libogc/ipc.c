@@ -627,7 +627,7 @@ parse_io_params:
 				iodata = va_arg(args,u64*);
 				*(u64*)pdata = *(u64*)iodata;
 				argp->data = pdata;
-				argp->len = sizeof(u32);
+				argp->len = sizeof(u64);
 				bufp->ipc_buf = pdata;
 				bufp->io_buf = iodata;
 				bufp->copy_len = sizeof(u64);
