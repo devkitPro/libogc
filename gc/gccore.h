@@ -61,6 +61,13 @@ distribution.
 #include "ogc/video.h"
 #include "ogc/video_types.h"
 
+#if defined(HW_RVL)
+#include "ogc/ipc.h"
+#include "ogc/es.h"
+#include "ogc/stm.h"
+#include "ogc/ios.h"
+#endif
+
 /*
  * Error returns
  */

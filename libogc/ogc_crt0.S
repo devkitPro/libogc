@@ -52,6 +52,7 @@ eloop:
 
 __main:
 	bl		__init
+	bl		SYS_PreMain
 	bl		main
 	bl		__fini
 	blr

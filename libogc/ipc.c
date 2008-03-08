@@ -1,3 +1,33 @@
+/*-------------------------------------------------------------
+
+ipc.c -- Interprocess Communication with Starlet
+
+Copyright (C) 2008
+Michael Wiedenbauer (shagkur)
+Dave Murphy (WinterMute)
+Hector Martin (marcan)
+
+This software is provided 'as-is', without any express or implied
+warranty.  In no event will the authors be held liable for any
+damages arising from the use of this software.
+
+Permission is granted to anyone to use this software for any
+purpose, including commercial applications, and to alter it and
+redistribute it freely, subject to the following restrictions:
+
+1.	The origin of this software must not be misrepresented; you
+must not claim that you wrote the original software. If you use
+this software in a product, an acknowledgment in the product
+documentation would be appreciated but is not required.
+
+2.	Altered source versions must be plainly marked as such, and
+must not be misrepresented as being the original software.
+
+3.	This notice may not be removed or altered from any source
+distribution.
+
+-------------------------------------------------------------*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -21,6 +51,7 @@
 
 #define IPC_HEAP_SIZE			4096
 #define IPC_REQUESTSIZE			64
+#define IPC_NUMHEAPS			8
 
 #define IOS_MAXFMT_PARAMS		32
 
@@ -126,16 +157,9 @@ static void *_ipc_currbufferhi = NULL;
 
 static struct _ipcreqres _ipc_responses;
 
-static struct _ipcheap _ipc_heaps[8] = 
+static struct _ipcheap _ipc_heaps[IPC_NUMHEAPS] = 
 {
-	{NULL, 0, {}},
-	{NULL, 0, {}},
-	{NULL, 0, {}},
-	{NULL, 0, {}},
-	{NULL, 0, {}},
-	{NULL, 0, {}},
-	{NULL, 0, {}},
-	{NULL, 0, {}}
+	{NULL, 0, {}} // all other elements should be inited to zero, says C standard, so this should do
 };
 
 static vu32 *_ipcReg = (u32*)0xCD000000;
@@ -645,11 +669,11 @@ s32 iosCreateHeap(s32 size)
 	_CPU_ISR_Disable(level);
 
 	i=0;
-	while(i<8) {
+	while(i<IPC_NUMHEAPS) {
 		if(_ipc_heaps[i].membase==NULL) break;
 		i++;
 	}
-	if(i>=8) {
+	if(i>=IPC_NUMHEAPS) {
 		_CPU_ISR_Restore(level);
 		return IPC_ENOHEAP;
 	}
@@ -679,7 +703,7 @@ s32 iosDestroyHeap(s32 hid)
 #endif
 	_CPU_ISR_Disable(level);
 	
-	if(hid>=0 && hid<8) {
+	if(hid>=0 && hid<IPC_NUMHEAPS) {
 		if(_ipc_heaps[hid].membase!=NULL) {
 			_ipc_heaps[hid].membase = NULL;
 			_ipc_heaps[hid].size = 0;
@@ -696,7 +720,7 @@ void* iosAlloc(s32 hid,s32 size)
 #ifdef DEBUG_IPC
 	printf("iosAlloc(%d,%d)\n",hid,size);
 #endif
-	if(hid<0 || hid>7 || size<=0) return NULL;
+	if(hid<0 || hid>=IPC_NUMHEAPS || size<=0) return NULL;
 	return __lwp_heap_allocate(&_ipc_heaps[hid].heap,size);
 }
 
@@ -705,7 +729,7 @@ void iosFree(s32 hid,void *ptr)
 #ifdef DEBUG_IPC
 	printf("iosFree(%d,0x%p)\n",hid,ptr);
 #endif
-	if(hid<0 || hid>7 || ptr==NULL) return;
+	if(hid<0 || hid>=IPC_NUMHEAPS || ptr==NULL) return;
 	__lwp_heap_free(&_ipc_heaps[hid].heap,ptr);
 }
 
