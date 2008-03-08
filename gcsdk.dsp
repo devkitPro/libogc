@@ -156,6 +156,10 @@ SOURCE=.\libogc\dvd.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\es.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\exception.c
 # End Source File
 # Begin Source File
@@ -177,6 +181,10 @@ SOURCE=.\libogc\gu_psasm.S
 # Begin Source File
 
 SOURCE=.\libogc\gx.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\ios.c
 # End Source File
 # Begin Source File
 
@@ -341,6 +349,10 @@ SOURCE=.\libogc\semaphore.c
 # Begin Source File
 
 SOURCE=.\libogc\si.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\stm.c
 # End Source File
 # Begin Source File
 
@@ -916,6 +928,10 @@ SOURCE=.\gc\ogc\dvd.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\gc\ogc\es.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\gc\ogc\exi.h
 # End Source File
 # Begin Source File
@@ -929,6 +945,10 @@ SOURCE=.\gc\ogc\gx.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\gx_struct.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\ios.h
 # End Source File
 # Begin Source File
 
@@ -1021,6 +1041,10 @@ SOURCE=.\gc\ogc\semaphore.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\si.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\stm.h
 # End Source File
 # Begin Source File
 
