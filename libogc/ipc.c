@@ -527,6 +527,7 @@ static s32 __ios_ioctlvformat_parse(const char *format,va_list args,struct _ioct
 				argp->data = va_arg(args, void*);
 				argp->len = va_arg(args, u32);
 				(*cnt_in)++;
+				argp++;
 				break;
 			case 's':
 				ps = va_arg(args, char*);
@@ -640,6 +641,7 @@ parse_io_params:
 				argp->data = va_arg(args, void*);
 				argp->len = va_arg(args, u32);
 				(*cnt_io)++;
+				argp++;
 				break;
 			default:
 				ret = IPC_EINVAL;
