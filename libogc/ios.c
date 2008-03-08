@@ -289,11 +289,13 @@ s32 IOS_ReloadIOS(int version)
 	res = __IOS_ShutdownSubsystems();
 	if(res < 0) ret = res;
 	res = __ES_Init();
-	if(res < 0) return res;
-	res = __IOS_LaunchNewIOS(version);
-	if(res < 0) {
-		ret = res;
-		__ES_Close();
+	if(res < 0) ret = res;
+	else {
+		res = __IOS_LaunchNewIOS(version);
+		if(res < 0) {
+			ret = res;
+			__ES_Close();
+		}
 	}
 	res = __IOS_InitializeSubsystems();
 	if(res < 0) ret = res;
