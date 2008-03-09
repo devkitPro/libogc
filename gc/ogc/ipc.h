@@ -35,6 +35,11 @@ distribution.
 
 #define IPC_HEAP			 -1
 
+#define IPC_OPEN_NONE		  0
+#define IPC_OPEN_READ		  1
+#define IPC_OPEN_WRITE		  2
+#define IPC_OPEN_RW			  (IPC_OPEN_READ|IPC_OPEN_WRITE)
+
 #define IPC_MAXPATH_LEN		 64
 
 #define IPC_OK				  0
