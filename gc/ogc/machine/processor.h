@@ -66,6 +66,16 @@
 #define mfhid4()		mfspr(HID4)
 #define mthid4(_val)	mtspr(HID4,_val)
 
+#define __lhbrx(base,index)			\
+({	register u16 res;				\
+	__asm__ volatile ("lhbrx	%0,%1,%2" : "=r"(res) : "b%"(index), "r"(base) : "memory"); \
+	res; })
+
+#define __lwbrx(base,index)			\
+({	register u32 res;				\
+	__asm__ volatile ("lwbrx	%0,%1,%2" : "=r"(res) : "b%"(index), "r"(base) : "memory"); \
+	res; })
+
 #define cntlzw(_val) ({register u32 _rval; \
 					  asm volatile("cntlzw %0, %1" : "=r"((_rval)) : "r"((_val))); _rval;})
 
@@ -109,5 +119,31 @@
       "0" ((_isr_cookie)), "1" ((_disable_mask)) \
     ); \
   }
+
+static inline u16 bswap16(u16 val)
+{
+	u16 tmp = val;
+	return __lhbrx(&tmp,0);
+}
+
+static inline u32 bswap32(u32 val)
+{
+	u32 tmp = val;
+	return __lwbrx(&tmp,0);
+}
+
+static inline u64 bswap64(u64 val)
+{
+	union ullc {
+		u64 ull;
+		u32 ul[2];
+	} outv;
+	u64 tmp = val;
+
+	outv.ul[0] = __lwbrx(&tmp,4);
+	outv.ul[1] = __lwbrx(&tmp,0);
+
+	return outv.ull;
+}
 
 #endif
