@@ -200,6 +200,10 @@ SOURCE=.\libogc\irq_handler.S
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\isfs.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\kprintf.c
 # End Source File
 # Begin Source File
@@ -957,6 +961,10 @@ SOURCE=.\gc\ogc\ipc.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\irq.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\isfs.h
 # End Source File
 # Begin Source File
 
