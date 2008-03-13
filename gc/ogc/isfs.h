@@ -1,6 +1,8 @@
 #ifndef __ISFS_H__
 #define __ISFS_H__
 
+#if defined(HW_RVL)
+
 #include <gctypes.h>
 
 #define ISFS_MAXPATH			IPC_MAXPATH_LEN
@@ -50,5 +52,7 @@ s32 ISFS_GetFileStatsAsync(s32 fd,fstats *status,isfscallback cb,void *usrdata);
 #ifdef __cplusplus
    }
 #endif /* __cplusplus */
+
+#endif /* defined(HW_RVL) */
 
 #endif
