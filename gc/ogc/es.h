@@ -36,9 +36,21 @@ distribution.
 #include <gctypes.h>
 #include <gcutil.h>
 
-#define ES_EINVAL -0x1004
-#define ES_ENOMEM -0x100C
-#define ES_ENOTINIT -0x1100
+#define ES_EINVAL			-0x1004
+#define ES_ENOMEM			-0x100C
+#define ES_ENOTINIT			-0x1100
+
+#define ES_SIG_RSA4096		0x10000
+#define ES_SIG_RSA2048		0x10001
+#define ES_SIG_ECC			0x10002
+
+#define ES_CERT_RSA4096		0
+#define ES_CERT_RSA2048		1
+#define ES_CERT_ECC			2
+
+#ifdef __cplusplus
+   extern "C" {
+#endif /* __cplusplus */
 
 typedef u32 sigtype;
 typedef sigtype sig_header;
@@ -89,14 +101,6 @@ typedef struct _tik {
 	u16 padding;
 	tiklimit limits[8];
 } __attribute__((packed)) tik;
-
-#define ES_SIG_RSA4096 0x10000
-#define ES_SIG_RSA2048 0x10001
-#define ES_SIG_ECC 0x10002
-
-#define ES_CERT_RSA4096 0
-#define ES_CERT_RSA2048 1
-#define ES_CERT_ECC 2
 
 typedef struct _tmd_content {
 	u32 cid;
@@ -188,6 +192,10 @@ s32 ES_LaunchTitle(u64 titleID, tikview *view);
 signed_blob *ES_NextCert(signed_blob *certs);
 s32 ES_Identify(signed_blob *certificates, u32 certificates_size, signed_blob *tmd, u32 tmd_size, signed_blob *ticket, u32 ticket_size, u32 *keyid);
 
-#endif
+#ifdef __cplusplus
+   }
+#endif /* __cplusplus */
+
+#endif /* defined(HW_RVL) */
 
 #endif

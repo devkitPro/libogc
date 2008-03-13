@@ -36,20 +36,28 @@ distribution.
 #include <gctypes.h>
 #include <gcutil.h>
 
+#define STM_EVENT_RESET		0x00020000
+#define STM_EVENT_POWER		0x00000800
+
+#define STM_EINVAL			-0x2004
+#define STM_ENOTINIT		-0x2100
+#define STM_ENOHANDLER		-0x2101
+
+#ifdef __cplusplus
+   extern "C" {
+#endif /* __cplusplus */
+
 typedef void (*stmcallback)(u32 event);
 
-#define STM_EVENT_RESET 0x00020000
-#define STM_EVENT_POWER 0x00000800
-
-#define STM_EINVAL -0x2004
-#define STM_ENOTINIT -0x2100
-#define STM_ENOHANDLER -0x2101
-
-stmcallback STM_RegisterEventHandler(stmcallback newhandler);
 s32 __STM_Init();
 s32 __STM_Close();
 s32 STM_ShutdownToStandby();
+stmcallback STM_RegisterEventHandler(stmcallback newhandler);
 
-#endif
+#ifdef __cplusplus
+   }
+#endif /* __cplusplus */
+
+#endif /* defined(HW_RVL) */
 
 #endif

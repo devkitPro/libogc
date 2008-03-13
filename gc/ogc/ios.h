@@ -36,6 +36,15 @@ distribution.
 #include <gctypes.h>
 #include <gcutil.h>
 
+#define IOS_EINVAL			-0x3004
+#define IOS_EBADVERSION		-0x3100
+#define IOS_ETOOMANYVIEWS	-0x3101
+#define IOS_EMISMATCH		-0x3102
+
+#ifdef __cplusplus
+   extern "C" {
+#endif /* __cplusplus */
+
 s32 __IOS_InitializeSubsystems(void);
 s32 __IOS_ShutdownSubsystems(void);
 s32 __IOS_LoadStartupIOS(void);
@@ -46,10 +55,9 @@ s32 IOS_GetRevision();
 s32 IOS_GetRevisionMajor();
 s32 IOS_GetRevisionMinor();
 
-#define IOS_EINVAL -0x3004
-#define IOS_EBADVERSION -0x3100
-#define IOS_ETOOMANYVIEWS -0x3101
-#define IOS_EMISMATCH -0x3102
+#ifdef __cplusplus
+   }
+#endif /* __cplusplus */
 
 #endif
 
