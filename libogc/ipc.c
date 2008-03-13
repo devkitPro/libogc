@@ -28,6 +28,8 @@ distribution.
 
 -------------------------------------------------------------*/
 
+#if defined(HW_RVL)
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -62,8 +64,6 @@ distribution.
 #define IOS_SEEK				0x05
 #define IOS_IOCTL				0x06
 #define IOS_IOCTLV				0x07
-
-#if defined(HW_RVL)
 
 struct _ipcreq
 {						//ipc struct size: 32
