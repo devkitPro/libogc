@@ -74,7 +74,6 @@ struct isfs_cb
 		} fsattr;
 		struct {
 			ioctlv vector[4];
-			char filepath[ISFS_MAXPATH];
 			u32 no_entries;
 		} fsreaddir;
 		struct {
@@ -188,9 +187,9 @@ s32 ISFS_ReadDir(const char *filepath,char *name_list,u32 *num)
 	param = (struct isfs_cb*)iosAlloc(hId,ISFS_STRUCTSIZE);
 	if(param==NULL) return ISFS_ENOMEM;
 
-	memcpy(param->fsreaddir.filepath,filepath,(len+1));
+	memcpy(param->filepath,filepath,(len+1));
 
-	param->fsreaddir.vector[0].data = param->fsreaddir.filepath;
+	param->fsreaddir.vector[0].data = param->filepath;
 	param->fsreaddir.vector[0].len = ISFS_MAXPATH;
 	param->fsreaddir.vector[1].data = &param->fsreaddir.no_entries;
 	param->fsreaddir.vector[1].len = sizeof(u32);
@@ -232,9 +231,9 @@ s32 ISFS_ReadDirAsync(const char *filepath,char *name_list,u32 *num,isfscallback
 	param->usrdata = usrdata;
 	param->funcargv[0] = num;
 	param->functype = ISFS_FUNCREADDIR;
-	memcpy(param->fsreaddir.filepath,filepath,(len+1));
+	memcpy(param->filepath,filepath,(len+1));
 
-	param->fsreaddir.vector[0].data = param->fsreaddir.filepath;
+	param->fsreaddir.vector[0].data = param->filepath;
 	param->fsreaddir.vector[0].len = ISFS_MAXPATH;
 	param->fsreaddir.vector[1].data = &param->fsreaddir.no_entries;
 	param->fsreaddir.vector[1].len = sizeof(u32);
