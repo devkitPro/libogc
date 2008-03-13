@@ -27,6 +27,7 @@ distribution.
 
 -------------------------------------------------------------*/
 
+#define DEBUG_SYSTEM
 
 #include <stdlib.h>
 #include <string.h>
@@ -41,6 +42,7 @@ distribution.
 #include "ipc.h"
 #include "ios.h"
 #include "stm.h"
+#include "es.h"
 #endif
 #include "cache.h"
 #include "video.h"
@@ -1077,6 +1079,7 @@ void SYS_PreMain()
 #endif
 }
 
+#if defined(HW_DOL)
 void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 {
 	u32 level,ret = 0;
@@ -1122,6 +1125,97 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 
 	__PADDisableRecalibration(ret);
 }
+#endif
+
+#if defined(HW_RVL)
+
+void __SYS_LoadMenu()
+{
+	u64 titleID = 0x100000002LL;
+	static tikview views[4] ATTRIBUTE_ALIGN(32); //I've never seen more than two, never more than one for IOSes; should be enough
+	u32 numviews;
+	s32 res;
+#ifdef DEBUG_SYSTEM
+	printf("Launching menu TitleID: %016llx\n",titleID);
+#endif
+	
+	res = ES_GetNumTicketViews(titleID, &numviews);
+	if(res < 0) {
+#ifdef DEBUG_SYSTEM
+		printf(" GetNumTicketViews failed: %d\n",res);
+#endif
+		return res;
+	}
+	if(numviews > 4) {
+		printf(" GetNumTicketViews too many views: %u\n",numviews);
+		return IOS_ETOOMANYVIEWS;
+	}
+	res = ES_GetTicketViews(titleID, views, numviews);
+	if(res < 0) {
+#ifdef DEBUG_SYSTEM
+		printf(" GetTicketViews failed: %d\n",res);
+#endif
+		return res;
+	}
+	res = ES_LaunchTitle(titleID, &views[0]);
+	if(res < 0) {
+#ifdef DEBUG_SYSTEM
+		printf(" LaunchTitle failed: %d\n",res);
+#endif
+		return res;
+	}
+	__ES_Reset();
+	return 0;
+
+}
+
+void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
+{
+	u32 level,ret = 0;
+	syssram *sram;
+
+	__dsp_shutdown();
+
+	if(reset==SYS_SHUTDOWN) {
+		ret = __PADDisableRecalibration(TRUE);
+	}
+
+	while(__call_resetfuncs(FALSE)==0);
+	
+	switch(reset) {
+		case SYS_RESTART:
+			STM_RebootSystem();
+		case SYS_POWEROFF: //TODO: read type and do right thing
+		case SYS_POWEROFF_STANDBY:
+			STM_ShutdownToStandby();
+		case SYS_POWEROFF_IDLE:
+			STM_ShutdownToIdle();
+		case SYS_RETURNTOMENU:
+			__SYS_LoadMenu();
+	}
+	
+	//TODO: implement SYS_HOTRESET
+	// either restart failed or this is SYS_SHUTDOWN
+	
+	_CPU_ISR_Disable(level);
+	__call_resetfuncs(TRUE);
+	
+	LCDisable();
+	
+	__IOS_ShutdownSubsystems();
+	__lwp_thread_dispatchdisable();
+	__lwp_thread_closeall();
+
+	memset((void*)0x80000040,0,140);
+	memset((void*)0x800000D4,0,20);
+	memset((void*)0x800000F4,0,4);
+	memset((void*)0x80003000,0,192);
+	memset((void*)0x800030C8,0,12);
+	memset((void*)0x800030E2,0,1);
+
+	__PADDisableRecalibration(ret);
+}
+#endif
 
 void SYS_RegisterResetFunc(sys_resetinfo *info)
 {
@@ -1591,3 +1685,14 @@ u32 SYS_GetWirelessID(u32 chan)
 	__SYS_UnlockSramEx(0);
 	return id;
 }
+
+#if defined(HW_RVL)
+u32 SYS_GetHollywoodRevision()
+{
+	u32 rev;
+	DCInvalidateRange((void*)0x80003138,8);
+	rev = *((u32*)0x80003138);
+	return rev;
+}
+#endif
+

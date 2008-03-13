@@ -57,6 +57,9 @@ s32 __IOS_InitHeap(void)
 	return 0;
 }
 
+// These two functions deal with the "internal" IOS subsystems that are used by default by libogc
+// Other stuff should be inited by the user and deinited by the exit callbacks. The user is also responsible
+// for deiniting other stuff before an IOS reload and reiniting them after.
 s32 __IOS_InitializeSubsystems(void)
 {
 	s32 res;

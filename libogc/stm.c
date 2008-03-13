@@ -32,6 +32,7 @@ distribution.
 
 #include <stdio.h>
 #include "ipc.h"
+#include "system.h"
 #include "asm.h"
 #include "processor.h"
 #include "stm.h"
@@ -189,14 +190,12 @@ s32 STM_ShutdownToStandby()
 {
 	int res;
 	//_viReg[1] = 0;
-	
 	if(__stm_initialized==0) {
 #ifdef DEBUG_STM
 		printf("STM notinited\n");
 #endif
 		return STM_ENOTINIT;
 	}
-
 	__stm_immbufin[0] = 0;
 	res= IOS_Ioctl(__stm_imm_fd,IOCTL_STM_SHUTDOWN,__stm_immbufin,0x20,__stm_immbufout,0x20);
 	if(res<0) {
@@ -205,8 +204,55 @@ s32 STM_ShutdownToStandby()
 #endif
 	}
 	return res;
-	
 }
+
+s32 STM_ShutdownToIdle()
+{
+	int res;
+	//_viReg[1] = 0;
+	if(__stm_initialized==0) {
+#ifdef DEBUG_STM
+		printf("STM notinited\n");
+#endif
+		return STM_ENOTINIT;
+	}
+	switch(SYS_GetHollywoodRevision()) {
+		case 0:
+		case 1:
+		case 2:
+			__stm_immbufin[0] = 0xFCA08280;
+		default:
+			__stm_immbufin[0] = 0xFCE082C0;
+	}
+	res= IOS_Ioctl(__stm_imm_fd,IOCTL_STM_IDLE,__stm_immbufin,0x20,__stm_immbufout,0x20);
+	if(res<0) {
+#ifdef DEBUG_STM
+		printf("STM IDLE failed: %d\n",res);
+#endif
+	}
+	return res;
+}
+
+s32 STM_RebootSystem()
+{
+	int res;
+	//_viReg[1] = 0;
+	if(__stm_initialized==0) {
+#ifdef DEBUG_STM
+		printf("STM notinited\n");
+#endif
+		return STM_ENOTINIT;
+	}
+	__stm_immbufin[0] = 0;
+	res= IOS_Ioctl(__stm_imm_fd,IOCTL_STM_HOTRESET,__stm_immbufin,0x20,__stm_immbufout,0x20);
+	if(res<0) {
+#ifdef DEBUG_STM
+		printf("STM HRST failed: %d\n",res);
+#endif
+	}
+	return res;
+}
+
 
 
 #endif /* defined(HW_RVL) */

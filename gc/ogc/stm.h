@@ -52,6 +52,8 @@ typedef void (*stmcallback)(u32 event);
 s32 __STM_Init();
 s32 __STM_Close();
 s32 STM_ShutdownToStandby();
+s32 STM_ShutdownToIdle();
+s32 STM_RebootSystem();
 stmcallback STM_RegisterEventHandler(stmcallback newhandler);
 
 #ifdef __cplusplus
