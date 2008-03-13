@@ -268,9 +268,10 @@ s32 ES_Identify(signed_blob *certificates, u32 certificates_size, signed_blob *s
 	if(!(hashes = iosAlloc(__es_hid, p_tmd->num_contents*20))) return ES_ENOMEM;
 	
 	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DIVERIFY, "dddd:id", certificates, certificates_size, 0, 0, sticket, ticket_size, stmd, tmd_size, keyid_buf, hashes, p_tmd->num_contents*20);
+	if(ret >= 0 && keyid) *keyid = *keyid_buf;
+
 	iosFree(__es_hid, keyid_buf);
 	iosFree(__es_hid, hashes);
-	if(ret >= 0 && keyid) *keyid = *keyid_buf;
 	return ret;
 }
 
