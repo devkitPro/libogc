@@ -58,6 +58,7 @@ static s32 __stm_imm_fd = -1;
 static u32 __stm_vdinuse = 0;
 static u32 __stm_initialized= 0;
 static u32 __stm_ehregistered= 0;
+static u32 __stm_ehclear= 0;
 
 static u32 __stm_ehbufin[0x08] ATTRIBUTE_ALIGN(32) = {0,0,0,0,0,0,0,0};
 static u32 __stm_ehbufout[0x08] ATTRIBUTE_ALIGN(32) = {0,0,0,0,0,0,0,0};
@@ -125,6 +126,8 @@ s32 __STM_SetEventHook()
 
 	if(__stm_initialized==0) return STM_ENOTINIT;
 	
+	__stm_ehclear = 0;
+	
 	_CPU_ISR_Disable(level);
 	ret = IOS_IoctlAsync(__stm_eh_fd,IOCTL_STM_EVENTHOOK,__stm_ehbufin,0x20,__stm_ehbufout,0x20,__STMEventHandler,NULL);
 	if(ret<0) __stm_ehregistered = 0;
@@ -141,6 +144,8 @@ s32 __STM_ReleaseEventHook()
 	if(__stm_initialized==0) return STM_ENOTINIT;
 	if(__stm_ehregistered==0) return STM_ENOHANDLER;
 
+	__stm_ehclear = 1;
+	
 	ret = IOS_Ioctl(__stm_imm_fd,IOCTL_STM_RELEASE_EH,__stm_immbufin,0x20,__stm_immbufout,0x20);
 	if(ret>=0) __stm_ehregistered = 0;
 
@@ -151,13 +156,17 @@ static s32 __STMEventHandler(s32 result,void *usrdata)
 {
 	__stm_ehregistered = 0;
 	
-	if(result < 0) { //probably released with __STM_ReleaseEventHook
+	if(result < 0) { // shouldn't happen
 		return result;
 	}
 	
 #ifdef DEBUG_STM
 	printf("STM Event: %08x\n",__stm_ehbufout[0]);
 #endif
+	
+	if(__stm_ehclear) { //release
+		return 0;
+	}
 	
 	if(__stm_eventcb) {
 		__stm_eventcb(__stm_ehbufout[0]);

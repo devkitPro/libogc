@@ -43,6 +43,7 @@ distribution.
 #define IOCTL_ES_GETTITLES			0x0F
 #define IOCTL_ES_GETVIEWCNT			0x12
 #define IOCTL_ES_GETVIEWS			0x13
+#define IOCTL_ES_DIVERIFY			0x1C
 #define IOCTL_ES_GETTITLEDIR		0x1D
 #define IOCTL_ES_GETTITLEID			0x20
 
@@ -217,5 +218,61 @@ s32 ES_GetTitles(u64 *titles, u32 cnt)
 
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTITLES,"i:d",cnt,titles,sizeof(u64)*cnt);
 }
+
+signed_blob *ES_NextCert(signed_blob *certs)
+{
+	cert_header *cert;
+	if(!SIGNATURE_SIZE(certs)) return NULL;
+	cert = SIGNATURE_PAYLOAD(certs);
+	if(!CERTIFICATE_SIZE(cert)) return NULL;
+	return (signed_blob*)(((u8*)cert) + CERTIFICATE_SIZE(cert));
+}
+
+s32 __ES_sanity_check_certlist(signed_blob *certs, u32 certsize)
+{
+	int count = 0;
+	signed_blob *end;
+	
+	end = (signed_blob*)(((u8*)certs) + certsize);
+	while(certs != end) {
+#ifdef DEBUG_ES
+		printf("Checking certificate at %p\n",certs);
+#endif
+		certs = ES_NextCert(certs);
+		if(!certs) return 0;
+		count++;
+	}
+#ifdef DEBUG_ES
+	printf("Num of certificates: %d\n",count);
+#endif
+	return count;
+}
+
+s32 ES_Identify(signed_blob *certificates, u32 certificates_size, signed_blob *stmd, u32 tmd_size, signed_blob *sticket, u32 ticket_size, u32 *keyid)
+{
+
+	tmd *p_tmd;
+	u8 *hashes;
+	s32 ret;
+	u32 *keyid_buf;
+	
+	if(__es_fd<0) return ES_ENOTINIT;
+	
+	if(!IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
+	if(!IS_VALID_SIGNATURE(sticket)) return ES_EINVAL;
+	if(!__ES_sanity_check_certlist(certificates, certificates_size)) return ES_EINVAL;
+	
+	p_tmd = SIGNATURE_PAYLOAD(stmd);
+	
+	if(!(keyid_buf = iosAlloc(__es_hid, 4))) return ES_ENOMEM;
+	if(!(hashes = iosAlloc(__es_hid, p_tmd->num_contents*20))) return ES_ENOMEM;
+	
+	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DIVERIFY, "dddd:id", certificates, certificates_size, 0, 0, sticket, ticket_size, stmd, tmd_size, keyid_buf, hashes, p_tmd->num_contents*20);
+	iosFree(__es_hid, keyid_buf);
+	iosFree(__es_hid, hashes);
+	if(ret >= 0 && keyid) *keyid = *keyid_buf;
+	return ret;
+}
+
 
 #endif /* defined(HW_RVL) */

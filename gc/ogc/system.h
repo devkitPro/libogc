@@ -58,6 +58,11 @@ distribution.
 #define SYS_HOTRESET					1			/*!< Restart the application. Kind of softreset */
 #define SYS_SHUTDOWN					2			/*!< Shutdown the thread system, card management system etc. Leave current thread running and return to caller */
 
+#define SYS_RETURNTOMENU				3			/*!< Directly load the Wii Channels menu, without actually cold-resetting the system */
+#define SYS_POWEROFF					4			/*!< Powers off the Wii, automatically choosing Standby or Idle mode depending on the user's configuration */
+#define SYS_POWEROFF_STANDBY			5			/*!< Powers off the Wii to standby (red LED, WC24 off) mode. */
+#define SYS_POWEROFF_IDLE				6			/*!< Powers off the Wii to idle (yellow LED, WC24 on) mode. */
+
 /*!
  *@}
  */
