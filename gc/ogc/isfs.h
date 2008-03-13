@@ -48,6 +48,7 @@ s32 ISFS_GetStats(void *stats);
 s32 ISFS_GetStatsAsync(void *stats,isfscallback cb,void *usrdata);
 s32 ISFS_GetFileStats(s32 fd,fstats *status);
 s32 ISFS_GetFileStatsAsync(s32 fd,fstats *status,isfscallback cb,void *usrdata);
+s32 ISFS_GetAttr(const char *filepath,u32 *ownerID,u16 *groupID,u8 *attributes,u8 *ownerperm,u8 *groupperm,u8 *otherperm);
 
 #ifdef __cplusplus
    }
