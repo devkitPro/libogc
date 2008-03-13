@@ -59,22 +59,18 @@ distribution.
 
 struct isfs_cb
 {
+	char filepath[ISFS_MAXPATH];
 	union {
 		struct {
-			struct {
-				char filepath[ISFS_MAXPATH];
-			} pathinfo;
-			struct {
-				u32 owner_id;
-				u16 group_id;
-				char filepath[ISFS_MAXPATH];
-				u8 ownerperm;
-				u8 groupperm;
-				u8 otherperm;
-				u8 attributes;
-				u8 pad0[2];
-			} fscreate,fsattr;
-		} fsoperations;
+			u32 owner_id;
+			u16 group_id;
+			char filepath[ISFS_MAXPATH];
+			u8 ownerperm;
+			u8 groupperm;
+			u8 otherperm;
+			u8 attributes;
+			u8 pad0[2];
+		} fsattr;
 		struct {
 			ioctlv vector[4];
 			char filepath[ISFS_MAXPATH];
@@ -255,13 +251,13 @@ s32 ISFS_CreateDir(const char *filepath,u8 attributes,u8 owner_perm,u8 group_per
 	param = (struct isfs_cb*)iosAlloc(hId,ISFS_STRUCTSIZE);
 	if(param==NULL) return ISFS_ENOMEM;
 
-	memcpy(param->fsoperations.fscreate.filepath ,filepath,(len+1));
+	memcpy(param->fsattr.filepath ,filepath,(len+1));
 	
-	param->fsoperations.fscreate.attributes = attributes;
-	param->fsoperations.fscreate.ownerperm = owner_perm;
-	param->fsoperations.fscreate.groupperm = group_perm;
-	param->fsoperations.fscreate.otherperm = other_perm;
-	ret = IOS_Ioctl(_fs_fd,ISFS_IOCTL_CREATEDIR,&param->fsoperations.fscreate,sizeof(param->fsoperations.fscreate),NULL,0);
+	param->fsattr.attributes = attributes;
+	param->fsattr.ownerperm = owner_perm;
+	param->fsattr.groupperm = group_perm;
+	param->fsattr.otherperm = other_perm;
+	ret = IOS_Ioctl(_fs_fd,ISFS_IOCTL_CREATEDIR,&param->fsattr,sizeof(param->fsattr),NULL,0);
 
 	if(param!=NULL) iosFree(hId,param);
 	return ret;
@@ -283,13 +279,13 @@ s32 ISFS_CreateDirAsync(const char *filepath,u8 attributes,u8 owner_perm,u8 grou
 	param->cb = cb;
 	param->usrdata = usrdata;
 	param->functype = ISFS_FUNCNULL;
-	memcpy(param->fsoperations.fscreate.filepath,filepath,(len+1));
+	memcpy(param->fsattr.filepath,filepath,(len+1));
 	
-	param->fsoperations.fscreate.attributes = attributes;
-	param->fsoperations.fscreate.ownerperm = owner_perm;
-	param->fsoperations.fscreate.groupperm = group_perm;
-	param->fsoperations.fscreate.otherperm = other_perm;
-	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_CREATEDIR,&param->fsoperations.fscreate,sizeof(param->fsoperations.fscreate),NULL,0,__isfsFunctionCB,param);
+	param->fsattr.attributes = attributes;
+	param->fsattr.ownerperm = owner_perm;
+	param->fsattr.groupperm = group_perm;
+	param->fsattr.otherperm = other_perm;
+	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_CREATEDIR,&param->fsattr,sizeof(param->fsattr),NULL,0,__isfsFunctionCB,param);
 }
 
 s32 ISFS_Open(const char *filepath,u8 mode)
@@ -306,8 +302,8 @@ s32 ISFS_Open(const char *filepath,u8 mode)
 	param = (struct isfs_cb*)iosAlloc(hId,ISFS_STRUCTSIZE);
 	if(param==NULL) return ISFS_ENOMEM;
 
-	memcpy(param->fsoperations.pathinfo.filepath,filepath,(len+1));
-	ret = IOS_Open(param->fsoperations.pathinfo.filepath,mode);
+	memcpy(param->filepath,filepath,(len+1));
+	ret = IOS_Open(param->filepath,mode);
 
 	if(param!=NULL) iosFree(hId,param);
 	return ret;
@@ -329,8 +325,8 @@ s32 ISFS_OpenAsync(const char *filepath,u8 mode,isfscallback cb,void *usrdata)
 	param->cb = cb;
 	param->usrdata = usrdata;
 	param->functype = ISFS_FUNCNULL;
-	memcpy(param->fsoperations.pathinfo.filepath,filepath,(len+1));
-	return IOS_OpenAsync(param->fsoperations.pathinfo.filepath,mode,__isfsFunctionCB,param);
+	memcpy(param->filepath,filepath,(len+1));
+	return IOS_OpenAsync(param->filepath,mode,__isfsFunctionCB,param);
 }
 
 s32 ISFS_Format()
@@ -464,13 +460,13 @@ s32 ISFS_CreateFile(const char *filepath,u8 attributes,u8 owner_perm,u8 group_pe
 	param = (struct isfs_cb*)iosAlloc(hId,ISFS_STRUCTSIZE);
 	if(param==NULL) return ISFS_ENOMEM;
 
-	memcpy(param->fsoperations.fscreate.filepath,filepath,(len+1));
+	memcpy(param->fsattr.filepath,filepath,(len+1));
 	
-	param->fsoperations.fscreate.attributes = attributes;
-	param->fsoperations.fscreate.ownerperm = owner_perm;
-	param->fsoperations.fscreate.groupperm = group_perm;
-	param->fsoperations.fscreate.otherperm = other_perm;
-	ret = IOS_Ioctl(_fs_fd,ISFS_IOCTL_CREATEFILE,&param->fsoperations.fscreate,sizeof(param->fsoperations.fscreate),NULL,0);
+	param->fsattr.attributes = attributes;
+	param->fsattr.ownerperm = owner_perm;
+	param->fsattr.groupperm = group_perm;
+	param->fsattr.otherperm = other_perm;
+	ret = IOS_Ioctl(_fs_fd,ISFS_IOCTL_CREATEFILE,&param->fsattr,sizeof(param->fsattr),NULL,0);
 
 	if(param!=NULL) iosFree(hId,param);
 	return ret;
@@ -492,13 +488,13 @@ s32 ISFS_CreateFileAsync(const char *filepath,u8 attributes,u8 owner_perm,u8 gro
 	param->cb = cb;
 	param->usrdata = usrdata;
 	param->functype = ISFS_FUNCNULL;
-	memcpy(param->fsoperations.fscreate.filepath,filepath,(len+1));
+	memcpy(param->fsattr.filepath,filepath,(len+1));
 	
-	param->fsoperations.fscreate.attributes = attributes;
-	param->fsoperations.fscreate.ownerperm = owner_perm;
-	param->fsoperations.fscreate.groupperm = group_perm;
-	param->fsoperations.fscreate.otherperm = other_perm;
-	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_CREATEFILE,&param->fsoperations.fscreate,sizeof(param->fsoperations.fscreate),NULL,0,__isfsFunctionCB,param);
+	param->fsattr.attributes = attributes;
+	param->fsattr.ownerperm = owner_perm;
+	param->fsattr.groupperm = group_perm;
+	param->fsattr.otherperm = other_perm;
+	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_CREATEFILE,&param->fsattr,sizeof(param->fsattr),NULL,0,__isfsFunctionCB,param);
 }
 
 s32 ISFS_Delete(const char *filepath)
@@ -515,8 +511,8 @@ s32 ISFS_Delete(const char *filepath)
 	param = (struct isfs_cb*)iosAlloc(hId,ISFS_STRUCTSIZE);
 	if(param==NULL) return ISFS_ENOMEM;
 
-	memcpy(param->fsoperations.pathinfo.filepath,filepath,(len+1));
-	ret = IOS_Ioctl(_fs_fd,ISFS_IOCTL_DELETE,param->fsoperations.pathinfo.filepath,ISFS_MAXPATH,NULL,0);
+	memcpy(param->filepath,filepath,(len+1));
+	ret = IOS_Ioctl(_fs_fd,ISFS_IOCTL_DELETE,param->filepath,ISFS_MAXPATH,NULL,0);
 
 	if(param!=NULL) iosFree(hId,param);
 	return ret;
@@ -538,8 +534,8 @@ s32 ISFS_DeleteAsync(const char *filepath,isfscallback cb,void *usrdata)
 	param->cb = cb;
 	param->usrdata = usrdata;
 	param->functype = ISFS_FUNCNULL;
-	memcpy(param->fsoperations.pathinfo.filepath,filepath,(len+1));
-	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_DELETE,param->fsoperations.pathinfo.filepath,ISFS_MAXPATH,NULL,0,__isfsFunctionCB,param);
+	memcpy(param->filepath,filepath,(len+1));
+	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_DELETE,param->filepath,ISFS_MAXPATH,NULL,0,__isfsFunctionCB,param);
 }
 
 s32 ISFS_Close(s32 fd)
@@ -601,15 +597,15 @@ s32 ISFS_GetAttr(const char *filepath,u32 *ownerID,u16 *groupID,u8 *attributes,u
 	param = (struct isfs_cb*)iosAlloc(hId,ISFS_STRUCTSIZE);
 	if(param==NULL) return ISFS_ENOMEM;
 
-	memcpy(param->fsoperations.pathinfo.filepath,filepath,(len+1));
-	ret = IOS_Ioctl(_fs_fd,ISFS_IOCTL_GETATTR,param->fsoperations.pathinfo.filepath ,ISFS_MAXPATH,&param->fsoperations.fsattr,sizeof(param->fsoperations.fsattr));
+	memcpy(param->filepath,filepath,(len+1));
+	ret = IOS_Ioctl(_fs_fd,ISFS_IOCTL_GETATTR,param->filepath,ISFS_MAXPATH,&param->fsattr,sizeof(param->fsattr));
 	if(ret==IPC_OK) {
-		*ownerID = param->fsoperations.fsattr.owner_id;
-		*groupID = param->fsoperations.fsattr.group_id;
-		*ownerperm = param->fsoperations.fsattr.ownerperm;
-		*groupperm = param->fsoperations.fsattr.groupperm;
-		*otherperm = param->fsoperations.fsattr.otherperm;
-		*attributes = param->fsoperations.fsattr.attributes;
+		*ownerID = param->fsattr.owner_id;
+		*groupID = param->fsattr.group_id;
+		*ownerperm = param->fsattr.ownerperm;
+		*groupperm = param->fsattr.groupperm;
+		*otherperm = param->fsattr.otherperm;
+		*attributes = param->fsattr.attributes;
 	}
 	
 	if(param!=NULL) iosFree(hId,param);
