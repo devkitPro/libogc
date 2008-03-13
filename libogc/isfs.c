@@ -44,8 +44,9 @@ distribution.
 #define ISFS_HEAPSIZE				(ISFS_STRUCTSIZE<<4)
 
 #define ISFS_FUNCNULL				0
-#define ISFS_FUNCGETSTATS			1
-#define ISFS_FUNCREADIR				2
+#define ISFS_FUNCGETSTAT			1
+#define ISFS_FUNCREADDIR			2
+#define ISFS_FUNCGETATTR			3
 
 #define ISFS_IOCTL_FORMAT			1
 #define ISFS_IOCTL_GETSTATS			2
@@ -90,7 +91,7 @@ struct isfs_cb
 	isfscallback cb;
 	void *usrdata;
 	u32 functype;
-	void *funcargp;
+	void *funcargv[8];
 };
 
 
@@ -103,14 +104,28 @@ static char _dev_fs[] ATTRIBUTE_ALIGN(32) = "/dev/fs";
 static s32 __isfsGetStatsCB(s32 result,void *usrdata)
 {
 	struct isfs_cb *param = (struct isfs_cb*)usrdata;
-	if(result==0) memcpy(param->funcargp,&param->fsstats,sizeof(param->fsstats));
+	if(result==0) memcpy(param->funcargv[0],&param->fsstats,sizeof(param->fsstats));
+	return result;
+}
+
+static s32 __isfsGetAttrCB(s32 result,void *usrdata)
+{
+	struct isfs_cb *param = (struct isfs_cb*)usrdata;
+	if(result==0) {
+		*(u32*)(param->funcargv[0]) = param->fsattr.owner_id;
+		*(u16*)(param->funcargv[1]) = param->fsattr.group_id;
+		*(u8*)(param->funcargv[2]) = param->fsattr.attributes;
+		*(u8*)(param->funcargv[3]) = param->fsattr.ownerperm;
+		*(u8*)(param->funcargv[4]) = param->fsattr.groupperm;
+		*(u8*)(param->funcargv[5]) = param->fsattr.otherperm;
+	}
 	return result;
 }
 
 static s32 __isfsReadDirCB(s32 result,void *usrdata)
 {
 	struct isfs_cb *param = (struct isfs_cb*)usrdata;
-	if(result==0) *(u32*)param->funcargp = param->fsreaddir.no_entries;
+	if(result==0) *(u32*)(param->funcargv[0]) = param->fsreaddir.no_entries;
 	return result;
 }
 
@@ -119,8 +134,9 @@ static s32 __isfsFunctionCB(s32 result,void *usrdata)
 	struct isfs_cb *param = (struct isfs_cb*)usrdata;
 	
 	if(result>=0) {
-		if(param->functype==ISFS_FUNCGETSTATS) __isfsGetStatsCB(result,usrdata);
-		else if(param->functype==ISFS_FUNCREADIR) __isfsReadDirCB(result,usrdata);
+		if(param->functype==ISFS_FUNCGETSTAT) __isfsGetStatsCB(result,usrdata);
+		else if(param->functype==ISFS_FUNCREADDIR) __isfsReadDirCB(result,usrdata);
+		else if(param->functype==ISFS_FUNCGETATTR) __isfsGetAttrCB(result,usrdata);
 	}
 	if(param->cb!=NULL) param->cb(result,param->usrdata);
 	
@@ -214,8 +230,8 @@ s32 ISFS_ReadDirAsync(const char *filepath,char *name_list,u32 *num,isfscallback
 
 	param->cb = cb;
 	param->usrdata = usrdata;
-	param->funcargp = num;
-	param->functype = ISFS_FUNCREADIR;
+	param->funcargv[0] = num;
+	param->functype = ISFS_FUNCREADDIR;
 	memcpy(param->fsreaddir.filepath,filepath,(len+1));
 
 	param->fsreaddir.vector[0].data = param->fsreaddir.filepath;
@@ -379,8 +395,8 @@ s32 ISFS_GetStatsAsync(void *stats,isfscallback cb,void *usrdata)
 
 	param->cb = cb;
 	param->usrdata = usrdata;
-	param->functype = ISFS_FUNCGETSTATS;
-	param->funcargp = stats;
+	param->functype = ISFS_FUNCGETSTAT;
+	param->funcargv[0] = stats;
 	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_GETSTATS,NULL,0,&param->fsstats,sizeof(param->fsstats),__isfsFunctionCB,param);
 }
 
@@ -610,6 +626,33 @@ s32 ISFS_GetAttr(const char *filepath,u32 *ownerID,u16 *groupID,u8 *attributes,u
 	
 	if(param!=NULL) iosFree(hId,param);
 	return ret;
+}
+
+s32 ISFS_GetAttrAsync(const char *filepath,u32 *ownerID,u16 *groupID,u8 *attributes,u8 *ownerperm,u8 *groupperm,u8 *otherperm,isfscallback cb,void *usrdata)
+{
+	s32 len;
+	struct isfs_cb *param;
+
+	if(_fs_fd<0 || filepath==NULL || ownerID==NULL || groupID==NULL
+		|| attributes==NULL || ownerperm==NULL || groupperm==NULL || otherperm==NULL) return ISFS_EINVAL;
+
+	len = strnlen(filepath,ISFS_MAXPATH);
+	if(len>=ISFS_MAXPATH) return ISFS_EINVAL;
+
+	param = (struct isfs_cb*)iosAlloc(hId,ISFS_STRUCTSIZE);
+	if(param==NULL) return ISFS_ENOMEM;
+
+	param->cb = cb;
+	param->usrdata = usrdata;
+	param->functype = ISFS_FUNCGETATTR;
+	param->funcargv[0] = ownerID;
+	param->funcargv[1] = groupID;
+	param->funcargv[2] = attributes;
+	param->funcargv[3] = ownerperm;
+	param->funcargv[4] = groupperm;
+	param->funcargv[5] = otherperm;
+	memcpy(param->filepath,filepath,(len+1));
+	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_GETATTR,param->filepath,ISFS_MAXPATH,&param->fsattr,sizeof(param->fsattr),__isfsFunctionCB,param);
 }
 
 #endif /* defined(HW_RVL) */
