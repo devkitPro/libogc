@@ -180,6 +180,8 @@ static void _cpu_print_stack(void *pc,void *lr,void *r1)
 	}
 }
 
+static void ( * Reload ) () = ( void ( * ) () ) 0x80001800;
+
 static void waitForReload() {
 
 	u32 level;
@@ -191,14 +193,10 @@ static void waitForReload() {
 		int buttonsDown = PAD_ButtonsDown(0);
 
 		if( buttonsDown & PAD_TRIGGER_Z ) {
-			kprintf("reload ...\n");
 			_CPU_ISR_Disable(level);
-			void ( * Reload ) () = ( void ( * ) () ) 0x80001800;
 			Reload ();
 		}
 
-		if ( buttonsDown & PAD_BUTTON_START )
-			kprintf("start\n");
 		if ( buttonsDown & PAD_BUTTON_A )
 		{
 			kprintf("Reset\n");
@@ -248,11 +246,18 @@ void __libc_wrapup();
 
 void __libogc_exit(int status)
 {
+	void (*exitfunc)(void) = Reload;
 	int level;
+
 	_CPU_ISR_Disable(level);
 	GX_AbortFrame();
+	
+	if( status != 0 ) {
+		exitfunc = waitForReload;
+		kprintf("exit code was %d\n", status);
+	} 
 	__libc_wrapup();
-	__lwp_thread_stopmultitasking(waitForReload);
+	__lwp_thread_stopmultitasking(exitfunc);
 
 }
 
