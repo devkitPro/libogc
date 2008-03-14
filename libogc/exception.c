@@ -40,6 +40,7 @@ distribution.
 
 #include "system.h"
 
+#include "gx.h"
 #include "pad.h"
 #include "console.h"
 #include "lwp_threads.h"
@@ -249,6 +250,7 @@ void __libogc_exit(int status)
 {
 	int level;
 	_CPU_ISR_Disable(level);
+	GX_AbortFrame();
 	__libc_wrapup();
 	__lwp_thread_stopmultitasking(waitForReload);
 
