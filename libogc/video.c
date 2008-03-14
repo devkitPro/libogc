@@ -1772,7 +1772,8 @@ static void __VISetYUVSEL(u8 dtvstatus)
 	vdacFlagRegion = 0x0000;
 	if(currTvMode==VI_NTSC) vdacFlagRegion = 0x0000;
 	else if(currTvMode==VI_PAL || currTvMode==VI_EURGB60) vdacFlagRegion = 0x0002;
-	else if(currTvMode==VI_MPAL) vdacFlagRegion = 0x0001;
+	/* FIXME: setting this to 1 causes monochrome output on PAL systems*/
+	else if(currTvMode==VI_MPAL) vdacFlagRegion = 0x0002;
 
 	val = (_SHIFTL(0x01,8,8)|(_SHIFTL(dtvstatus,5,8)|vdacFlagRegion));
 	__VISendI2CData(0xe0,&val,sizeof(u16));
