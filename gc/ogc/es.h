@@ -156,7 +156,7 @@ typedef struct _cert_rsa4096 {
 	u8 pad[0x34];
 } __attribute__((packed)) cert_rsa4096;
 
-#define TMD_SIZE(x) (((x).num_contents)*sizeof(tmd_content) + sizeof(tmd))
+#define TMD_SIZE(x) (((x)->num_contents)*sizeof(tmd_content) + sizeof(tmd))
 #define TMD_CONTENTS(x) ((tmd_content*)(((tmd*)(x))+1))
 
 //TODO: add ECC stuff
