@@ -263,7 +263,7 @@ static void __GX_WaitAbortPixelEngine()
 
 static void __GX_Abort()
 {
-	if(_gx[0x1b0] && __GX_IsGPFifoReady())
+	if(_gx[0x1ff] && __GX_IsGPFifoReady())
 		__GX_WaitAbortPixelEngine();
 	
 	_piReg[6] = 1;
@@ -297,34 +297,46 @@ static void __GX_SaveCPUFifoAux(struct __gxfifo *fifo)
 
 static void __GX_CleanGPFifo()
 {
-	u32 level,buf_start;
-	struct __gxfifo tmp_fifo;
-	struct __gxfifo *gpfifo;
-	struct __gxfifo *cpufifo;
+	u32 level;
 
-	gpfifo = (struct __gxfifo*)GX_GetGPFifo();
-	cpufifo = (struct __gxfifo*)GX_GetCPUFifo();
+	if(!_gxgpfifoready) return;
 
-	buf_start = gpfifo->buf_start;
-	memcpy(&tmp_fifo,gpfifo,sizeof(struct __gxfifo));
-	
 	_CPU_ISR_Disable(level);
-	tmp_fifo.rd_ptr = buf_start;
-	tmp_fifo.wt_ptr = buf_start;
-	tmp_fifo.rdwt_dst = 0;
-	_CPU_ISR_Restore(level);
+	__GX_FifoReadDisable();
+	__GX_WriteFifoIntEnable(FALSE,FALSE);
 
-	GX_SetGPFifo((GXFifoObj*)&tmp_fifo);
-	if(gpfifo==cpufifo) GX_SetCPUFifo((GXFifoObj*)&tmp_fifo);
+	_gpfifo->rd_ptr = _gpfifo->wt_ptr;
+	_gpfifo->rdwt_dst = 0;
 	
-	_CPU_ISR_Disable(level);
-	gpfifo->rd_ptr = buf_start;
-	gpfifo->wt_ptr = buf_start;
-	gpfifo->rdwt_dst = 0;
+	/* setup rd<->wd dist */
+	_cpReg[24] = _SHIFTL(_gpfifo->rdwt_dst,0,16);
+	_cpReg[25] = _SHIFTR(_gpfifo->rdwt_dst,16,16);
+
+	/* setup wt ptr */
+	_cpReg[26] = _SHIFTL(MEM_VIRTUAL_TO_PHYSICAL(_gpfifo->wt_ptr),0,16);
+	_cpReg[27] = _SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(_gpfifo->wt_ptr),16,16);
+
+	/* setup rd ptr */
+	_cpReg[28] = _SHIFTL(MEM_VIRTUAL_TO_PHYSICAL(_gpfifo->rd_ptr),0,16);
+	_cpReg[29] = _SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(_gpfifo->rd_ptr),16,16);
+	ppcsync();
+
+	if(_cpgplinked) {
+		_cpufifo->rd_ptr = _gpfifo->rd_ptr;
+		_cpufifo->wt_ptr = _gpfifo->wt_ptr;
+		_cpufifo->rdwt_dst = _gpfifo->rdwt_dst;
+
+		_piReg[5] = (_cpufifo->wt_ptr&0x1FFFFFE0);
+		__GX_WriteFifoIntEnable(TRUE,FALSE);
+		__GX_FifoLink(TRUE);
+	}
+	((u16*)_gx)[1] &= ~0x22;
+	_cpReg[1] = ((u16*)_gx)[1];
+	breakPtCB = NULL;
+	
+	__GX_WriteFifoIntReset(TRUE,TRUE);
+	__GX_FifoReadEnable();
 	_CPU_ISR_Restore(level);
-	
-	GX_SetGPFifo((GXFifoObj*)gpfifo);
-	if(gpfifo==cpufifo) GX_SetCPUFifo((GXFifoObj*)cpufifo);
 }
 
 static void __GXOverflowHandler()
@@ -1020,7 +1032,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 
 	memset(_gx,0,2048);
 
-	_gx[0x1b0] = 1;
+	_gx[0x1ff] = 1;
 	
 	__GX_FifoInit();
 	GX_InitFifoBase(&_gxdefiniobj,base,size);
