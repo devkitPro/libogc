@@ -79,6 +79,8 @@ static GXFifoObj _gxdefiniobj;
 static void *_gxcurrbp = NULL;
 static lwp_t _gxcurrentlwp = LWP_THREAD_NULL;
 
+static u8 _gxcpufifoready = 0;
+static u8 _gxgpfifoready = 0;
 static u8 _cpgplinked = 0;
 static u16 _gxgpstatus = 0;
 static vu32 _gxoverflowsuspend = 0;
@@ -187,6 +189,88 @@ static __inline__ void __GX_FifoReadDisable()
 {
 	((u16*)_gx)[1] = ((((u16*)_gx)[1]&~0x01)|0);
 	_cpReg[1] = ((u16*)_gx)[1];
+}
+
+static u8 __GX_IsGPCPUFifoLinked()
+{
+	return _cpgplinked;
+}
+
+static u8 __GX_IsGPFifoReady()
+{
+	return _gxgpfifoready;
+}
+
+static u8 __GX_IsCPUFifoReady()
+{
+	return _gxcpufifoready;
+}
+
+static void __GX_InitRevBits()
+{
+	s32 i;
+	
+	i=0;
+	while(i<8) {
+		_gx[0x10+i] = 0x40000000;
+		_gx[0x18+i] = 0x80000000;
+		GX_LOAD_CP_REG((0x0080|i),_gx[0x18+i]);
+		i++;
+	}
+	
+	GX_LOAD_XF_REG(0x1000,0x3f);
+	GX_LOAD_XF_REG(0x1012,0x01);
+	
+	GX_LOAD_BP_REG(0x5800000f);
+
+}
+
+static void __GX_WaitAbort(u32 delay)
+{
+	u64 start,end;
+
+	start = gettime();
+	while(1) {
+		end = gettime();
+		if(diff_ticks(start,end)>=(u64)delay) break;
+	};
+}
+
+static u32 __GX_ReadMemCounterU32(u32 reg)
+{
+	u16 lcnt,ucnt,tmp;
+
+	tmp = _memReg[reg];
+	do {
+		ucnt = tmp;
+		lcnt = _memReg[reg+1];
+		tmp = _memReg[reg];
+	} while(tmp!=ucnt);
+	return (u32)((ucnt<<16)|lcnt);
+}
+
+static void __GX_WaitAbortPixelEngine()
+{ 
+	u32 cnt,tmp;
+
+	cnt = __GX_ReadMemCounterU32(39);
+	do {
+		tmp = cnt;
+		__GX_WaitAbort(8);
+		cnt = __GX_ReadMemCounterU32(39);
+	} while(cnt!=tmp);
+}
+
+static void __GX_Abort()
+{
+	if(_gx[0x1b0] && __GX_IsGPFifoReady())
+		__GX_WaitAbortPixelEngine();
+	
+	_piReg[6] = 1;
+	__GX_WaitAbort(50);
+	
+	_piReg[6] = 0;
+	__GX_WaitAbort(5);
 }
 
 static void __GX_SaveCPUFifoAux(struct __gxfifo *fifo)
@@ -322,6 +406,8 @@ static void __GX_FifoInit()
 	IRQ_Request(IRQ_PI_CP,__GXCPInterruptHandler,NULL);
 	__UnmaskIrq(IRQMASK(IRQ_PI_CP));
 
+	_gxcpufifoready = 0;
+	_gxgpfifoready = 0;
 	_gxoverflowsuspend = 0;
 	_cpufifo = NULL;
 	_gpfifo = NULL;
@@ -934,6 +1020,8 @@ GXFifoObj* GX_Init(void *base,u32 size)
 
 	memset(_gx,0,2048);
 
+	_gx[0x1b0] = 1;
+	
 	__GX_FifoInit();
 	GX_InitFifoBase(&_gxdefiniobj,base,size);
 	GX_SetCPUFifo(&_gxdefiniobj);
@@ -1013,18 +1101,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	_gx[0x0c] = GX_PERF1_NONE;
 	_gx[0x0d] = 0;
 
-	i=0;
-	while(i<8) {
-		_gx[0x10+i] = 0x40000000;
-		_gx[0x18+i] = 0x80000000;
-		GX_LOAD_CP_REG((0x0080|i),_gx[0x18+i]);
-		i++;
-	}
-	
-	GX_LOAD_XF_REG(0x1000,0x3f);
-	GX_LOAD_XF_REG(0x1012,0x01);
-	
-	GX_LOAD_BP_REG(0x5800000f);
+	__GX_InitRevBits();
 
 	i=0;
 	while(i<16) {
@@ -1166,13 +1243,14 @@ void GX_SetCPUFifo(GXFifoObj *fifo)
 	u32 level;
 	
 	_CPU_ISR_Disable(level);
+	_gxcpufifoready = 0;
 	_cpufifo = (struct __gxfifo*)fifo;
 	if(_cpufifo==_gpfifo) {
 		_piReg[3] = MEM_VIRTUAL_TO_PHYSICAL(_cpufifo->buf_start);
 		_piReg[4] = MEM_VIRTUAL_TO_PHYSICAL(_cpufifo->buf_end);
 		_piReg[5] = (_cpufifo->wt_ptr&0x1FFFFFE0);
 		_cpgplinked = 1;
-
+		
 		__GX_WriteFifoIntReset(GX_TRUE,GX_TRUE);
 		__GX_WriteFifoIntEnable(GX_ENABLE,GX_DISABLE);
 		__GX_FifoLink(GX_TRUE);
@@ -1189,6 +1267,7 @@ void GX_SetCPUFifo(GXFifoObj *fifo)
 	_piReg[3] = MEM_VIRTUAL_TO_PHYSICAL(_cpufifo->buf_start);
 	_piReg[4] = MEM_VIRTUAL_TO_PHYSICAL(_cpufifo->buf_end);
 	_piReg[5] = (_cpufifo->wt_ptr&0x1FFFFFE0);
+	_gxcpufifoready = 1;
 	_CPU_ISR_Restore(level);
 }
 
@@ -1202,6 +1281,7 @@ void GX_SetGPFifo(GXFifoObj *fifo)
 	u32 level;
 
 	_CPU_ISR_Disable(level);
+	_gxgpfifoready = 0;
 	__GX_FifoReadDisable();
 	__GX_WriteFifoIntEnable(GX_DISABLE,GX_DISABLE);
 	
@@ -1246,6 +1326,7 @@ void GX_SetGPFifo(GXFifoObj *fifo)
 	}
 	__GX_WriteFifoIntReset(GX_TRUE,GX_TRUE);
 	__GX_FifoReadEnable();
+	_gxgpfifoready = 1;
 	_CPU_ISR_Restore(level);
 }
 
@@ -1386,19 +1467,30 @@ void GX_DisableBreakPt()
 	_CPU_ISR_Restore(level);
 }
 
+#if defined(HW_DOL)
 void GX_AbortFrame()
 {
-	u64 start;
-
 	_piReg[6] = 1;
-	start = gettime();
-	while(diff_ticks(start,gettime())<50);
+	__GX_WaitAbort(50);
 	_piReg[6] = 0;
-	start = gettime();
-	while(diff_ticks(start,gettime())<5);
-	
-	__GX_CleanGPFifo();
+	__GX_WaitAbort(5);
+
+	if(__GX_IsGPFifoReady())
+		__GX_CleanGPFifo();
 }
+#elif defined(HW_RVL)
+void GX_AbortFrame()
+{
+	__GX_Abort();
+	if(__GX_IsGPFifoReady()) {
+		__GX_CleanGPFifo();
+		__GX_InitRevBits();
+		
+		_gx[0x09] = 0;
+		GX_Flush();
+	}
+}
+#endif
 
 void GX_SetDrawSync(u16 token)
 {
