@@ -55,13 +55,17 @@ distribution.
 #define ISFS_IOCTL_SETATTR			5
 #define ISFS_IOCTL_GETATTR			6
 #define ISFS_IOCTL_DELETE			7
+#define ISFS_IOCTL_RENAME			8
 #define ISFS_IOCTL_CREATEFILE		9
+#define ISFS_IOCTL_SETFILEVERCTRL	10
 #define ISFS_IOCTL_GETFILESTATS		11
+#define ISFS_IOCTL_SHUTDOWN			13
 
 struct isfs_cb
 {
 	char filepath[ISFS_MAXPATH];
 	union {
+		char filepath_ren[ISFS_MAXPATH];
 		struct {
 			u32 owner_id;
 			u16 group_id;
@@ -652,6 +656,55 @@ s32 ISFS_GetAttrAsync(const char *filepath,u32 *ownerID,u16 *groupID,u8 *attribu
 	param->funcargv[5] = otherperm;
 	memcpy(param->filepath,filepath,(len+1));
 	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_GETATTR,param->filepath,ISFS_MAXPATH,&param->fsattr,sizeof(param->fsattr),__isfsFunctionCB,param);
+}
+
+s32 ISFS_Rename(const char *filepathOld,const char *filepathNew)
+{
+	s32 ret;
+	s32 len0,len1;
+	struct isfs_cb *param;
+
+	if(_fs_fd<0 || filepathOld==NULL || filepathNew==NULL) return ISFS_EINVAL;
+
+	len0 = strnlen(filepathOld,ISFS_MAXPATH);
+	if(len0>=ISFS_MAXPATH) return ISFS_EINVAL;
+
+	len1 = strnlen(filepathNew,ISFS_MAXPATH);
+	if(len1>=ISFS_MAXPATH) return ISFS_EINVAL;
+
+	param = (struct isfs_cb*)iosAlloc(hId,ISFS_STRUCTSIZE);
+	if(param==NULL) return ISFS_ENOMEM;
+
+	memcpy(param->filepath,filepathOld,(len0+1));
+	memcpy(param->filepath_ren,filepathNew,(len0+1));
+	ret = IOS_Ioctl(_fs_fd,ISFS_IOCTL_RENAME,param->filepath,(ISFS_MAXPATH<<1),NULL,0);
+
+	if(param!=NULL) iosFree(hId,param);
+	return ret;
+}
+
+s32 ISFS_RenameAsync(const char *filepathOld,const char *filepathNew,isfscallback cb,void *usrdata)
+{
+	s32 len0,len1;
+	struct isfs_cb *param;
+
+	if(_fs_fd<0 || filepathOld==NULL || filepathNew==NULL) return ISFS_EINVAL;
+
+	len0 = strnlen(filepathOld,ISFS_MAXPATH);
+	if(len0>=ISFS_MAXPATH) return ISFS_EINVAL;
+
+	len1 = strnlen(filepathNew,ISFS_MAXPATH);
+	if(len1>=ISFS_MAXPATH) return ISFS_EINVAL;
+
+	param = (struct isfs_cb*)iosAlloc(hId,ISFS_STRUCTSIZE);
+	if(param==NULL) return ISFS_ENOMEM;
+
+	param->cb = cb;
+	param->usrdata = usrdata;
+	param->functype = ISFS_FUNCNULL;
+	memcpy(param->filepath,filepathOld,(len0+1));
+	memcpy(param->filepath_ren,filepathNew,(len0+1));
+	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_RENAME,param->filepath,(ISFS_MAXPATH<<1),NULL,0,__isfsFunctionCB,param);
 }
 
 #endif /* defined(HW_RVL) */
