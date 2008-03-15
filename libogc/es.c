@@ -38,6 +38,7 @@ distribution.
 
 //#define DEBUG_ES
 
+#define IOCTL_ES_ADDTICKET			0x01
 #define IOCTL_ES_LAUNCH				0x08
 #define IOCTL_ES_GETTITLECOUNT		0x0E
 #define IOCTL_ES_GETTITLES			0x0F
@@ -48,6 +49,8 @@ distribution.
 #define IOCTL_ES_GETTITLEID			0x20
 
 #define ES_HEAP_SIZE 0x800
+
+#define ISALIGNED(x) ((((u32)x)&0x1F)==0)
 
 static char __es_fs[] ATTRIBUTE_ALIGN(32) = "/dev/es";
 
@@ -111,7 +114,7 @@ s32 ES_GetTitleID(u64 *titleID)
 	u64 title;
 
 	if(__es_fd<0) return ES_ENOTINIT;
-	if(titleID == NULL) return ES_EINVAL;
+	if(!titleID) return ES_EINVAL;
 	
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTITLEID,":q",&title);
 	if(ret<0) return ret;
@@ -125,14 +128,15 @@ s32 ES_GetDataDir(u64 titleID,char *filepath)
 	s32 ret;
 
 	if(__es_fd<0) return ES_ENOTINIT;
-	if(filepath==NULL || ((s32)filepath%32)!=0) return ES_EINVAL;
+	if(!filepath) return ES_EINVAL;
+	if(!ISALIGNED(filepath)) return ES_EALIGN;
 
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTITLEDIR,"q:d",titleID,filepath,30);
 
 	return ret;
 }
 
-s32 ES_LaunchTitle(u64 titleID, tikview *view)
+s32 ES_LaunchTitle(u64 titleID, const tikview *view)
 {
 
 	static u64 title ATTRIBUTE_ALIGN(32);
@@ -140,7 +144,8 @@ s32 ES_LaunchTitle(u64 titleID, tikview *view)
 	s32 res;
 	
 	if(__es_fd<0) return ES_ENOTINIT;
-	if(view==NULL || ((u32)view%32)!=0) return ES_EINVAL;
+	if(!view) return ES_EINVAL;
+	if(!ISALIGNED(view)) return ES_EALIGN;
 
 #ifdef DEBUG_ES
 	printf("ES LaunchTitle %d %016llx 0x%08x 0x%02x\n",__es_fd,titleID,(u32)view,sizeof(tikview));
@@ -150,7 +155,7 @@ s32 ES_LaunchTitle(u64 titleID, tikview *view)
 	title = titleID;
 	vectors[0].data = (void*)&title;
 	vectors[0].len = sizeof(u64);
-	vectors[1].data = view;
+	vectors[1].data = (void*)view;
 	vectors[1].len = sizeof(tikview);
 	res = IOS_IoctlvReboot(__es_fd,IOCTL_ES_LAUNCH,2,0,vectors);
 	
@@ -171,7 +176,7 @@ s32 ES_GetNumTicketViews(u64 titleID, u32 *cnt)
 #endif	
 	
 	if(__es_fd<0) return ES_ENOTINIT;
-	if(cnt == NULL) return ES_EINVAL;
+	if(!cnt) return ES_EINVAL;
 
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETVIEWCNT,"q:i",titleID,&cntviews);
 #ifdef DEBUG_ES
@@ -188,6 +193,8 @@ s32 ES_GetTicketViews(u64 titleID, tikview *views, u32 cnt)
 {
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(cnt <= 0) return ES_EINVAL;
+	if(!views) return ES_EINVAL;
+	if(!ISALIGNED(views)) return ES_EALIGN;
 	
 	if(views==NULL || ((u32)views%32)!=0) return ES_EINVAL;
 
@@ -214,12 +221,13 @@ s32 ES_GetTitles(u64 *titles, u32 cnt)
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(cnt <= 0) return ES_EINVAL;
 	
-	if(titles==NULL || ((u32)titles%32)!=0) return ES_EINVAL;
+	if(!titles) return ES_EINVAL;
+	if(!ISALIGNED(titles)) return ES_EALIGN;
 
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTITLES,"i:d",cnt,titles,sizeof(u64)*cnt);
 }
 
-signed_blob *ES_NextCert(signed_blob *certs)
+signed_blob *ES_NextCert(const signed_blob *certs)
 {
 	cert_header *cert;
 	if(!SIGNATURE_SIZE(certs)) return NULL;
@@ -228,10 +236,12 @@ signed_blob *ES_NextCert(signed_blob *certs)
 	return (signed_blob*)(((u8*)cert) + CERTIFICATE_SIZE(cert));
 }
 
-s32 __ES_sanity_check_certlist(signed_blob *certs, u32 certsize)
+s32 __ES_sanity_check_certlist(const signed_blob *certs, u32 certsize)
 {
 	int count = 0;
 	signed_blob *end;
+	
+	if(!certs || !certsize) return 0;
 	
 	end = (signed_blob*)(((u8*)certs) + certsize);
 	while(certs != end) {
@@ -248,7 +258,7 @@ s32 __ES_sanity_check_certlist(signed_blob *certs, u32 certsize)
 	return count;
 }
 
-s32 ES_Identify(signed_blob *certificates, u32 certificates_size, signed_blob *stmd, u32 tmd_size, signed_blob *sticket, u32 ticket_size, u32 *keyid)
+s32 ES_Identify(const signed_blob *certificates, u32 certificates_size, const signed_blob *stmd, u32 tmd_size, const signed_blob *sticket, u32 ticket_size, u32 *keyid)
 {
 
 	tmd *p_tmd;
@@ -258,14 +268,21 @@ s32 ES_Identify(signed_blob *certificates, u32 certificates_size, signed_blob *s
 	
 	if(__es_fd<0) return ES_ENOTINIT;
 	
-	if(!IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
-	if(!IS_VALID_SIGNATURE(sticket)) return ES_EINVAL;
+	if(ticket_size != STD_SIGNED_TIK_SIZE) return ES_EINVAL;
+	if(!stmd || !tmd_size || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
+	if(!sticket || !IS_VALID_SIGNATURE(sticket)) return ES_EINVAL;
 	if(!__ES_sanity_check_certlist(certificates, certificates_size)) return ES_EINVAL;
+	if(!ISALIGNED(certificates)) return ES_EALIGN;
+	if(!ISALIGNED(stmd)) return ES_EALIGN;
+	if(!ISALIGNED(sticket)) return ES_EALIGN;
 	
 	p_tmd = SIGNATURE_PAYLOAD(stmd);
 	
 	if(!(keyid_buf = iosAlloc(__es_hid, 4))) return ES_ENOMEM;
-	if(!(hashes = iosAlloc(__es_hid, p_tmd->num_contents*20))) return ES_ENOMEM;
+	if(!(hashes = iosAlloc(__es_hid, p_tmd->num_contents*20))) {
+		iosFree(__es_hid, keyid_buf);
+		return ES_ENOMEM;
+	}
 	
 	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DIVERIFY, "dddd:id", certificates, certificates_size, 0, 0, sticket, ticket_size, stmd, tmd_size, keyid_buf, hashes, p_tmd->num_contents*20);
 	if(ret >= 0 && keyid) *keyid = *keyid_buf;
@@ -273,6 +290,27 @@ s32 ES_Identify(signed_blob *certificates, u32 certificates_size, signed_blob *s
 	iosFree(__es_hid, keyid_buf);
 	iosFree(__es_hid, hashes);
 	return ret;
+}
+
+s32 ES_AddTicket(const signed_blob *stik, u32 stik_size, const signed_blob *certificates, u32 certificates_size, const signed_blob *crl, u32 crl_size)
+{
+	s32 ret;
+	
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(stik_size != STD_SIGNED_TIK_SIZE) return ES_EINVAL;
+	if(!stik || !IS_VALID_SIGNATURE(stik)) return ES_EINVAL;
+	if(crl_size && (!crl || !IS_VALID_SIGNATURE(crl))) return ES_EINVAL;
+	if(!__ES_sanity_check_certlist(certificates, certificates_size)) return ES_EINVAL;
+	if(!certificates || !ISALIGNED(certificates)) return ES_EALIGN;
+	if(!ISALIGNED(stik)) return ES_EALIGN;
+	if(!ISALIGNED(certificates)) return ES_EALIGN;
+	if(!ISALIGNED(crl)) return ES_EALIGN;
+	
+	if(!crl_size) crl=NULL;
+	
+	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDTICKET, "ddd:", stik, stik_size, certificates, certificates_size, crl, crl_size);
+	return ret;
+
 }
 
 

@@ -39,6 +39,7 @@ distribution.
 #define ES_EINVAL			-0x1004
 #define ES_ENOMEM			-0x100C
 #define ES_ENOTINIT			-0x1100
+#define ES_EALIGN			-0x1101
 
 #define ES_SIG_RSA4096		0x10000
 #define ES_SIG_RSA2048		0x10001
@@ -119,7 +120,7 @@ typedef struct _tmd {
 	u64 sys_version;
 	u64 title_id;
 	u32 title_type;
-	u16 group_id; // publisher
+	u16 group_id;
 	u8 reserved[62];
 	u32 access_rights;
 	u16 title_version;
@@ -179,18 +180,21 @@ typedef struct _cert_rsa4096 {
 #define SIGNED_TIK_SIZE(x) ( sizeof(tik) + SIGNATURE_SIZE(x) )
 #define SIGNED_CERT_SIZE(x) ( CERTIFICATE_SIZE((cert_header*)SIGNATURE_PAYLOAD(x)) + SIGNATURE_SIZE(x))
 
+#define STD_SIGNED_TIK_SIZE ( sizeof(tik) + sizeof(sig_rsa2048) )
+
 s32 __ES_Init(void);
 s32 __ES_Close(void);
 s32 __ES_Reset(void);
 s32 ES_GetTitleID(u64 *titleID);
-s32 ES_GetDataDir(u64 titleID,char *filepath);
+s32 ES_GetDataDir(u64 titleID, char *filepath);
 s32 ES_GetNumTicketViews(u64 titleID, u32 *cnt);
 s32 ES_GetTicketViews(u64 titleID, tikview *views, u32 cnt);
 s32 ES_GetNumTitles(u32 *cnt);
 s32 ES_GetTitles(u64 *titles, u32 cnt);
-s32 ES_LaunchTitle(u64 titleID, tikview *view);
-signed_blob *ES_NextCert(signed_blob *certs);
-s32 ES_Identify(signed_blob *certificates, u32 certificates_size, signed_blob *tmd, u32 tmd_size, signed_blob *ticket, u32 ticket_size, u32 *keyid);
+s32 ES_LaunchTitle(u64 titleID, const tikview *view);
+signed_blob *ES_NextCert(const signed_blob *certs);
+s32 ES_Identify(const signed_blob *certificates, u32 certificates_size, const signed_blob *tmd, u32 tmd_size, const signed_blob *ticket, u32 ticket_size, u32 *keyid);
+s32 ES_AddTicket(const signed_blob *tik, u32 tik_size, const signed_blob *certificates, u32 certificates_size, const signed_blob *crl, u32 crl_size);
 
 #ifdef __cplusplus
    }
