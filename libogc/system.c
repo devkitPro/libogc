@@ -315,6 +315,7 @@ static void __sys_alarmhandler(void *arg)
 	__lwp_thread_dispatchunnest();
 }
 
+#if defined(HW_DOL)
 static void __dohotreset(u32 resetcode)
 {
 	u32 level;
@@ -324,6 +325,7 @@ static void __dohotreset(u32 resetcode)
 	ICFlashInvalidate();
 	__reset(resetcode<<3);
 }
+#endif
 
 static s32 __call_resetfuncs(s32 final)
 {
@@ -343,6 +345,7 @@ static s32 __call_resetfuncs(s32 final)
 	return 1;
 }
 
+#if defined(HW_DOL)
 static void __doreboot(u32 resetcode,s32 force_menu)
 {
 	u32 level;
@@ -353,6 +356,7 @@ static void __doreboot(u32 resetcode,s32 force_menu)
 	*((u32*)0x817ffff8) = 0;
 	*((u32*)0x800030e2) = 1;
 }
+#endif
 
 static void __MEMInterruptHandler()
 {
@@ -1182,7 +1186,6 @@ s32 __SYS_LoadMenu()
 void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 {
 	u32 level,ret = 0;
-	syssram *sram;
 
 	__dsp_shutdown();
 
