@@ -27,7 +27,7 @@ distribution.
 
 -------------------------------------------------------------*/
 
-#define DEBUG_SYSTEM
+//#define DEBUG_SYSTEM
 
 #include <stdlib.h>
 #include <string.h>
@@ -198,7 +198,7 @@ extern void __MaskIrq(u32);
 extern u32 __IPC_ClntInit();
 extern u32 __PADDisableRecalibration(s32 disable);
 
-extern void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_xres,int tgt_yres,int tgt_stride,int con_xres,int con_yres,int con_stride);
+extern void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_stride,int con_xres,int con_yres,int con_stride);
 
 extern void settime(long long);
 extern long long gettime();
@@ -1416,7 +1416,7 @@ s32 SYS_ConsoleInit(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidt
 	sys_console = malloc(conWidth*conHeight*VI_DISPLAY_PIX_SZ);
 	if(!sys_console) return -1;
 
-	__console_init_ex(sys_console,conXOrigin,conYOrigin,rmode->fbWidth,rmode->xfbHeight,rmode->fbWidth*VI_DISPLAY_PIX_SZ,conWidth,conHeight,conWidth*VI_DISPLAY_PIX_SZ);
+	__console_init_ex(sys_console,conXOrigin,conYOrigin,rmode->fbWidth*VI_DISPLAY_PIX_SZ,conWidth,conHeight,conWidth*VI_DISPLAY_PIX_SZ);
 
 	return 0;
 }
