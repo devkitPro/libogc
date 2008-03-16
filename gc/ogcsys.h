@@ -27,7 +27,7 @@
 #define TB_HRSPERDAY					24
 #define TB_SECSPERDAY					(TB_SECSPERMIN*TB_MINSPERHR*TB_HRSPERDAY)
 #define TB_SECSPERNYR					(365*TB_SECSPERDAY)
-									
+
 #ifdef __cplusplus
 	extern "C" {
 #endif
@@ -35,10 +35,6 @@
 time_t time(time_t *timer);
 unsigned int usleep(unsigned int us);
 unsigned int nanosleep(struct timespec *tb);
-
-void console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stride);
-void console_setpos(int x,int y);
-void console_setcolor(unsigned int bgcolor,unsigned int fgcolor);
 
 #ifdef __cplusplus
 	}

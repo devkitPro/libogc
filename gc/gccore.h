@@ -31,10 +31,10 @@ distribution.
 #ifndef __GCCORE_H__
 #define __GCCORE_H__
 
-/*! \file gccore.h 
+/*! \file gccore.h
 \brief Core header which includes all subsequent subsystem headers
 
-*/ 
+*/
 
 #include "ogc/dsp.h"
 #include "ogc/aram.h"
@@ -45,6 +45,7 @@ distribution.
 #include "ogc/card.h"
 #include "ogc/cast.h"
 #include "ogc/color.h"
+#include "ogc/consol.h"
 #include "ogc/dvd.h"
 #include "ogc/exi.h"
 #include "ogc/gu.h"
@@ -88,14 +89,14 @@ distribution.
    extern "C" {
 #endif /* __cplusplus */
 
-	   
+
 /*!
  * \mainpage
  *
  * - \subpage intro
  * - \subpage api_doc
  */
-	   
+
 
 /*!
  * \page intro Introduction
@@ -115,6 +116,7 @@ distribution.
  * - \ref video.h "VIDEO subsystem"
  * - \ref cache.h "Cache subsystem"
  * - \ref card.h "Memory card subsystem"
+ * - \ref consol.h "Console subsystem"
  * - \ref system.h "OS functions and initialization"
  * - \ref lwp.h "Thread subsystem I"
  * - \ref message.h "Thread subsystem II"
@@ -122,7 +124,7 @@ distribution.
  * - \ref semaphore.h "Thread subsystem IV"
  * - \ref cond.h "Thread subsystem V"
  */
-	   
+
 s32 depackrnc1_ulen(void *packed);
 s32 depackrnc1(void *packed,void *unpacked);
 
