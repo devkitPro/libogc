@@ -204,6 +204,10 @@ SOURCE=.\libogc\isfs.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\iusb.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\kprintf.c
 # End Source File
 # Begin Source File
@@ -920,6 +924,10 @@ SOURCE=.\gc\ogc\cond.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\gc\ogc\consol.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\gc\ogc\context.h
 # End Source File
 # Begin Source File
@@ -965,6 +973,10 @@ SOURCE=.\gc\ogc\irq.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\isfs.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\iusb.h
 # End Source File
 # Begin Source File
 
