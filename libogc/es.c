@@ -38,15 +38,29 @@ distribution.
 
 //#define DEBUG_ES
 
-#define IOCTL_ES_ADDTICKET			0x01
-#define IOCTL_ES_LAUNCH				0x08
-#define IOCTL_ES_GETTITLECOUNT		0x0E
-#define IOCTL_ES_GETTITLES			0x0F
-#define IOCTL_ES_GETVIEWCNT			0x12
-#define IOCTL_ES_GETVIEWS			0x13
-#define IOCTL_ES_DIVERIFY			0x1C
-#define IOCTL_ES_GETTITLEDIR		0x1D
-#define IOCTL_ES_GETTITLEID			0x20
+#define IOCTL_ES_ADDTICKET				0x01
+#define IOCTL_ES_ADDTITLESTART			0x02
+#define IOCTL_ES_ADDCONTENTSTART		0x03
+#define IOCTL_ES_ADDCONTENTDATA			0x04
+#define IOCTL_ES_ADDCONTENTFINISH		0x05
+#define IOCTL_ES_ADDTITLEFINISH			0x06
+#define IOCTL_ES_LAUNCH					0x08
+#define IOCTL_ES_GETTITLECOUNT			0x0E
+#define IOCTL_ES_GETTITLES				0x0F
+#define IOCTL_ES_GETVIEWCNT				0x12
+#define IOCTL_ES_GETVIEWS				0x13
+#define IOCTL_ES_DIVERIFY				0x1C
+#define IOCTL_ES_GETTITLEDIR			0x1D
+#define IOCTL_ES_GETTITLEID				0x20
+#define IOCTL_ES_ADDTMD					0x2B
+#define IOCTL_ES_ADDTITLECANCEL			0x2F
+#define IOCTL_ES_GETSTOREDCONTENTCNT	0x32
+#define IOCTL_ES_GETSTOREDCONTENTS		0x33
+#define IOCTL_ES_GETSTOREDTMDSIZE		0x34
+#define IOCTL_ES_GETSTOREDTMD			0x35
+#define IOCTL_ES_GETSHAREDCONTENTCNT	0x36
+#define IOCTL_ES_GETSHAREDCONTENTS		0x37
+
 
 #define ES_HEAP_SIZE 0x800
 
@@ -171,18 +185,10 @@ s32 ES_GetNumTicketViews(u64 titleID, u32 *cnt)
 	s32 ret;
 	u32 cntviews;
 
-#ifdef DEBUG_ES
-	printf("ES GNTV %d %016llx\n",__es_fd,titleID);
-#endif	
-	
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(!cnt) return ES_EINVAL;
 
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETVIEWCNT,"q:i",titleID,&cntviews);
-#ifdef DEBUG_ES
-	printf(" =%d (%d)\n",ret,cntviews);
-#endif	
-	
 	
 	if(ret<0) return ret;
 	*cnt = cntviews;
@@ -196,8 +202,6 @@ s32 ES_GetTicketViews(u64 titleID, tikview *views, u32 cnt)
 	if(!views) return ES_EINVAL;
 	if(!ISALIGNED(views)) return ES_EALIGN;
 	
-	if(views==NULL || ((u32)views%32)!=0) return ES_EINVAL;
-
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETVIEWS,"qi:d",titleID,cnt,views,sizeof(tikview)*cnt);
 }
 
@@ -220,11 +224,91 @@ s32 ES_GetTitles(u64 *titles, u32 cnt)
 {
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(cnt <= 0) return ES_EINVAL;
-	
 	if(!titles) return ES_EINVAL;
 	if(!ISALIGNED(titles)) return ES_EALIGN;
 
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTITLES,"i:d",cnt,titles,sizeof(u64)*cnt);
+}
+
+s32 ES_GetNumStoredTMDContents(const signed_blob *stmd, u32 tmd_size, u32 *cnt)
+{
+	s32 ret;
+	u32 cntct;
+
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(!cnt) return ES_EINVAL;
+	if(!stmd || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
+	if(!ISALIGNED(stmd)) return ES_EALIGN;
+
+	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDCONTENTCNT,"d:i",stmd,tmd_size,&cntct);
+	
+	if(ret<0) return ret;
+	*cnt = cntct;
+	return ret;
+}
+
+s32 ES_GetStoredTMDContents(const signed_blob *stmd, u32 tmd_size, u32 *contents, u32 cnt)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(cnt <= 0) return ES_EINVAL;
+	if(!contents) return ES_EINVAL;
+	if(!stmd || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
+	if(!ISALIGNED(stmd)) return ES_EALIGN;
+	if(!ISALIGNED(contents)) return ES_EALIGN;
+	if(tmd_size > MAX_SIGNED_TMD_SIZE) return ES_EINVAL;
+	
+	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDCONTENTS,"di:d",stmd,tmd_size,cnt,contents,sizeof(u32)*cnt);
+}
+
+s32 ES_GetStoredTMDSize(u64 titleID, u32 *size)
+{
+	s32 ret;
+	u32 tmdsize;
+
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(!size) return ES_EINVAL;
+
+	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDTMDSIZE,"q:i",titleID,&tmdsize);
+	
+	if(ret<0) return ret;
+	*size = tmdsize;
+	return ret;
+}
+
+s32 ES_GetStoredTMD(u64 titleID, signed_blob *stmd, u32 size)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(size <= 0) return ES_EINVAL;
+	if(!stmd) return ES_EINVAL;
+	if(!ISALIGNED(stmd)) return ES_EALIGN;
+	if(size > MAX_SIGNED_TMD_SIZE) return ES_EINVAL;
+	
+	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDTMD,"qi:d",titleID,size,stmd,size);
+}
+
+s32 ES_GetNumSharedContents(u32 *cnt)
+{
+	s32 ret;
+	u32 cntct;
+
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(!cnt) return ES_EINVAL;
+
+	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSHAREDCONTENTCNT,":i",&cntct);
+	
+	if(ret<0) return ret;
+	*cnt = cntct;
+	return ret;
+}
+
+s32 ES_GetSharedContents(sha1 *contents, u32 cnt)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(cnt <= 0) return ES_EINVAL;
+	if(!contents) return ES_EINVAL;
+	if(!ISALIGNED(contents)) return ES_EALIGN;
+	
+	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSHAREDCONTENTS,"i:d",cnt,contents,sizeof(sha1)*cnt);
 }
 
 signed_blob *ES_NextCert(const signed_blob *certs)
@@ -275,6 +359,7 @@ s32 ES_Identify(const signed_blob *certificates, u32 certificates_size, const si
 	if(!ISALIGNED(certificates)) return ES_EALIGN;
 	if(!ISALIGNED(stmd)) return ES_EALIGN;
 	if(!ISALIGNED(sticket)) return ES_EALIGN;
+	if(tmd_size > MAX_SIGNED_TMD_SIZE) return ES_EINVAL;
 	
 	p_tmd = SIGNATURE_PAYLOAD(stmd);
 	
@@ -311,6 +396,73 @@ s32 ES_AddTicket(const signed_blob *stik, u32 stik_size, const signed_blob *cert
 	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDTICKET, "ddd:", stik, stik_size, certificates, certificates_size, crl, crl_size);
 	return ret;
 
+}
+
+s32 ES_AddTitleTMD(const signed_blob *stmd, u32 stmd_size)
+{
+	s32 ret;
+	
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(!stmd || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
+	if(stmd_size != SIGNED_TMD_SIZE(stmd)) return ES_EINVAL;
+	if(!ISALIGNED(stmd)) return ES_EALIGN;
+	
+	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDTMD, "d:", stmd, stmd_size);
+	return ret;
+
+}
+
+s32 ES_AddTitleStart(const signed_blob *stmd, u32 tmd_size, const signed_blob *certificates, u32 certificates_size, const signed_blob *crl, u32 crl_size)
+{
+	s32 ret;
+	
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(!stmd || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
+	if(tmd_size != SIGNED_TMD_SIZE(stmd)) return ES_EINVAL;
+	if(crl_size && (!crl || !IS_VALID_SIGNATURE(crl))) return ES_EINVAL;
+	if(!__ES_sanity_check_certlist(certificates, certificates_size)) return ES_EINVAL;
+	if(!certificates || !ISALIGNED(certificates)) return ES_EALIGN;
+	if(!ISALIGNED(stmd)) return ES_EALIGN;
+	if(!ISALIGNED(certificates)) return ES_EALIGN;
+	if(!ISALIGNED(crl)) return ES_EALIGN;
+	
+	if(!crl_size) crl=NULL;
+	
+	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDTITLESTART, "dddi:", stmd, tmd_size, certificates, certificates_size, crl, crl_size, 1);
+	return ret;
+}
+
+s32 ES_AddContentStart(u64 titleID, u32 cid)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDCONTENTSTART, "qi:", titleID, cid);
+}
+
+s32 ES_AddContentData(s32 cfd, u8 *data, u32 data_size)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(cfd<0) return ES_EINVAL;
+	if(!data || !data_size) return ES_EINVAL;
+	if(!ISALIGNED(data)) return ES_EALIGN;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDCONTENTDATA, "id:", cfd, data, data_size);
+}
+
+s32 ES_AddContentFinish(u32 cid)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDCONTENTFINISH, "i:", cid);
+}
+
+s32 ES_AddTitleFinish(void)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDTITLEFINISH, "");
+}
+
+s32 ES_AddTitleCancel(void)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDTITLECANCEL, "");
 }
 
 

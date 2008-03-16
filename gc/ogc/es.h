@@ -57,6 +57,9 @@ typedef u32 sigtype;
 typedef sigtype sig_header;
 typedef sig_header signed_blob;
 
+typedef u8 sha1[20];
+typedef u8 aeskey[16];
+
 typedef struct _sig_rsa2048 {
 	sigtype type;
 	u8 sig[256];
@@ -91,7 +94,7 @@ typedef struct _tikview {
 typedef struct _tik {
 	sig_issuer issuer;
 	u8 fill[63]; //TODO: not really fill
-	u8 cipher_title_key[16];
+	aeskey cipher_title_key;
 	u8 fill2;
 	u64 ticketid;
 	u32 devicetype;
@@ -108,7 +111,7 @@ typedef struct _tmd_content {
 	u16 index;
 	u16 type;
 	u64 size;
-	u8 hash[20];
+	sha1 hash;
 }  __attribute__((packed)) tmd_content;
 
 typedef struct _tmd {
@@ -182,6 +185,11 @@ typedef struct _cert_rsa4096 {
 
 #define STD_SIGNED_TIK_SIZE ( sizeof(tik) + sizeof(sig_rsa2048) )
 
+#define MAX_NUM_TMD_CONTENTS 512
+
+#define MAX_TMD_SIZE ( sizeof(tmd) + MAX_NUM_TMD_CONTENTS*sizeof(tmd_content) )
+#define MAX_SIGNED_TMD_SIZE ( MAX_TMD_SIZE + sizeof(sig_rsa2048) )
+
 s32 __ES_Init(void);
 s32 __ES_Close(void);
 s32 __ES_Reset(void);
@@ -191,10 +199,23 @@ s32 ES_GetNumTicketViews(u64 titleID, u32 *cnt);
 s32 ES_GetTicketViews(u64 titleID, tikview *views, u32 cnt);
 s32 ES_GetNumTitles(u32 *cnt);
 s32 ES_GetTitles(u64 *titles, u32 cnt);
+s32 ES_GetNumStoredTMDContents(const signed_blob *stmd, u32 tmd_size, u32 *cnt);
+s32 ES_GetStoredTMDContents(const signed_blob *stmd, u32 tmd_size, u32 *contents, u32 cnt);
+s32 ES_GetStoredTMDSize(u64 titleID, u32 *size);
+s32 ES_GetStoredTMD(u64 titleID, signed_blob *stmd, u32 size);
+s32 ES_GetNumSharedContents(u32 *cnt);
+s32 ES_GetSharedContents(sha1 *contents, u32 cnt);
 s32 ES_LaunchTitle(u64 titleID, const tikview *view);
 signed_blob *ES_NextCert(const signed_blob *certs);
 s32 ES_Identify(const signed_blob *certificates, u32 certificates_size, const signed_blob *tmd, u32 tmd_size, const signed_blob *ticket, u32 ticket_size, u32 *keyid);
 s32 ES_AddTicket(const signed_blob *tik, u32 tik_size, const signed_blob *certificates, u32 certificates_size, const signed_blob *crl, u32 crl_size);
+s32 ES_AddTitleTMD(const signed_blob *tmd, u32 tmd_size);
+s32 ES_AddTitleStart(const signed_blob *tmd, u32 tmd_size, const signed_blob *certificatess, u32 certificatess_size, const signed_blob *crl, u32 crl_size);
+s32 ES_AddContentStart(u64 titleID, u32 cid);
+s32 ES_AddContentData(s32 cid, u8 *data, u32 data_size);
+s32 ES_AddContentFinish(u32 cid);
+s32 ES_AddTitleFinish(void);
+s32 ES_AddTitleCancel(void);
 
 #ifdef __cplusplus
    }
