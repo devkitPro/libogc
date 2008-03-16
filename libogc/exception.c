@@ -42,6 +42,7 @@ distribution.
 
 #include "gx.h"
 #include "pad.h"
+#include "consol.h"
 #include "console.h"
 #include "lwp_threads.h"
 

@@ -36,6 +36,7 @@ distribution.
 #include "processor.h"
 #include "lwp_threads.h"
 #include "irq.h"
+#include "console.h"
 
 //#define _IRQ_DEBUG
 
@@ -86,7 +87,6 @@ extern u8 __intrstack_addr[],__intrstack_end[];
 
 #ifdef _IRQ_DEBUG
 #include <lwp_threads.h>
-extern int con_write(struct _reent *r,int fd,const char *ptr,int len);
 
 static void __irq_printHex(u32 num,u8 *buf)
 {
@@ -120,7 +120,7 @@ static void __irq_dump(u32 irqmask,u32 irq_idx)
 		__irq_printHex(irq_idx,&cpStr[len]);
 		strcat(cpStr,"\n");
 
-		con_write(NULL,0,cpStr,strlen(cpStr));
+		__console_write(NULL,0,cpStr,strlen(cpStr));
 		irqidx = irq_idx;
 		imask = irqmask;
 	}
@@ -139,7 +139,7 @@ void c_irqdispatcher(frame_context *ctx)
 		spuriousIrq++;
 		return;
 	}
-	
+
 	intmask = 0;
 	if(cause&0x00000080) {		//Memory Interface
 		icause = _memReg[15];
@@ -279,7 +279,7 @@ static u32 __SetInterrupts(u32 iMask,u32 nMask)
 		if(!(nMask&IM_MEMADDRESS)) imask |= 0x0010;
 		_memReg[14] = (u16)imask;
 		return (iMask&~IM_MEM);
-	} 
+	}
 
 	if(irq>=IRQ_DSP_AI && irq<=IRQ_DSP_DSP) {
 		imask = _dspReg[5]&~0x1f8;
@@ -304,7 +304,7 @@ static u32 __SetInterrupts(u32 iMask,u32 nMask)
 		_exiReg[0] = imask;
 		return (iMask&~IM_EXI0);
 	}
-	
+
 	if(irq>=IRQ_EXI1_EXI && irq<=IRQ_EXI1_EXT) {
 		imask = _exiReg[5]&~0x0c0f;
 		if(!(nMask&IM_EXI1_EXI)) imask |= 0x0001;
@@ -313,7 +313,7 @@ static u32 __SetInterrupts(u32 iMask,u32 nMask)
 		_exiReg[5] = imask;
 		return (iMask&~IM_EXI1);
 	}
-	
+
 	if(irq>=IRQ_EXI2_EXI && irq<=IRQ_EXI2_TC) {
 		imask = _exiReg[10]&~0x000f;
 		if(!(nMask&IM_EXI2_EXI)) imask |= 0x0001;
@@ -321,7 +321,7 @@ static u32 __SetInterrupts(u32 iMask,u32 nMask)
 		_exiReg[10] = imask;
 		return (iMask&~IM_EXI2);
 	}
-	
+
 #if defined(HW_DOL)
 	if(irq>=IRQ_PI_CP && irq<=IRQ_PI_HSP) {
 #elif defined(HW_RVL)
@@ -373,7 +373,7 @@ void __UnmaskIrq(u32 nMask)
 {
 	u32 level;
 	u32 mask;
-	
+
 	_CPU_ISR_Disable(level);
 	mask = (nMask&(prevIrqMask|currIrqMask));
 	nMask = (prevIrqMask&~nMask);
@@ -410,7 +410,7 @@ void __irq_init()
 
 	mtspr(272,irqNestingLevel);
 	mtspr(273,intrStack);
-	
+
 	prevIrqMask = 0;
 	currIrqMask = 0;
 	_piReg[1] = 0xf0;
