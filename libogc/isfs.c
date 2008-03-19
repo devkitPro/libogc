@@ -736,7 +736,7 @@ s32 ISFS_SetAttr(const char *filepath,u32 ownerID,u16 groupID,u8 attributes,u8 o
 
 s32 ISFS_SetAttrAsync(const char *filepath,u32 ownerID,u16 groupID,u8 attributes,u8 ownerperm,u8 groupperm,u8 otherperm,isfscallback cb,void *usrdata)
 {
-	s32 ret, len;
+	s32 len;
 	struct isfs_cb *param;
 	
 	if(_fs_fd<0 || filepath==NULL) return ISFS_EINVAL;
