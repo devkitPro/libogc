@@ -204,10 +204,6 @@ SOURCE=.\libogc\isfs.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\libogc\iusb.c
-# End Source File
-# Begin Source File
-
 SOURCE=.\libogc\kprintf.c
 # End Source File
 # Begin Source File
@@ -389,6 +385,10 @@ SOURCE=.\libogc\timesupp.c
 # Begin Source File
 
 SOURCE=.\libogc\timesupp.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\usb.c
 # End Source File
 # Begin Source File
 
@@ -976,10 +976,6 @@ SOURCE=.\gc\ogc\isfs.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\gc\ogc\iusb.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\gc\ogc\lwp.h
 # End Source File
 # Begin Source File
@@ -1077,6 +1073,10 @@ SOURCE=.\gc\ogc\system.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\tdf.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\usb.h
 # End Source File
 # Begin Source File
 

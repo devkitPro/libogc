@@ -707,4 +707,57 @@ s32 ISFS_RenameAsync(const char *filepathOld,const char *filepathNew,isfscallbac
 	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_RENAME,param->filepath,(ISFS_MAXPATH<<1),NULL,0,__isfsFunctionCB,param);
 }
 
+s32 ISFS_SetAttr(const char *filepath,u32 ownerID,u16 groupID,u8 attributes,u8 ownerperm,u8 groupperm,u8 otherperm)
+{
+	s32 ret, len;
+	struct isfs_cb *param;
+	
+	if(_fs_fd<0 || filepath==NULL) return ISFS_EINVAL;
+	
+	len = strnlen(filepath, ISFS_MAXPATH);
+	if(len>=ISFS_MAXPATH) return ISFS_EINVAL;
+	
+	param = (struct isfs_cb*)iosAlloc(hId, ISFS_STRUCTSIZE);
+	if(param==NULL) return ISFS_ENOMEM;
+	
+	memcpy(param->fsattr.filepath, filepath, (len+1));
+	param->fsattr.owner_id = ownerID;
+	param->fsattr.group_id = groupID;
+	param->fsattr.ownerperm = ownerperm;
+	param->fsattr.groupperm = groupperm;
+	param->fsattr.otherperm = otherperm;
+	param->fsattr.attributes = attributes;
+	
+	ret = IOS_Ioctl(_fs_fd,ISFS_IOCTL_SETATTR,&param->fsattr,sizeof(param->fsattr),NULL,0);
+	
+	if(param!=NULL) iosFree(hId,param);
+	return ret;
+} 
+
+s32 ISFS_SetAttrAsync(const char *filepath,u32 ownerID,u16 groupID,u8 attributes,u8 ownerperm,u8 groupperm,u8 otherperm,isfscallback cb,void *usrdata)
+{
+	s32 ret, len;
+	struct isfs_cb *param;
+	
+	if(_fs_fd<0 || filepath==NULL) return ISFS_EINVAL;
+	
+	len = strnlen(filepath, ISFS_MAXPATH);
+	if(len>=ISFS_MAXPATH) return ISFS_EINVAL;
+	
+	param = (struct isfs_cb*)iosAlloc(hId, ISFS_STRUCTSIZE);
+	if(param==NULL) return ISFS_ENOMEM;
+	
+	param->cb = cb;
+	param->usrdata = usrdata;
+	param->functype = ISFS_FUNCNULL;
+	memcpy(param->fsattr.filepath, filepath, (len+1));
+	param->fsattr.owner_id = ownerID;
+	param->fsattr.group_id = groupID;
+	param->fsattr.ownerperm = ownerperm;
+	param->fsattr.groupperm = groupperm;
+	param->fsattr.otherperm = otherperm;
+	param->fsattr.attributes = attributes;
+	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_SETATTR,&param->fsattr,sizeof(param->fsattr),NULL,0,__isfsFunctionCB,param);
+} 
+
 #endif /* defined(HW_RVL) */
