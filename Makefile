@@ -133,7 +133,7 @@ OGCOBJ		:=	\
 			message.o card.o aram.o depackrnc.o decrementer_handler.o	\
 			depackrnc1.o dsp.o si.o tdf.o ipc.o ogc_crt0.o \
 			console_font_8x16.o timesupp.o lock_supp.o newlibc.o \
-			sbrk.o malloc_lock.o kprintf.o stm.o ios.o es.o
+			sbrk.o malloc_lock.o kprintf.o stm.o ios.o es.o isfs.o iusb.o
 
 #---------------------------------------------------------------------------------
 MODOBJ		:=	freqtab.o mixer.o modplay.o semitonetab.o gcmodplay.o
