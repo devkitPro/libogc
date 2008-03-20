@@ -257,7 +257,7 @@ s32 __IOS_LaunchNewIOS(int version)
 	return version;
 }
 
-s32 __IOS_LoadStartupIOS()
+s32 __attribute__((weak)) __IOS_LoadStartupIOS()
 {
 	int version;
 	int res;
