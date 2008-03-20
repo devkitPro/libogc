@@ -286,7 +286,7 @@
 #define	DBAT0U		536
 #define	DBAT0L		537	
 #define	DBAT1U		538	
-#define	DBAT1L		538	
+#define	DBAT1L		539	
 #define	DBAT2U		540	
 #define	DBAT2L		541	
 #define	DBAT3U		542	
