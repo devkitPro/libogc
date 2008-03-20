@@ -216,6 +216,10 @@ s32 ES_AddContentData(s32 cid, u8 *data, u32 data_size);
 s32 ES_AddContentFinish(u32 cid);
 s32 ES_AddTitleFinish(void);
 s32 ES_AddTitleCancel(void);
+s32 ES_OpenContent(u16 index);
+s32 ES_ReadContent(s32 cfd, u8 *data, u32 data_size);
+s32 ES_SeekContent(s32 cfd, s32 where, s32 whence);
+s32 ES_CloseContent(s32 cfd);
 
 #ifdef __cplusplus
    }
