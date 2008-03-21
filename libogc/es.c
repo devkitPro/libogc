@@ -45,6 +45,9 @@ distribution.
 #define IOCTL_ES_ADDCONTENTFINISH		0x05
 #define IOCTL_ES_ADDTITLEFINISH			0x06
 #define IOCTL_ES_LAUNCH					0x08
+#define IOCTL_ES_OPENCONTENT			0x09
+#define IOCTL_ES_READCONTENT			0x0A
+#define IOCTL_ES_CLOSECONTENT			0x0B
 #define IOCTL_ES_GETTITLECOUNT			0x0E
 #define IOCTL_ES_GETTITLES				0x0F
 #define IOCTL_ES_GETVIEWCNT				0x12
@@ -52,6 +55,7 @@ distribution.
 #define IOCTL_ES_DIVERIFY				0x1C
 #define IOCTL_ES_GETTITLEDIR			0x1D
 #define IOCTL_ES_GETTITLEID				0x20
+#define IOCTL_ES_SEEKCONTENT			0x23
 #define IOCTL_ES_ADDTMD					0x2B
 #define IOCTL_ES_ADDTITLECANCEL			0x2F
 #define IOCTL_ES_GETSTOREDCONTENTCNT	0x32
@@ -465,5 +469,33 @@ s32 ES_AddTitleCancel(void)
 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDTITLECANCEL, "");
 }
 
+s32 ES_OpenContent(u16 index)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_OPENCONTENT, "i:", index);
+}
+
+s32 ES_ReadContent(s32 cfd, u8 *data, u32 data_size)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(cfd<0) return ES_EINVAL;
+	if(!data || !data_size) return ES_EINVAL;
+	if(!ISALIGNED(data)) return ES_EALIGN;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_READCONTENT, "i:d", cfd, data, data_size);
+}
+
+s32 ES_SeekContent(s32 cfd, s32 where, s32 whence)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(cfd<0) return ES_EINVAL;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_SEEKCONTENT, "iii:", cfd, where, whence);
+}
+
+s32 ES_CloseContent(s32 cfd)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(cfd<0) return ES_EINVAL;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_CLOSECONTENT, "i:", cfd);
+}
 
 #endif /* defined(HW_RVL) */
