@@ -33,10 +33,10 @@ distribution.
 #define __SYSTEM_H__
 
 
-/*! \file system.h 
+/*! \file system.h
 \brief OS functions and initialization
 
-*/ 
+*/
 
 #include <gctypes.h>
 #include <gcutil.h>
@@ -73,7 +73,7 @@ distribution.
  * @{
  */
 
-#define SYS_PROTECTCHAN0				0			/*!< OS memory protection channel 0 */ 
+#define SYS_PROTECTCHAN0				0			/*!< OS memory protection channel 0 */
 #define SYS_PROTECTCHAN1				1			/*!< OS memory protection channel 1 */
 #define SYS_PROTECTCHAN2				2			/*!< OS memory protection channel 2 */
 #define SYS_PROTECTCHAN3				3			/*!< OS memory protection channel 2 */
@@ -166,7 +166,7 @@ struct _syssram {
  * \typedef struct _syssramex syssramex
  * \brief holds the stored configuration value from the extended SRAM area
  * \param flash_id[2][12] 96bit memorycard unlock flash ID
- * \param wirelessKbd_id Device ID of last connected wireless keyboard 
+ * \param wirelessKbd_id Device ID of last connected wireless keyboard
  * \param wirelessPad_id[4] 16bit device ID of last connected pad.
  * \param dvderr_code last non-recoverable error from DVD interface
  * \param __padding0 padding
@@ -234,7 +234,7 @@ struct _sys_resetinfo {
 void SYS_Init();
 
 
-/*! 
+/*!
  * \fn void* SYS_AllocateFramebuffer(GXRModeObj *rmode)
  * \brief Allocate cacheline aligned memory for the external framebuffer based on the rendermode object.
  * \param[in] rmode pointer to the video/render mode configuration
@@ -242,20 +242,6 @@ void SYS_Init();
  * \return pointer to the framebuffer's startaddress. <b><i>NOTE:</i></b> Address returned is aligned to a 32byte boundery!
  */
 void* SYS_AllocateFramebuffer(GXRModeObj *rmode);
-
-
-/*! 
- * \fn s32 SYS_ConsoleInit(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidth,s32 conHeight)
- * \brief Initialize stdout console
- * \param[in] rmode pointer to the video/render mode configuration
- * \param[in] conXOrigin starting pixel in X direction of the console output on the external framebuffer
- * \param[in] conYOrigin starting pixel in Y direction of the console output on the external framebuffer
- * \param[in] conWidth width of the console output 'window' to be drawn
- * \param[in] conHeight height of the console output 'window' to be drawn
- *
- * \return 0 on success, <0 on error
- */
-s32 SYS_ConsoleInit(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidth,s32 conHeight);
 
 
 void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl);

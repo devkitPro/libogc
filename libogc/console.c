@@ -65,33 +65,39 @@ const unsigned int color_table[] =
 static u32 do_xfb_copy = FALSE;
 static struct _console_data_s stdcon;
 static struct _console_data_s *curr_con = NULL;
+static void *_console_buffer = NULL;
 
-extern u8 console_font_8x8[];
 extern u8 console_font_8x16[];
 
-extern void *__VIDEO_GetNextFramebuffer();
+extern void *VIDEO_GetCurrrentFramebuffer();
 
-static void __console_viprecb(u32 retraceCnt)
+void __console_vipostcb(u32 retraceCnt)
 {
-	u32 ycnt,xcnt;
-	u8 *fb,*ptr;
+	u32 ycnt,xcnt, fb_stride;
+	u32 *fb,*ptr;
 
 	do_xfb_copy = TRUE;
 
 	ptr = curr_con->destbuffer;
-	fb = (u8*)MEM_K0_TO_K1(__VIDEO_GetNextFramebuffer()+(curr_con->target_y*curr_con->tgt_stride+(curr_con->target_x*4)));
-	for(ycnt=0;ycnt<curr_con->con_yres;ycnt++) {
-		for(xcnt=0;xcnt<curr_con->con_stride;xcnt++) fb[xcnt] = ptr[xcnt];
+	fb = VIDEO_GetCurrentFramebuffer()+(curr_con->target_y*curr_con->tgt_stride) + curr_con->target_x*VI_DISPLAY_PIX_SZ;
+	fb_stride = curr_con->tgt_stride/4 - (curr_con->con_xres/VI_DISPLAY_PIX_SZ);
 
-		fb += curr_con->tgt_stride;
-		ptr += curr_con->con_stride;
+	for(ycnt=curr_con->con_yres;ycnt>0;ycnt--)
+	{
+		for(xcnt=curr_con->con_xres;xcnt>0;xcnt-=VI_DISPLAY_PIX_SZ)
+		{
+			*fb++ = *ptr++;
+		}
+		fb += fb_stride;
 	}
 
 	do_xfb_copy = FALSE;
 }
 
-static void __console_drawc(console_data_s *con,int xpos,int ypos,int c)
+
+static void __console_drawc(int c)
 {
+	console_data_s *con;
 	int ay;
 	unsigned int *ptr;
 	unsigned char *pbits;
@@ -101,8 +107,10 @@ static void __console_drawc(console_data_s *con,int xpos,int ypos,int c)
 	unsigned int nextline;
 
 	if(do_xfb_copy==TRUE) return;
+	if(!curr_con) return;
+	con = curr_con;
 
-	ptr = (unsigned int*)(con->destbuffer + con->con_stride * ypos + (xpos / 2) * 4);
+	ptr = (unsigned int*)(con->destbuffer + con->con_stride * con->cursor_row * FONT_YSIZE + (con->cursor_col * FONT_XSIZE / 2) * 4);
 	pbits = &con->font[c * FONT_YSIZE];
 	nextline = con->con_stride/4 - 4;
 	fgcolor = con->foreground;
@@ -166,7 +174,7 @@ static void __console_drawc(console_data_s *con,int xpos,int ypos,int c)
 	}
 }
 
-void __console_clear(void)
+static void __console_clear(void)
 {
 	console_data_s *con;
 	unsigned int c;
@@ -191,15 +199,15 @@ void __console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,in
 	con->destbuffer = framebuffer;
 	con->con_xres = xres;
 	con->con_yres = yres;
-	con->border_left = xstart;
-	con->border_top  = ystart;
-	con->border_right = con->con_xres;
-	con->border_bottom = con->con_yres;
+	con->con_cols = xres / FONT_XSIZE;
+	con->con_rows = yres / FONT_YSIZE;
 	con->con_stride = con->tgt_stride = stride;
-	con->target_x = con->cursor_x = xstart;
-	con->target_y = con->cursor_y = ystart;
-	con->saved_x = con->border_left;
-	con->saved_y = con->border_top;
+	con->target_x = xstart;
+	con->target_y = ystart;
+	con->cursor_row = 0;
+	con->cursor_col = 0;
+	con->saved_row = 0;
+	con->saved_col = 0;
 
 	con->font = console_font_8x16;
 
@@ -231,14 +239,12 @@ void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_str
 	con->con_yres = con_yres;
 	con->tgt_stride = tgt_stride;
 	con->con_stride = con_stride;
-	con->cursor_x = 0;
-	con->cursor_y = 0;
-	con->border_left = 0;
-	con->border_top  = 0;
-	con->border_right = con->con_xres;
-	con->border_bottom = con->con_yres;
-	con->saved_x = con->border_left;
-	con->saved_y = con->border_top;
+	con->con_cols = con_xres / FONT_XSIZE;
+	con->con_rows = con_yres / FONT_YSIZE;
+	con->cursor_row = 0;
+	con->cursor_col = 0;
+	con->saved_row = 0;
+	con->saved_col = 0;
 
 	con->font = console_font_8x16;
 
@@ -253,12 +259,12 @@ void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_str
 	devoptab_list[STD_ERR] = &dotab_stdout;
 	//setvbuf(stdout, NULL , _IONBF, 0);
 
-	VIDEO_SetPreRetraceCallback(__console_viprecb);
+	VIDEO_SetPostRetraceCallback(__console_vipostcb);
 
 	_CPU_ISR_Restore(level);
 }
 
-int __console_parse_escsequence(char *pchr)
+static int __console_parse_escsequence(char *pchr)
 {
 	char chr;
 	console_data_s *con;
@@ -310,26 +316,26 @@ int __console_parse_escsequence(char *pchr)
 		/////////////////////////////////////////
 		case 'A':
 		{
-			curr_con->cursor_y -= parameters[0] * (FONT_YSIZE*FONT_YFACTOR+FONT_YGAP);
-			if(curr_con->cursor_y < curr_con->border_top) curr_con->cursor_y = curr_con->border_top;
+			curr_con->cursor_row -= parameters[0];
+			if(curr_con->cursor_row < 0) curr_con->cursor_row = 0;
 			break;
 		}
 		case 'B':
 		{
-			curr_con->cursor_y += parameters[0] * (FONT_YSIZE*FONT_YFACTOR+FONT_YGAP);
-			if(curr_con->cursor_y >= curr_con->border_bottom) curr_con->cursor_y = curr_con->border_bottom - (FONT_YSIZE*FONT_YFACTOR+FONT_YGAP);
+			curr_con->cursor_row += parameters[0];
+			if(curr_con->cursor_row >= curr_con->con_rows) curr_con->cursor_row = curr_con->con_rows - 1;
 			break;
 		}
 		case 'C':
 		{
-			curr_con->cursor_x += parameters[0] * (FONT_XSIZE*FONT_XFACTOR+FONT_XGAP);
-			if(curr_con->cursor_x >= curr_con->border_right) curr_con->cursor_x = curr_con->border_right - (FONT_XSIZE*FONT_XFACTOR+FONT_XGAP);
+			curr_con->cursor_col += parameters[0];
+			if(curr_con->cursor_col >= curr_con->con_cols) curr_con->cursor_col = curr_con->con_cols - 1;
 			break;
 		}
 		case 'D':
 		{
-			curr_con->cursor_x -= parameters[0] * (FONT_XSIZE*FONT_XFACTOR+FONT_XGAP);
-			if(curr_con->cursor_x < curr_con->border_left) curr_con->cursor_x = curr_con->border_left;
+			curr_con->cursor_col -= parameters[0];
+			if(curr_con->cursor_col < 0) curr_con->cursor_col = 0;
 			break;
 		}
 		/////////////////////////////////////////
@@ -338,8 +344,10 @@ int __console_parse_escsequence(char *pchr)
 		case 'H':
 		case 'f':
 		{
-			curr_con->cursor_x = curr_con->border_left + parameters[1] * (FONT_XSIZE*FONT_XFACTOR+FONT_XGAP);
-			curr_con->cursor_y = curr_con->border_top + parameters[0] * (FONT_YSIZE*FONT_YFACTOR+FONT_YGAP);
+			curr_con->cursor_col = parameters[1];
+			curr_con->cursor_row = parameters[0];
+			if(curr_con->cursor_row >= curr_con->con_rows) curr_con->cursor_row = curr_con->con_rows - 1;
+			if(curr_con->cursor_col >= curr_con->con_cols) curr_con->cursor_col = curr_con->con_cols - 1;
 			break;
 		}
 		/////////////////////////////////////////
@@ -363,16 +371,16 @@ int __console_parse_escsequence(char *pchr)
 		/////////////////////////////////////////
 		case 's':
 		{
-			con->saved_x = con->cursor_x;
-			con->saved_y = con->cursor_y;
+			con->saved_col = con->cursor_col;
+			con->saved_row = con->cursor_row;
 			break;
 		}
 		/////////////////////////////////////////
 		// Load cursor position
 		/////////////////////////////////////////
 		case 'u':
-			con->cursor_x = con->saved_x;
-			con->cursor_y = con->saved_y;
+			con->cursor_col = con->saved_col;
+			con->cursor_row = con->saved_row;
 			break;
 		/////////////////////////////////////////
 		// SGR Select Graphic Rendition
@@ -422,7 +430,6 @@ int __console_write(struct _reent *r,int fd,const char *ptr,int len)
 {
 	int i = 0;
 	char *tmp = (char*)ptr;
-	u32 curr_x,tabsize;
 	console_data_s *con;
 	char chr;
 
@@ -451,42 +458,40 @@ int __console_write(struct _reent *r,int fd,const char *ptr,int len)
 			switch(chr)
 			{
 				case '\n':
-					con->cursor_y += FONT_YSIZE*FONT_YFACTOR+FONT_YGAP;
-					con->cursor_x = con->border_left;
+					con->cursor_row++;
+					con->cursor_col = 0;
 					break;
 				case '\r':
-					con->cursor_x = con->border_left;
+					con->cursor_col = 0;
 					break;
 				case '\b':
-					con->cursor_x -= FONT_XSIZE*FONT_XFACTOR+FONT_XGAP;
-					if(con->cursor_x < con->border_left)
+					con->cursor_col--;
+					if(con->cursor_col < 0)
 					{
-						con->cursor_x = con->border_left;
+						con->cursor_col = 0;
 					}
 					break;
 				case '\f':
-					con->cursor_y += FONT_YSIZE*FONT_YFACTOR+FONT_YGAP;
+					con->cursor_row++;
 					break;
 				case '\t':
-					curr_x = con->cursor_x;
-					tabsize = (FONT_XSIZE*FONT_XFACTOR+FONT_XGAP)*TAB_SIZE;
-					if(curr_x%tabsize) con->cursor_x += (curr_x%tabsize);
-					else con->cursor_x += tabsize;
+					if(con->cursor_col%TAB_SIZE) con->cursor_col += (con->cursor_col%TAB_SIZE);
+					else con->cursor_col += TAB_SIZE;
 					break;
 				default:
-					__console_drawc(con,con->cursor_x,con->cursor_y,chr);
-					con->cursor_x += FONT_XSIZE*FONT_XFACTOR+FONT_XGAP;
+					__console_drawc(chr);
+					con->cursor_col++;
 
-					if((con->cursor_x+FONT_XSIZE*FONT_XFACTOR)>con->border_right)
+					if( con->cursor_col >= con->con_cols)
 					{
 						/* if right border reached wrap around */
-						con->cursor_y += FONT_YSIZE*FONT_YFACTOR+FONT_YGAP;
-						con->cursor_x = con->border_left;
+						con->cursor_row++;
+						con->cursor_col = 0;
 					}
 			}
 		}
 
-		if((con->cursor_y+FONT_YSIZE*FONT_YFACTOR)>=con->border_bottom)
+		if( con->cursor_row >= con->con_rows)
 		{
 			/* if bottom border reached scroll */
 			memcpy(con->destbuffer,
@@ -497,7 +502,7 @@ int __console_write(struct _reent *r,int fd,const char *ptr,int len)
 			unsigned int *ptr = (unsigned int*)(con->destbuffer + con->con_stride * (con->con_yres - FONT_YSIZE));
 			while(cnt--)
 				*ptr++ = con->background;
-			con->cursor_y -= FONT_YSIZE * FONT_YFACTOR + FONT_YGAP;
+			con->cursor_row--;
 		}
 	}
 
@@ -509,11 +514,23 @@ void CON_Init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stri
 	__console_init(framebuffer,xstart,ystart,xres,yres,stride);
 }
 
+s32 CON_InitEx(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidth,s32 conHeight)
+{
+	if(_console_buffer) return 0;
+
+	_console_buffer = malloc(conWidth*conHeight*VI_DISPLAY_PIX_SZ);
+	if(!_console_buffer) return -1;
+
+	__console_init_ex(_console_buffer,conXOrigin,conYOrigin,rmode->fbWidth*VI_DISPLAY_PIX_SZ,conWidth,conHeight,conWidth*VI_DISPLAY_PIX_SZ);
+
+	return 0;
+}
+
 void CON_GetMetrics(int *cols, int *rows)
 {
 	if(curr_con) {
-		*cols = (curr_con->border_right - curr_con->border_left) / (FONT_XSIZE*FONT_XFACTOR+FONT_XGAP);
-		*rows = (curr_con->border_bottom - curr_con->border_top) / (FONT_YSIZE*FONT_YFACTOR+FONT_YGAP);
+		*cols = curr_con->con_cols;
+		*rows = curr_con->con_rows;
 	}
 }
 

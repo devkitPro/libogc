@@ -119,7 +119,7 @@ void __exception_init()
 	__exception_sethandler(EX_FP,fpu_exceptionhandler);
 	__exception_sethandler(EX_INT,irq_exceptionhandler);
 	__exception_sethandler(EX_DEC,dec_exceptionhandler);
-	
+
 	mtmsr(mfmsr()|MSR_RI);
 }
 
@@ -211,7 +211,7 @@ static void waitForReload() {
 void c_default_exceptionhandler(frame_context *pCtx)
 {
 	VIDEO_SetFramebuffer(exception_xfb);
-	console_init(exception_xfb,20,20,640,574,1280);
+	__console_init(exception_xfb,20,20,640,574,1280);
 
 	kprintf("Exception (%s) occurred!\n", exception_name[pCtx->EXCPT_Number]);
 
@@ -236,7 +236,7 @@ void c_default_exceptionhandler(frame_context *pCtx)
 			kprintf("%p:  %08X %08X %08X %08X\n",
 			&(pAdd[i]),pAdd[i], pAdd[i+1], pAdd[i+2], pAdd[i+3]);
 	}
-	
+
 	waitForReload();
 }
 
@@ -250,11 +250,11 @@ void __libogc_exit(int status)
 
 	_CPU_ISR_Disable(level);
 	GX_AbortFrame();
-	
+
 	if( status != 0 ) {
 		exitfunc = waitForReload;
 		kprintf("exit code was %d\n", status);
-	} 
+	}
 	__libc_wrapup();
 	__lwp_thread_stopmultitasking(exitfunc);
 

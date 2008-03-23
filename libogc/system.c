@@ -75,7 +75,7 @@ distribution.
 #define DSPCR_HALT				    0x0004        // halt DSP
 #define DSPCR_PIINT				    0x0002        // assert DSP PI interrupt
 #define DSPCR_RES				    0x0001        // reset DSP
-								
+
 #define FONT_SIZE_ANSI				(288 + 131072)
 #define FONT_SIZE_SJIS				(3840 + 1179648)
 
@@ -122,7 +122,6 @@ static u32 sys_fontcharsinsheet = 0;
 static u8 *sys_fontwidthtab = NULL;
 static u8 *sys_fontimage = NULL;
 static void *sys_fontarea = NULL;
-static void *sys_console = NULL;
 static sys_fontheader *sys_fontdata = NULL;
 
 static lwp_queue sys_reset_func_queue;
@@ -226,7 +225,7 @@ extern u8 __ipcbufferLo[], __ipcbufferHi[];
 
 static u32 __sys_inIPL = (u32)__isIPL;
 
-static u32 _dsp_initcode[] = 
+static u32 _dsp_initcode[] =
 {
 	0x029F0010,0x029F0033,0x029F0034,0x029F0035,
 	0x029F0036,0x029F0037,0x029F0038,0x029F0039,
@@ -273,7 +272,7 @@ static void __init_syscall_array() {
 	__syscalls.malloc_lock = __libogc_malloc_lock;
 	__syscalls.malloc_unlock = __libogc_malloc_unlock;
 	__syscalls.exit = __libogc_exit;
-	
+
 }
 
 static alarm_st* __lwp_syswd_allocate()
@@ -305,7 +304,7 @@ static void __sys_alarmhandler(void *arg)
 	syswd_t thealarm = (syswd_t)arg;
 
 	if(thealarm==SYS_WD_NULL || LWP_OBJTYPE(thealarm)!=LWP_OBJTYPE_SYSWD) return;
-	
+
 	__lwp_thread_dispatchdisable();
 	alarm = (alarm_st*)__lwp_objmgr_getnoprotection(&sys_alarm_objects,LWP_OBJMASKID(thealarm));
 	if(alarm) {
@@ -351,7 +350,7 @@ static void __doreboot(u32 resetcode,s32 force_menu)
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	
+
 	*((u32*)0x817ffffc) = 0;
 	*((u32*)0x817ffff8) = 0;
 	*((u32*)0x800030e2) = 1;
@@ -373,7 +372,7 @@ static void __POWDefaultHandler()
 {
 }
 #endif
-	
+
 #if defined(HW_DOL)
 static void __RSWHandler()
 {
@@ -388,13 +387,13 @@ static void __RSWHandler()
 		now = gettime();
 		if(diff_usec(hold_down,now)>=100) break;
 	} while(!(_piReg[0]&0x10000));
-	
+
 	if(_piReg[0]&0x10000) {
 		down = 0;
 		last_state = 1;
 		__MaskIrq(IRQMASK(IRQ_PI_RSW));
 
-		
+
 		if(__RSWCallback) {
 			cb = __RSWCallback;
 			__RSWCallback = NULL;
@@ -424,7 +423,7 @@ static void __STMEventHandler(u32 event)
 			_CPU_ISR_Restore(level);
 		}
 	}
-	
+
 	if(event==STM_EVENT_POWER) {
 		_CPU_ISR_Disable(level);
 		powcb = __POWCallback;
@@ -438,7 +437,7 @@ static void __STMEventHandler(u32 event)
 static void __lowmem_init()
 {
 	u32 *_gx = (u32*)__gxregs;
-	
+
 #if defined(HW_DOL)
 	void *ram_start = (void*)0x80000000;
 	void *ram_end = (void*)(0x80000000|SYSMEM1_SIZE);
@@ -470,7 +469,7 @@ static void __lowmem_init()
 
 	DCFlushRangeNoSync(ram_start, 0x100);
 #endif
-	
+
 	DCFlushRangeNoSync(arena_start, 0x100);
 	DCFlushRangeNoSync(_gx, 2048);
 	_sync();
@@ -485,7 +484,7 @@ static void __lowmem_init()
 
 #if defined(HW_RVL)
 static void __ipcbuffer_init()
-{	
+{
 	__ipcbufferlo = (void*)__ipcbufferLo;
 	__ipcbufferhi = (void*)__ipcbufferHi;
 }
@@ -551,7 +550,7 @@ static u32 __read_rom(void *buf,u32 len,u32 offset)
 	u32 loff;
 
 	DCInvalidateRange(buf,len);
-	
+
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_1,NULL)==0) return 0;
 	if(EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED8MHZ)==0) {
 		EXI_Unlock(EXI_CHANNEL_0);
@@ -582,7 +581,7 @@ static u32 __getrtc(u32 *gctime)
 		EXI_Unlock(EXI_CHANNEL_0);
 		return 0;
 	}
-	
+
 	ret = 0;
 	time = 0;
 	cmd = 0x20000000;
@@ -591,11 +590,11 @@ static u32 __getrtc(u32 *gctime)
 	if(EXI_Imm(EXI_CHANNEL_0,&time,4,EXI_READ,NULL)==0) ret |= 0x04;
 	if(EXI_Sync(EXI_CHANNEL_0)==0) ret |= 0x08;
 	if(EXI_Deselect(EXI_CHANNEL_0)==0) ret |= 0x10;
-	
+
 	EXI_Unlock(EXI_CHANNEL_0);
 	*gctime = time;
 	if(ret) return 0;
-	
+
 	return 1;
 }
 
@@ -604,7 +603,7 @@ static u32 __sram_read(void *buffer)
 	u32 command,ret;
 
 	DCInvalidateRange(buffer,64);
-	
+
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_1,NULL)==0) return 0;
 	if(EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED8MHZ)==0) {
 		EXI_Unlock(EXI_CHANNEL_0);
@@ -641,7 +640,7 @@ static u32 __sram_write(void *buffer,u32 loc,u32 len)
 	if(EXI_ImmEx(EXI_CHANNEL_0,buffer,len,EXI_WRITE)==0) ret |= 0x04;
 	if(EXI_Deselect(EXI_CHANNEL_0)==0) ret |= 0x08;
 	if(EXI_Unlock(EXI_CHANNEL_0)==0) ret |= 0x10;
-	
+
 	if(ret) return 0;
 	return 1;
 }
@@ -650,7 +649,7 @@ static s32 __sram_writecallback(s32 chn,s32 dev)
 {
 	sramcntrl.sync = __sram_write(sramcntrl.srambuf+sramcntrl.offset,sramcntrl.offset,(64-sramcntrl.offset));
 	if(sramcntrl.sync) sramcntrl.offset = 64;
-	
+
 	return 1;
 }
 
@@ -664,7 +663,7 @@ void __sram_init()
 	sramcntrl.enabled = 0;
 	sramcntrl.locked = 0;
 	sramcntrl.sync = __sram_read(sramcntrl.srambuf);
-	
+
 	sramcntrl.offset = 64;
 }
 
@@ -676,7 +675,7 @@ static void DisableWriteGatherPipe()
 static void __buildchecksum(u16 *buffer,u16 *c1,u16 *c2)
 {
 	u32 i;
-	
+
 	*c1 = 0;
 	*c2 = 0;
 	for(i=0;i<4;i++) {
@@ -709,7 +708,7 @@ static u32 __unlocksram(u32 write,u32 loc)
 			__buildchecksum((u16*)sramcntrl.srambuf,&sram->checksum,&sram->checksum_inv);
 		}
 		if(loc<sramcntrl.offset) sramcntrl.offset = loc;
-		
+
 		sramcntrl.sync = __sram_write(sramcntrl.srambuf+sramcntrl.offset,sramcntrl.offset,(64-sramcntrl.offset));
 		if(sramcntrl.sync) sramcntrl.offset = 64;
 	}
@@ -723,7 +722,7 @@ static u32 __read_font(void *buffer)
 {
 	if(SYS_GetFontEncoding()==1) __SYS_ReadROM(buffer,315392,1769216);
 	else __SYS_ReadROM(buffer,12288,2084608);
-	return __get_fontsize(buffer);	
+	return __get_fontsize(buffer);
 }
 
 static void __expand_font(const u8 *src,u8 *dest)
@@ -744,7 +743,7 @@ static void __expand_font(const u8 *src,u8 *dest)
 			val2 = data[idx];
 
 			dest[(cnt<<1)+0] =((val1&0xf0)|(val2&0x0f));
-	
+
 			idx = _SHIFTR(src[cnt],2,2);
 			val1 = data[idx];
 
@@ -767,7 +766,7 @@ static void __dsp_bootstrap()
 	memcpy(SYS_GetArenaHi()-128,(void*)0x81000000,128);
 	memcpy((void*)0x81000000,_dsp_initcode,128);
 	DCFlushRange((void*)0x81000000,128);
-	
+
 	_dspReg[9] = 67;
 	_dspReg[5] = (DSPCR_DSPRESET|DSPCR_DSPINT|DSPCR_ARINT|DSPCR_AIINT|DSPCR_HALT);
 	_dspReg[5] |= DSPCR_RES;
@@ -858,14 +857,14 @@ static void decode_szp(void *src,void *dest)
 			roff += 4;
 			bcnt = 32;
 		}
-		
+
 		if(cmask&0x80000000) {
 			dest8[cnt++] = *(u8*)(src+coff);
 			coff++;
 		} else {
 			link = *(u16*)(src+loff);
 			loff += 2;
-			
+
 			tmp = dest8+(cnt-(link&0x0fff)-1);
 			k = link>>12;
 			if(k==0) {
@@ -983,7 +982,7 @@ void __SYS_SetBootTime()
 u32 __SYS_LoadFont(void *src,void *dest)
 {
 	if(__read_font(src)==0) return 0;
-	
+
 	decode_szp(src,dest);
 
 	sys_fontdata = (sys_fontheader*)dest;
@@ -1007,7 +1006,7 @@ void* __SYS_GetIPCBufferHi()
 
 #endif
 
-void _V_EXPORTNAME(void) 
+void _V_EXPORTNAME(void)
 { __sys_versionbuild = _V_STRING; __sys_versiondate = _V_DATE_; }
 
 void __sdloader_boot()
@@ -1028,7 +1027,7 @@ void __SYS_InitCallbacks()
 void SYS_Init()
 {
 	u32 level;
-	
+
 	_CPU_ISR_Disable(level);
 
 	if(system_initialized) return;
@@ -1063,10 +1062,10 @@ void SYS_Init()
 	__lwp_cond_init();
 	__timesystem_init();
 	__dsp_bootstrap();
-	
-	if(!__sys_inIPL) 
+
+	if(!__sys_inIPL)
 		__memprotect_init();
-	
+
 #ifdef SDLOADER_FIX
 	__SYS_SetBootTime();
 #endif
@@ -1107,7 +1106,7 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 	}
 
 	while(__call_resetfuncs(FALSE)==0);
-	
+
 	if(reset==SYS_HOTRESET && force_menu==TRUE) {
 		sram = __SYS_LockSram();
 		sram->flags |= 0x40;
@@ -1117,9 +1116,9 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 
 	_CPU_ISR_Disable(level);
 	__call_resetfuncs(TRUE);
-	
+
 	LCDisable();
-	
+
 	if(reset==SYS_HOTRESET) {
 		__dohotreset(reset_code);
 	} else if(reset==SYS_RESTART) {
@@ -1152,7 +1151,7 @@ s32 __SYS_LoadMenu()
 #ifdef DEBUG_SYSTEM
 	printf("Launching menu TitleID: %016llx\n",titleID);
 #endif
-	
+
 	res = ES_GetNumTicketViews(titleID, &numviews);
 	if(res < 0) {
 #ifdef DEBUG_SYSTEM
@@ -1194,7 +1193,7 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 	}
 
 	while(__call_resetfuncs(FALSE)==0);
-	
+
 	switch(reset) {
 		case SYS_RESTART:
 			STM_RebootSystem();
@@ -1206,15 +1205,15 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 		case SYS_RETURNTOMENU:
 			__SYS_LoadMenu();
 	}
-	
+
 	//TODO: implement SYS_HOTRESET
 	// either restart failed or this is SYS_SHUTDOWN
-	
+
 	_CPU_ISR_Disable(level);
 	__call_resetfuncs(TRUE);
-	
+
 	LCDisable();
-	
+
 	__IOS_ShutdownSubsystems();
 	__lwp_thread_dispatchdisable();
 	__lwp_thread_closeall();
@@ -1409,24 +1408,13 @@ void* SYS_AllocateFramebuffer(GXRModeObj *rmode)
 	return memalign(32,(VIDEO_PadFramebufferWidth(rmode->fbWidth)*rmode->xfbHeight*VI_DISPLAY_PIX_SZ));
 }
 
-s32 SYS_ConsoleInit(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidth,s32 conHeight)
-{
-	if(sys_console) return 0;
-
-	sys_console = malloc(conWidth*conHeight*VI_DISPLAY_PIX_SZ);
-	if(!sys_console) return -1;
-
-	__console_init_ex(sys_console,conXOrigin,conYOrigin,rmode->fbWidth*VI_DISPLAY_PIX_SZ,conWidth,conHeight,conWidth*VI_DISPLAY_PIX_SZ);
-
-	return 0;
-}
 
 u32 SYS_GetFontEncoding()
 {
 	u32 ret,tv_mode;
 
 	if(sys_fontenc<=0x0001) return sys_fontenc;
-	
+
 	ret = 0;
 	tv_mode = VIDEO_GetCurrentTvMode();
 	if(tv_mode==VI_NTSC && _viReg[55]&0x0002) ret = 1;
@@ -1493,7 +1481,7 @@ void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width)
 	u8 *img_start;
 	u8 *ptr1,*ptr2;
 	u8 *data = (u8*)sys_fontdata+44;
-	
+
 	if(!sys_fontwidthtab || ! sys_fontimage) return;
 
 	if(c>0x20 && c<0xff) c -= 0x20;
@@ -1521,7 +1509,7 @@ void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width)
 			val = data[idx];
 			if(((xpos+pos)%2)) mask = 0x0f;
 			else mask = 0xf0;
-			
+
 			*ptr2 = *ptr2|(val&mask);
 			xpos++;
 		}
@@ -1596,7 +1584,7 @@ s32 SYS_RemoveAlarm(syswd_t thealarm)
 	alarm->ticks = 0;
 	alarm->periodic = 0;
 	alarm->start_per = 0;
-	
+
 	__lwp_wd_remove_ticks(&alarm->alarm);
 	__lwp_syswd_free(alarm);
 	__lwp_thread_dispatchenable();
@@ -1677,7 +1665,7 @@ void SYS_SetWirelessID(u32 chan,u32 id)
 {
 	u32 write;
 	syssramex *sram;
-	
+
 	write = 0;
 	sram = __SYS_LockSramEx();
 	if(sram->wirelessPad_id[chan]!=(u16)id) {
