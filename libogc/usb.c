@@ -126,29 +126,26 @@ s32 USB_CloseDevice(s32 *fd)
 	return ret;
 }
 
-s32 USB_GetDeviceDescription(s32 fd,void *descr_buffer)
+s32 USB_GetDeviceDescription(s32 fd,usb_devdesc *devdesc)
 {
 	s32 ret;
-	void *devdescr;
+	usb_devdesc *p;
 	
-	devdescr = iosAlloc(hId,18);
-	if(devdescr==NULL) return IPC_ENOMEM;
+	p = iosAlloc(hId,USB_DT_DEVICE_SIZE);
+	if(p==NULL) return IPC_ENOMEM;
 
-	ret = __usb_control_message(fd,0x80,6,0x100,0,18,devdescr,NULL,NULL);
-	if(ret>=0) {
-		//printf("device description:\n");
-		//hexdump(devdescr,18);
-	}
+	ret = __usb_control_message(fd,USB_ENDPOINT_IN,USB_REQ_GETDESCRIPTOR,(USB_DT_DEVICE<<8),0,USB_DT_DEVICE_SIZE,p,NULL,NULL);
+	if(ret>=0) memcpy(devdesc,p,USB_DT_DEVICE_SIZE);
 
-	if(devdescr!=NULL) iosFree(hId,devdescr);
+	if(p!=NULL) iosFree(hId,p);
 	return ret;
 }
 
-s32 USB_GetAsciiString(s32 fd,u16 wValue,u16 wIndex,u16 wLength,void *rpData)
+s32 USB_GetAsciiString(s32 fd,u16 wIndex,u16 wLangID,u16 wLength,void *rpData)
 {
 	s32 ret;
 
-	ret = __usb_control_message(fd,0x80,6,(0x300+wValue),wIndex,wLength,rpData,NULL,NULL);
+	ret = __usb_control_message(fd,USB_ENDPOINT_IN,USB_REQ_GETDESCRIPTOR,((USB_DT_STRING<<8)+wIndex),wLangID,wLength,rpData,NULL,NULL);
 	if(ret>0) {
 		// todo: implement unicode to char translation
 	}
