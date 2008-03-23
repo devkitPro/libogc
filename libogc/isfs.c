@@ -47,6 +47,7 @@ distribution.
 #define ISFS_FUNCGETSTAT			1
 #define ISFS_FUNCREADDIR			2
 #define ISFS_FUNCGETATTR			3
+#define ISFS_FUNCGETUSAGE			4
 
 #define ISFS_IOCTL_FORMAT			1
 #define ISFS_IOCTL_GETSTATS			2
@@ -59,6 +60,7 @@ distribution.
 #define ISFS_IOCTL_CREATEFILE		9
 #define ISFS_IOCTL_SETFILEVERCTRL	10
 #define ISFS_IOCTL_GETFILESTATS		11
+#define ISFS_IOCTL_GETUSAGE			12
 #define ISFS_IOCTL_SHUTDOWN			13
 
 struct isfs_cb
@@ -80,6 +82,12 @@ struct isfs_cb
 			ioctlv vector[4];
 			u32 no_entries;
 		} fsreaddir;
+		struct {
+			ioctlv vector[4];
+			u32 usage1;
+			u8 pad0[28];
+			u32 usage2;
+		} fsusage;
 		struct {
 			u32	a;
 			u32	b;
@@ -125,6 +133,16 @@ static s32 __isfsGetAttrCB(s32 result,void *usrdata)
 	return result;
 }
 
+static s32 __isfsGetUsageCB(s32 result,void *usrdata)
+{
+	struct isfs_cb *param = (struct isfs_cb*)usrdata;
+	if(result==0) {
+		*(u32*)(param->funcargv[0]) = param->fsusage.usage1;
+		*(u32*)(param->funcargv[1]) = param->fsusage.usage2;
+	}
+	return result;
+
+}
 static s32 __isfsReadDirCB(s32 result,void *usrdata)
 {
 	struct isfs_cb *param = (struct isfs_cb*)usrdata;
@@ -140,6 +158,7 @@ static s32 __isfsFunctionCB(s32 result,void *usrdata)
 		if(param->functype==ISFS_FUNCGETSTAT) __isfsGetStatsCB(result,usrdata);
 		else if(param->functype==ISFS_FUNCREADDIR) __isfsReadDirCB(result,usrdata);
 		else if(param->functype==ISFS_FUNCGETATTR) __isfsGetAttrCB(result,usrdata);
+		else if(param->functype==ISFS_FUNCGETUSAGE) __isfsGetUsageCB(result,usrdata);
 	}
 	if(param->cb!=NULL) param->cb(result,param->usrdata);
 	
@@ -759,5 +778,68 @@ s32 ISFS_SetAttrAsync(const char *filepath,u32 ownerID,u16 groupID,u8 attributes
 	param->fsattr.attributes = attributes;
 	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_SETATTR,&param->fsattr,sizeof(param->fsattr),NULL,0,__isfsFunctionCB,param);
 } 
+
+s32 ISFS_GetUsage(const char* filepath, u32* usage1, u32* usage2)
+{
+	s32 ret,len;
+	struct isfs_cb *param;
+	
+	if(_fs_fd<0 || filepath==NULL || usage1==NULL || usage2 == NULL)
+		return ISFS_EINVAL;
+	
+	len = strnlen(filepath, ISFS_MAXPATH);
+	if(len>=ISFS_MAXPATH) return ISFS_EINVAL;
+	
+	param = (struct isfs_cb*)iosAlloc(hId, ISFS_STRUCTSIZE);
+	if(param==NULL) return ISFS_ENOMEM;
+
+	memcpy(param->filepath,filepath,(len+1));
+
+	param->fsusage.vector[0].data = param->filepath;
+	param->fsusage.vector[0].len = ISFS_MAXPATH;
+	param->fsusage.vector[1].data = &param->fsusage.usage1;
+	param->fsusage.vector[1].len = sizeof(u32);
+	param->fsusage.vector[2].data = &param->fsusage.usage2;
+	param->fsusage.vector[2].len = sizeof(u32);
+	ret = IOS_Ioctlv(_fs_fd,ISFS_IOCTL_GETUSAGE,1,2,param->fsusage.vector);
+	if(ret==IPC_OK) {
+		*usage1 = param->fsusage.usage1;
+		*usage2 = param->fsusage.usage2;
+	}
+	
+	if(param!=NULL) iosFree(hId, param);
+	return ret;
+}
+
+s32 ISFS_GetUsageAsync(const char* filepath, u32* usage1, u32* usage2,isfscallback cb,void *usrdata)
+{
+	s32 len;
+	struct isfs_cb *param;
+	
+	if(_fs_fd<0 || filepath==NULL || usage1==NULL || usage2 == NULL)
+		return ISFS_EINVAL;
+	
+	len = strnlen(filepath, ISFS_MAXPATH);
+	if(len>=ISFS_MAXPATH) return ISFS_EINVAL;
+	
+	param = (struct isfs_cb*)iosAlloc(hId, ISFS_STRUCTSIZE);
+	if(param==NULL) return ISFS_ENOMEM;
+
+	param->cb = cb;
+	param->usrdata = usrdata;
+	param->functype = ISFS_FUNCGETUSAGE;
+	param->funcargv[0] = usage1;
+	param->funcargv[1] = usage2;
+	memcpy(param->filepath,filepath,(len+1));
+
+	param->fsusage.vector[0].data = param->filepath;
+	param->fsusage.vector[0].len = ISFS_MAXPATH;
+	param->fsusage.vector[1].data = &param->fsusage.usage1;
+	param->fsusage.vector[1].len = sizeof(u32);
+	param->fsusage.vector[2].data = &param->fsusage.usage2;
+	param->fsusage.vector[2].len = sizeof(u32);
+	return IOS_IoctlvAsync(_fs_fd,ISFS_IOCTL_GETUSAGE,1,2,param->fsusage.vector,__isfsFunctionCB,param);
+}
+
 
 #endif /* defined(HW_RVL) */
