@@ -283,6 +283,7 @@ err_t hci_change_local_name(u8_t *name, u8_t len);
 err_t hci_periodic_inquiry(u32_t lap,u16_t min_period,u16_t max_period,u8_t inq_len,u8_t num_resp,err_t (*inq_complete)(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result));
 err_t hci_exit_periodic_inquiry();
 err_t hci_accecpt_conn_request(struct bd_addr *bdaddr,u8_t role);
+err_t hci_set_event_mask(u64_t ev_mask);
 
 void hci_arg(void *arg);
 void hci_cmd_complete(err_t (*cmd_complete)(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result));

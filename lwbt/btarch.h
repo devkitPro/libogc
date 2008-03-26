@@ -71,11 +71,17 @@
 	#ifndef htole32		
 		#define htole32		bswap32
 	#endif
+	#ifndef htole64		
+		#define htole64		bswap64
+	#endif
 	#ifndef le16toh
 		#define le16toh		bswap16
 	#endif
 	#ifndef le32toh
 		#define le32toh		bswap32
+	#endif
+	#ifndef le642toh
+		#define le64toh		bswap64
 	#endif
 	#ifndef htons
 		#define htons(x)	(x)

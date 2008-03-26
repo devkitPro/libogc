@@ -447,8 +447,8 @@ err_t hci_periodic_inquiry(u32_t lap,u16_t min_period,u16_t max_period,u8_t inq_
 	p = hci_cmd_ass(p,HCI_PERIODIC_INQUIRY_OCF,HCI_LINK_CTRL_OGF,HCI_PERIODIC_INQUIRY_PLEN);
 
 	/* Assembling cmd prameters */
-	((u16_t*)p->payload)[2] = htole16(min_period);
-	((u16_t*)p->payload)[3] = htole16(max_period);
+	((u16_t*)p->payload)[2] = htole16(max_period);
+	((u16_t*)p->payload)[3] = htole16(min_period);
 	((u8_t*)p->payload)[8] = (lap&0xff);
 	((u8_t*)p->payload)[9] = (lap>>8);
 	((u8_t*)p->payload)[10] = (lap>>16);
@@ -495,6 +495,28 @@ err_t hci_accecpt_conn_request(struct bd_addr *bdaddr,u8_t role)
 	/* Assembling cmd prameters */
 	memcpy((void*)(((u8_t*)p->payload)+4),bdaddr,6);
 	((u8_t*)p->payload)[10] = role;
+
+	physbusif_output(p,p->tot_len);
+	btpbuf_free(p);
+
+	return ERR_OK;
+}
+
+err_t hci_set_event_mask(u64_t ev_mask)
+{
+	u64 mask;
+	struct pbuf *p = NULL;
+
+	if((p=btpbuf_alloc(PBUF_RAW,HCI_SET_EV_MASK_PLEN,PBUF_RAM))==NULL) {
+		ERROR("hci_set_event_mask: Could not allocate memory for pbuf\n");
+		return ERR_MEM;
+	}
+
+	/* Assembling command packet */
+	p = hci_cmd_ass(p,HCI_SET_EV_MASK_OCF,HCI_HC_BB_OGF,HCI_SET_EV_MASK_PLEN);
+
+	mask = htole64(0x00001fffffffffffLL);
+	memcpy(((u8_t*)p->payload)+4,&mask,8);
 
 	physbusif_output(p,p->tot_len);
 	btpbuf_free(p);
@@ -1157,9 +1179,8 @@ void hci_event_handler(struct pbuf *p)
 			ocf = (opc&0x03ff);
 			ogf = (opc>>10);
 
-			//printf("ogf = %x, ocf = %x\n",ogf,ocf);
-
 			btpbuf_header(p,-2);
+			//printf("ogf = %x, ocf = %x, err = %02x\n",ogf,ocf,((u8_t*)p->payload)[0]);
 			if(ogf==HCI_INFO_PARAM) {
 				if(ocf==HCI_READ_BUFFER_SIZE) {
 					if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {

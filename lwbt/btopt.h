@@ -115,6 +115,22 @@ typedef s32 s32_t;
 typedef u32 u32_t;
 
 /**
+ * The 64-bit unsigned data type.
+ *
+ * This may have to be tweaked for your particular compiler. "unsigned
+ * short" works for most compilers.
+ */
+typedef u64 u64_t;
+
+/**
+ * The 64-bit signed data type.
+ *
+ * This may have to be tweaked for your particular compiler. "unsigned
+ * short" works for most compilers.
+ */
+typedef s64 s64_t;
+
+/**
  * The statistics data type.
  *
  * This datatype determines how high the statistics counters are able

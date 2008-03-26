@@ -140,16 +140,19 @@ struct bte_pcb* bte_new()
 	return pcb;
 }
 
-s32 bte_inquiry(struct inquiry_info *info,u16 max_cnt,u16 timeout,u8 flush)
+s32 bte_inquiry(struct inquiry_info *info,u8 max_cnt,u16 timeout,u8 flush)
 {
 	s32_t i;
 	err_t last_err;
 	u8_t timeout_inq;
+	u16_t minp,maxp;
 
 	last_err = ERR_OK;
 	if(btstate.num_founddevs==0 || flush==1) {
-		timeout_inq = (u8_t)((f32)timeout/1.28F)+1;
-		hci_inquiry(0x009E8B33,timeout_inq,0x00,bte_inquiry_complete);
+		minp = (u16_t)((u32)((timeout+10)*1000/1280)+1);
+		maxp = (u16_t)((u32)((timeout+120)*1000/1280)+1);
+		timeout_inq = (u8_t)((u32)(timeout*1000/1280)+1);
+		hci_periodic_inquiry(0x009E8B33,minp,maxp,timeout_inq,max_cnt,bte_inquiry_complete);
 		bte_waitcmdfinish();
 
 		last_err = btstate.last_err;
@@ -223,7 +226,7 @@ err_t acl_wlp_completed(void *arg,struct bd_addr *bdaddr)
 
 err_t acl_conn_complete(void *arg,struct bd_addr *bdaddr)
 {
-	printf("acl_conn_complete\n");
+	//printf("acl_conn_complete\n");
 	//memcpy(&(btstate.acl_bdaddr),bdaddr,6);
 
 	hci_connection_complete(NULL);
@@ -279,10 +282,12 @@ err_t bte_inquiry_complete(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ire
 	u8_t i;
 	struct hci_inq_res *p;
 
+	//printf("inquiry_complete\n");
 	if(result==HCI_SUCCESS) {
-		//printf("inquiry_complete\n");
 		if(ires!=NULL) {
 			//printf("inquiry_complete(cod = 0x%02x%02x%02x)\n",ires->cod[0],ires->cod[1],ires->cod[2]);
+			hci_exit_periodic_inquiry();
+
 			if(btstate.info!=NULL) free(btstate.info);
 			btstate.info = NULL;
 			btstate.num_founddevs = 0;
@@ -332,6 +337,11 @@ err_t bte_start_cmd_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_
 				} else 
 					err = ERR_CONN;
 			} else if(ocf==HCI_SET_EVENT_FILTER) {
+				if(result==HCI_SUCCESS) {
+					hci_set_event_mask(0);
+				} else
+					err = ERR_CONN;
+			} else if(ocf==HCI_SET_EVENT_MASK) {
 				if(result==HCI_SUCCESS) {
 					hci_write_page_timeout(0x8000);
 				} else
