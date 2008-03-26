@@ -863,6 +863,74 @@ SOURCE=.\libz\uncompr.c
 SOURCE=.\libz\zutil.c
 # End Source File
 # End Group
+# Begin Group "lwbt.c"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\lwbt\bt.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\btarch.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\bte.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\btmemb.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\btmemb.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\btmemr.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\btmemr.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\btopt.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\btpbuf.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\btpbuf.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\hci.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\hci.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\l2cap.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\l2cap.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\physbusif.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\lwbt\physbusif.h
+# End Source File
+# End Group
 # End Group
 # Begin Group "Header Files"
 
@@ -1405,6 +1473,18 @@ SOURCE=.\gc\z\zconf.in.h
 # Begin Source File
 
 SOURCE=.\gc\z\zutil.h
+# End Source File
+# End Group
+# Begin Group "lwbt.h"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\gc\lwbt\bd_addr.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\lwbt\bte.h
 # End Source File
 # End Group
 # Begin Source File

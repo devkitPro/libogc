@@ -42,6 +42,7 @@ export MODDIR		:= $(BASEDIR)/libmodplay
 export MADDIR		:= $(BASEDIR)/libmad
 export SAMPLEDIR	:= $(BASEDIR)/libsamplerate
 export DBDIR		:= $(BASEDIR)/libdb
+export BTEDIR		:= $(BASEDIR)/lwbt
 export SDCARDDIR	:= $(BASEDIR)/libsdcard
 export TINYSMBDIR	:= $(BASEDIR)/libtinysmb
 export LIBZDIR		:= $(BASEDIR)/libz
@@ -69,6 +70,7 @@ OGCLIB		:= $(LIBDIR)/libogc
 MODLIB		:= $(LIBDIR)/libmodplay
 MADLIB		:= $(LIBDIR)/libmad
 DBLIB		:= $(LIBDIR)/libdb
+BTELIB		:= $(LIBDIR)/libbte
 SDCARDLIB	:= $(LIBDIR)/libsdcard
 TINYSMBLIB	:= $(LIBDIR)/libtinysmb
 ZLIB		:= $(LIBDIR)/libz
@@ -79,7 +81,7 @@ DEFINCS		:= -I$(BASEDIR) -I$(BASEDIR)/gc
 INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/ogc -I$(BASEDIR)/gc/ogc/machine -I$(BASEDIR)/gc/tinysmb \
 				-I$(BASEDIR)/gc/modplay -I$(BASEDIR)/gc/mad -I$(BASEDIR)/gc/sdcard \
-				-I$(BASEDIR)/gc/z
+				-I$(BASEDIR)/gc/z -I$(BASEDIR)/gc/lwbt
 
 MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -fmodulo-sched -ffunction-sections -fdata-sections
 
@@ -107,6 +109,7 @@ VPATH :=	$(LWIPDIR)				\
 			$(SAMPLEDIR)			\
 			$(DBDIR)			\
 			$(DBDIR)/uIP		\
+			$(BTEDIR)		\
 			$(SDCARDDIR)			\
 			$(TINYSMBDIR)		\
 			$(LIBZDIR)		\
@@ -147,6 +150,9 @@ MADOBJ		:=	mp3player.o bit.o decoder.o fixed.o frame.o huffman.o \
 DBOBJ		:=	uip_ip.o uip_tcp.o uip_pbuf.o uip_netif.o uip_arp.o uip_arch.o \
 				uip_icmp.o memb.o memr.o bba.o tcpip.o debug.o debug_handler.o \
 				debug_supp.o usb.o
+
+#---------------------------------------------------------------------------------
+BTEOBJ		:=	bte.o hci.o l2cap.o btmemb.o btmemr.o btpbuf.o physbusif.o
 
 #---------------------------------------------------------------------------------
 SDCARDOBJ	:=	sdcard.o sdcardio.o card_fat.o card_buf.o card_io.o card_uni.o
@@ -239,6 +245,8 @@ $(TINYSMBLIB).a: $(TINYSMBOBJ)
 #---------------------------------------------------------------------------------
 $(ZLIB).a: $(ZLIBOBJ)
 #---------------------------------------------------------------------------------
+$(BTELIB).a: $(BTEOBJ)
+#---------------------------------------------------------------------------------
  
 .PHONY: libs install-headers install dist docs
 
@@ -247,11 +255,13 @@ install-headers:
 #---------------------------------------------------------------------------------
 	@mkdir -p $(INCDIR)
 	@mkdir -p $(INCDIR)/ogc
+	@mkdir -p $(INCDIR)/bte
 	@mkdir -p $(INCDIR)/modplay
 	@mkdir -p $(INCDIR)/mad
 	@mkdir -p $(INCDIR)/sdcard
 	@cp ./gc/*.h $(INCDIR)
 	@cp ./gc/ogc/*.h $(INCDIR)/ogc
+	@cp ./gc/lwbt/*.h $(INCDIR)/bte
 	@cp ./gc/modplay/*.h $(INCDIR)/modplay
 	@cp ./gc/mad/*.h $(INCDIR)/mad
 	@cp ./gc/sdcard/*.h $(INCDIR)/sdcard
@@ -278,6 +288,9 @@ LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(MADLIB).a $(DBLIB).a $(ZLIB).a $(TINYSMB
 
 ifeq ($(PLATFORM),cube)
 LIBRARIES	+=	$(BBALIB).a 
+endif
+ifeq ($(PLATFORM),wii)
+LIBRARIES	+=	$(BTELIB).a 
 endif
 
 #---------------------------------------------------------------------------------
