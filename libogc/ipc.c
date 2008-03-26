@@ -659,6 +659,42 @@ free_and_error:
 	return ret;
 }
 
+static s32 __ipc_asyncrequest(struct _ipcreq *req)
+{
+	s32 ret;
+	u32 level;
+
+	ret = __ipc_queuerequest(req);
+	if(ret) __ipc_freereq(req);
+	else {
+		_CPU_ISR_Disable(level);
+		if(_ipc_mailboxack>0) __ipc_sendrequest();
+		_CPU_ISR_Restore(level);
+	}
+	return ret;
+}
+
+static s32 __ipc_syncrequest(struct _ipcreq *req)
+{
+	s32 ret;
+	u32 level;
+
+	LWP_InitQueue(&req->syncqueue);
+	DCFlushRange(req,32);
+
+	_CPU_ISR_Disable(level);
+	ret = __ipc_syncqueuerequest(req);
+	if(ret==0) {
+		if(_ipc_mailboxack>0) __ipc_sendrequest();
+		LWP_ThreadSleep(req->syncqueue);
+		ret = req->result;
+	}
+	_CPU_ISR_Restore(level);
+	
+	LWP_CloseQueue(req->syncqueue);
+	return ret;
+}
+
 s32 iosCreateHeap(s32 size)
 {
 	s32 i,ret;
@@ -782,11 +818,8 @@ u32 __IPC_ClntInit()
 s32 IOS_Open(const char *filepath,u32 mode)
 {
 	s32 ret;
-	u32 level;
 	struct _ipcreq *req;
-#ifdef DEBUG_IPC
-	printf("IOS_Open(%s,%d)\n",filepath,mode);
-#endif
+
 	if(filepath==NULL) return IPC_EINVAL;
 
 	req = __ipc_allocreq();
@@ -801,17 +834,7 @@ s32 IOS_Open(const char *filepath,u32 mode)
 	req->open.filepath	= (char*)MEM_VIRTUAL_TO_PHYSICAL(filepath);
 	req->open.mode		= mode;
 
-	LWP_InitQueue(&req->syncqueue);
-	DCFlushRange(req,32);
-
-	_CPU_ISR_Disable(level);
-	ret = __ipc_syncqueuerequest(req);
-	if(ret==0) {
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		LWP_ThreadSleep(req->syncqueue);
-		ret = req->result;
-	}
-	_CPU_ISR_Restore(level);
+	ret = __ipc_syncrequest(req);
 
 	if(req!=NULL) __ipc_freereq(req);
 	return ret;
@@ -819,8 +842,6 @@ s32 IOS_Open(const char *filepath,u32 mode)
 
 s32 IOS_OpenAsync(const char *filepath,u32 mode,ipccallback ipc_cb,void *usrdata)
 {
-	s32 ret = 0;
-	u32 level;
 	struct _ipcreq *req;
 
 	req = __ipc_allocreq();
@@ -836,20 +857,12 @@ s32 IOS_OpenAsync(const char *filepath,u32 mode,ipccallback ipc_cb,void *usrdata
 	req->open.filepath	= (char*)MEM_VIRTUAL_TO_PHYSICAL(filepath);
 	req->open.mode		= mode;
 
-	ret = __ipc_queuerequest(req);
-	if(ret) __ipc_freereq(req);
-	else {
-		_CPU_ISR_Disable(level);
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		_CPU_ISR_Restore(level);
-	}
-	return ret;
+	return __ipc_asyncrequest(req);
 }
 
 s32 IOS_Close(s32 fd)
 {
 	s32 ret;
-	u32 level;
 	struct _ipcreq *req;
 
 	req = __ipc_allocreq();
@@ -860,17 +873,7 @@ s32 IOS_Close(s32 fd)
 	req->cb = NULL;
 	req->relnch = 0;
 	
-	LWP_InitQueue(&req->syncqueue);
-	DCFlushRange(req,32);
-
-	_CPU_ISR_Disable(level);
-	ret = __ipc_syncqueuerequest(req);
-	if(ret==0) {
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		LWP_ThreadSleep(req->syncqueue);
-		ret = req->result;
-	}
-	_CPU_ISR_Restore(level);
+	ret = __ipc_syncrequest(req);
 
 	if(req!=NULL) __ipc_freereq(req);
 	return ret;
@@ -878,8 +881,6 @@ s32 IOS_Close(s32 fd)
 
 s32 IOS_CloseAsync(s32 fd,ipccallback ipc_cb,void *usrdata)
 {
-	s32 ret;
-	u32 level;
 	struct _ipcreq *req;
 
 	req = __ipc_allocreq();
@@ -891,20 +892,12 @@ s32 IOS_CloseAsync(s32 fd,ipccallback ipc_cb,void *usrdata)
 	req->usrdata = usrdata;
 	req->relnch = 0;
 	
-	ret = __ipc_queuerequest(req);
-	if(ret) __ipc_freereq(req);
-	else {
-		_CPU_ISR_Disable(level);
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		_CPU_ISR_Restore(level);
-	}
-	return ret;
+	return __ipc_asyncrequest(req);
 }
 
 s32 IOS_Read(s32 fd,void *buf,s32 len)
 {
 	s32 ret;
-	u32 level;
 	struct _ipcreq *req;
 
 	req = __ipc_allocreq();
@@ -919,17 +912,7 @@ s32 IOS_Read(s32 fd,void *buf,s32 len)
 	req->read.data	= (void*)MEM_VIRTUAL_TO_PHYSICAL(buf);
 	req->read.len	= len;
 
-	LWP_InitQueue(&req->syncqueue);
-	DCFlushRange(req,32);
-
-	_CPU_ISR_Disable(level);
-	ret = __ipc_syncqueuerequest(req);
-	if(ret==0) {
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		LWP_ThreadSleep(req->syncqueue);
-		ret = req->result;
-	}
-	_CPU_ISR_Restore(level);
+	ret = __ipc_syncrequest(req);
 
 	if(req!=NULL) __ipc_freereq(req);
 	return ret;
@@ -937,8 +920,6 @@ s32 IOS_Read(s32 fd,void *buf,s32 len)
 
 s32 IOS_ReadAsync(s32 fd,void *buf,s32 len,ipccallback ipc_cb,void *usrdata)
 {
-	s32 ret;
-	u32 level;
 	struct _ipcreq *req;
 
 	req = __ipc_allocreq();
@@ -954,20 +935,12 @@ s32 IOS_ReadAsync(s32 fd,void *buf,s32 len,ipccallback ipc_cb,void *usrdata)
 	req->read.data	= (void*)MEM_VIRTUAL_TO_PHYSICAL(buf);
 	req->read.len	= len;
 
-	ret = __ipc_queuerequest(req);
-	if(ret) __ipc_freereq(req);
-	else {
-		_CPU_ISR_Disable(level);
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		_CPU_ISR_Restore(level);
-	}
-	return ret;
+	return __ipc_asyncrequest(req);
 }
 
 s32 IOS_Write(s32 fd,const void *buf,s32 len)
 {
 	s32 ret;
-	u32 level;
 	struct _ipcreq *req;
 
 	req = __ipc_allocreq();
@@ -982,17 +955,7 @@ s32 IOS_Write(s32 fd,const void *buf,s32 len)
 	req->write.data	= (void*)MEM_VIRTUAL_TO_PHYSICAL(buf);
 	req->write.len	= len;
 
-	LWP_InitQueue(&req->syncqueue);
-	DCFlushRange(req,32);
-
-	_CPU_ISR_Disable(level);
-	ret = __ipc_syncqueuerequest(req);
-	if(ret==0) {
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		LWP_ThreadSleep(req->syncqueue);
-		ret = req->result;
-	}
-	_CPU_ISR_Restore(level);
+	ret = __ipc_syncrequest(req);
 
 	if(req!=NULL) __ipc_freereq(req);
 	return ret;
@@ -1000,8 +963,6 @@ s32 IOS_Write(s32 fd,const void *buf,s32 len)
 
 s32 IOS_WriteAsync(s32 fd,const void *buf,s32 len,ipccallback ipc_cb,void *usrdata)
 {
-	s32 ret;
-	u32 level;
 	struct _ipcreq *req;
 
 	req = __ipc_allocreq();
@@ -1017,20 +978,12 @@ s32 IOS_WriteAsync(s32 fd,const void *buf,s32 len,ipccallback ipc_cb,void *usrda
 	req->write.data		= (void*)MEM_VIRTUAL_TO_PHYSICAL(buf);
 	req->write.len		= len;
 
-	ret = __ipc_queuerequest(req);
-	if(ret) __ipc_freereq(req);
-	else {
-		_CPU_ISR_Disable(level);
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		_CPU_ISR_Restore(level);
-	}
-	return ret;
+	return __ipc_asyncrequest(req);
 }
 
 s32 IOS_Seek(s32 fd,s32 where,s32 whence)
 {
 	s32 ret;
-	u32 level;
 	struct _ipcreq *req;
 
 	req = __ipc_allocreq();
@@ -1044,17 +997,7 @@ s32 IOS_Seek(s32 fd,s32 where,s32 whence)
 	req->seek.where		= where;
 	req->seek.whence	= whence;
 
-	LWP_InitQueue(&req->syncqueue);
-	DCFlushRange(req,32);
-
-	_CPU_ISR_Disable(level);
-	ret = __ipc_syncqueuerequest(req);
-	if(ret==0) {
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		LWP_ThreadSleep(req->syncqueue);
-		ret = req->result;
-	}
-	_CPU_ISR_Restore(level);
+	ret = __ipc_syncrequest(req);
 
 	if(req!=NULL) __ipc_freereq(req);
 	return ret;
@@ -1062,8 +1005,6 @@ s32 IOS_Seek(s32 fd,s32 where,s32 whence)
 
 s32 IOS_SeekAsync(s32 fd,s32 where,s32 whence,ipccallback ipc_cb,void *usrdata)
 {
-	s32 ret;
-	u32 level;
 	struct _ipcreq *req;
 
 	req = __ipc_allocreq();
@@ -1078,20 +1019,12 @@ s32 IOS_SeekAsync(s32 fd,s32 where,s32 whence,ipccallback ipc_cb,void *usrdata)
 	req->seek.where		= where;
 	req->seek.whence	= whence;
 
-	ret = __ipc_queuerequest(req);
-	if(ret) __ipc_freereq(req);
-	else {
-		_CPU_ISR_Disable(level);
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		_CPU_ISR_Restore(level);
-	}
-	return ret;
+	return __ipc_asyncrequest(req);
 }
 
 s32 IOS_Ioctl(s32 fd,s32 ioctl,void *buffer_in,s32 len_in,void *buffer_io,s32 len_io)
 {
 	s32 ret;
-	u32 level;
 	struct _ipcreq *req;
 
 	req = __ipc_allocreq();
@@ -1111,17 +1044,7 @@ s32 IOS_Ioctl(s32 fd,s32 ioctl,void *buffer_in,s32 len_in,void *buffer_io,s32 le
 	DCFlushRange(buffer_in,len_in);
 	DCFlushRange(buffer_io,len_io);
 
-	LWP_InitQueue(&req->syncqueue);
-	DCFlushRange(req,32);
-
-	_CPU_ISR_Disable(level);
-	ret = __ipc_syncqueuerequest(req);
-	if(ret==0) {
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		LWP_ThreadSleep(req->syncqueue);
-		ret = req->result;
-	}
-	_CPU_ISR_Restore(level);
+	ret = __ipc_syncrequest(req);
 
 	if(req!=NULL) __ipc_freereq(req);
 	return ret;
@@ -1129,8 +1052,6 @@ s32 IOS_Ioctl(s32 fd,s32 ioctl,void *buffer_in,s32 len_in,void *buffer_io,s32 le
 
 s32 IOS_IoctlAsync(s32 fd,s32 ioctl,void *buffer_in,s32 len_in,void *buffer_io,s32 len_io,ipccallback ipc_cb,void *usrdata)
 {
-	s32 ret;
-	u32 level;
 	struct _ipcreq *req;
 
 	req = __ipc_allocreq();
@@ -1151,20 +1072,12 @@ s32 IOS_IoctlAsync(s32 fd,s32 ioctl,void *buffer_in,s32 len_in,void *buffer_io,s
 	DCFlushRange(buffer_in,len_in);
 	DCFlushRange(buffer_io,len_io);
 
-	ret = __ipc_queuerequest(req);
-	if(ret) __ipc_freereq(req);
-	else {
-		_CPU_ISR_Disable(level);
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		_CPU_ISR_Restore(level);
-	}
-	return ret;
+	return __ipc_asyncrequest(req);
 }
 
 s32 IOS_Ioctlv(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv)
 {
 	s32 i,ret;
-	u32 level;
 	struct _ipcreq *req;
 
 	req = __ipc_allocreq();
@@ -1199,17 +1112,7 @@ s32 IOS_Ioctlv(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv)
 	}
 	DCFlushRange(argv,((cnt_in+cnt_io)<<3));
 
-	LWP_InitQueue(&req->syncqueue);
-	DCFlushRange(req,32);
-
-	_CPU_ISR_Disable(level);
-	ret = __ipc_syncqueuerequest(req);
-	if(ret==0) {
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		LWP_ThreadSleep(req->syncqueue);
-		ret = req->result;
-	}
-	_CPU_ISR_Restore(level);
+	ret = __ipc_syncrequest(req);
 
 	if(req!=NULL) __ipc_freereq(req);
 	return ret;
@@ -1218,8 +1121,7 @@ s32 IOS_Ioctlv(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv)
 
 s32 IOS_IoctlvAsync(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv,ipccallback ipc_cb,void *usrdata)
 {
-	s32 i,ret;
-	u32 level;
+	s32 i;
 	struct _ipcreq *req;
 
 	req = __ipc_allocreq();
@@ -1255,14 +1157,7 @@ s32 IOS_IoctlvAsync(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv,ipccallb
 	}
 	DCFlushRange(argv,((cnt_in+cnt_io)<<3));
 
-	ret = __ipc_queuerequest(req);
-	if(ret) __ipc_freereq(req);
-	else {
-		_CPU_ISR_Disable(level);
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		_CPU_ISR_Restore(level);
-	}
-	return ret;
+	return __ipc_asyncrequest(req);
 }
 
 s32 IOS_IoctlvFormat(s32 hId,s32 fd,s32 ioctl,const char *format,...)
@@ -1321,7 +1216,6 @@ s32 IOS_IoctlvFormatAsync(s32 hId,s32 fd,s32 ioctl,ipccallback usr_cb,void *usr_
 s32 IOS_IoctlvReboot(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv)
 {
 	s32 i,ret;
-	u32 level;
 	struct _ipcreq *req;
 
 	req = __ipc_allocreq();
@@ -1356,17 +1250,7 @@ s32 IOS_IoctlvReboot(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv)
 	}
 	DCFlushRange(argv,((cnt_in+cnt_io)<<3));
 
-	LWP_InitQueue(&req->syncqueue);
-	DCFlushRange(req,32);
-
-	_CPU_ISR_Disable(level);
-	ret = __ipc_syncqueuerequest(req);
-	if(ret==0) {
-		if(_ipc_mailboxack>0) __ipc_sendrequest();
-		LWP_ThreadSleep(req->syncqueue);
-		ret = req->result;
-	}
-	_CPU_ISR_Restore(level);
+	ret = __ipc_syncrequest(req);
 
 	if(req!=NULL) __ipc_freereq(req);
 	return ret;
