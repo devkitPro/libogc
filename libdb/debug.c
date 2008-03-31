@@ -16,8 +16,8 @@
 
 #include "lwp_config.h"
 
-#include "usb.h"
 #include "tcpip.h"
+#include "geckousb.h"
 #include "debug_if.h"
 #include "debug_supp.h"
 

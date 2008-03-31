@@ -1,6 +1,8 @@
 #ifndef __DEBUG_IF_H__
 #define __DEBUG_IF_H__
 
+#include <gctypes.h>
+
 #define GDBSTUB_DEVICE_USB		0
 #define GDBSTUB_DEVICE_TCP		1
 
