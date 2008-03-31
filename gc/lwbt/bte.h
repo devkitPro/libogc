@@ -57,6 +57,10 @@
 #define HIDP_PROTO_BOOT				0x00
 #define HIDP_PROTO_REPORT			0x01
 
+#ifdef __cplusplus
+   extern "C" {
+#endif /* __cplusplus */
+
 struct l2cap_pcb;
 
 struct inquiry_info
@@ -83,6 +87,10 @@ void bte_arg(struct bte_pcb *pcb,void *arg);
 s32 bte_inquiry(struct inquiry_info *info,u8 max_cnt,u16 timeout,u8 flush);
 s32 bte_connect(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm,s32 (*recv)(void *arg,void *buffer,u16 len));
 s32 bte_sendmessage(struct bte_pcb *pcb,void *message,u16 len);
+
+#ifdef __cplusplus
+   }
+#endif /* __cplusplus */
 
 #endif
 

@@ -35,6 +35,10 @@
 
 #include <gctypes.h>
 
+#ifdef __cplusplus
+   extern "C" {
+#endif /* __cplusplus */
+
 struct bd_addr {
   u8 addr[6];
 };
@@ -64,5 +68,9 @@ struct bd_addr {
 				   (addr1)->addr[4] = (addr2)->addr[4]; \
 				   (addr1)->addr[5] = (addr2)->addr[5]; }while(0)
 
+
+#ifdef __cplusplus
+   }
+#endif /* __cplusplus */
 
 #endif /* __BD_ADDR_H__ */
