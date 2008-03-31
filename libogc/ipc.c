@@ -83,8 +83,8 @@ struct _ipcreq
 			u32 len;
 		} read, write;
 		struct {
-			u32 where;
-			u32 whence;
+			s32 where;
+			s32 whence;
 		} seek;
 		struct {
 			u32 ioctl;
