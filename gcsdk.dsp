@@ -392,6 +392,10 @@ SOURCE=.\libogc\usb.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\usbgecko.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\video.c
 # End Source File
 # Begin Source File
@@ -732,19 +736,19 @@ SOURCE=.\libdb\debug_supp.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\libdb\geckousb.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdb\geckousb.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\libdb\tcpip.c
 # End Source File
 # Begin Source File
 
 SOURCE=.\libdb\tcpip.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\libdb\usb.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libdb\usb.h
 # End Source File
 # End Group
 # Begin Group "libsdcard.c"
@@ -1145,6 +1149,10 @@ SOURCE=.\gc\ogc\tdf.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\usb.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\usbgecko.h
 # End Source File
 # Begin Source File
 

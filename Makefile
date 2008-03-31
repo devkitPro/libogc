@@ -135,7 +135,7 @@ OGCOBJ		:=	\
 			gx.o gu.o gu_psasm.o audio.o cache.o decrementer.o			\
 			message.o card.o aram.o depackrnc.o decrementer_handler.o	\
 			depackrnc1.o dsp.o si.o tdf.o ipc.o ogc_crt0.o \
-			console_font_8x16.o timesupp.o lock_supp.o newlibc.o \
+			console_font_8x16.o timesupp.o lock_supp.o newlibc.o usbgecko.o \
 			sbrk.o malloc_lock.o kprintf.o stm.o ios.o es.o isfs.o usb.o
 
 #---------------------------------------------------------------------------------
@@ -149,7 +149,7 @@ MADOBJ		:=	mp3player.o bit.o decoder.o fixed.o frame.o huffman.o \
 #---------------------------------------------------------------------------------
 DBOBJ		:=	uip_ip.o uip_tcp.o uip_pbuf.o uip_netif.o uip_arp.o uip_arch.o \
 				uip_icmp.o memb.o memr.o bba.o tcpip.o debug.o debug_handler.o \
-				debug_supp.o usb.o
+				debug_supp.o geckousb.o
 
 #---------------------------------------------------------------------------------
 BTEOBJ		:=	bte.o hci.o l2cap.o btmemb.o btmemr.o btpbuf.o physbusif.o
