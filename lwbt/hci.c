@@ -273,7 +273,41 @@ err_t hci_read_bd_addr(err_t (*rbd_complete)(void *arg,struct bd_addr *bdaddr))
 		return ERR_MEM;
 	}
 
-	p = hci_cmd_ass(p,HCI_READ_BD_ADDR,HCI_INFO_PARAM_OGF,HCI_R_BD_ADDR_PLEN);
+	p = hci_cmd_ass(p,HCI_R_BD_ADDR_OCF,HCI_INFO_PARAM_OGF,HCI_R_BD_ADDR_PLEN);
+
+	physbusif_output(p,p->tot_len);
+	btpbuf_free(p);
+
+	return ERR_OK;
+}
+
+err_t hci_read_local_version(void)
+{
+	struct pbuf *p = NULL;
+
+	if((p=btpbuf_alloc(PBUF_RAW,HCI_R_LOC_VERS_SIZE_PLEN,PBUF_RAM))==NULL) {
+		ERROR("hci_read_local_version: Could not allocate memory for pbuf\n");
+		return ERR_MEM;
+	}
+
+	p = hci_cmd_ass(p,HCI_R_LOC_VERSION_OCF,HCI_INFO_PARAM_OGF,HCI_R_LOC_VERS_SIZE_PLEN);
+
+	physbusif_output(p,p->tot_len);
+	btpbuf_free(p);
+
+	return ERR_OK;
+}
+
+err_t hci_read_local_features(void)
+{
+	struct pbuf *p = NULL;
+
+	if((p=btpbuf_alloc(PBUF_RAW,HCI_R_LOC_FEAT_SIZE_PLEN,PBUF_RAM))==NULL) {
+		ERROR("hci_read_local_features: Could not allocate memory for pbuf\n");
+		return ERR_MEM;
+	}
+
+	p = hci_cmd_ass(p,HCI_R_LOC_FEATURES_OCF,HCI_INFO_PARAM_OGF,HCI_R_LOC_FEAT_SIZE_PLEN);
 
 	physbusif_output(p,p->tot_len);
 	btpbuf_free(p);
@@ -504,7 +538,7 @@ err_t hci_accecpt_conn_request(struct bd_addr *bdaddr,u8_t role)
 
 err_t hci_set_event_mask(u64_t ev_mask)
 {
-	u64 mask;
+	u64_t mask;
 	struct pbuf *p = NULL;
 
 	if((p=btpbuf_alloc(PBUF_RAW,HCI_SET_EV_MASK_PLEN,PBUF_RAM))==NULL) {
@@ -515,7 +549,7 @@ err_t hci_set_event_mask(u64_t ev_mask)
 	/* Assembling command packet */
 	p = hci_cmd_ass(p,HCI_SET_EV_MASK_OCF,HCI_HC_BB_OGF,HCI_SET_EV_MASK_PLEN);
 
-	mask = htole64(0x00001fffffffffffLL);
+	mask = htole64(ev_mask);
 	memcpy(((u8_t*)p->payload)+4,&mask,8);
 
 	physbusif_output(p,p->tot_len);
@@ -903,7 +937,7 @@ err_t hci_host_num_comp_packets(u16_t conhdl, u16_t num_complete)
 /*-----------------------------------------------------------------------------------*/
 u16_t lp_pdu_maxsize()
 {
-	return pcb->maxsize;
+	return pcb->acl_mtu;
 }
 
 /*-----------------------------------------------------------------------------------*/
@@ -945,8 +979,24 @@ err_t lp_acl_write(struct bd_addr *bdaddr,struct pbuf *p,u16_t len,u8_t pb)
 		return ERR_CONN;
 	}
 
-	if(pcb->hc_num_acl==0) {
-		
+	if(pcb->acl_max_pkt==0) {
+		if(p != NULL) {
+			/* Packet can be queued? */
+			if(link->p != NULL) {
+				LOG("lp_acl_write: Host buffer full. Dropped packet\n");
+				return ERR_OK; /* Drop packet */
+			} else {
+				/* Copy PBUF_REF referenced payloads into PBUF_RAM */
+				p = btpbuf_take(p);
+				/* Remember pbuf to queue, if any */
+				link->p = p;
+				link->len = len;
+				link->pb = pb;
+				/* Pbufs are queued, increase the reference count */
+				btpbuf_ref(p);
+				LOG("lp_acl_write: Host queued packet %p\n", (void *)p);
+			}
+		}
 	}
 
 	if((q=btpbuf_alloc(PBUF_RAW,HCI_ACL_HDR_LEN+1,PBUF_RAM))==NULL) {
@@ -966,7 +1016,7 @@ err_t lp_acl_write(struct bd_addr *bdaddr,struct pbuf *p,u16_t len,u8_t pb)
 	aclhdr->len = htole16(len);
 	
 	physbusif_output(q,(q->len+len));
-	--pcb->hc_num_acl;
+	--pcb->acl_max_pkt;
 
 	p = btpbuf_dechain(q);
 	btpbuf_free(q);
@@ -1073,11 +1123,160 @@ err_t lp_connect_req(struct bd_addr *bdaddr, u8_t allow_role_switch)
 	return ERR_OK;
 }
 
+static void hci_cc_info_param(u8_t ocf,struct pbuf *p)
+{
+	err_t ret = ERR_OK;
+
+	//printf("hci_cc_info_param(%02x)\n",ocf);
+	switch(ocf) {
+		case HCI_READ_LOCAL_FEATURES:
+			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
+				memcpy(pcb->features,(void*)((u8_t*)p->payload+1),sizeof(pcb->features));
+
+				if(pcb->features[0]&LMP_3SLOT)
+					pcb->pkt_type |= (HCI_DM3|HCI_DH3);
+				if(pcb->features[0]&LMP_5SLOT)
+					pcb->pkt_type |= (HCI_DM5|HCI_DH5);
+				if(pcb->features[1]&LMP_HV2)
+					pcb->pkt_type |= HCI_HV2;
+				if(pcb->features[1]&LMP_HV3)
+					pcb->pkt_type |= HCI_HV3;
+			}
+			break;
+		case HCI_READ_BUFFER_SIZE:
+			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
+				pcb->acl_mtu = le16toh(*(u16_t*)(((u8_t*)p->payload)+1));
+				pcb->sco_mtu = *((u8_t*)p->payload+3);
+				pcb->acl_max_pkt = le16toh(*(u16_t*)(((u8_t*)p->payload)+4));
+				pcb->sco_max_pkt = le16toh(*(u16_t*)(((u8_t*)p->payload)+5));
+			}
+			break;
+		case HCI_READ_BD_ADDR:
+			if(((u8_t*)p->payload)[0]==HCI_SUCCESS)
+				memcpy(&pcb->bdaddr,(void*)((u8_t*)p->payload+1),sizeof(struct bd_addr));
+			HCI_EVENT_RBD_COMPLETE(pcb,&(pcb->bdaddr),ret);
+			break;
+	}
+}
+
+static void hci_cc_host_ctrl(u8_t ocf,struct pbuf *p)
+{
+	u8_t *lap;
+	u8_t i,resp_off;
+
+	//printf("hci_cc_host_ctrl(%02x)\n",ocf);
+	switch(ocf) {
+		case HCI_SET_HC_TO_H_FC:
+			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) pcb->flow = 1;
+			break;
+		case HCI_READ_CUR_IACLAP:
+			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
+				for(i=0;i<((u8_t*)p->payload)[1];i++) {
+					resp_off = (i*3);
+					lap = (void*)(((u8_t*)p->payload)+(2+resp_off));
+					printf("lap = 00%02x%02x%02x\n",lap[2],lap[1],lap[0]);
+				}
+			}
+			break;
+	}
+}
+
+static void hci_cc_link_policy(u8_t ocf,struct pbuf *p)
+{
+	err_t ret = ERR_OK;
+	struct hci_link *link;
+
+	switch(ocf) {
+		case HCI_W_LINK_POLICY:
+			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
+				for(link=hci_active_links;link!=NULL;link=link->next) {
+					if(link->connhdl==le16toh(*((u16_t*)(((u8_t*)p->payload)+1)))) break;
+				}
+				if(link==NULL) {
+					LOG("hci_cc_link_policy: Connection does not exist\n");
+					break;
+				}
+				HCI_EVENT_WLP_COMPLETE(pcb,&link->bdaddr,ret);
+			} else {
+				LOG("Unsuccessful HCI_W_LINK_POLICY.\n");
+			}
+			break;
+	}
+}
+
+static void hci_conn_request_evt(struct pbuf *p)
+{
+	u8_t *cod;
+	u8_t link_type;
+	err_t ret = ERR_OK;
+	struct bd_addr *bdaddr;
+	struct hci_link *link;
+
+	//printf("hci_conn_request_evt\n");
+	bdaddr = (void*)((u8_t*)p->payload);
+	cod = (((u8_t*)p->payload)+6);
+	link_type = *(((u8_t*)p->payload)+9);
+
+	HCI_EVENT_CONN_REQ(pcb,bdaddr,cod,link_type,ret);
+	if(ret==ERR_OK) {
+		link = hci_get_link(bdaddr);
+		if(link==NULL) {
+			if((link=hci_new())==NULL) {
+				ERROR("hci_conn_request_evt: Could not allocate memory for link. Disconnect\n");
+				return;
+			}
+
+			bd_addr_set(&(link->bdaddr),bdaddr);
+			HCI_REG(&(hci_active_links),link);
+		}
+		hci_accecpt_conn_request(bdaddr,0x00);
+	} else {
+	}
+}
+
+static void hci_conn_complete_evt(struct pbuf *p)
+{
+	err_t ret;
+	struct bd_addr *bdaddr;
+	struct hci_link *link;
+
+	//printf("hci_conn_complete_evt\n");
+	bdaddr = (void*)(((u8_t*)p->payload)+3);
+	link = hci_get_link(bdaddr);
+
+	switch(((u8_t*)p->payload)[0]) {
+		case HCI_SUCCESS:
+			if(link==NULL) {
+				if((link=hci_new())==NULL) {
+					ERROR("hci_conn_complete_evt: Could not allocate memory for link. Disconnect\n");
+					hci_disconnect(bdaddr, HCI_OTHER_END_TERMINATED_CONN_LOW_RESOURCES);
+					lp_disconnect_ind(bdaddr);
+					break;
+				}
+				bd_addr_set(&(link->bdaddr),bdaddr);
+				link->connhdl = le16toh(*((u16_t*)(((u8_t*)p->payload)+1)));
+				HCI_REG(&(hci_active_links),link);
+				HCI_EVENT_CONN_COMPLETE(pcb,bdaddr,ret);
+				lp_connect_ind(&(link->bdaddr));
+			} else {
+				link->connhdl = le16toh(*((u16_t*)(((u8_t*)p->payload)+1)));
+				HCI_EVENT_CONN_COMPLETE(pcb,bdaddr,ret);
+				lp_connect_cfm(&(link->bdaddr),((u8_t*)p->payload)[10],ERR_OK);
+			}
+			break;
+		default:
+			if(link!=NULL) {
+				hci_close(link);
+				lp_connect_cfm(bdaddr,((u8_t*)p->payload)[10],ERR_CONN);
+			}
+			break;
+	}
+}
+
 void hci_event_handler(struct pbuf *p)
 {
 	err_t ret;
-	u8_t resp_off,link_type;
-	u8_t i,*lap,*cod;
+	u8_t i,resp_off;
 	u16_t ogf,ocf,opc;
 	u16_t connhdl;
 	struct pbuf *q;
@@ -1111,45 +1310,10 @@ void hci_event_handler(struct pbuf *p)
 			}
 			break;
 		case HCI_CONNECTION_COMPLETE:
-			//printf("HCI_CONNECTION_COMPLETE\n");
-			bdaddr = (void*)(((u8_t*)p->payload)+3);
-			link = hci_get_link(bdaddr);
-			switch(((u8_t*)p->payload)[0]) {
-				case HCI_SUCCESS:
-					if(link==NULL) {
-						if((link=hci_new())==NULL) {
-							ERROR("hci_event_input: Could not allocate memory for link. Disconnect\n");
-							hci_disconnect(bdaddr, HCI_OTHER_END_TERMINATED_CONN_LOW_RESOURCES);
-							lp_disconnect_ind(bdaddr);
-							break;
-						}
-						bd_addr_set(&(link->bdaddr),bdaddr);
-						link->connhdl = le16toh(*((u16_t*)(((u8_t*)p->payload)+1)));
-						HCI_REG(&(hci_active_links),link);
-						HCI_EVENT_CONN_COMPLETE(pcb,bdaddr,ret);
-						lp_connect_ind(&(link->bdaddr));
-					} else {
-						link->connhdl = le16toh(*((u16_t*)(((u8_t*)p->payload)+1)));
-						HCI_EVENT_CONN_COMPLETE(pcb,bdaddr,ret);
-						lp_connect_cfm(&(link->bdaddr),((u8_t*)p->payload)[10],ERR_OK);
-					}
-					break;
-				default:
-					if(link!=NULL) {
-						hci_close(link);
-						lp_connect_cfm(bdaddr,((u8_t*)p->payload)[10],ERR_CONN);
-					}
-					break;
-			}
+			hci_conn_complete_evt(p);
 			break;
 		case HCI_CONNECTION_REQUEST:
-			bdaddr = (void*)((u8_t*)p->payload);
-			cod = (((u8_t*)p->payload)+6);
-			link_type = *(((u8_t*)p->payload)+9);
-			printf("HCI_CONNECTION_REQUEST - bdaddr: %02x%02x%02x%02x%02x%02x, cod: 00%02x%02x%02x, link_type: %02x\n",
-				bdaddr->addr[0],bdaddr->addr[1],bdaddr->addr[2],bdaddr->addr[3],bdaddr->addr[4],bdaddr->addr[5],
-				cod[0],cod[1],cod[2],link_type);
-			HCI_EVENT_CONN_REQ(pcb,bdaddr,cod,link_type,ret);
+			hci_conn_request_evt(p);
 			break;
 		case HCI_DISCONNECTION_COMPLETE:
 			switch(((u8_t*)p->payload)[0]) {
@@ -1172,56 +1336,23 @@ void hci_event_handler(struct pbuf *p)
 			break;
 		case HCI_COMMAND_COMPLETE:
 			pcb->num_cmd += ((u8_t*)p->payload)[0];
-			
 			btpbuf_header(p,-1);
 			
 			opc = le16toh(((u16_t*)p->payload)[0]);
 			ocf = (opc&0x03ff);
 			ogf = (opc>>10);
-
 			btpbuf_header(p,-2);
-			//printf("ogf = %x, ocf = %x, err = %02x\n",ogf,ocf,((u8_t*)p->payload)[0]);
-			if(ogf==HCI_INFO_PARAM) {
-				if(ocf==HCI_READ_BUFFER_SIZE) {
-					if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
-						pcb->maxsize = le16toh(*(u16_t*)(((u8_t*)p->payload)+1));
-						pcb->hc_num_acl = le16toh(*(u16_t*)(((u8_t*)p->payload)+4));
-					}
-				} else if(ocf==HCI_READ_BD_ADDR) {
-					if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
-						bdaddr = (void*)(((u8_t*)p->payload)+1);
-						HCI_EVENT_RBD_COMPLETE(pcb,bdaddr,ret);
-					}
-				}
-			}
-			if(ogf==HCI_HOST_C_N_BB && ocf==HCI_READ_CUR_IACLAP) {
-				if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
-					for(i=0;i<((u8_t*)p->payload)[1];i++) {
-						resp_off = (i*3);
-						lap = (void*)(((u8_t*)p->payload)+(2+resp_off));
-						printf("lap = 00%02x%02x%02x\n",lap[2],lap[1],lap[0]);
-					}
-				}
-			}
-			if(ogf==HCI_HOST_C_N_BB && ocf==HCI_SET_HC_TO_H_FC) {
-				if(((u8_t*)p->payload)[0]==HCI_SUCCESS) pcb->flow = 1;
-			}
-			if(ogf==HCI_LINK_POLICY) {
-				if(ocf==HCI_W_LINK_POLICY) {
-					if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
-						for(link=hci_active_links;link!=NULL;link=link->next) {
-							if(link->connhdl==le16toh(*((u16_t*)(((u8_t*)p->payload)+1)))) break;
-						}
-						if(link==NULL) {
-							LOG("hci_event_input: Connection does not exist\n");
-							return;
-						}
-						HCI_EVENT_WLP_COMPLETE(pcb,&link->bdaddr,ret);
-					} else {
-						LOG("Unsuccessful HCI_W_LINK_POLICY.\n");
-						return;
-					}
-				}
+
+			switch(ogf) {
+				case HCI_INFO_PARAM:
+					hci_cc_info_param(ocf,p);
+					break;
+				case HCI_HOST_C_N_BB:
+					hci_cc_host_ctrl(ocf,p);
+					break;
+				case HCI_LINK_POLICY:
+					hci_cc_link_policy(ocf,p);
+					break;
 			}
 			HCI_EVENT_CMD_COMPLETE(pcb,ogf,ocf,((u8_t*)p->payload)[0],ret);
 			break;
@@ -1237,7 +1368,7 @@ void hci_event_handler(struct pbuf *p)
 				HCI_EVENT_CMD_COMPLETE(pcb,ogf,ocf,((u8_t*)p->payload)[0],ret);
 				btpbuf_header(p,4);
 			}
-			pcb->num_cmd += ((u8_t*)p->payload)[0];
+			pcb->num_cmd += ((u8_t*)p->payload)[1];
 			break;
 		case HCI_HARDWARE_ERROR:
 			//TODO: IS THIS FATAL??
@@ -1247,7 +1378,7 @@ void hci_event_handler(struct pbuf *p)
 		case HCI_NBR_OF_COMPLETED_PACKETS:
 			for(i=0;i<((u8_t *)p->payload)[0];i++) {
 				resp_off = i*4;
-				pcb->hc_num_acl += le16toh(*((u16_t *)(((u8_t *)p->payload) + 3 + resp_off)));
+				pcb->acl_max_pkt += le16toh(*((u16_t *)(((u8_t *)p->payload) + 3 + resp_off)));
 				connhdl = le16toh(*((u16_t *)(((u8_t *)p->payload) + 1 + resp_off)));
 
 				for(link = hci_active_links; link != NULL; link = link->next) {

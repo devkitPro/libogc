@@ -44,5 +44,6 @@ void btpbuf_ref(struct pbuf *p);
 void btpbuf_chain(struct pbuf *h,struct pbuf *t);
 struct pbuf* btpbuf_dequeue(struct pbuf *p);
 struct pbuf* btpbuf_dechain(struct pbuf *p);
+struct pbuf* btpbuf_take(struct pbuf *p);
 
 #endif

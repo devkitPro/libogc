@@ -84,7 +84,7 @@ void bte_init();
 s32 bte_start();
 struct bte_pcb* bte_new();
 void bte_arg(struct bte_pcb *pcb,void *arg);
-s32 bte_inquiry(struct inquiry_info *info,u8 max_cnt,u16 timeout,u8 flush);
+s32 bte_inquiry(struct inquiry_info *info,u8 max_cnt,u8 flush);
 s32 bte_connect(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm,s32 (*recv)(void *arg,void *buffer,u16 len));
 s32 bte_sendmessage(struct bte_pcb *pcb,void *message,u16 len);
 

@@ -5,18 +5,57 @@
 #include "bd_addr.h"
 
 /* HCI packet indicators */
-#define HCI_COMMAND_DATA_PACKET 0x01
-#define HCI_ACL_DATA_PACKET     0x02
-#define HCI_SCO_DATA_PACKET     0x03
-#define HCI_EVENT_PACKET        0x04
+#define HCI_COMMAND_DATA_PACKET			0x01
+#define HCI_ACL_DATA_PACKET				0x02
+#define HCI_SCO_DATA_PACKET				0x03
+#define HCI_EVENT_PACKET				0x04
+#define HCI_VENDOR_PACKET				0xff
 
-#define HCI_EVENT_HDR_LEN 2
-#define HCI_ACL_HDR_LEN 4
-#define HCI_SCO_HDR_LEN 3
-#define HCI_CMD_HDR_LEN 3
+/* HCI packet types */
+#define HCI_DM1							0x0008
+#define HCI_DM3							0x0400
+#define HCI_DM5							0x4000
+#define HCI_DH1							0x0010
+#define HCI_DH3							0x0800
+#define HCI_DH5							0x8000
+									
+#define HCI_HV1							0x0020
+#define HCI_HV2							0x0040
+#define HCI_HV3							0x0080
+
+#define SCO_PTYPE_MASK					(HCI_HV1 | HCI_HV2 | HCI_HV3)
+#define ACL_PTYPE_MASK					(~SCO_PTYPE_MASK)
+
+#define HCI_EVENT_HDR_LEN				2
+#define HCI_ACL_HDR_LEN					4
+#define HCI_SCO_HDR_LEN					3
+#define HCI_CMD_HDR_LEN					3
+
+/* LMP features */
+#define LMP_3SLOT						0x01
+#define LMP_5SLOT						0x02
+#define LMP_ENCRYPT						0x04
+#define LMP_SOFFSET						0x08
+#define LMP_TACCURACY					0x10
+#define LMP_RSWITCH						0x20
+#define LMP_HOLD						0x40
+#define LMP_SNIFF						0x80
+
+#define LMP_PARK						0x01
+#define LMP_RSSI						0x02
+#define LMP_QUALITY						0x04
+#define LMP_SCO							0x08
+#define LMP_HV2							0x10
+#define LMP_HV3							0x20
+#define LMP_ULAW						0x40
+#define LMP_ALAW						0x80
+										
+#define LMP_CVSD						0x01
+#define LMP_PSCHEME						0x02
+#define LMP_PCONTROL					0x04
 
 /* Opcode Group Field (OGF) values */
-#define HCI_LINK_CONTROL 0x01   /* Link Control Commands */
+#define HCI_LINK_CONTROL				0x01   /* Link Control Commands */
 #define HCI_LINK_POLICY 0x02    /* Link Policy Commands */
 #define HCI_HOST_C_N_BB 0x03    /* Host Controller & Baseband Commands */
 #define HCI_INFO_PARAM 0x04     /* Informational Parameters */
@@ -59,6 +98,8 @@
 #define HCI_READ_CUR_IACLAP 0x39
 
 /* Informational Parameters */
+#define HCI_READ_LOCAL_VERSION 0x01
+#define HCI_READ_LOCAL_FEATURES 0x03
 #define HCI_READ_BUFFER_SIZE 0x05
 #define HCI_READ_BD_ADDR 0x09
 
@@ -165,6 +206,8 @@
 #define HCI_H_BUF_SIZE_OCF 0x33
 #define HCI_H_NUM_COMPL_OCF 0x35
 #define HCI_R_CUR_IACLAP_OCF 0x39
+#define HCI_R_LOC_VERSION_OCF 0x01
+#define HCI_R_LOC_FEATURES_OCF 0x03
 #define HCI_R_BUF_SIZE_OCF 0x05
 #define HCI_R_BD_ADDR_OCF 0x09
 
@@ -194,6 +237,8 @@
 #define HCI_SET_HC_TO_H_FC_PLEN 5
 #define HCI_H_BUF_SIZE_PLEN 7
 #define HCI_H_NUM_COMPL_PLEN 7
+#define HCI_R_LOC_FEAT_SIZE_PLEN 4
+#define HCI_R_LOC_VERS_SIZE_PLEN 4
 #define HCI_R_BUF_SIZE_PLEN 4
 #define HCI_R_BD_ADDR_PLEN 4
 #define HCI_R_CUR_IACLAP_PLEN 4
@@ -229,19 +274,30 @@ struct hci_link
 	struct pbuf *p;
 	u16_t len;
 	u8_t pb;
+	u32_t link_mode;
 };
 
 struct hci_pcb
 {
 	void *cbarg;
 	s8_t num_cmd;
-	u8_t maxsize;
-	u16_t hc_num_acl;
+
+	u16_t acl_mtu;
+	u8_t sco_mtu;
+	u16_t acl_max_pkt;
+	u16_t sco_max_pkt;
+
+	u32_t flags;
+
 	u8_t flow;
 	u16_t host_num_acl;
+	u16_t pkt_type;
+	u8_t features[8];
 
+	struct bd_addr bdaddr;
 	struct hci_inq_res *ires;
-	
+	struct pbuf *sent_cmd;
+
 	err_t (*pin_req)(void *arg,struct bd_addr *bdaddr);
 	err_t (*cmd_complete)(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result);
 	err_t (*rbd_complete)(void *arg,struct bd_addr *bdaddr);
@@ -284,6 +340,8 @@ err_t hci_periodic_inquiry(u32_t lap,u16_t min_period,u16_t max_period,u8_t inq_
 err_t hci_exit_periodic_inquiry();
 err_t hci_accecpt_conn_request(struct bd_addr *bdaddr,u8_t role);
 err_t hci_set_event_mask(u64_t ev_mask);
+err_t hci_read_local_version(void);
+err_t hci_read_local_features(void);
 
 void hci_arg(void *arg);
 void hci_cmd_complete(err_t (*cmd_complete)(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result));
