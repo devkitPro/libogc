@@ -13,7 +13,7 @@ endif
 export PATH	:=	$(DEVKITPPC)/bin:$(PATH)
 
 export LIBOGC_MAJOR	:= 1
-export LIBOGC_MINOR	:= 5
+export LIBOGC_MINOR	:= 6
 export LIBOGC_PATCH	:= 0
 
 #---------------------------------------------------------------------------------
@@ -137,6 +137,10 @@ OGCOBJ		:=	\
 			depackrnc1.o dsp.o si.o tdf.o ipc.o ogc_crt0.o \
 			console_font_8x16.o timesupp.o lock_supp.o newlibc.o usbgecko.o \
 			sbrk.o malloc_lock.o kprintf.o stm.o ios.o es.o isfs.o usb.o
+
+ifeq ($(PLATFORM),wii)
+OGCOBJ	+=	network_wii.o
+endif
 
 #---------------------------------------------------------------------------------
 MODOBJ		:=	freqtab.o mixer.o modplay.o semitonetab.o gcmodplay.o
@@ -290,7 +294,7 @@ ifeq ($(PLATFORM),cube)
 LIBRARIES	+=	$(BBALIB).a 
 endif
 ifeq ($(PLATFORM),wii)
-LIBRARIES	+=	$(BTELIB).a 
+LIBRARIES	+=	$(BTELIB).a
 endif
 
 #---------------------------------------------------------------------------------
