@@ -49,6 +49,9 @@ distribution.
 #define ES_CERT_RSA2048		1
 #define ES_CERT_ECC			2
 
+#define ES_KEY_COMMON		4
+#define ES_KEY_SDCARD		6
+
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
@@ -194,19 +197,27 @@ s32 __ES_Init(void);
 s32 __ES_Close(void);
 s32 __ES_Reset(void);
 s32 ES_GetTitleID(u64 *titleID);
+s32 ES_SetUID(u64 uid);
 s32 ES_GetDataDir(u64 titleID, char *filepath);
 s32 ES_GetNumTicketViews(u64 titleID, u32 *cnt);
 s32 ES_GetTicketViews(u64 titleID, tikview *views, u32 cnt);
+s32 ES_GetNumOwnedTitles(u32 *cnt);
+s32 ES_GetOwnedTitles(u64 *titles, u32 cnt);
 s32 ES_GetNumTitles(u32 *cnt);
 s32 ES_GetTitles(u64 *titles, u32 cnt);
 s32 ES_GetNumStoredTMDContents(const signed_blob *stmd, u32 tmd_size, u32 *cnt);
 s32 ES_GetStoredTMDContents(const signed_blob *stmd, u32 tmd_size, u32 *contents, u32 cnt);
 s32 ES_GetStoredTMDSize(u64 titleID, u32 *size);
 s32 ES_GetStoredTMD(u64 titleID, signed_blob *stmd, u32 size);
+s32 ES_GetTitleContentsCount(u64 titleID, u32 *num);
+s32 ES_GetTitleContents(u64 titleID, u8 *data, u32 size);
+s32 ES_GetTMDViewSize(u64 titleID, u32 *size);
+s32 ES_GetTMDView(u64 titleID, u8 *data, u32 size);
+s32 ES_GetStoredTMDSize(u64 titleID, u32 *size);
+s32 ES_GetStoredTMD(u64 titleID, signed_blob *stmd, u32 size);
 s32 ES_GetNumSharedContents(u32 *cnt);
 s32 ES_GetSharedContents(sha1 *contents, u32 cnt);
 s32 ES_LaunchTitle(u64 titleID, const tikview *view);
-signed_blob *ES_NextCert(const signed_blob *certs);
 s32 ES_Identify(const signed_blob *certificates, u32 certificates_size, const signed_blob *tmd, u32 tmd_size, const signed_blob *ticket, u32 ticket_size, u32 *keyid);
 s32 ES_AddTicket(const signed_blob *tik, u32 tik_size, const signed_blob *certificates, u32 certificates_size, const signed_blob *crl, u32 crl_size);
 s32 ES_AddTitleTMD(const signed_blob *tmd, u32 tmd_size);
@@ -220,6 +231,15 @@ s32 ES_OpenContent(u16 index);
 s32 ES_ReadContent(s32 cfd, u8 *data, u32 data_size);
 s32 ES_SeekContent(s32 cfd, s32 where, s32 whence);
 s32 ES_CloseContent(s32 cfd);
+s32 ES_DeleteTitle(u64 titleID);
+s32 ES_DeleteTitleContent(u64 titleID);
+s32 ES_Encrypt(u32 keynum, u8 *iv, u8 *source, u32 size, u8 *dest);
+s32 ES_Decrypt(u32 keynum, u8 *iv, u8 *source, u32 size, u8 *dest);
+s32 ES_Sign(u8 *source, u32 size, u8 *sig, u8 *certs);
+s32 ES_GetDeviceCert(u8 *outbuf);
+s32 ES_GetDeviceID(u32 *device_id);
+s32 ES_GetBoot2Version(u32 *version);
+signed_blob *ES_NextCert(const signed_blob *certs);
 
 #ifdef __cplusplus
    }

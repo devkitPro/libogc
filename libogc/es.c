@@ -44,20 +44,49 @@ distribution.
 #define IOCTL_ES_ADDCONTENTDATA			0x04
 #define IOCTL_ES_ADDCONTENTFINISH		0x05
 #define IOCTL_ES_ADDTITLEFINISH			0x06
+#define IOCTL_ES_GETDEVICEID			0x07
 #define IOCTL_ES_LAUNCH					0x08
 #define IOCTL_ES_OPENCONTENT			0x09
 #define IOCTL_ES_READCONTENT			0x0A
 #define IOCTL_ES_CLOSECONTENT			0x0B
-#define IOCTL_ES_GETTITLECOUNT			0x0E
+#define IOCTL_ES_GETOWNEDTITLECNT		0x0C
+#define IOCTL_ES_GETOWNEDTITLES			0x0D
+#define IOCTL_ES_GETTITLECNT			0x0E
 #define IOCTL_ES_GETTITLES				0x0F
+#define IOCTL_ES_GETTITLECONTENTSCNT	0x10
+#define IOCTL_ES_GETTITLECONTENTS		0x11
 #define IOCTL_ES_GETVIEWCNT				0x12
 #define IOCTL_ES_GETVIEWS				0x13
+#define IOCTL_ES_GETTMDVIEWCNT			0x14
+#define IOCTL_ES_GETTMDVIEWS			0x15
+//#define IOCTL_ES_GETCONSUMPTION		0x16
+#define IOCTL_ES_DELETETITLE			0x17
+//#define IOCTL_ES_DELETETICKET			0x18
+//#define IOCTL_ES_DIGETTMDVIEWSIZE		0x19
+//#define IOCTL_ES_DIGETTMDVIEW			0x1A
+//#define IOCTL_ES_DIGETTICKETVIEW		0x1B
 #define IOCTL_ES_DIVERIFY				0x1C
 #define IOCTL_ES_GETTITLEDIR			0x1D
+#define IOCTL_ES_GETDEVICECERT			0x1E
+//#define IOCTL_ES_IMPORTBOOT			0x1F
 #define IOCTL_ES_GETTITLEID				0x20
+#define IOCTL_ES_SETUID					0x21
+#define IOCTL_ES_DELETETITLECONTENT		0x22
 #define IOCTL_ES_SEEKCONTENT			0x23
+//#define IOCTL_ES_OPENTITLECONTENT		0x24
+//#define IOCTL_ES_LAUNCHBC				0x25
+//#define IOCTL_ES_EXPORTTITLEINIT		0x26
+//#define IOCTL_ES_EXPORTCONTENTBEGIN	0x27
+//#define IOCTL_ES_EXPORTCONTENTDATA	0x28
+//#define IOCTL_ES_EXPORTCONTENTEND		0x29
+//#define IOCTL_ES_EXPORTTITLEDONE		0x2A
 #define IOCTL_ES_ADDTMD					0x2B
+#define IOCTL_ES_ENCRYPT				0x2C
+#define IOCTL_ES_DECRYPT				0x2D
+#define IOCTL_ES_GETBOOT2VERSION		0x2E
 #define IOCTL_ES_ADDTITLECANCEL			0x2F
+#define IOCTL_ES_SIGN					0x30
+//#define IOCTL_ES_VERIFYSIGN			0x31
 #define IOCTL_ES_GETSTOREDCONTENTCNT	0x32
 #define IOCTL_ES_GETSTOREDCONTENTS		0x33
 #define IOCTL_ES_GETSTOREDTMDSIZE		0x34
@@ -141,6 +170,13 @@ s32 ES_GetTitleID(u64 *titleID)
 	return ret;
 }
 
+s32 ES_SetUID(u64 uid)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	
+	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_SETUID,"q:",uid);
+}
+
 s32 ES_GetDataDir(u64 titleID,char *filepath)
 {
 	s32 ret;
@@ -209,6 +245,31 @@ s32 ES_GetTicketViews(u64 titleID, tikview *views, u32 cnt)
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETVIEWS,"qi:d",titleID,cnt,views,sizeof(tikview)*cnt);
 }
 
+s32 ES_GetNumOwnedTitles(u32 *cnt)
+{
+	s32 ret;
+	u32 cnttitles;
+
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(cnt == NULL) return ES_EINVAL;
+
+	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETOWNEDTITLECNT,":i",&cnttitles);
+	
+	if(ret<0) return ret;
+	*cnt = cnttitles;
+	return ret;
+}
+
+s32 ES_GetOwnedTitles(u64 *titles, u32 cnt)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(cnt <= 0) return ES_EINVAL;
+	if(!titles) return ES_EINVAL;
+	if(!ISALIGNED(titles)) return ES_EALIGN;
+
+	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETOWNEDTITLES,"i:d",cnt,titles,sizeof(u64)*cnt);
+}
+
 s32 ES_GetNumTitles(u32 *cnt)
 {
 	s32 ret;
@@ -217,7 +278,7 @@ s32 ES_GetNumTitles(u32 *cnt)
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(cnt == NULL) return ES_EINVAL;
 
-	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTITLECOUNT,":i",&cnttitles);
+	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTITLECNT,":i",&cnttitles);
 	
 	if(ret<0) return ret;
 	*cnt = cnttitles;
@@ -262,6 +323,56 @@ s32 ES_GetStoredTMDContents(const signed_blob *stmd, u32 tmd_size, u32 *contents
 	if(tmd_size > MAX_SIGNED_TMD_SIZE) return ES_EINVAL;
 	
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDCONTENTS,"di:d",stmd,tmd_size,cnt,contents,sizeof(u32)*cnt);
+}
+
+s32 ES_GetTitleContentsCount(u64 titleID, u32 *num)
+{
+	s32 ret;
+	u32 _num;
+
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(!num) return ES_EINVAL;
+
+	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTITLECONTENTSCNT,"q:i",titleID,&_num);
+	
+	if(ret<0) return ret;
+	*num = _num;
+	return ret;
+}
+
+s32 ES_GetTitleContents(u64 titleID, u8 *data, u32 size)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(size <= 0) return ES_EINVAL;
+	if(!data) return ES_EINVAL;
+	if(!ISALIGNED(data)) return ES_EALIGN;
+	
+	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDTMD,"qi:d",titleID,size,data,size);
+}
+
+s32 ES_GetTMDViewSize(u64 titleID, u32 *size)
+{
+	s32 ret;
+	u32 tmdsize;
+
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(!size) return ES_EINVAL;
+
+	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTMDVIEWCNT,"q:i",titleID,&tmdsize);
+	
+	if(ret<0) return ret;
+	*size = tmdsize;
+	return ret;
+}
+
+s32 ES_GetTMDView(u64 titleID, u8 *data, u32 size)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(size <= 0) return ES_EINVAL;
+	if(!data) return ES_EINVAL;
+	if(!ISALIGNED(data)) return ES_EALIGN;
+	
+	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTMDVIEWS,"qi:d",titleID,size,data,size);
 }
 
 s32 ES_GetStoredTMDSize(u64 titleID, u32 *size)
@@ -496,6 +607,78 @@ s32 ES_CloseContent(s32 cfd)
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(cfd<0) return ES_EINVAL;
 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_CLOSECONTENT, "i:", cfd);
+}
+
+s32 ES_DeleteTitle(u64 titleID)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DELETETITLE, "q:", titleID);
+}
+
+s32 ES_DeleteTitleContent(u64 titleID)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DELETETITLECONTENT, "q:", titleID);
+}
+
+s32 ES_Encrypt(u32 keynum, u8 *iv, u8 *source, u32 size, u8 *dest)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+ 	if(!iv || !source || !size || !dest) return ES_EINVAL;
+ 	if(!ISALIGNED(source) || !ISALIGNED(iv) || !ISALIGNED(dest)) return ES_EALIGN;
+ 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ENCRYPT, "idd:dd", keynum, iv, 0x10, source, size, iv, 0x10, dest, size);
+}
+ 
+s32 ES_Decrypt(u32 keynum, u8 *iv, u8 *source, u32 size, u8 *dest)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(!iv || !source || !size || !dest) return ES_EINVAL;
+	if(!ISALIGNED(source) || !ISALIGNED(iv) || !ISALIGNED(dest)) return ES_EALIGN;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DECRYPT, "idd:dd", keynum, iv, 0x10, source, size, iv, 0x10, dest, size);
+}
+
+s32 ES_Sign(u8 *source, u32 size, u8 *sig, u8 *certs)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+ 	if(!source || !size || !sig || !certs) return ES_EINVAL;
+ 	if(!ISALIGNED(source) || !ISALIGNED(sig) || !ISALIGNED(certs)) return ES_EALIGN;
+ 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_SIGN, "d:dd", source, size, sig, 0x3C, certs, 0x180);
+}
+
+s32 ES_GetDeviceCert(u8 *outbuf)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(!outbuf) return ES_EINVAL;
+	if(!ISALIGNED(outbuf)) return ES_EALIGN;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_GETDEVICECERT, ":d", outbuf, 0x180);
+}
+
+s32 ES_GetDeviceID(u32 *device_id)
+{
+	s32 ret;
+	u32 _device_id = 0;
+
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(!device_id) return ES_EINVAL;
+
+	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_GETDEVICEID, ":i", &_device_id);
+	if (ret>=0) *device_id = _device_id;
+
+	return ret;
+}
+
+s32 ES_GetBoot2Version(u32 *version)
+{
+	s32 ret;
+	u32 _version = 0;
+
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(!version) return ES_EINVAL;
+
+	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_GETBOOT2VERSION, ":i", &_version);
+	if (ret>=0) *version = _version;
+	
+	return ret;
 }
 
 #endif /* defined(HW_RVL) */
