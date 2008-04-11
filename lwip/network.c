@@ -1496,12 +1496,14 @@ s32 if_config(const char *local_ip,const char *netmask,const char *gateway,boole
 	loc_ip.addr = 0;
 	mask.addr = 0;
 	gw.addr = 0;
-	if(!use_dhcp && (!gateway || gateway[0]=='\0')) return -1;
-	if(!local_ip || !netmask || local_ip[0]=='\0' || netmask[0]=='\0') return -1;
-
-	loc_ip.addr = inet_addr(local_ip);
-	mask.addr = inet_addr(netmask);
-	if(!use_dhcp) gw.addr = inet_addr(gateway);
+	if(use_dhcp==FALSE) {
+		if(gateway || gateway[0]=='\0'
+			|| !local_ip || local_ip[0]=='\0'
+			|| !netmask || netmask[0]=='\0') return -1;
+			loc_ip.addr = inet_addr(local_ip);
+			mask.addr = inet_addr(netmask);
+			gw.addr = inet_addr(gateway);
+	}
 
 	hbba = bba_create(&g_hNetIF);
 	pnet = netif_add(&g_hNetIF,&loc_ip, &mask, &gw, hbba, bba_init, net_input);
@@ -1701,7 +1703,6 @@ s32 net_accept(s32 s,struct sockaddr *addr,socklen_t *addrlen)
 	netconn_peer(newconn,&naddr,&port);
 	
 	memset(&sin,0,sizeof(sin));
-	sin.sin_len = sizeof(sin);
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(port);
 	sin.sin_addr.s_addr = naddr.addr;
@@ -1809,7 +1810,6 @@ s32 net_recvfrom(s32 s,void *mem,s32 len,u32 flags,struct sockaddr *from,socklen
 		port = netbuf_fromport(buf);
 
 		memset(&sin,0,sizeof(sin));
-		sin.sin_len = sizeof(sin);
 		sin.sin_family = AF_INET;
 		sin.sin_port = htons(port);
 		sin.sin_addr.s_addr = addr->addr;
