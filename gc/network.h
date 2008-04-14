@@ -221,9 +221,19 @@ struct sockaddr {
   s8 sa_data[14];
 };
 
-u32 inet_addr(const char *cp);
+struct hostent {
+  char    *h_name;        /* official name of host */
+  char    **h_aliases;    /* alias list */
+  u16     h_addrtype;     /* host address type */
+  u16     h_length;       /* length of address */
+  char    **h_addr_list;  /* list of addresses from name server */
+};
 
-s32 if_config(const char *local_ip,const char *netmask,const char *gateway,boolean use_dhcp);
+u32 inet_addr(const char *cp);
+s8 inet_aton(const char *cp, struct in_addr *addr);
+char *inet_ntoa(struct in_addr addr); /* returns ptr to static buffer; not reentrant! */
+
+s32 if_config( char *local_ip, char *netmask, char *gateway,boolean use_dhcp);
 s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr *gateway,boolean use_dhcp);
 
 s32 net_init();
@@ -232,9 +242,9 @@ s32 net_bind(s32 s,struct sockaddr *name,socklen_t namelen);
 s32 net_listen(s32 s,u32 backlog);
 s32 net_accept(s32 s,struct sockaddr *addr,socklen_t *addrlen);
 s32 net_connect(s32 s,struct sockaddr *,socklen_t);
-s32 net_write(s32 s,void *data,s32 size);
-s32 net_send(s32 s,void *data,s32 size,u32 flags);
-s32 net_sendto(s32 s,void *data,s32 len,u32 flags,struct sockaddr *to,socklen_t tolen);
+s32 net_write(s32 s,const void *data,s32 size);
+s32 net_send(s32 s,const void *data,s32 size,u32 flags);
+s32 net_sendto(s32 s,const void *data,s32 len,u32 flags,struct sockaddr *to,socklen_t tolen);
 s32 net_recv(s32 s,void *mem,s32 len,u32 flags);
 s32 net_recvfrom(s32 s,void *mem,s32 len,u32 flags,struct sockaddr *from,socklen_t *fromlen);
 s32 net_read(s32 s,void *mem,s32 len);

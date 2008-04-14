@@ -90,7 +90,7 @@ static void netbuf_delete(struct netbuf *);
 static void* netbuf_alloc(struct netbuf *,u32);
 static void netbuf_free(struct netbuf *);
 static void netbuf_copypartial(struct netbuf *,void *,u32,u32);
-static void netbuf_ref(struct netbuf *,void *,u32);
+static void netbuf_ref(struct netbuf *,const void *,u32);
 
 static struct netconn* netconn_new_with_callback(enum netconn_type,void (*)(struct netconn *,enum netconn_evt,u32));
 static struct netconn* netconn_new_with_proto_and_callback(enum netconn_type,u16,void (*)(struct netconn *,enum netconn_evt,u32));
@@ -101,7 +101,7 @@ static err_t netconn_bind(struct netconn *,struct ip_addr *,u16);
 static err_t netconn_listen(struct netconn *);
 static struct netbuf* netconn_recv(struct netconn *);
 static err_t netconn_send(struct netconn *,struct netbuf *);
-static err_t netconn_write(struct netconn *,void *,u32,u8);
+static err_t netconn_write(struct netconn *,const void *,u32,u8);
 static err_t netconn_connect(struct netconn *,struct ip_addr *,u16);
 static err_t netconn_disconnect(struct netconn *);
 
@@ -268,7 +268,7 @@ static void netbuf_free(struct netbuf *buf)
 	buf->p = buf->ptr = NULL;
 }
 
-static void netbuf_ref(struct netbuf *buf,void *dataptr,u32 size)
+static void netbuf_ref(struct netbuf *buf, const void *dataptr,u32 size)
 {
 	if(buf->p!=NULL) pbuf_free(buf->p);
 	buf->p = pbuf_alloc(PBUF_TRANSPORT,0,PBUF_REF);
@@ -570,7 +570,7 @@ static err_t netconn_send(struct netconn *conn,struct netbuf *buf)
 	return conn->err;
 }
 
-static err_t netconn_write(struct netconn *conn,void *dataptr,u32 size,u8 copy)
+static err_t netconn_write(struct netconn *conn,const void *dataptr,u32 size,u8 copy)
 {
 	u32 dummy = 0;
 	struct api_msg *msg;
@@ -1467,7 +1467,7 @@ static void evt_callback(struct netconn *conn,enum netconn_evt evt,u32 len)
 
 extern const devoptab_t dotab_stdnet;
 
-s32 if_config(const char *local_ip,const char *netmask,const char *gateway,boolean use_dhcp)
+s32 if_config(char *local_ip, char *netmask, char *gateway,boolean use_dhcp)
 {
 	s32 ret = 0;
 	struct ip_addr loc_ip, mask, gw;
@@ -1537,11 +1537,17 @@ s32 if_config(const char *local_ip,const char *netmask,const char *gateway,boole
 	IP4_ADDR(&loc_ip, 127,0,0,1);
 	IP4_ADDR(&mask, 255,0,0,0);
 	IP4_ADDR(&gw, 127,0,0,1);
-	pnet = netif_add(&g_hLoopIF,&loc_ip,&mask,&gw,NULL,loopif_init,net_input);
+	netif_add(&g_hLoopIF,&loc_ip,&mask,&gw,NULL,loopif_init,net_input);
 
 	//last and least start the tcpip layer
 	ret = net_init();
 
+	if ( ret == 0 && use_dhcp == TRUE ) {
+		//copy back network addresses
+		if ( local_ip != NULL ) strcpy(local_ip, inet_ntoa( *(struct in_addr*)&g_hNetIF.dhcp->offered_ip_addr ));
+		if ( gateway != NULL ) strcpy(gateway, inet_ntoa( *(struct in_addr*)&g_hNetIF.gw ));
+		if ( netmask != NULL ) strcpy(netmask, inet_ntoa( *(struct in_addr*)&pnet->dhcp->offered_ip_addr ));
+	}
 	return ret;
 }
 
@@ -1689,8 +1695,8 @@ s32 net_accept(s32 s,struct sockaddr *addr,socklen_t *addrlen)
 {
 	struct netsocket *sock;
 	struct netconn *newconn;
-	struct ip_addr naddr;
-	u16 port;
+	struct ip_addr naddr = {0};
+	u16 port = 0;
 	s32 newsock;
 	struct sockaddr_in sin;
 	
@@ -1844,11 +1850,11 @@ s32 net_recv(s32 s,void *mem,s32 len,u32 flags)
 	return net_recvfrom(s,mem,len,flags,NULL,NULL);
 }
 
-s32 net_sendto(s32 s,void *data,s32 len,u32 flags,struct sockaddr *to,socklen_t tolen)
+s32 net_sendto(s32 s,const void *data,s32 len,u32 flags,struct sockaddr *to,socklen_t tolen)
 {
 	struct netsocket *sock;
 	struct ip_addr remote_addr, addr;
-	u16_t remote_port, port;
+	u16_t remote_port, port = 0;
 	s32 ret,connected;
 
 	LWIP_DEBUGF(SOCKETS_DEBUG, ("net_sendto(%d, data=%p, size=%d, flags=0x%x)\n", s, data, len, flags));
@@ -1880,7 +1886,7 @@ s32 net_sendto(s32 s,void *data,s32 len,u32 flags,struct sockaddr *to,socklen_t 
 	return ret;
 }
 
-s32 net_send(s32 s,void *data,s32 len,u32 flags)
+s32 net_send(s32 s,const void *data,s32 len,u32 flags)
 {
 	struct netsocket *sock;
 	struct netbuf *buf;
@@ -1922,7 +1928,7 @@ s32 net_send(s32 s,void *data,s32 len,u32 flags)
 	return len;
 }
 
-s32 net_write(s32 s,void *data,s32 size)
+s32 net_write(s32 s,const void *data,s32 size)
 {
 	return net_send(s,data,size,0);
 }
