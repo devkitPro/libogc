@@ -136,7 +136,7 @@ OGCOBJ		:=	\
 			message.o card.o aram.o depackrnc.o decrementer_handler.o	\
 			depackrnc1.o dsp.o si.o tdf.o ipc.o ogc_crt0.o \
 			console_font_8x16.o timesupp.o lock_supp.o newlibc.o usbgecko.o \
-			sbrk.o malloc_lock.o kprintf.o stm.o ios.o es.o isfs.o usb.o
+			sbrk.o malloc_lock.o kprintf.o stm.o ios.o es.o isfs.o usb.o network_common.o
 
 ifeq ($(PLATFORM),wii)
 OGCOBJ	+=	network_wii.o
