@@ -61,4 +61,13 @@ typedef u32		mem_ptr_t;
 #define SYS_ARCH_PROTECT(lev) _CPU_ISR_Disable(lev)
 #define SYS_ARCH_UNPROTECT(lev) _CPU_ISR_Restore(lev)
 
+/* Define (sn)printf formatters for these lwIP types */
+#define U16_F "hu"
+#define S16_F "hd"
+#define X16_F "hx"
+#define U32_F "u"
+#define S32_F "d"
+#define X32_F "x"
+
+
 #endif /* __ARCH_CC_H__ */
