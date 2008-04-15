@@ -272,7 +272,7 @@ static void netbuf_ref(struct netbuf *buf, const void *dataptr,u32 size)
 {
 	if(buf->p!=NULL) pbuf_free(buf->p);
 	buf->p = pbuf_alloc(PBUF_TRANSPORT,0,PBUF_REF);
-	buf->p->payload = dataptr;
+	buf->p->payload = (void*)dataptr;
 	buf->p->len = buf->p->tot_len = size;
 	buf->ptr = buf->p;
 }
@@ -588,7 +588,7 @@ static err_t netconn_write(struct netconn *conn,const void *dataptr,u32 size,u8 
 	msg->msg.conn = conn;
 	conn->state = NETCONN_WRITE;
 	while(conn->err==ERR_OK && size>0) {
-		msg->msg.msg.w.dataptr = dataptr;
+		msg->msg.msg.w.dataptr = (void*)dataptr;
 		msg->msg.msg.w.copy = copy;
 		if(conn->type==NETCONN_TCP) {
 			while((snd_buf=tcp_sndbuf(conn->pcb.tcp))==0) {
