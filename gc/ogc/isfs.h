@@ -9,7 +9,7 @@
 
 #define ISFS_OPEN_READ				0x01
 #define ISFS_OPEN_WRITE				0x02
-#define ISFS_OPWN_RW				(ISFS_OPEN_READ | ISFS_OPEN_WRITE)
+#define ISFS_OPEN_RW				(ISFS_OPEN_READ | ISFS_OPEN_WRITE)
 
 #define ISFS_OK						   0
 #define ISFS_ENOMEM					 -22
