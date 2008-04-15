@@ -146,7 +146,7 @@ void __lwp_sysinit()
 	// for every GC application.
 	_thr_main = (lwp_cntrl*)__lwp_objmgr_allocate(&_lwp_thr_objects);
 	__lwp_thread_init(_thr_main,__stack_end,((u32)__stack_addr-(u32)__stack_end),191,0,TRUE);
-	__lwp_thread_start(_thr_main,(void*)__crtmain,NULL);
+	__lwp_thread_start(_thr_main,(void*)__main,NULL);
 	__lwp_objmgr_open(&_lwp_thr_objects,&_thr_main->object);
 }
 
