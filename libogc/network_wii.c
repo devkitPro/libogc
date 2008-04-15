@@ -30,7 +30,7 @@ distribution.
 
 #define MAX_IP_RETRIES 100
 
-#define DEBUG_NET
+//#define DEBUG_NET
 
 #ifdef DEBUG_NET
 #define debug_printf(fmt, args...) \
@@ -313,8 +313,6 @@ s32 net_accept(s32 s, struct sockaddr *addr, socklen_t *addrlen)
 {
 	s32 ret;
 	static u32 _socket ATTRIBUTE_ALIGN(32);
-
-	printf("net_accept\n\n");
 	debug_printf("net_accept()\n");
 
 	/*if (addr->sa_len != 8) return -EINVAL;
