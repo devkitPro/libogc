@@ -30,7 +30,7 @@ distribution.
 
 #define MAX_IP_RETRIES 100
 
-//#define DEBUG_NET
+#define DEBUG_NET
 
 #ifdef DEBUG_NET
 #define debug_printf(fmt, args...) \
@@ -278,14 +278,14 @@ s32 net_bind(s32 s, struct sockaddr *name, socklen_t namelen)
 		u8 name[28];
 	} params ATTRIBUTE_ALIGN(32);
 
-	if (name->sa_len != 8) return -EINVAL;
+	name->sa_len = 8;
 	if (name->sa_family != AF_INET) return -EAFNOSUPPORT;
-	if (namelen != 8) return -EINVAL;
+	//if (namelen < 8) return -EINVAL;
 
 	memset(&params, 0, sizeof params);
 	params.socket = s;
 	params.has_name = 1;
-	memcpy(&params.name, name, namelen);
+	memcpy(&params.name, name, 8);
 
 	ret = IOS_Ioctl(net_ip_top_fd, IOCTL_SO_BIND, &params, sizeof params, NULL, 0);
 
@@ -314,10 +314,23 @@ s32 net_accept(s32 s, struct sockaddr *addr, socklen_t *addrlen)
 	s32 ret;
 	static u32 _socket ATTRIBUTE_ALIGN(32);
 
-	if (addr->sa_len != 8) return -EINVAL;
-	if (addr->sa_family != AF_INET) return -EAFNOSUPPORT;
+	printf("net_accept\n\n");
+	debug_printf("net_accept()\n");
+
+	/*if (addr->sa_len != 8) return -EINVAL;
+	if (addr->sa_family != AF_INET) {
+		debug_printf("net_accept( EAFNOSUPPORT)\n");
+		return -EAFNOSUPPORT;
+	}
+	*/
+	if (!addr) return -EINVAL;
+	addr->sa_len = 8;
+	addr->sa_family = AF_INET;
+
 	if (!addrlen) return -EINVAL;
+
 	if (*addrlen < 8) return -ENOMEM;
+
 	*addrlen = 8;
 
 	_socket = s;
@@ -339,9 +352,9 @@ s32 net_connect(s32 s, struct sockaddr *addr, socklen_t addrlen)
 		u8 addr[28];
 	} params ATTRIBUTE_ALIGN(32);
 	
-	if (addr->sa_len != 8) return -EINVAL;
+	if (addr->sa_len < 8) return -EINVAL;
 	if (addr->sa_family != AF_INET) return -EAFNOSUPPORT;
-	if (addrlen != 8) return -EINVAL;
+	if (addrlen < 8) return -EINVAL;
 
 	memset(&params, 0, sizeof params);
 	params.socket = s;
@@ -452,7 +465,7 @@ s32 net_recvfrom(s32 s, void *mem, s32 len, u32 flags,
 	ret = IOS_IoctlvFormat(__net_hid, net_ip_top_fd, IOCTLV_SO_RECVFROM,
 		       	"d:dd", params, sizeof params, message_buf, 
 				len, from, fromlen?*fromlen:0);
-	debug_printf("net_recvfrom retuned %d\n", ret);
+	debug_printf("net_recvfrom returned %d\n", ret);
 
 	if (ret > 0) {
 		if (ret > len) {
