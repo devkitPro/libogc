@@ -49,6 +49,10 @@ static struct tcpip_sock *tcpip_accepted_sockets = NULL;
 extern s64 gettime();
 extern u32 diff_msec(s64 start,s64 end);
 
+const char *tcp_localip = "";
+const char *tcp_netmask = "";
+const char *tcp_gateway = "";
+
 static s32_t tcpip_allocsocket(struct uip_tcp_pcb *pcb)
 {
 	s32_t i;

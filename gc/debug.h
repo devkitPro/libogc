@@ -13,9 +13,9 @@
 	extern "C" {
 #endif
 
-const char *tcp_localip = "";
-const char *tcp_netmask = "";
-const char *tcp_gateway = "";
+extern const char *tcp_localip;
+extern const char *tcp_netmask;
+extern const char *tcp_gateway;
 
 
 /*!\fn void _break()
