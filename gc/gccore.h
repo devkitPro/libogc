@@ -60,6 +60,7 @@ distribution.
 #include "ogc/pad.h"
 #include "ogc/system.h"
 #include "ogc/video.h"
+#include "ogc/usbgecko.h"
 #include "ogc/video_types.h"
 
 #if defined(HW_RVL)
@@ -67,6 +68,8 @@ distribution.
 #include "ogc/es.h"
 #include "ogc/stm.h"
 #include "ogc/ios.h"
+#include "ogc/usb.h"
+#include "ogc/isfs.h"
 #endif
 
 /*
