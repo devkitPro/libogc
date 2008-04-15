@@ -29,6 +29,7 @@
 #include <netif/gcif/gcif.h>
 
 #include <sys/iosupport.h>
+
 #include "network.h"
 
 //#define _NET_DEBUG
@@ -1543,10 +1544,22 @@ s32 if_config(char *local_ip, char *netmask, char *gateway,boolean use_dhcp)
 	ret = net_init();
 
 	if ( ret == 0 && use_dhcp == TRUE ) {
-		//copy back network addresses
-		if ( local_ip != NULL ) strcpy(local_ip, inet_ntoa( *(struct in_addr*)&g_hNetIF.dhcp->offered_ip_addr ));
-		if ( gateway != NULL ) strcpy(gateway, inet_ntoa( *(struct in_addr*)&g_hNetIF.gw ));
-		if ( netmask != NULL ) strcpy(netmask, inet_ntoa( *(struct in_addr*)&pnet->dhcp->offered_ip_addr ));
+		
+		int retries = 0;
+		// wait for dhcp to bind
+		while ( g_hNetIF.dhcp->state != DHCP_BOUND && retries < 20 ) {
+			retries++;
+			usleep(500000);
+		}
+		
+		if ( retries < 20 ) {
+			//copy back network addresses
+			if ( local_ip != NULL ) strcpy(local_ip, inet_ntoa( *(struct in_addr*)&g_hNetIF.ip_addr ));
+			if ( gateway != NULL ) strcpy(gateway, inet_ntoa( *(struct in_addr*)&g_hNetIF.gw ));
+			if ( netmask != NULL ) strcpy(netmask, inet_ntoa( *(struct in_addr*)&g_hNetIF.netmask ));
+		} else {
+			ret = -2;
+		}
 	}
 	return ret;
 }
