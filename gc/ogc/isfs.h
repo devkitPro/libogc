@@ -5,11 +5,15 @@
 
 #include <gctypes.h>
 
-#define ISFS_MAXPATH			IPC_MAXPATH_LEN
+#define ISFS_MAXPATH				IPC_MAXPATH_LEN
 
-#define ISFS_OK					   0
-#define ISFS_ENOMEM				 -22
-#define ISFS_EINVAL				-101
+#define ISFS_OPEN_READ				0x01
+#define ISFS_OPEN_WRITE				0x02
+#define ISFS_OPWN_RW				(ISFS_OPEN_READ | ISFS_OPEN_WRITE)
+
+#define ISFS_OK						   0
+#define ISFS_ENOMEM					 -22
+#define ISFS_EINVAL					-101
 
 #ifdef __cplusplus
    extern "C" {
