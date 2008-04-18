@@ -350,9 +350,9 @@ s32 net_connect(s32 s, struct sockaddr *addr, socklen_t addrlen)
 		u8 addr[28];
 	} params ATTRIBUTE_ALIGN(32);
 	
-	if (addr->sa_len < 8) return -EINVAL;
 	if (addr->sa_family != AF_INET) return -EAFNOSUPPORT;
 	if (addrlen < 8) return -EINVAL;
+	addr->sa_len = 8;
 
 	memset(&params, 0, sizeof params);
 	params.socket = s;
