@@ -59,7 +59,7 @@ static int __usb_recvbyte(s32 chn,char *ch)
 	return ret;
 }
 
-static int __usb_checksend(s32 chn)
+int __usb_checksend(s32 chn)
 {
 	s32 ret;
 	u16 val;
@@ -71,7 +71,7 @@ static int __usb_checksend(s32 chn)
 	return ret;
 }
 
-static int __usb_checkrecv(s32 chn)
+int __usb_checkrecv(s32 chn)
 {
 	s32 ret;
 	u16 val;
