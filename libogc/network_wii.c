@@ -269,6 +269,20 @@ s32 net_socket(u32 domain, u32 type, u32 protocol)
 	return ret;		
 }
 
+s32 net_shutdown(s32 s, u32 how)
+{
+       s32 ret;
+       static u32 params[2] ATTRIBUTE_ALIGN(32);
+
+       params[0] = s;
+       params[1] = how;
+
+       ret = IOS_Ioctl(net_ip_top_fd, IOCTL_SO_SHUTDOWN, 
+                       params, sizeof params, NULL, 0);
+       debug_printf("net_shutdown(%d, %d)=%d\n", s, how, ret);
+       return ret;             
+}
+
 s32 net_bind(s32 s, struct sockaddr *name, socklen_t namelen)
 {
 	s32 ret;

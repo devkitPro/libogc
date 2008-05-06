@@ -61,7 +61,7 @@ distribution.
 #define IOCTL_ES_GETTMDVIEWS			0x15
 //#define IOCTL_ES_GETCONSUMPTION		0x16
 #define IOCTL_ES_DELETETITLE			0x17
-//#define IOCTL_ES_DELETETICKET			0x18
+#define IOCTL_ES_DELETETICKET			0x18
 //#define IOCTL_ES_DIGETTMDVIEWSIZE		0x19
 //#define IOCTL_ES_DIGETTMDVIEW			0x1A
 //#define IOCTL_ES_DIGETTICKETVIEW		0x1B
@@ -489,6 +489,12 @@ s32 ES_Identify(const signed_blob *certificates, u32 certificates_size, const si
 
 	iosFree(__es_hid, keyid_buf);
 	iosFree(__es_hid, hashes);
+	
+	if(ret >= 0) {
+		__ES_Close();
+		__ES_Init();
+	}
+
 	return ret;
 }
 
@@ -511,6 +517,17 @@ s32 ES_AddTicket(const signed_blob *stik, u32 stik_size, const signed_blob *cert
 	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDTICKET, "ddd:", stik, stik_size, certificates, certificates_size, crl, crl_size);
 	return ret;
 
+}
+
+s32 ES_DeleteTicket(const tikview *view)
+{
+	s32 ret;
+
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(!view) return ES_EINVAL;
+	if(!ISALIGNED(view)) return ES_EALIGN;
+	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DELETETICKET, "d:", view, sizeof(tikview));
+	return ret;
 }
 
 s32 ES_AddTitleTMD(const signed_blob *stmd, u32 stmd_size)
