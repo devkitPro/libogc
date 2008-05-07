@@ -723,7 +723,7 @@ u32 PAD_ScanPads()
 	connected = 0;
 
 	PAD_Read(padstatus);
-	PAD_Clamp(padstatus);
+	//PAD_Clamp(padstatus);
 	for(i=0;i<PAD_CHANMAX;i++) {
 		padBit = (PAD_CHAN0_BIT>>i);
 		if(padstatus[i].err==PAD_ERR_NONE
