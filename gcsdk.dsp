@@ -120,6 +120,10 @@ SOURCE=.\libogc\cond.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\conf.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\console.c
 # End Source File
 # Begin Source File
@@ -329,6 +333,14 @@ SOURCE=.\libogc\message.c
 # Begin Source File
 
 SOURCE=.\libogc\mutex.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\network_common.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\network_wii.c
 # End Source File
 # Begin Source File
 
@@ -884,6 +896,10 @@ SOURCE=.\lwbt\bte.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\lwbt\bte_msg.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\lwbt\btmemb.c
 # End Source File
 # Begin Source File
@@ -933,6 +949,94 @@ SOURCE=.\lwbt\physbusif.c
 # Begin Source File
 
 SOURCE=.\lwbt\physbusif.h
+# End Source File
+# End Group
+# Begin Group "wiiuse.c"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\wiiuse\classic.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\classic.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\definitions.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\dynamics.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\dynamics.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\events.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\events.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\guitar_hero_3.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\guitar_hero_3.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\io.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\io.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\io_wii.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\ir.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\ir.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\nunchuk.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\nunchuk.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\os.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\wiiuse.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\wiiuse.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\wiiuse_internal.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\wiiuse\wpad.c
 # End Source File
 # End Group
 # End Group
@@ -993,6 +1097,10 @@ SOURCE=.\gc\ogc\color.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\cond.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\conf.h
 # End Source File
 # Begin Source File
 
@@ -1493,6 +1601,14 @@ SOURCE=.\gc\lwbt\bd_addr.h
 # Begin Source File
 
 SOURCE=.\gc\lwbt\bte.h
+# End Source File
+# End Group
+# Begin Group "wiiuse.h"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\gc\wiiuse\wpad.h
 # End Source File
 # End Group
 # Begin Source File

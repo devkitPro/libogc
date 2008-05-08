@@ -43,6 +43,7 @@ distribution.
 #include "ios.h"
 #include "stm.h"
 #include "es.h"
+#include "conf.h"
 #endif
 #include "cache.h"
 #include "video.h"
@@ -1089,6 +1090,7 @@ void SYS_PreMain()
 	__IOS_LoadStartupIOS();
 	__IOS_InitializeSubsystems();
 	STM_RegisterEventHandler(__STMEventHandler);
+	CONF_Init();
 #endif
 }
 
