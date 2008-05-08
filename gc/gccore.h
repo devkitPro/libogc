@@ -70,6 +70,7 @@ distribution.
 #include "ogc/ios.h"
 #include "ogc/usb.h"
 #include "ogc/isfs.h"
+#include "ogc/conf.h"
 #endif
 
 /*
