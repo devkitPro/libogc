@@ -78,6 +78,8 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			break;
 		case WIIUSE_CONNECT:
 			printf("wiimote connected\n");
+			wiiuse_set_ir_position(wm,CONF_GetSensorBarPosition());
+			wiiuse_set_ir_sensitivity(wm,CONF_GetIRSensitivity());
 			wiiuse_set_leds(wm,(WIIMOTE_LED_1<<(wm->unid-1)),NULL);
 			__wpads_connected |= (0x01<<(wm->unid-1));
 			break;
