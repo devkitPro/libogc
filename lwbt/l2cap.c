@@ -256,7 +256,7 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
     
 	    /* Check if this is a response/reject signal, and if so, find the matching request */
 		if(sighdr->code % 2) { /* if odd this is a resp/rej signal */
-			//LOG("l2cap_process_sig: Response/reject signal received id = %d code = %d\n", sighdr->id, sighdr->code);
+			LOG("l2cap_process_sig: Response/reject signal received id = %d code = %d\n", sighdr->id, sighdr->code);
 			for(pcb = l2cap_active_pcbs; pcb != NULL; pcb = pcb->next) {
 				for(sig = pcb->unrsp_sigs; sig != NULL; sig = sig->next) {
 					if(sig->sigid == sighdr->id) {
@@ -268,7 +268,7 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 				}
 			}
 		} else {
-			//LOG("l2cap_process_sig: Request signal received id = %d code = %d\n",  sighdr->id, sighdr->code);
+			LOG("l2cap_process_sig: Request signal received id = %d code = %d\n",  sighdr->id, sighdr->code);
 		}
 
 		/* Reject packet if length exceeds MTU */
@@ -296,18 +296,20 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 				psm = le16toh(((u16_t *)p->payload)[0]);
 				/* Search for a listening pcb */
 				for(lpcb = l2cap_listen_pcbs; lpcb != NULL; lpcb = lpcb->next) {
-					if(lpcb->psm == psm) {
-						/* Found a listening pcb with the correct PSM */
+					if(bd_addr_cmp(&(lpcb->bdaddr),bdaddr) && lpcb->psm == psm) {
+						/* Found a listening pcb with the correct PSM & BD Address */
 						break;
 					}
 				}
+
+				//printf("l2cap_process_sig(L2CAP_CONN_REQ): psm = %04x, lpcb = %p\n",psm,lpcb);
 				/* If no matching pcb was found, send a connection rsp neg (PSM) */
 				if(lpcb == NULL) {
 					/* Alloc size of data in conn rsp signal */
 					if((data = btpbuf_alloc(PBUF_RAW, L2CAP_CONN_RSP_SIZE, PBUF_RAM)) != NULL) {
 						((u16_t *)data->payload)[0] = htole16(L2CAP_CONN_REF_PSM);
 						((u16_t *)data->payload)[1] = 0; /* No further info available */
-						ret = l2cap_signal(pcb, L2CAP_CONN_RSP, sighdr->id, &(pcb->remote_bdaddr), data);
+						ret = l2cap_signal(NULL, L2CAP_CONN_RSP, sighdr->id, bdaddr, data);
 					}
 				} else {
 					/* Initiate a new active pcb */
@@ -319,7 +321,7 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 						if((data = btpbuf_alloc(PBUF_RAW, L2CAP_CONN_RSP_SIZE, PBUF_RAM)) != NULL) {
 							((u16_t *)data->payload)[0] = htole16(L2CAP_CONN_REF_RES);
 							((u16_t *)data->payload)[1] = 0; /* No further info available */
-							ret = l2cap_signal(pcb, L2CAP_CONN_RSP, sighdr->id, &(pcb->remote_bdaddr), data);
+							ret = l2cap_signal(NULL, L2CAP_CONN_RSP, sighdr->id, bdaddr, data);
 						}
 					}
 					bd_addr_set(&(pcb->remote_bdaddr),bdaddr);
@@ -353,14 +355,13 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 					/* A response without a matching request is silently discarded */
 					break;
 				}
-				//ERROR("l2cap_process_sig: conn rsp, active pcb->state == W4_L2CAP_CONNECT_RSP\n",pcb->state == W4_L2CAP_CONNECT_RSP);
+				LOG("l2cap_process_sig: conn rsp, active pcb->state == W4_L2CAP_CONNECT_RSP\n",pcb->state == W4_L2CAP_CONNECT_RSP);
 				result = le16toh(((u16_t *)p->payload)[2]);
 				status = le16toh(((u16_t *)p->payload)[3]);
 				switch(result) {
 					case L2CAP_CONN_SUCCESS:
-						//LOG("l2cap_process_sig: Conn_rsp_sucess, status %d\n", status);
-
-						//ERROR("l2cap_process_sig: conn rsp success, pcb->scid == ((u16_t *)p->payload)[1]\n",pcb->scid == ((u16_t *)p->payload)[1]);
+						LOG("l2cap_process_sig: Conn_rsp_sucess, status %d\n", status);
+						LOG("l2cap_process_sig: conn rsp success, pcb->scid == ((u16_t *)p->payload)[1]\n",pcb->scid == ((u16_t *)p->payload)[1]);
 
 						/* Set destination connection id */
 						pcb->dcid = le16toh(((u16_t *)p->payload)[0]);
@@ -380,14 +381,14 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 						}
 						break;
 					case L2CAP_CONN_PND:
-						//LOG("l2cap_process_sig: Conn_rsp_pnd, status %d\n", status);
+						LOG("l2cap_process_sig: Conn_rsp_pnd, status %d\n", status);
 
 						/* Disable rtx and enable ertx */
 						sig->rtx = 0;
 						sig->ertx = L2CAP_ERTX;
 						break;
 					default:
-						//LOG("l2cap_process_sig: Conn_rsp_neg, result %d\n", result);
+						LOG("l2cap_process_sig: Conn_rsp_neg, result %d\n", result);
 						/* Remove signal from unresponded list and deallocate it */
 						L2CAP_SIG_RMV(&(pcb->unrsp_sigs), sig);
 						btpbuf_free(sig->p);
@@ -405,7 +406,7 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 				btpbuf_header(p, -4);
 
 
-				//LOG("l2cap_process_sig: Congfiguration request, flags = %d\n", flags);
+				LOG("l2cap_process_sig: Congfiguration request, flags = %d\n", flags);
 
 				/* Find PCB with matching cid */
 				for(pcb = l2cap_active_pcbs; pcb != NULL; pcb = pcb->next) {
@@ -432,20 +433,20 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 
 					/* Parse options and add to pcb */
 					while(siglen > 0) {
-						//LOG("l2cap_process_sig: Siglen = %d\n", siglen));
+						LOG("l2cap_process_sig: Siglen = %d\n", siglen);
 						opthdr = p->payload;
 						/* Check if type of action bit indicates a non-hint. Hints are ignored */
-						//LOG("l2cap_process_sig: Type of action bit = %d\n", L2CAP_OPTH_TOA(opthdr)));
+						LOG("l2cap_process_sig: Type of action bit = %d\n", L2CAP_OPTH_TOA(opthdr));
 						if(L2CAP_OPTH_TOA(opthdr) == 0) {
-							//LOG("l2cap_process_sig: Type = %d\n", L2CAP_OPTH_TYPE(opthdr)));
-							//LOG("l2cap_process_sig: Length = %d\n", opthdr->len));
+							LOG("l2cap_process_sig: Type = %d\n", L2CAP_OPTH_TYPE(opthdr));
+							LOG("l2cap_process_sig: Length = %d\n", opthdr->len);
 							switch(L2CAP_OPTH_TYPE(opthdr)) {
 								case L2CAP_CFG_MTU:
-									//LOG("l2cap_process_sig: Out MTU = %d\n", le16toh(((u16_t *)p->payload)[1]));
+									LOG("l2cap_process_sig: Out MTU = %d\n", le16toh(((u16_t *)p->payload)[1]));
 									pcb->cfg.outmtu = le16toh(((u16_t *)p->payload)[1]);
 									break;
 								case L2CAP_FLUSHTO:
-									//LOG("l2cap_process_sig: In flush timeout = %d\n", ((u16_t *)p->payload)[1]);
+									LOG("l2cap_process_sig: In flush timeout = %d\n", ((u16_t *)p->payload)[1]);
 									pcb->cfg.influshto = le16toh(((u16_t *)p->payload)[1]);
 									break;
 								case L2CAP_QOS:
@@ -522,7 +523,7 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 						((u16_t *)data->payload)[1] = 0; /* Flags (No continuation) */
 						((u16_t *)data->payload)[2] = htole16(rspstate); /* Result */
 						if(pcb->cfg.opt != NULL) {
-							//LOG("l2cap_process_sig: pcb->cfg.opt->len = %d\n", pcb->cfg.opt->len);
+							LOG("l2cap_process_sig: pcb->cfg.opt->len = %d\n", pcb->cfg.opt->len);
 							btpbuf_chain(data, pcb->cfg.opt); /* Add option type buffer to data buffer */
 							btpbuf_free(pcb->cfg.opt);
 							pcb->cfg.opt = NULL;
@@ -556,8 +557,6 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 				btpbuf_free(sig->p);
 				btmemb_free(&l2cap_sigs, sig);
 
-				//ERROR("l2cap_process_sig: cfg rsp, active pcb->state == L2CAP_CONFIG\n"),pcb->state == L2CAP_CONFIG);
-
 				siglen = le16toh(sighdr->len);
 				scid = le16toh(((u16_t *)p->payload)[0]);
 				flags = le16toh(((u16_t *)p->payload)[1]);
@@ -565,7 +564,7 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 				siglen -= 6;
 				btpbuf_header(p, -6);
 
-				//LOG("l2cap_process_sig: Outgoing configuration result == %d continuation flag == %d\n", result, flags);
+				LOG("l2cap_process_sig: Outgoing configuration result == %d continuation flag == %d\n", result, flags);
 
 				/* Handle config request */
 				switch(result) {
@@ -943,7 +942,7 @@ struct l2cap_pcb* l2cap_new(void)
 		pcb->cfg.opt = NULL;
 		return pcb;
 	}
-	LOG("l2cap_new: Could not allocate memory for pcb\n");
+	ERROR("l2cap_new: Could not allocate memory for pcb\n");
 	return NULL;
 }
 
@@ -1029,7 +1028,7 @@ err_t l2cap_signal(struct l2cap_pcb *pcb, u8_t code, u16_t ursp_id, struct bd_ad
 	err_t ret;
 
 	/* Alloc a new signal */
-	//LOG("l2cap_signal: Allocate memory for l2cap_sig. Code = 0x%x\n", code);
+	LOG("l2cap_signal: Allocate memory for l2cap_sig. Code = 0x%x\n", code);
 	if((sig = btmemb_alloc(&l2cap_sigs)) == NULL) {
 		ERROR("l2cap_signal: could not allocate memory for l2cap_sig\n");
 		return ERR_MEM;
@@ -1057,13 +1056,13 @@ err_t l2cap_signal(struct l2cap_pcb *pcb, u8_t code, u16_t ursp_id, struct bd_ad
 
 	if(sighdr->code % 2) { /* If odd this is a resp/rej signal */
 		sig->sigid = ursp_id; /* Get id */
-		//LOG(L2CAP_DEBUG, ("l2cap_signal: Sending response/reject signal with id = %d code = %d\n", sig->sigid, sighdr->code));
+		LOG(L2CAP_DEBUG, ("l2cap_signal: Sending response/reject signal with id = %d code = %d\n", sig->sigid, sighdr->code));
 	} else {
 		sig->sigid = l2cap_next_sigid(); /* Alloc id */
 		sig->rtx = L2CAP_RTX; /* Set Response Timeout Expired timer (in seconds)
 		should be at least as large as the BB flush timeout */
 		sig->nrtx = L2CAP_MAXRTX; /* Set max number of retransmissions */
-		//LOG("l2cap_signal: Sending request signal with id = %d code = %d\n", sig->sigid, sighdr->code));
+		LOG("l2cap_signal: Sending request signal with id = %d code = %d\n", sig->sigid, sighdr->code);
 	}
 	sighdr->id = sig->sigid; /* Set id */
 
@@ -1076,10 +1075,10 @@ err_t l2cap_signal(struct l2cap_pcb *pcb, u8_t code, u16_t ursp_id, struct bd_ad
 
 	/* Put signal on unresponded list if it's a request signal, else deallocate it */
 	if(ret == ERR_OK && (sighdr->code % 2) == 0) {
-		//LOG("l2cap_signal: Registering sent request signal with id = %d code = %d\n", sig->sigid, sighdr->code);
+		LOG("l2cap_signal: Registering sent request signal with id = %d code = %d\n", sig->sigid, sighdr->code);
 		L2CAP_SIG_REG(&(pcb->unrsp_sigs), sig);
 	} else {
-		//LOG("l2cap_signal: Deallocating sent response/reject signal with id = %d code = %d\n", sig->sigid, sighdr->code);
+		LOG("l2cap_signal: Deallocating sent response/reject signal with id = %d code = %d\n", sig->sigid, sighdr->code);
 		btpbuf_free(sig->p);
 		sig->p = NULL;
 		btmemb_free(&l2cap_sigs, sig);
@@ -1155,6 +1154,7 @@ err_t l2ca_connect_req(struct l2cap_pcb *pcb, struct bd_addr *bdaddr, u16_t psm,
 
 	return ret;
 }
+
 /*-----------------------------------------------------------------------------------*/
 /* 
  * l2ca_config_req():
@@ -1467,7 +1467,7 @@ void l2cap_arg(struct l2cap_pcb *pcb, void *arg)
  * connection request.
  */
 /*-----------------------------------------------------------------------------------*/
-err_t l2cap_connect_ind(struct l2cap_pcb *npcb, u8_t psm,err_t (* l2ca_connect_ind)(void *arg, struct l2cap_pcb *pcb, err_t err))
+err_t l2cap_connect_ind(struct l2cap_pcb *npcb, struct bd_addr *bdaddr, u16_t psm,err_t (* l2ca_connect_ind)(void *arg, struct l2cap_pcb *pcb, err_t err))
 {
 	struct l2cap_pcb_listen *lpcb;
 
@@ -1476,6 +1476,8 @@ err_t l2cap_connect_ind(struct l2cap_pcb *npcb, u8_t psm,err_t (* l2ca_connect_i
 		ERROR("l2cap_connect_ind: Could not allocate memory for lpcb\n");
 		return ERR_MEM;
 	}
+
+	bd_addr_set(&(lpcb->bdaddr),bdaddr);
 	lpcb->psm = psm;
 	lpcb->l2ca_connect_ind = l2ca_connect_ind;
 	lpcb->state = L2CAP_LISTEN;

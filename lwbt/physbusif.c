@@ -47,13 +47,13 @@ static s32 __issue_intrread();
 
 extern u32 __IPC_ClntInit();
 
-static char ascii(char s) {
+char ascii(char s) {
 	if(s < 0x20) return '.';
 	if(s > 0x7E) return '.';
 	return s;
 }
 
-static void hexdump(void *d, int len)
+void hexdump(void *d, int len)
 {
 	u8 *data;
 	int off=0;
@@ -114,11 +114,11 @@ static s32 __readbulkdataCB(s32 result,void *usrdata)
 			}
 			
 			SYS_SwitchFiber((u32)p,0,0,0,(u32)hci_acldata_handler,(u32)(&__ppc_btstack2[STACKSIZE]));
-
-			btmemb_free(&aclbufs,buf);
 			btpbuf_free(p);
-		}
+		} else
+			ERROR("__readbulkdataCB: Could not allocate memory for pbuf.\n");
 	}
+	btmemb_free(&aclbufs,buf);
 	
 	return __issue_bulkread();
 }
@@ -144,12 +144,12 @@ static s32 __readintrdataCB(s32 result,void *usrdata)
 			}
 
 			SYS_SwitchFiber((u32)p,0,0,0,(u32)hci_event_handler,(u32)(&__ppc_btstack1[STACKSIZE]));
-
-			btmemb_free(&ctrlbufs,buf);
 			btpbuf_free(p);
-		}
-
+		} else
+			ERROR("__readintrdataCB: Could not allocate memory for pbuf.\n");
 	}
+	btmemb_free(&ctrlbufs,buf);
+
 	return __issue_intrread();
 }
 

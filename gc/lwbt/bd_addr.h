@@ -43,15 +43,18 @@ struct bd_addr {
   u8 addr[6];
 };
 
-#define BD_ADDR_LEN 6
+#define BD_ADDR_LEN			6
+
+#define BD_ADDR_ANY			(&(struct bd_addr){{0,0,0,0,0,0}})
+#define BD_ADDR_LOCAL		(&(struct bd_addr){{0,0,0,0xff,0xff,0xff}})
 
 #define BD_ADDR(bdaddr, a, b, c, d, e, f) do{ \
-                                        bdaddr->addr[0] = a; \
-				        bdaddr ->addr[1] = b; \
-				        bdaddr->addr[2] = c; \
-				        bdaddr->addr[3] = d; \
-				        bdaddr->addr[4] = e; \
-				       bdaddr->addr[5] = f; }while(0)
+                                        (bdaddr)->addr[0] = a; \
+				        (bdaddr)->addr[1] = b; \
+				        (bdaddr)->addr[2] = c; \
+				        (bdaddr)->addr[3] = d; \
+				        (bdaddr)->addr[4] = e; \
+						(bdaddr)->addr[5] = f; }while(0)
 //TODO: USE memcmp????
 #define bd_addr_cmp(addr1, addr2) (((addr1)->addr[0] == (addr2)->addr[0]) && \
 				   ((addr1)->addr[1] == (addr2)->addr[1]) && \

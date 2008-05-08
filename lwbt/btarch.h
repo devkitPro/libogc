@@ -139,16 +139,16 @@ static __inline__ void __memset(void *dest,s32_t c,s32_t len)
 
 #if LOGGING == 1
 #include <stdio.h>
-#define LOG(m, ...) fprintf(stderr, "[BTLOG] " __FILE__ ":%i: " fmt "\n", __LINE__, ##__VA_ARGS__)
+#define LOG(fmt, ...) fprintf(stderr, "[BTLOG] " __FILE__ ":%i: " fmt "\n", __LINE__, ##__VA_ARGS__)
 #else
-#define LOG(m, ...)
+#define LOG(fmt, ...)
 #endif /* LOGGING == 1 */
 
 #if ERRORING == 1
 #include <stdio.h>
-#define ERROR(m) fprintf(stderr, "[BTERR] " __FILE__ ":%i: " fmt "\n", __LINE__, ##__VA_ARGS__)
+#define ERROR(fmt,...) fprintf(stderr, "[BTERR] " __FILE__ ":%i: " fmt "\n", __LINE__, ##__VA_ARGS__)
 #else
-#define ERROR(m, ...)
+#define ERROR(fmt, ...)
 #endif /* ERRORING == 1 */
 
 /** @} */

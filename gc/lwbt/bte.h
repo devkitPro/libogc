@@ -1,6 +1,7 @@
 #ifndef __BTE_H__
 #define __BTE_H__
 
+#include <gccore.h>
 #include "bd_addr.h"
 
 #define ERR_OK						0
@@ -16,6 +17,14 @@
 #define ERR_USE						-10
 #define ERR_IF						-11
 #define ERR_PKTSIZE					-17
+
+#define HIDP_STATE_READY			0x00
+#define HIDP_STATE_LISTEN			0x01
+#define HIDP_STATE_CONNECTING		0x02
+#define HIDP_STATE_CONNECTED		0x04
+
+#define HIDP_OUTPUT_CHANNEL			0x11
+#define HIDP_INPUT_CHANNEL			0x13
 
 #define HIDP_HDR_TRANS_MASK			0xf0
 #define HIDP_HDR_PARAM_MASK			0x0f
@@ -62,6 +71,7 @@
 #endif /* __cplusplus */
 
 struct l2cap_pcb;
+struct ctrl_req_t;
 
 struct inquiry_info
 {
@@ -69,24 +79,67 @@ struct inquiry_info
 	u8 cod[3];
 };
 
-struct bte_pcb
+struct inquiry_info_ex
 {
-	u8 psm;
-	void *cbarg;
-
 	struct bd_addr bdaddr;
-	struct l2cap_pcb *l2capcb;
-
-	s32 (*recv)(void *arg,void *buffer,u16 len);
+	u8 cod[3];
+	u8 psrm;
+	u8 psm;
+	u16 co;
 };
 
-void bte_init();
-s32 bte_start();
+struct linkkey_info
+{
+	struct bd_addr bdaddr;
+	u8 key[16];
+};
+
+struct bte_pcb
+{
+	u8 err;
+	u32 state;
+	void *cbarg;
+	struct ctrl_req_t *ctrl_req;
+
+	lwpq_t cmdq;
+
+	struct bd_addr bdaddr;
+
+	struct l2cap_pcb *out_pcb;
+	struct l2cap_pcb *in_pcb;
+
+
+	s32 (*recv)(void *arg,void *buffer,u16 len);
+	s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err);
+	s32 (*disconn_cfm)(void *arg,struct bte_pcb *pcb,u8 err);
+};
+
+typedef s32 (*btecallback)(s32 result,void *userdata);
+
+void BTE_Init();
+s32 BTE_InitCore(btecallback cb);
+s32 BTE_ApplyPatch(btecallback cb);
+s32 BTE_InitSub(btecallback cb);
+s32 BTE_ReadStoredLinkKey(struct linkkey_info *keys,u8 max_cnt,btecallback cb);
+
+
+void bte_start();
 struct bte_pcb* bte_new();
 void bte_arg(struct bte_pcb *pcb,void *arg);
+void bte_received(struct bte_pcb *pcb, s32 (*recv)(void *arg,void *buffer,u16 len));
+void bte_disconnected(struct bte_pcb *pcb,s32 (disconn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
+
+s32 bte_registerdevice(struct bte_pcb *pcb,struct bd_addr *bdaddr);
+s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
+
+//s32 bte_listen(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm);
+//s32 bte_accept(struct bte_pcb *pcb,s32 (*recv)(void *arg,void *buffer,u16 len));
 s32 bte_inquiry(struct inquiry_info *info,u8 max_cnt,u8 flush);
-s32 bte_connect(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm,s32 (*recv)(void *arg,void *buffer,u16 len));
+s32 bte_inquiry_ex(struct inquiry_info_ex *info,u8 max_cnt,u8 flush);
+//s32 bte_connect(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm,s32 (*recv)(void *arg,void *buffer,u16 len));
+//s32 bte_connect_ex(struct bte_pcb *pcb,struct inquiry_info_ex *info,u8 psm,s32 (*recv)(void *arg,void *buffer,u16 len));
 s32 bte_sendmessage(struct bte_pcb *pcb,void *message,u16 len);
+s32 bte_sendmessageasync(struct bte_pcb *pcb,void *message,u16 len,s32 (*sent)(void *arg,struct bte_pcb *pcb,u8 err));
 
 #ifdef __cplusplus
    }

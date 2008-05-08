@@ -88,7 +88,7 @@
 #define HCI_SET_EVENT_FILTER 0x05
 #define HCI_WRITE_STORED_LINK_KEY 0x11
 #define HCI_ROLE_CHANGE 0x12
-#define HCI_CHANGE_LOCAL_NAME 0x13
+#define HCI_WRITE_LOCAL_NAME 0x13
 
 #define HCI_WRITE_PAGE_TIMEOUT 0x18
 #define HCI_WRITE_SCAN_ENABLE 0x1A
@@ -96,6 +96,12 @@
 #define HCI_W_FLUSHTO 0x28
 #define HCI_SET_HC_TO_H_FC 0x31
 #define HCI_READ_CUR_IACLAP 0x39
+#define HCI_WRITE_PIN_TYPE 0x0A
+#define HCI_R_STORED_LINK_KEY 0x0D
+#define HCI_HOST_BUF_SIZE 0x33
+#define HCI_WRITE_INQUIRY_SCAN_TYPE 0x43
+#define HCI_WRITE_INQUIRY_MODE 0x45
+#define HCI_WRITE_PAGE_SCAN_TYPE 0x47
 
 /* Informational Parameters */
 #define HCI_READ_LOCAL_VERSION 0x01
@@ -125,6 +131,7 @@
 #define HCI_ROLE_CHANGE 0x12
 #define HCI_NBR_OF_COMPLETED_PACKETS 0x13
 #define HCI_MODE_CHANGE 0x14
+#define HCI_RETURN_LINK_KEYS 0x15
 #define HCI_PIN_CODE_REQUEST 0x16
 #define HCI_LINK_KEY_NOTIFICATION 0x18
 #define HCI_DATA_BUFFER_OVERFLOW 0x1A
@@ -183,15 +190,22 @@
 
 /* Command OGF */
 #define HCI_LINK_CTRL_OGF 0x01 /* Link ctrl cmds */
+#define HCI_LINK_POLICY_OGF 0x02    /* Link Policy Commands */
 #define HCI_HC_BB_OGF 0x03 /* Host controller and baseband commands */
 #define HCI_INFO_PARAM_OGF 0x04 /* Informal parameters */
 
 /* Command OCF */
 #define HCI_INQUIRY_OCF 0x01
+#define HCI_SNIFF_MODE_OCF 0x03
+#define HCI_EXIT_SNIFF_MODE_OCF 0x04
+#define HCI_PARK_MODE_OCF 0x05
+#define HCI_EXIT_PARK_MODE_OCF 0x06
 #define HCI_PERIODIC_INQUIRY_OCF 0x03
 #define HCI_EXIT_PERIODIC_INQUIRY_OCF 0x04
 #define HCI_CREATE_CONN_OCF 0x05
 #define HCI_DISCONN_OCF 0x06
+#define HCI_W_LOCAL_NAME_OCF 0x13
+#define HCI_W_LINK_POLICY_OCF 0x0D
 #define HCI_ACCEPT_CONN_REQ_OCF 0x09
 #define HCI_REJECT_CONN_REQ_OCF 0x0A
 #define HCI_SET_EV_MASK_OCF 0x01
@@ -210,6 +224,12 @@
 #define HCI_R_LOC_FEATURES_OCF 0x03
 #define HCI_R_BUF_SIZE_OCF 0x05
 #define HCI_R_BD_ADDR_OCF 0x09
+#define HCI_R_REMOTE_NAME_OCF 0x19
+#define HCI_W_PIN_TYPE_OCF 0x0A
+#define HCI_W_INQUIRY_SCAN_TYPE_OCF 0x43
+#define HCI_W_INQUIRY_MODE_OCF 0x45
+#define HCI_W_PAGE_SCAN_TYPE_OCF 0x47
+#define HCI_W_PAGE_SCAN_TYPE_OCF 0x47
 
 /* Command packet length (including ACL header)*/
 #define HCI_INQUIRY_PLEN 9
@@ -223,7 +243,6 @@
 #define HCI_PIN_CODE_REQ_NEG_REP_PLEN 10
 #define HCI_SET_CONN_ENCRYPT_PLEN 7
 #define HCI_WRITE_STORED_LINK_KEY_PLEN 27
-#define HCI_CHANGE_LOCAL_NAME_PLEN 4
 #define HCI_SET_EV_MASK_PLEN 12
 #define HCI_SNIFF_PLEN 14
 #define HCI_W_LINK_POLICY_PLEN 8
@@ -234,6 +253,7 @@
 #define HCI_R_COD_PLEN 4
 #define HCI_W_COD_PLEN 7
 #define HCI_W_FLUSHTO_PLEN 7
+#define HCI_W_LOCAL_NAME_PLEN 252
 #define HCI_SET_HC_TO_H_FC_PLEN 5
 #define HCI_H_BUF_SIZE_PLEN 7
 #define HCI_H_NUM_COMPL_PLEN 7
@@ -242,7 +262,13 @@
 #define HCI_R_BUF_SIZE_PLEN 4
 #define HCI_R_BD_ADDR_PLEN 4
 #define HCI_R_CUR_IACLAP_PLEN 4
-#define HCI_R_STORED_LINK_KEY_PLEN 7
+#define HCI_R_STORED_LINK_KEY_PLEN 11
+#define HCI_R_REMOTE_NAME_PLEN 14
+#define HCI_W_PIN_TYPE_PLEN 5
+#define HCI_W_INQUIRY_MODE_PLEN 5
+#define HCI_W_INQUIRY_SCAN_TYPE_PLEN 5
+#define HCI_W_PAGE_SCAN_TYPE_PLEN 5
+#define HCI_W_VENDOR_CMD_PLEN 4
 
 struct hci_evt_hdr
 {
@@ -266,6 +292,14 @@ struct hci_inq_res
 	u16_t co;
 };
 
+struct hci_link_key
+{
+	struct bd_addr bdaddr;
+	u8_t key[16];
+
+	struct hci_link_key *next;
+};
+
 struct hci_link
 {
 	struct hci_link *next;
@@ -275,6 +309,15 @@ struct hci_link
 	u16_t len;
 	u8_t pb;
 	u32_t link_mode;
+};
+
+struct hci_version_info
+{
+	u8_t hci_version;
+	u16_t hci_revision;
+	u8_t lmp_version;
+	u16_t manufacturer;
+	u16_t lmp_subversion;
 };
 
 struct hci_pcb
@@ -291,16 +334,18 @@ struct hci_pcb
 
 	u8_t flow;
 	u16_t host_num_acl;
+
 	u16_t pkt_type;
 	u8_t features[8];
 
 	struct bd_addr bdaddr;
+	struct hci_version_info info;
+
 	struct hci_inq_res *ires;
-	struct pbuf *sent_cmd;
+	struct hci_link_key *keyres;
 
 	err_t (*pin_req)(void *arg,struct bd_addr *bdaddr);
 	err_t (*cmd_complete)(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result);
-	err_t (*rbd_complete)(void *arg,struct bd_addr *bdaddr);
 	err_t (*link_key_not)(void *arg, struct bd_addr *bdaddr, u8_t *key);
 	err_t (*conn_complete)(void *arg,struct bd_addr *bdaddr);
 	err_t (*inq_complete)(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result);
@@ -315,18 +360,20 @@ void hci_event_handler(struct pbuf *p);
 void hci_acldata_handler(struct pbuf *p);
 
 err_t hci_reset();
-err_t hci_read_current_lap();
-err_t hci_read_stored_link_keys();
-err_t hci_host_buffer_size(void);
+err_t hci_read_bd_addr(void);
 err_t hci_set_hc_to_h_fc(void);
-err_t hci_write_cod(u8_t *cod);
 err_t hci_read_buffer_size(void);
+err_t hci_host_buffer_size(void);
+err_t hci_read_current_lap(void);
+err_t hci_write_cod(u8_t *cod);
 err_t hci_close(struct hci_link *link);
+err_t hci_write_inquiry_mode(u8_t mode);
+err_t hci_write_page_scan_type(u8_t type);
+err_t hci_write_inquiry_scan_type(u8_t type);
 err_t hci_disconnect(struct bd_addr *bdaddr, u8_t reason);
 err_t hci_reject_connection_request(struct bd_addr *bdaddr, u8_t reason);
 err_t hci_pin_code_request_reply(struct bd_addr *bdaddr, u8_t pinlen, u8_t *pincode);
 err_t hci_write_stored_link_key(struct bd_addr *bdaddr, u8_t *link);
-err_t hci_read_bd_addr(err_t (*rbd_complete)(void *arg,struct bd_addr *bdaddr));
 err_t hci_set_event_filter(u8_t filter_type,u8_t filter_cond_type,u8_t *cond);
 err_t hci_write_page_timeout(u16_t timeout);
 err_t hci_inquiry(u32_t lap,u8_t inq_len,u8_t num_resp,err_t (*inq_complete)(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result));
@@ -335,13 +382,19 @@ err_t hci_write_scan_enable(u8_t scan_enable);
 err_t hci_host_num_comp_packets(u16_t conhdl, u16_t num_complete);
 err_t hci_sniff_mode(struct bd_addr *bdaddr, u16_t max_interval, u16_t min_interval, u16_t attempt, u16_t timeout);
 err_t hci_write_link_policy_settings(struct bd_addr *bdaddr, u16_t link_policy);
-err_t hci_change_local_name(u8_t *name, u8_t len);
 err_t hci_periodic_inquiry(u32_t lap,u16_t min_period,u16_t max_period,u8_t inq_len,u8_t num_resp,err_t (*inq_complete)(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result));
 err_t hci_exit_periodic_inquiry();
 err_t hci_accecpt_conn_request(struct bd_addr *bdaddr,u8_t role);
 err_t hci_set_event_mask(u64_t ev_mask);
 err_t hci_read_local_version(void);
 err_t hci_read_local_features(void);
+err_t hci_write_local_name(u8_t *name,u8_t len);
+err_t hci_write_pin_type(u8_t type);
+err_t hci_read_stored_link_key();
+err_t hci_read_remote_name(struct bd_addr *bdaddr);
+err_t hci_vendor_specific_command(u8_t ocf,u8_t ogf,void *data,u8_t len);
+
+err_t hci_reg_dev_info(struct bd_addr *bdaddr,u8_t *cod,u8_t psrm,u8_t psm,u16_t co);
 
 void hci_arg(void *arg);
 void hci_cmd_complete(err_t (*cmd_complete)(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result));
@@ -374,9 +427,6 @@ err_t lp_write_flush_timeout(struct bd_addr *bdaddr, u16_t flushto);
 #define HCI_EVENT_INQ_COMPLETE(pcb,result,ret) \
                               if((pcb)->inq_complete != NULL) \
                               (ret = (pcb)->inq_complete((pcb)->cbarg,(pcb),(pcb)->ires,(result)))
-#define HCI_EVENT_RBD_COMPLETE(pcb,bdaddr,ret) \
-                              if((pcb)->rbd_complete != NULL) \
-                              (ret = (pcb)->rbd_complete((pcb)->cbarg,(bdaddr)));
 #define HCI_EVENT_WLP_COMPLETE(pcb,bdaddr,ret) \
                                if((pcb)->wlp_complete != NULL) \
                                (ret = (pcb)->wlp_complete((pcb)->cbarg,(bdaddr)));
@@ -390,12 +440,18 @@ err_t lp_write_flush_timeout(struct bd_addr *bdaddr, u16_t flushto);
 /* The HCI LINK lists. */
 extern struct hci_link *hci_active_links; /* List of all active HCI LINKs */
 extern struct hci_link *hci_tmp_link; /* Only used for temporary storage. */
-   
+extern struct hci_link_key *hci_tmp_key;
+
 #define HCI_REG(links, nlink) do { \
+							u32 level; \
+							_CPU_ISR_Disable(level); \
                             nlink->next = *links; \
                             *links = nlink; \
+							_CPU_ISR_Restore(level); \
                             } while(0)
 #define HCI_RMV(links, nlink) do { \
+							u32 level; \
+							_CPU_ISR_Disable(level);\
                             if(*links == nlink) { \
                                *links = (*links)->next; \
                             } else for(hci_tmp_link = *links; hci_tmp_link != NULL; hci_tmp_link = hci_tmp_link->next) { \
@@ -405,6 +461,7 @@ extern struct hci_link *hci_tmp_link; /* Only used for temporary storage. */
                                } \
                             } \
                             nlink->next = NULL; \
+							_CPU_ISR_Restore(level); \
                             } while(0)
 
 #endif

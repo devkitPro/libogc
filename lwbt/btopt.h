@@ -138,232 +138,10 @@ typedef s64 s64_t;
  */
 typedef s8 err_t;
 
-/** @} */
-/*------------------------------------------------------------------------------*/
-/**
- * \defgroup uipoptip IP configuration options
- * @{
- *
- */
-/**
- * The IP TTL (time to live) of IP packets sent by uIP.
- *
- * This should normally not be changed.
- */
-#define TCP_TTL         255
-
-#define TCP				1
-
-/**
- * Turn on support for IP packet reassembly.
- *
- * uIP supports reassembly of fragmented IP packets. This features
- * requires an additonal amount of RAM to hold the reassembly buffer
- * and the reassembly code size is approximately 700 bytes.  The
- * reassembly buffer is of the same size as the uip_buf buffer
- * (configured by UIP_BUFSIZE).
- *
- * \note IP packet reassembly is not heavily tested.
- *
- * \hideinitializer
- */
-#define IP_REASSEMBLY 0
-
-#define IP_FRAG 0
-
-/**
- * The maximum time an IP fragment should wait in the reassembly
- * buffer before it is dropped.
- *
- */
-#define REASS_MAXAGE 30
-
-/** @} */
-
-/*------------------------------------------------------------------------------*/
-/**
- * \defgroup uipoptudp UDP configuration options
- * @{
- *
- * \note The UDP support in uIP is still not entirely complete; there
- * is no support for sending or receiving broadcast or multicast
- * packets, but it works well enough to support a number of vital
- * applications such as DNS queries, though
- */
-
-/**
- * Toggles wether UDP support should be compiled in or not.
- *
- * \hideinitializer
- */
-#define UDP           0
-
-/**
- * Toggles if UDP checksums should be used or not.
- *
- * \note Support for UDP checksums is currently not included in uIP,
- * so this option has no function.
- *
- * \hideinitializer
- */
-#define CHECKSUMS 0
-
-/**
- * The maximum amount of concurrent UDP connections.
- *
- * \hideinitializer
- */
-#define CONNS    10
-
-/**
- * The name of the function that should be called when UDP datagrams arrive.
- *
- * \hideinitializer
- */
-//#define UIP_UDP_APPCALL		((void*0)
-
-/** @} */
-/*------------------------------------------------------------------------------*/
-/**
- * \defgroup uipopttcp TCP configuration options
- * @{
- */
-
-/**
- * Determines if support for opening connections from uIP should be
- * compiled in.
- *
- * If the applications that are running on top of uIP for this project
- * do not need to open outgoing TCP connections, this configration
- * option can be turned off to reduce the code size of uIP.
- *
- * \hideinitializer
- */
-#define ACTIVE_OPEN				1
-
-/**
- * The maximum number of simultaneously open TCP connections.
- *
- * Since the TCP connections are statically allocated, turning this
- * configuration knob down results in less RAM used. Each TCP
- * connection requires approximatly 30 bytes of memory.
- *
- * \hideinitializer
- */
-#define HCI_PCBS				8
-
-/**
- * The maximum number of simultaneously listening TCP ports.
- *
- * Each listening TCP port requires 2 bytes of memory.
- *
- * \hideinitializer
- */
-#define HCI_LINKS				4
-
-/**
- * The size of the advertised receiver's window.
- *
- * Should be set low (i.e., to the size of the uip_buf buffer) is the
- * application is slow to process incoming data, or high (32768 bytes)
- * if the application processes data quickly.
- *
- * \hideinitializer
- */
-#define HCI_INQ_RES				32
-
-#define TCP_SEGS				32
-
-	
-/**
- * Determines if support for TCP urgent data notification should be
- * compiled in.
- *
- * Urgent data (out-of-band data) is a rarely used TCP feature that
- * very seldom would be required.
- *
- * \hideinitializer
- */
-#define URGDATA				1
-
-/**
- * The initial retransmission timeout counted in timer pulses.
- *
- * This should not be changed.
- */
-#define RTO					3
-
-/**
- * The maximum number of times a segment should be retransmitted
- * before the connection should be aborted.
- *
- * This should not be changed.
- */
-#define MAXRTX				12
-
-/**
- * The maximum number of times a SYN segment should be retransmitted
- * before a connection request should be deemed to have been
- * unsuccessful.
- *
- * This should not need to be changed.
- */
-#define MAXSYNRTX			4
-
-/**
- * The TCP maximum segment size.
- *
- * This is should not be to set to more than UIP_BUFSIZE - UIP_LLH_LEN - 40.
- */
-#define TCP_MSS				(1460)
-
-
-#define TCP_SND_BUF			(4*TCP_MSS)
-
-#define TCP_SND_QUEUELEN	(4*TCP_SND_BUF/TCP_MSS)
-
-#define TCP_WND				(4*TCP_MSS)
-
-/**
- * How long a connection should stay in the TIME_WAIT state.
- *
- * This configiration option has no real implication, and it should be
- * left untouched.
- */ 
-#define TIME_WAIT_TIMEOUT	120
-
-
-/** @} */
-/*------------------------------------------------------------------------------*/
-/**
- * \defgroup uipoptarp ARP configuration options
- * @{
- */
-
-/**
- * The size of the ARP table.
- *
- * This option should be set to a larger value if this uIP node will
- * have many connections from the local network.
- *
- * \hideinitializer
- */
-#define ARPTAB_SIZE 8
-
-/**
- * The maxium age of ARP table entries measured in 10ths of seconds.
- *
- * An UIP_ARP_MAXAGE of 120 corresponds to 20 minutes (BSD
- * default).
- */
-#define ARP_MAXAGE 120
-
-/** @} */
-
 /*------------------------------------------------------------------------------*/
 
 /**
- * \defgroup uipoptgeneral General configuration options
+ * \defgroup btopt general configuration options
  * @{
  */
 
@@ -376,12 +154,12 @@ typedef s8 err_t;
  *
  * \hideinitializer
  */
-#define MEM_SIZE				(32*1024)
+#define MEM_SIZE				(64*1024)
 
-#define PBUF_POOL_NUM			16
-#define PBUF_POOL_BUFSIZE		1800
+#define PBUF_POOL_NUM			(HCI_HOST_MAX_NUM_ACL*MAX_NUM_CLIENTS)
+#define PBUF_POOL_BUFSIZE		HCI_HOST_ACL_MAX_LEN
 
-#define PBUF_ROM_NUM			128
+#define PBUF_ROM_NUM			45
 
 
 /**
@@ -403,7 +181,7 @@ typedef s8 err_t;
  * \hideinitializer
  */
 #define LOGGING     0
-#define ERRORING	0
+#define ERRORING	1
 
 /**
  * Print out a uIP log message.
@@ -459,73 +237,22 @@ void bt_log(const char *filename,int line_nb,char *msg);
 /** @} */
 /*------------------------------------------------------------------------------*/
 
-/**
- * \defgroup uipoptapp Appication specific configurations
- * @{
- *
- * An uIP application is implemented using a single application
- * function that is called by uIP whenever a TCP/IP event occurs. The
- * name of this function must be registered with uIP at compile time
- * using the UIP_APPCALL definition.
- *
- * uIP applications can store the application state within the
- * uip_conn structure by specifying the size of the application
- * structure with the UIP_APPSTATE_SIZE macro.
- *
- * The file containing the definitions must be included in the
- * uipopt.h file.
- *
- * The following example illustrates how this can look.
- \code
-
-void httpd_appcall(void);
-#define UIP_APPCALL     httpd_appcall
-
-struct httpd_state {
-  u8_t state; 
-  u16_t count;
-  char *dataptr;
-  char *script;
-};
-#define UIP_APPSTATE_SIZE (sizeof(struct httpd_state))
- \endcode
- */
-
-/**
- * \var #define UIP_APPCALL
- *
- * The name of the application function that uIP should call in
- * response to TCP/IP events.
- *
- */
-
-/**
- * \var #define UIP_APPSTATE_SIZE
- *
- * The size of the application state that is to be stored in the
- * uip_conn structure.
- */
-/** @} */
-
-/* Include the header file for the application program that should be
-   used. If you don't use the example web server, you should change
-   this. */
-
 #define LIBC_MEMFUNCREPLACE				0
 
 /* ---------- Memory options ---------- */
 #define MAX_NUM_CLIENTS					6 /* Maximum number of connected Bluetooth clients. No more than 6 */ 
 
 #define MEMB_NUM_HCI_PCB				1 /* Always set to one */
-#define MEMB_NUM_HCI_LINK				(1 + MAX_NUM_CLIENTS) /* One for DT + One per ACL connection */
-#define MEMB_NUM_HCI_INQ				1 /* One per max number of returned results from an inquiry */
+#define MEMB_NUM_HCI_LINK				MAX_NUM_CLIENTS /* One for DT + One per ACL connection */
+#define MEMB_NUM_HCI_INQ				256 /* One per max number of returned results from an inquiry */
+#define MEMB_NUM_HCI_LINK_KEY			256 /* One per max number of returned results from an read stored link key */
 
 /* MEMP_NUM_L2CAP_PCB: the number of simulatenously active L2CAP
    connections. */
 #define MEMB_NUM_L2CAP_PCB				(2 + 2 * MAX_NUM_CLIENTS) /* One for a closing connection + one for DT + one per number of connected Bluetooth clients */
 /* MEMP_NUM_L2CAP_PCB_LISTEN: the number of listening L2CAP
    connections. */
-#define MEMB_NUM_L2CAP_PCB_LISTEN		2 /* One per listening PSM */
+#define MEMB_NUM_L2CAP_PCB_LISTEN		(2 * MAX_NUM_CLIENTS) /* One per listening PSM */
 /* MEMP_NUM_L2CAP_SIG: the number of simultaneously unresponded
    L2CAP signals */
 #define MEMB_NUM_L2CAP_SIG				(2 * MAX_NUM_CLIENTS)/* Two per number of connected Bluetooth clients but min 2 */
@@ -546,6 +273,8 @@ struct httpd_state {
 #define MEMP_NUM_BTE_PCB				(2 + 2 * MAX_NUM_CLIENTS) /* Two for DT + Two per number of connected Bluetooth clients */
 #define MEMP_NUM_BTE_PCB_LISTEN			(2 * MAX_NUM_CLIENTS) /* Two per number of connected Bluetooth clients */
 
+#define MEMP_NUM_BTE_CTRLS				256
+
 /* ---------- HCI options ---------- */
 /* HCI: Defines if we have lower layers of the Bluetooth stack running on a separate host
    controller */
@@ -553,9 +282,9 @@ struct httpd_state {
 
 #if HCI
 /* HCI_HOST_MAX_NUM_ACL: The maximum number of ACL packets that the host can buffer */
-#define HCI_HOST_MAX_NUM_ACL			8 //TODO: Should be equal to PBUF_POOL_SIZE/2??? */
+#define HCI_HOST_MAX_NUM_ACL			20 //TODO: Should be equal to PBUF_POOL_SIZE/2??? */
 /* HCI_HOST_ACL_MAX_LEN: The maximum size of an ACL packet that the host can buffer */
-#define HCI_HOST_ACL_MAX_LEN			(HIDD_N + 14) /* Default: RFCOMM MFS + ACL header size, L2CAP header size, 
+#define HCI_HOST_ACL_MAX_LEN			1691 /* Default: RFCOMM MFS + ACL header size, L2CAP header size, 
                                                 RFCOMM header size and RFCOMM FCS size */
 /* HCI_PACKET_TYPE: The set of packet types which may be used on the connection. In order to 
    maximize packet throughput, it is recommended that RFCOMM should make use of the 3 and 5 

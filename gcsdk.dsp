@@ -896,10 +896,6 @@ SOURCE=.\lwbt\bte.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\lwbt\bte_msg.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\lwbt\btmemb.c
 # End Source File
 # Begin Source File

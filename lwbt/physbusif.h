@@ -1,5 +1,5 @@
-#ifndef __PHYSBUF_H__
-#define __PHYSBUF_H__
+#ifndef __PHYSBUSIF_H__
+#define __PHYSBUSIF_H__
 
 #include "btpbuf.h"
 
@@ -15,9 +15,9 @@ struct _usb_p
 	u8 hci_ctrl;			
 	u32 vid;				
 	u32 pid;				
+	u8 openstate;			
 	pbcallback closecb;		
 	pbcallback unregcb;		
-	u8 openstate;			
 };
 
 void physbusif_init();

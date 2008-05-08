@@ -208,6 +208,7 @@ struct l2cap_pcb_listen {
 	void *callback_arg;
 
 	u16_t psm; /* Protocol/Service Multiplexer */
+	struct bd_addr bdaddr;		/* Device Address */
 
 	/* Function to call when a connection request has been received
 	 from a remote device. */
@@ -243,7 +244,7 @@ err_t l2cap_signal(struct l2cap_pcb *pcb, u8_t code, u16_t ursp_id, struct bd_ad
 void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_addr *bdaddr);
 
 err_t l2cap_rexmit_signal(struct l2cap_pcb *pcb, struct l2cap_sig *sig);
-err_t l2cap_connect_ind(struct l2cap_pcb *npcb, u8_t psm,err_t (* l2ca_connect_ind)(void *arg, struct l2cap_pcb *pcb, err_t err));
+err_t l2cap_connect_ind(struct l2cap_pcb *npcb, struct bd_addr *bdaddr, u16_t psm,err_t (* l2ca_connect_ind)(void *arg, struct l2cap_pcb *pcb, err_t err));
 
 /* Internal functions and global variables */
 #define L2CA_ACTION_CONN_CFM(pcb,result,status,ret) if((pcb)->l2ca_connect_cfm != NULL) (ret = (pcb)->l2ca_connect_cfm((pcb)->callback_arg,(pcb),(result),(status)))
@@ -279,10 +280,15 @@ extern struct l2cap_pcb *l2cap_active_pcbs; /* List of all L2CAP PCBs that has
 extern struct l2cap_pcb *l2cap_tmp_pcb;      /* Only used for temporary storage. */
 
 #define L2CAP_REG(pcbs, npcb) do { \
+							u32 level; \
+							_CPU_ISR_Disable(level); \
                             npcb->next = *pcbs; \
                             *pcbs = npcb; \
+							_CPU_ISR_Restore(level); \
                             } while(0)
 #define L2CAP_RMV(pcbs, npcb) do { \
+							u32 level; \
+							_CPU_ISR_Disable(level); \
                             if(*pcbs == npcb) { \
                                *pcbs = (*pcbs)->next; \
                             } else for(l2cap_tmp_pcb = *pcbs; l2cap_tmp_pcb != NULL; l2cap_tmp_pcb = l2cap_tmp_pcb->next) { \
@@ -292,16 +298,22 @@ extern struct l2cap_pcb *l2cap_tmp_pcb;      /* Only used for temporary storage.
                                } \
                             } \
                             npcb->next = NULL; \
+							_CPU_ISR_Restore(level); \
                             } while(0)
 
 /* The L2CAP SIG list macros */
 extern struct l2cap_sig *l2cap_tmp_sig;      /* Only used for temporary storage. */
 
 #define L2CAP_SIG_REG(ursp_sigs, nsig) do { \
+							u32 level; \
+							_CPU_ISR_Disable(level); \
                             nsig->next = *ursp_sigs; \
                             *ursp_sigs = nsig; \
+							_CPU_ISR_Restore(level); \
                             } while(0)
 #define L2CAP_SIG_RMV(ursp_sigs, nsig) do { \
+							u32 level; \
+							_CPU_ISR_Disable(level); \
                             if(*ursp_sigs == nsig) { \
                                *ursp_sigs = (*ursp_sigs)->next; \
                             } else for(l2cap_tmp_sig = *ursp_sigs; l2cap_tmp_sig != NULL; l2cap_tmp_sig = l2cap_tmp_sig->next) { \
@@ -311,16 +323,22 @@ extern struct l2cap_sig *l2cap_tmp_sig;      /* Only used for temporary storage.
                                } \
                             } \
                             nsig->next = NULL; \
+							_CPU_ISR_Restore(level); \
                             } while(0)
 
 /* The L2CAP incoming segments list macros */
 extern struct l2cap_seg *l2cap_tmp_inseg;      /* Only used for temporary storage. */
 
 #define L2CAP_SEG_REG(segs, nseg) do { \
+							u32 level; \
+							_CPU_ISR_Disable(level); \
                             nseg->next = *segs; \
                             *segs = nseg; \
+							_CPU_ISR_Restore(level); \
                             } while(0)
 #define L2CAP_SEG_RMV(segs, nseg) do { \
+							u32 level; \
+							_CPU_ISR_Disable(level); \
                             if(*segs == nseg) { \
                                *segs = (*segs)->next; \
                             } else for(l2cap_tmp_inseg = *segs; l2cap_tmp_inseg != NULL; l2cap_tmp_inseg = l2cap_tmp_inseg->next) { \
@@ -330,6 +348,7 @@ extern struct l2cap_seg *l2cap_tmp_inseg;      /* Only used for temporary storag
                                } \
                             } \
                             nseg->next = NULL; \
+							_CPU_ISR_Restore(level); \
                             } while(0)
 
 #endif
