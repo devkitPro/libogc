@@ -18,7 +18,7 @@ static void get_ir_dot_avg(struct ir_dot_t* dot, int* x, int* y);
 static void reorder_ir_dots(struct ir_dot_t* dot);
 static float ir_distance(struct ir_dot_t* dot);
 static int ir_correct_for_bounds(int* x, int* y, enum aspect_t aspect, int offset_x, int offset_y);
-static void ir_convert_to_vres(int* x, int* y, enum aspect_t aspect, int vx, int vy);
+static void ir_convert_to_vres(int* x, int* y, enum aspect_t aspect, unsigned int vx, unsigned int vy);
 
 /**
  *	@brief	Get the IR sensitivity settings.
@@ -304,7 +304,7 @@ static void reorder_ir_dots(struct ir_dot_t* dot) {
 
 	for (order = 1; order < 5; ++order) {
 		for (i=0;(i<4) && (!dot[i].visible || dot[i].order); ++i)
-		if (i > 4)
+		if (i == 4)
 			return;
 
 		for (j = 0; j < 4; ++j) {
@@ -392,7 +392,7 @@ static int ir_correct_for_bounds(int* x, int* y, enum aspect_t aspect, int offse
 /**
  *	@brief Interpolate the point to the user defined virtual screen resolution.
  */
-static void ir_convert_to_vres(int* x, int* y, enum aspect_t aspect, int vx, int vy) {
+static void ir_convert_to_vres(int* x, int* y, enum aspect_t aspect, unsigned int vx, unsigned int vy) {
 	int xs, ys;
 
 	if (aspect == WIIUSE_ASPECT_16_9) {
@@ -669,7 +669,7 @@ void calculate_extended_ir(struct wiimote_t* wm, ubyte* data) {
 
 		dot[i].rx = BIG_ENDIAN_SHORT(dot[i].rx);
 		dot[i].ry = BIG_ENDIAN_SHORT(dot[i].ry);
-		dot[i].size = BIG_ENDIAN_SHORT(dot[i].size);
+		dot[i].size = BIG_ENDIAN_SHORT(dot[i].size&0x0f);
 
 		/* if in range set to visible */
 		if (dot[i].ry == 1023)
