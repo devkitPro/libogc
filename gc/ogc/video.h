@@ -187,6 +187,16 @@ VIRetraceCallback VIDEO_SetPreRetraceCallback(VIRetraceCallback callback);
  */
 VIRetraceCallback VIDEO_SetPostRetraceCallback(VIRetraceCallback callback);
 
+
+/*! 
+ * \fn u32 VIDEO_HaveComponentCable(void)
+ * \brief Check for a component cable. This function returns 1 when a Component (YPbPr) cable is connected.
+ *
+ * \return 1 if a component cable is connected, 0 otherwise
+ */
+u32 VIDEO_HaveComponentCable(void);
+
+
 #ifdef __cplusplus
    }
 #endif /* __cplusplus */

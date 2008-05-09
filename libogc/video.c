@@ -1174,7 +1174,7 @@ static u32 vdacFlagRegion;
 static u32 i2cIdentFirst = 0;
 static u32 i2cIdentFlag = 1;
 static u32 oldTvStatus = 0x03e7;
-static u32 oldDtvStatus = 0x03e7;
+static u32 oldDtvStatus = 0;
 static vu32 *_i2cReg = (u32*)0xCD800000;
 #endif
 
@@ -1985,7 +1985,7 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 		}
 	}
 #if defined(HW_RVL)
-	dtv = (_viReg[55]&0x01);
+	dtv = VIDEO_HaveComponentCable();
 	if(dtv!=oldDtvStatus) __VISetYUVSEL(dtv);
 	oldDtvStatus = dtv;
 
@@ -2338,4 +2338,9 @@ void VIDEO_ClearFrameBuffer(GXRModeObj *rmode,void *fb,u32 color)
 {
 	u32 size = VIDEO_PadFramebufferWidth(rmode->fbWidth)*rmode->xfbHeight*VI_DISPLAY_PIX_SZ;
 	__VIClearFramebuffer(fb,size,color);
+}
+
+u32 VIDEO_HaveComponentCable(void)
+{
+	return (_viReg[55]&0x01);
 }
