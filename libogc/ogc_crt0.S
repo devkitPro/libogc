@@ -51,10 +51,18 @@ eloop:
 	b eloop			# If the main function returns, which should never happen then just loop endlessly.
 
 __main:
+	mflr	r0
+	stw		r0,4(sp)
+	stwu	sp,-8(sp)
+
 	bl		__init
 	bl		SYS_PreMain
 	bl		main
 	bl		__fini
+
+	lwz		r0,12(sp)
+	addi	sp,sp,8
+	mtlr	r0
 	blr
 
 InitGPRS:
