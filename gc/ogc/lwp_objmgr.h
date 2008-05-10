@@ -2,7 +2,7 @@
 #define __LWP_OBJMGR_H__
 
 #include <gctypes.h>
-#include <lwp_queue.h>
+#include "lwp_queue.h"
 
 #define LWP_OBJMASKTYPE(type)		((type)<<16)
 #define LWP_OBJMASKID(id)			((id)&0xffff)

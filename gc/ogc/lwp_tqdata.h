@@ -17,8 +17,8 @@
 extern "C" {
 #endif
 
-#include <lwp_queue.h>
-#include <lwp_priority.h>
+#include "lwp_queue.h"
+#include "lwp_priority.h"
 
 typedef struct _lwpthrqueue {
 	union {

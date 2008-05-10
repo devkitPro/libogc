@@ -2,7 +2,7 @@
 #define __LWP_PRIORITY_H__
 
 #include <gctypes.h>
-#include <processor.h>
+#include "machine/processor.h"
 
 #define LWP_PRIO_MIN				0
 #define LWP_PRIO_MAX				255

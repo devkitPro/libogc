@@ -2,6 +2,7 @@
 #define __PROCESSOR_H__
 
 #include <gctypes.h>
+#include "asm.h"
 
 #define __stringify(rn)					#rn
 #define ATTRIBUTE_ALIGN(v)				__attribute__((aligned(v)))
