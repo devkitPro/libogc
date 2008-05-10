@@ -76,7 +76,7 @@ distribution.
 
 #define EXI_DEVICE_0				0			/*!< EXI device 0 */
 #define EXI_DEVICE_1				1			/*!< EXI device 1 */
-#define EXI_DEVICE_2				2			/*!< EXI devide 2 */
+#define EXI_DEVICE_2				2			/*!< EXI device 2 */
 #define EXI_DEVICE_MAX				3			/*!< _Termination */
 
 /*!
