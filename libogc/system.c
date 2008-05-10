@@ -224,6 +224,8 @@ extern u8 __Arena2Lo[], __Arena2Hi[];
 extern u8 __ipcbufferLo[], __ipcbufferHi[];
 #endif
 
+u8 *__argvArena1Lo = (u8*)0xdeadbeef;
+
 static u32 __sys_inIPL = (u32)__isIPL;
 
 static u32 _dsp_initcode[] =
@@ -449,7 +451,7 @@ static void __lowmem_init()
 
 	memset(_gx,0,2048);
 	memset(arena_start,0,0x100);
-
+	if ( __argvArena1Lo == (u8*)0xdeadbeef ) __argvArena1Lo = __Arena1Lo;
 #if defined(HW_DOL)
 	memset(ram_start,0,0x100);
 	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"
@@ -457,7 +459,7 @@ static void __lowmem_init()
 	*((u32*)(ram_start+0x28))	= SYSMEM1_SIZE;	// physical memory size
 	*((u32*)(ram_start+0x2C))	= 1 + ((*(u32*)0xCC00302c)>>28);
 
-	*((u32*)(ram_start+0x30))	= (u32)__Arena1Lo;
+	*((u32*)(ram_start+0x30))	= (u32)__argvArena1Lo;
 	*((u32*)(ram_start+0x34))	= (u32)__Arena1Hi;
 
 	*((u32*)(ram_start+0xEC))	= (u32)ram_end;	// ram_end (??)
@@ -475,7 +477,7 @@ static void __lowmem_init()
 	DCFlushRangeNoSync(_gx, 2048);
 	_sync();
 
-	SYS_SetArenaLo((void*)__Arena1Lo);
+	SYS_SetArenaLo((void*)__argvArena1Lo);
 	SYS_SetArenaHi((void*)__Arena1Hi);
 #if defined(HW_RVL)
 	SYS_SetArena2Lo((void*)__Arena2Lo);

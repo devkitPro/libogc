@@ -20,19 +20,32 @@
 	.extern __PSInit
 	.extern __CacheInit
 	.extern __SystemInit
-	.extern __sbss_start, __bss_end
-	.globl _start, __main
+	.extern __sbss_start, __bss_end, __CheckARGV
+	.globl _start, __main, __system_argv
 _start:
+	b	startup
+	.long	0x5f617267
+__argv:
+	.long	0		# argv magic
+	.long 0		# command line
+	.long 0		# command line length
+	.long	0		# argc
+	.long	0		#	argv
+	.long 0		# end address of argv
+
+startup:
 	bl		InitGPRS			# Initialize the General Purpose Registers
-	bl      FPRInit			 	# Initialize the FPR's
+	bl		FPRInit			 	# Initialize the FPR's
 	bl		__PSInit 			# Initialize Paired Singles
-	bl      __CacheInit 		# Initialize the system caches
-	bl      __SystemInit		# Initialize more cache aspects, clear a few SPR's, and disable interrupts.
+	bl		__CacheInit 		# Initialize the system caches
+	bl		__SystemInit		# Initialize more cache aspects, clear a few SPR's, and disable interrupts.
+
+	bl		__CheckARGV		# check for argv & initialise struct
 
 	lis		r3,__isIPL@h
 	ori		r3,r3,__isIPL@l
 	cmplwi	r3,0
-	beq		1f
+	bne		1f
 
 	# Clear the BSS section!
 	lis		r3,__sbss_start@h
@@ -44,26 +57,7 @@ _start:
 	bl		_memset
 
 1:
-	bl      SYS_Init # Branch to the user code!
-
-eloop:
-//	bl __sdloader_boot
-	b eloop			# If the main function returns, which should never happen then just loop endlessly.
-
-__main:
-	mflr	r0
-	stw		r0,4(sp)
-	stwu	sp,-8(sp)
-
-	bl		__init
-	bl		SYS_PreMain
-	bl		main
-	bl		__fini
-
-	lwz		r0,12(sp)
-	addi	sp,sp,8
-	mtlr	r0
-	blr
+	b      SYS_Init # Branch to the user code!
 
 InitGPRS:
 	# Clear all of the GPR's to 0
@@ -189,3 +183,11 @@ __crt0stack:
 	.balign	4
 zfloat:
 	.double 0.0
+
+	.globl __system_argv
+	.section	.sdata,"aw",@progbits
+	.align 2
+	.type	__system_argv, @object
+	.size	__system_argv, 4
+__system_argv:
+	.long	__argv
