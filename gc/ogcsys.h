@@ -33,8 +33,7 @@
 #endif
 
 time_t time(time_t *timer);
-unsigned int usleep(unsigned int us);
-unsigned int nanosleep(struct timespec *tb);
+int nanosleep(struct timespec *tb);
 
 #ifdef __cplusplus
 	}

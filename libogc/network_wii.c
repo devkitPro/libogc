@@ -42,7 +42,9 @@ distribution.
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include <sys/errno.h>
+#include <errno.h>
+#include <unistd.h>
+
 #include "ipc.h"
 #include "processor.h"
 #include "network.h"
