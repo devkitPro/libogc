@@ -46,6 +46,7 @@ distribution.
 #include "cache.h"
 #include "system.h"
 #include "lwp_heap.h"
+#include "lwp_wkspace.h"
 
 //#define DEBUG_IPC
 
@@ -222,10 +223,10 @@ static s32 __ioctlvfmtCB(s32 result,void *userdata)
 	user_data = cbdata->user_data;
 	
 	// free buffer list
-	free(cbdata->bufs);
+	__lwp_wkspace_free(cbdata->bufs);
 	
 	// free callback data
-	free(cbdata);
+	__lwp_wkspace_free(cbdata);
 		
 	// call the user callback
 	if(user_cb) 
@@ -441,7 +442,7 @@ static s32 __ios_ioctlvformat_parse(const char *format,va_list args,struct _ioct
 	if(maxbufs>=IOS_MAXFMT_PARAMS) return IPC_EINVAL;
 
 	cbdata->hId = hId;
-	cbdata->bufs = malloc((sizeof(struct _ioctlvfmt_bufent)*(maxbufs+1)));
+	cbdata->bufs = __lwp_wkspace_allocate((sizeof(struct _ioctlvfmt_bufent)*(maxbufs+1)));
 	if(cbdata->bufs==NULL) return IPC_ENOMEM;
 
 	argp = iosAlloc(hId,(sizeof(struct _ioctlv)*(maxbufs+1)));
@@ -655,7 +656,7 @@ free_and_error:
 	for(i=0;i<cbdata->num_bufs;i++) {
 		if(cbdata->bufs[i].ipc_buf!=NULL) iosFree(hId,cbdata->bufs[i].ipc_buf);
 	}
-	free(cbdata->bufs);
+	__lwp_wkspace_free(cbdata->bufs);
 	return ret;
 }
 
@@ -1168,7 +1169,7 @@ s32 IOS_IoctlvFormat(s32 hId,s32 fd,s32 ioctl,const char *format,...)
 	struct _ioctlv *argv;
 	struct _ioctlvfmt_cbdata *cbdata;
 
-	cbdata = malloc(sizeof(struct _ioctlvfmt_cbdata));
+	cbdata = __lwp_wkspace_allocate(sizeof(struct _ioctlvfmt_cbdata));
 	if(cbdata==NULL) return IPC_ENOMEM;
 
 	memset(cbdata,0,sizeof(struct _ioctlvfmt_cbdata));
@@ -1195,7 +1196,7 @@ s32 IOS_IoctlvFormatAsync(s32 hId,s32 fd,s32 ioctl,ipccallback usr_cb,void *usr_
 	struct _ioctlv *argv;
 	struct _ioctlvfmt_cbdata *cbdata;
 
-	cbdata = malloc(sizeof(struct _ioctlvfmt_cbdata));
+	cbdata = __lwp_wkspace_allocate(sizeof(struct _ioctlvfmt_cbdata));
 	if(cbdata==NULL) return IPC_ENOMEM;
 
 	memset(cbdata,0,sizeof(struct _ioctlvfmt_cbdata));
