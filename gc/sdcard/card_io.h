@@ -28,19 +28,23 @@ extern u8 g_mCode[MAX_MI_NUM];
 extern u16 g_dCode[MAX_MI_NUM][MAX_DI_NUM];
 
 
-void card_initIODefault();
-s32 card_initIO(s32 drv_no);
-s32 card_preIO(s32 drv_no);
-s32 card_readCID(s32 drv_no);
-s32 card_readCSD(s32 drv_no);
-s32 card_readStatus(s32 drv_no);
-s32 card_readSector(s32 drv_no,u32 sector_no,u8 *buf,u32 len);
-s32 card_writeSector(s32 drv_no,u32 sector_no,const void *buf,u32 len);
-s32 card_eraseSector(s32 drv_no,u32 sector_no);
-s32 card_erasePartialBlock(s32 drv_no,u32 block_no,u32 offset,u32 len);
-s32 card_eraseWholeBlock(s32 drv_no,u32 block_no);
+void sdgecko_initIODefault();
+s32 sdgecko_initIO(s32 drv_no);
+s32 sdgecko_preIO(s32 drv_no);
+s32 sdgecko_readCID(s32 drv_no);
+s32 sdgecko_readCSD(s32 drv_no);
+s32 sdgecko_readStatus(s32 drv_no);
+s32 sdgecko_readSector(s32 drv_no,u32 sector_no,u8 *buf,u32 len);
+s32 sdgecko_writeSector(s32 drv_no,u32 sector_no,const void *buf,u32 len);
+s32 sdgecko_eraseSector(s32 drv_no,u32 sector_no);
+s32 sdgecko_erasePartialBlock(s32 drv_no,u32 block_no,u32 offset,u32 len);
+s32 sdgecko_eraseWholeBlock(s32 drv_no,u32 block_no);
 
-s32 card_doUnmount(s32 drv_no);
+s32 sdgecko_doUnmount(s32 drv_no);
+
+void sdgecko_insertedCB(s32 drv_no);
+void sdgecko_ejectedCB(s32 drv_no);
+
 
 #ifdef __cplusplus
    }

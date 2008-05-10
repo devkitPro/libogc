@@ -7,9 +7,9 @@
 	extern "C" {
 #endif
 
-void card_initBufferPool();
-u8*	card_allocBuffer();
-void card_freeBuffer(u8 *buf);
+void sdgecko_initBufferPool();
+u8*	sdgecko_allocBuffer();
+void sdgecko_freeBuffer(u8 *buf);
 
 #ifdef __cplusplus
 	}
