@@ -110,7 +110,7 @@ static void __console_drawc(int c)
 	if(!curr_con) return;
 	con = curr_con;
 
-	ptr = (unsigned int*)(con->destbuffer + con->con_stride * con->cursor_row * FONT_YSIZE + (con->cursor_col * FONT_XSIZE / 2) * 4);
+	ptr = (unsigned int*)(con->destbuffer + ( con->con_stride *  con->cursor_row * FONT_YSIZE ) + ((con->cursor_col * FONT_XSIZE / 2) * 4));
 	pbits = &con->font[c * FONT_YSIZE];
 	nextline = con->con_stride/4 - 4;
 	fgcolor = con->foreground;
@@ -187,6 +187,11 @@ static void __console_clear(void)
 	p = (unsigned int*)con->destbuffer;
 	while(c--)
 		*p++ = con->background;
+
+	con->cursor_row = 0;
+	con->cursor_col = 0;
+	con->saved_row = 0;
+	con->saved_col = 0;
 }
 
 void __console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stride)
@@ -204,10 +209,6 @@ void __console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,in
 	con->con_stride = con->tgt_stride = stride;
 	con->target_x = xstart;
 	con->target_y = ystart;
-	con->cursor_row = 0;
-	con->cursor_col = 0;
-	con->saved_row = 0;
-	con->saved_col = 0;
 
 	con->font = console_font_8x16;
 
@@ -257,11 +258,11 @@ void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_str
 
 	devoptab_list[STD_OUT] = &dotab_stdout;
 	devoptab_list[STD_ERR] = &dotab_stdout;
-	//setvbuf(stdout, NULL , _IONBF, 0);
 
 	VIDEO_SetPostRetraceCallback(__console_vipostcb);
 
 	_CPU_ISR_Restore(level);
+	//setvbuf(stdout, NULL , _IONBF, 0);
 }
 
 static int __console_parse_escsequence(char *pchr)
