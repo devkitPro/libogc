@@ -45,6 +45,7 @@ distribution.
 #include "consol.h"
 #include "console.h"
 #include "lwp_threads.h"
+#include "ios.h"
 
 #include "ogc/video_types.h"
 
@@ -245,18 +246,17 @@ void __libc_wrapup();
 
 void __libogc_exit(int status)
 {
-	void (*exitfunc)(void) = Reload;
 	int level;
 
-	_CPU_ISR_Disable(level);
+#ifdef HW_RVL
+	__IOS_ShutdownSubsystems ();
+#endif
 	GX_AbortFrame();
 
-	if( status != 0 ) {
-		exitfunc = waitForReload;
-		kprintf("exit code was %d\n", status);
-	}
+	_CPU_ISR_Disable(level);
 	__libc_wrapup();
-	__lwp_thread_stopmultitasking(exitfunc);
+	__exception_closeall ();
+	__lwp_thread_stopmultitasking(Reload);
 
 }
 
