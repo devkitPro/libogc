@@ -360,6 +360,14 @@ SOURCE=.\libogc\sbrk.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\sdgecko_buf.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\sdgecko_io.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\semaphore.c
 # End Source File
 # Begin Source File
@@ -413,6 +421,10 @@ SOURCE=.\libogc\video.c
 # Begin Source File
 
 SOURCE=.\libogc\video_asm.S
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\wiisd.c
 # End Source File
 # End Group
 # Begin Group "lwip.c"
@@ -761,34 +773,6 @@ SOURCE=.\libdb\tcpip.c
 # Begin Source File
 
 SOURCE=.\libdb\tcpip.h
-# End Source File
-# End Group
-# Begin Group "libsdcard.c"
-
-# PROP Default_Filter ""
-# Begin Source File
-
-SOURCE=.\libsdcard\card_buf.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libsdcard\card_fat.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libsdcard\card_io.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libsdcard\card_uni.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libsdcard\sdcard.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libsdcard\sdcardio.c
 # End Source File
 # End Group
 # Begin Group "lockstubs.c"
@@ -1513,26 +1497,6 @@ SOURCE=.\gc\mad\timer.h
 # Begin Source File
 
 SOURCE=.\gc\mad\version.h
-# End Source File
-# End Group
-# Begin Group "sdcard.h"
-
-# PROP Default_Filter ""
-# Begin Source File
-
-SOURCE=.\gc\sdcard\card_buf.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\gc\sdcard\card_cmn.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\gc\sdcard\card_fat.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\gc\sdcard\card_io.h
 # End Source File
 # End Group
 # Begin Group "tinysmb.h"
