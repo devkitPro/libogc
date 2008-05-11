@@ -30,6 +30,7 @@
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#if defined(HW_RVL)
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -170,7 +171,6 @@ static s32 __sdio_sendcommand(u32 cmd,u32 cmd_type,u32 rsp_type,u32 arg,u32 blk_
 		iosFree(hId,iovec);
 	} else
 		ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_SENDCMD,request,sizeof(struct _sdiorequest),response,sizeof(struct _sdioresponse));
-//	printf("ret: %08x\nrsp[0]: %08x,rsp[1]: %08x\nrsp[2]: %08x,rsp[3]: %08x\n",ret,response->rsp_fields[0],response->rsp_fields[1],response->rsp_fields[2],response->rsp_fields[3]);
  
 	if(reply && !(rlen>16)) memcpy(reply,response,rlen);
  
@@ -186,7 +186,6 @@ static s32 __sdio_setclock(u32 set)
  
 	__sdio_clockset = set;
 	ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_SETCLK,&__sdio_clockset,sizeof(u32),NULL,0);
-//	printf("__sdio_setclock(%d,%08x)\n",ret,__sdio_clockset);
  
 	return ret;
 }
@@ -196,7 +195,6 @@ static s32 __sdio_getstatus()
  
 	__sdio_status = 0;
 	ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_GETSTATUS,NULL,0,&__sdio_status,sizeof(u32));
-//	printf("__sdio_getstatus(%d,%08x)\n",ret,__sdio_status);
 	if(ret<0) return ret;
  
 	return __sdio_status;
@@ -209,7 +207,6 @@ static s32 __sdio_resetcard()
 	__sd0_rca = 0;
 	__sdio_status = 0;
 	ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_RESETCARD,NULL,0,&__sdio_status,sizeof(u32));
-//	printf("__sdio_resetcard(%d,%04x,%08x)\n",ret,(__sdio_status>>16),(__sdio_status&0xffff));
 	if(ret<0) return ret;
  
 	__sd0_rca = (u16)(__sdio_status>>16);
@@ -267,7 +264,6 @@ static s32 __sdio_setbuswidth(u32 bus_width)
 	u8 hc_reg = 0;
  
 	ret = __sdio_gethcr(SDIOHCR_HOSTCONTROL,&hc_reg);
-//	printf("__sdio_setbuswidth(%d,%02x)\n",ret,hc_reg);
 	if(ret<0) return ret;
  
 	hc_reg &= ~SDIOHCR_HOSTCONTROL_4BIT;
@@ -282,7 +278,6 @@ static s32 __sd0_getstatus()
 	u32 status = 0;
  
 	ret = __sdio_sendcommand(SDIO_CMD_SENDSTATUS,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,(__sd0_rca<<16),0,0,NULL,&status,sizeof(u32));
-//	printf("__sd0_getstatus(%d,%08x)\n",ret,status);
 	if(ret<0) return ret;
  
 	return status;
@@ -293,7 +288,6 @@ static s32 __sd0_getrca()
 	s32 ret;
  
 	ret = __sdio_sendcommand(SDIO_CMD_SENDRCA,SDIOCMD_TYPE_BCR,SDIO_RESPONSE_R6,0,0,1,NULL,NULL,0);
-//	printf("__sd0_getrca(%08x)\n",ret);
 	if(ret<0) return ret;
  
 	__sd0_rca = (u16)(ret>>16);
@@ -305,7 +299,6 @@ static s32 __sd0_select()
 	s32 ret;
  
 	ret = __sdio_sendcommand(SDIO_CMD_SELECT,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1B,(__sd0_rca<<16),0,0,NULL,NULL,0);
-//	printf("__sd0_select(%d)\n",ret);
  
 	return ret;
 }
@@ -315,7 +308,6 @@ static s32 __sd0_deselect()
 	s32 ret;
  
 	ret = __sdio_sendcommand(SDIO_CMD_DESELECT,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1B,0,0,0,NULL,NULL,0);
-//	printf("__sd0_deselect(%d)\n",ret);
  
 	return ret;
 }
@@ -325,7 +317,6 @@ static s32 __sd0_setblocklength(u32 blk_len)
 	s32 ret;
  
 	ret = __sdio_sendcommand(SDIO_CMD_SETBLOCKLEN,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,blk_len,0,0,NULL,NULL,0);
-//	printf("__sd0_setblocklength(%d)\n",ret);
  
 	return ret;
 }
@@ -339,11 +330,9 @@ static s32 __sd0_setbuswidth(u32 bus_width)
 	if(bus_width==4) val = 0x0002;
  
 	ret = __sdio_sendcommand(SDIO_CMD_APPCMD,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,(__sd0_rca<<16),0,0,NULL,NULL,0);
-//	printf("__sd0_setbuswidth(%d)\n",ret);
 	if(ret<0) return ret;
  
 	ret = __sdio_sendcommand(SDIO_ACMD_SETBUSWIDTH,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,val,0,0,NULL,NULL,0);
-//	printf("__sd0_setbuswidth(%d)\n",ret);
  
 	return ret;		
 }
@@ -353,7 +342,6 @@ static s32 __sd0_getcsd()
 	s32 ret;
  
 	ret = __sdio_sendcommand(SDIO_CMD_SENDCSD,SDIOCMD_TYPE_AC,SDIO_RESPOSNE_R2,(__sd0_rca<<16),0,0,NULL,__sd0_csd,16);
-//	printf("__sd0_getcsd(%d)\n",ret);
  
 	return ret;
 }
@@ -363,7 +351,6 @@ static s32 __sd0_getcid()
 	s32 ret;
  
 	ret = __sdio_sendcommand(SDIO_CMD_SENDCID,SDIOCMD_TYPE_AC,SDIO_RESPOSNE_R2,(__sd0_rca<<16),0,0,NULL,__sd0_cid,16);
-//	printf("__sd0_getcid(%d)\n",ret);
  
 	return ret;
 }
@@ -375,7 +362,6 @@ static	bool __sd0_initio()
 	//ret = __sdio_getstatus();
 	ret = __sdio_resetcard();
 	if(ret<0) {
-		//f(ret==-4) printf("SD card not present!\n");
 		return false;
 	}
  
@@ -457,8 +443,6 @@ bool sdio_ReadSectors(u32 sector,u32 numSectors,void* buffer)
 	u8 *rbuf,*ptr;
 	u32 blk_off;
  
-	printf("SDIO_ReadSectors(%d,%d,%p) = ",sector,numSectors,buffer);
- 
 	if(buffer==NULL) return false;
  
 	ret = __sd0_select();
@@ -484,7 +468,6 @@ bool sdio_ReadSectors(u32 sector,u32 numSectors,void* buffer)
 	}
 	__sd0_deselect();
  
-	printf("%d\n", ret);
 	iosFree(hId,rbuf);
 	return (ret>=0);
 }
@@ -494,8 +477,6 @@ bool sdio_WriteSectors(u32 sector,u32 numSectors,const void* buffer)
 	s32 ret;
 	u8 *wbuf,*ptr;
 	u32 blk_off;
- 
-	printf("SDIO_WriteSectors(%d,%d,%p) = ",sector,numSectors,buffer);
  
 	if(buffer==NULL) return false;
  
@@ -522,7 +503,6 @@ bool sdio_WriteSectors(u32 sector,u32 numSectors,const void* buffer)
 	}
 	__sd0_deselect();
  
-	printf("%d\n", ret);
 	iosFree(hId,wbuf);
 	return (ret>=0);
 }
@@ -536,3 +516,5 @@ bool sdio_IsInserted()
 {
 	return (__sd0_initialized==1);
 }
+
+#endif
