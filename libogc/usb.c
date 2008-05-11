@@ -57,9 +57,33 @@ struct _usb_cb {
 	usbcallback cb;
 	void *usrdata;
 	ioctlv *vec;
+	s32 fd;
 };
 
 static s32 hId = -1;
+
+static s32 __usb_device_notificationCB(s32 result,void *usrdata)
+{
+	ioctlv *vec = NULL;
+	struct _usb_cb *msgcb = (struct _usb_cb*)usrdata;
+
+	if(msgcb==NULL) return IPC_EINVAL;
+
+	if(msgcb->cb!=NULL) msgcb->cb(result,msgcb->usrdata);
+
+	if(msgcb->fd>=0) IOS_Close(msgcb->fd);
+
+	vec = msgcb->vec;
+	if(vec==NULL) return IPC_EINVAL;
+
+	if(vec[0].data!=NULL) iosFree(hId,vec[0].data);
+	if(vec[1].data!=NULL) iosFree(hId,vec[1].data);
+
+	iosFree(hId,vec);
+	iosFree(hId,msgcb);
+
+	return IPC_OK;
+}
 
 static s32 __usb_control_messageCB(s32 result,void *usrdata)
 {
@@ -171,6 +195,7 @@ static s32 __usb_control_message(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue
 		msgcb = iosAlloc(hId,sizeof(struct _usb_cb));
 		if(msgcb==NULL) goto done;
 
+		msgcb->fd = -1;
 		msgcb->cb = cb;
 		msgcb->usrdata = usrdata;
 		msgcb->vec = vec;
@@ -223,6 +248,7 @@ static s32 __usb_interrupt_bulk_message(s32 fd,u8 ioctl,u8 bEndpoint,u16 wLength
 		msgcb = iosAlloc(hId,sizeof(struct _usb_cb));
 		if(msgcb==NULL) goto done;
 
+		msgcb->fd = -1;
 		msgcb->cb = cb;
 		msgcb->usrdata = usrdata;
 		msgcb->vec = vec;
@@ -374,7 +400,12 @@ s32 USB_DeviceRemovalNotifyAsync(s32 fd,usbcallback cb,void *userdata)
 s32 USB_DeviceInsertNotifyAsync(const char *devpath,u16 vid,u16 pid,usbcallback cb,void *usrdata)
 {
 	char *path;
-	s32 fd,ret = 0;
+	s32 fd = -1;
+	s32 ret = IPC_ENOMEM;
+	u16 *pvid = NULL;
+	u16 *ppid = NULL;
+	ioctlv *vec = NULL;
+	struct _usb_cb *msgcb = NULL;
 
 	if(devpath==NULL || *devpath=='\0') return IPC_EINVAL;
 
@@ -382,13 +413,46 @@ s32 USB_DeviceInsertNotifyAsync(const char *devpath,u16 vid,u16 pid,usbcallback 
 	if(path==NULL) return IPC_ENOMEM;
 	
 	strncpy(path,devpath,IPC_MAXPATH_LEN);
-	fd = IOS_Open(devpath,IPC_OPEN_NONE);
-	if(fd<0) return fd;
-	
-	ret = IOS_IoctlvFormatAsync(hId,fd,USB_IOCTL_DEVINSERTHOOK,cb,usrdata,"hh:",vid,pid);
-	IOS_Close(fd);
+	fd = IOS_Open(path,IPC_OPEN_NONE);
+	if(fd<0) {
+		ret = fd;
+		goto done;
+	}
 
-	iosFree(hId,path);
+	vec = iosAlloc(hId,sizeof(ioctlv)*2);
+	if(vec==NULL) goto done;
+
+	msgcb = iosAlloc(hId,sizeof(struct _usb_cb));
+	if(msgcb==NULL) goto done;
+
+	pvid = iosAlloc(hId,32);
+	if(pvid==NULL) goto done;
+	*pvid = vid;
+
+	ppid = iosAlloc(hId,32);
+	if(ppid==NULL) goto done;
+	*ppid = pid;
+
+	vec[0].data = pvid;
+	vec[0].len = sizeof(u16);
+	vec[1].data = ppid;
+	vec[1].len = sizeof(u16);
+
+	msgcb->fd = fd;
+	msgcb->cb = cb;
+	msgcb->vec = vec;
+	msgcb->usrdata = usrdata;
+	return IOS_IoctlvAsync(fd,USB_IOCTL_DEVINSERTHOOK,2,0,vec,__usb_device_notificationCB,msgcb);
+
+done:
+	if(ppid!=NULL) iosFree(hId,ppid);
+	if(pvid!=NULL) iosFree(hId,pvid);
+	if(msgcb!=NULL) iosFree(hId,msgcb);
+	if(vec!=NULL) iosFree(hId,vec);
+	if(path!=NULL) iosFree(hId,path);
+	
+	if(fd>=0) IOS_Close(fd);
+
 	return ret;
 }
 
