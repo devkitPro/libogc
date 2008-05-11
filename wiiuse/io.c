@@ -7,6 +7,7 @@
 #include "classic.h"
 #include "guitar_hero_3.h"
 #include "io.h"
+#include "lwp_wkspace.h"
 
 void wiiuse_handshake(struct wiimote_t *wm,ubyte *data,uword len)
 {
@@ -21,7 +22,7 @@ void wiiuse_handshake(struct wiimote_t *wm,ubyte *data,uword len)
 
 			wiiuse_set_leds(wm,WIIMOTE_LED_NONE,NULL);
 
-			buf = malloc(sizeof(ubyte)*8);
+			buf = __lwp_wkspace_allocate(sizeof(ubyte)*8);
 			wiiuse_read_data(wm,buf,WM_MEM_OFFSET_CALIBRATION,7,wiiuse_handshake);
 			break;
 		case 1:
@@ -34,7 +35,7 @@ void wiiuse_handshake(struct wiimote_t *wm,ubyte *data,uword len)
 			accel->cal_g.x = (data[4] - accel->cal_zero.x);
 			accel->cal_g.y = (data[5] - accel->cal_zero.y);
 			accel->cal_g.z = (data[6] - accel->cal_zero.z);
-			free(data);
+			__lwp_wkspace_free(data);
 			
 			WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_HANDSHAKE);
 			WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_HANDSHAKE_COMPLETE);
@@ -54,7 +55,7 @@ void wiiuse_handshake_expansion_enabled(struct wiimote_t *wm,ubyte *data,uword l
 
 	//printf("wiiuse_handshake_expansion_enabled(%p,%d)\n",data,len);
 
-	buf = malloc(sizeof(ubyte)*EXP_HANDSHAKE_LEN);
+	buf = __lwp_wkspace_allocate(sizeof(ubyte)*EXP_HANDSHAKE_LEN);
 	wiiuse_read_data(wm,buf,WM_EXP_MEM_CALIBR,EXP_HANDSHAKE_LEN,wiiuse_handshake_expansion);
 
 	WIIMOTE_ENABLE_STATE(wm, (WIIMOTE_STATE_EXP|WIIMOTE_STATE_EXP_HANDSHAKE));
@@ -91,7 +92,7 @@ void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
 			printf("unknown expansion type connected.\n");
 			break;
 	}
-	free(data);
+	__lwp_wkspace_free(data);
 	
 	wiiuse_status(wm,NULL);
 }
