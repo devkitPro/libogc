@@ -1176,7 +1176,7 @@ static u32 vdacFlagRegion;
 static u32 i2cIdentFirst = 0;
 static u32 i2cIdentFlag = 1;
 static u32 oldTvStatus = 0x03e7;
-static u32 oldDtvStatus = 0;
+static u32 oldDtvStatus = 0x03e7;
 static vu32 *_i2cReg = (u32*)0xCD800000;
 #endif
 
@@ -1987,7 +1987,7 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 		}
 	}
 #if defined(HW_RVL)
-	dtv = VIDEO_HaveComponentCable();
+	dtv = (_viReg[55]&0x01);
 	if(dtv!=oldDtvStatus) __VISetYUVSEL(dtv);
 	oldDtvStatus = dtv;
 
