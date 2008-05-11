@@ -199,6 +199,8 @@ void WPAD_Read(WPADData *data)
 						k++;
 					}
 				}
+				data->ir.num_dots = k;
+
 				data->ir.x = __wpads[i]->ir.x;
 				data->ir.y = __wpads[i]->ir.y;
 				data->ir.z = __wpads[i]->ir.z;
@@ -241,6 +243,22 @@ void WPAD_SetDataFormat(s32 chan,s32 fmt)
 				break;
 		}
 	}
+	_CPU_ISR_Restore(level);
+}
+
+void WPAD_SetVRes(s32 chan,u32 xres,u32 yres)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
+		_CPU_ISR_Restore(level);
+		return;
+	}
+
+	if(__wpads[chan]!=NULL) 
+		wiiuse_set_ir_vres(__wpads[chan],xres,yres);
+
 	_CPU_ISR_Restore(level);
 }
 

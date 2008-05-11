@@ -99,6 +99,8 @@ typedef struct _ir_t
 {
 	IRDot dot[WPAD_MAX_IR_DOTS];
 
+	u8 num_dots;
+
 	s32 x,y;
 	f32 z;
 	f32 dist;
@@ -125,6 +127,7 @@ typedef struct _wpad_data
 void WPAD_Init();
 void WPAD_Read(WPADData *data);
 void WPAD_SetDataFormat(s32 chan,s32 fmt);
+void WPAD_SetVRes(s32 chan,u32 xres,u32 yres);
 s32 WPAD_GetStatus();
 
 #ifdef __cplusplus
