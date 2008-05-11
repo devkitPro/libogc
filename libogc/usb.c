@@ -53,34 +53,186 @@ distribution.
 #define USB_IOCTL_DEVREMOVALHOOK		26
 #define USB_IOCTL_DEVINSERTHOOK			27
 
+struct _usb_cb {
+	usbcallback cb;
+	void *usrdata;
+	ioctlv *vec;
+};
+
 static s32 hId = -1;
 
-static __inline__ s32 __usb_control_message(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
+static s32 __usb_control_messageCB(s32 result,void *usrdata)
 {
-	s32 ret = USB_FAILED;
+	ioctlv *vec = NULL;
+	struct _usb_cb *msgcb = (struct _usb_cb*)usrdata;
+
+	if(msgcb==NULL) return IPC_EINVAL;
+
+	if(msgcb->cb!=NULL) msgcb->cb(result,msgcb->usrdata);
+    
+	vec = msgcb->vec;
+	if(vec==NULL) return IPC_EINVAL;
+
+	if(vec[0].data!=NULL) iosFree(hId,vec[0].data);
+	if(vec[1].data!=NULL) iosFree(hId,vec[1].data);
+	if(vec[2].data!=NULL) iosFree(hId,vec[2].data);
+	if(vec[3].data!=NULL) iosFree(hId,vec[3].data);
+	if(vec[4].data!=NULL) iosFree(hId,vec[4].data);
+	if(vec[5].data!=NULL) iosFree(hId,vec[5].data);
+
+	iosFree(hId,vec);
+	iosFree(hId,msgcb);
+
+	return IPC_OK;
+}
+
+static s32 __usb_bulk_messageCB(s32 result,void *usrdata)
+{
+	ioctlv *vec = NULL;
+	struct _usb_cb *msgcb = (struct _usb_cb*)usrdata;
+
+	if(msgcb==NULL) return IPC_EINVAL;
+	
+	if(msgcb->cb!=NULL) msgcb->cb(result,msgcb->usrdata);
+
+	vec = msgcb->vec;
+	if(vec==NULL) return IPC_EINVAL;
+
+	if(vec[0].data!=NULL) iosFree(hId,vec[0].data);
+	if(vec[1].data!=NULL) iosFree(hId,vec[1].data);
+
+	iosFree(hId,vec);
+	iosFree(hId,msgcb);
+
+	return IPC_OK;
+}
+
+static s32 __usb_control_message(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
+{
+	s32 ret = IPC_ENOMEM;
+	u8 *pRqType = NULL;
+	u8 *pRq = NULL;
+	u8 *pNull = NULL;
+	u16 *pValue = NULL;
+	u16 *pIndex = NULL;
+	u16 *pLength = NULL;
+	ioctlv *vec = NULL;
+	struct _usb_cb *msgcb = NULL;
 
 	if(((s32)rpData%32)!=0) return IPC_EINVAL;
 	if(wLength && !rpData) return IPC_EINVAL;
 	if(!wLength && rpData) return IPC_EINVAL;
 
+	vec = iosAlloc(hId,sizeof(ioctlv)*7);
+	if(vec==NULL) return IPC_ENOMEM;
+
+	pRqType = iosAlloc(hId,32);
+	if(pRqType==NULL) goto done;
+	*pRqType = bmRequestType;
+
+	pRq = iosAlloc(hId,32);
+	if(pRq==NULL) goto done;
+	*pRq = bmRequest;
+
+	pValue = iosAlloc(hId,32);
+	if(pValue==NULL) goto done;
+	*pValue = bswap16(wValue);
+
+	pIndex = iosAlloc(hId,32);
+	if(pIndex==NULL) goto done;
+	*pIndex = bswap16(wIndex);
+
+	pLength = iosAlloc(hId,32);
+	if(pLength==NULL) goto done;
+	*pLength = bswap16(wLength);
+
+	pNull = iosAlloc(hId,32);
+	if(pNull==NULL) goto done;
+	*pNull = 0;
+
+	vec[0].data = pRqType;
+	vec[0].len = sizeof(u8);
+	vec[1].data = pRq;
+	vec[1].len = sizeof(u8);
+	vec[2].data = pValue;
+	vec[2].len = sizeof(u16);
+	vec[3].data = pIndex;
+	vec[3].len = sizeof(u16);
+	vec[4].data = pLength;
+	vec[4].len = sizeof(u16);
+	vec[5].data = pNull;
+	vec[5].len = sizeof(u8);
+	vec[6].data = rpData;
+	vec[6].len = wLength;
+
 	if(cb==NULL)
-		ret = IOS_IoctlvFormat(hId,fd,USB_IOCTL_CTRLMSG,"bbhhhb:d",bmRequestType,bmRequest,bswap16(wValue),bswap16(wIndex),bswap16(wLength),0,rpData,wLength);
-	else 
-		ret = IOS_IoctlvFormatAsync(hId,fd,USB_IOCTL_CTRLMSG,cb,usrdata,"bbhhhb:d",bmRequestType,bmRequest,bswap16(wValue),bswap16(wIndex),bswap16(wLength),0,rpData,wLength);
+		ret = IOS_Ioctlv(fd,USB_IOCTL_CTRLMSG,6,1,vec);
+	else {
+		msgcb = iosAlloc(hId,sizeof(struct _usb_cb));
+		if(msgcb==NULL) goto done;
+
+		msgcb->cb = cb;
+		msgcb->usrdata = usrdata;
+		msgcb->vec = vec;
+		return IOS_IoctlvAsync(fd,USB_IOCTL_CTRLMSG,6,1,vec,__usb_control_messageCB,msgcb);
+	}
+
+done:
+	if(pNull!=NULL) iosFree(hId,pNull);
+	if(pLength!=NULL) iosFree(hId,pLength);
+	if(pIndex!=NULL) iosFree(hId,pIndex);
+	if(pValue!=NULL) iosFree(hId,pValue);
+	if(pRq!=NULL) iosFree(hId,pRq);
+	if(pRqType!=NULL) iosFree(hId,pRqType);
+	if(vec!=NULL) iosFree(hId,vec);
 
 	return ret;
 }
 
-static __inline__ s32 __usb_interrupt_bulk_message(s32 fd,u8 ioctl,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
+static s32 __usb_interrupt_bulk_message(s32 fd,u8 ioctl,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
 {
-	s32 ret = USB_FAILED;
+	s32 ret = IPC_ENOMEM;
+	u8 *pEndP = NULL;
+	u16 *pLength = NULL;
+	ioctlv *vec = NULL;
+	struct _usb_cb *msgcb = NULL;
 
 	if(rpData==NULL || ((s32)rpData%32)!=0) return IPC_EINVAL;
 
+	vec = iosAlloc(hId,sizeof(ioctlv)*3);
+	if(vec==NULL) return IPC_ENOMEM;
+
+	pEndP = iosAlloc(hId,32);
+	if(pEndP==NULL) goto done;
+	*pEndP = bEndpoint;
+
+	pLength = iosAlloc(hId,32);
+	if(pLength==NULL) goto done;
+	*pLength = wLength;
+
+	vec[0].data = pEndP;
+	vec[0].len = sizeof(u8);
+	vec[1].data = pLength;
+	vec[1].len = sizeof(u16);
+	vec[2].data = rpData;
+	vec[2].len = wLength;
+
 	if(cb==NULL)
-		ret = IOS_IoctlvFormat(hId,fd,ioctl,"bh:d",bEndpoint,wLength,rpData,wLength);
-	else
-		ret = IOS_IoctlvFormatAsync(hId,fd,ioctl,cb,usrdata,"bh:d",bEndpoint,wLength,rpData,wLength);
+		ret = IOS_Ioctlv(fd,ioctl,2,1,vec);
+	else {
+		msgcb = iosAlloc(hId,sizeof(struct _usb_cb));
+		if(msgcb==NULL) goto done;
+
+		msgcb->cb = cb;
+		msgcb->usrdata = usrdata;
+		msgcb->vec = vec;
+		return IOS_IoctlvAsync(fd,ioctl,2,1,vec,__usb_bulk_messageCB,msgcb);
+	}
+
+done:
+	if(pLength!=NULL) iosFree(hId,pLength);
+	if(pEndP!=NULL) iosFree(hId,pEndP);
+	if(vec!=NULL) iosFree(hId,vec);
 
 	return ret;
 }
