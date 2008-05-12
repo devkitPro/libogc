@@ -36,6 +36,11 @@
 #define WPAD_STATE_ENABLING			1
 #define WPAD_STATE_ENABLED			2
 
+#define WPAD_ERR_NONE				0
+#define WPAD_ERR_NO_CONTROLLER		-1
+#define WPAD_ERR_NOT_READY			-2
+#define WPAD_ERR_TRANSFER			-3
+
 typedef struct _orient_t
 {
 	f32 roll;
@@ -108,6 +113,8 @@ typedef struct _ir_t
 
 typedef struct _wpad_data
 {
+	u16 err;
+
 	u16 btns_d;
 	u16 btns_h;
 	u16 btns_r;
