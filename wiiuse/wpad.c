@@ -169,6 +169,7 @@ void WPAD_Read(WPADData *data)
 
 	_CPU_ISR_Disable(level);
 	if(__wpads_inited==WPAD_STATE_DISABLED) {
+		for(i=0;i<MAX_WIIMOTES;i++) data[i].err = WPAD_ERR_NOT_READY;
 		_CPU_ISR_Restore(level);
 		return;
 	}
