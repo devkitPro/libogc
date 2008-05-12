@@ -174,43 +174,49 @@ void WPAD_Read(WPADData *data)
 	}
 	
 	for(i=0;i<MAX_WIIMOTES;i++) {
-		if(__wpads[i] && WIIMOTE_IS_SET(__wpads[i],(WIIMOTE_STATE_CONNECTED|WIIMOTE_STATE_HANDSHAKE_COMPLETE))) {
-			data[i].btns_d = __wpads[i]->btns;
-			data[i].btns_h = __wpads[i]->btns_held;
-			data[i].btns_r = __wpads[i]->btns_released;
+		data[i].err = WPAD_ERR_TRANSFER;
+		if(__wpads[i] && WIIMOTE_IS_SET(__wpads[i],WIIMOTE_STATE_CONNECTED)) {
+			if(WIIMOTE_IS_SET(__wpads[i],WIIMOTE_STATE_HANDSHAKE_COMPLETE)) {
+				data[i].btns_d = __wpads[i]->btns;
+				data[i].btns_h = __wpads[i]->btns_held;
+				data[i].btns_r = __wpads[i]->btns_released;
 
-			if(WIIMOTE_IS_SET(__wpads[i],WIIMOTE_STATE_ACC)) {
-				data->accel.x = __wpads[i]->accel.x;
-				data->accel.y = __wpads[i]->accel.y;
-				data->accel.z = __wpads[i]->accel.z;
+				if(WIIMOTE_IS_SET(__wpads[i],WIIMOTE_STATE_ACC)) {
+					data[i].accel.x = __wpads[i]->accel.x;
+					data[i].accel.y = __wpads[i]->accel.y;
+					data[i].accel.z = __wpads[i]->accel.z;
 
-				data->orient.roll = __wpads[i]->orient.roll;
-				data->orient.pitch = __wpads[i]->orient.pitch;
-				data->orient.yaw = __wpads[i]->orient.yaw;
-			}
-			if(WIIMOTE_IS_SET(__wpads[i],WIIMOTE_STATE_IR)) {
-				for(j=0,k=0;j<WPAD_MAX_IR_DOTS;j++) {
-					if(__wpads[i]->ir.dot[j].visible) {
-						data->ir.dot[k].x = __wpads[i]->ir.dot[j].x;
-						data->ir.dot[k].y = __wpads[i]->ir.dot[j].y;
-						data->ir.dot[k].order = __wpads[i]->ir.dot[j].order;
-						data->ir.dot[k].size = __wpads[i]->ir.dot[j].size;
-
-						k++;
-					}
+					data[i].orient.roll = __wpads[i]->orient.roll;
+					data[i].orient.pitch = __wpads[i]->orient.pitch;
+					data[i].orient.yaw = __wpads[i]->orient.yaw;
 				}
-				data->ir.num_dots = k;
+				if(WIIMOTE_IS_SET(__wpads[i],WIIMOTE_STATE_IR)) {
+					for(j=0,k=0;j<WPAD_MAX_IR_DOTS;j++) {
+						if(__wpads[i]->ir.dot[j].visible) {
+							data[i].ir.dot[k].x = __wpads[i]->ir.dot[j].x;
+							data[i].ir.dot[k].y = __wpads[i]->ir.dot[j].y;
+							data[i].ir.dot[k].order = __wpads[i]->ir.dot[j].order;
+							data[i].ir.dot[k].size = __wpads[i]->ir.dot[j].size;
 
-				data->ir.x = __wpads[i]->ir.x;
-				data->ir.y = __wpads[i]->ir.y;
-				data->ir.z = __wpads[i]->ir.z;
-				data->ir.dist = __wpads[i]->ir.distance;
+							k++;
+						}
+					}
+					data[i].ir.num_dots = k;
 
-			}
-			if(WIIMOTE_IS_SET(__wpads[i],WIIMOTE_STATE_EXP)) {
-				__wpad_read_expansion(__wpads[i],data);
-			}
-		}
+					data[i].ir.x = __wpads[i]->ir.x;
+					data[i].ir.y = __wpads[i]->ir.y;
+					data[i].ir.z = __wpads[i]->ir.z;
+					data[i].ir.dist = __wpads[i]->ir.distance;
+
+				}
+				if(WIIMOTE_IS_SET(__wpads[i],WIIMOTE_STATE_EXP)) {
+					__wpad_read_expansion(__wpads[i],&data[i]);
+				}
+				data[i].err = WPAD_ERR_NONE;
+			} else
+				data[i].err = WPAD_ERR_NOT_READY;
+		} else
+			data[i].err = WPAD_ERR_NO_CONTROLLER;
 	}
 	_CPU_ISR_Restore(level);
 }
