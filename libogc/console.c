@@ -221,9 +221,9 @@ void __console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,in
 
 	devoptab_list[STD_OUT] = &dotab_stdout;
 	devoptab_list[STD_ERR] = &dotab_stdout;
-	//setvbuf(stdout, NULL , _IONBF, 0);
-
 	_CPU_ISR_Restore(level);
+
+	setvbuf(stdout, NULL , _IONBF, 0);
 }
 
 void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_stride,int con_xres,int con_yres,int con_stride)
@@ -262,7 +262,8 @@ void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_str
 	VIDEO_SetPostRetraceCallback(__console_vipostcb);
 
 	_CPU_ISR_Restore(level);
-	//setvbuf(stdout, NULL , _IONBF, 0);
+
+	setvbuf(stdout, NULL , _IONBF, 0);
 }
 
 static int __console_parse_escsequence(char *pchr)
