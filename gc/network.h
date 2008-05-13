@@ -254,6 +254,7 @@ s32 net_setsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optl
 s32 net_ioctl(s32 s, u32 cmd, void *argp);
 s32 net_shutdown(s32 s, u32 how);
 
+struct hostent * net_gethostbyname(char *addrString);
 
 #ifdef __cplusplus
 	}
