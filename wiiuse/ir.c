@@ -303,7 +303,7 @@ static void reorder_ir_dots(struct ir_dot_t* dot) {
 		dot[i].order = 0;
 
 	for (order = 1; order < 5; ++order) {
-		for (i=0;(i<4) && (!dot[i].visible || dot[i].order); ++i)
+		for(i=0;(i<4) && (!dot[i].visible || dot[i].order); ++i)
 		if (i == 4)
 			return;
 
@@ -416,8 +416,6 @@ void wiiuse_set_ir(struct wiimote_t *wm,int status)
 	int ir_level = 0;
 	char* block1 = NULL;
 	char* block2 = NULL;
-
-	//printf("wiiuse_set_ir\n");
 
 	if(!wm) return;
 
@@ -640,6 +638,7 @@ void calculate_basic_ir(struct wiimote_t* wm, ubyte* data) {
 	for (i = 0; i < 4; ++i) {
 		dot[i].rx = BIG_ENDIAN_SHORT(dot[i].rx);
 		dot[i].ry = BIG_ENDIAN_SHORT(dot[i].ry);
+
 		if (dot[i].ry == 1023)
 			dot[i].visible = 0;
 		else {
@@ -669,7 +668,8 @@ void calculate_extended_ir(struct wiimote_t* wm, ubyte* data) {
 
 		dot[i].rx = BIG_ENDIAN_SHORT(dot[i].rx);
 		dot[i].ry = BIG_ENDIAN_SHORT(dot[i].ry);
-		dot[i].size = BIG_ENDIAN_SHORT(dot[i].size&0x0f);
+
+		dot[i].size = dot[i].size&0x0f;
 
 		/* if in range set to visible */
 		if (dot[i].ry == 1023)

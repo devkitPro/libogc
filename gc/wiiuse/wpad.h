@@ -94,9 +94,10 @@ typedef struct _expansion_t
 
 typedef struct _ir_dot_t
 {
-	u32 x,y;
+	s32 x,y;
 
 	u8 order;
+	u8 visible;
 	u8 size;
 } IRDot;
 

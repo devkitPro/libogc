@@ -198,6 +198,7 @@ void WPAD_Read(WPADData *data)
 							data[i].ir.dot[k].y = __wpads[i]->ir.dot[j].y;
 							data[i].ir.dot[k].order = __wpads[i]->ir.dot[j].order;
 							data[i].ir.dot[k].size = __wpads[i]->ir.dot[j].size;
+							data[i].ir.dot[k].visible = 1;
 
 							k++;
 						}
