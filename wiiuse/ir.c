@@ -303,7 +303,7 @@ static void reorder_ir_dots(struct ir_dot_t* dot) {
 		dot[i].order = 0;
 
 	for (order = 1; order < 5; ++order) {
-		for(i=0;(i<4) && (!dot[i].visible || dot[i].order); ++i)
+		for(i=0;(i<4) && (!dot[i].visible || dot[i].order);++i);
 		if (i == 4)
 			return;
 
