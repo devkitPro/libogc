@@ -131,7 +131,7 @@ static s32 __usb_bulk_messageCB(s32 result,void *usrdata)
 	return IPC_OK;
 }
 
-static s32 __usb_control_message(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
+static inline s32 __usb_control_message(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
 {
 	s32 ret = IPC_ENOMEM;
 	u8 *pRqType = NULL;
@@ -214,7 +214,7 @@ done:
 	return ret;
 }
 
-static s32 __usb_interrupt_bulk_message(s32 fd,u8 ioctl,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
+static inline s32 __usb_interrupt_bulk_message(s32 fd,u8 ioctl,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
 {
 	s32 ret = IPC_ENOMEM;
 	u8 *pEndP = NULL;
@@ -262,6 +262,12 @@ done:
 
 	return ret;
 }
+
+static inline s32 __usb_getdesc(s32 fd, u8 *buffer, u8 type, u8 index, u8 size)
+{
+	return __usb_control_message(fd, USB_ENDPOINT_IN ,USB_REQ_GETDESCRIPTOR, (type << 8) | index, 0, size, buffer, NULL, NULL);
+}
+
 
 s32 USB_Initialize()
 {
@@ -316,20 +322,176 @@ s32 USB_GetDeviceDescription(s32 fd,usb_devdesc *devdesc)
 
 	ret = __usb_control_message(fd,USB_ENDPOINT_IN,USB_REQ_GETDESCRIPTOR,(USB_DT_DEVICE<<8),0,USB_DT_DEVICE_SIZE,p,NULL,NULL);
 	if(ret>=0) memcpy(devdesc,p,USB_DT_DEVICE_SIZE);
+	devdesc->configurations = NULL;
 
 	if(p!=NULL) iosFree(hId,p);
 	return ret;
 }
 
+s32 USB_GetDescriptors(s32 fd, usb_devdesc *udd)
+{
+	u8 *buffer = NULL;
+	u8 *ptr = NULL;
+	usb_configurationdesc *ucd = NULL;
+	usb_interfacedesc *uid = NULL;
+	usb_endpointdesc *ued = NULL;
+	s32 retval = 0;
+	u32 iConf, iInterface, iEndpoint;
+
+	buffer = iosAlloc(hId, sizeof(*udd));
+	if(buffer == NULL)
+	{
+		retval = IPC_ENOHEAP;
+		goto free_and_error;
+	}
+
+	retval = __usb_getdesc(fd, buffer, USB_DT_DEVICE, 0, USB_DT_DEVICE_SIZE);
+	if(retval < 0)
+		goto free_and_error;
+	memcpy(udd, buffer, USB_DT_DEVICE_SIZE);
+	iosFree(hId, buffer);
+
+	udd->bcdUSB = bswap16(udd->bcdUSB);
+	udd->idVendor = bswap16(udd->idVendor);
+	udd->idProduct = bswap16(udd->idProduct);
+	udd->bcdDevice = bswap16(udd->bcdDevice);
+
+	udd->configurations = calloc(udd->bNumConfigurations, sizeof(*udd->configurations));
+	if(udd->configurations == NULL)
+	{
+		retval = IPC_ENOMEM;
+		goto free_and_error;
+	}
+	for(iConf = 0; iConf < udd->bNumConfigurations; iConf++)
+	{
+		buffer = iosAlloc(hId, USB_DT_CONFIG_SIZE);
+		if(buffer == NULL)
+		{
+			retval = IPC_ENOHEAP;
+			goto free_and_error;
+		}
+
+		retval = __usb_getdesc(fd, buffer, USB_DT_CONFIG, iConf, USB_DT_CONFIG_SIZE);
+		ucd = &udd->configurations[iConf];
+		memcpy(ucd, buffer, USB_DT_CONFIG_SIZE);
+		iosFree(hId, buffer);
+
+		ucd->wTotalLength = bswap16(ucd->wTotalLength);
+		buffer = iosAlloc(hId, ucd->wTotalLength);
+		if(buffer == NULL)
+		{
+			retval = IPC_ENOHEAP;
+			goto free_and_error;
+		}
+
+		retval = __usb_getdesc(fd, buffer, USB_DT_CONFIG, iConf, ucd->wTotalLength);
+		if(retval < 0)
+			goto free_and_error;
+
+		ptr = buffer;
+		ptr += ucd->bLength;
+
+		retval = IPC_ENOMEM;
+		ucd->interfaces = calloc(ucd->bNumInterfaces, sizeof(*ucd->interfaces));
+		if(ucd->interfaces == NULL)
+			goto free_and_error;
+		for(iInterface = 0; iInterface < ucd->bNumInterfaces; iInterface++)
+		{
+			uid = &ucd->interfaces[iInterface];
+			memcpy(uid, ptr, USB_DT_INTERFACE_SIZE);
+			ptr += uid->bLength;
+
+			uid->endpoints = calloc(uid->bNumEndpoints, sizeof(*uid->endpoints));
+			if(uid->endpoints == NULL)
+				goto free_and_error;
+			for(iEndpoint = 0; iEndpoint < uid->bNumEndpoints; iEndpoint++)
+			{
+				ued = &uid->endpoints[iEndpoint];
+				memcpy(ued, ptr, USB_DT_ENDPOINT_SIZE);
+				ptr += ued->bLength;
+				ued->wMaxPacketSize = bswap16(ued->wMaxPacketSize);
+			}
+		}
+	}
+
+
+	retval = 0;
+	free_and_error:
+	if(buffer != NULL)
+		iosFree(hId, buffer);
+	if(retval < 0)
+		USB_FreeDescriptors(udd);
+	return retval;
+}
+
+void USB_FreeDescriptors(usb_devdesc *udd)
+{
+	int iConf, iInterface;
+	usb_configurationdesc *ucd;
+	usb_interfacedesc *uid;
+	if(udd->configurations != NULL)
+	{
+		for(iConf = 0; iConf < udd->bNumConfigurations; iConf++)
+		{
+			ucd = &udd->configurations[iConf];
+			if(ucd->interfaces != NULL)
+			{
+				for(iInterface = 0; iInterface < ucd->bNumInterfaces; iInterface++)
+				{
+					uid = &ucd->interfaces[iInterface];
+					if(uid->endpoints != NULL)
+						free(uid->endpoints);
+				}
+				free(ucd->interfaces);
+			}
+		}
+		free(udd->configurations);
+	}
+}
+
 s32 USB_GetAsciiString(s32 fd,u16 wIndex,u16 wLangID,u16 wLength,void *rpData)
 {
 	s32 ret;
+	u8 bo, ro;
+	u8 *buf;
+	u8 *rp = (u8 *)rpData;
 
-	ret = __usb_control_message(fd,USB_ENDPOINT_IN,USB_REQ_GETDESCRIPTOR,((USB_DT_STRING<<8)+wIndex),wLangID,wLength,rpData,NULL,NULL);
-	if(ret>0) {
-		// todo: implement unicode to char translation
+	if(wLength > 255)
+		wLength = 255;
+
+	buf = iosAlloc(hId, 255); /* 255 is the highest possible length of a descriptor */
+	if(buf == NULL)
+		return IPC_ENOMEM;
+
+	ret = __usb_control_message(fd, USB_ENDPOINT_IN, USB_REQ_GETDESCRIPTOR, ((USB_DT_STRING << 8) + wIndex), wLangID, 255, buf, NULL, NULL);
+
+	/* index 0 gets a list of supported languages */
+	if(wIndex == 0)
+	{
+		if(ret > 0)
+			memcpy(rpData, buf, wLength);
+		iosFree(hId, buf);
+		return ret;
 	}
-	return ret;
+
+	if(ret > 0)
+	{
+		bo = 2;
+		ro = 0;
+		while(ro < (wLength - 1) && bo < buf[0])
+		{
+			if(buf[bo + 1])
+				rp[ro++] = '?';
+			else
+				rp[ro++] = buf[bo];
+			bo += 2;
+		}
+		rp[ro] = 0;
+		ret = ro - 1;
+	}
+
+	iosFree(hId, buf);
+ 	return ret;
 }
 
 s32 USB_ReadIntrMsg(s32 fd,u8 bEndpoint,u16 wLength,void *rpData)
@@ -492,5 +654,40 @@ s32 USB_GetDeviceList(const char *devpath,void *descr_buffer,u8 num_descr,u8 b0,
 	IOS_Close(fd);
 	return ret;
 }
+
+s32 USB_SetConfiguration(s32 fd, u8 configuration)
+{
+	return __usb_control_message(fd, (USB_CTRLTYPE_DIR_HOST2DEVICE | USB_CTRLTYPE_TYPE_STANDARD | USB_CTRLTYPE_REC_DEVICE), USB_REQ_SETCONFIG, configuration, 0, 0, NULL, NULL, NULL);
+}
+
+s32 USB_GetConfiguration(s32 fd, u8 *configuration)
+{
+	u8 *_configuration;
+	s32 retval;
+
+	_configuration = iosAlloc(hId, 1);
+	if(_configuration == NULL)
+		return IPC_ENOMEM;
+
+	retval = __usb_control_message(fd, (USB_CTRLTYPE_DIR_DEVICE2HOST | USB_CTRLTYPE_TYPE_STANDARD | USB_CTRLTYPE_REC_DEVICE), USB_REQ_GETCONFIG, 0, 0, 1, _configuration, NULL, NULL);
+	if(retval >= 0)
+		*configuration = *_configuration;
+	iosFree(hId, _configuration);
+
+	return retval;
+}
+
+s32 USB_SetAlternativeInterface(s32 fd, u8 interface, u8 alternateSetting)
+{
+	if(alternateSetting == 0)
+		return IPC_EINVAL;
+	return __usb_control_message(fd, (USB_CTRLTYPE_DIR_HOST2DEVICE | USB_CTRLTYPE_TYPE_STANDARD | USB_CTRLTYPE_REC_INTERFACE), USB_REQ_SETINTERFACE, alternateSetting, interface, 0, NULL, NULL, NULL);
+}
+
+s32 USB_ClearHalt(s32 fd, u8 endpoint)
+{
+	return __usb_control_message(fd, (USB_CTRLTYPE_DIR_HOST2DEVICE | USB_CTRLTYPE_TYPE_STANDARD | USB_CTRLTYPE_REC_ENDPOINT), USB_REQ_CLEARFEATURE, USB_FEATURE_ENDPOINT_HALT, endpoint, 0, NULL, NULL, NULL);
+}
+
 #endif /* defined(HW_RVL) */
 
