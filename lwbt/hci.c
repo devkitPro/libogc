@@ -1094,8 +1094,9 @@ err_t hci_host_num_comp_packets(u16_t conhdl, u16_t num_complete)
 	}
 	/* Assembling command packet */
 	p = hci_cmd_ass(p, HCI_H_NUM_COMPL_OCF, HCI_HC_BB_OGF, HCI_H_NUM_COMPL_PLEN); 
-	((u16_t *)p->payload)[2] = htole16(conhdl);
-	((u16_t *)p->payload)[3] = htole16(num_complete); /* Number of completed acl packets */
+	((u8_t*)p->payload)[4] = 1;
+	*(u16_t*)(p->payload+5) = htole16(conhdl);
+	*(u16_t*)(p->payload+7) = htole16(num_complete); /* Number of completed acl packets */
 
 	physbusif_output(p, p->tot_len);
 	btpbuf_free(p);
