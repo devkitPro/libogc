@@ -55,6 +55,34 @@ enum {
 	CONF_BOOL = 7
 };
 
+enum {
+	CONF_VIDEO_NTSC = 0,
+	CONF_VIDEO_PAL,
+	CONF_VIDEO_MPAL
+};
+
+enum {
+	CONF_REGION_JP = 0,
+	CONF_REGION_US,
+	CONF_REGION_EU
+};
+
+enum {
+	CONF_AREA_JPN = 0,
+	CONF_AREA_USA,
+	CONF_AREA_EUR,
+	CONF_AREA_AUS,
+	CONF_AREA_BRA,
+	CONF_AREA_TWN,
+	CONF_AREA_ROC,
+	CONF_AREA_KOR,
+	CONF_AREA_HKG,
+	CONF_AREA_ASI,
+	CONF_AREA_LTN,
+	CONF_AREA_SAF
+};
+
+
 typedef struct _conf_pad_device conf_pad_device;
 
 struct _conf_pad_device {
@@ -80,6 +108,15 @@ s32 CONF_GetCounterBias(void);
 s32 CONF_GetScreenSaverMode(void);
 s32 CONF_GetDisplayOffsetH(s8 *offset);
 s32 CONF_GetPadDevices(conf_pad_device *devs, int count);
+s32 CONF_GetNickName(u8 *nickname);
+s32 CONF_GetAspectRatio(void);
+s32 CONF_GetEULA(void);
+s32 CONF_GetParentalPassword(s8 *password);
+s32 CONF_GetParentalAnswer(s8 *answer);
+s32 CONF_GetWirelessConnection(void);
+s32 CONF_GetRegion(void);
+s32 CONF_GetArea(void);
+s32 CONF_GetVideo(void);
 
 #ifdef __cplusplus
    }
