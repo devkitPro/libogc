@@ -1987,11 +1987,15 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 		}
 	}
 #if defined(HW_RVL)
-	dtv = (_viReg[55]&0x01);
-	if(dtv!=oldDtvStatus) __VISetYUVSEL(dtv);
-	oldDtvStatus = dtv;
-
 	tv = VIDEO_GetCurrentTvMode();
+
+	dtv = (_viReg[55]&0x01);
+
+	if(dtv!=oldDtvStatus || tv!=oldTvStatus ) {
+		__VISetYUVSEL(dtv);
+		oldDtvStatus = dtv;
+	}
+
 	if(tv!=oldTvStatus) {
 		if(tv==VI_EURGB60) __VISetFilterEURGB60(1);
 		else __VISetFilterEURGB60(0);
@@ -2301,6 +2305,67 @@ u32 VIDEO_GetCurrentTvMode()
 
 	return tv;
 }
+
+GXRModeObj * VIDEO_GetPreferredMode(GXRModeObj *mode)
+{
+
+GXRModeObj *rmode;
+
+#if defined(HW_RVL)
+
+	if ( CONF_GetProgressiveScan() > 0 && VIDEO_HaveComponentCable() ) {
+		rmode = &TVNtsc480Prog;
+	} else {
+
+		u32 tvmode = CONF_GetVideo();
+		
+		switch ( tvmode ) {
+			case CONF_EBADVALUE:
+			case CONF_VIDEO_NTSC:
+				rmode = &TVNtsc480IntDf;
+				break;
+			case CONF_VIDEO_PAL:
+			case CONF_VIDEO_MPAL:
+				if ( CONF_GetEuRGB60() > 0 ) {
+					rmode = &TVEurgb60Hz480Int;
+				} else {
+					rmode = &TVMpal480IntDf;
+				}
+				break;
+			default:
+				rmode = &TVNtsc480IntDf;
+		}
+	}
+#else
+	u32 tvmode = VIDEO_GetCurrentTvMode();
+	switch(tvmode)
+	{
+		case VI_NTSC:
+			rmode = &TVNtsc480IntDf;
+			break;
+		case VI_PAL:
+			rmode = &TVPal528IntDf;
+			break;
+		case VI_MPAL:
+			rmode = &TVMpal480IntDf;
+			break;
+		default:
+			rmode = &TVNtsc480IntDf;
+			break;
+	}
+#endif
+
+	if ( NULL != mode ) {
+		memcpy( mode, rmode, sizeof(GXRModeObj));
+	} else {
+		mode = rmode;
+	}
+	
+	return mode;
+
+
+}
+
 
 u32 VIDEO_GetCurrentLine()
 {

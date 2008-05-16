@@ -196,6 +196,7 @@ VIRetraceCallback VIDEO_SetPostRetraceCallback(VIRetraceCallback callback);
  */
 u32 VIDEO_HaveComponentCable(void);
 
+GXRModeObj * VIDEO_GetPreferredMode(GXRModeObj *mode);
 
 #ifdef __cplusplus
    }
