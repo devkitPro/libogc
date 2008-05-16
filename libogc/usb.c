@@ -41,7 +41,7 @@ distribution.
 
 #include "usb.h"
 
-#define USB_HEAPSIZE					2048
+#define USB_HEAPSIZE					8192
 #define USB_STRUCTSIZE					96
 
 #define USB_IOCTL_CTRLMSG				0
