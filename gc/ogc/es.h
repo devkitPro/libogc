@@ -127,7 +127,10 @@ typedef struct _tmd {
 	u64 title_id;
 	u32 title_type;
 	u16 group_id;
-	u8 reserved[62];
+	u16 zero; // part of u32 region, but always zero. split due to misalignment
+	u16 region;
+	u8 ratings[16];
+	u8 reserved[42];
 	u32 access_rights;
 	u16 title_version;
 	u16 num_contents;
