@@ -170,8 +170,10 @@ s32 ISFS_Initialize()
 {
 	s32 ret = IPC_OK;
 
-	_fs_fd = IOS_Open(_dev_fs,0);
-	if(_fs_fd<0) return _fs_fd;
+	if(_fs_fd<0) {
+		_fs_fd = IOS_Open(_dev_fs,0);
+		if(_fs_fd<0) return _fs_fd;
+	}
 
 	if(_fs_initialized==0) {
 		hId = iosCreateHeap(ISFS_HEAPSIZE);
