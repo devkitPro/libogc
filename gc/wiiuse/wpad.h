@@ -41,6 +41,10 @@
 #define WPAD_ERR_NOT_READY			-2
 #define WPAD_ERR_TRANSFER			-3
 
+#ifdef __cplusplus
+   extern "C" {
+#endif /* __cplusplus */
+
 typedef struct _orient_t
 {
 	f32 roll;
@@ -128,15 +132,17 @@ typedef struct _wpad_data
 	Expansion exp;
 } WPADData;
 
-#ifdef __cplusplus
-   extern "C" {
-#endif /* __cplusplus */
+typedef void (*wpadsamplingcallback)(s32 chan);
 
+s32 WPAD_GetStatus();
 void WPAD_Init();
-void WPAD_Read(WPADData *data);
+void WPAD_Read(s32 chan,WPADData *data);
 void WPAD_SetDataFormat(s32 chan,s32 fmt);
 void WPAD_SetVRes(s32 chan,u32 xres,u32 yres);
-s32 WPAD_GetStatus();
+void WPAD_SetSamplingBufs(s32 chan,void *bufs,u32 cnt);
+u32 WPAD_GetLatestBufIndex(s32 chan);
+
+wpadsamplingcallback WPAD_SetSamplingCallback(s32 chan,wpadsamplingcallback cb);
 
 #ifdef __cplusplus
    }
