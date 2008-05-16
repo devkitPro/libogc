@@ -82,6 +82,16 @@ enum {
 	CONF_AREA_SAF
 };
 
+enum {
+	CONF_SHUTDOWN_STANDBY = 0,
+	CONF_SHUTDOWN_IDLE
+};
+
+enum {
+	CONF_LED_OFF = 0,
+	CONF_LED_DIM,
+	CONF_LED_BRIGHT
+};
 
 typedef struct _conf_pad_device conf_pad_device;
 

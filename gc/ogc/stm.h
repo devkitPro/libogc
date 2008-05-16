@@ -53,6 +53,7 @@ s32 __STM_Init();
 s32 __STM_Close();
 s32 STM_ShutdownToStandby();
 s32 STM_ShutdownToIdle();
+s32 STM_SetLedMode(u32 mode);
 s32 STM_RebootSystem();
 stmcallback STM_RegisterEventHandler(stmcallback newhandler);
 

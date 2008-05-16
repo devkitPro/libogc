@@ -233,6 +233,25 @@ s32 STM_ShutdownToIdle()
 	return res;
 }
 
+s32 STM_SetLedMode(u32 mode)
+{
+	int res;
+	if(__stm_initialized==0) {
+#ifdef DEBUG_STM
+		printf("STM notinited\n");
+#endif
+		return STM_ENOTINIT;
+	}
+	__stm_immbufin[0] = mode;
+	res= IOS_Ioctl(__stm_imm_fd,IOCTL_STM_LEDMODE,__stm_immbufin,0x20,__stm_immbufout,0x20);
+	if(res<0) {
+#ifdef DEBUG_STM
+		printf("STM LEDMODE failed: %d\n",res);
+#endif
+	}
+	return res;
+}
+
 s32 STM_RebootSystem()
 {
 	int res;
