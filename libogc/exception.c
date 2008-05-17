@@ -242,21 +242,9 @@ void c_default_exceptionhandler(frame_context *pCtx)
 }
 
 
-void __libc_wrapup();
-
 void __libogc_exit(int status)
 {
-	int level;
-
-#ifdef HW_RVL
-	__IOS_ShutdownSubsystems ();
-#endif
-	GX_AbortFrame();
-
-	_CPU_ISR_Disable(level);
-	__libc_wrapup();
-	__exception_closeall ();
-	__lwp_thread_stopmultitasking(Reload);
-
+	SYS_ResetSystem(SYS_SHUTDOWN,0,0);
+	Reload();
 }
 
