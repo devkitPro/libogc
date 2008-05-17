@@ -9,7 +9,6 @@
 #include "wiiuse_internal.h"
 #include "wiiuse/wpad.h"
 
-#define MAX_WIIMOTES			4
 #define MAX_RINGBUFS			250
 
 static u32 __wpads_inited = 0;
@@ -78,15 +77,24 @@ static void __wpad_read_expansion(struct wiimote_t *wm,WPADData *data)
 {
 	data->exp.type = wm->exp.type;
 
+	#define CP_JOY(dest, src)	do { \
+									(dest).min.x = (src).min.x; \
+									(dest).min.y = (src).min.y; \
+									(dest).max.x = (src).max.x; \
+									(dest).max.y = (src).max.y; \
+									(dest).center.x = (src).center.x; \
+									(dest).center.y = (src).center.y; \
+									(dest).ang = (src).ang; \
+									(dest).mag = (src).mag; \
+								} while (0)
+
 	switch(wm->exp.type) {
 		case EXP_NUNCHUK:
 		{
 			Nunchaku *nc = &data->exp.nunchuk;
 			struct nunchuk_t *wmnc = &wm->exp.nunchuk;
 
-			nc->btns_d = wmnc->btns;
-			nc->btns_h = wmnc->btns_held;
-			nc->btns_r = wmnc->btns_released;
+			nc->btns_h = wmnc->btns;
 			
 			nc->accel.x = wmnc->accel.x;
 			nc->accel.y = wmnc->accel.y;
@@ -99,11 +107,26 @@ static void __wpad_read_expansion(struct wiimote_t *wm,WPADData *data)
 			nc->gforce.x = wmnc->gforce.x;
 			nc->gforce.y = wmnc->gforce.y;
 			nc->gforce.z = wmnc->gforce.z;
+
+			CP_JOY(nc->js, wmnc->js);
 		}
 		break;
 
 		case EXP_CLASSIC:
-			break;
+		{
+			Classic *cc = &data->exp.classic;
+			struct classic_ctrl_t *wmcc = &wm->exp.classic;
+
+			cc->btns_h = wmcc->btns;
+
+			cc->r_shoulder = wmcc->r_shoulder;
+			cc->l_shoulder = wmcc->l_shoulder;
+
+			CP_JOY(cc->ljs, wmcc->ljs);
+			CP_JOY(cc->rjs, wmcc->rjs);
+		}
+		break;
+
 		case EXP_GUITAR_HERO_3:
 			break;
 		default:
@@ -119,9 +142,7 @@ static void __wpad_read_wiimote(struct wiimote_t *wm,WPADData *data)
 	data->err = WPAD_ERR_TRANSFER;
 	if(wm && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_CONNECTED)) {
 		if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_HANDSHAKE_COMPLETE)) {
-			data->btns_d = wm->btns;
-			data->btns_h = wm->btns_held;
-			data->btns_r = wm->btns_released;
+			data->btns_h = wm->btns;
 
 			if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_ACC)) {
 				data->accel.x = wm->accel.x;
@@ -167,7 +188,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 	u32 maxbufs;
 	WPADData *wpadd = NULL;
 
-	//printf("__wpad_eventCB(%p,%02x,%d,%d)\n",wm,event,maxbufs,__wpad_samplingbufs_idx[(wm->unid-1)]);
+	//printf("__wpad_eventCB(%p,%02x,%d)\n",wm,event,__wpad_samplingbufs_idx[(wm->unid-1)]);
 	switch(event) {
 		case WIIUSE_EVENT:
 			if(__wpad_autosamplingbufs[(wm->unid-1)]!=NULL) {
@@ -210,6 +231,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 	}
 }
 
+
 void WPAD_Init()
 {
 	u32 level;
@@ -224,6 +246,7 @@ void WPAD_Init()
 		memset(__wpad_keys,0,sizeof(struct linkkey_info)*MAX_WIIMOTES);
 
 		__wpads_registered = CONF_GetPadDevices(__wpad_devs,MAX_WIIMOTES);
+		//printf("%d pads registered\n", __wpads_registered);
 		if(__wpads_registered<=0) return;
 
 		__wpads = wiiuse_init(MAX_WIIMOTES,__wpad_eventCB);
@@ -232,6 +255,7 @@ void WPAD_Init()
 			return;
 		}
 
+		//printf("BTE init\n");
 		BTE_Init();
 		BTE_InitCore(__initcore_finished);
 
@@ -251,6 +275,8 @@ void WPAD_Read(s32 chan,WPADData *data)
 
 	_CPU_ISR_Disable(level);
 
+	u16 last_buttons = data->btns_h;
+	
 	memset(data,0,sizeof(WPADData));
 
 	if(__wpads_inited==WPAD_STATE_DISABLED) {
@@ -270,6 +296,8 @@ void WPAD_Read(s32 chan,WPADData *data)
 	idx = ((__wpad_samplingbufs_idx[chan]-1)+maxbufs)%maxbufs;
 
 	memcpy(data,&(wpadd[idx]),sizeof(WPADData));
+	
+	data->btns_l = last_buttons;
 
 	_CPU_ISR_Restore(level);
 }
@@ -380,3 +408,41 @@ u32 WPAD_GetLatestBufIndex(s32 chan)
 
 	return idx;
 }
+
+
+static WPADData wpaddata[MAX_WIIMOTES];
+
+u32 WPAD_ScanPads() {
+	static int first_scan = 1;
+	int i, connected = 0;
+	
+
+	for ( i = 0; i < MAX_WIIMOTES; i++ ) {
+
+		if ( first_scan ) {
+			memset( &wpaddata[i], 0, sizeof(WPADData) );
+			WPAD_SetDataFormat(i,WPAD_FMT_CORE);
+		}
+		WPAD_Read( i, &wpaddata[i]);
+
+	}
+	first_scan = 0;
+
+	return connected;		
+}
+
+u32 WPAD_ButtonsUp(int pad) {
+	if(pad<0 || pad>MAX_WIIMOTES) return 0;
+	return ( wpaddata[pad].btns_h ^ (~wpaddata[pad].btns_l));
+}
+
+u32 WPAD_ButtonsDown(int pad) {
+	if(pad<0 || pad>MAX_WIIMOTES) return 0;
+	return ( wpaddata[pad].btns_h & ~ wpaddata[pad].btns_l);
+}
+
+u32 WPAD_ButtonsHeld(int pad) {
+	if(pad<0 || pad>MAX_WIIMOTES) return 0;
+	return wpaddata[pad].btns_h;
+}
+
