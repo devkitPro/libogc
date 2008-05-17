@@ -47,9 +47,9 @@ static s32 __wpad_patch_finished(s32 result,void *usrdata)
 {
 	//printf("__wpad_patch_finished(%d)\n",result);
 
-	if(result==ERR_OK) {
+	//if(result==ERR_OK) {
 		BTE_InitSub(__wpad_init_finished);
-	}
+	//}
 	return ERR_OK;
 }
 
@@ -421,7 +421,6 @@ u32 WPAD_ScanPads() {
 
 		if ( first_scan ) {
 			memset( &wpaddata[i], 0, sizeof(WPADData) );
-			WPAD_SetDataFormat(i,WPAD_FMT_CORE);
 		}
 		WPAD_Read( i, &wpaddata[i]);
 
