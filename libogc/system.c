@@ -1227,12 +1227,13 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 	//TODO: implement SYS_HOTRESET
 	// either restart failed or this is SYS_SHUTDOWN
 
+	__IOS_ShutdownSubsystems();
+
 	_CPU_ISR_Disable(level);
 	__call_resetfuncs(TRUE);
 
 	LCDisable();
 
-	__IOS_ShutdownSubsystems();
 	__lwp_thread_dispatchdisable();
 	__lwp_thread_closeall();
 
