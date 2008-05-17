@@ -134,6 +134,14 @@ int wiiuse_register(struct wiimote_t *wm,struct bd_addr *bdaddr)
 	return 0;
 }	
 
+void wiiuse_disconnect(struct wiimote_t *wm)
+{
+	printf("wiiuse_disconnect()\n");
+	if(wm==NULL || wm->sock==NULL) return;
+
+	bte_disconnect(wm->sock);
+}
+
 void wiiuse_sensorbar_enable(int enable)
 {
 	__wiiuse_sensorbar_enable(enable);

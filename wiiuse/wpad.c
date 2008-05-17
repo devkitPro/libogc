@@ -9,13 +9,14 @@
 #include "wiiuse_internal.h"
 #include "wiiuse/wpad.h"
 
-#define MAX_RINGBUFS			250
+#define MAX_RINGBUFS			2
 
-static u32 __wpads_inited = 0;
-static s32 __wpads_ponded = 0;
-static u32 __wpads_connected = 0;
-static s32 __wpads_registered = 0;
+static vu32 __wpads_inited = 0;
+static vs32 __wpads_ponded = 0;
+static vu32 __wpads_connected = 0;
+static vs32 __wpads_registered = 0;
 static wiimote **__wpads = NULL;
+static WPADData wpaddata[MAX_WIIMOTES];
 static s32 __wpad_samplingbufs_idx[MAX_WIIMOTES];
 static conf_pad_device __wpad_devs[MAX_WIIMOTES];
 static u32 __wpad_max_autosamplingbufs[MAX_WIIMOTES];
@@ -224,7 +225,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			__wpads_connected |= (0x01<<(wm->unid-1));
 			break;
 		case WIIUSE_DISCONNECT:
-			//printf("wiimote disconnected\n");
+			printf("wiimote disconnected\n");
 			__wpad_samplingCB[(wm->unid-1)] = NULL;
 			__wpad_samplingbufs_idx[(wm->unid-1)] = 0;
 			__wpad_autosamplingbufs[(wm->unid-1)] = NULL;
@@ -275,13 +276,14 @@ void WPAD_Read(s32 chan,WPADData *data)
 	u32 idx;
 	u32 level;
 	u32 maxbufs;
+	u16 last_buttons;
 	WPADData *wpadd = NULL;
 
 	if(chan<WPAD_CHAN_0 || chan>WPAD_CHAN_3) return;
 
 	_CPU_ISR_Disable(level);
 
-	u16 last_buttons = data->btns_d;
+	last_buttons = data->btns_d;
 	
 	memset(data,0,sizeof(WPADData));
 
@@ -415,12 +417,25 @@ u32 WPAD_GetLatestBufIndex(s32 chan)
 	return idx;
 }
 
+void WPAD_Shutdown()
+{
+	s32 i;
 
-static WPADData wpaddata[MAX_WIIMOTES];
+	printf("WPAD_Shutdown()\n");
+	for(i=0;i<MAX_WIIMOTES;i++) {
+		if(__wpads[i] && WIIMOTE_IS_SET(__wpads[i],WIIMOTE_STATE_CONNECTED)) {
+			wiiuse_disconnect(__wpads[i]);
+		}
+	}
+	while(__wpads_connected);
 
-u32 WPAD_ScanPads() {
-	static int first_scan = 1;
+	BTE_Reset();
+}
+
+u32 WPAD_ScanPads() 
+{
 	int i, connected = 0;
+	static int first_scan = 1;
 	
 
 	for ( i = 0; i < MAX_WIIMOTES; i++ ) {
