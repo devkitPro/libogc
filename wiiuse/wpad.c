@@ -94,7 +94,9 @@ static void __wpad_read_expansion(struct wiimote_t *wm,WPADData *data)
 			Nunchaku *nc = &data->exp.nunchuk;
 			struct nunchuk_t *wmnc = &wm->exp.nunchuk;
 
-			nc->btns_h = wmnc->btns;
+			nc->btns_d = wmnc->btns;
+			nc->btns_h = wmnc->btns_held;
+			nc->btns_r = wmnc->btns_released;
 			
 			nc->accel.x = wmnc->accel.x;
 			nc->accel.y = wmnc->accel.y;
@@ -117,7 +119,9 @@ static void __wpad_read_expansion(struct wiimote_t *wm,WPADData *data)
 			Classic *cc = &data->exp.classic;
 			struct classic_ctrl_t *wmcc = &wm->exp.classic;
 
-			cc->btns_h = wmcc->btns;
+			cc->btns_d = wmcc->btns;
+			cc->btns_h = wmcc->btns_held;
+			cc->btns_r = wmcc->btns_released;
 
 			cc->r_shoulder = wmcc->r_shoulder;
 			cc->l_shoulder = wmcc->l_shoulder;
@@ -142,7 +146,9 @@ static void __wpad_read_wiimote(struct wiimote_t *wm,WPADData *data)
 	data->err = WPAD_ERR_TRANSFER;
 	if(wm && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_CONNECTED)) {
 		if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_HANDSHAKE_COMPLETE)) {
-			data->btns_h = wm->btns;
+			data->btns_d = wm->btns;
+			data->btns_h = wm->btns_held;
+			data->btns_r = wm->btns_released;
 
 			if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_ACC)) {
 				data->accel.x = wm->accel.x;
@@ -275,7 +281,7 @@ void WPAD_Read(s32 chan,WPADData *data)
 
 	_CPU_ISR_Disable(level);
 
-	u16 last_buttons = data->btns_h;
+	u16 last_buttons = data->btns_d;
 	
 	memset(data,0,sizeof(WPADData));
 
@@ -432,16 +438,16 @@ u32 WPAD_ScanPads() {
 
 u32 WPAD_ButtonsUp(int pad) {
 	if(pad<0 || pad>MAX_WIIMOTES) return 0;
-	return ( wpaddata[pad].btns_h ^ (~wpaddata[pad].btns_l));
+	return ( wpaddata[pad].btns_d ^ (~wpaddata[pad].btns_l));
 }
 
 u32 WPAD_ButtonsDown(int pad) {
 	if(pad<0 || pad>MAX_WIIMOTES) return 0;
-	return ( wpaddata[pad].btns_h & ~ wpaddata[pad].btns_l);
+	return ( wpaddata[pad].btns_d & ~ wpaddata[pad].btns_l);
 }
 
 u32 WPAD_ButtonsHeld(int pad) {
 	if(pad<0 || pad>MAX_WIIMOTES) return 0;
-	return wpaddata[pad].btns_h;
+	return wpaddata[pad].btns_d;
 }
 
