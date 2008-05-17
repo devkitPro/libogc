@@ -182,9 +182,9 @@ wpadsamplingcallback WPAD_SetSamplingCallback(s32 chan,wpadsamplingcallback cb);
 
 u32 WPAD_ScanPads();
 
-u32 WPAD_ButtonsUp(int pad);
-u32 WPAD_ButtonsDown(int pad);
-u32 WPAD_ButtonsHeld(int pad);
+u16 WPAD_ButtonsUp(int pad);
+u16 WPAD_ButtonsDown(int pad);
+u16 WPAD_ButtonsHeld(int pad);
 
 #ifdef __cplusplus
    }
