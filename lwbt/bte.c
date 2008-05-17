@@ -99,6 +99,7 @@ err_t pin_req(void *arg,struct bd_addr *bdaddr);
 err_t l2cap_connected(void *arg,struct l2cap_pcb *l2cappcb,u16_t result,u16_t status);
 err_t l2cap_accepted(void *arg,struct l2cap_pcb *l2cappcb,err_t err);
 err_t acl_conn_complete(void *arg,struct bd_addr *bdaddr);
+err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb);
 err_t l2cap_disconnected_ind(void *arg, struct l2cap_pcb *pcb, err_t err);
 
 err_t bte_input(void *arg,struct l2cap_pcb *pcb,struct pbuf *p,err_t err);
@@ -361,6 +362,17 @@ void BTE_Init()
 	SYS_SetPeriodicAlarm(btstate.timer_svc,&tb,&tb,bt_alarmhandler);
 }
 
+void BTE_Reset()
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	hci_arg(NULL);
+	hci_cmd_complete(NULL);
+	hci_reset();
+	_CPU_ISR_Restore(level);
+}
+
 s32 BTE_InitCore(btecallback cb)
 {
 	u32 level;
@@ -592,6 +604,29 @@ s32 bte_inquiry_ex(struct inquiry_info_ex *info,u8 max_cnt,u8 flush)
 	return (s32)((last_err==ERR_OK) ? fnd : last_err);
 }
 
+s32 bte_disconnect(struct bte_pcb *pcb)
+{
+	u32 level;
+	err_t err;
+
+	if(pcb==NULL) return ERR_VAL;
+
+	printf("bte_disconnect()\n");
+
+	_CPU_ISR_Disable(level);
+	if(pcb->in_pcb!=NULL) {
+		err = l2ca_disconnect_req(pcb->in_pcb,l2cap_disconnect_cfm);
+		if(err==ERR_OK) LWP_ThreadSleep(pcb->cmdq);
+	}
+	if(pcb->out_pcb!=NULL) {
+		err = l2ca_disconnect_req(pcb->out_pcb,l2cap_disconnect_cfm);
+		if(err==ERR_OK) LWP_ThreadSleep(pcb->cmdq);
+	}
+
+	_CPU_ISR_Restore(level);
+	return ERR_OK;
+}
+
 /*
 s32 bte_connect(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm,s32 (*recv)(void *arg,void *buffer,u16 len))
 {
@@ -800,6 +835,34 @@ err_t l2cap_disconnected_ind(void *arg, struct l2cap_pcb *pcb, err_t err)
 		bte->state = (u32)STATE_DISCONNECTED;
 		if(bte->disconn_cfm!=NULL) bte->disconn_cfm(bte->cbarg,bte,err);
 	}
+	return ERR_OK;
+}
+
+err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb)
+{
+	struct bte_pcb *bte = (struct bte_pcb*)arg;
+
+	if(bte==NULL) return ERR_OK;
+
+	printf("l2cap_disconnect_cfm()\n");
+	bte->state = (u32)STATE_DISCONNECTING;
+	switch(l2cap_psm(pcb)) {
+		case HIDP_OUTPUT_CHANNEL:
+			l2cap_close(bte->out_pcb);
+			bte->out_pcb = NULL;
+			break;
+		case HIDP_INPUT_CHANNEL:
+			l2cap_close(bte->in_pcb);
+			bte->in_pcb = NULL;
+			break;
+	}
+	if(bte->in_pcb==NULL && bte->out_pcb==NULL) {
+		bte->err = ERR_OK;
+		bte->state = (u32)STATE_DISCONNECTED;
+		if(bte->disconn_cfm!=NULL) bte->disconn_cfm(bte->cbarg,bte,ERR_OK);
+	}
+	
+	LWP_ThreadSignal(bte->cmdq);
 	return ERR_OK;
 }
 

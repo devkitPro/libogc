@@ -117,6 +117,7 @@ struct bte_pcb
 typedef s32 (*btecallback)(s32 result,void *userdata);
 
 void BTE_Init();
+void BTE_Reset();
 s32 BTE_InitCore(btecallback cb);
 s32 BTE_ApplyPatch(btecallback cb);
 s32 BTE_InitSub(btecallback cb);
@@ -131,6 +132,8 @@ void bte_disconnected(struct bte_pcb *pcb,s32 (disconn_cfm)(void *arg,struct bte
 
 s32 bte_registerdevice(struct bte_pcb *pcb,struct bd_addr *bdaddr);
 s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
+
+s32 bte_disconnect(struct bte_pcb *pcb);
 
 //s32 bte_listen(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm);
 //s32 bte_accept(struct bte_pcb *pcb,s32 (*recv)(void *arg,void *buffer,u16 len));
