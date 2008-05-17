@@ -101,7 +101,7 @@ void wiiuse_disable_expansion(struct wiimote_t *wm)
 {
 	if(!WIIMOTE_IS_SET(wm, WIIMOTE_STATE_EXP)) return;
 
-	/* tell the assoicated module the expansion was removed */
+	/* tell the associated module the expansion was removed */
 	switch(wm->exp.type) {
 		case EXP_NUNCHUK:
 			nunchuk_disconnected(&wm->exp.nunchuk);
