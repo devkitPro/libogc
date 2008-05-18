@@ -245,10 +245,6 @@ void c_default_exceptionhandler(frame_context *pCtx)
 
 void __libogc_exit(int status)
 {
-#if defined(HW_RVL)
-	WPAD_Shutdown();
-#endif
-	GX_AbortFrame();
 	SYS_ResetSystem(SYS_SHUTDOWN,0,0);
 	Reload();
 }

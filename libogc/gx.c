@@ -140,6 +140,14 @@ extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
 extern long long gettime();
 
+static s32 __gx_onreset(s32 final);
+
+static sys_resetinfo __gx_resetinfo = {
+	{},
+	__gx_onreset,
+	127
+};
+
 #ifdef _GP_DEBUG
 extern int printk(const char *fmt,...);
 #endif
@@ -189,6 +197,15 @@ static __inline__ void __GX_FifoReadDisable()
 {
 	((u16*)_gx)[1] = ((((u16*)_gx)[1]&~0x01)|0);
 	_cpReg[1] = ((u16*)_gx)[1];
+}
+
+static s32 __gx_onreset(s32 final)
+{
+	if(final==FALSE) {
+		GX_Flush();
+		GX_AbortFrame();
+	}
+	return 1;
 }
 
 static u8 __GX_IsGPCPUFifoLinked()
@@ -1029,10 +1046,9 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	GXTlutRegion *tregion = NULL;
 
 	LWP_InitQueue(&_gxwaitfinish);
+	SYS_RegisterResetFunc(&__gx_resetinfo);
 
 	memset(_gx,0,2048);
-
-	_gx[0x1ff] = 1;
 	
 	__GX_FifoInit();
 	GX_InitFifoBase(&_gxdefiniobj,base,size);
@@ -1040,6 +1056,8 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	GX_SetGPFifo(&_gxdefiniobj);
 	__GX_PEInit();
 	EnableWriteGatherPipe();
+
+	_gx[0x1ff] = 1;
 
 	_gx[0xaf] = 0xff;
 	_gx[0xaf] = (_gx[0xaf]&~0xff000000)|(_SHIFTL(0x0f,24,8));
