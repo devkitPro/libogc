@@ -249,6 +249,22 @@ static s32 __bte_send_request(struct ctrl_req_t *req)
 	return ERR_OK;
 }	
 
+static err_t __bte_cmd_finished(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result)
+{
+	err_t err;
+	struct bt_state *state = (struct bt_state*)arg;
+	
+	if(state==NULL) return ERR_OK;
+
+	hci_cmd_complete(NULL);
+	if(result==HCI_SUCCESS)
+		err = ERR_OK;
+	else
+		err = ERR_CONN;
+
+	return __bte_cmdfinish(state,err);
+}
+
 static void bte_process_handshake(struct bte_pcb *pcb,u8_t param,void *buf,u16_t len)
 {
 	s32 err;
@@ -367,9 +383,10 @@ void BTE_Reset()
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	hci_arg(NULL);
-	hci_cmd_complete(NULL);
+	hci_arg(&btstate);
+	hci_cmd_complete(__bte_cmd_finished);
 	hci_reset();
+	__bte_waitcmdfinish(&btstate);
 	_CPU_ISR_Restore(level);
 }
 
@@ -438,33 +455,6 @@ s32 BTE_ReadStoredLinkKey(struct linkkey_info *keys,u8 max_cnt,btecallback cb)
 
 	return ERR_OK;
 }
-
-/*
-void bte_start()
-{
-	u32 level;
-	struct timespec tb;
-
-	if(btstate.hci_inited==1) return;
-
-	//printf("bte_start()\n");
-
-	_CPU_ISR_Disable(level);
-	bte_reset_all();
-	hci_reset_all();
-	l2cap_reset_all();
-	physbusif_reset_all();
-
-	hci_wlp_complete(acl_wlp_completed);
-	hci_connection_complete(acl_conn_complete);
-	_CPU_ISR_Restore(level);
-	
-	bte_hci_initcore();
-	bte_hci_apply_patch();
-	bte_hci_initsub();
-
-}
-*/
 
 struct bte_pcb* bte_new()
 {
