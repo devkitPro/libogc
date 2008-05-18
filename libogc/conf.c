@@ -308,14 +308,13 @@ s32 CONF_GetLanguage(void)
 	return val;
 }
 
-s32 CONF_GetCounterBias(void) 
+s32 CONF_GetCounterBias(u32 *bias) 
 {
 	int res;
-	u32 val = 0;
-	res = CONF_Get("IPL.CB", &val, 4);
+	res = CONF_Get("IPL.CB", bias, 4);
 	if(res<0) return res;
 	if(res!=4) return CONF_EBADVALUE;
-	return val;
+	return CONF_ERR_OK;
 }
 
 s32 CONF_GetScreenSaverMode(void) 

@@ -9,6 +9,9 @@
 #include "timesupp.h"
 #include "exi.h"
 #include "system.h"
+#include "conf.h"
+
+#include <stdio.h>
 
 /* time variables */
 static u32 exi_wait_inited = 0;
@@ -122,16 +125,21 @@ unsigned long long timespec_to_ticks(const struct timespec *tp)
 
 int clock_gettime(struct timespec *tp)
 {
-	syssram* sram;
 	u32 gctime;
 
 	if(!tp) return -1;
 
 	if(!__SYS_GetRTC(&gctime)) return -1;
 
-	sram = __SYS_LockSram();
+#ifdef HW_DOL
+	syssram* sram = __SYS_LockSram();
 	gctime += sram->counter_bias;
 	__SYS_UnlockSram(0);
+#else
+	s32 wii_bias = 0;
+	if (CONF_GetCounterBias(&wii_bias) >= 0 ) gctime += wii_bias;
+	printf("bias is %d\n", wii_bias);
+#endif
 	gctime += 946684800;
 
 	tp->tv_sec = gctime;
@@ -191,7 +199,6 @@ time_t _DEFUN(time,(timer),
 {
 	time_t gctime = 0;
 	u32 command;
-	syssram* sram;
 
 
 	__time_exi_wait();
@@ -205,9 +212,14 @@ time_t _DEFUN(time,(timer),
 	EXI_Deselect(EXI_CHANNEL_0);
 	EXI_Unlock(EXI_CHANNEL_0);
 	
-	sram = __SYS_LockSram();
+#ifdef HW_DOL
+	syssram* sram = __SYS_LockSram();
 	gctime += sram->counter_bias;
 	__SYS_UnlockSram(0);
+#else
+	s32 wii_bias = 0;
+	if ( CONF_GetCounterBias(&wii_bias) >= 0 ) gctime += wii_bias;
+#endif
 
 	gctime += 946684800;
 

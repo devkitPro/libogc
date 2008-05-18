@@ -41,6 +41,7 @@ distribution.
 #define CONF_ENOTIMPL	-0x6005
 #define CONF_EBADVALUE	-0x6006
 #define CONF_ENOMEM		-0x6007
+#define	CONF_ERR_OK		0
 
 #ifdef __cplusplus
    extern "C" {
@@ -114,7 +115,7 @@ s32 CONF_GetPadSpeakerVolume(void);
 s32 CONF_GetPadMotorMode(void);
 s32 CONF_GetSoundMode(void);
 s32 CONF_GetLanguage(void);
-s32 CONF_GetCounterBias(void);
+s32 CONF_GetCounterBias(u32 *bias);
 s32 CONF_GetScreenSaverMode(void);
 s32 CONF_GetDisplayOffsetH(s8 *offset);
 s32 CONF_GetPadDevices(conf_pad_device *devs, int count);
