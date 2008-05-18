@@ -81,15 +81,21 @@ void hexdump(void *d, int len)
 	}
 }
 
+static s32 __usb_closeCB(s32 result,void *usrdata)
+{
+	__usbdev.fd = -1;
+	return result;
+}
+
 static s32 __writectrlmsgCB(s32 result,void *usrdata)
 {
-	btmemb_free(&ctrlbufs,usrdata);
+	if(usrdata!=NULL) btmemb_free(&ctrlbufs,usrdata);
 	return result;
 }
 
 static s32 __writebulkmsgCB(s32 result,void *usrdata)
 {
-	btmemb_free(&aclbufs,usrdata);
+	if(usrdata!=NULL) btmemb_free(&aclbufs,usrdata);
 	return result;
 }
 
@@ -160,6 +166,11 @@ static s32 __issue_intrread()
 	u8 *ptr;
 	struct usbtxbuf *buf;
 
+	if(__usbdev.openstate!=0x0002) {
+		printf("__issue_intrread: if closed\n");
+		return IPC_OK;
+	}
+
 	buf = (struct usbtxbuf*)btmemb_alloc(&ctrlbufs);
 	if(buf!=NULL) {
 		ptr = (u8*)((u32)buf + sizeof(struct usbtxbuf));
@@ -179,6 +190,11 @@ static s32 __issue_bulkread()
 	u32 len;
 	u8 *ptr;
 	struct usbtxbuf *buf;
+
+	if(__usbdev.openstate!=0x0002) {
+		printf("__issue_bulkread: if closed\n");
+		return IPC_OK;
+	}
 
 	buf = (struct usbtxbuf*)btmemb_alloc(&aclbufs);
 	if(buf!=NULL) {
@@ -310,6 +326,20 @@ void physbusif_init()
 	if(ret<0) return;
 
 	__usb_open(NULL);
+}
+
+void physbusif_close()
+{
+	if(__usbdev.openstate!=0x0002) return;
+
+	__usbdev.openstate = 4;
+	__wait4hci = 1;
+}
+
+void physbusif_shutdown()
+{
+	if(__usbdev.openstate!=0x0004) return;
+	USB_CloseDeviceAsync(&__usbdev.fd,__usb_closeCB,NULL);
 }
 
 void physbusif_reset_all()

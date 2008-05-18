@@ -249,19 +249,21 @@ static s32 __bte_send_request(struct ctrl_req_t *req)
 	return ERR_OK;
 }	
 
-static err_t __bte_cmd_finished(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result)
+static err_t __bte_shutdown_finished(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result)
 {
 	err_t err;
 	struct bt_state *state = (struct bt_state*)arg;
 	
 	if(state==NULL) return ERR_OK;
 
+	state->hci_inited = 0;
 	hci_cmd_complete(NULL);
 	if(result==HCI_SUCCESS)
 		err = ERR_OK;
 	else
 		err = ERR_CONN;
 
+	physbusif_close();
 	return __bte_cmdfinish(state,err);
 }
 
@@ -378,16 +380,25 @@ void BTE_Init()
 	SYS_SetPeriodicAlarm(btstate.timer_svc,&tb,&tb,bt_alarmhandler);
 }
 
-void BTE_Reset()
+void BTE_Shutdown()
 {
 	u32 level;
 
+	if(btstate.hci_inited==0) return;
+
+	LOG("BTE_Shutdown()\n");
+
 	_CPU_ISR_Disable(level);
+	btstate.cb = NULL;
+	btstate.usrdata = NULL;
+	btstate.hci_cmddone = 0;
 	hci_arg(&btstate);
-	hci_cmd_complete(__bte_cmd_finished);
+	hci_cmd_complete(__bte_shutdown_finished);
 	hci_reset();
 	__bte_waitcmdfinish(&btstate);
 	_CPU_ISR_Restore(level);
+
+	physbusif_shutdown();
 }
 
 s32 BTE_InitCore(btecallback cb)
@@ -1015,6 +1026,7 @@ err_t bte_hci_initcore_complete2(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf
 					err = ERR_CONN;
 			} else if(ocf==HCI_WRITE_PAGE_TIMEOUT) {
 				if(result==HCI_SUCCESS) {
+					state->hci_inited = 1;
 					hci_cmd_complete(NULL);
 					return __bte_cmdfinish(state,ERR_OK);
 				} else

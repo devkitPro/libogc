@@ -117,7 +117,7 @@ struct bte_pcb
 typedef s32 (*btecallback)(s32 result,void *userdata);
 
 void BTE_Init();
-void BTE_Reset();
+void BTE_Shutdown();
 s32 BTE_InitCore(btecallback cb);
 s32 BTE_ApplyPatch(btecallback cb);
 s32 BTE_InitSub(btecallback cb);
