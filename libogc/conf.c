@@ -426,7 +426,7 @@ s32 CONF_GetParentalAnswer(s8 *answer)
 	return res;
 }
 
-s32 CONF_GetWirelessConnection(void)
+s32 CONF_GetWiiConnect24(void)
 {
 	int res;
 	u32 val = 0;

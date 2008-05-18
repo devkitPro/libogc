@@ -123,7 +123,7 @@ s32 CONF_GetAspectRatio(void);
 s32 CONF_GetEULA(void);
 s32 CONF_GetParentalPassword(s8 *password);
 s32 CONF_GetParentalAnswer(s8 *answer);
-s32 CONF_GetWirelessConnection(void);
+s32 CONF_GetWiiConnect24(void);
 s32 CONF_GetRegion(void);
 s32 CONF_GetArea(void);
 s32 CONF_GetVideo(void);
