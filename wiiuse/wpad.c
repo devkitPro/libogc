@@ -25,7 +25,23 @@ static WPADData __wpad_samplingbufs[MAX_WIIMOTES][MAX_RINGBUFS];
 static WPADData *__wpad_autosamplingbufs[MAX_WIIMOTES] = {NULL,NULL,NULL,NULL};
 static wpadsamplingcallback __wpad_samplingCB[MAX_WIIMOTES] = {NULL,NULL,NULL,NULL};
 
+static s32 __wpad_onreset(s32 final);
 static void __wpad_eventCB(struct wiimote_t *wm,s32 event);
+
+static sys_resetinfo __wpad_resetinfo = {
+	{},
+	__wpad_onreset,
+	127
+};
+
+static s32 __wpad_onreset(s32 final)
+{
+	//printf("__wpad_onreset(%d)\n",final);
+	if(final==FALSE) {
+		WPAD_Shutdown();
+	}
+	return 1;
+}
 
 static s32 __wpad_init_finished(s32 result,void *usrdata)
 {
@@ -47,10 +63,7 @@ static s32 __wpad_init_finished(s32 result,void *usrdata)
 static s32 __wpad_patch_finished(s32 result,void *usrdata)
 {
 	//printf("__wpad_patch_finished(%d)\n",result);
-
-	//if(result==ERR_OK) {
-		BTE_InitSub(__wpad_init_finished);
-	//}
+	BTE_InitSub(__wpad_init_finished);
 	return ERR_OK;
 }
 
@@ -270,6 +283,8 @@ void WPAD_Init()
 		BTE_Init();
 		BTE_InitCore(__initcore_finished);
 
+		SYS_RegisterResetFunc(&__wpad_resetinfo);
+	
 		__wpads_inited = WPAD_STATE_ENABLING;
 	}
 	_CPU_ISR_Restore(level);
