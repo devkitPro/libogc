@@ -123,6 +123,7 @@ s32 USB_Deinitialize();
 
 s32 USB_OpenDevice(const char *device,u16 vid,u16 pid,s32 *fd);
 s32 USB_CloseDevice(s32 *fd);
+s32 USB_CloseDeviceAsync(s32 *fd,usbcallback cb,void *usrdata);
 
 s32 USB_GetDescriptors(s32 fd, usb_devdesc *udd);
 void USB_FreeDescriptors(usb_devdesc *udd);
