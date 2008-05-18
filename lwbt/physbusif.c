@@ -166,10 +166,7 @@ static s32 __issue_intrread()
 	u8 *ptr;
 	struct usbtxbuf *buf;
 
-	if(__usbdev.openstate!=0x0002) {
-		printf("__issue_intrread: if closed\n");
-		return IPC_OK;
-	}
+	if(__usbdev.openstate!=0x0002) return IPC_OK;
 
 	buf = (struct usbtxbuf*)btmemb_alloc(&ctrlbufs);
 	if(buf!=NULL) {
@@ -191,10 +188,7 @@ static s32 __issue_bulkread()
 	u8 *ptr;
 	struct usbtxbuf *buf;
 
-	if(__usbdev.openstate!=0x0002) {
-		printf("__issue_bulkread: if closed\n");
-		return IPC_OK;
-	}
+	if(__usbdev.openstate!=0x0002) return IPC_OK;
 
 	buf = (struct usbtxbuf*)btmemb_alloc(&aclbufs);
 	if(buf!=NULL) {

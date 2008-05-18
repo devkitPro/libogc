@@ -21,6 +21,8 @@ struct _usb_p
 };
 
 void physbusif_init();
+void physbusif_close();
+void physbusif_shutdown();
 void physbusif_reset_all();
 void physbusif_output(struct pbuf *p,u16_t len);
 

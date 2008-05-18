@@ -176,8 +176,11 @@ static void __wpad_read_wiimote(struct wiimote_t *wm,WPADData *data)
 				data->orient.pitch = wm->orient.pitch;
 				data->orient.yaw = wm->orient.yaw;
 			}
+
+			data->ir.num_dots = 0;
 			if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR)) {
 				for(j=0,k=0;j<WPAD_MAX_IR_DOTS;j++) {
+					data->ir.dot[k].visible = 0;
 					if(wm->ir.dot[j].visible) {
 						data->ir.dot[k].x = wm->ir.dot[j].x;
 						data->ir.dot[k].y = wm->ir.dot[j].y;
@@ -447,7 +450,7 @@ void WPAD_Shutdown()
 	}
 	while(__wpads_connected);
 
-	BTE_Reset();
+	BTE_Shutdown();
 }
 
 u32 WPAD_ScanPads() 
