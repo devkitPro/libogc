@@ -229,7 +229,6 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			__wpads_connected |= (0x01<<(wm->unid-1));
 			break;
 		case WIIUSE_DISCONNECT:
-			printf("wiimote disconnected\n");
 			__wpad_samplingCB[(wm->unid-1)] = NULL;
 			__wpad_samplingbufs_idx[(wm->unid-1)] = 0;
 			__wpad_autosamplingbufs[(wm->unid-1)] = NULL;
@@ -426,7 +425,6 @@ void WPAD_Shutdown()
 	}
 	_CPU_ISR_Restore(level);
 
-	printf("WPAD_Shutdown()\n");
 	for(i=0;i<MAX_WIIMOTES;i++) {
 		if(__wpads[i] && WIIMOTE_IS_SET(__wpads[i],WIIMOTE_STATE_CONNECTED)) {
 			wiiuse_disconnect(__wpads[i]);

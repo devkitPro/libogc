@@ -601,8 +601,6 @@ s32 bte_disconnect(struct bte_pcb *pcb)
 
 	if(pcb==NULL) return ERR_VAL;
 
-	printf("bte_disconnect()\n");
-
 	_CPU_ISR_Disable(level);
 	if(pcb->in_pcb!=NULL) {
 		err = l2ca_disconnect_req(pcb->in_pcb,l2cap_disconnect_cfm);
@@ -834,7 +832,6 @@ err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb)
 
 	if(bte==NULL) return ERR_OK;
 
-	printf("l2cap_disconnect_cfm()\n");
 	bte->state = (u32)STATE_DISCONNECTING;
 	switch(l2cap_psm(pcb)) {
 		case HIDP_OUTPUT_CHANNEL:

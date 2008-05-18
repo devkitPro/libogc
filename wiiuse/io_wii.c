@@ -136,7 +136,6 @@ int wiiuse_register(struct wiimote_t *wm,struct bd_addr *bdaddr)
 
 void wiiuse_disconnect(struct wiimote_t *wm)
 {
-	printf("wiiuse_disconnect()\n");
 	if(wm==NULL || wm->sock==NULL) return;
 
 	bte_disconnect(wm->sock);
