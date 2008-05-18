@@ -417,6 +417,14 @@ u32 WPAD_GetLatestBufIndex(s32 chan)
 void WPAD_Shutdown()
 {
 	s32 i;
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
+		_CPU_ISR_Restore(level);
+		return;
+	}
+	_CPU_ISR_Restore(level);
 
 	printf("WPAD_Shutdown()\n");
 	for(i=0;i<MAX_WIIMOTES;i++) {
