@@ -412,11 +412,12 @@ s32 USB_GetDescriptors(s32 fd, usb_devdesc *udd)
 				ued->wMaxPacketSize = bswap16(ued->wMaxPacketSize);
 			}
 		}
+		iosFree(hId, buffer);
+		buffer = NULL;
 	}
+	retval = IPC_OK;
 
-
-	retval = 0;
-	free_and_error:
+free_and_error:
 	if(buffer != NULL)
 		iosFree(hId, buffer);
 	if(retval < 0)
