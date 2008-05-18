@@ -1498,13 +1498,16 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 	loc_ip.addr = 0;
 	mask.addr = 0;
 	gw.addr = 0;
-	if(!use_dhcp && (!gateway || gateway->s_addr==0)) return -1;
-	if(!local_ip || !netmask || local_ip->s_addr==0 || netmask->s_addr==0) return -1;
 
-	loc_ip.addr = local_ip->s_addr;
-	mask.addr = netmask->s_addr;
-	if(!use_dhcp) gw.addr = gateway->s_addr;
 
+	if(use_dhcp==FALSE) {
+		if( !gateway || gateway->s_addr==0
+			|| !local_ip || local_ip->s_addr==0
+			|| !netmask || netmask->s_addr==0 ) return -1;
+			loc_ip.addr = local_ip->s_addr;
+			mask.addr = netmask->s_addr;
+			gw.addr = gateway->s_addr;
+	}
 	hbba = bba_create(&g_hNetIF);
 	pnet = netif_add(&g_hNetIF,&loc_ip, &mask, &gw, hbba, bba_init, net_input);
 	if(pnet) {
@@ -1553,9 +1556,9 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 		
 		if ( retries < 20 ) {
 			//copy back network addresses
-			//if ( local_ip != NULL ) strcpy(local_ip, inet_ntoa( *(struct in_addr*)&g_hNetIF.ip_addr ));
-			//if ( gateway != NULL ) strcpy(gateway, inet_ntoa( *(struct in_addr*)&g_hNetIF.gw ));
-			//if ( netmask != NULL ) strcpy(netmask, inet_ntoa( *(struct in_addr*)&g_hNetIF.netmask ));
+			if ( local_ip != NULL ) local_ip->s_addr = g_hNetIF.ip_addr.addr;
+			if ( gateway != NULL ) gateway->s_addr = g_hNetIF.gw.addr;
+			if ( netmask != NULL ) netmask->s_addr = g_hNetIF.netmask.addr;
 		} else {
 			ret = -2;
 		}
@@ -1567,95 +1570,25 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 s32 if_config(char *local_ip, char *netmask, char *gateway,boolean use_dhcp)
 {
 	s32 ret = 0;
-	struct ip_addr loc_ip, mask, gw;
-	struct netif *pnet;
-	struct timespec tb;
-	dev_s hbba = NULL;
+	struct in_addr loc_ip, mask, gw;
 
-	if(g_netinitiated) return 0;
-	g_netinitiated = 1;
+	loc_ip.s_addr = 0;
+	mask.s_addr = 0;
+	gw.s_addr = 0;
 
-	AddDevice(&dotab_stdnet);
-#ifdef STATS
-	stats_init();
-#endif /* STATS */
-	
-	sys_init();
-	mem_init();
-	memp_init();
-	pbuf_init();
-	netif_init();
+	if ( local_ip != NULL ) loc_ip.s_addr = inet_addr(local_ip);
+	if ( netmask != NULL ) mask.s_addr = inet_addr(netmask);
+	if ( gateway != NULL ) gw.s_addr = inet_addr(gateway);
 
-	// init tcpip thread message box
-	if(MQ_Init(&netthread_mbox,MQBOX_SIZE)!=MQ_ERROR_SUCCESSFUL) return -1;
+	ret = if_configex( &loc_ip, &mask, &gw, use_dhcp );
 
-	// create & setup interface 
-	loc_ip.addr = 0;
-	mask.addr = 0;
-	gw.addr = 0;
-	if(use_dhcp==FALSE) {
-		if(gateway || gateway[0]=='\0'
-			|| !local_ip || local_ip[0]=='\0'
-			|| !netmask || netmask[0]=='\0') return -1;
-			loc_ip.addr = inet_addr(local_ip);
-			mask.addr = inet_addr(netmask);
-			gw.addr = inet_addr(gateway);
-	}
+	if (ret<0) return ret;
 
-	hbba = bba_create(&g_hNetIF);
-	pnet = netif_add(&g_hNetIF,&loc_ip, &mask, &gw, hbba, bba_init, net_input);
-	if(pnet) {
-		netif_set_up(pnet);
-		netif_set_default(pnet);
-#if (LWIP_DHCP)
-		if(use_dhcp==TRUE) {
-			//setup coarse timer
-			tb.tv_sec = DHCP_COARSE_TIMER_SECS;
-			tb.tv_nsec = 0;
-			net_dhcpcoarse_ticks = __lwp_wd_calc_ticks(&tb);
-			__lwp_wd_initialize(&dhcp_coarsetimer_cntrl,__dhcpcoarse_timer,DHCPCOARSE_TIMER_ID,NULL);
-			__lwp_wd_insert_ticks(&dhcp_coarsetimer_cntrl,net_dhcpcoarse_ticks);
-			
-			//setup fine timer
-			tb.tv_sec = 0;
-			tb.tv_nsec = DHCP_FINE_TIMER_MSECS*TB_NSPERMS;
-			net_dhcpfine_ticks = __lwp_wd_calc_ticks(&tb);
-			__lwp_wd_initialize(&dhcp_finetimer_cntrl,__dhcpfine_timer,DHCPFINE_TIMER_ID,NULL);
-			__lwp_wd_insert_ticks(&dhcp_finetimer_cntrl,net_dhcpfine_ticks);
-
-			//now start dhcp client
-			dhcp_start(pnet);
-		}
-#endif
-	} else
-		return -1;
-	
-	// setup loopinterface
-	IP4_ADDR(&loc_ip, 127,0,0,1);
-	IP4_ADDR(&mask, 255,0,0,0);
-	IP4_ADDR(&gw, 127,0,0,1);
-	netif_add(&g_hLoopIF,&loc_ip,&mask,&gw,NULL,loopif_init,net_input);
-
-	//last and least start the tcpip layer
-	ret = net_init();
-
-	if ( ret == 0 && use_dhcp == TRUE ) {
-		
-		int retries = 0;
-		// wait for dhcp to bind
-		while ( g_hNetIF.dhcp->state != DHCP_BOUND && retries < 20 ) {
-			retries++;
-			usleep(500000);
-		}
-		
-		if ( retries < 20 ) {
-			//copy back network addresses
-			if ( local_ip != NULL ) strcpy(local_ip, inet_ntoa( *(struct in_addr*)&g_hNetIF.ip_addr ));
-			if ( gateway != NULL ) strcpy(gateway, inet_ntoa( *(struct in_addr*)&g_hNetIF.gw ));
-			if ( netmask != NULL ) strcpy(netmask, inet_ntoa( *(struct in_addr*)&g_hNetIF.netmask ));
-		} else {
-			ret = -2;
-		}
+	if ( use_dhcp == TRUE ) {
+		//copy back network addresses
+		if ( local_ip != NULL ) strcpy(local_ip, inet_ntoa( loc_ip ));
+		if ( netmask != NULL ) strcpy(netmask, inet_ntoa( mask));
+		if ( gateway != NULL ) strcpy(gateway, inet_ntoa( gw ));
 	}
 	return ret;
 }
