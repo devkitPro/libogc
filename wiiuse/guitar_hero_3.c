@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/guitar_hero_3.c,v 1.1 2008-05-08 09:42:14 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/guitar_hero_3.c,v 1.2 2008-05-18 00:15:51 shagkur Exp $
  *
  */
 
@@ -159,6 +159,9 @@ void guitar_hero_3_event(struct guitar_hero_3_t* gh3, ubyte* msg) {
 static void guitar_hero_3_pressed_buttons(struct guitar_hero_3_t* gh3, short now) {
 	/* message is inverted (0 is active, 1 is inactive) */
 	now = ~now & GUITAR_HERO_3_BUTTON_ALL;
+
+	/* preserve old btns pressed */
+	gh3->btns_last = gh3->btns;
 
 	/* pressed now & were pressed, then held */
 	gh3->btns_held = (now & gh3->btns);

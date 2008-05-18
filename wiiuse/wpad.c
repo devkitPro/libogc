@@ -98,6 +98,7 @@ static void __wpad_read_expansion(struct wiimote_t *wm,WPADData *data)
 			nc->btns_d = wmnc->btns;
 			nc->btns_h = wmnc->btns_held;
 			nc->btns_r = wmnc->btns_released;
+			nc->btns_l = wmnc->btns_last;
 			
 			nc->accel.x = wmnc->accel.x;
 			nc->accel.y = wmnc->accel.y;
@@ -123,6 +124,7 @@ static void __wpad_read_expansion(struct wiimote_t *wm,WPADData *data)
 			cc->btns_d = wmcc->btns;
 			cc->btns_h = wmcc->btns_held;
 			cc->btns_r = wmcc->btns_released;
+			cc->btns_l = wmcc->btns_last;
 
 			cc->r_shoulder = wmcc->r_shoulder;
 			cc->l_shoulder = wmcc->l_shoulder;
@@ -150,6 +152,7 @@ static void __wpad_read_wiimote(struct wiimote_t *wm,WPADData *data)
 			data->btns_d = wm->btns;
 			data->btns_h = wm->btns_held;
 			data->btns_r = wm->btns_released;
+			data->btns_l = wm->btns_last;
 
 			if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_ACC)) {
 				data->accel.x = wm->accel.x;
@@ -218,6 +221,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 		case WIIUSE_CONNECT:
 			//printf("wiimote connected\n");
 			__wpad_samplingbufs_idx[(wm->unid-1)] = 0;
+			memset(&wpaddata[(wm->unid-1)],0,sizeof(WPADData));
 			memset(__wpad_samplingbufs[(wm->unid-1)],0,MAX_RINGBUFS);
 			wiiuse_set_ir_position(wm,(CONF_GetSensorBarPosition()^1));
 			wiiuse_set_ir_sensitivity(wm,CONF_GetIRSensitivity());
@@ -231,6 +235,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			__wpad_autosamplingbufs[(wm->unid-1)] = NULL;
 			__wpad_max_autosamplingbufs[(wm->unid-1)] = 0;
 			memset(__wpad_samplingbufs[(wm->unid-1)],0,MAX_RINGBUFS);
+			memset(&wpaddata[(wm->unid-1)],0,sizeof(WPADData));
 			__wpads_connected &= ~(0x01<<(wm->unid-1));
 			break;
 		default:
@@ -276,17 +281,13 @@ void WPAD_Read(s32 chan,WPADData *data)
 	u32 idx;
 	u32 level;
 	u32 maxbufs;
-	u16 last_buttons;
 	WPADData *wpadd = NULL;
 
 	if(chan<WPAD_CHAN_0 || chan>WPAD_CHAN_3) return;
 
-	_CPU_ISR_Disable(level);
-
-	last_buttons = data->btns_d;
-	
 	memset(data,0,sizeof(WPADData));
 
+	_CPU_ISR_Disable(level);
 	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		data->err = WPAD_ERR_NOT_READY;
 		_CPU_ISR_Restore(level);
@@ -302,11 +303,7 @@ void WPAD_Read(s32 chan,WPADData *data)
 	}
 
 	idx = ((__wpad_samplingbufs_idx[chan]-1)+maxbufs)%maxbufs;
-
-	memcpy(data,&(wpadd[idx]),sizeof(WPADData));
-	
-	data->btns_l = last_buttons;
-
+	*data = wpadd[idx];
 	_CPU_ISR_Restore(level);
 }
 
@@ -434,34 +431,32 @@ void WPAD_Shutdown()
 
 u32 WPAD_ScanPads() 
 {
-	int i, connected = 0;
-	static int first_scan = 1;
-	
+	u16 btns_l;
+	u32 i, connected = 0;
 
-	for ( i = 0; i < MAX_WIIMOTES; i++ ) {
-
-		if ( first_scan ) {
-			memset( &wpaddata[i], 0, sizeof(WPADData) );
-		}
-		WPAD_Read( i, &wpaddata[i]);
+	for(i=0;i<MAX_WIIMOTES;i++) {
+		btns_l = wpaddata[i].btns_d;
+		WPAD_Read(i,&wpaddata[i]);
+		wpaddata[i].btns_l = btns_l;
 
 	}
-	first_scan = 0;
-
 	return connected;		
 }
 
-u32 WPAD_ButtonsUp(int pad) {
+u16 WPAD_ButtonsUp(int pad)
+{
 	if(pad<0 || pad>MAX_WIIMOTES) return 0;
-	return ( wpaddata[pad].btns_d ^ (~wpaddata[pad].btns_l));
+	return ((~wpaddata[pad].btns_d)&wpaddata[pad].btns_l);
 }
 
-u32 WPAD_ButtonsDown(int pad) {
+u16 WPAD_ButtonsDown(int pad)
+{
 	if(pad<0 || pad>MAX_WIIMOTES) return 0;
-	return ( wpaddata[pad].btns_d & ~ wpaddata[pad].btns_l);
+	return (wpaddata[pad].btns_d&~wpaddata[pad].btns_l);
 }
 
-u32 WPAD_ButtonsHeld(int pad) {
+u16 WPAD_ButtonsHeld(int pad) 
+{
 	if(pad<0 || pad>MAX_WIIMOTES) return 0;
 	return wpaddata[pad].btns_d;
 }

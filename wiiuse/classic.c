@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/classic.c,v 1.1 2008-05-08 09:42:14 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/classic.c,v 1.2 2008-05-18 00:15:51 shagkur Exp $
  *
  */
 
@@ -177,6 +177,9 @@ void classic_ctrl_event(struct classic_ctrl_t* cc, ubyte* msg) {
 static void classic_ctrl_pressed_buttons(struct classic_ctrl_t* cc, short now) {
 	/* message is inverted (0 is active, 1 is inactive) */
 	now = ~now & CLASSIC_CTRL_BUTTON_ALL;
+
+	/* preserve old btns pressed */
+	cc->btns_last = cc->btns;
 
 	/* pressed now & were pressed, then held */
 	cc->btns_held = (now & cc->btns);

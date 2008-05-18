@@ -450,6 +450,9 @@ void wiiuse_pressed_buttons(struct wiimote_t* wm, ubyte* msg) {
 	/* convert to big endian */
 	now = BIG_ENDIAN_SHORT(*(short*)msg) & WIIMOTE_BUTTON_ALL;
 
+	/* preserve old btns pressed */
+	wm->btns_last = wm->btns;
+
 	/* pressed now & were pressed, then held */
 	wm->btns_held = (now & wm->btns);
 

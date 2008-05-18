@@ -407,8 +407,9 @@ typedef struct nunchuk_t {
 	int* flags;						/**< options flag (points to wiimote_t.flags) */
 
 	ubyte btns;						/**< what buttons have just been pressed	*/
-	ubyte btns_held;					/**< what buttons are being held down		*/
-	ubyte btns_released;				/**< what buttons were just released this	*/
+	ubyte btns_last;				/**< what buttons have just been pressed	*/
+	ubyte btns_held;				/**< what buttons are being held down		*/
+	ubyte btns_released;			/**< what buttons were just released this	*/
 
 	float orient_threshold;			/**< threshold for orient to generate an event */
 	int accel_threshold;			/**< threshold for accel to generate an event */
@@ -425,6 +426,7 @@ typedef struct nunchuk_t {
  */
 typedef struct classic_ctrl_t {
 	short btns;						/**< what buttons have just been pressed	*/
+	short btns_last;				/**< what buttons have just been pressed	*/
 	short btns_held;				/**< what buttons are being held down		*/
 	short btns_released;			/**< what buttons were just released this	*/
 
@@ -442,6 +444,7 @@ typedef struct classic_ctrl_t {
  */
 typedef struct guitar_hero_3_t {
 	short btns;						/**< what buttons have just been pressed	*/
+	short btns_last;				/**< what buttons have just been pressed	*/
 	short btns_held;				/**< what buttons are being held down		*/
 	short btns_released;			/**< what buttons were just released this	*/
 
@@ -576,6 +579,7 @@ typedef struct wiimote_t {
 	WCONST struct ir_t ir;					/**< IR data								*/
 
 	WCONST unsigned short btns;				/**< what buttons have just been pressed	*/
+	WCONST unsigned short btns_last;		/**< what buttons have been pressed last    */
 	WCONST unsigned short btns_held;		/**< what buttons are being held down		*/
 	WCONST unsigned short btns_released;	/**< what buttons were just released this	*/
 
