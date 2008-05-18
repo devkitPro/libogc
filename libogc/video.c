@@ -2320,21 +2320,18 @@ GXRModeObj *rmode;
 		u32 tvmode = CONF_GetVideo();
 		
 		switch ( tvmode ) {
-			case CONF_EBADVALUE:
 			case CONF_VIDEO_NTSC:
 				rmode = &TVNtsc480IntDf;
 				break;
 			case CONF_VIDEO_PAL:
-			case CONF_VIDEO_MPAL:
 				if ( CONF_GetEuRGB60() > 0 ) {
 					rmode = &TVEurgb60Hz480Int;
 				} else {
-					if (tvmode == CONF_VIDEO_PAL) {
-						rmode = &TVPal528IntDf;
-					} else {
-						rmode = &TVMpal480IntDf;
-					}
+					rmode = &TVPal528IntDf;
 				}
+				break;
+			case CONF_VIDEO_MPAL:
+				rmode = &TVMpal480IntDf;
 				break;
 			default:
 				rmode = &TVNtsc480IntDf;
