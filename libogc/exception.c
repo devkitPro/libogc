@@ -48,7 +48,6 @@ distribution.
 #include "ios.h"
 
 #include "ogc/video_types.h"
-#include "wiiuse/wpad.h"
 
 //#define _EXC_DEBUG
 
