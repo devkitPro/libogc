@@ -455,31 +455,46 @@ void WPAD_Shutdown()
 
 u32 WPAD_ScanPads() 
 {
-	u16 btns_l;
-	u32 i, connected = 0;
+	u32 i, connected = 0, btns_l = 0;
 
 	for(i=0;i<MAX_WIIMOTES;i++) {
+
 		btns_l = wpaddata[i].btns_d;
+
 		WPAD_Read(i,&wpaddata[i]);
+
 		wpaddata[i].btns_l = btns_l;
 
+		switch(wpaddata[i].exp.type) {
+			case WPAD_EXP_NONE:
+				break;
+			case WPAD_EXP_NUNCHAKU:
+				wpaddata[i].btns_d |= (wpaddata[i].exp.nunchuk.btns_d << 16);
+				break;
+			case WPAD_EXP_CLASSIC:
+				wpaddata[i].btns_d |= (wpaddata[i].exp.classic.btns_d << 16);
+				break;
+			case WPAD_EXP_GUITAR_HERO3:
+				wpaddata[i].btns_d |= (wpaddata[i].exp.gh3.btns_l << 16);
+				break;
+		}
 	}
 	return connected;		
 }
 
-u16 WPAD_ButtonsUp(int pad)
+u32 WPAD_ButtonsUp(int pad)
 {
 	if(pad<0 || pad>MAX_WIIMOTES) return 0;
 	return ((~wpaddata[pad].btns_d)&wpaddata[pad].btns_l);
 }
 
-u16 WPAD_ButtonsDown(int pad)
+u32 WPAD_ButtonsDown(int pad)
 {
 	if(pad<0 || pad>MAX_WIIMOTES) return 0;
-	return (wpaddata[pad].btns_d&~wpaddata[pad].btns_l);
+	return ((wpaddata[pad].btns_d)&~wpaddata[pad].btns_l);
 }
 
-u16 WPAD_ButtonsHeld(int pad) 
+u32 WPAD_ButtonsHeld(int pad) 
 {
 	if(pad<0 || pad>MAX_WIIMOTES) return 0;
 	return wpaddata[pad].btns_d;

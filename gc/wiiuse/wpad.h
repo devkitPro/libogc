@@ -25,21 +25,21 @@
 #define WPAD_BUTTON_PLUS       0x1000
 #define WPAD_BUTTON_UNKNOWN    0x8000
 
-#define WPAD_CLASSIC_BUTTON_UP		0x0001
-#define WPAD_CLASSIC_BUTTON_LEFT	0x0002
-#define WPAD_CLASSIC_BUTTON_ZR		0x0004
-#define WPAD_CLASSIC_BUTTON_X		0x0008
-#define WPAD_CLASSIC_BUTTON_A		0x0010
-#define WPAD_CLASSIC_BUTTON_Y		0x0020
-#define WPAD_CLASSIC_BUTTON_B		0x0040
-#define WPAD_CLASSIC_BUTTON_ZL		0x0080
-#define WPAD_CLASSIC_BUTTON_FULL_R	0x0200
-#define WPAD_CLASSIC_BUTTON_PLUS	0x0400
-#define WPAD_CLASSIC_BUTTON_HOME	0x0800
-#define WPAD_CLASSIC_BUTTON_MINUS	0x1000
-#define WPAD_CLASSIC_BUTTON_FULL_L	0x2000
-#define WPAD_CLASSIC_BUTTON_DOWN	0x4000
-#define WPAD_CLASSIC_BUTTON_RIGHT	0x8000
+#define WPAD_CLASSIC_BUTTON_UP		(0x0001 << 16)
+#define WPAD_CLASSIC_BUTTON_LEFT	(0x0002 << 16)
+#define WPAD_CLASSIC_BUTTON_ZR		(0x0004 << 16)
+#define WPAD_CLASSIC_BUTTON_X		(0x0008 << 16)
+#define WPAD_CLASSIC_BUTTON_A		(0x0010 << 16)
+#define WPAD_CLASSIC_BUTTON_Y		(0x0020 << 16)
+#define WPAD_CLASSIC_BUTTON_B		(0x0040 << 16)
+#define WPAD_CLASSIC_BUTTON_ZL		(0x0080 << 16)
+#define WPAD_CLASSIC_BUTTON_FULL_R	(0x0200 << 16)
+#define WPAD_CLASSIC_BUTTON_PLUS	(0x0400 << 16)
+#define WPAD_CLASSIC_BUTTON_HOME	(0x0800 << 16)
+#define WPAD_CLASSIC_BUTTON_MINUS	(0x1000 << 16)
+#define WPAD_CLASSIC_BUTTON_FULL_L	(0x2000 << 16)
+#define WPAD_CLASSIC_BUTTON_DOWN	(0x4000 << 16)
+#define WPAD_CLASSIC_BUTTON_RIGHT	(0x8000 << 16)
 
 #define WPAD_EXP_NONE				0
 #define WPAD_EXP_NUNCHAKU			1
@@ -120,6 +120,18 @@ typedef struct _classic_t
 	Joystick rjs;
 } Classic;
 
+typedef struct _guitar_hero_3_t {
+	u16 btns_d;				
+	u16 btns_h;		
+	u16 btns_r;	
+	u16 btns_l;		
+
+	float whammy_bar;	
+
+	Joystick js;
+} GuitarHero3;
+
+
 typedef struct _expansion_t
 {
 	s32 type;
@@ -127,6 +139,7 @@ typedef struct _expansion_t
 	union {
 		Nunchaku nunchuk;
 		Classic classic;
+		GuitarHero3 gh3;
 	};
 } Expansion;
 
@@ -153,11 +166,10 @@ typedef struct _ir_t
 typedef struct _wpad_data
 {
 	u16 err;
-
-	u16 btns_d;
+	u32 btns_d;
+	u32 btns_l;
 	u16 btns_h;
 	u16 btns_r;
-	u16 btns_l;
 
 	IRData ir;
 	Vec3u8 accel;
@@ -182,9 +194,9 @@ wpadsamplingcallback WPAD_SetSamplingCallback(s32 chan,wpadsamplingcallback cb);
 
 u32 WPAD_ScanPads();
 
-u16 WPAD_ButtonsUp(int pad);
-u16 WPAD_ButtonsDown(int pad);
-u16 WPAD_ButtonsHeld(int pad);
+u32 WPAD_ButtonsUp(int pad);
+u32 WPAD_ButtonsDown(int pad);
+u32 WPAD_ButtonsHeld(int pad);
 
 #ifdef __cplusplus
    }
