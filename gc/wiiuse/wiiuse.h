@@ -6,8 +6,8 @@
 	#include <windows.h>
 #elif defined(GEKKO)
 	/* wii */
-	#include "bte.h"
-	#include "network.h"
+	#include <bte/bte.h>
+	#include <network.h>
 #elif defined(unix)
 	/* nix */
 	#include <bluetooth/bluetooth.h>
@@ -390,6 +390,7 @@ typedef struct joystick_t {
 	struct vec2b_t max;				/**< maximum joystick values	*/
 	struct vec2b_t min;				/**< minimum joystick values	*/
 	struct vec2b_t center;			/**< center joystick values		*/
+	struct vec2b_t pos;				/**< raw position values        */
 
 	float ang;						/**< angle the joystick is being held		*/
 	float mag;						/**< magnitude of the joystick (range 0-1)	*/
@@ -429,6 +430,9 @@ typedef struct classic_ctrl_t {
 	short btns_last;				/**< what buttons have just been pressed	*/
 	short btns_held;				/**< what buttons are being held down		*/
 	short btns_released;			/**< what buttons were just released this	*/
+
+	ubyte rs_raw;
+	ubyte ls_raw;
 
 	float r_shoulder;				/**< right shoulder button (range 0-1)		*/
 	float l_shoulder;				/**< left shoulder button (range 0-1)		*/
@@ -558,7 +562,11 @@ typedef struct wiimote_t {
 
 	WCONST int state;						/**< various state flags					*/
 	WCONST ubyte leds;						/**< currently lit leds						*/
+#ifdef GEKKO
+	WCONST ubyte battery_level;				/**< battery level							*/
+#else
 	WCONST float battery_level;				/**< battery level							*/
+#endif
 
 	WCONST int flags;						/**< options flag							*/
 
