@@ -6,6 +6,9 @@
 #include "processor.h"
 #include "bte.h"
 #include "conf.h"
+#include "ir.h"
+#include "dynamics.h"
+#include "guitar_hero_3.h"
 #include "wiiuse_internal.h"
 #include "wiiuse/wpad.h"
 
@@ -87,67 +90,68 @@ static s32 __initcore_finished(s32 result,void *usrdata)
 	return ERR_OK;
 }
 
+static void __wpad_calc_data(WPADData *data,struct accel_t *accel_calib,u32 useacc,u32 useir,u32 useexp,u32 smoothed)
+{
+	if(data->err!=WPAD_ERR_NONE) return;
+
+	if(useacc) {
+		calculate_orientation(accel_calib, &data->accel, &data->orient, smoothed);
+		calculate_gforce(accel_calib, &data->accel, &data->gforce);
+	}
+	if(useir) {
+		interpret_ir_data(&data->ir,&data->orient,useacc);
+	}
+	if(useexp) {
+		switch(data->exp.type) {
+			case EXP_NUNCHUK:
+			{
+				struct nunchuk_t *nc = &data->exp.nunchuk;
+
+				calc_joystick_state(&nc->js,nc->js.pos.x,nc->js.pos.y);
+				calculate_orientation(&nc->accel_calib,&nc->accel,&nc->orient,smoothed);
+				calculate_gforce(&nc->accel_calib,&nc->accel,&nc->gforce);
+			}
+			break;
+
+			case EXP_CLASSIC:
+			{
+				struct classic_ctrl_t *cc = &data->exp.classic;
+
+				cc->r_shoulder = ((f32)cc->rs_raw/0x1F);
+				cc->l_shoulder = ((f32)cc->ls_raw/0x1F);
+				calc_joystick_state(&cc->ljs, cc->ljs.pos.x, cc->ljs.pos.y);
+				calc_joystick_state(&cc->rjs, cc->rjs.pos.x, cc->rjs.pos.y);
+			}
+			break;
+
+			case EXP_GUITAR_HERO_3:
+			{
+				struct guitar_hero_3_t *gh3 = &data->exp.gh3;
+
+				gh3->whammy_bar = (gh3->wb_raw - GUITAR_HERO_3_WHAMMY_BAR_MIN) / (float)(GUITAR_HERO_3_WHAMMY_BAR_MAX - GUITAR_HERO_3_WHAMMY_BAR_MIN);
+				calc_joystick_state(&gh3->js, gh3->js.pos.x, gh3->js.pos.y);
+			}
+			break;
+
+			default:
+				break;
+		}
+	}
+
+}
+
 static void __wpad_read_expansion(struct wiimote_t *wm,WPADData *data)
 {
 	data->exp.type = wm->exp.type;
-
-	#define CP_JOY(dest, src)	do { \
-									(dest).min.x = (src).min.x; \
-									(dest).min.y = (src).min.y; \
-									(dest).max.x = (src).max.x; \
-									(dest).max.y = (src).max.y; \
-									(dest).center.x = (src).center.x; \
-									(dest).center.y = (src).center.y; \
-									(dest).ang = (src).ang; \
-									(dest).mag = (src).mag; \
-								} while (0)
-
-	switch(wm->exp.type) {
+	switch(data->exp.type) {
 		case EXP_NUNCHUK:
-		{
-			Nunchaku *nc = &data->exp.nunchuk;
-			struct nunchuk_t *wmnc = &wm->exp.nunchuk;
-
-			nc->btns_d = wmnc->btns;
-			nc->btns_h = wmnc->btns_held;
-			nc->btns_r = wmnc->btns_released;
-			nc->btns_l = wmnc->btns_last;
-			
-			nc->accel.x = wmnc->accel.x;
-			nc->accel.y = wmnc->accel.y;
-			nc->accel.z = wmnc->accel.z;
-
-			nc->orient.roll = wmnc->orient.roll;
-			nc->orient.pitch = wmnc->orient.pitch;
-			nc->orient.yaw = wmnc->orient.yaw;
-
-			nc->gforce.x = wmnc->gforce.x;
-			nc->gforce.y = wmnc->gforce.y;
-			nc->gforce.z = wmnc->gforce.z;
-
-			CP_JOY(nc->js, wmnc->js);
-		}
-		break;
-
+			data->exp.nunchuk = wm->exp.nunchuk;
+			break;
 		case EXP_CLASSIC:
-		{
-			Classic *cc = &data->exp.classic;
-			struct classic_ctrl_t *wmcc = &wm->exp.classic;
-
-			cc->btns_d = wmcc->btns;
-			cc->btns_h = wmcc->btns_held;
-			cc->btns_r = wmcc->btns_released;
-			cc->btns_l = wmcc->btns_last;
-
-			cc->r_shoulder = wmcc->r_shoulder;
-			cc->l_shoulder = wmcc->l_shoulder;
-
-			CP_JOY(cc->ljs, wmcc->ljs);
-			CP_JOY(cc->rjs, wmcc->rjs);
-		}
-		break;
-
+			data->exp.classic = wm->exp.classic;
+			break;
 		case EXP_GUITAR_HERO_3:
+			data->exp.gh3 = wm->exp.gh3;
 			break;
 		default:
 			break;
@@ -157,8 +161,6 @@ static void __wpad_read_expansion(struct wiimote_t *wm,WPADData *data)
 
 static void __wpad_read_wiimote(struct wiimote_t *wm,WPADData *data)
 {
-	s32 j,k;
-
 	data->err = WPAD_ERR_TRANSFER;
 	if(wm && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_CONNECTED)) {
 		if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_HANDSHAKE_COMPLETE)) {
@@ -168,36 +170,11 @@ static void __wpad_read_wiimote(struct wiimote_t *wm,WPADData *data)
 			data->btns_l = wm->btns_last;
 
 			if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_ACC)) {
-				data->accel.x = wm->accel.x;
-				data->accel.y = wm->accel.y;
-				data->accel.z = wm->accel.z;
-
-				data->orient.roll = wm->orient.roll;
-				data->orient.pitch = wm->orient.pitch;
-				data->orient.yaw = wm->orient.yaw;
+				data->accel = wm->accel;
 			}
 
-			data->ir.num_dots = 0;
 			if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR)) {
-				for(j=0,k=0;j<WPAD_MAX_IR_DOTS;j++) {
-					data->ir.dot[k].visible = 0;
-					if(wm->ir.dot[j].visible) {
-						data->ir.dot[k].x = wm->ir.dot[j].x;
-						data->ir.dot[k].y = wm->ir.dot[j].y;
-						data->ir.dot[k].order = wm->ir.dot[j].order;
-						data->ir.dot[k].size = wm->ir.dot[j].size;
-						data->ir.dot[k].visible = 1;
-
-						k++;
-					}
-				}
-				data->ir.num_dots = k;
-
-				data->ir.x = wm->ir.x;
-				data->ir.y = wm->ir.y;
-				data->ir.z = wm->ir.z;
-				data->ir.dist = wm->ir.distance;
-
+				data->ir = wm->ir;
 			}
 			if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP)) {
 				__wpad_read_expansion(wm,data);
@@ -297,7 +274,9 @@ void WPAD_Read(s32 chan,WPADData *data)
 {
 	u32 idx;
 	u32 level;
-	u32 maxbufs;
+	u32 maxbufs,smoothed = 0;
+	u32 useir = 0,useacc = 0,useexp = 0;
+	struct accel_t *accel_calib = NULL;
 	WPADData *wpadd = NULL;
 
 	if(chan<WPAD_CHAN_0 || chan>WPAD_CHAN_3) return;
@@ -311,17 +290,31 @@ void WPAD_Read(s32 chan,WPADData *data)
 		return;
 	}
 
-	if(__wpad_autosamplingbufs[chan]!=NULL) {
-		maxbufs = __wpad_max_autosamplingbufs[chan];
-		wpadd = __wpad_autosamplingbufs[chan];
-	} else {
-		maxbufs = MAX_RINGBUFS;
-		wpadd = __wpad_samplingbufs[chan];
-	}
+	data->err = WPAD_ERR_TRANSFER;
+	if(__wpads[chan] && WIIMOTE_IS_SET(__wpads[chan],WIIMOTE_STATE_CONNECTED)) {
+		if(WIIMOTE_IS_SET(__wpads[chan],WIIMOTE_STATE_HANDSHAKE_COMPLETE)) {
+			if(__wpad_autosamplingbufs[chan]!=NULL) {
+				maxbufs = __wpad_max_autosamplingbufs[chan];
+				wpadd = __wpad_autosamplingbufs[chan];
+			} else {
+				maxbufs = MAX_RINGBUFS;
+				wpadd = __wpad_samplingbufs[chan];
+			}
 
-	idx = ((__wpad_samplingbufs_idx[chan]-1)+maxbufs)%maxbufs;
-	*data = wpadd[idx];
+			idx = ((__wpad_samplingbufs_idx[chan]-1)+maxbufs)%maxbufs;
+			*data = wpadd[idx];
+			accel_calib = &__wpads[chan]->accel_calib;
+			smoothed = WIIMOTE_IS_FLAG_SET(__wpads[chan], WIIUSE_SMOOTHING);
+			useacc = WIIMOTE_IS_SET(__wpads[chan],WIIMOTE_STATE_ACC);
+			useir = WIIMOTE_IS_SET(__wpads[chan],WIIMOTE_STATE_IR);
+			useexp = WIIMOTE_IS_SET(__wpads[chan],WIIMOTE_STATE_EXP);
+		} else
+			data->err = WPAD_ERR_NOT_READY;
+	} else
+		data->err = WPAD_ERR_NO_CONTROLLER;
 	_CPU_ISR_Restore(level);
+
+	__wpad_calc_data(data,accel_calib,useacc,useir,useexp,smoothed);
 }
 
 void WPAD_SetDataFormat(s32 chan,s32 fmt)
@@ -441,6 +434,7 @@ void WPAD_Shutdown()
 		_CPU_ISR_Restore(level);
 		return;
 	}
+	__wpads_inited = WPAD_STATE_DISABLED;
 	_CPU_ISR_Restore(level);
 
 	for(i=0;i<MAX_WIIMOTES;i++) {
@@ -455,27 +449,25 @@ void WPAD_Shutdown()
 
 u32 WPAD_ScanPads() 
 {
-	u32 i, connected = 0, btns_l = 0;
+	u32 btns_l = 0;
+	u32 i, connected = 0;
 
 	for(i=0;i<MAX_WIIMOTES;i++) {
-
 		btns_l = wpaddata[i].btns_d;
-
 		WPAD_Read(i,&wpaddata[i]);
-
 		wpaddata[i].btns_l = btns_l;
 
 		switch(wpaddata[i].exp.type) {
 			case WPAD_EXP_NONE:
 				break;
 			case WPAD_EXP_NUNCHAKU:
-				wpaddata[i].btns_d |= (wpaddata[i].exp.nunchuk.btns_d << 16);
+				wpaddata[i].btns_d |= (wpaddata[i].exp.nunchuk.btns<<16);
 				break;
 			case WPAD_EXP_CLASSIC:
-				wpaddata[i].btns_d |= (wpaddata[i].exp.classic.btns_d << 16);
+				wpaddata[i].btns_d |= (wpaddata[i].exp.classic.btns<<16);
 				break;
 			case WPAD_EXP_GUITAR_HERO3:
-				wpaddata[i].btns_d |= (wpaddata[i].exp.gh3.btns_l << 16);
+				wpaddata[i].btns_d |= (wpaddata[i].exp.gh3.btns<<16);
 				break;
 		}
 	}
@@ -491,7 +483,7 @@ u32 WPAD_ButtonsUp(int pad)
 u32 WPAD_ButtonsDown(int pad)
 {
 	if(pad<0 || pad>MAX_WIIMOTES) return 0;
-	return ((wpaddata[pad].btns_d)&~wpaddata[pad].btns_l);
+	return (wpaddata[pad].btns_d&~wpaddata[pad].btns_l);
 }
 
 u32 WPAD_ButtonsHeld(int pad) 
