@@ -452,6 +452,7 @@ typedef struct guitar_hero_3_t {
 	short btns_held;				/**< what buttons are being held down		*/
 	short btns_released;			/**< what buttons were just released this	*/
 
+	ubyte wb_raw;
 	float whammy_bar;				/**< whammy bar (range 0-1)					*/
 
 	struct joystick_t js;			/**< joystick calibration					*/

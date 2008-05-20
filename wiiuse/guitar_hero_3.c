@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/guitar_hero_3.c,v 1.2 2008-05-18 00:15:51 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/guitar_hero_3.c,v 1.3 2008-05-20 11:48:03 shagkur Exp $
  *
  */
 
@@ -142,11 +142,16 @@ void guitar_hero_3_event(struct guitar_hero_3_t* gh3, ubyte* msg) {
 
 	guitar_hero_3_pressed_buttons(gh3, BIG_ENDIAN_SHORT(*(short*)(msg + 4)));
 
+	gh3->js.pos.x = msg[0];
+	gh3->js.pos.y = msg[1];
+	gh3->wb_raw = msg[3];
+#ifndef GEKKO
 	/* whammy bar */
-	gh3->whammy_bar = (msg[3] - GUITAR_HERO_3_WHAMMY_BAR_MIN) / (float)(GUITAR_HERO_3_WHAMMY_BAR_MAX - GUITAR_HERO_3_WHAMMY_BAR_MIN);
+	gh3->whammy_bar = (gh3->wb_raw - GUITAR_HERO_3_WHAMMY_BAR_MIN) / (float)(GUITAR_HERO_3_WHAMMY_BAR_MAX - GUITAR_HERO_3_WHAMMY_BAR_MIN);
 
 	/* joy stick */
-	calc_joystick_state(&gh3->js, msg[0], msg[1]);
+	calc_joystick_state(&gh3->js, gh3->js.pos.x, gh3->js.pos.y);
+#endif
 }
 
 
