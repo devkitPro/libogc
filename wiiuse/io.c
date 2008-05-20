@@ -89,7 +89,7 @@ void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
 			wm->event = WIIUSE_GUITAR_HERO_3_CTRL_INSERTED;
 			break;
 		default:
-			printf("unknown expansion type connected.\n");
+			//printf("unknown expansion type connected.\n");
 			break;
 	}
 	__lwp_wkspace_free(data);
