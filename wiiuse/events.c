@@ -267,8 +267,11 @@ static void event_status(struct wiimote_t *wm,ubyte *msg)
 	if((msg[2]&WM_CTRL_STATUS_BYTE1_ATTACHMENT)==WM_CTRL_STATUS_BYTE1_ATTACHMENT) attachment = 1;
 		
 	if((msg[2]&WM_CTRL_STATUS_BYTE1_IR_ENABLED)==WM_CTRL_STATUS_BYTE1_IR_ENABLED) ir = 1;
-
+#ifdef GEKKO
+	wm->battery_level = msg[5];
+#else
 	wm->battery_level = ((msg[5] / (float)WM_MAX_BATTERY_CODE)*100.0F);
+#endif
 
 	if(attachment && !WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP)) {
 		wiiuse_handshake_expansion(wm,NULL,0);
@@ -368,12 +371,13 @@ void parse_event(struct wiimote_t *wm)
 			wm->accel.x = msg[2];
 			wm->accel.y = msg[3];
 			wm->accel.z = msg[4];
-
+#ifndef GEKKO
 			/* calculate the remote orientation */
 			calculate_orientation(&wm->accel_calib, &wm->accel, &wm->orient, WIIMOTE_IS_FLAG_SET(wm, WIIUSE_SMOOTHING));
 
 			/* calculate the gforces on each axis */
 			calculate_gforce(&wm->accel_calib, &wm->accel, &wm->gforce);
+#endif
 			break;
 		case WM_RPT_BTN_ACC_IR:
 			wiiuse_pressed_buttons(wm,msg);
@@ -381,13 +385,13 @@ void parse_event(struct wiimote_t *wm)
 			wm->accel.x = msg[2];
 			wm->accel.y = msg[3];
 			wm->accel.z = msg[4];
-
+#ifndef GEKKO
 			/* calculate the remote orientation */
 			calculate_orientation(&wm->accel_calib, &wm->accel, &wm->orient, WIIMOTE_IS_FLAG_SET(wm, WIIUSE_SMOOTHING));
 
 			/* calculate the gforces on each axis */
 			calculate_gforce(&wm->accel_calib, &wm->accel, &wm->gforce);
-			
+#endif
 			calculate_extended_ir(wm, msg+5);
 			break;
 		case WM_RPT_BTN_EXP:
@@ -401,10 +405,10 @@ void parse_event(struct wiimote_t *wm)
 			wm->accel.x = msg[2];
 			wm->accel.y = msg[3];
 			wm->accel.z = msg[4];
-
+#ifndef GEKKO
 			calculate_orientation(&wm->accel_calib, &wm->accel, &wm->orient, WIIMOTE_IS_FLAG_SET(wm, WIIUSE_SMOOTHING));
 			calculate_gforce(&wm->accel_calib, &wm->accel, &wm->gforce);
-
+#endif
 			handle_expansion(wm, msg+5);
 			break;
 		case WM_RPT_BTN_IR_EXP:
@@ -419,10 +423,10 @@ void parse_event(struct wiimote_t *wm)
 			wm->accel.x = msg[2];
 			wm->accel.y = msg[3];
 			wm->accel.z = msg[4];
-
+#ifndef GEKKO
 			calculate_orientation(&wm->accel_calib, &wm->accel, &wm->orient, WIIMOTE_IS_FLAG_SET(wm, WIIUSE_SMOOTHING));
 			calculate_gforce(&wm->accel_calib, &wm->accel, &wm->gforce);
-
+#endif
 			/* ir */
 			calculate_basic_ir(wm, msg+5);
 

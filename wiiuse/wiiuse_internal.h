@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/wiiuse_internal.h,v 1.1 2008-05-08 09:42:14 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/wiiuse_internal.h,v 1.2 2008-05-20 11:40:28 shagkur Exp $
  *
  */
 
@@ -213,7 +213,7 @@
 #define SMOOTH_ROLL						0x01
 #define SMOOTH_PITCH					0x02
 
-#include "wiiuse.h"
+#include <wiiuse/wiiuse.h>
 
 #ifdef __cplusplus
 extern "C" {

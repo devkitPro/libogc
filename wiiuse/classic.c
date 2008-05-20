@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/classic.c,v 1.2 2008-05-18 00:15:51 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/classic.c,v 1.3 2008-05-20 11:40:28 shagkur Exp $
  *
  */
 
@@ -65,8 +65,6 @@ int classic_ctrl_handshake(struct wiimote_t* wm, struct classic_ctrl_t* cc, ubyt
 	cc->btns = 0;
 	cc->btns_held = 0;
 	cc->btns_released = 0;
-	cc->r_shoulder = 0;
-	cc->l_shoulder = 0;
 
 	/* decrypt data */
 	for (i = 0; i < len; ++i)
@@ -137,8 +135,7 @@ void classic_ctrl_disconnected(struct classic_ctrl_t* cc) {
  *	@param msg		The message specified in the event packet.
  */
 void classic_ctrl_event(struct classic_ctrl_t* cc, ubyte* msg) {
-	int i, lx, ly, rx, ry;
-	ubyte l, r;
+	int i;
 
 	/* decrypt data */
 	for (i = 0; i < 6; ++i)
@@ -147,24 +144,26 @@ void classic_ctrl_event(struct classic_ctrl_t* cc, ubyte* msg) {
 	classic_ctrl_pressed_buttons(cc, BIG_ENDIAN_SHORT(*(short*)(msg + 4)));
 
 	/* left/right buttons */
-	l = (((msg[2] & 0x60) >> 2) | ((msg[3] & 0xE0) >> 5));
-	r = (msg[3] & 0x1F);
+	cc->ls_raw = (((msg[2] & 0x60) >> 2) | ((msg[3] & 0xE0) >> 5));
+	cc->rs_raw = (msg[3] & 0x1F);
 
 	/*
 	 *	TODO - LR range hardcoded from 0x00 to 0x1F.
 	 *	This is probably in the calibration somewhere.
 	 */
+#ifndef GEKKO
 	cc->r_shoulder = ((float)r / 0x1F);
 	cc->l_shoulder = ((float)l / 0x1F);
-
+#endif
 	/* calculate joystick orientation */
-	lx = (msg[0] & 0x3F);
-	ly = (msg[1] & 0x3F);
-	rx = ((msg[0] & 0xC0) >> 3) | ((msg[1] & 0xC0) >> 5) | ((msg[2] & 0x80) >> 7);
-	ry = (msg[2] & 0x1F);
-
-	calc_joystick_state(&cc->ljs, lx, ly);
-	calc_joystick_state(&cc->rjs, rx, ry);
+	cc->ljs.pos.x = (msg[0] & 0x3F);
+	cc->ljs.pos.y = (msg[1] & 0x3F);
+	cc->rjs.pos.x = ((msg[0] & 0xC0) >> 3) | ((msg[1] & 0xC0) >> 5) | ((msg[2] & 0x80) >> 7);
+	cc->rjs.pos.y = (msg[2] & 0x1F);
+#ifndef GEKKO
+	calc_joystick_state(&cc->ljs, cc->ljs.pos.x, cc->ljs.pos.y);
+	calc_joystick_state(&cc->rjs, cc->rjs.pos.x, cc->rjs.pos.y);
+#endif
 }
 
 

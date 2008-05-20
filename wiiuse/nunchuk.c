@@ -41,7 +41,7 @@ int nunchuk_handshake(struct wiimote_t *wm,struct nunchuk_t *nc,ubyte *data,uwor
 	nc->btns_held = 0;
 	nc->btns_released = 0;
 	nc->flags = &wm->flags;
-	nc->accel_calib.st_alpha = wm->accel_calib.st_alpha;
+	nc->accel_calib = wm->accel_calib;
 
 	for(i=0;i<len;i++) data[i] = (data[i]^0x17)+0x17;
 	if(data[offset]==0xff) {
@@ -64,10 +64,10 @@ int nunchuk_handshake(struct wiimote_t *wm,struct nunchuk_t *nc,ubyte *data,uwor
 	nc->js.max.y = data[offset + 11];
 	nc->js.min.y = data[offset + 12];
 	nc->js.center.y = data[offset + 13];
-
+#ifndef GEKKO
 	nc->orient_threshold = wm->orient_threshold;
 	nc->accel_threshold = wm->accel_threshold;
-
+#endif
 	wm->event = WIIUSE_NUNCHUK_INSERTED;
 	wm->exp.type = EXP_NUNCHUK;
 
@@ -102,15 +102,19 @@ void nunchuk_event(struct nunchuk_t* nc, ubyte* msg) {
 	/* get button states */
 	nunchuk_pressed_buttons(nc, msg[5]);
 
+	nc->js.pos.x = msg[0];
+	nc->js.pos.y = msg[1];
+#ifndef GEKKO
 	/* calculate joystick state */
-	calc_joystick_state(&nc->js, msg[0], msg[1]);
-
+	calc_joystick_state(&nc->js, nc->js.pos.x, nc->js.pos.y);
+#endif
 	/* calculate orientation */
 	nc->accel.x = msg[2];
 	nc->accel.y = msg[3];
 	nc->accel.z = msg[4];
-
+#ifndef GEKKO
 	calculate_orientation(&nc->accel_calib, &nc->accel, &nc->orient, NUNCHUK_IS_FLAG_SET(nc, WIIUSE_SMOOTHING));
 	calculate_gforce(&nc->accel_calib, &nc->accel, &nc->gforce);
+#endif
 }
 
