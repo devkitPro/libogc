@@ -94,6 +94,32 @@ enum {
 	CONF_LED_BRIGHT
 };
 
+enum {
+	CONF_SOUND_MONO = 0,
+	CONF_SOUND_STEREO,
+	CONF_SOUND_SURROUND
+};
+
+enum {
+	CONF_LANG_JAPANESE = 0,
+	CONF_LANG_ENGLISH,
+	CONF_LANG_GERMAN,
+	CONF_LANG_FRENCH,
+	CONF_LANG_SPANISH,
+	CONF_LANG_ITALIAN,
+	CONF_LANG_DUTCH
+};
+
+enum {
+	CONF_ASPECT_4_3 = 0,
+	CONF_ASPECT_16_9
+};
+
+enum {
+	CONF_SENSORBAR_BOTTOM = 0,
+	CONF_SENSORBAR_TOP
+};
+
 typedef struct _conf_pad_device conf_pad_device;
 
 struct _conf_pad_device {
