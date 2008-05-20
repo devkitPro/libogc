@@ -1008,10 +1008,6 @@ SOURCE=.\wiiuse\wiiuse.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\wiiuse\wiiuse.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\wiiuse\wiiuse_internal.h
 # End Source File
 # Begin Source File
@@ -1551,21 +1547,25 @@ SOURCE=.\gc\z\zconf.in.h
 SOURCE=.\gc\z\zutil.h
 # End Source File
 # End Group
-# Begin Group "lwbt.h"
+# Begin Group "bte.h"
 
 # PROP Default_Filter ""
 # Begin Source File
 
-SOURCE=.\gc\lwbt\bd_addr.h
+SOURCE=.\gc\bte\bd_addr.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\gc\lwbt\bte.h
+SOURCE=.\gc\bte\bte.h
 # End Source File
 # End Group
 # Begin Group "wiiuse.h"
 
 # PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\gc\wiiuse\wiiuse.h
+# End Source File
 # Begin Source File
 
 SOURCE=.\gc\wiiuse\wpad.h
