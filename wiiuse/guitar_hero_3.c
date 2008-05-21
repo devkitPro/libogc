@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/guitar_hero_3.c,v 1.3 2008-05-20 11:48:03 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/guitar_hero_3.c,v 1.4 2008-05-21 08:15:25 shagkur Exp $
  *
  */
 
@@ -106,12 +106,15 @@ int guitar_hero_3_handshake(struct wiimote_t* wm, struct guitar_hero_3_t* gh3, u
 	gh3->js.center.y = GUITAR_HERO_3_JS_CENTER_Y;
 
 	/* handshake done */
+	wm->event = WIIUSE_GUITAR_HERO_3_CTRL_INSERTED;
 	wm->exp.type = EXP_GUITAR_HERO_3;
 
 	#ifdef WIN32
 	wm->timeout = WIIMOTE_DEFAULT_TIMEOUT;
 	#endif
 
+	WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_EXP_HANDSHAKE);
+	WIIMOTE_ENABLE_STATE(wm,WIIMOTE_STATE_EXP_HANDSHAKE_COMPLETE);
 	return 1;
 }
 

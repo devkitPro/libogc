@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/classic.c,v 1.3 2008-05-20 11:40:28 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/classic.c,v 1.4 2008-05-21 08:15:25 shagkur Exp $
  *
  */
 
@@ -107,12 +107,15 @@ int classic_ctrl_handshake(struct wiimote_t* wm, struct classic_ctrl_t* cc, ubyt
 	cc->rjs.center.y = data[11 + offset] / 8;
 
 	/* handshake done */
+	wm->event = WIIUSE_CLASSIC_CTRL_INSERTED;
 	wm->exp.type = EXP_CLASSIC;
 
 	#ifdef WIN32
 	wm->timeout = WIIMOTE_DEFAULT_TIMEOUT;
 	#endif
 
+	WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_EXP_HANDSHAKE);
+	WIIMOTE_ENABLE_STATE(wm,WIIMOTE_STATE_EXP_HANDSHAKE_COMPLETE);
 	return 1;
 }
 
