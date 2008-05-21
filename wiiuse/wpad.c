@@ -307,7 +307,7 @@ void WPAD_Read(s32 chan,WPADData *data)
 			smoothed = WIIMOTE_IS_FLAG_SET(__wpads[chan], WIIUSE_SMOOTHING);
 			useacc = WIIMOTE_IS_SET(__wpads[chan],WIIMOTE_STATE_ACC);
 			useir = WIIMOTE_IS_SET(__wpads[chan],WIIMOTE_STATE_IR);
-			useexp = WIIMOTE_IS_SET(__wpads[chan],WIIMOTE_STATE_EXP);
+			useexp = WIIMOTE_IS_SET(__wpads[chan],(WIIMOTE_STATE_EXP|WIIMOTE_STATE_EXP_HANDSHAKE_COMPLETE));
 		} else
 			data->err = WPAD_ERR_NOT_READY;
 	} else
