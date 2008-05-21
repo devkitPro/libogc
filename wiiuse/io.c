@@ -78,15 +78,12 @@ void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
 	switch(id) {
 		case EXP_ID_CODE_NUNCHUK:
 			if(!nunchuk_handshake(wm,&wm->exp.nunchuk,data,len)) return;
-			wm->event = WIIUSE_NUNCHUK_INSERTED;
 			break;
 		case EXP_ID_CODE_CLASSIC_CONTROLLER:
 			if(!classic_ctrl_handshake(wm,&wm->exp.classic,data,len)) return;
-			wm->event = WIIUSE_CLASSIC_CTRL_INSERTED;
 			break;
 		case EXP_ID_CODE_GUITAR:
 			if(!guitar_hero_3_handshake(wm,&wm->exp.gh3,data,len)) return;
-			wm->event = WIIUSE_GUITAR_HERO_3_CTRL_INSERTED;
 			break;
 		default:
 			//printf("unknown expansion type connected.\n");
