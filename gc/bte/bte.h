@@ -124,13 +124,11 @@ s32 BTE_InitSub(btecallback cb);
 s32 BTE_ReadStoredLinkKey(struct linkkey_info *keys,u8 max_cnt,btecallback cb);
 
 
-void bte_start();
 struct bte_pcb* bte_new();
 void bte_arg(struct bte_pcb *pcb,void *arg);
 void bte_received(struct bte_pcb *pcb, s32 (*recv)(void *arg,void *buffer,u16 len));
 void bte_disconnected(struct bte_pcb *pcb,s32 (disconn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
 
-s32 bte_registerdevice(struct bte_pcb *pcb,struct bd_addr *bdaddr);
 s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
 
 s32 bte_disconnect(struct bte_pcb *pcb);

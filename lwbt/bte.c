@@ -527,23 +527,6 @@ error:
 	return err;
 }
 
-s32 bte_registerdevice(struct bte_pcb *pcb,struct bd_addr *bdaddr)
-{
-	s32 err;
-	u32 level;
-	
-	//printf("bte_registerdevice()\n");
-	_CPU_ISR_Disable(level);
-	err = bte_registerdeviceasync(pcb,bdaddr,__bte_connected);
-	if(err==ERR_OK) {
-		LWP_ThreadSleep(pcb->cmdq);
-		err = pcb->err;
-	}
-	_CPU_ISR_Restore(level);
-	
-	return err;
-}
-
 s32 bte_inquiry(struct inquiry_info *info,u8 max_cnt,u8 flush)
 {
 	s32_t i;
@@ -608,22 +591,18 @@ s32 bte_inquiry_ex(struct inquiry_info_ex *info,u8 max_cnt,u8 flush)
 s32 bte_disconnect(struct bte_pcb *pcb)
 {
 	u32 level;
-	err_t err;
+	err_t err = ERR_OK;
 
 	if(pcb==NULL) return ERR_VAL;
 
 	_CPU_ISR_Disable(level);
-	if(pcb->in_pcb!=NULL) {
+	if(pcb->in_pcb!=NULL )
 		err = l2ca_disconnect_req(pcb->in_pcb,l2cap_disconnect_cfm);
-		if(err==ERR_OK) LWP_ThreadSleep(pcb->cmdq);
-	}
-	if(pcb->out_pcb!=NULL) {
+	else if(pcb->out_pcb!=NULL)
 		err = l2ca_disconnect_req(pcb->out_pcb,l2cap_disconnect_cfm);
-		if(err==ERR_OK) LWP_ThreadSleep(pcb->cmdq);
-	}
-
 	_CPU_ISR_Restore(level);
-	return ERR_OK;
+
+	return err;
 }
 
 /*
@@ -832,13 +811,14 @@ err_t l2cap_disconnected_ind(void *arg, struct l2cap_pcb *pcb, err_t err)
 	if(bte->in_pcb==NULL && bte->out_pcb==NULL) {
 		bte->err = ERR_OK;
 		bte->state = (u32)STATE_DISCONNECTED;
-		if(bte->disconn_cfm!=NULL) bte->disconn_cfm(bte->cbarg,bte,err);
+		if(bte->disconn_cfm!=NULL) bte->disconn_cfm(bte->cbarg,bte,ERR_OK);
 	}
 	return ERR_OK;
 }
 
 err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb)
 {
+	err_t err = ERR_OK;
 	struct bte_pcb *bte = (struct bte_pcb*)arg;
 
 	if(bte==NULL) return ERR_OK;
@@ -848,10 +828,12 @@ err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb)
 		case HIDP_OUTPUT_CHANNEL:
 			l2cap_close(bte->out_pcb);
 			bte->out_pcb = NULL;
+			if(bte->in_pcb!=NULL) err = l2ca_disconnect_req(bte->in_pcb,l2cap_disconnect_cfm);
 			break;
 		case HIDP_INPUT_CHANNEL:
 			l2cap_close(bte->in_pcb);
 			bte->in_pcb = NULL;
+			if(bte->out_pcb!=NULL) err = l2ca_disconnect_req(bte->out_pcb,l2cap_disconnect_cfm);
 			break;
 	}
 	if(bte->in_pcb==NULL && bte->out_pcb==NULL) {
@@ -860,7 +842,6 @@ err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb)
 		if(bte->disconn_cfm!=NULL) bte->disconn_cfm(bte->cbarg,bte,ERR_OK);
 	}
 	
-	LWP_ThreadSignal(bte->cmdq);
 	return ERR_OK;
 }
 
