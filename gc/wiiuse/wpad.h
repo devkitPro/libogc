@@ -63,7 +63,13 @@
 #define WPAD_FMT_CORE							0
 #define WPAD_FMT_CORE_ACC						1
 #define WPAD_FMT_CORE_ACC_IR					2
-											
+				
+#define WPAD_DEV_CORE							0
+#define WPAD_DEV_NUNCHAKU						1
+#define WPAD_DEV_CLASSIC						2							
+#define WPAD_DEV_GUITARHERO3					3
+#define WPAD_DEV_UNKNOWN						255
+
 #define WPAD_STATE_DISABLED						0
 #define WPAD_STATE_ENABLING						1
 #define WPAD_STATE_ENABLED						2
@@ -98,11 +104,13 @@ typedef void (*wpadsamplingcallback)(s32 chan);
 s32 WPAD_GetStatus();
 void WPAD_Init();
 void WPAD_Shutdown();
+void WPAD_Disconnect(s32 chan);
 void WPAD_Read(s32 chan,WPADData *data);
 void WPAD_SetDataFormat(s32 chan,s32 fmt);
 void WPAD_SetVRes(s32 chan,u32 xres,u32 yres);
 void WPAD_SetSamplingBufs(s32 chan,void *bufs,u32 cnt);
 u32 WPAD_GetLatestBufIndex(s32 chan);
+s32 WPAD_Probe(s32 chan,u32 *type);
 
 wpadsamplingcallback WPAD_SetSamplingCallback(s32 chan,wpadsamplingcallback cb);
 
