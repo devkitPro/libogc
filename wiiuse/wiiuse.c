@@ -68,7 +68,7 @@ struct wiimote_t** wiiuse_init(int wiimotes, wii_event_cb event_cb) {
 		wm[i] = malloc(sizeof(struct wiimote_t));
 		memset(wm[i], 0, sizeof(struct wiimote_t));
 
-		wm[i]->unid = i+1;
+		wm[i]->unid = i;
 
 		#if defined(WIN32)
 			wm[i]->dev_handle = 0;
