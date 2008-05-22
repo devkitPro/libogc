@@ -20,7 +20,6 @@ static vu32 __wpads_connected = 0;
 static vs32 __wpads_registered = 0;
 static wiimote **__wpads = NULL;
 static WPADData wpaddata[MAX_WIIMOTES];
-static wiimote *__wpad_connected[MAX_WIIMOTES];
 static s32 __wpad_samplingbufs_idx[MAX_WIIMOTES];
 static conf_pad_device __wpad_devs[MAX_WIIMOTES];
 static u32 __wpad_max_autosamplingbufs[MAX_WIIMOTES];
@@ -58,7 +57,6 @@ static s32 __wpad_init_finished(s32 result,void *usrdata)
 		for(i=0;__wpads[i] && i<MAX_WIIMOTES && i<__wpads_registered;i++) {
 			BD_ADDR(&(bdaddr),__wpad_devs[i].bdaddr[5],__wpad_devs[i].bdaddr[4],__wpad_devs[i].bdaddr[3],__wpad_devs[i].bdaddr[2],__wpad_devs[i].bdaddr[1],__wpad_devs[i].bdaddr[0]);
 			wiiuse_register(__wpads[i],&(bdaddr));
-			__wpad_connected[i] = NULL;
 		}
 		__wpads_inited = WPAD_STATE_ENABLED;
 	}
