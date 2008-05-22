@@ -188,13 +188,6 @@ static inline s32 __bte_waitrequest(struct ctrl_req_t *req)
 	return err;
 }
 
-static s32 __bte_connected(void *arg,struct bte_pcb *pcb,u8 err)
-{
-	//printf("__bte_connected(%02x)\n",err);
-	LWP_ThreadSignal(pcb->cmdq);
-	return ERR_OK;
-}
-
 static s32 __bte_send_pending_request(struct bte_pcb *pcb)
 {
 	s32 err;
@@ -836,10 +829,13 @@ err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb)
 			if(bte->out_pcb!=NULL) err = l2ca_disconnect_req(bte->out_pcb,l2cap_disconnect_cfm);
 			break;
 	}
-	if(bte->in_pcb==NULL && bte->out_pcb==NULL) {
+	if(bte->in_pcb==NULL && bte->out_pcb==NULL) {		
 		bte->err = ERR_OK;
 		bte->state = (u32)STATE_DISCONNECTED;
 		if(bte->disconn_cfm!=NULL) bte->disconn_cfm(bte->cbarg,bte,ERR_OK);
+
+		hci_cmd_complete(NULL);
+		hci_disconnect(&(bte->bdaddr),HCI_OTHER_END_TERMINATED_CONN_USER_ENDED);
 	}
 	
 	return ERR_OK;
