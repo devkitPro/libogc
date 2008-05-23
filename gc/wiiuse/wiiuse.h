@@ -490,26 +490,11 @@ typedef enum win_bt_stack_t {
  *	@brief Significant data from the previous event.
  */
 typedef struct wiimote_state_t {
-	/* expansion_t */
-	float exp_ljs_ang;
-	float exp_rjs_ang;
-	float exp_ljs_mag;
-	float exp_rjs_mag;
-	unsigned short exp_btns;
-	struct orient_t exp_orient;
-	struct vec3b_t exp_accel;
-	float exp_r_shoulder;
-	float exp_l_shoulder;
-
-	/* ir_t */
-	int ir_ax;
-	int ir_ay;
-	float ir_distance;
-
-	struct orient_t orient;
 	unsigned short btns;
 
+	struct ir_t ir;
 	struct vec3b_t accel;
+	struct expansion_t exp;
 } wiimote_state_t;
 
 

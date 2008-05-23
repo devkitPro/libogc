@@ -105,6 +105,7 @@ s32 WPAD_GetStatus();
 void WPAD_Init();
 void WPAD_Shutdown();
 void WPAD_Disconnect(s32 chan);
+void WPAD_SetSleepTime(u32 sleep);
 void WPAD_Read(s32 chan,WPADData *data);
 void WPAD_SetDataFormat(s32 chan,s32 fmt);
 void WPAD_SetVRes(s32 chan,u32 xres,u32 yres);
