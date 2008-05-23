@@ -33,7 +33,7 @@ static syswd_t __wpad_timer;
 static vu32 __wpads_inited = 0;
 static vs32 __wpads_ponded = 0;
 static u32 __wpad_sleeptime = 5;
-static vu32 __wpads_connected = 0;
+static vu32 __wpads_active = 0;
 static vs32 __wpads_registered = 0;
 static wiimote **__wpads = NULL;
 static WPADData wpaddata[MAX_WIIMOTES];
@@ -66,7 +66,7 @@ static void __wpad_timeouthandler(syswd_t alarm)
 	struct wiimote_t *wm = NULL;
 	struct _wpad_cb *wpdcb = NULL;
 
-	if(!__wpads_connected) return;
+	if(!__wpads_active) return;
 
 	__lwp_thread_dispatchdisable();
 	for(i=0;i<MAX_WIIMOTES;i++) {
@@ -75,7 +75,6 @@ static void __wpad_timeouthandler(syswd_t alarm)
 		if(wm && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_CONNECTED)) {
 			wpdcb->idle_time++;
 			if(wpdcb->idle_time>=__wpad_sleeptime) {
-				wiiuse_set_leds(wm,(__wpads_connected&~(0x01<<wm->unid))<<4,NULL);
 				wiiuse_disconnect(wm);
 			}
 		}
@@ -135,7 +134,6 @@ static s32 __wpad_disconnect(struct _wpad_cb *wpdcb)
 
 	wm = wpdcb->wm;
 	if(wm && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_CONNECTED)) {
-		wiiuse_set_leds(wm,(__wpads_connected&~(0x01<<wm->unid))<<4,NULL);
 		wiiuse_disconnect(wm);
 	}
 
@@ -283,7 +281,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			wiiuse_set_ir_position(wm,(CONF_GetSensorBarPosition()^1));
 			wiiuse_set_ir_sensitivity(wm,CONF_GetIRSensitivity());
 			wiiuse_set_leds(wm,(WIIMOTE_LED_1<<chan),NULL);
-			__wpads_connected |= (0x01<<chan);
+			__wpads_active |= (0x01<<chan);
 			break;
 		case WIIUSE_DISCONNECT:
 			chan = wm->unid;
@@ -296,7 +294,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			memset(&wpdcb->lstate,0,sizeof(WPADData));
 			memset(&wpaddata[chan],0,sizeof(WPADData));
 			memset(wpdcb->ringbuf_int,0,(sizeof(WPADData)*MAX_RINGBUFS));
-			__wpads_connected &= ~(0x01<<chan);
+			__wpads_active &= ~(0x01<<chan);
 			break;
 		default:
 			break;
@@ -312,7 +310,7 @@ void WPAD_Init()
 	_CPU_ISR_Disable(level);
 	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		__wpads_ponded = 0;
-		__wpads_connected = 0;
+		__wpads_active = 0;
 		__wpads_registered = 0;
 
 		memset(__wpdcb,0,sizeof(struct _wpad_cb)*MAX_WIIMOTES);
@@ -565,7 +563,7 @@ void WPAD_Disconnect(s32 chan)
 	__wpad_disconnect(wpdcb);
 	_CPU_ISR_Restore(level);
 
-	while(__wpads_connected&(0x01<<chan));
+	while(__wpads_active&(0x01<<chan));
 }
 
 void WPAD_Shutdown()
@@ -585,11 +583,11 @@ void WPAD_Shutdown()
 		wpdcb = &__wpdcb[i];
 		__wpad_disconnect(wpdcb);
 	}
-	
+
 	__wpads_inited = WPAD_STATE_DISABLED;
 	_CPU_ISR_Restore(level);
-
-	while(__wpads_connected);
+	
+	while(__wpads_active);
 
 	BTE_Shutdown();
 }
