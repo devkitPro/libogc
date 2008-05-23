@@ -53,8 +53,6 @@ void wiiuse_handshake_expansion_enabled(struct wiimote_t *wm,ubyte *data,uword l
 {
 	ubyte *buf;
 
-	//printf("wiiuse_handshake_expansion_enabled(%p,%d)\n",data,len);
-
 	buf = __lwp_wkspace_allocate(sizeof(ubyte)*EXP_HANDSHAKE_LEN);
 	wiiuse_read_data(wm,buf,WM_EXP_MEM_CALIBR,EXP_HANDSHAKE_LEN,wiiuse_handshake_expansion);
 
@@ -65,8 +63,6 @@ void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
 {
 	int id;
 	ubyte buf;
-
-	//printf("wiiuse_handshake_expansion(%p,%d)\n",data,len);
 
 	if(data==NULL) {
 		buf = 0x00;
@@ -86,8 +82,9 @@ void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
 			if(!guitar_hero_3_handshake(wm,&wm->exp.gh3,data,len)) return;
 			break;
 		default:
-			//printf("unknown expansion type connected.\n");
-			break;
+			__lwp_wkspace_free(data);
+			wiiuse_handshake_expansion(wm,NULL,0);
+			return;
 	}
 	__lwp_wkspace_free(data);
 	

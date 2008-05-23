@@ -64,11 +64,9 @@ int nunchuk_handshake(struct wiimote_t *wm,struct nunchuk_t *nc,ubyte *data,uwor
 	nc->js.max.y = data[offset + 11];
 	nc->js.min.y = data[offset + 12];
 	nc->js.center.y = data[offset + 13];
-	nc->accel_threshold = wm->accel_threshold;
-#ifndef GEKKO
-	nc->orient_threshold = wm->orient_threshold;
-#endif
 
+	nc->accel_threshold = wm->accel_threshold;
+	
 	wm->event = WIIUSE_NUNCHUK_INSERTED;
 	wm->exp.type = EXP_NUNCHUK;
 

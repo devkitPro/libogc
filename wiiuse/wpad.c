@@ -245,7 +245,6 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 	WPADData *wpadd = NULL;
 	struct _wpad_cb *wpdcb = NULL;
 
-	//printf("__wpad_eventCB(%p,%02x,%d)\n",wm,event,__wpad_samplingbufs_idx[(wm->unid-1)]);
 	switch(event) {
 		case WIIUSE_EVENT:
 			chan = wm->unid;
@@ -269,7 +268,6 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 		case WIIUSE_STATUS:
 			break;
 		case WIIUSE_CONNECT:
-			//printf("wiimote connected\n");
 			chan = wm->unid;
 			wpdcb = &__wpdcb[chan];
 			wpdcb->wm = wm;

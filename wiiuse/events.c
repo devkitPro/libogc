@@ -71,7 +71,35 @@ static int state_changed(struct wiimote_t* wm) {
 
 	#define STATE_CHANGED(a, b)		if (a != b)				return 1
 
-	#define CROSS_THRESH_XYZ(last, now, thresh)									\
+	#define CROSS_THRESH_IR(last, now, thresh)									\
+				do {															\
+					if (WIIMOTE_IS_FLAG_SET(wm, WIIUSE_ORIENT_THRESH)) {		\
+						if ((ABS((last.rx - now.rx)) >= thresh) ||				\
+							(ABS((last.ry - now.ry)) >= thresh))					\
+						{														\
+							return 1;											\
+						}														\
+					} else {													\
+						if (last.rx != now.rx)		return 1;					\
+						if (last.ry != now.ry)		return 1;					\
+					}															\
+				} while (0)
+
+	#define CROSS_THRESH_JS(last, now, thresh)									\
+				do {															\
+					if (WIIMOTE_IS_FLAG_SET(wm, WIIUSE_ORIENT_THRESH)) {		\
+						if ((ABS((last.x - now.x)) >= thresh) ||				\
+							(ABS((last.y - now.y)) >= thresh))					\
+						{														\
+							return 1;											\
+						}														\
+					} else {													\
+						if (last.x != now.x)		return 1;					\
+						if (last.y != now.y)		return 1;					\
+					}															\
+				} while (0)
+
+	#define CROSS_THRESH_ACCEL(last, now, thresh)									\
 				do {															\
 					if (WIIMOTE_IS_FLAG_SET(wm, WIIUSE_ORIENT_THRESH)) {		\
 						if ((ABS((last.x - now.x)) >= thresh) ||				\
@@ -90,34 +118,31 @@ static int state_changed(struct wiimote_t* wm) {
 	/* ir */
 	if (WIIUSE_USING_IR(wm)) {
 		for(i=0;i<4;i++) {
-			if(wm->lstate.ir.dot[i].visible && wm->ir.dot[i].visible)
-				STATE_CHANGED(wm->lstate.ir.dot[i].rx,wm->ir.dot[i].rx);
+			if(wm->lstate.ir.dot[i].visible && wm->ir.dot[i].visible) {
+				CROSS_THRESH_IR(wm->lstate.ir.dot[i],wm->ir.dot[i],wm->ir_threshold);
+			}
 		}
 	}
 
 	/* accelerometer */
 	if (WIIUSE_USING_ACC(wm)) {
 		/* raw accelerometer */
-		CROSS_THRESH_XYZ(wm->lstate.accel, wm->accel, wm->accel_threshold);
+		CROSS_THRESH_ACCEL(wm->lstate.accel, wm->accel, wm->accel_threshold);
 	}
 
 	/* expansion */
 	switch (wm->exp.type) {
 		case EXP_NUNCHUK:
 		{
-			STATE_CHANGED(wm->lstate.exp.nunchuk.js.pos.x, wm->exp.nunchuk.js.pos.x);
-			STATE_CHANGED(wm->lstate.exp.nunchuk.js.pos.y, wm->exp.nunchuk.js.pos.y);
+			CROSS_THRESH_JS(wm->lstate.exp.nunchuk.js.pos, wm->exp.nunchuk.js.pos,1);
+			CROSS_THRESH_ACCEL(wm->lstate.exp.nunchuk.accel, wm->exp.nunchuk.accel, wm->exp.nunchuk.accel_threshold);
 			STATE_CHANGED(wm->lstate.exp.nunchuk.btns, wm->exp.nunchuk.btns);
-
-			CROSS_THRESH_XYZ(wm->lstate.exp.nunchuk.accel, wm->exp.nunchuk.accel, wm->exp.nunchuk.accel_threshold);
 			break;
 		}
 		case EXP_CLASSIC:
 		{
-			STATE_CHANGED(wm->lstate.exp.classic.ljs.pos.x, wm->exp.classic.ljs.pos.x);
-			STATE_CHANGED(wm->lstate.exp.classic.ljs.pos.y, wm->exp.classic.ljs.pos.y);
-			STATE_CHANGED(wm->lstate.exp.classic.rjs.pos.x, wm->exp.classic.rjs.pos.x);
-			STATE_CHANGED(wm->lstate.exp.classic.rjs.pos.y, wm->exp.classic.rjs.pos.y);
+			CROSS_THRESH_JS(wm->lstate.exp.classic.ljs.pos, wm->exp.classic.ljs.pos,1);
+			CROSS_THRESH_JS(wm->lstate.exp.classic.rjs.pos, wm->exp.classic.rjs.pos,1);
 			STATE_CHANGED(wm->lstate.exp.classic.rs_raw, wm->exp.classic.rs_raw);
 			STATE_CHANGED(wm->lstate.exp.classic.ls_raw, wm->exp.classic.ls_raw);
 			STATE_CHANGED(wm->lstate.exp.classic.btns, wm->exp.classic.btns);
@@ -125,8 +150,7 @@ static int state_changed(struct wiimote_t* wm) {
 		}
 		case EXP_GUITAR_HERO_3:
 		{
-			STATE_CHANGED(wm->lstate.exp.gh3.js.pos.x, wm->exp.gh3.js.pos.x);
-			STATE_CHANGED(wm->lstate.exp.gh3.js.pos.y, wm->exp.gh3.js.pos.y);
+			CROSS_THRESH_JS(wm->lstate.exp.gh3.js.pos, wm->exp.gh3.js.pos,6);
 			STATE_CHANGED(wm->lstate.exp.gh3.wb_raw, wm->exp.gh3.wb_raw);
 			STATE_CHANGED(wm->lstate.exp.gh3.btns, wm->exp.gh3.btns);
 			break;

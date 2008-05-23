@@ -454,6 +454,10 @@ void wiiuse_set_ir_sensitivity(struct wiimote_t* wm, int level) {
 }
 
 
+void wiiuse_set_ir_treshold(struct wiimote_t* wm, int threshold)
+{
+	wm->ir_threshold = threshold;
+}
 
 /**
  *	@brief Calculate the data from the IR spots.  Basic IR mode.
