@@ -28,7 +28,7 @@ void* btmemb_alloc(struct memb_blks *blk)
 			_CPU_ISR_Restore(level);
 			return p;
 		}
-		ptr = (u32*)(u8*)ptr+(MEM_ALIGN_SIZE(blk->size)+sizeof(u32));
+		ptr = (u32*)((u8*)ptr+(MEM_ALIGN_SIZE(blk->size)+sizeof(u32)));
 	}
 	_CPU_ISR_Restore(level);
 	return NULL;
@@ -50,7 +50,7 @@ u8 btmemb_free(struct memb_blks *blk,void *ptr)
 			_CPU_ISR_Restore(level);
 			return ref;
 		}
-		ptr2 = (u32*)(u8*)ptr2+(MEM_ALIGN_SIZE(blk->size)+sizeof(u32));
+		ptr2 = (u32*)((u8*)ptr2+(MEM_ALIGN_SIZE(blk->size)+sizeof(u32)));
 	}
 	_CPU_ISR_Restore(level);
 	return -1;
