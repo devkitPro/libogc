@@ -22,7 +22,7 @@ struct _wpad_cb {
 	u32 data_fmt;
 	s32 buf_idx;
 	u32 max_bufs;
-	u64 last_active;
+	s32 idle_time;
 	WPADData lstate;
 	WPADData *ringbuf_ext;
 	WPADData ringbuf_int[MAX_RINGBUFS];
@@ -45,9 +45,6 @@ static s32 __wpad_onreset(s32 final);
 static s32 __wpad_disconnect(struct _wpad_cb *wpdcb);
 static void __wpad_eventCB(struct wiimote_t *wm,s32 event);
 
-extern long long gettime();
-extern u32 diff_sec(long long start,long long end);
-
 static sys_resetinfo __wpad_resetinfo = {
 	{},
 	__wpad_onreset,
@@ -66,18 +63,20 @@ static s32 __wpad_onreset(s32 final)
 static void __wpad_timeouthandler(syswd_t alarm)
 {
 	s32 i;
-	u64 now;
 	struct wiimote_t *wm = NULL;
 	struct _wpad_cb *wpdcb = NULL;
 
+	if(!__wpads_connected) return;
+
 	__lwp_thread_dispatchdisable();
-	now = gettime();
 	for(i=0;i<MAX_WIIMOTES;i++) {
 		wpdcb = &__wpdcb[i];
 		wm = wpdcb->wm;
 		if(wm && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_CONNECTED)) {
-			if(diff_sec(wpdcb->last_active,now)>=__wpad_sleeptime) {
-				__wpad_disconnect(wpdcb);
+			wpdcb->idle_time++;
+			if(wpdcb->idle_time>=__wpad_sleeptime) {
+				wiiuse_set_leds(wm,(__wpads_connected&~(0x01<<wm->unid))<<4,NULL);
+				wiiuse_disconnect(wm);
 			}
 		}
 	}
@@ -253,7 +252,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 		case WIIUSE_EVENT:
 			chan = wm->unid;
 			wpdcb = &__wpdcb[chan];
-			wpdcb->last_active = gettime();
+			wpdcb->idle_time = 0;
 			if(wpdcb->ringbuf_ext!=NULL) {
 				maxbufs = wpdcb->max_bufs;
 				wpadd = &(wpdcb->ringbuf_ext[wpdcb->buf_idx]);
@@ -277,7 +276,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			wpdcb = &__wpdcb[chan];
 			wpdcb->wm = wm;
 			wpdcb->buf_idx = 0;
-			wpdcb->last_active = gettime();
+			wpdcb->idle_time = 0;
 			memset(&wpdcb->lstate,0,sizeof(WPADData));
 			memset(&wpaddata[chan],0,sizeof(WPADData));
 			memset(wpdcb->ringbuf_int,0,(sizeof(WPADData)*MAX_RINGBUFS));
@@ -293,7 +292,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			wpdcb->buf_idx = 0;
 			wpdcb->max_bufs = 0;
 			wpdcb->ringbuf_ext = NULL;
-			wpdcb->last_active = 0LL;
+			wpdcb->idle_time = -1;
 			memset(&wpdcb->lstate,0,sizeof(WPADData));
 			memset(&wpaddata[chan],0,sizeof(WPADData));
 			memset(wpdcb->ringbuf_int,0,(sizeof(WPADData)*MAX_RINGBUFS));
@@ -335,8 +334,8 @@ void WPAD_Init()
 		SYS_CreateAlarm(&__wpad_timer);
 		SYS_RegisterResetFunc(&__wpad_resetinfo);
 	
-		tb.tv_sec = 0;
-		tb.tv_nsec = (250*TB_NSPERMS);
+		tb.tv_sec = 1;
+		tb.tv_nsec = 0;
 		SYS_SetPeriodicAlarm(__wpad_timer,&tb,&tb,__wpad_timeouthandler);
 
 		__wpads_inited = WPAD_STATE_ENABLING;
