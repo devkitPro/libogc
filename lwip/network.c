@@ -1630,6 +1630,11 @@ s32 net_shutdown(s32 s,u32 how)
 	return -1;
 }
 
+s32 net_fcntl(s32 s, u32 cmd, u32 flags)
+{
+	return -1;
+}
+
 s32 net_socket(u32 domain,u32 type,u32 protocol)
 {
 	s32 i;
