@@ -253,6 +253,17 @@ static void ir_convert_to_vres(int* x, int* y, enum aspect_t aspect, unsigned in
 	*y = (*y / (float)ys) * vy;
 }
 
+void wiiuse_set_ir_mode(struct wiimote_t *wm)
+{
+	ubyte buf = 0x00;
+
+	if(!wm) return;
+	
+	if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP)) buf = WM_IR_TYPE_BASIC;
+	else buf = WM_IR_TYPE_EXTENDED;
+	wiiuse_write_data(wm,WM_REG_IR_MODENUM, &buf, 1, NULL);
+}
+
 void wiiuse_set_ir(struct wiimote_t *wm,int status)
 {
 	ubyte buf = 0x00;
@@ -316,10 +327,8 @@ void wiiuse_set_ir(struct wiimote_t *wm,int status)
 
 	wiiuse_write_data(wm, WM_REG_IR_BLOCK1, (ubyte*)block1, 9, NULL);
 	wiiuse_write_data(wm, WM_REG_IR_BLOCK2, (ubyte*)block2, 2, NULL);
-
-	if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP)) buf = WM_IR_TYPE_BASIC;
-	else buf = WM_IR_TYPE_EXTENDED;
-	wiiuse_write_data(wm,WM_REG_IR_MODENUM, &buf, 1, NULL);
+	
+	wiiuse_set_ir_mode(wm);
 
 	//wiiuse_set_report_type(wm,NULL);
 	wiiuse_status(wm,NULL);

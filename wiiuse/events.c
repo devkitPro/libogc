@@ -242,10 +242,7 @@ static void event_status(struct wiimote_t *wm,ubyte *msg)
 	int ir = 0;
 	int attachment = 0;
 	int led[4]= {0};
-	int exp_changed = 0;
 	struct cmd_blk_t *cmd = wm->cmd_head;
-
-	//printf("event_status(%p)\n",cmd);
 
 	wiiuse_pressed_buttons(wm,msg);
 
@@ -258,28 +255,25 @@ static void event_status(struct wiimote_t *wm,ubyte *msg)
 	if((msg[2]&WM_CTRL_STATUS_BYTE1_ATTACHMENT)==WM_CTRL_STATUS_BYTE1_ATTACHMENT) attachment = 1;
 		
 	if((msg[2]&WM_CTRL_STATUS_BYTE1_IR_ENABLED)==WM_CTRL_STATUS_BYTE1_IR_ENABLED) ir = 1;
-#ifdef GEKKO
+
 	wm->battery_level = msg[5];
-#else
-	wm->battery_level = ((msg[5] / (float)WM_MAX_BATTERY_CODE)*100.0F);
-#endif
+
+	if(!ir && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR)) {
+		WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_IR);
+		wiiuse_set_ir(wm, 1);
+		goto done;
+	}
 
 	if(attachment && !WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP)) {
 		wiiuse_handshake_expansion(wm,NULL,0);
-		exp_changed = 1;
+		goto done;
 	} else if(!attachment && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP)) {
 		wiiuse_disable_expansion(wm);
-		exp_changed = 0;
+		goto done;
 	}
+	wiiuse_set_report_type(wm,NULL);
 
-	if(!exp_changed) {
-		if(!ir && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR)) {
-			WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_IR);
-			wiiuse_set_ir(wm, 1);
-		} else
-			wiiuse_set_report_type(wm,NULL);
-	}
-
+done:
 	if(!cmd) return;
 	if(!(cmd->state==CMD_SENT && cmd->data[0]==WM_CMD_CTRL_STATUS)) return;
 
@@ -343,6 +337,7 @@ void parse_event(struct wiimote_t *wm)
 
 	event = wm->event_buf[0];
 	msg = wm->event_buf+1;
+//	printf("parse_event(%02x,%p)\n",event,msg);
 	switch(event) {
 		case WM_RPT_CTRL_STATUS:
 			event_status(wm,msg);

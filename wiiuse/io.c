@@ -88,6 +88,7 @@ void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
 	}
 	__lwp_wkspace_free(data);
 	
+	wiiuse_set_ir_mode(wm);
 	wiiuse_status(wm,NULL);
 }
 
@@ -115,4 +116,7 @@ void wiiuse_disable_expansion(struct wiimote_t *wm)
 
 	WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_EXP);
 	wm->exp.type = EXP_NONE;
+
+	wiiuse_set_ir_mode(wm);
+	wiiuse_status(wm,NULL);
 }
