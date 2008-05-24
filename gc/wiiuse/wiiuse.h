@@ -649,6 +649,7 @@ WIIUSE_EXPORT extern void wiiuse_disconnect(struct wiimote_t* wm);
 WIIUSE_EXPORT extern int wiiuse_poll(struct wiimote_t** wm, int wiimotes);
 
 /* ir.c */
+WIIUSE_EXPORT extern void wiiuse_set_ir_mode(struct wiimote_t *wm);
 WIIUSE_EXPORT extern void wiiuse_set_ir(struct wiimote_t* wm, int status);
 WIIUSE_EXPORT extern void wiiuse_set_ir_vres(struct wiimote_t* wm, unsigned int x, unsigned int y);
 WIIUSE_EXPORT extern void wiiuse_set_ir_position(struct wiimote_t* wm, enum ir_position_t pos);
