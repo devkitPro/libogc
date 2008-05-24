@@ -1148,10 +1148,10 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 
 s32 __SYS_LoadMenu()
 {
-	u64 titleID = 0x100000002LL;
-	static tikview views[4] ATTRIBUTE_ALIGN(32); //I've never seen more than two, never more than one for IOSes; should be enough
-	u32 numviews;
 	s32 res;
+	u32 numviews;
+	u64 titleID = 0x100000002LL;
+	STACK_ALIGN(tikview,views,4,32);
 #ifdef DEBUG_SYSTEM
 	printf("Launching menu TitleID: %016llx\n",titleID);
 #endif

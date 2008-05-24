@@ -195,10 +195,10 @@ s32 IOS_GetRevisionMinor()
 
 s32 __IOS_LaunchNewIOS(int version)
 {
-	u64 titleID = 0x100000000LL;
-	static tikview views[4] ATTRIBUTE_ALIGN(32); //I've never seen more than two, never more than one for IOSes; should be enough
 	u32 numviews;
 	s32 res;
+	u64 titleID = 0x100000000LL;
+	STACK_ALIGN(tikview,views,4,32);
 #ifdef DEBUG_IOS	
 	s32 oldversion;
 #endif

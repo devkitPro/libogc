@@ -64,10 +64,6 @@ distribution.
 
 #define NET_UNKNOWN_ERROR_OFFSET	-10000
 
-// courtesy of Marcan
-#define ALIGN_ARRAY(type, name, size) type _al__##name[size+(32/sizeof(type))]; \
-						type *name = (type*)((((u32)(_al__##name)) + 31) & (~31))
-
 enum {
 	IOCTL_SO_ACCEPT	= 1,
 	IOCTL_SO_BIND,   
@@ -230,7 +226,7 @@ static s32 _open_manage_fd(void)
 s32 NCDGetLinkStatus(void) {
 	s32 ret;
 	s32 ncd_fd = _open_manage_fd();
-	ALIGN_ARRAY(u8, linkinfo, 0x20);
+	STACK_ALIGN(u8, linkinfo, 0x20, 32);
   
 	if (ncd_fd < 0) return ncd_fd;
 	
@@ -246,7 +242,7 @@ s32 NCDGetLinkStatus(void) {
 static s32 NWC24iStartupSocket(void)
 {
 	s32 kd_fd, ret;
-	ALIGN_ARRAY(u8, kd_buf, 0x20);
+	STACK_ALIGN(u8, kd_buf, 0x20, 32);
 	
 	kd_fd = _net_convert_error(IOS_Open(__kd_fs, 0));
 	if (kd_fd < 0) {
@@ -387,7 +383,7 @@ struct hostent * net_gethostbyname(char *addrString)
 s32 net_socket(u32 domain, u32 type, u32 protocol)
 {
 	s32 ret;
-	ALIGN_ARRAY(u32, params, 3);
+	STACK_ALIGN(u32, params, 3, 32);
 
 	if (net_ip_top_fd < 0) return -ENXIO;
  
@@ -403,7 +399,7 @@ s32 net_socket(u32 domain, u32 type, u32 protocol)
 s32 net_shutdown(s32 s, u32 how)
 {
 	s32 ret;
-	ALIGN_ARRAY(u32, params, 2);
+	STACK_ALIGN(u32, params, 2, 32);
 
 	if (net_ip_top_fd < 0) return -ENXIO;
 
@@ -418,15 +414,13 @@ s32 net_shutdown(s32 s, u32 how)
 s32 net_bind(s32 s, struct sockaddr *name, socklen_t namelen)
 {
 	s32 ret;
-	struct bind_params *params = NULL;
-	
+	STACK_ALIGN(struct bind_params,params,1,32);
+
 	if (net_ip_top_fd < 0) return -ENXIO;
 	if (name->sa_family != AF_INET) return -EAFNOSUPPORT;
 
-	params = iosAlloc(__net_hid, sizeof(struct bind_params));
-	if (!params) return IPC_ENOMEM;
-
 	name->sa_len = 8;
+
 	memset(params, 0, sizeof(struct bind_params));
 	params->socket = s;
 	params->has_name = 1;
@@ -435,14 +429,13 @@ s32 net_bind(s32 s, struct sockaddr *name, socklen_t namelen)
 	ret = _net_convert_error(IOS_Ioctl(net_ip_top_fd, IOCTL_SO_BIND, params, sizeof (struct bind_params), NULL, 0));
 	debug_printf("net_bind(%d, %p)=%d\n", s, name, ret);
 
-	if(params!=NULL) iosFree(__net_hid, params);
 	return ret;
 }
 
 s32 net_listen(s32 s, u32 backlog)
 {
 	s32 ret;
-	ALIGN_ARRAY(u32, params, 2);
+	STACK_ALIGN(u32, params, 2, 32);
 
 	if (net_ip_top_fd < 0) return -ENXIO;
 
@@ -459,7 +452,7 @@ s32 net_listen(s32 s, u32 backlog)
 s32 net_accept(s32 s, struct sockaddr *addr, socklen_t *addrlen)
 {
 	s32 ret;
-	ALIGN_ARRAY(u32, _socket, 1);
+	STACK_ALIGN(u32, _socket, 1, 32);
 
 	debug_printf("net_accept()\n");
 
@@ -486,15 +479,12 @@ s32 net_accept(s32 s, struct sockaddr *addr, socklen_t *addrlen)
 s32 net_connect(s32 s, struct sockaddr *addr, socklen_t addrlen)
 {
 	s32 ret;
-	struct connect_params *params = NULL;
+	STACK_ALIGN(struct connect_params,params,1,32);
 	
 	if (net_ip_top_fd < 0) return -ENXIO;
-
-	params = iosAlloc(__net_hid, sizeof(struct connect_params));
-	if (!params) return IPC_ENOMEM;
-	
 	if (addr->sa_family != AF_INET) return -EAFNOSUPPORT;
 	if (addrlen < 8) return -EINVAL;
+
 	addr->sa_len = 8;
 
 	memset(params, 0, sizeof(struct connect_params));
@@ -507,7 +497,6 @@ s32 net_connect(s32 s, struct sockaddr *addr, socklen_t addrlen)
     	debug_printf("SOConnect(%d, %p)=%d\n", s, addr, ret);
 	}
 
-	if(params!=NULL) iosFree(__net_hid, params);
   	return ret;
 }
 
@@ -525,19 +514,15 @@ s32 net_sendto(s32 s, const void *data, s32 len, u32 flags, struct sockaddr *to,
 {
 	s32 ret;
 	u8 * message_buf = NULL;
-	struct sendto_params *params = NULL;
+	STACK_ALIGN(struct sendto_params,params,1,32);
 
 	if (net_ip_top_fd < 0) return -ENXIO;
 	if (tolen > 28) return -EOVERFLOW;
 
-	params = iosAlloc(__net_hid, sizeof(struct sendto_params));
-	if (!params) return IPC_ENOMEM;
-	
 	message_buf = iosAlloc(__net_hid, len);
 	if (message_buf == NULL) {
 		debug_printf("net_send: failed to alloc %d bytes\n", len);
-		ret = IPC_ENOMEM;
-		goto done;
+		return IPC_ENOMEM;
 	}
 
 	debug_printf("net_sendto(%d, %p, %d, %d, %p, %d)\n", s, data, len, flags, to, tolen);
@@ -547,7 +532,7 @@ s32 net_sendto(s32 s, const void *data, s32 len, u32 flags, struct sockaddr *to,
 		to->sa_len = tolen;
 	}
 	
-	memset(&params, 0, sizeof(struct sendto_params));
+	memset(params, 0, sizeof(struct sendto_params));
 	memcpy(message_buf, data, len);   // ensure message buf is aligned
 
 	params->socket = s;  
@@ -562,9 +547,6 @@ s32 net_sendto(s32 s, const void *data, s32 len, u32 flags, struct sockaddr *to,
 	ret = _net_convert_error(IOS_IoctlvFormat(__net_hid, net_ip_top_fd, IOCTLV_SO_SENDTO, "dd:", message_buf, len, params, sizeof(struct sendto_params)));
 	debug_printf("net_send retuned %d\n", ret);
 
-done:
-	if(params!=NULL) iosFree(__net_hid, params);
-	if(message_buf!=NULL) iosFree(__net_hid,message_buf);
 	return ret;
 }
 
@@ -577,7 +559,7 @@ s32 net_recvfrom(s32 s, void *mem, s32 len, u32 flags, struct sockaddr *from, so
 {
 	s32 ret;
 	u8* message_buf = NULL;
-	ALIGN_ARRAY(u32, params, 2);
+	STACK_ALIGN(u32, params, 2, 32);
 
 	if (net_ip_top_fd < 0) return -ENXIO;
 	if (len<=0) return -EINVAL;
@@ -626,7 +608,7 @@ s32 net_read(s32 s, void *mem, s32 len)
 s32 net_close(s32 s)
 {
 	s32 ret;
-	ALIGN_ARRAY(u32, _socket, 1);
+	STACK_ALIGN(u32, _socket, 1, 32);
 
 	if (net_ip_top_fd < 0) return -ENXIO;
 
@@ -647,14 +629,11 @@ s32 net_select(s32 maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset
 s32 net_setsockopt(s32 s, u32 level, u32 optname, const void *optval, socklen_t optlen)
 {
 	s32 ret;
-	struct setsockopt_params *params = NULL;
+	STACK_ALIGN(struct setsockopt_params,params,1,32);
 
 	if (net_ip_top_fd < 0) return -ENXIO;
-
-	params = iosAlloc(__net_hid, sizeof(struct setsockopt_params));
-	if (!params) return IPC_ENOMEM;
-
 	if (optlen < 0 || optlen > 20) return -EINVAL;
+
 	memset(params, 0, sizeof(struct setsockopt_params));
 	params->socket = s;
 	params->level = level;
@@ -690,7 +669,7 @@ s32 net_ioctl(s32 s, u32 cmd, void *argp)
 s32 net_fcntl(s32 s, u32 cmd, u32 flags)
 {
 	s32 ret;
-	ALIGN_ARRAY(u32, params, 3);
+	STACK_ALIGN(u32, params, 3, 32);
 
 	if (net_ip_top_fd < 0) return -ENXIO;
 	if (cmd != F_GETFL && cmd != F_SETFL) return -EINVAL;

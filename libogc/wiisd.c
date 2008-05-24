@@ -39,7 +39,10 @@
 #include <time.h>
 #include <gcutil.h>
 #include <ogc/ipc.h>
- 
+
+#include <asm.h>
+#include <processor.h>
+
 #define SDIO_HEAPSIZE				0x400
  
 #define PAGE_SIZE512				512
@@ -125,27 +128,15 @@ static u8 __sd0_cid[16];
  
 static s32 __sdio_initialized = 0;
  
-static u32 __sdio_status ATTRIBUTE_ALIGN(32) = 0;
-static u32 __sdio_clockset ATTRIBUTE_ALIGN(32) = 0;
 static char _sd0_fs[] ATTRIBUTE_ALIGN(32) = "/dev/sdio/slot0";
  
 static s32 __sdio_sendcommand(u32 cmd,u32 cmd_type,u32 rsp_type,u32 arg,u32 blk_cnt,u32 blk_size,void *buffer,void *reply,u32 rlen)
 {
-	s32 i,ret;
-	ioctlv *iovec;
-	struct _sdiorequest *request;
-	struct _sdioresponse *response;
- 
-	request = (struct _sdiorequest*)iosAlloc(hId,sizeof(struct _sdiorequest));
-	if(request==NULL) return IPC_ENOMEM;
- 
-	response = (struct _sdioresponse*)iosAlloc(hId,sizeof(struct _sdioresponse));
-	if(response==NULL) {
-		iosFree(hId,request);
-		return IPC_ENOMEM;
-	}
-	for(i=0;i<(sizeof(struct _sdioresponse)>>2);i++) response->rsp_fields[i] = 0;
- 
+	s32 ret;
+	STACK_ALIGN(ioctlv,iovec,3,32);
+	STACK_ALIGN(struct _sdiorequest,request,1,32);
+	STACK_ALIGN(struct _sdioresponse,response,1,32);
+
 	request->cmd = cmd;
 	request->cmd_type = cmd_type;
 	request->rsp_type = rsp_type;
@@ -157,9 +148,6 @@ static s32 __sdio_sendcommand(u32 cmd,u32 cmd_type,u32 rsp_type,u32 arg,u32 blk_
 	request->pad0 = 0;
  
 	if(request->isdma) {
-		iovec = (ioctlv*)iosAlloc(hId,(sizeof(ioctlv)*3));
-		if(iovec==NULL) return IPC_ENOMEM;
- 
 		iovec[0].data = request;
 		iovec[0].len = sizeof(struct _sdiorequest);
 		iovec[1].data = buffer;
@@ -167,15 +155,10 @@ static s32 __sdio_sendcommand(u32 cmd,u32 cmd_type,u32 rsp_type,u32 arg,u32 blk_
 		iovec[2].data = response;
 		iovec[2].len = sizeof(struct _sdioresponse);
 		ret = IOS_Ioctlv(__sd0_fd,IOCTL_SDIO_SENDCMD,2,1,iovec);
- 
-		iosFree(hId,iovec);
 	} else
 		ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_SENDCMD,request,sizeof(struct _sdiorequest),response,sizeof(struct _sdioresponse));
  
 	if(reply && !(rlen>16)) memcpy(reply,response,rlen);
- 
-	iosFree(hId,response);
-	iosFree(hId,request);
  
 	return ret;
 }
@@ -183,78 +166,71 @@ static s32 __sdio_sendcommand(u32 cmd,u32 cmd_type,u32 rsp_type,u32 arg,u32 blk_
 static s32 __sdio_setclock(u32 set)
 {
 	s32 ret;
- 
-	__sdio_clockset = set;
-	ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_SETCLK,&__sdio_clockset,sizeof(u32),NULL,0);
+ 	STACK_ALIGN(u32,clock,1,32);
+
+	*clock = set;
+	ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_SETCLK,clock,sizeof(u32),NULL,0);
  
 	return ret;
 }
 static s32 __sdio_getstatus()
 {
 	s32 ret;
+	STACK_ALIGN(u32,status,1,32);
  
-	__sdio_status = 0;
-	ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_GETSTATUS,NULL,0,&__sdio_status,sizeof(u32));
+	ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_GETSTATUS,NULL,0,status,sizeof(u32));
 	if(ret<0) return ret;
  
-	return __sdio_status;
+	return *status;
 }
  
 static s32 __sdio_resetcard()
 {
 	s32 ret;
- 
+ 	STACK_ALIGN(u32,status,1,32);
+
 	__sd0_rca = 0;
-	__sdio_status = 0;
-	ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_RESETCARD,NULL,0,&__sdio_status,sizeof(u32));
+	ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_RESETCARD,NULL,0,status,sizeof(u32));
 	if(ret<0) return ret;
  
-	__sd0_rca = (u16)(__sdio_status>>16);
-	return (__sdio_status&0xffff);
+	__sd0_rca = (u16)(*status>>16);
+	return (*status&0xffff);
 }
  
 static s32 __sdio_gethcr(u8 reg,u8 *val)
 {
 	s32 ret;
-	u32 *hcquery = NULL;
+	STACK_ALIGN(u32,hcr_value,1,32);
+	STACK_ALIGN(u32,hcr_query,6,32);
  
 	if(val==NULL) return IPC_EINVAL;
  
-	hcquery = (u32*)iosAlloc(hId,24);
-	if(hcquery==NULL) return IPC_ENOMEM;
- 
 	*val = 0;
-	hcquery[0] = reg;
-	hcquery[1] = 0;
-	hcquery[2] = 0;
-	hcquery[3] = 1;
-	hcquery[4] = 0;
-	hcquery[5] = 0;
-	__sdio_status = 0;
-	ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_READHCREG,(void*)hcquery,24,&__sdio_status,sizeof(u32));
-	if(ret>=0) *val = (__sdio_status&0xff);
+	hcr_query[0] = reg;
+	hcr_query[1] = 0;
+	hcr_query[2] = 0;
+	hcr_query[3] = 1;
+	hcr_query[4] = 0;
+	hcr_query[5] = 0;
+	ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_READHCREG,(void*)hcr_query,24,hcr_value,sizeof(u32));
+	if(ret>=0) *val = (*hcr_value&0xff);
  
-	iosFree(hId,hcquery);
 	return ret;
 }
  
 static s32 __sdio_sethcr(u8 reg,u8 data)
 {
 	s32 ret;
-	u32 *hcquery = NULL;
+	STACK_ALIGN(u32,hcr_query,6,32);
  
-	hcquery = (u32*)iosAlloc(hId,24);
-	if(hcquery==NULL) return IPC_ENOMEM;
+	hcr_query[0] = reg;
+	hcr_query[1] = 0;
+	hcr_query[2] = 0;
+	hcr_query[3] = 1;
+	hcr_query[4] = data;
+	hcr_query[5] = 0;
+	ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_WRITEHCREG,(void*)hcr_query,24,NULL,0);
  
-	hcquery[0] = reg;
-	hcquery[1] = 0;
-	hcquery[2] = 0;
-	hcquery[3] = 1;
-	hcquery[4] = data;
-	hcquery[5] = 0;
-	ret = IOS_Ioctl(__sd0_fd,IOCTL_SDIO_WRITEHCREG,(void*)hcquery,24,NULL,0);
- 
-	iosFree(hId,hcquery);
 	return ret;
 }
  

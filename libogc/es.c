@@ -193,10 +193,10 @@ s32 ES_GetDataDir(u64 titleID,char *filepath)
 s32 ES_LaunchTitle(u64 titleID, const tikview *view)
 {
 
-	static u64 title ATTRIBUTE_ALIGN(32);
-	static ioctlv vectors[2] ATTRIBUTE_ALIGN(32);
 	s32 res;
-	
+	STACK_ALIGN(u64,title,1,32);
+	STACK_ALIGN(ioctlv,vectors,2,32);
+
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(!view) return ES_EINVAL;
 	if(!ISALIGNED(view)) return ES_EALIGN;
@@ -206,8 +206,8 @@ s32 ES_LaunchTitle(u64 titleID, const tikview *view)
 #endif	
 
 	
-	title = titleID;
-	vectors[0].data = (void*)&title;
+	*title = titleID;
+	vectors[0].data = (void*)title;
 	vectors[0].len = sizeof(u64);
 	vectors[1].data = (void*)view;
 	vectors[1].len = sizeof(tikview);
