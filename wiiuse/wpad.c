@@ -45,6 +45,8 @@ static s32 __wpad_onreset(s32 final);
 static s32 __wpad_disconnect(struct _wpad_cb *wpdcb);
 static void __wpad_eventCB(struct wiimote_t *wm,s32 event);
 
+extern void __wiiuse_sensorbar_enable(int enable);
+
 static sys_resetinfo __wpad_resetinfo = {
 	{},
 	__wpad_onreset,
@@ -324,6 +326,8 @@ void WPAD_Init()
 			return;
 		}
 
+		__wiiuse_sensorbar_enable(1);
+
 		BTE_Init();
 		BTE_InitCore(__initcore_finished);
 
@@ -582,6 +586,7 @@ void WPAD_Shutdown()
 		__wpad_disconnect(wpdcb);
 	}
 
+	__wiiuse_sensorbar_enable(0);
 	__wpads_inited = WPAD_STATE_DISABLED;
 	_CPU_ISR_Restore(level);
 	

@@ -61,9 +61,7 @@ struct wiimote_t** wiiuse_init(int wiimotes, wii_event_cb event_cb) {
 
 	wm = malloc(sizeof(struct wiimote_t*) * wiimotes);
 	if(!wm) return NULL;
-#ifdef GEKKO
-	__wiiuse_sensorbar_enable(1);
-#endif
+
 	for (i = 0; i < wiimotes; ++i) {
 		wm[i] = malloc(sizeof(struct wiimote_t));
 		memset(wm[i], 0, sizeof(struct wiimote_t));
