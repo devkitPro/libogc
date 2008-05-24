@@ -95,8 +95,8 @@ struct wiimote_t** wiiuse_init(int wiimotes, wii_event_cb event_cb) {
 		wiiuse_set_aspect_ratio(wm[i], WIIUSE_ASPECT_4_3);
 		wiiuse_set_ir_position(wm[i], WIIUSE_IR_ABOVE);
 
-		wm[i]->ir_threshold = 4;
-		wm[i]->accel_threshold = 6;
+		wm[i]->ir_threshold = 1;
+		wm[i]->accel_threshold = 5;
 
 		wm[i]->accel_calib.st_alpha = WIIUSE_DEFAULT_SMOOTH_ALPHA;
 	}
