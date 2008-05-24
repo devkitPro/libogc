@@ -7,7 +7,7 @@
 #define __stringify(rn)								#rn
 #define ATTRIBUTE_ALIGN(v)							__attribute__((aligned(v)))
 // courtesy of Marcan
-#define STACK_ALIGN(type, name, cnt, alignment)		u8 _al__##name[((sizeof(type)*(size))+(alignment))]; \
+#define STACK_ALIGN(type, name, cnt, alignment)		u8 _al__##name[((sizeof(type)*(cnt))+(alignment))]; \
 													type *name = (type*)((((u32)(_al__##name)) + (alignment-1)) & (~(alignment-1)))
 
 #define _sync() asm volatile("sync")
