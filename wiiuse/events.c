@@ -150,7 +150,7 @@ static int state_changed(struct wiimote_t* wm) {
 		}
 		case EXP_GUITAR_HERO_3:
 		{
-			CROSS_THRESH_JS(wm->lstate.exp.gh3.js.pos, wm->exp.gh3.js.pos,6);
+			CROSS_THRESH_JS(wm->lstate.exp.gh3.js.pos, wm->exp.gh3.js.pos,1);
 			STATE_CHANGED(wm->lstate.exp.gh3.wb_raw, wm->exp.gh3.wb_raw);
 			STATE_CHANGED(wm->lstate.exp.gh3.btns, wm->exp.gh3.btns);
 			break;
