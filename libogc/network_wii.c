@@ -223,11 +223,12 @@ static s32 _open_manage_fd(void)
 	return ncd_fd;
 }
 
-s32 NCDGetLinkStatus(void) {
-	s32 ret;
-	s32 ncd_fd = _open_manage_fd();
+s32 NCDGetLinkStatus(void) 
+{
+	s32 ret, ncd_fd;
 	STACK_ALIGN(u8, linkinfo, 0x20, 32);
   
+	ncd_fd = _open_manage_fd();
 	if (ncd_fd < 0) return ncd_fd;
 	
 	ret = _net_convert_error(IOS_IoctlvFormat(__net_hid, ncd_fd, IOCTL_NCD_GETLINKSTATUS, 
