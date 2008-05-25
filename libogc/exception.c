@@ -245,6 +245,6 @@ void c_default_exceptionhandler(frame_context *pCtx)
 void __libogc_exit(int status)
 {
 	SYS_ResetSystem(SYS_SHUTDOWN,0,0);
-	Reload();
+	__lwp_thread_stopmultitasking(Reload);
 }
 
