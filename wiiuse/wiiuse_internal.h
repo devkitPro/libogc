@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/wiiuse_internal.h,v 1.2 2008-05-20 11:40:28 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/wiiuse_internal.h,v 1.3 2008-05-25 11:06:05 shagkur Exp $
  *
  */
 
@@ -182,6 +182,7 @@
 #define WIIMOTE_STATE_IR_SENS_LVL3				0x04000
 #define WIIMOTE_STATE_IR_SENS_LVL4				0x08000
 #define WIIMOTE_STATE_IR_SENS_LVL5				0x10000
+#define WIIMOTE_STATE_IR2						0x20000
 
 #define WIIMOTE_INIT_STATES					(WIIMOTE_STATE_IR_SENS_LVL3)
 

@@ -59,11 +59,11 @@ struct wiimote_t** wiiuse_init(int wiimotes, wii_event_cb event_cb) {
 	if (!wiimotes)
 		return NULL;
 
-	wm = malloc(sizeof(struct wiimote_t*) * wiimotes);
+	wm = __lwp_wkspace_allocate(sizeof(struct wiimote_t*) * wiimotes);
 	if(!wm) return NULL;
 
 	for (i = 0; i < wiimotes; ++i) {
-		wm[i] = malloc(sizeof(struct wiimote_t));
+		wm[i] = __lwp_wkspace_allocate(sizeof(struct wiimote_t));
 		memset(wm[i], 0, sizeof(struct wiimote_t));
 
 		wm[i]->unid = i;

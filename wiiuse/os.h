@@ -20,6 +20,7 @@
 		#include "lwp_queue.h"
 		#include "asm.h"
 		#include "processor.h"
+		#include "lwp_wkspace.h"
 	#else
 	#endif
 #endif

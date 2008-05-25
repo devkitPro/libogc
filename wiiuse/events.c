@@ -258,8 +258,8 @@ static void event_status(struct wiimote_t *wm,ubyte *msg)
 
 	wm->battery_level = msg[5];
 
-	if(!ir && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR)) {
-		WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_IR);
+	if(!ir && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR2)) {
+		WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_IR2);
 		wiiuse_set_ir(wm, 1);
 		goto done;
 	}

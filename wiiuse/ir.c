@@ -259,9 +259,11 @@ void wiiuse_set_ir_mode(struct wiimote_t *wm)
 
 	if(!wm) return;
 	
-	if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP)) buf = WM_IR_TYPE_BASIC;
-	else buf = WM_IR_TYPE_EXTENDED;
-	wiiuse_write_data(wm,WM_REG_IR_MODENUM, &buf, 1, NULL);
+	if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR)) {
+		if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP)) buf = WM_IR_TYPE_BASIC;
+		else buf = WM_IR_TYPE_EXTENDED;
+		wiiuse_write_data(wm,WM_REG_IR_MODENUM, &buf, 1, NULL);
+	}
 }
 
 void wiiuse_set_ir(struct wiimote_t *wm,int status)
@@ -281,7 +283,11 @@ void wiiuse_set_ir(struct wiimote_t *wm,int status)
 	 */
 	if(!WIIMOTE_IS_SET(wm,WIIMOTE_STATE_HANDSHAKE_COMPLETE)) {
 		WIIUSE_DEBUG("Tried to enable IR, will wait until handshake finishes.\n");
-		WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_IR);
+		if(status)
+			WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_IR2);
+		else
+			WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_IR2);
+
 		return;
 	}
 
@@ -300,14 +306,12 @@ void wiiuse_set_ir(struct wiimote_t *wm,int status)
 			wiiuse_status(wm,NULL);
 			return;
 		}
-		WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_IR);
 	} else {
 		/* if already disabled then stop */
 		if (!WIIMOTE_IS_SET(wm, WIIMOTE_STATE_IR)) {
 			wiiuse_status(wm,NULL);
 			return;
 		}
-		WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_IR);
 	}
 
 	buf = (status ? 0x04 : 0x00);
@@ -317,6 +321,7 @@ void wiiuse_set_ir(struct wiimote_t *wm,int status)
 	if (!status) {
 		WIIUSE_DEBUG("Disabled IR cameras for wiimote id %i.", wm->unid);
 		//wiiuse_set_report_type(wm,NULL);
+		WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_IR);
 		wiiuse_status(wm,NULL);
 		return;
 	}
@@ -328,9 +333,8 @@ void wiiuse_set_ir(struct wiimote_t *wm,int status)
 	wiiuse_write_data(wm, WM_REG_IR_BLOCK1, (ubyte*)block1, 9, NULL);
 	wiiuse_write_data(wm, WM_REG_IR_BLOCK2, (ubyte*)block2, 2, NULL);
 	
+	WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_IR);
 	wiiuse_set_ir_mode(wm);
-
-	//wiiuse_set_report_type(wm,NULL);
 	wiiuse_status(wm,NULL);
 	return;
 }
