@@ -319,8 +319,6 @@ void wiiuse_set_ir(struct wiimote_t *wm,int status)
 
 	if (!status) {
 		WIIUSE_DEBUG("Disabled IR cameras for wiimote id %i.", wm->unid);
-		//wiiuse_set_report_type(wm,NULL);
-		WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_IR|WIIMOTE_STATE_IR_INIT));
 		wiiuse_status(wm,NULL);
 		return;
 	}
