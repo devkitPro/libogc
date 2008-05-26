@@ -70,8 +70,6 @@ int nunchuk_handshake(struct wiimote_t *wm,struct nunchuk_t *nc,ubyte *data,uwor
 	wm->event = WIIUSE_NUNCHUK_INSERTED;
 	wm->exp.type = EXP_NUNCHUK;
 
-	WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_EXP_HANDSHAKE);
-	WIIMOTE_ENABLE_STATE(wm,WIIMOTE_STATE_EXP_HANDSHAKE_COMPLETE);
 	return 1;
 }
 

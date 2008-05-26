@@ -218,10 +218,10 @@ static void __wpad_read_wiimote(struct wiimote_t *wm,WPADData *data)
 	data->err = WPAD_ERR_TRANSFER;
 	if(wm && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_CONNECTED)) {
 		if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_HANDSHAKE_COMPLETE)) {
-			data->btns_d = wm->btns;
-			data->btns_h = wm->btns_held;
-			data->btns_r = wm->btns_released;
-			data->btns_l = wm->btns_last;
+			data->btns_d = (wm->btns&0xffff);
+			data->btns_h = (wm->btns_held&0xffff);
+			data->btns_r = (wm->btns_released&0xffff);
+			data->btns_l = (wm->btns_last&0xffff);
 
 			if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_ACC)) {
 				data->accel = wm->accel;
@@ -383,7 +383,7 @@ void WPAD_Read(s32 chan,WPADData *data)
 			smoothed = WIIMOTE_IS_FLAG_SET(__wpads[chan], WIIUSE_SMOOTHING);
 			useacc = WIIMOTE_IS_SET(__wpads[chan],WIIMOTE_STATE_ACC);
 			useir = WIIMOTE_IS_SET(__wpads[chan],WIIMOTE_STATE_IR);
-			useexp = WIIMOTE_IS_SET(__wpads[chan],(WIIMOTE_STATE_EXP|WIIMOTE_STATE_EXP_HANDSHAKE_COMPLETE));
+			useexp = WIIMOTE_IS_SET(__wpads[chan],WIIMOTE_STATE_EXP);
 		} else
 			data->err = WPAD_ERR_NOT_READY;
 	} else
@@ -470,7 +470,7 @@ s32 WPAD_Probe(s32 chan,u32 *type)
 	if(wm && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_CONNECTED)) {
 		if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_HANDSHAKE_COMPLETE)) {
 			dev = WPAD_DEV_CORE;
-			if(WIIMOTE_IS_SET(wm,(WIIMOTE_STATE_EXP|WIIMOTE_STATE_EXP_HANDSHAKE_COMPLETE))) {
+			if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP)) {
 				switch(wm->exp.type) {
 					case WPAD_EXP_NUNCHAKU:
 						dev = WPAD_DEV_NUNCHAKU;

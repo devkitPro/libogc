@@ -56,7 +56,7 @@ void wiiuse_handshake_expansion_enabled(struct wiimote_t *wm,ubyte *data,uword l
 	buf = __lwp_wkspace_allocate(sizeof(ubyte)*EXP_HANDSHAKE_LEN);
 	wiiuse_read_data(wm,buf,WM_EXP_MEM_CALIBR,EXP_HANDSHAKE_LEN,wiiuse_handshake_expansion);
 
-	WIIMOTE_ENABLE_STATE(wm, (WIIMOTE_STATE_EXP|WIIMOTE_STATE_EXP_HANDSHAKE));
+	WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_EXP_HANDSHAKE);
 }
 
 void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
@@ -82,12 +82,16 @@ void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
 			if(!guitar_hero_3_handshake(wm,&wm->exp.gh3,data,len)) return;
 			break;
 		default:
+			WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_EXP_HANDSHAKE);
+			WIIMOTE_ENABLE_STATE(wm,WIIMOTE_STATE_EXP_FAILED);
 			__lwp_wkspace_free(data);
-			wiiuse_handshake_expansion(wm,NULL,0);
+			wiiuse_status(wm,NULL);
 			return;
 	}
 	__lwp_wkspace_free(data);
-	
+
+	WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_EXP_HANDSHAKE);
+	WIIMOTE_ENABLE_STATE(wm,WIIMOTE_STATE_EXP);
 	wiiuse_set_ir_mode(wm);
 	wiiuse_status(wm,NULL);
 }
@@ -114,7 +118,7 @@ void wiiuse_disable_expansion(struct wiimote_t *wm)
 			break;
 	}
 
-	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_EXP|WIIMOTE_STATE_EXP_HANDSHAKE_COMPLETE));
+	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_EXP|WIIMOTE_STATE_EXP_HANDSHAKE));
 	wm->exp.type = EXP_NONE;
 
 	wiiuse_set_ir_mode(wm);

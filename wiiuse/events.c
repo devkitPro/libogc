@@ -258,18 +258,24 @@ static void event_status(struct wiimote_t *wm,ubyte *msg)
 
 	wm->battery_level = msg[5];
 
-	if(!ir && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR2)) {
-		WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_IR2);
+	if(!ir && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR_INIT)) {
+		WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_IR_INIT);
 		wiiuse_set_ir(wm, 1);
 		goto done;
 	}
+	if(ir && !WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR)) WIIMOTE_ENABLE_STATE(wm,WIIMOTE_STATE_IR);
 
-	if(attachment && !WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP)) {
-		wiiuse_handshake_expansion(wm,NULL,0);
-		goto done;
-	} else if(!attachment && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP)) {
-		wiiuse_disable_expansion(wm);
-		goto done;
+	if(attachment) {
+		if(!WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP) && !WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP_FAILED)) {
+			wiiuse_handshake_expansion(wm,NULL,0);
+			goto done;
+		}
+	} else {
+		WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_EXP_FAILED);
+		if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP)) {
+			wiiuse_disable_expansion(wm);
+			goto done;
+		}
 	}
 	wiiuse_set_report_type(wm,NULL);
 
