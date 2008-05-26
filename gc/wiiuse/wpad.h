@@ -87,10 +87,10 @@ typedef struct _wpad_data
 {
 	u16 err;
 	
-	u16 btns_d;
-	u16 btns_h;
-	u16 btns_r;
-	u16 btns_l;
+	u32 btns_d;
+	u32 btns_h;
+	u32 btns_r;
+	u32 btns_l;
 
 	struct ir_t ir;
 	struct vec3b_t accel;
