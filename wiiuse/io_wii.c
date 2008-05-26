@@ -9,6 +9,7 @@
 #include "wiiuse_internal.h"
 #include "events.h"
 #include "io.h"
+#include "lwp_wkspace.h"
 
 #define MAX_COMMANDS					0x20
 
@@ -33,7 +34,7 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 	struct wiimote_t *wm = (struct wiimote_t*)arg;
 
 	//printf("wiimote disconnected\n");
-	WIIMOTE_DISABLE_STATE(wm,(WIIMOTE_STATE_CONNECTED|WIIMOTE_STATE_HANDSHAKE));
+	WIIMOTE_DISABLE_STATE(wm,(WIIMOTE_STATE_CONNECTED|WIIMOTE_STATE_HANDSHAKE|WIIMOTE_STATE_HANDSHAKE_COMPLETE));
 	if(wm->event_cb) wm->event_cb(wm,WIIUSE_DISCONNECT);
 	return ERR_OK;
 }
@@ -153,7 +154,7 @@ void wiiuse_init_cmd_queue(struct wiimote_t *wm)
 	u32 size;
 
 	size = (MAX_COMMANDS*sizeof(struct cmd_blk_t));
-	buffer = malloc(size);
+	buffer = __lwp_wkspace_allocate(size);
 	__lwp_queue_initialize(&wm->cmdq,buffer,MAX_COMMANDS,sizeof(struct cmd_blk_t));
 }
 

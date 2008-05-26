@@ -114,7 +114,7 @@ void wiiuse_disable_expansion(struct wiimote_t *wm)
 			break;
 	}
 
-	WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_EXP);
+	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_EXP|WIIMOTE_STATE_EXP_HANDSHAKE_COMPLETE));
 	wm->exp.type = EXP_NONE;
 
 	wiiuse_set_ir_mode(wm);

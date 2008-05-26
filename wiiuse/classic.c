@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/classic.c,v 1.4 2008-05-21 08:15:25 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/classic.c,v 1.5 2008-05-26 09:04:17 shagkur Exp $
  *
  */
 
@@ -125,7 +125,8 @@ int classic_ctrl_handshake(struct wiimote_t* wm, struct classic_ctrl_t* cc, ubyt
  *
  *	@param cc		A pointer to a classic_ctrl_t structure.
  */
-void classic_ctrl_disconnected(struct classic_ctrl_t* cc) {
+void classic_ctrl_disconnected(struct classic_ctrl_t* cc) 
+{
 	memset(cc, 0, sizeof(struct classic_ctrl_t));
 }
 
