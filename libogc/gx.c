@@ -889,7 +889,7 @@ static void __GX_SetGenMode()
 
 static void __GX_UpdateBPMask()
 {
-#if defined(HW_RVL)
+#if defined(HW_DOL)
 	u32 i;
 	u32 nbmp,nres;
 	u8 ntexmap;
@@ -3743,6 +3743,68 @@ void GX_SetNumIndStages(u8 nstages)
 {
 	_gx[0xac] = (_gx[0xac]&~0x70000)|(_SHIFTL(nstages,16,3));
 	_gx[0x09] |= 0x0006;
+}
+
+void GX_SetIndTexMatrix(u8 indtexmtx,const f32 offset_mtx[2][3],s8 scale_exp)
+{
+	u32 val,s,idx;
+	u32 ma,mb;
+
+	if(indtexmtx>0x00 && indtexmtx<0x04) indtexmtx -= 0x01;
+	else if(indtexmtx>0x04 && indtexmtx<0x08) indtexmtx -= 0x05;
+	else if(indtexmtx>0x08 && indtexmtx<0x0C) indtexmtx -= 0x09;
+	else indtexmtx = 0x00;
+
+	s = (scale_exp+17);
+	idx = ((indtexmtx<<2)-indtexmtx);
+
+	ma = *(u32*)((void*)&offset_mtx[0][0]);
+	mb = *(u32*)((void*)&offset_mtx[1][0]);
+	val = (_SHIFTL((0x06+idx),24,8)|_SHIFTL(s,22,2)|_SHIFTL(mb,11,11)|_SHIFTL(ma,0,11));
+	GX_LOAD_BP_REG(val);
+
+	ma = *(u32*)((void*)&offset_mtx[0][1]);
+	mb = *(u32*)((void*)&offset_mtx[1][1]);
+	val = (_SHIFTL((0x07+idx),24,8)|_SHIFTL((s>>2),22,2)|_SHIFTL(mb,11,11)|_SHIFTL(ma,0,11));
+	GX_LOAD_BP_REG(val);
+
+	ma = *(u32*)((void*)&offset_mtx[0][2]);
+	mb = *(u32*)((void*)&offset_mtx[1][2]);
+	val = (_SHIFTL((0x08+idx),24,8)|_SHIFTL((s>>4),22,2)|_SHIFTL(mb,11,11)|_SHIFTL(ma,0,11));
+	GX_LOAD_BP_REG(val);
+}
+
+void GX_SetTevIndBumpST(u8 tevstage,u8 indstage,u8 mtx_sel)
+{
+	u8 sel_s,sel_t;
+
+	switch(mtx_sel) {
+		case GX_ITM_0:
+			sel_s = GX_ITM_S0;
+			sel_t = GX_ITM_T0;
+			break;
+		case GX_ITM_1:
+			sel_s = GX_ITM_S1;
+			sel_t = GX_ITM_T1;
+			break;
+		case GX_ITM_2:
+			sel_s = GX_ITM_S2;
+			sel_t = GX_ITM_T2;
+			break;
+		default:
+			sel_s = GX_ITM_OFF;
+			sel_t = GX_ITM_OFF;
+			break;
+	}
+
+	GX_SetTevIndirect((tevstage+0),indstage,GX_ITF_8,GX_ITB_ST,sel_s,GX_ITW_0,GX_ITW_0,GX_FALSE,GX_FALSE,GX_ITBA_OFF);
+	GX_SetTevIndirect((tevstage+1),indstage,GX_ITF_8,GX_ITB_ST,sel_t,GX_ITW_0,GX_ITW_0,GX_TRUE,GX_FALSE,GX_ITBA_OFF);
+	GX_SetTevIndirect((tevstage+2),indstage,GX_ITF_8,GX_ITB_NONE,GX_ITM_OFF,GX_ITW_OFF,GX_ITW_OFF,GX_TRUE,GX_FALSE,GX_ITBA_OFF);
+}
+
+void GX_SetTevIndBumpXYZ(u8 tevstage,u8 indstage,u8 mtx_sel)
+{
+	GX_SetTevIndirect(tevstage,indstage,GX_ITF_8,GX_ITB_STU,mtx_sel,GX_ITW_OFF,GX_ITW_OFF,GX_FALSE,GX_FALSE,GX_ITBA_OFF);
 }
 
 void GX_SetIndTexCoordScale(u8 indtexid,u8 scale_s,u8 scale_t)
