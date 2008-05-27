@@ -99,7 +99,7 @@ GXRModeObj TVNtsc240Ds =
     240,             // efbHeight
     240,             // xfbHeight
     (VI_MAX_WIDTH_NTSC - 640)/2,        // viXOrigin
-    (VI_MAX_HEIGHT_NTSC/2 - 480/2)/2,       // viYOrigin
+    (VI_MAX_HEIGHT_NTSC - 480)/2,       // viYOrigin
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
@@ -133,7 +133,7 @@ GXRModeObj TVNtsc240DsAa =
     240,             // efbHeight
     240,             // xfbHeight
     (VI_MAX_WIDTH_NTSC - 640)/2,        // viXOrigin
-    (VI_MAX_HEIGHT_NTSC/2 - 480/2)/2,       // viYOrigin
+    (VI_MAX_HEIGHT_NTSC - 480)/2,       // viYOrigin
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
@@ -474,7 +474,7 @@ GXRModeObj TVPal264Ds =
     264,             // efbHeight
     264,             // xfbHeight
     (VI_MAX_WIDTH_PAL - 640)/2,         // viXOrigin
-    (VI_MAX_HEIGHT_PAL/2 - 528/2)/2,        // viYOrigin
+    (VI_MAX_HEIGHT_PAL - 528)/2,        // viYOrigin
     640,             // viWidth
     528,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
@@ -508,7 +508,7 @@ GXRModeObj TVPal264DsAa =
     264,             // efbHeight
     264,             // xfbHeight
     (VI_MAX_WIDTH_PAL - 640)/2,         // viXOrigin
-    (VI_MAX_HEIGHT_PAL/2 - 528/2)/2,        // viYOrigin
+    (VI_MAX_HEIGHT_PAL - 528)/2,        // viYOrigin
     640,             // viWidth
     528,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
@@ -744,7 +744,7 @@ GXRModeObj TVEurgb60Hz240Ds =
     240,             // efbHeight
     240,             // xfbHeight
     (VI_MAX_WIDTH_EURGB60 - 640)/2,         // viXOrigin
-    (VI_MAX_HEIGHT_EURGB60 - 480/2)/2,        // viYOrigin
+    (VI_MAX_HEIGHT_EURGB60 - 480)/2,        // viYOrigin
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
@@ -777,7 +777,7 @@ GXRModeObj TVEurgb60Hz240DsAa =
     240,             // efbHeight
     240,             // xfbHeight
     (VI_MAX_WIDTH_EURGB60 - 640)/2,         // viXOrigin
-    (VI_MAX_HEIGHT_EURGB60 - 480/2)/2,        // viYOrigin
+    (VI_MAX_HEIGHT_EURGB60 - 480)/2,        // viYOrigin
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
