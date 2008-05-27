@@ -92,6 +92,10 @@ SOURCE=.\libogc\aram.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\argv.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\arqmgr.c
 # End Source File
 # Begin Source File
@@ -413,6 +417,10 @@ SOURCE=.\libogc\usb.c
 # Begin Source File
 
 SOURCE=.\libogc\usbgecko.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\usbstorage.c
 # End Source File
 # Begin Source File
 
@@ -1237,6 +1245,10 @@ SOURCE=.\gc\ogc\usb.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\usbgecko.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\usbstorage.h
 # End Source File
 # Begin Source File
 
