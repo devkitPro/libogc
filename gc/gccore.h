@@ -71,6 +71,7 @@ distribution.
 #include "ogc/usb.h"
 #include "ogc/isfs.h"
 #include "ogc/conf.h"
+#include "ogc/usbstorage.h"
 #endif
 
 /*
