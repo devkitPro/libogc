@@ -649,3 +649,19 @@ u32 WPAD_ButtonsHeld(int pad)
 	return wpaddata[pad].btns_d;
 }
 
+void WPAD_IR_Position(int pad,Vector *position)
+{
+	if(pad<0 || pad>MAX_WIIMOTES || position==NULL ) return;
+	
+	position->x = wpaddata[pad].ir.x;
+	position->y = wpaddata[pad].ir.y;
+	position->z = wpaddata[pad].ir.z;
+	
+}
+
+void WPAD_Orientation(int pad, struct orient_t *orient)
+{
+	if(pad<0 || pad>MAX_WIIMOTES || orient==NULL ) return;
+
+	*orient = wpaddata[pad].orient;
+}

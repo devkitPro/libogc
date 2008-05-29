@@ -121,6 +121,8 @@ u32 WPAD_ButtonsUp(int pad);
 u32 WPAD_ButtonsDown(int pad);
 u32 WPAD_ButtonsHeld(int pad);
 
+void WPAD_IR_Position(int pad, Vector *pos);
+void WPAD_Orientation(int pad, struct orient_t *orient);
 #ifdef __cplusplus
    }
 #endif /* __cplusplus */
