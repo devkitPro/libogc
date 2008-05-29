@@ -80,6 +80,12 @@
 	__asm__ volatile ("lwbrx	%0,%1,%2" : "=r"(res) : "b%"(index), "r"(base) : "memory"); \
 	res; })
 
+#define __sthbrx(base,index,value)	\
+	__asm__ volatile ("sthbrx	%0,%1,%2" : : "r"(value), "b%"(index), "r"(base) : "memory")
+
+#define __stwbrx(base,index,value)	\
+	__asm__ volatile ("stwbrx	%0,%1,%2" : : "r"(value), "b%"(index), "r"(base) : "memory")
+
 #define cntlzw(_val) ({register u32 _rval; \
 					  asm volatile("cntlzw %0, %1" : "=r"((_rval)) : "r"((_val))); _rval;})
 
