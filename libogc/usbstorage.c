@@ -35,6 +35,9 @@ distribution.
 #include <ogc/cond.h>
 #include <errno.h>
 
+#include "asm.h"
+#include "processor.h"
+
 #define	HEAP_SIZE			4096
 #define	TAG_START			0x0BADC0DE
 
@@ -177,18 +180,11 @@ static inline u32 __read32(u8 *p)
 
 static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u8 *cb, u8 cbLen)
 {
-	u8 *cbw = NULL;
 	s32 retval = USBSTORAGE_OK;
+	STACK_ALIGN(u8,cbw,CBW_SIZE,32);
 
 	if(cbLen == 0 || cbLen > 16)
 		return IPC_EINVAL;
-
-	cbw = iosAlloc(hId, CBW_SIZE);
-	if(cbw == NULL)
-	{
-		retval = IPC_ENOMEM;
-		goto free_and_return;
-	}
 
 	memset(cbw, 0, CBW_SIZE);
 
@@ -214,24 +210,14 @@ static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u
 	else if(retval > 0)
 		retval = USBSTORAGE_ESHORTWRITE;
 
-free_and_return:
-	if(cbw != NULL)
-		iosFree(hId, cbw);
 	return retval;
 }
 
 static s32 __read_csw(usbstorage_handle *dev, u8 *status, u32 *dataResidue)
 {
-	u8 *csw = NULL;
 	s32 retval = USBSTORAGE_OK;
 	u32 signature, tag, _dataResidue, _status;
-
-	csw = iosAlloc(hId, CSW_SIZE);
-	if(csw == NULL)
-	{
-		retval = IPC_ENOMEM;
-		goto free_and_return;
-	}
+	STACK_ALIGN(u8,csw,CSW_SIZE,32);
 
 	memset(csw, 0, CSW_SIZE);
 
@@ -239,41 +225,25 @@ static s32 __read_csw(usbstorage_handle *dev, u8 *status, u32 *dataResidue)
 	if(retval == CSW_SIZE)
 		retval = USBSTORAGE_OK;
 	else if(retval > 0)
-	{
-		retval = USBSTORAGE_ESHORTREAD;
-		goto free_and_return;
-	}
+		return USBSTORAGE_ESHORTREAD;
 	else
-		goto free_and_return;
+		return retval;
 
 	signature = __read32(csw);
 	tag = __read32(csw + 4);
 	_dataResidue = __read32(csw + 8);
 	_status = csw[12];
 
-	if(signature != CSW_SIGNATURE)
-	{
-		retval = USBSTORAGE_ESIGNATURE;
-		goto free_and_return;
-	}
+	if(signature != CSW_SIGNATURE) return USBSTORAGE_ESIGNATURE;
 
 	if(dataResidue != NULL)
 		*dataResidue = _dataResidue;
 	if(status != NULL)
 		*status = _status;
 
-	if(tag != dev->tag)
-	{
-		retval = USBSTORAGE_ETAG;
-		goto free_and_return;
-	}
-
+	if(tag != dev->tag) return USBSTORAGE_ETAG;
 	dev->tag++;
 
-
-free_and_return:
-	if(csw != NULL)
-		iosFree(hId, csw);
 	return retval;
 }
 
