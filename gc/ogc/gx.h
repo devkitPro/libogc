@@ -717,11 +717,25 @@
 
 /* fog type */
 #define GX_FOG_NONE						0
-#define GX_FOG_LIN						2
-#define GX_FOG_EXP						4
-#define GX_FOG_EXP2						5
-#define GX_FOG_REVEXP  					6
-#define GX_FOG_REVEXP2 					7
+
+#define GX_FOG_PERSP_LIN				2
+#define GX_FOG_PERSP_EXP				4
+#define GX_FOG_PERSP_EXP2				5
+#define GX_FOG_PERSP_REVEXP				6
+#define GX_FOG_PERSP_REVEXP2			7
+
+#define GX_FOG_ORTHO_LIN				10
+#define GX_FOG_ORTHO_EXP				12
+#define GX_FOG_ORTHO_EXP2				13
+#define GX_FOG_ORTHO_REVEXP				14
+#define GX_FOG_ORTHO_REVEXP2			15
+
+#define GX_FOG_LIN						GX_FOG_PERSP_LIN
+#define GX_FOG_EXP						GX_FOG_PERSP_EXP
+#define GX_FOG_EXP2						GX_FOG_PERSP_EXP2
+#define GX_FOG_REVEXP  					GX_FOG_PERSP_REVEXP
+#define GX_FOG_REVEXP2 					GX_FOG_PERSP_REVEXP2
+
 
 /* pixel format */
 #define GX_PF_RGB8_Z24					0
