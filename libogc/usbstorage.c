@@ -165,19 +165,6 @@ s32 USBStorage_Deinitialize()
 	return retval;
 }
 
-static inline void __write32(u8 *p, u32 v)
-{
-	p[0] = v;
-	p[1] = v >> 8;
-	p[2] = v >> 16;
-	p[3] = v >> 24;
-}
-
-static inline u32 __read32(u8 *p)
-{
-	return p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24);
-}
-
 static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u8 *cb, u8 cbLen)
 {
 	s32 retval = USBSTORAGE_OK;
@@ -188,9 +175,9 @@ static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u
 
 	memset(cbw, 0, CBW_SIZE);
 
-	__write32(cbw, CBW_SIGNATURE);
-	__write32(cbw + 4, dev->tag);
-	__write32(cbw + 8, len);
+	__stwbrx(cbw, 0, CBW_SIGNATURE);
+	__stwbrx(cbw, 4, dev->tag);
+	__stwbrx(cbw, 8, len);
 	cbw[12] = flags;
 	cbw[13] = lun;
 	cbw[14] = (cbLen > 6 ? 0x10 : 6);
@@ -229,9 +216,9 @@ static s32 __read_csw(usbstorage_handle *dev, u8 *status, u32 *dataResidue)
 	else
 		return retval;
 
-	signature = __read32(csw);
-	tag = __read32(csw + 4);
-	_dataResidue = __read32(csw + 8);
+	signature = __lwbrx(csw, 0);
+	tag = __lwbrx(csw, 4);
+	_dataResidue = __lwbrx(csw, 8);
 	_status = csw[12];
 
 	if(signature != CSW_SIGNATURE) return USBSTORAGE_ESIGNATURE;
