@@ -3,11 +3,11 @@
 #---------------------------------------------------------------------------------
 
 ifeq ($(strip $(DEVKITPRO)),)
-$(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>devkitPro)
+$(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>devkitPro")
 endif
 
 ifeq ($(strip $(DEVKITPPC)),)
-$(error "Please set DEVKITPPC in your environment. export DEVKITPPC=<path to>devkitPPC)
+$(error "Please set DEVKITPPC in your environment. export DEVKITPPC=<path to>devkitPPC")
 endif
 
 export PATH	:=	$(DEVKITPPC)/bin:$(PATH)
@@ -200,18 +200,26 @@ ZLIBOBJ		:=	adler32.o compress.o crc32.o gzio.o uncompr.o \
 #---------------------------------------------------------------------------------
 	$(AR) -rc $@ $^
 
+all: wii cube 
+
 #---------------------------------------------------------------------------------
-all: gc/ogc/libversion.h
+wii: gc/ogc/libversion.h
 #---------------------------------------------------------------------------------
-	@[ -d $(LIBS)/wii ] || mkdir -p $(LIBS)/wii
-	@[ -d $(LIBS)/cube ] || mkdir -p $(LIBS)/cube
 	@[ -d $(INCDIR) ] || mkdir -p $(INCDIR)
+	@[ -d $(LIBS)/wii ] || mkdir -p $(LIBS)/wii
 	@[ -d $(DEPS)/wii ] || mkdir -p $(DEPS)/wii
-	@[ -d $(DEPS)/cube ] || mkdir -p $(DEPS)/cube
 	@[ -d wii ] || mkdir -p wii
-	@[ -d cube ] || mkdir -p cube
 	@$(MAKE) PLATFORM=cube libs -C cube -f $(CURDIR)/Makefile
+
+#---------------------------------------------------------------------------------
+cube: gc/ogc/libversion.h
+#---------------------------------------------------------------------------------
+	@[ -d $(INCDIR) ] || mkdir -p $(INCDIR)
+	@[ -d $(LIBS)/cube ] || mkdir -p $(LIBS)/cube
+	@[ -d $(DEPS)/cube ] || mkdir -p $(DEPS)/cube
+	@[ -d cube ] || mkdir -p cube
 	@$(MAKE) PLATFORM=wii libs -C wii -f $(CURDIR)/Makefile
+
 
 #---------------------------------------------------------------------------------
 gc/ogc/libversion.h : Makefile
@@ -252,7 +260,7 @@ $(BTELIB).a: $(BTEOBJ)
 $(WIIUSELIB).a: $(WIIUSEOBJ)
 #---------------------------------------------------------------------------------
  
-.PHONY: libs install-headers install dist docs
+.PHONY: libs wii cube install-headers install dist docs
 
 #---------------------------------------------------------------------------------
 install-headers:
