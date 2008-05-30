@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/wiiuse_internal.h,v 1.4 2008-05-26 19:24:53 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/wiiuse_internal.h,v 1.5 2008-05-30 10:56:34 shagkur Exp $
  *
  */
 
@@ -129,6 +129,7 @@
 
 #define WM_IR_TYPE_BASIC			0x01
 #define WM_IR_TYPE_EXTENDED			0x03
+#define WM_IR_TYPE_FULL				0x05
 
 /* controller status flags for the first message byte */
 /* bit 1 is unknown */
