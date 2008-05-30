@@ -22,12 +22,12 @@ Include Sub Directories=1
 
 [Open Files]
 
-Open File0=D:\projects\devkitPro\libogc\gc\ogc\video_types.h
-Active File Display Mode=3
-Open File Pos0=0
-Open File Line0=4495
-Open File Window Pos0=0,1,-1,-1,-4,-30,110,145,1139,483
-Open File1=D:\projects\devkitPro\libogc\libogc\video.c
+Open File0=
+Active File Display Mode=-1
+Open File Pos0=487
+Open File Line0=39
+Open File Window Pos0=2,3,-1,-1,-4,-30,110,145,1139,483
+Open File1=
 Open File Pos1=21240
 Open File Line1=20772
 Open File Window Pos1=0,1,-1,-1,-4,-30,0,0,1033,342
@@ -54,7 +54,7 @@ Open File Window Pos6=2,3,-1,-1,-4,-30,44,58,1055,419
 Open File7=
 Open File Pos7=0
 Open File Line7=145
-Active File Index=2
+Active File Index=0
 Open File Window Pos7=2,3,-1,-1,-4,-30,22,29,1077,271
 Open File8=
 Open File Pos8=1506
@@ -94,7 +94,7 @@ Open File Line16=0
 Open File Window Pos16=0,1,-1,-1,-4,-30,66,87,1099,457
 Open File17=
 [File View]
-Current Select=Project Files\gc\wiiuse\wiiuse.h
+Current Select=Project Files\libogc\gx.c
 Scroll Position=0
 
 [Files - libogc]
