@@ -85,7 +85,7 @@
 
 typedef struct _wpad_data
 {
-	u16 err;
+	s16 err;
 	
 	u32 btns_d;
 	u32 btns_h;
