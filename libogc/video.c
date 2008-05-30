@@ -1771,13 +1771,13 @@ static void __VISetYUVSEL(u8 dtvstatus)
 {
 	u16 val;
 
-	vdacFlagRegion = 0x0000;
 	if(currTvMode==VI_NTSC) vdacFlagRegion = 0x0000;
 	else if(currTvMode==VI_PAL || currTvMode==VI_EURGB60) vdacFlagRegion = 0x0002;
 	/* FIXME: setting this to 1 causes monochrome output on PAL systems*/
 	else if(currTvMode==VI_MPAL) vdacFlagRegion = 0x0002;
+	else vdacFlagRegion = 0x0000;
 
-	val = (_SHIFTL(0x01,8,8)|(_SHIFTL(dtvstatus,5,8)|vdacFlagRegion));
+	val = (_SHIFTL(0x01,8,8)|_SHIFTL(dtvstatus,5,3)|(vdacFlagRegion&0x1f));
 	__VISendI2CData(0xe0,&val,sizeof(u16));
 	udelay(2);
 }
@@ -1790,6 +1790,26 @@ static void __VISetFilterEURGB60(u8 enable)
 	__VISendI2CData(0xe0,&val,sizeof(u16));
 	udelay(2);
 }
+
+#if 0
+static void __VISetTiming(u8 timing)
+{
+	u16 val;
+
+	val = (_SHIFTL(0x00,8,8)|timing);
+	__VISendI2CData(0xe0,&val,sizeof(u16));
+	udelay(2);
+}
+
+static void __VISet3in1Output(u8 enable)
+{
+	u16 val;
+
+	val = (_SHIFTL(0x04,8,8)|enable);
+	__VISendI2CData(0xe0,&val,sizeof(u16));
+	udelay(2);
+}
+#endif
 #endif
 
 static inline void __getCurrentDisplayPosition(u32 *px,u32 *py)
@@ -1987,15 +2007,11 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 		}
 	}
 #if defined(HW_RVL)
-	tv = VIDEO_GetCurrentTvMode();
-
 	dtv = (_viReg[55]&0x01);
+	if(dtv!=oldDtvStatus) __VISetYUVSEL(dtv);
+	oldDtvStatus = dtv;
 
-	if(dtv!=oldDtvStatus || tv!=oldTvStatus ) {
-		__VISetYUVSEL(dtv);
-		oldDtvStatus = dtv;
-	}
-
+	tv = VIDEO_GetCurrentTvMode();
 	if(tv!=oldTvStatus) {
 		if(tv==VI_EURGB60) __VISetFilterEURGB60(1);
 		else __VISetFilterEURGB60(0);
