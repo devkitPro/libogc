@@ -1583,6 +1583,26 @@ SOURCE=.\gc\wiiuse\wiiuse.h
 SOURCE=.\gc\wiiuse\wpad.h
 # End Source File
 # End Group
+# Begin Group "sdcard.h"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\gc\sdcard\card_buf.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\sdcard\card_cmn.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\sdcard\card_io.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\sdcard\wiisd_io.h
+# End Source File
+# End Group
 # Begin Source File
 
 SOURCE=.\gc\debug.h
