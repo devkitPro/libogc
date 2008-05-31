@@ -2007,11 +2007,11 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 		}
 	}
 #if defined(HW_RVL)
+	tv = VIDEO_GetCurrentTvMode();
 	dtv = (_viReg[55]&0x01);
-	if(dtv!=oldDtvStatus) __VISetYUVSEL(dtv);
+	if(dtv!=oldDtvStatus || tv!=oldTvStatus) __VISetYUVSEL(dtv);
 	oldDtvStatus = dtv;
 
-	tv = VIDEO_GetCurrentTvMode();
 	if(tv!=oldTvStatus) {
 		if(tv==VI_EURGB60) __VISetFilterEURGB60(1);
 		else __VISetFilterEURGB60(0);
