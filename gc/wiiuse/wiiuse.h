@@ -84,8 +84,10 @@
 /* wiimote option flags */
 #define WIIUSE_SMOOTHING				0x01
 #define WIIUSE_CONTINUOUS				0x02
-#define WIIUSE_ORIENT_THRESH			0x04
-#define WIIUSE_INIT_FLAGS				(WIIUSE_SMOOTHING | WIIUSE_ORIENT_THRESH)
+#define WIIUSE_ACCEL_THRESH				0x04
+#define WIIUSE_IR_THRESH				0x08
+#define WIIUSE_JS_THRESH				0x10
+#define WIIUSE_INIT_FLAGS				WIIUSE_SMOOTHING
 
 #define WIIUSE_ORIENT_PRECISION			100.0f
 
@@ -322,17 +324,24 @@ typedef struct accel_t {
 typedef struct ir_dot_t {
 	ubyte visible;					/**< if the IR source is visible		*/
 
-	unsigned int x;					/**< interpolated X coordinate			*/
-	unsigned int y;					/**< interpolated Y coordinate			*/
-
 	short rx;						/**< raw X coordinate (0-1023)			*/
 	short ry;						/**< raw Y coordinate (0-767)			*/
-
-	ubyte order;						/**< increasing order by x-axis value	*/
 
 	ubyte size;						/**< size of the IR dot (0-15)			*/
 } ir_dot_t;
 
+
+typedef struct fdot_t {
+	float x,y;
+} fdot_t;
+
+typedef struct sb_t {
+	fdot_t dots[2];
+	fdot_t acc_dots[2];
+	fdot_t rot_dots[2];
+	float angle;
+	float off_angle;
+} sb_t;
 
 /**
  *	@enum aspect_t
@@ -352,22 +361,30 @@ typedef struct ir_t {
 	struct ir_dot_t dot[4];			/**< IR dots							*/
 	ubyte num_dots;					/**< number of dots at this time		*/
 
-	enum aspect_t aspect;			/**< aspect ratio of the screen			*/
-
-	enum ir_position_t pos;			/**< IR sensor bar position				*/
-
-	unsigned int vres[2];			/**< IR virtual screen resolution		*/
-	int offset[2];					/**< IR XY correction offset			*/
 	int state;						/**< keeps track of the IR state		*/
 
-	int ax;							/**< absolute X coordinate				*/
-	int ay;							/**< absolute Y coordinate				*/
+	int raw_valid;					/**< is the raw position valid? 		*/
+	sb_t sensorbar;					/**< sensor bar, detected or guessed	*/
+	float ax;						/**< raw X coordinate					*/
+	float ay;						/**< raw Y coordinate					*/
+	float distance;					/**< pixel width of the sensor bar		*/
+	float z;						/**< calculated distance in meters		*/
+	float angle;					/**< angle of the wiimote to the sensor bar*/
 
-	int x;							/**< calculated X coordinate			*/
-	int y;							/**< calculated Y coordinate			*/
+	int smooth_valid;				/**< is the smoothed position valid? 	*/
+	float sx;						/**< smoothed X coordinate				*/
+	float sy;						/**< smoothed Y coordinate				*/
+	float error_cnt;				/**< error count, for smoothing algorithm*/
+	float glitch_cnt;				/**< glitch count, same					*/
 
-	float distance;					/**< pixel distance between first 2 dots*/
-	float z;						/**< calculated distance				*/
+	int valid;						/**< is the bounded position valid? 	*/
+	float x;						/**< bounded X coordinate				*/
+	float y;						/**< bounded Y coordinate				*/
+	enum aspect_t aspect;			/**< aspect ratio of the screen			*/
+	enum ir_position_t pos;			/**< IR sensor bar position				*/
+	unsigned int vres[2];			/**< IR virtual screen resolution		*/
+	int offset[2];					/**< IR XY correction offset			*/
+
 } ir_t;
 
 
@@ -411,8 +428,6 @@ typedef struct nunchuk_t {
 	ubyte btns_last;				/**< what buttons have just been pressed	*/
 	ubyte btns_held;				/**< what buttons are being held down		*/
 	ubyte btns_released;			/**< what buttons were just released this	*/
-
-	int accel_threshold;			/**< threshold for accel to generate an event */
 
 	struct vec3b_t accel;			/**< current raw acceleration data			*/
 	struct orient_t orient;			/**< current orientation on each axis		*/
@@ -571,14 +586,11 @@ typedef struct wiimote_t {
 
 	WCONST struct ir_t ir;					/**< IR data								*/
 
-	WCONST unsigned short btns;				/**< what buttons have just been pressed	*/
-	WCONST unsigned short btns_last;		/**< what buttons have been pressed last    */
-	WCONST unsigned short btns_held;		/**< what buttons are being held down		*/
-	WCONST unsigned short btns_released;	/**< what buttons were just released this	*/
+	WCONST unsigned short btns;				/**< what buttons are down					*/
+	WCONST unsigned short btns_last;		/**< what buttons were down before			*/
+	WCONST unsigned short btns_held;		/**< what buttons are and were held down	*/
+	WCONST unsigned short btns_released;	/**< what buttons were just released		*/
 
-	WCONST int accel_threshold;				/**< threshold for accel to generate an event */
-	WCONST int ir_threshold;
-	
 	WCONST struct wiimote_state_t lstate;	/**< last saved state						*/
 
 	WCONST WIIUSE_EVENT_TYPE event;			/**< type of event that occured				*/
@@ -634,10 +646,8 @@ WIIUSE_EXPORT extern struct wiimote_t* wiiuse_get_by_id(struct wiimote_t** wm, i
 WIIUSE_EXPORT extern int wiiuse_set_flags(struct wiimote_t* wm, int enable, int disable);
 WIIUSE_EXPORT extern float wiiuse_set_smooth_alpha(struct wiimote_t* wm, float alpha);
 WIIUSE_EXPORT extern void wiiuse_set_bluetooth_stack(struct wiimote_t** wm, int wiimotes, enum win_bt_stack_t type);
-WIIUSE_EXPORT extern void wiiuse_set_ir_threshold(struct wiimote_t* wm, int threshold);
 WIIUSE_EXPORT extern void wiiuse_resync(struct wiimote_t* wm);
 WIIUSE_EXPORT extern void wiiuse_set_timeout(struct wiimote_t** wm, int wiimotes, ubyte normal_timeout, ubyte exp_timeout);
-WIIUSE_EXPORT extern void wiiuse_set_accel_threshold(struct wiimote_t* wm, int threshold);
 WIIUSE_EXPORT extern int wiiuse_write_streamdata(struct wiimote_t *wm,ubyte *data,ubyte len,cmd_blk_cb cb);
 
 /* connect.c */
@@ -655,11 +665,6 @@ WIIUSE_EXPORT extern void wiiuse_set_ir_vres(struct wiimote_t* wm, unsigned int 
 WIIUSE_EXPORT extern void wiiuse_set_ir_position(struct wiimote_t* wm, enum ir_position_t pos);
 WIIUSE_EXPORT extern void wiiuse_set_aspect_ratio(struct wiimote_t* wm, enum aspect_t aspect);
 WIIUSE_EXPORT extern void wiiuse_set_ir_sensitivity(struct wiimote_t* wm, int level);
-
-/* nunchuk.c */
-WIIUSE_EXPORT extern void wiiuse_set_nunchuk_orient_threshold(struct wiimote_t* wm, float threshold);
-WIIUSE_EXPORT extern void wiiuse_set_nunchuk_accel_threshold(struct wiimote_t* wm, int threshold);
-
 
 #ifdef __cplusplus
 }

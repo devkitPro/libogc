@@ -6,12 +6,14 @@
 
 #define WPAD_MAX_IR_DOTS						4
 											
-#define MAX_WIIMOTES							4
-											
-#define WPAD_CHAN_0								0
-#define WPAD_CHAN_1								1
-#define WPAD_CHAN_2								2
-#define WPAD_CHAN_3								3
+enum {
+	WPAD_CHAN_ALL = -1,
+	WPAD_CHAN_0,
+	WPAD_CHAN_1,
+	WPAD_CHAN_2,
+	WPAD_CHAN_3,
+	WPAD_MAX_WIIMOTES,
+};
 											
 #define WPAD_BUTTON_2							0x0001
 #define WPAD_BUTTON_1							0x0002
@@ -55,29 +57,47 @@
 #define WPAD_GUITAR_HERO_3_BUTTON_MINUS			(0x1000<<16)
 #define WPAD_GUITAR_HERO_3_BUTTON_STRUM_DOWN	(0x4000<<16)
 
-#define WPAD_EXP_NONE							0
-#define WPAD_EXP_NUNCHAKU						1
-#define WPAD_EXP_CLASSIC						2
-#define WPAD_EXP_GUITAR_HERO3					3
-											
-#define WPAD_FMT_CORE							0
-#define WPAD_FMT_CORE_ACC						1
-#define WPAD_FMT_CORE_ACC_IR					2
-				
-#define WPAD_DEV_CORE							0
-#define WPAD_DEV_NUNCHAKU						1
-#define WPAD_DEV_CLASSIC						2							
-#define WPAD_DEV_GUITARHERO3					3
-#define WPAD_DEV_UNKNOWN						255
+enum {
+	WPAD_EXP_NONE = 0,
+	WPAD_EXP_NUNCHUK,
+	WPAD_EXP_CLASSIC,
+	WPAD_EXP_GUITARHERO3,
+	WPAD_EXP_UNKNOWN = 255
+};
 
-#define WPAD_STATE_DISABLED						0
-#define WPAD_STATE_ENABLING						1
-#define WPAD_STATE_ENABLED						2
-											
+enum {
+	WPAD_FMT_BTNS = 0,
+	WPAD_FMT_BTNS_ACC,
+	WPAD_FMT_BTNS_ACC_IR
+};
+
+enum {
+	WPAD_STATE_DISABLED,
+	WPAD_STATE_ENABLING,
+	WPAD_STATE_ENABLED
+};
+
 #define WPAD_ERR_NONE							0
 #define WPAD_ERR_NO_CONTROLLER					-1
 #define WPAD_ERR_NOT_READY						-2
 #define WPAD_ERR_TRANSFER						-3
+#define WPAD_ERR_NONEREGISTERED					-4
+#define WPAD_ERR_UNKNOWN						-5
+#define WPAD_ERR_BAD_CHANNEL					-6
+#define WPAD_ERR_QUEUE_EMPTY					-7
+#define WPAD_ERR_BADVALUE						-8
+
+#define WPAD_DATA_BUTTONS						0x01
+#define WPAD_DATA_ACCEL							0x02
+#define WPAD_DATA_EXPANSION						0x04
+#define WPAD_DATA_IR							0x08
+
+#define WPAD_THRESH_IGNORE						-1
+#define WPAD_THRESH_ANY							0
+#define WPAD_THRESH_DEFAULT_BUTTONS				0
+#define WPAD_THRESH_DEFAULT_IR					WPAD_THRESH_IGNORE
+#define WPAD_THRESH_DEFAULT_ACCEL				5
+#define WPAD_THRESH_DEFAULT_JOYSTICK			2
 
 #ifdef __cplusplus
    extern "C" {
@@ -86,11 +106,13 @@
 typedef struct _wpad_data
 {
 	s16 err;
-	
-	u32 btns_d;
+
+	u32 data_present;
+
 	u32 btns_h;
-	u32 btns_r;
 	u32 btns_l;
+	u32 btns_d;
+	u32 btns_u;
 
 	struct ir_t ir;
 	struct vec3b_t accel;
@@ -99,30 +121,34 @@ typedef struct _wpad_data
 	struct expansion_t exp;
 } WPADData;
 
-typedef void (*wpadsamplingcallback)(s32 chan);
+typedef void (*WPADDataCallback)(s32 chan, const WPADData *data);
 
+s32 WPAD_Init();
+s32 WPAD_ReadEvent(s32 chan, WPADData *data);
+s32 WPAD_DroppedEvents(s32 chan);
+s32 WPAD_Flush(s32 chan);
+s32 WPAD_ReadPending(s32 chan, WPADDataCallback datacb);
+s32 WPAD_SetDataFormat(s32 chan, s32 fmt);
+s32 WPAD_SetVRes(s32 chan,u32 xres,u32 yres);
 s32 WPAD_GetStatus();
-void WPAD_Init();
-void WPAD_Shutdown();
-void WPAD_Disconnect(s32 chan);
-void WPAD_SetSleepTime(u32 sleep);
-void WPAD_Read(s32 chan,WPADData *data);
-void WPAD_SetDataFormat(s32 chan,s32 fmt);
-void WPAD_SetVRes(s32 chan,u32 xres,u32 yres);
-void WPAD_SetSamplingBufs(s32 chan,void *bufs,u32 cnt);
-u32 WPAD_GetLatestBufIndex(s32 chan);
 s32 WPAD_Probe(s32 chan,u32 *type);
+s32 WPAD_SetEventBufs(s32 chan, WPADData *bufs, u32 cnt);
+s32 WPAD_Disconnect(s32 chan);
+void WPAD_Shutdown();
+void WPAD_SetIdleTimeout(u32 seconds);
+s32 WPAD_ScanPads();
+s32 WPAD_Rumble(s32 chan, int status);
+s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js);
+WPADData *WPAD_Data(int chan);
+u32 WPAD_ButtonsUp(int chan);
+u32 WPAD_ButtonsDown(int chan);
+u32 WPAD_ButtonsHeld(int chan);
+void WPAD_IR(int chan, struct ir_t *ir);
+void WPAD_Orientation(int chan, struct orient_t *orient);
+void WPAD_GForce(int chan, struct gforce_t *gforce);
+void WPAD_Accel(int chan, struct vec3b_t *accel);
+void WPAD_Expansion(int chan, struct expansion_t *exp);
 
-wpadsamplingcallback WPAD_SetSamplingCallback(s32 chan,wpadsamplingcallback cb);
-
-u32 WPAD_ScanPads();
-
-u32 WPAD_ButtonsUp(int pad);
-u32 WPAD_ButtonsDown(int pad);
-u32 WPAD_ButtonsHeld(int pad);
-
-void WPAD_IR_Position(int pad, Vector *pos);
-void WPAD_Orientation(int pad, struct orient_t *orient);
 #ifdef __cplusplus
    }
 #endif /* __cplusplus */

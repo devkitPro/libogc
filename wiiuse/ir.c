@@ -12,12 +12,8 @@
 #include "wiiuse_internal.h"
 #include "ir.h"
 
-static void fix_rotated_ir_dots(struct ir_dot_t* dot, float ang);
-static void get_ir_dot_avg(struct ir_dot_t* dot, int* x, int* y);
-static void reorder_ir_dots(struct ir_dot_t* dot);
-static float ir_distance(struct ir_dot_t* dot);
-static int ir_correct_for_bounds(int* x, int* y, enum aspect_t aspect, int offset_x, int offset_y);
-static void ir_convert_to_vres(int* x, int* y, enum aspect_t aspect, unsigned int vx, unsigned int vy);
+static int ir_correct_for_bounds(float* x, float* y, enum aspect_t aspect, int offset_x, int offset_y);
+static void ir_convert_to_vres(float* x, float* y, enum aspect_t aspect, unsigned int vx, unsigned int vy);
 
 /**
  *	@brief	Get the IR sensitivity settings.
@@ -56,29 +52,14 @@ static int get_ir_sens(struct wiimote_t* wm, char** block1, char** block2) {
 	return 0;
 }
 
-/**
- *	@brief Fix the rotation of the IR dots.
- *
- *	@param dot		An array of 4 ir_dot_t objects.
- *	@param ang		The roll angle to correct by (-180, 180)
- *
- *	If there is roll then the dots are rotated
- *	around the origin and give a false cursor
- *	position. Correct for the roll.
- *
- *	If the accelerometer is off then obviously
- *	this will not do anything and the cursor
- *	position may be inaccurate.
- */
-static void fix_rotated_ir_dots(struct ir_dot_t* dot, float ang) {
+static void rotate_dots(struct fdot_t* in, struct fdot_t *out, int count, float ang) {
 	float s, c;
-	int x, y;
 	int i;
 
-	if (!ang) {
-		for (i = 0; i < 4; ++i) {
-			dot[i].x = dot[i].rx;
-			dot[i].y = dot[i].ry;
+	if (ang == 0) {
+		for (i = 0; i < count; ++i) {
+			out[i].x = in[i].x;
+			out[i].y = in[i].y;
 		}
 		return;
 	}
@@ -91,102 +72,11 @@ static void fix_rotated_ir_dots(struct ir_dot_t* dot, float ang) {
 	 *	[ sin(theta)  cos(theta)  ][ ir->ry ]
 	 */
 
-	for (i = 0; i < 4; ++i) {
-		if (!dot[i].visible)
-			continue;
-
-		x = dot[i].rx - (1024/2);
-		y = dot[i].ry - (768/2);
-
-		dot[i].x = (c * x) + (-s * y);
-		dot[i].y = (s * x) + (c * y);
-
-		dot[i].x += (1024/2);
-		dot[i].y += (768/2);
+	for (i = 0; i < count; ++i) {
+		out[i].x = (c * in[i].x) + (-s * in[i].y);
+		out[i].y = (s * in[i].x) + (c * in[i].y);
 	}
 }
-
-
-/**
- *	@brief Average IR dots.
- *
- *	@param dot		An array of 4 ir_dot_t objects.
- *	@param x		[out] Average X
- *	@param y		[out] Average Y
- */
-static void get_ir_dot_avg(struct ir_dot_t* dot, int* x, int* y) {
-	int vis = 0, i = 0;
-
-	*x = 0;
-	*y = 0;
-
-	for (; i < 4; ++i) {
-		if (dot[i].visible) {
-			*x += dot[i].x;
-			*y += dot[i].y;
-			++vis;
-		}
-	}
-
-	*x /= vis;
-	*y /= vis;
-}
-
-
-/**
- *	@brief Reorder the IR dots.
- *
- *	@param dot		An array of 4 ir_dot_t objects.
- */
-static void reorder_ir_dots(struct ir_dot_t* dot) {
-	int i, j, order;
-
-	/* reset the dot ordering */
-	for (i = 0; i < 4; ++i)
-		dot[i].order = 0;
-
-	for (order = 1; order < 5; ++order) {
-		for(i=0;(i<4) && (!dot[i].visible || dot[i].order);++i);
-		if (i == 4)
-			return;
-
-		for (j = 0; j < 4; ++j) {
-			if (dot[j].visible && !dot[j].order && (dot[j].x < dot[i].x))
-				i = j;
-		}
-
-		dot[i].order = order;
-	}
-}
-
-
-/**
- *	@brief Calculate the distance between the first 2 visible IR dots.
- *
- *	@param dot		An array of 4 ir_dot_t objects.
- */
-static float ir_distance(struct ir_dot_t* dot) {
-	int i1, i2;
-	int xd, yd;
-
-	for (i1 = 0; i1 < 4; ++i1)
-		if (dot[i1].visible)
-			break;
-	if (i1 == 4)
-		return 0.0f;
-
-	for (i2 = i1+1; i2 < 4; ++i2)
-		if (dot[i2].visible)
-			break;
-	if (i2 == 4)
-		return 0.0f;
-
-	xd = dot[i2].x - dot[i1].x;
-	yd = dot[i2].y - dot[i1].y;
-
-	return sqrt(xd*xd + yd*yd);
-}
-
 
 /**
  *	@brief Correct for the IR bounding box.
@@ -202,8 +92,8 @@ static float ir_distance(struct ir_dot_t* dot) {
  *	Nintendo was smart with this bit. They sacrifice a little
  *	precision for a big increase in usability.
  */
-static int ir_correct_for_bounds(int* x, int* y, enum aspect_t aspect, int offset_x, int offset_y) {
-	int x0, y0;
+static int ir_correct_for_bounds(float* x, float* y, enum aspect_t aspect, int offset_x, int offset_y) {
+	float x0, y0;
 	int xs, ys;
 
 	if (aspect == WIIUSE_ASPECT_16_9) {
@@ -235,7 +125,7 @@ static int ir_correct_for_bounds(int* x, int* y, enum aspect_t aspect, int offse
 /**
  *	@brief Interpolate the point to the user defined virtual screen resolution.
  */
-static void ir_convert_to_vres(int* x, int* y, enum aspect_t aspect, unsigned int vx, unsigned int vy) {
+static void ir_convert_to_vres(float* x, float* y, enum aspect_t aspect, unsigned int vx, unsigned int vy) {
 	int xs, ys;
 
 	if (aspect == WIIUSE_ASPECT_16_9) {
@@ -329,7 +219,7 @@ void wiiuse_set_ir(struct wiimote_t *wm,int status)
 
 	wiiuse_write_data(wm, WM_REG_IR_BLOCK1, (ubyte*)block1, 9, NULL);
 	wiiuse_write_data(wm, WM_REG_IR_BLOCK2, (ubyte*)block2, 2, NULL);
-	
+
 	if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP)) buf = WM_IR_TYPE_BASIC;
 	else buf = WM_IR_TYPE_EXTENDED;
 	wiiuse_write_data(wm,WM_REG_IR_MODENUM, &buf, 1, NULL);
@@ -377,9 +267,9 @@ void wiiuse_set_ir_position(struct wiimote_t* wm, enum ir_position_t pos) {
 			wm->ir.offset[0] = 0;
 
 			if (wm->ir.aspect == WIIUSE_ASPECT_16_9)
-				wm->ir.offset[1] = -WM_ASPECT_16_9_Y/2 + 100;
+				wm->ir.offset[1] = -WM_ASPECT_16_9_Y/2 + 70;
 			else if (wm->ir.aspect == WIIUSE_ASPECT_4_3)
-				wm->ir.offset[1] = -WM_ASPECT_4_3_Y/2 + 70;
+				wm->ir.offset[1] = -WM_ASPECT_4_3_Y/2 + 100;
 
 			return;
 
@@ -457,7 +347,7 @@ void wiiuse_set_ir_sensitivity(struct wiimote_t* wm, int level) {
 	}
 
 	if(!WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR)) return;
-	
+
 	/* set the new sensitivity */
 	get_ir_sens(wm, &block1, &block2);
 
@@ -467,11 +357,6 @@ void wiiuse_set_ir_sensitivity(struct wiimote_t* wm, int level) {
 	WIIUSE_DEBUG("Set IR sensitivity to level %i (unid %i)", level, wm->unid);
 }
 
-
-void wiiuse_set_ir_treshold(struct wiimote_t* wm, int threshold)
-{
-	wm->ir_threshold = threshold;
-}
 
 /**
  *	@brief Calculate the data from the IR spots.  Basic IR mode.
@@ -544,158 +429,392 @@ void calculate_extended_ir(struct wiimote_t* wm, ubyte* data) {
 #endif
 }
 
+enum {
+	IR_STATE_DEAD = 0,
+	IR_STATE_GOOD,
+	IR_STATE_SINGLE,
+	IR_STATE_LOST,
+};
+
+// half-height of the IR sensor if half-width is 1
+#define HEIGHT (384.0f / 512.0f)
+// maximum sensor bar slope (tan(20 degrees))
+#define MAX_SB_SLOPE 0.36f
+// minimum sensor bar width in view, relative to half of the IR sensor area
+#define MIN_SB_WIDTH 0.1f
+// reject "sensor bars" that happen to have a dot towards the middle
+#define SB_MIDDOT_REJECT 0.05f
+
+// physical dimensions
+// cm center to center of emitters
+#define SB_WIDTH	19.5f
+// half-width in cm of emitters
+#define SB_DOT_WIDTH 2.25f
+// half-height in cm of emitters (with some tolerance)
+#define SB_DOT_HEIGHT 1.0f
+
+#define SB_DOT_WIDTH_RATIO (SB_DOT_WIDTH / SB_WIDTH)
+#define SB_DOT_HEIGHT_RATIO (SB_DOT_HEIGHT / SB_WIDTH)
+
+// dots further out than these coords are allowed to not be picked up
+// otherwise assume something's wrong
+//#define SB_OFF_SCREEN_X 0.8f
+//#define SB_OFF_SCREEN_Y (0.8f * HEIGHT)
+
+// disable, may be doing more harm than good due to sensor pickup glitches
+#define SB_OFF_SCREEN_X 0.0f
+#define SB_OFF_SCREEN_Y 0.0f
+
+// if a point is closer than this to one of the previous SB points
+// when it reappears, consider it the same instead of trying to guess
+// which one of the two it is
+#define SB_SINGLE_NOGUESS_DISTANCE (100.0 * 100.0)
+
+// width of the sensor bar in pixels at one meter from the Wiimote
+#define SB_Z_COEFFICIENT 256.0f
+
+// distance in meters from the center of the FOV to the left or right edge,
+// when the wiimote is at one meter
+#define WIIMOTE_FOV_COEFFICIENT 0.39f
+
+#define SQUARED(x) ((x)*(x))
+#define WMAX(x,y) ((x>y)?(x):(y))
+#define WMIN(x,y) ((x<y)?(x):(y))
+
 /**
  *	@brief Interpret IR data into more user friendly variables.
  *
  *	@param wm		Pointer to a wiimote_t structure.
  */
-void interpret_ir_data(struct ir_t* ir, struct orient_t *orient,int has_acc) {
-	struct ir_dot_t* dot = ir->dot;
+void find_sensorbar(struct ir_t* ir, struct orient_t *orient) {
+	struct fdot_t dots[4];
+	struct fdot_t acc_dots[4];
+	struct sb_t cand;
+	struct sb_t candidates[6];
+	struct sb_t sb;
+
+	fdot_t difference;
+
+	int num_candidates = 0;
+
 	int i;
-	float roll = 0.0f;
-	int last_num_dots = ir->num_dots;
+	int j;
+	int first, second;
 
-	if (has_acc)
-		roll = orient->roll;
+	WIIUSE_DEBUG("IR: orient angle: %.02f\n",orient->roll);
 
-	/* count visible dots */
+	/* count visible dots and populate dots structure */
+	/* dots[] is in -1..1 units for width */
 	ir->num_dots = 0;
-	for (i = 0; i < 4; ++i) {
-		if (dot[i].visible)
+	for (i = 0; i < 4; i++) {
+		if (ir->dot[i].visible) {
+			dots[ir->num_dots].x = (ir->dot[i].rx - 512.0f) / 512.0f;
+			dots[ir->num_dots].y = (ir->dot[i].ry - 384.0f) / 512.0f;
+			WIIUSE_DEBUG("IR: dot %d at (%d,%d) (%.03f,%.03f)\n",ir->num_dots,ir->dot[i].rx,ir->dot[i].ry,dots[ir->num_dots].x,dots[ir->num_dots].y);
 			ir->num_dots++;
+		}
 	}
 
-	switch (ir->num_dots) {
-		case 0:
-		{
-			ir->state = 0;
+	WIIUSE_DEBUG("IR: found %d dots\n",ir->num_dots);
 
-			/* reset the dot ordering */
-			for (i = 0; i < 4; ++i)
-				dot[i].order = 0;
+	// nothing to track
+	if(ir->num_dots == 0) {
+		if(ir->state != IR_STATE_DEAD)
+			ir->state = IR_STATE_LOST;
+		ir->ax = 0;
+		ir->ay = 0;
+		ir->distance = 0.0f;
+		ir->raw_valid = 0;
+		return;
+	}
 
-			ir->x = 0;
-			ir->y = 0;
-			ir->z = 0.0f;
+	/* ==== Find the Sensor Bar ==== */
 
-			return;
+	// first rotate according to accelerometer orientation
+	rotate_dots(dots, acc_dots, ir->num_dots, orient->roll);
+	if(ir->num_dots > 1) {
+		WIIUSE_DEBUG("IR: locating sensor bar candidates\n");
+
+		// iterate through all dot pairs
+		for(first=0; first < (ir->num_dots-1); first++) {
+			for(second=(first+1); second < ir->num_dots; second++) {
+				WIIUSE_DEBUG("IR: trying dots %d and %d\n",first,second);
+				// order the dots leftmost first into cand
+				// storing both the raw dots and the accel-rotated dots
+				if(acc_dots[first].x > acc_dots[second].x) {
+					cand.dots[0] = dots[second];
+					cand.dots[1] = dots[first];
+					cand.acc_dots[0] = acc_dots[second];
+					cand.acc_dots[1] = acc_dots[first];
+				} else {
+					cand.dots[0] = dots[first];
+					cand.dots[1] = dots[second];
+					cand.acc_dots[0] = acc_dots[first];
+					cand.acc_dots[1] = acc_dots[second];
+				}
+				difference.x = cand.acc_dots[1].x - cand.acc_dots[0].x;
+				difference.y = cand.acc_dots[1].y - cand.acc_dots[0].y;
+
+				// check angle
+				if(fabsf(difference.y / difference.x) > MAX_SB_SLOPE)
+					continue;
+				WIIUSE_DEBUG("IR: passed angle check\n");
+				// rotate to the true sensor bar angle
+				cand.off_angle = -RAD_TO_DEGREE(atan2(difference.y, difference.x));
+				cand.angle = cand.off_angle + orient->roll;
+				rotate_dots(cand.dots, cand.rot_dots, 2, cand.angle);
+				WIIUSE_DEBUG("IR: off_angle: %.02f, angle: %.02f\n", cand.off_angle, cand.angle);
+				// recalculate x distance - y should be zero now, so ignore it
+				difference.x = cand.rot_dots[1].x - cand.rot_dots[0].x;
+
+				// check distance
+				if(difference.x < MIN_SB_WIDTH)
+					continue;
+				// middle dot check. If there's another source somewhere in the
+				// middle of this candidate, then this can't be a sensor bar
+
+				for(i=0; i<ir->num_dots; i++) {
+					float wadj, hadj;
+					struct fdot_t tdot;
+					if(i==first || i==second) continue;
+					hadj = SB_DOT_HEIGHT_RATIO * difference.x;
+					wadj = SB_DOT_WIDTH_RATIO * difference.x;
+					rotate_dots(&dots[i], &tdot, 1, cand.angle);
+					if( ((cand.rot_dots[0].x + wadj) < tdot.x) && 
+						((cand.rot_dots[1].x - wadj) > tdot.x) &&
+						((cand.rot_dots[0].y + hadj) > tdot.y) &&
+						((cand.rot_dots[0].y - hadj) < tdot.y))
+						break;
+				}
+				// failed middle dot check
+				if(i < ir->num_dots) continue;
+				WIIUSE_DEBUG("IR: passed middle dot check\n");
+				// we have a candidate, store it
+				WIIUSE_DEBUG("IR: new candidate %d\n",num_candidates);
+				candidates[num_candidates++] = cand;
+			}
 		}
-		case 1:
-		{
-			fix_rotated_ir_dots(ir->dot, roll);
+	}
 
-			if (ir->state < 2) {
-				/*
-				 *	Only 1 known dot, so use just that.
-				 */
-				for (i = 0; i < 4; ++i) {
-					if (dot[i].visible) {
-						ir->x = dot[i].x;
-						ir->y = dot[i].y;
-
-						ir->ax = ir->x;
-						ir->ay = ir->y;
-
-						/*	can't calculate yaw because we don't have the distance */
-						//orient->yaw = calc_yaw(&wm->ir);
-
-						ir_convert_to_vres(&ir->x, &ir->y, ir->aspect, ir->vres[0], ir->vres[1]);
+	if(num_candidates == 0) {
+		int closest = -1;
+		int closest_to = 0;
+		float best = 999.0f;
+		float d;
+		float dx[2];
+		struct sb_t sbx[2];
+		// no sensor bar candidates, try to work with a lone dot
+		WIIUSE_DEBUG("IR: no candidates\n");
+		switch(ir->state) {
+			case IR_STATE_DEAD:
+				WIIUSE_DEBUG("IR: we're dead\n");
+				// we've never seen a sensor bar before, so we're screwed
+				ir->ax = 0.0f;
+				ir->ay = 0.0f;
+				ir->distance = 0.0f;
+				ir->raw_valid = 0;
+				return;
+			case IR_STATE_GOOD:
+			case IR_STATE_SINGLE:
+			case IR_STATE_LOST:
+				WIIUSE_DEBUG("IR: trying to keep track of single dot\n");
+				// try to find the dot closest to the previous sensor bar position
+				for(i=0; i<ir->num_dots; i++) {
+					WIIUSE_DEBUG("IR: checking dot %d (%.02f, %.02f)\n",i, acc_dots[i].x,acc_dots[i].y);
+					for(j=0; j<2; j++) {
+						WIIUSE_DEBUG("      to dot %d (%.02f, %.02f)\n",j, ir->sensorbar.acc_dots[j].x,ir->sensorbar.acc_dots[j].y);
+						d = SQUARED(acc_dots[i].x - ir->sensorbar.acc_dots[j].x);
+						d += SQUARED(acc_dots[i].y - ir->sensorbar.acc_dots[j].y);
+						if(d < best) {
+							best = d;
+							closest_to = j;
+							closest = i;
+						}
+					}
+				}
+				WIIUSE_DEBUG("IR: closest dot is %d to %d\n",closest,closest_to);
+				if(ir->state != IR_STATE_LOST || best < SB_SINGLE_NOGUESS_DISTANCE) {
+					// now work out where the other dot would be, in the acc frame
+					sb.acc_dots[closest_to] = acc_dots[closest];
+					sb.acc_dots[closest_to^1].x = ir->sensorbar.acc_dots[closest_to^1].x - ir->sensorbar.acc_dots[closest_to].x + acc_dots[closest].x;
+					sb.acc_dots[closest_to^1].y = ir->sensorbar.acc_dots[closest_to^1].y - ir->sensorbar.acc_dots[closest_to].y + acc_dots[closest].y;
+					// get the raw frame
+					rotate_dots(sb.acc_dots, sb.dots, 2, -orient->roll);
+					if((fabsf(sb.dots[closest_to^1].x) < SB_OFF_SCREEN_X) && (fabsf(sb.dots[closest_to^1].y) < SB_OFF_SCREEN_Y)) {
+						// this dot should be visible but isn't, since the candidate section failed.
+						// fall through and try to pick out the sensor bar without previous information
+						WIIUSE_DEBUG("IR: dot falls on screen, falling through\n");
+					} else {
+						// calculate the rotated dots frame
+						// angle tends to drift, so recalculate
+						sb.off_angle = -RAD_TO_DEGREE(atan2(sb.acc_dots[1].y - sb.acc_dots[0].y, sb.acc_dots[1].x - sb.acc_dots[0].x));
+						sb.angle = ir->sensorbar.off_angle + orient->roll;
+						rotate_dots(sb.acc_dots, sb.rot_dots, 2, ir->sensorbar.off_angle);
+						WIIUSE_DEBUG("IR: kept track of single dot\n");
 						break;
 					}
+				} else {
+					WIIUSE_DEBUG("IR: lost the dot and new one is too far away\n");
+				}
+				// try to find the dot closest to the sensor edge
+				WIIUSE_DEBUG("IR: trying to find best dot\n");
+				for(i=0; i<ir->num_dots; i++) {
+					d = WMIN(1.0f - fabsf(dots[i].x), HEIGHT - fabsf(dots[i].y));
+					if(d < best) {
+						best = d;
+						closest = i;
+					}
+				}
+				WIIUSE_DEBUG("IR: best dot: %d\n",closest);
+				// now try it as both places in the sensor bar
+				// and pick the one that places the other dot furthest off-screen
+				for(i=0; i<2; i++) {
+					sbx[i].acc_dots[i] = acc_dots[closest];
+					sbx[i].acc_dots[i^1].x = ir->sensorbar.acc_dots[i^1].x - ir->sensorbar.acc_dots[i].x + acc_dots[closest].x;
+					sbx[i].acc_dots[i^1].y = ir->sensorbar.acc_dots[i^1].y - ir->sensorbar.acc_dots[i].y + acc_dots[closest].y;
+					rotate_dots(sbx[i].acc_dots, sbx[i].dots, 2, -orient->roll);
+					dx[i] = WMAX(fabsf(sbx[i].dots[i^1].x),fabsf(sbx[i].dots[i^1].y / HEIGHT));
+				}
+				if(dx[0] > dx[1]) {
+					WIIUSE_DEBUG("IR: dot is LEFT: %.02f > %.02f\n",dx[0],dx[1]);
+					sb = sbx[0];
+				} else {
+					WIIUSE_DEBUG("IR: dot is RIGHT: %.02f < %.02f\n",dx[0],dx[1]);
+					sb = sbx[1];
+				}
+				// angle tends to drift, so recalculate
+				sb.off_angle = -RAD_TO_DEGREE(atan2(sb.acc_dots[1].y - sb.acc_dots[0].y, sb.acc_dots[1].x - sb.acc_dots[0].x));
+				sb.angle = ir->sensorbar.off_angle + orient->roll;
+				rotate_dots(sb.acc_dots, sb.rot_dots, 2, ir->sensorbar.off_angle);
+				WIIUSE_DEBUG("IR: found new dot to track\n");
+				break;
+		}
+		ir->state = IR_STATE_SINGLE;
+	} else {
+		int bestidx = 0;
+		float best = 999.0f;
+		float d;
+		WIIUSE_DEBUG("IR: finding best candidate\n");
+		// look for the best candidate
+		// for now, the formula is simple: pick the one with the smallest distance
+		for(i=0; i<num_candidates; i++) {
+			d = fabsf(candidates[i].rot_dots[0].x - candidates[i].rot_dots[1].x);
+			if(d < best) {
+				bestidx = i;
+				best = d;
+			}
+		}
+		WIIUSE_DEBUG("IR: best candidate: %d\n",bestidx);
+		sb = candidates[bestidx];
+		ir->state = IR_STATE_GOOD;
+	}
+
+	ir->raw_valid = 1;
+	ir->ax = ((sb.rot_dots[0].x + sb.rot_dots[1].x) / 2) * 512.0 + 512.0;
+	ir->ay = ((sb.rot_dots[0].y + sb.rot_dots[1].y) / 2) * 512.0 + 384.0;
+	ir->sensorbar = sb;
+	ir->distance = (sb.rot_dots[1].x - sb.rot_dots[0].x) * 512.0;
+
+}
+
+#define SMOOTH_IR_RADIUS 8.0f
+#define SMOOTH_IR_SPEED 0.25f
+#define SMOOTH_IR_DEADZONE 2.5f
+
+/**
+ *	@brief Smooth the IR pointer position
+ *
+ *	@param ir		Pointer to an ir_t structure.
+ */
+void apply_ir_smoothing(struct ir_t *ir) {
+	f32 dx, dy, d, theta;
+
+	WIIUSE_DEBUG("Smooth: OK (%.02f, %.02f) LAST (%.02f, %.02f) ", ir->ax, ir->ay, ir->sx, ir->sy);
+	dx = ir->ax - ir->sx;
+	dy = ir->ay - ir->sy;
+	d = sqrtf(dx*dx + dy*dy);
+	if (d > SMOOTH_IR_DEADZONE) {
+		if (d < SMOOTH_IR_RADIUS) {
+			WIIUSE_DEBUG("INSIDE\n");
+			ir->sx += dx * SMOOTH_IR_SPEED;
+			ir->sy += dy * SMOOTH_IR_SPEED;
+		} else {
+			WIIUSE_DEBUG("OUTSIDE\n");
+			theta = atan2f(dy, dx);
+			ir->sx = ir->ax - cosf(theta) * SMOOTH_IR_RADIUS;
+			ir->sy = ir->ay - sinf(theta) * SMOOTH_IR_RADIUS;
+		}
+	} else {
+		WIIUSE_DEBUG("DEADZONE\n");
+	}
+}
+
+// max number of errors before cooked data drops out
+#define ERROR_MAX_COUNT 8
+// max number of glitches before cooked data updates
+#define GLITCH_MAX_COUNT 5
+// squared delta over which we consider something a glitch
+#define GLITCH_DIST (150.0f * 150.0f)
+
+/**
+ *	@brief Interpret IR data into more user friendly variables.
+ *
+ *	@param ir		Pointer to an ir_t structure.
+ *	@param orient	Pointer to an orient_t structure.
+ */
+void interpret_ir_data(struct ir_t* ir, struct orient_t *orient) {
+
+	float x,y;
+	float d;
+
+	find_sensorbar(ir, orient);
+
+	if(ir->raw_valid) {
+		ir->angle = ir->sensorbar.angle;
+		ir->z = SB_Z_COEFFICIENT / ir->distance;
+		orient->yaw = calc_yaw(ir);
+		if(ir->error_cnt >= ERROR_MAX_COUNT) {
+			ir->sx = ir->ax;
+			ir->sy = ir->ay;
+			ir->glitch_cnt = 0;
+		} else {
+			d = SQUARED(ir->ax - ir->sx) + SQUARED(ir->ay - ir->sy);
+			if(d > GLITCH_DIST) {
+				if(ir->glitch_cnt > GLITCH_MAX_COUNT) {
+					apply_ir_smoothing(ir);
+					ir->glitch_cnt = 0;
+				} else {
+					ir->glitch_cnt++;
 				}
 			} else {
-				/*
-				 *	Only see 1 dot but know theres 2.
-				 *	Try to estimate where the other one
-				 *	should be and use that.
-				 */
-				for (i = 0; i < 4; ++i) {
-					if (dot[i].visible) {
-						int ox = 0;
-						int x, y;
-
-						if (dot[i].order == 1)
-							/* visible is the left dot - estimate where the right is */
-							ox = dot[i].x + ir->distance;
-						else if (dot[i].order == 2)
-							/* visible is the right dot - estimate where the left is */
-							ox = dot[i].x - ir->distance;
-
-						x = ((signed int)dot[i].x + ox) / 2;
-						y = dot[i].y;
-
-						ir->ax = x;
-						ir->ay = y;
-						orient->yaw = calc_yaw(ir);
-
-						if (ir_correct_for_bounds(&x, &y, ir->aspect, ir->offset[0], ir->offset[1])) {
-							ir_convert_to_vres(&x, &y, ir->aspect, ir->vres[0], ir->vres[1]);
-							ir->x = x;
-							ir->y = y;
-						}
-
-						break;
-					}
-				}
+				ir->glitch_cnt = 0;
+				apply_ir_smoothing(ir);
 			}
-
-			break;
 		}
-		case 2:
-		case 3:
-		case 4:
-		{
-			/*
-			 *	Two (or more) dots known and seen.
-			 *	Average them together to estimate the true location.
-			 */
-			int x, y;
-			ir->state = 2;
-
-			fix_rotated_ir_dots(ir->dot, roll);
-
-			/* if there is at least 1 new dot, reorder them all */
-			if (ir->num_dots > last_num_dots) {
-				reorder_ir_dots(dot);
-				ir->x = 0;
-				ir->y = 0;
-			}
-
-			ir->distance = ir_distance(dot);
-			ir->z = 1023 - ir->distance;
-
-			get_ir_dot_avg(ir->dot, &x, &y);
-
-			ir->ax = x;
-			ir->ay = y;
-			orient->yaw = calc_yaw(ir);
-
-			if (ir_correct_for_bounds(&x, &y, ir->aspect, ir->offset[0], ir->offset[1])) {
-				ir_convert_to_vres(&x, &y, ir->aspect, ir->vres[0], ir->vres[1]);
-				ir->x = x;
-				ir->y = y;
-			}
-
-			break;
-		}
-		default:
-		{
-			break;
+		ir->smooth_valid = 1;
+		ir->error_cnt = 0;
+	} else {
+		if(ir->error_cnt >= ERROR_MAX_COUNT) {
+			ir->smooth_valid = 0;
+		} else {
+			ir->smooth_valid = 1;
+			ir->error_cnt++;
 		}
 	}
-
-	#ifdef WITH_WIIUSE_DEBUG
-	{
-	int ir_level;
-	WIIUSE_GET_IR_SENSITIVITY(wm, &ir_level);
-	WIIUSE_DEBUG("IR sensitivity: %i", ir_level);
-	WIIUSE_DEBUG("IR visible dots: %i", ir->num_dots);
-	for (i = 0; i < 4; ++i)
-		if (dot[i].visible)
-			WIIUSE_DEBUG("IR[%i][order %i] (%.3i, %.3i) -> (%.3i, %.3i)", i, dot[i].order, dot[i].rx, dot[i].ry, dot[i].x, dot[i].y);
-	WIIUSE_DEBUG("IR[absolute]: (%i, %i)", ir->x, ir->y);
+	if(ir->smooth_valid) {
+		x = ir->sx;
+		y = ir->sy;
+		if (ir_correct_for_bounds(&x, &y, ir->aspect, ir->offset[0], ir->offset[1])) {
+			ir_convert_to_vres(&x, &y, ir->aspect, ir->vres[0], ir->vres[1]);
+			ir->x = x;
+			ir->y = y;
+			ir->valid = 1;
+		} else {
+			ir->valid = 0;
+		}
+	} else {
+		ir->valid = 0;
 	}
-	#endif
 }
 
 /**
@@ -707,8 +826,8 @@ float calc_yaw(struct ir_t* ir) {
 	float x;
 
 	x = ir->ax - 512;
-	x = x * (ir->z / 1024.0f);
+	x *= WIIMOTE_FOV_COEFFICIENT / 512.0;
 
-	return RAD_TO_DEGREE( atanf(x / ir->z) );
+	return RAD_TO_DEGREE( atanf(x) );
 }
 

@@ -22,16 +22,16 @@ Include Sub Directories=1
 
 [Open Files]
 
-Open File0=
-Active File Display Mode=-1
-Open File Pos0=487
-Open File Line0=39
-Open File Window Pos0=2,3,-1,-1,-4,-30,110,145,1139,483
-Open File1=
-Open File Pos1=21240
-Open File Line1=20772
-Open File Window Pos1=0,1,-1,-1,-4,-30,0,0,1033,342
-Open File2=D:\projects\devkitPro\libogc\wiiuse\wpad.c
+Open File0=D:\projects\devkitPro\buildscripts\build-devkit.sh
+Active File Display Mode=3
+Open File Pos0=0
+Open File Line0=0
+Open File Window Pos0=0,1,-1,-1,-4,-30,110,145,1139,483
+Open File1=D:\projects\devkitPro\buildscripts\README.TXT
+Open File Pos1=4953
+Open File Line1=4507
+Open File Window Pos1=2,3,-1,-1,-4,-30,0,0,1033,342
+Open File2=
 Open File Pos2=15029
 Open File Line2=14707
 Open File Window Pos2=2,3,-1,-1,-4,-30,22,29,1055,371
@@ -54,7 +54,7 @@ Open File Window Pos6=2,3,-1,-1,-4,-30,44,58,1055,419
 Open File7=
 Open File Pos7=0
 Open File Line7=145
-Active File Index=0
+Active File Index=1
 Open File Window Pos7=2,3,-1,-1,-4,-30,22,29,1077,271
 Open File8=
 Open File Pos8=1506
@@ -94,7 +94,7 @@ Open File Line16=0
 Open File Window Pos16=0,1,-1,-1,-4,-30,66,87,1099,457
 Open File17=
 [File View]
-Current Select=Project Files\libogc\gx.c
+Current Select=Project Files\Makefile
 Scroll Position=0
 
 [Files - libogc]

@@ -199,7 +199,6 @@ static s32 __bte_send_pending_request(struct bte_pcb *pcb)
 	req = pcb->ctrl_req;
 	req->state = STATE_SENDING;
 
-	//hexdump(req->p->payload,req->p->tot_len);
 	err = l2ca_datawrite(pcb->out_pcb,req->p);
 	btpbuf_free(req->p);
 
@@ -299,7 +298,6 @@ static void bte_process_data(struct bte_pcb *pcb,u8_t param,void *buf,u16_t len)
 	LOG("bte_process_data(%p)\n",pcb);
 	switch(param) {
 		case HIDP_DATA_RTYPE_INPUT:
-			//hexdump(buf,len);
 			if(pcb->recv!=NULL) pcb->recv(pcb->cbarg,buf,len);
 			break;
 		case HIDP_DATA_RTYPE_OTHER:

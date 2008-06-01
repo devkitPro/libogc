@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/wiiuse_internal.h,v 1.5 2008-05-30 10:56:34 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/wiiuse_internal.h,v 1.6 2008-06-01 03:07:53 wntrmute Exp $
  *
  */
 
@@ -210,7 +210,7 @@
  *		St = St_last + (alpha * (tilt - St_last))
  *	alpha is between 0 and 1
  */
-#define WIIUSE_DEFAULT_SMOOTH_ALPHA		0.07f
+#define WIIUSE_DEFAULT_SMOOTH_ALPHA		0.3f
 
 #define SMOOTH_ROLL						0x01
 #define SMOOTH_PITCH					0x02
