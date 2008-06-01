@@ -22,8 +22,8 @@ Include Sub Directories=1
 
 [Open Files]
 
-Open File0=D:\projects\devkitPro\buildscripts\build-devkit.sh
-Active File Display Mode=3
+Open File0=
+Active File Display Mode=-1
 Open File Pos0=0
 Open File Line0=0
 Open File Window Pos0=0,1,-1,-1,-4,-30,110,145,1139,483
@@ -94,7 +94,7 @@ Open File Line16=0
 Open File Window Pos16=0,1,-1,-1,-4,-30,66,87,1099,457
 Open File17=
 [File View]
-Current Select=Project Files\Makefile
+Current Select=Project Files\gc\ogc\gx.h
 Scroll Position=0
 
 [Files - libogc]
