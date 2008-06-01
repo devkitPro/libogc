@@ -204,22 +204,22 @@ ZLIBOBJ		:=	adler32.o compress.o crc32.o gzio.o uncompr.o \
 all: wii cube 
 
 #---------------------------------------------------------------------------------
-cube: gc/ogc/libversion.h
+wii: gc/ogc/libversion.h
 #---------------------------------------------------------------------------------
 	@[ -d $(INCDIR) ] || mkdir -p $(INCDIR)
 	@[ -d $(LIBS)/wii ] || mkdir -p $(LIBS)/wii
 	@[ -d $(DEPS)/wii ] || mkdir -p $(DEPS)/wii
 	@[ -d wii ] || mkdir -p wii
-	@$(MAKE) PLATFORM=cube libs -C cube -f $(CURDIR)/Makefile
+	@$(MAKE) PLATFORM=wii libs -C wii -f $(CURDIR)/Makefile
 
 #---------------------------------------------------------------------------------
-wii: gc/ogc/libversion.h
+cube: gc/ogc/libversion.h
 #---------------------------------------------------------------------------------
 	@[ -d $(INCDIR) ] || mkdir -p $(INCDIR)
 	@[ -d $(LIBS)/cube ] || mkdir -p $(LIBS)/cube
 	@[ -d $(DEPS)/cube ] || mkdir -p $(DEPS)/cube
 	@[ -d cube ] || mkdir -p cube
-	@$(MAKE) PLATFORM=wii libs -C wii -f $(CURDIR)/Makefile
+	@$(MAKE) PLATFORM=cube libs -C cube -f $(CURDIR)/Makefile
 
 
 #---------------------------------------------------------------------------------
