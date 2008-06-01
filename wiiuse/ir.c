@@ -176,7 +176,6 @@ void wiiuse_set_ir(struct wiimote_t *wm,int status)
 			WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_IR_INIT);
 		else
 			WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_IR_INIT);
-
 		return;
 	}
 

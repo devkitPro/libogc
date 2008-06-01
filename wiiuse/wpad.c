@@ -617,6 +617,7 @@ s32 WPAD_ReadPending(s32 chan, WPADDataCallback datacb)
 {
 	u32 btns_p = 0;
 	u32 btns_h = 0;
+	u32 btns_l = 0;
 	u32 btns_ch = 0;
 	u32 btns_ev = 0;
 	u32 btns_nh = 0;
@@ -631,7 +632,7 @@ s32 WPAD_ReadPending(s32 chan, WPADDataCallback datacb)
 		return count;
 	}
 	
-	btns_p = btns_nh = wpaddata[chan].btns_l = wpaddata[chan].btns_h;
+	btns_p = btns_nh = btns_l = wpaddata[chan].btns_h;
 	while(1) {
 		ret = WPAD_ReadEvent(chan,&wpaddata[chan]);
 		if(ret < WPAD_ERR_NONE) break;
@@ -667,8 +668,9 @@ s32 WPAD_ReadPending(s32 chan, WPADDataCallback datacb)
 		count++;
 	}
 	wpaddata[chan].btns_h = btns_nh;
-	wpaddata[chan].btns_d = btns_nh & ~wpaddata[chan].btns_l;
-	wpaddata[chan].btns_u = ~btns_nh & wpaddata[chan].btns_l;
+	wpaddata[chan].btns_l = btns_l;
+	wpaddata[chan].btns_d = btns_nh & ~btns_l;
+	wpaddata[chan].btns_u = ~btns_nh & btns_l;
 	if(ret == WPAD_ERR_QUEUE_EMPTY) return count;
 	return ret;
 }

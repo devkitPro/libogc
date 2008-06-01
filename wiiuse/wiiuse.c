@@ -136,11 +136,15 @@ int wiiuse_set_flags(struct wiimote_t* wm, int enable, int disable) {
  *	the wiimote saves power by not transmitting it
  *	by default.
  */
-void wiiuse_motion_sensing(struct wiimote_t* wm, int status) {
-	if (status)
+void wiiuse_motion_sensing(struct wiimote_t* wm, int status) 
+{
+	if (status) {
+		if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_ACC)) return;
 		WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_ACC);
-	else
+	} else {
+		if(!WIIMOTE_IS_SET(wm,WIIMOTE_STATE_ACC)) return;
 		WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_ACC);
+	}
 
 	if(!WIIMOTE_IS_SET(wm,WIIMOTE_STATE_HANDSHAKE_COMPLETE)) return;
 
@@ -154,7 +158,7 @@ void wiiuse_motion_sensing(struct wiimote_t* wm, int status) {
  */
 void wiiuse_toggle_rumble(struct wiimote_t* wm) 
 {
-	if (!wm)	return;
+	if (!wm) return;
 
 	WIIMOTE_TOGGLE_STATE(wm, WIIMOTE_STATE_RUMBLE);
 	if(!WIIMOTE_IS_SET(wm,WIIMOTE_STATE_HANDSHAKE_COMPLETE)) return;
@@ -170,12 +174,9 @@ void wiiuse_toggle_rumble(struct wiimote_t* wm)
  */
 void wiiuse_rumble(struct wiimote_t* wm, int status) 
 {
-	if (status) WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_RUMBLE);
-	else WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_RUMBLE);
-
-	if(!WIIMOTE_IS_SET(wm,WIIMOTE_STATE_HANDSHAKE_COMPLETE)) return;
-
-	wiiuse_status(wm,NULL);
+	if (status && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_RUMBLE)) return;
+	else if(!status && !WIIMOTE_IS_SET(wm,WIIMOTE_STATE_RUMBLE)) return;
+	wiiuse_toggle_rumble(wm);
 }
 
 void wiiuse_set_leds(struct wiimote_t *wm,int leds,cmd_blk_cb cb)
@@ -285,7 +286,8 @@ int wiiuse_write_streamdata(struct wiimote_t *wm,ubyte *data,ubyte len,cmd_blk_c
 {
 	struct cmd_blk_t *cmd;
 
-	if(!len || len>20) return 0;
+	if(!wm || !WIIMOTE_IS_CONNECTED(wm)) return 0;
+	if(!data || !len || len>20) return 0;
 
 	cmd = (struct cmd_blk_t*)__lwp_queue_get(&wm->cmdq);
 	if(!cmd) return 0;

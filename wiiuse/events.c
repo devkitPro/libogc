@@ -122,7 +122,7 @@ static void event_status(struct wiimote_t *wm,ubyte *msg)
 		goto done;
 	}
 	if(ir && !WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR)) WIIMOTE_ENABLE_STATE(wm,WIIMOTE_STATE_IR);
-	else if(!ir && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR)) WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_IR|WIIMOTE_STATE_IR));
+	else if(!ir && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR)) WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_IR);
 
 	if(attachment) {
 		if(!WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP) && !WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP_FAILED)) {

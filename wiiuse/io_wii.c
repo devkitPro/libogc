@@ -37,6 +37,13 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_IR|WIIMOTE_STATE_IR_INIT));
 	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_EXP|WIIMOTE_STATE_EXP_HANDSHAKE|WIIMOTE_STATE_EXP_FAILED));
 	WIIMOTE_DISABLE_STATE(wm,(WIIMOTE_STATE_CONNECTED|WIIMOTE_STATE_HANDSHAKE|WIIMOTE_STATE_HANDSHAKE_COMPLETE));
+
+	while(wm->cmd_head) {
+		__lwp_queue_append(&wm->cmdq,&wm->cmd_head->node);
+		wm->cmd_head = wm->cmd_head->next;
+	}
+	wm->cmd_tail = NULL;
+	
 	if(wm->event_cb) wm->event_cb(wm,WIIUSE_DISCONNECT);
 	return ERR_OK;
 }
@@ -142,6 +149,7 @@ void wiiuse_disconnect(struct wiimote_t *wm)
 {
 	if(wm==NULL || wm->sock==NULL) return;
 
+	WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_CONNECTED);
 	bte_disconnect(wm->sock);
 }
 
