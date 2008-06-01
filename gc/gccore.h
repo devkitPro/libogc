@@ -62,6 +62,7 @@ distribution.
 #include "ogc/video.h"
 #include "ogc/usbgecko.h"
 #include "ogc/video_types.h"
+#include "ogc/texconv.h"
 
 #if defined(HW_RVL)
 #include "ogc/ipc.h"
