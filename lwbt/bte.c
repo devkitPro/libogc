@@ -704,7 +704,7 @@ s32 bte_sendmessageasync(struct bte_pcb *pcb,void *message,u16 len,s32 (*sent)(v
 	//printf("bte_sendmessageasync()\n");
 
 	if(pcb==NULL || message==NULL || len==0) return ERR_VAL;
-	if(pcb->state==STATE_DISCONNECTING || pcb->state==STATE_DISCONNECTED) return ERR_OK;
+	if(pcb->state==STATE_DISCONNECTING || pcb->state==STATE_DISCONNECTED) return ERR_CLSD;
 
 	if((req=btmemb_alloc(&bte_ctrl_reqs))==NULL) {
 		ERROR("bte_sendmessageasync: Could not allocate memory for request\n");
@@ -735,7 +735,7 @@ s32 bte_sendmessage(struct bte_pcb *pcb,void *message,u16 len)
 	//printf("bte_sendmessage()\n");
 
 	if(pcb==NULL || message==NULL || len==0) return ERR_VAL;
-	if(pcb->state==STATE_DISCONNECTING || pcb->state==STATE_DISCONNECTED) return ERR_OK;
+	if(pcb->state==STATE_DISCONNECTING || pcb->state==STATE_DISCONNECTED) return ERR_CLSD;
 
 	if((req=btmemb_alloc(&bte_ctrl_reqs))==NULL) {
 		ERROR("bte_sendmessage: Could not allocate memory for request\n");
