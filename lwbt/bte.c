@@ -188,13 +188,31 @@ static inline s32 __bte_waitrequest(struct ctrl_req_t *req)
 	return err;
 }
 
+static inline void __bte_close_ctrl_queue(struct bte_pcb *pcb)
+{
+	struct ctrl_req_t *req;
+
+	while(pcb->ctrl_req!=NULL) {
+		req = pcb->ctrl_req;
+		req->err = ERR_CLSD;
+		req->state = STATE_DISCONNECTED;
+		if(req->sent!=NULL) {
+			req->sent(pcb->cbarg,pcb,ERR_CLSD);
+			btmemb_free(&bte_ctrl_reqs,req);
+		} else
+			LWP_ThreadSignal(pcb->cmdq);
+	
+		pcb->ctrl_req = req->next;
+	}
+}
+
 static s32 __bte_send_pending_request(struct bte_pcb *pcb)
 {
 	s32 err;
 	struct ctrl_req_t *req;
 
-	//printf("__bte_send_pending_request(%p)\n",pcb->ctrl_req);
 	if(pcb->ctrl_req==NULL) return ERR_OK;
+	if(pcb->state==STATE_DISCONNECTING || pcb->state==STATE_DISCONNECTED) return ERR_CLSD;
 
 	req = pcb->ctrl_req;
 	req->state = STATE_SENDING;
@@ -317,6 +335,9 @@ static err_t bte_process_input(void *arg,struct l2cap_pcb *pcb,struct pbuf *p,er
 	struct bte_pcb *bte = (struct bte_pcb*)arg;
 
 	LOG("bte_process_input(%p,%p)\n",bte,p);
+
+	if(bte->state==STATE_DISCONNECTING
+		|| bte->state==STATE_DISCONNECTED) return ERR_CLSD;
 
 	buf = p->payload;
 	len = p->tot_len;
@@ -587,6 +608,7 @@ s32 bte_disconnect(struct bte_pcb *pcb)
 	if(pcb==NULL) return ERR_VAL;
 
 	_CPU_ISR_Disable(level);
+	pcb->state = (u32)STATE_DISCONNECTING;
 	if(pcb->in_pcb!=NULL )
 		err = l2ca_disconnect_req(pcb->in_pcb,l2cap_disconnect_cfm);
 	else if(pcb->out_pcb!=NULL)
@@ -682,6 +704,7 @@ s32 bte_sendmessageasync(struct bte_pcb *pcb,void *message,u16 len,s32 (*sent)(v
 	//printf("bte_sendmessageasync()\n");
 
 	if(pcb==NULL || message==NULL || len==0) return ERR_VAL;
+	if(pcb->state==STATE_DISCONNECTING || pcb->state==STATE_DISCONNECTED) return ERR_OK;
 
 	if((req=btmemb_alloc(&bte_ctrl_reqs))==NULL) {
 		ERROR("bte_sendmessageasync: Could not allocate memory for request\n");
@@ -712,6 +735,7 @@ s32 bte_sendmessage(struct bte_pcb *pcb,void *message,u16 len)
 	//printf("bte_sendmessage()\n");
 
 	if(pcb==NULL || message==NULL || len==0) return ERR_VAL;
+	if(pcb->state==STATE_DISCONNECTING || pcb->state==STATE_DISCONNECTED) return ERR_OK;
 
 	if((req=btmemb_alloc(&bte_ctrl_reqs))==NULL) {
 		ERROR("bte_sendmessage: Could not allocate memory for request\n");
@@ -800,18 +824,9 @@ err_t l2cap_disconnected_ind(void *arg, struct l2cap_pcb *pcb, err_t err)
 			break;
 	}
 	if(bte->in_pcb==NULL && bte->out_pcb==NULL) {
-		while(bte->ctrl_req) {
-			bte->ctrl_req->err = ERR_CLSD;
-			bte->ctrl_req->state = STATE_FAILED;
-			if(bte->ctrl_req->sent) {
-				bte->ctrl_req->sent(bte->cbarg,bte,ERR_CLSD);
-				btmemb_free(&bte_ctrl_reqs,bte->ctrl_req);
-			} else
-				LWP_ThreadSignal(bte->cmdq);
-			bte->ctrl_req = bte->ctrl_req->next;
-		}
 		bte->err = ERR_OK;
 		bte->state = (u32)STATE_DISCONNECTED;
+		__bte_close_ctrl_queue(bte);
 		if(bte->disconn_cfm!=NULL) bte->disconn_cfm(bte->cbarg,bte,ERR_OK);
 	}
 	return ERR_OK;
@@ -824,7 +839,6 @@ err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb)
 
 	if(bte==NULL) return ERR_OK;
 
-	bte->state = (u32)STATE_DISCONNECTING;
 	switch(l2cap_psm(pcb)) {
 		case HIDP_OUTPUT_CHANNEL:
 			l2cap_close(bte->out_pcb);
@@ -840,6 +854,7 @@ err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb)
 	if(bte->in_pcb==NULL && bte->out_pcb==NULL) {		
 		bte->err = ERR_OK;
 		bte->state = (u32)STATE_DISCONNECTED;
+		__bte_close_ctrl_queue(bte);
 		if(bte->disconn_cfm!=NULL) bte->disconn_cfm(bte->cbarg,bte,ERR_OK);
 
 		hci_cmd_complete(NULL);
