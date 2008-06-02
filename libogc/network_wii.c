@@ -692,7 +692,6 @@ s32 if_config(char *local_ip, char *netmask, char *gateway,boolean use_dhcp)
 {
 	struct in_addr hostip;
 
-	if (net_ip_top_fd < 0) return -ENXIO;
 	if ( use_dhcp != true ) return -1;
 	if ( net_init() < 0 ) return -1;
 
