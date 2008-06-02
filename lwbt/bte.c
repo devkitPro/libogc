@@ -800,6 +800,16 @@ err_t l2cap_disconnected_ind(void *arg, struct l2cap_pcb *pcb, err_t err)
 			break;
 	}
 	if(bte->in_pcb==NULL && bte->out_pcb==NULL) {
+		while(bte->ctrl_req) {
+			bte->ctrl_req->err = ERR_CLSD;
+			bte->ctrl_req->state = STATE_FAILED;
+			if(bte->ctrl_req->sent) {
+				bte->ctrl_req->sent(bte->cbarg,bte,ERR_CLSD);
+				btmemb_free(&bte_ctrl_reqs,bte->ctrl_req);
+			} else
+				LWP_ThreadSignal(bte->cmdq);
+			bte->ctrl_req = bte->ctrl_req->next;
+		}
 		bte->err = ERR_OK;
 		bte->state = (u32)STATE_DISCONNECTED;
 		if(bte->disconn_cfm!=NULL) bte->disconn_cfm(bte->cbarg,bte,ERR_OK);

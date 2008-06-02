@@ -163,7 +163,7 @@ void wiiuse_toggle_rumble(struct wiimote_t* wm)
 	WIIMOTE_TOGGLE_STATE(wm, WIIMOTE_STATE_RUMBLE);
 	if(!WIIMOTE_IS_SET(wm,WIIMOTE_STATE_HANDSHAKE_COMPLETE)) return;
 
-	wiiuse_status(wm,NULL);
+	wiiuse_set_leds(wm,wm->leds,NULL);
 }
 
 /**
