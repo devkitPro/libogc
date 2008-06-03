@@ -3,6 +3,7 @@
 texconv.c - Helper functions for GX texture conversion
 
 Copyright (C) 2008
+softdev
 Michael Wiedenbauer (shagkur)
 Dave Murphy (WinterMute)
 

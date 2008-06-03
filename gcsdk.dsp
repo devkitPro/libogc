@@ -404,6 +404,10 @@ SOURCE=.\libogc\tdf.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libogc\texconv.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libogc\timesupp.c
 # End Source File
 # Begin Source File
