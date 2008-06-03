@@ -428,7 +428,6 @@ end:
 
 s32 USBStorage_Open(usbstorage_handle *dev, const char *bus, u16 vid, u16 pid)
 {
-	u8 *response_buffer = NULL;
 	s32 retval = -1;
 	u8 conf;
 	u32 iConf, iInterface, iEp;
@@ -436,6 +435,7 @@ s32 USBStorage_Open(usbstorage_handle *dev, const char *bus, u16 vid, u16 pid)
 	usb_configurationdesc *ucd;
 	usb_interfacedesc *uid;
 	usb_endpointdesc *ued;
+	STACK_ALIGN(u8,max_lun,1,32);
 
 	memset(dev, 0, sizeof(*dev));
 
@@ -448,11 +448,7 @@ s32 USBStorage_Open(usbstorage_handle *dev, const char *bus, u16 vid, u16 pid)
 	retval = USB_OpenDevice(bus, vid, pid, &dev->usb_fd);
 	if(retval < 0)
 		goto free_and_return;
-	
-	response_buffer = iosAlloc(hId, 1);
-	if(response_buffer == NULL)
-		goto free_and_return;
-	
+
 	retval = USB_GetDescriptors(dev->usb_fd, &udd);
 	if(retval < 0)
 		goto free_and_return;
@@ -520,12 +516,12 @@ found:
 		goto free_and_return;
 
 	LWP_MutexLock(dev->lock);
-	retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_DEVICE2HOST | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_GET_MAX_LUN, 0, dev->interface, 1, response_buffer);
+	retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_DEVICE2HOST | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_GET_MAX_LUN, 0, dev->interface, 1, max_lun);
 	LWP_MutexUnlock(dev->lock);
 	if(retval < 0)
 		dev->max_lun = 1;
 	else
-		dev->max_lun = *response_buffer;
+		dev->max_lun = *max_lun;
 
 	
 	if(retval == USBSTORAGE_ETIMEDOUT)
@@ -553,8 +549,10 @@ found:
 	USB_ClearHalt(dev->usb_fd, dev->ep_out);
 
 free_and_return:
+	/*
 	if(response_buffer != NULL)
 		iosFree(hId, response_buffer);
+	*/
 	if(retval < 0)
 	{
 		LWP_MutexDestroy(dev->lock);
@@ -613,7 +611,7 @@ s32 USBStorage_ReadCapacity(usbstorage_handle *dev, u8 lun, u32 *sector_size, u3
 	u8 cmd[] = {SCSI_READ_CAPACITY, lun << 5};
 	u8 response[8];
 
-	retval = __cycle(dev, lun, response, 8, cmd, 1, 0, NULL, NULL);
+	retval = __cycle(dev, lun, response, 8, cmd, 2, 0, NULL, NULL);
 	if(retval >= 0)
 	{
 		if(n_sectors != NULL)
