@@ -25,7 +25,7 @@ must not be misrepresented as being the original software.
 distribution.
 
 -------------------------------------------------------------*/
-#ifdef HW_RVL
+#if defined(HW_RVL)
 
 #include <gccore.h>
 #include <stdlib.h>
@@ -34,11 +34,14 @@ distribution.
 #include <sys/time.h>
 #include <ogc/cond.h>
 #include <errno.h>
+#include <lwp_heap.h>
 
 #include "asm.h"
 #include "processor.h"
 
-#define	HEAP_SIZE			4096
+#define ROUNDDOWN32(v)				(((u32)(v)-0x1f)&~0x1f)
+
+#define	HEAP_SIZE			(32*1024)
 #define	TAG_START			0x0BADC0DE
 
 #define	CBW_SIZE			31
@@ -71,7 +74,8 @@ distribution.
 
 #define USBSTORAGE_CYCLE_RETRIES	3
 
-static s32 hId = -1;
+static heap_cntrl __heap;
+static u8 __heap_created = 0;
 
 static s32 __usbstorage_reset(usbstorage_handle *dev);
 static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun);
@@ -144,48 +148,48 @@ static s32 __USB_CtrlMsgTimeout(usbstorage_handle *dev, u8 bmRequestType, u8 bmR
 
 s32 USBStorage_Initialize()
 {
-	if(hId > 0)
-		return 0;
+	u8 *ptr;
+	u32 level;
 
-	hId = iosCreateHeap(HEAP_SIZE);
+	_CPU_ISR_Disable(level);
+	if(__heap_created != 0) {
+		_CPU_ISR_Restore(level);
+		return IPC_OK;
+	}
+	
+	ptr = (u8*)ROUNDDOWN32(((u32)SYS_GetArena2Hi() - HEAP_SIZE));
+	if((u32)ptr < (u32)SYS_GetArena2Lo()) {
+		_CPU_ISR_Restore(level);
+		return IPC_ENOMEM;
+	}
 
-	if(hId < 0)
-		return IPC_ENOHEAP;
+	SYS_SetArena2Hi(ptr);
+
+	__lwp_heap_init(&__heap, ptr, HEAP_SIZE, 32);
+	__heap_created = 1;
+	_CPU_ISR_Restore(level);
 
 	return IPC_OK;
 
 }
 
-s32 USBStorage_Deinitialize()
-{
-	s32 retval;
-
-	retval = iosDestroyHeap(hId);
-	hId = -1;
-	return retval;
-}
-
 static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u8 *cb, u8 cbLen)
 {
-	u8 *cbw = NULL;
 	s32 retval = USBSTORAGE_OK;
 
 	if(cbLen == 0 || cbLen > 16)
 		return IPC_EINVAL;
 	
-	cbw = iosAlloc(hId,CBW_SIZE);
-	if(cbw==NULL) return IPC_ENOMEM;
+	memset(dev->buffer, 0, CBW_SIZE);
 
-	memset(cbw, 0, CBW_SIZE);
+	__stwbrx(dev->buffer, 0, CBW_SIGNATURE);
+	__stwbrx(dev->buffer, 4, dev->tag);
+	__stwbrx(dev->buffer, 8, len);
+	dev->buffer[12] = flags;
+	dev->buffer[13] = lun;
+	dev->buffer[14] = (cbLen > 6 ? 0x10 : 6);
 
-	__stwbrx(cbw, 0, CBW_SIGNATURE);
-	__stwbrx(cbw, 4, dev->tag);
-	__stwbrx(cbw, 8, len);
-	cbw[12] = flags;
-	cbw[13] = lun;
-	cbw[14] = (cbLen > 6 ? 0x10 : 6);
-
-	memcpy(cbw + 15, cb, cbLen);
+	memcpy(dev->buffer + 15, cb, cbLen);
 
 	if(dev->suspended == 1)
 	{
@@ -193,76 +197,52 @@ static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u
 		dev->suspended = 0;
 	}
 
-	retval = __USB_BlkMsgTimeout(dev, dev->ep_out, CBW_SIZE, (void *)cbw);
+	retval = __USB_BlkMsgTimeout(dev, dev->ep_out, CBW_SIZE, (void *)dev->buffer);
 
-	if(retval == CBW_SIZE)
-		retval = USBSTORAGE_OK;
-	else if(retval > 0)
-		retval = USBSTORAGE_ESHORTWRITE;
+	if(retval == CBW_SIZE) return USBSTORAGE_OK;
+	else if(retval > 0) return USBSTORAGE_ESHORTWRITE;
 
-	if(cbw!=NULL) iosFree(hId,cbw);
 	return retval;
 }
 
 static s32 __read_csw(usbstorage_handle *dev, u8 *status, u32 *dataResidue)
 {
-	u8 *csw = NULL;
 	s32 retval = USBSTORAGE_OK;
 	u32 signature, tag, _dataResidue, _status;
 
-	csw = iosAlloc(hId,CSW_SIZE);
-	if(csw==NULL) return IPC_ENOMEM;
+	memset(dev->buffer, 0, CSW_SIZE);
 
-	memset(csw, 0, CSW_SIZE);
+	retval = __USB_BlkMsgTimeout(dev, dev->ep_in, CSW_SIZE, dev->buffer);
+	if(retval > 0 && retval != CSW_SIZE) return USBSTORAGE_ESHORTREAD;
+	else if(retval < 0) return retval;
 
-	retval = __USB_BlkMsgTimeout(dev, dev->ep_in, CSW_SIZE, csw);
-	if(retval == CSW_SIZE)
-		retval = USBSTORAGE_OK;
-	else if(retval > 0) {
-		retval = USBSTORAGE_ESHORTREAD;
-		goto free_and_error;
-	} else 
-		goto free_and_error;
+	signature = __lwbrx(dev->buffer, 0);
+	tag = __lwbrx(dev->buffer, 4);
+	_dataResidue = __lwbrx(dev->buffer, 8);
+	_status = dev->buffer[12];
 
-	signature = __lwbrx(csw, 0);
-	tag = __lwbrx(csw, 4);
-	_dataResidue = __lwbrx(csw, 8);
-	_status = csw[12];
-
-	if(signature != CSW_SIGNATURE) {
-		retval = USBSTORAGE_ESIGNATURE;
-		goto free_and_error;
-	}
+	if(signature != CSW_SIGNATURE) return USBSTORAGE_ESIGNATURE;
 
 	if(dataResidue != NULL)
 		*dataResidue = _dataResidue;
 	if(status != NULL)
 		*status = _status;
 
-	if(tag != dev->tag) {
-		retval = USBSTORAGE_ETAG;
-		goto free_and_error;
-	}
+	if(tag != dev->tag) return USBSTORAGE_ETAG;
 	dev->tag++;
 
-free_and_error:
-	if(csw!=NULL) iosFree(hId,csw);
-	return retval;
+	return USBSTORAGE_OK;
 }
 
 static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, u8 cbLen, u8 write, u8 *_status, u32 *_dataResidue)
 {
 	s32 retval = USBSTORAGE_OK;
-	u8 *bfr = NULL;
 
 	u8 status = 0;
 	u32 dataResidue = 0;
 	u32 thisLen;
 
 	s8 retries = USBSTORAGE_CYCLE_RETRIES + 1;
-
-	bfr = iosAlloc(hId, write ? dev->ep_out_size : dev->ep_in_size);
-	if(bfr == NULL) return IPC_ENOMEM;
 
 	LWP_MutexLock(dev->lock);
 	do
@@ -286,9 +266,9 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 			while(len > 0)
 			{
 				thisLen = len > dev->ep_out_size ? dev->ep_out_size : len;
-				memset(bfr, 0, dev->ep_out_size);
-				memcpy(bfr, buffer, thisLen);
-				retval = __USB_BlkMsgTimeout(dev, dev->ep_out, thisLen, bfr);
+				memset(dev->buffer, 0, dev->ep_out_size);
+				memcpy(dev->buffer, buffer, thisLen);
+				retval = __USB_BlkMsgTimeout(dev, dev->ep_out, thisLen, dev->buffer);
 
 				if(retval == USBSTORAGE_ETIMEDOUT)
 					break;
@@ -332,11 +312,11 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 			while(len > 0)
 			{
 				thisLen = len > dev->ep_in_size ? dev->ep_in_size : len;
-				retval = __USB_BlkMsgTimeout(dev, dev->ep_in, thisLen, bfr);
+				retval = __USB_BlkMsgTimeout(dev, dev->ep_in, thisLen, dev->buffer);
 				if(retval < 0)
 					break;
 
-				memcpy(buffer, bfr, retval);
+				memcpy(buffer, dev->buffer, retval);
 				len -= retval;
 				buffer += retval;
 
@@ -380,7 +360,6 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 	if(_dataResidue != NULL)
 		*_dataResidue = dataResidue;
 
-	if(bfr != NULL) iosFree(hId, bfr);
 	return retval;
 }
 
@@ -452,7 +431,7 @@ s32 USBStorage_Open(usbstorage_handle *dev, const char *bus, u16 vid, u16 pid)
 	usb_interfacedesc *uid;
 	usb_endpointdesc *ued;
 
-	max_lun = iosAlloc(hId,1);
+	max_lun = __lwp_heap_allocate(&__heap, 1);
 	if(max_lun==NULL) return IPC_ENOMEM;
 
 	memset(dev, 0, sizeof(*dev));
@@ -566,12 +545,23 @@ found:
 	USB_ClearHalt(dev->usb_fd, dev->ep_in);
 	USB_ClearHalt(dev->usb_fd, dev->ep_out);
 
+	if(dev->ep_in_size < CBW_SIZE && dev->ep_out_size < CBW_SIZE)
+		dev->buffer = __lwp_heap_allocate(&__heap, CBW_SIZE);
+	else if(dev->ep_in_size >= dev->ep_out_size)
+		dev->buffer = __lwp_heap_allocate(&__heap, dev->ep_in_size);
+	else
+		dev->buffer = __lwp_heap_allocate(&__heap, dev->ep_out_size);
+	
+	if(dev->buffer == NULL) retval = IPC_ENOMEM;
+	else retval = USBSTORAGE_OK;
+
 free_and_return:
-	if(max_lun!=NULL) iosFree(hId, max_lun);
+	if(max_lun!=NULL) __lwp_heap_free(&__heap, max_lun);
 	if(retval < 0)
 	{
 		LWP_MutexDestroy(dev->lock);
 		LWP_CondDestroy(dev->cond);
+		__lwp_heap_free(&__heap, dev->buffer);
 		free(dev->sector_size);
 		memset(dev, 0, sizeof(*dev));
 		return retval;
