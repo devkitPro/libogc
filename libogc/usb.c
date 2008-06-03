@@ -273,14 +273,16 @@ static inline s32 __usb_getdesc(s32 fd, u8 *buffer, u8 type, u8 index, u8 size)
 
 s32 USB_Initialize()
 {
-	hId = iosCreateHeap(USB_HEAPSIZE);
-	if(hId<0) return IPC_ENOMEM;
-
+	if(hId<0) {
+		hId = iosCreateHeap(USB_HEAPSIZE);
+		if(hId<0) return IPC_ENOMEM;
+	}
 	return IPC_OK;
 }
 
 s32 USB_Deinitialize()
 {
+	if(hId<0) return IPC_EINVAL;
 	return iosDestroyHeap(hId);
 }
 
