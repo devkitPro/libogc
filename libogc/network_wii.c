@@ -548,6 +548,7 @@ s32 net_sendto(s32 s, const void *data, s32 len, u32 flags, struct sockaddr *to,
 	ret = _net_convert_error(IOS_IoctlvFormat(__net_hid, net_ip_top_fd, IOCTLV_SO_SENDTO, "dd:", message_buf, len, params, sizeof(struct sendto_params)));
 	debug_printf("net_send retuned %d\n", ret);
 
+	if(message_buf!=NULL) iosFree(__net_hid,message_buf);
 	return ret;
 }
 
