@@ -279,14 +279,14 @@ s32 net_init(void)
 
 	if (net_ip_top_fd >= 0) return 0;
 	
+	if (__net_hid == -1) __net_hid = iosCreateHeap(NET_HEAP_SIZE);
+	if (__net_hid < 0) return __net_hid;
+	
 	ret = NCDGetLinkStatus();  // this must be called as part of initialization
 	if (ret < 0) {
 		debug_printf("NCDGetLinkStatus returned %d\n", ret);
 		return ret;
 	}
-	
-	if (__net_hid == -1) __net_hid = iosCreateHeap(NET_HEAP_SIZE);
-	if (__net_hid < 0) return __net_hid;
 	
 	net_ip_top_fd = _net_convert_error(IOS_Open(__iptop_fs, 0));
 	if (net_ip_top_fd < 0) {
