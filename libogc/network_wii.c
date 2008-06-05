@@ -493,7 +493,7 @@ s32 net_connect(s32 s, struct sockaddr *addr, socklen_t addrlen)
 	params->has_addr = 1;
 	memcpy(&params->addr, addr, addrlen);
 
-	ret = IOS_Ioctl(net_ip_top_fd, IOCTL_SO_CONNECT, params, sizeof(struct connect_params), NULL, 0);
+	ret = _net_convert_error(IOS_Ioctl(net_ip_top_fd, IOCTL_SO_CONNECT, params, sizeof(struct connect_params), NULL, 0));
 	if (ret < 0) {
     	debug_printf("SOConnect(%d, %p)=%d\n", s, addr, ret);
 	}
