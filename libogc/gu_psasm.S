@@ -293,8 +293,11 @@ ps_guMtxScale:
 	.globl ps_guMtxScaleApply
 	//r3 = src,r4 = dst,fr1 = xS,fr2 = yS,fr3 = zS
 ps_guMtxScaleApply:
+	frsp		fr1,fr1
 	psq_l		fr4,0(r3),0,0
+	frsp		fr2,fr2
 	psq_l		fr5,8(r3),0,0
+	frsp		fr3,fr3
 	ps_muls0	fr4,fr4,fr1
 	psq_l		fr6,16(r3),0,0
 	ps_muls0	fr5,fr5,fr1
@@ -335,8 +338,11 @@ ps_guMtxTrans:
 	//r3 = src,r4 = dst,fr1 = xT,fr2 = yT,fr3 = zT
 ps_guMtxTransApply:
 	psq_l		fr4,0(r3),0,0
+	frsp		fr1,fr1
 	psq_l		fr5,8(r3),0,0
+	frsp		fr2,fr2
 	psq_l		fr7,24(r3),0,0
+	frsp		fr3,fr3
 	psq_l		fr8,40(r3),0,0
 	ps_sum1		fr5,fr1,fr5,fr5
 	psq_l		fr6,16(r3),0,0
@@ -356,7 +362,9 @@ ps_guMtxTransApply:
 ps_guMtxRotTrig:
 	lis			r9,Unit01@ha
 	addi		r9,r9,Unit01@l
+	frsp		fr1,fr1
 	lfs			fr3,0(r9)
+	frsp		fr2,fr2
 	lfs			fr4,4(r9)
 	ori			r4,r4,0x20
 	ps_neg		fr5,fr1
@@ -415,7 +423,6 @@ __ps_guMtxRotAxisRadInternal:
 	addi		r6,r6,NrmData@l
 	lfs			fr11,4(r6);
 	lfs			fr12,0(r6)
-	stfd		fr31,40(r1)
 	ps_mul		fr5,fr3,fr3
 	lfs			fr4,8(r4)
 	fadds		fr10,fr12,fr12
@@ -454,8 +461,6 @@ __ps_guMtxRotAxisRadInternal:
 	ps_sum0		fr8,fr8,fr14,fr2
 	psq_st		fr7,32(r3),0,0
 	psq_st		fr8,40(r3),0,0
-	lfd			fr31,40(r1)
-	lfd			fr15,16(r1)
 	lfd			fr14,8(r1)
 	addi		r1,r1,64
 	blr
