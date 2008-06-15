@@ -335,7 +335,7 @@ static s32 __sd0_getcid()
 static	bool __sd0_initio()
 {
 	s32 ret;
-	//ret = __sdio_getstatus();
+
 	ret = __sdio_resetcard();
 	if(ret<0) {
 		return false;
@@ -361,8 +361,9 @@ static	bool __sd0_initio()
 		ret = __sd0_deselect();
 		return false;
 	}
- 
 	__sd0_deselect();
+
+	__sd0_initialized = 1;
 	return true;
 }
 
