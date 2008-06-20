@@ -553,22 +553,9 @@ static void __GX_InitGX()
 		{0,1,0,0},
 		{0,0,1,0}
 	};
-
-	switch(VIDEO_GetCurrentTvMode()) {
-		case VI_NTSC:
-			rmode = &TVNtsc480IntDf;
-			break;
-		case VI_PAL:
-			rmode = &TVPal528IntDf;
-			break;
-		case VI_MPAL:
-			rmode = &TVMpal480IntDf;
-			break;
-		default:
-			rmode = &TVNtsc480IntDf;
-			break;
-	}
 	
+	rmode = VIDEO_GetPreferredMode(NULL);
+
 	GX_SetCopyClear((GXColor)BLACK,0xffffff);
 	GX_SetTexCoordGen(GX_TEXCOORD0,GX_TG_MTX2x4,GX_TG_TEX0,GX_IDENTITY);
 	GX_SetTexCoordGen(GX_TEXCOORD1,GX_TG_MTX2x4,GX_TG_TEX1,GX_IDENTITY);
@@ -3443,14 +3430,14 @@ void GX_SetTevColorS10(u8 tev_regid,GXColorS10 color)
 	GX_LOAD_BP_REG(reg);
 }
 
-void GX_SetTevKColor(u8 tev_regid,GXColor color)
+void GX_SetTevKColor(u8 tev_kregid,GXColor color)
 {
 	u32 reg;
 
-	reg = (_SHIFTL((0xe0+(tev_regid<<1)),24,8)|(_SHIFTL(1,23,1))|(_SHIFTL(color.a,12,8))|(color.r&0xff));
+	reg = (_SHIFTL((0xe0+(tev_kregid<<1)),24,8)|(_SHIFTL(1,23,1))|(_SHIFTL(color.a,12,8))|(color.r&0xff));
 	GX_LOAD_BP_REG(reg);
 
-	reg = (_SHIFTL((0xe1+(tev_regid<<1)),24,8)|(_SHIFTL(1,23,1))|(_SHIFTL(color.g,12,8))|(color.b&0xff));
+	reg = (_SHIFTL((0xe1+(tev_kregid<<1)),24,8)|(_SHIFTL(1,23,1))|(_SHIFTL(color.g,12,8))|(color.b&0xff));
 	GX_LOAD_BP_REG(reg);
 	
 	//this two calls should obviously flush the Write Gather Pipe.
@@ -3458,14 +3445,14 @@ void GX_SetTevKColor(u8 tev_regid,GXColor color)
 	GX_LOAD_BP_REG(reg);
 }
 
-void GX_SetTevKColorS10(u8 tev_regid,GXColorS10 color)
+void GX_SetTevKColorS10(u8 tev_kregid,GXColorS10 color)
 {
 	u32 reg;
 
-	reg = (_SHIFTL((0xe0+(tev_regid<<1)),24,8)|(_SHIFTL(1,23,1))|(_SHIFTL(color.a,12,11))|(color.r&0x7ff));
+	reg = (_SHIFTL((0xe0+(tev_kregid<<1)),24,8)|(_SHIFTL(1,23,1))|(_SHIFTL(color.a,12,11))|(color.r&0x7ff));
 	GX_LOAD_BP_REG(reg);
 
-	reg = (_SHIFTL((0xe1+(tev_regid<<1)),24,8)|(_SHIFTL(1,23,1))|(_SHIFTL(color.g,12,11))|(color.b&0x7ff));
+	reg = (_SHIFTL((0xe1+(tev_kregid<<1)),24,8)|(_SHIFTL(1,23,1))|(_SHIFTL(color.g,12,11))|(color.b&0x7ff));
 	GX_LOAD_BP_REG(reg);
 	
 	//this two calls should obviously flush the Write Gather Pipe.
@@ -3831,6 +3818,10 @@ void GX_SetIndTexCoordScale(u8 indtexid,u8 scale_s,u8 scale_t)
 			GX_LOAD_BP_REG(_gx[0xc1]);
 			break;
 	}
+}
+
+void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 tilespacing_x,u16 tilespacing_y,u8 indtexfmt,u8 indtexmtx,u8 bias_sel,u8 alpha_sel)
+{
 }
 
 void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col)
@@ -4612,14 +4603,16 @@ void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1)
 
 void GX_AdjustForOverscan(GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver)
 {
-	if(rmin!=rmin) memcpy(rmout,rmin,sizeof(GXRModeObj));
-	rmout->fbWidth -= ((hor<<1)&0xfffe);
-	rmout->efbHeight -= ((((ver<<1)&0xfffe)*rmin->efbHeight)/rmin->xfbHeight);
-	if(rmin->xfbMode==VI_XFBMODE_SF && !(rmin->viTVMode&VI_PROGRESSIVE)) rmout->xfbHeight -= ver;
-	else rmout->xfbHeight -= ((ver<<1)&0xfffe);
+	if(rmin!=rmout) memcpy(rmout,rmin,sizeof(GXRModeObj));
 
-	rmout->viWidth -= ((hor<<1)&0xfffe);
-	rmout->viHeight -= ((ver<<1)&0xfffe);
+	rmout->fbWidth = rmin->fbWidth-(hor<<1);
+	rmout->efbHeight = rmin->efbHeight-((rmin->efbHeight*(ver<<1))/rmin->xfbHeight);
+	if(rmin->xfbMode==VI_XFBMODE_SF && !(rmin->viTVMode&VI_PROGRESSIVE)) rmout->xfbHeight = rmin->xfbHeight-ver;
+	else rmout->xfbHeight = rmin->xfbHeight-(ver<<1);
+
+	rmout->viWidth = rmin->viWidth-(hor<<1);
+	if(rmin->viTVMode&VI_PROGRESSIVE) rmout->viHeight = rmin->viHeight-(ver<<2);
+	else rmout->viHeight = rmin->viHeight-(ver<<1);
 
 	rmout->viXOrigin += hor;
 	rmout->viYOrigin += ver;
