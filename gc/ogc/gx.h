@@ -573,6 +573,13 @@
 #define GX_AOP_XNOR				3
 #define GX_MAX_ALPHAOP			4
 
+/* tev const color reg id */
+#define GX_KCOLOR0				0
+#define GX_KCOLOR1				1
+#define GX_KCOLOR2				2
+#define GX_KCOLOR3				3
+#define GX_KCOLOR_MAX			4
+
 /* tev const color sel */
 #define GX_TEV_KCSEL_1					0x00
 #define GX_TEV_KCSEL_7_8				0x01
@@ -1350,6 +1357,7 @@ void GX_SetFogRangeAdj(u8 enable,u16 center,GXFogAdjTbl *table);
 void GX_SetIndTexMatrix(u8 indtexmtx,const f32 offset_mtx[2][3],s8 scale_exp);
 void GX_SetTevIndBumpST(u8 tevstage,u8 indstage,u8 mtx_sel);
 void GX_SetTevIndBumpXYZ(u8 tevstage,u8 indstage,u8 mtx_sel);
+void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 tilespacing_x,u16 tilespacing_y,u8 indtexfmt,u8 indtexmtx,u8 bias_sel,u8 alpha_sel);
 
 void GX_SetColorUpdate(u8 enable);
 void GX_SetAlphaUpdate(u8 enable);
