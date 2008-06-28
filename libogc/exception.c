@@ -214,7 +214,7 @@ void c_default_exceptionhandler(frame_context *pCtx)
 	VIDEO_SetFramebuffer(exception_xfb);
 	__console_init(exception_xfb,20,20,640,574,1280);
 
-	kprintf("Exception (%s) occurred!\n", exception_name[pCtx->EXCPT_Number]);
+	kprintf("\n\nException (%s) occurred!\n", exception_name[pCtx->EXCPT_Number]);
 
 	kprintf("GPR00 %08X GPR08 %08X GPR16 %08X GPR24 %08X\n",pCtx->GPR[0], pCtx->GPR[8], pCtx->GPR[16], pCtx->GPR[24]);
 	kprintf("GPR01 %08X GPR09 %08X GPR17 %08X GPR25 %08X\n",pCtx->GPR[1], pCtx->GPR[9], pCtx->GPR[17], pCtx->GPR[25]);
