@@ -424,28 +424,33 @@ bool sdio_ReadSectors(u32 sector,u32 numSectors,void* buffer)
  
 	ret = __sd0_select();
 	if(ret<0) return false;
- 
-	rbuf = iosAlloc(hId,PAGE_SIZE512);
-	if(rbuf==NULL) {
-		__sd0_deselect();
-		return false;
-	}
- 
-	ptr = (u8*)buffer;
-	while(numSectors>0) {
-		blk_off = (sector*PAGE_SIZE512);
-		ret = __sdio_sendcommand(SDIO_CMD_READMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,blk_off,1,PAGE_SIZE512,rbuf,NULL,0);
-		if(ret>=0) {
-			memcpy(ptr,rbuf,PAGE_SIZE512);
-			ptr += PAGE_SIZE512;
-			sector++;
-			numSectors--;
-		} else
-			break;
-	}
+
+	if((u32)buffer & 0x1F) {
+
+		rbuf = iosAlloc(hId,PAGE_SIZE512);
+		if(rbuf==NULL) {
+			__sd0_deselect();
+			return false;
+		}
+
+		ptr = (u8*)buffer;
+		while(numSectors>0) {
+			blk_off = (sector*PAGE_SIZE512);
+			ret = __sdio_sendcommand(SDIO_CMD_READMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,blk_off,1,PAGE_SIZE512,rbuf,NULL,0);
+			if(ret>=0) {
+				memcpy(ptr,rbuf,PAGE_SIZE512);
+				ptr += PAGE_SIZE512;
+				sector++;
+				numSectors--;
+			} else
+				break;
+		}
+		iosFree(hId,rbuf);
+	} else
+		ret = __sdio_sendcommand(SDIO_CMD_READMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,sector*PAGE_SIZE512,numSectors,PAGE_SIZE512,buffer,NULL,0);
+
 	__sd0_deselect();
  
-	iosFree(hId,rbuf);
 	return (ret>=0);
 }
  
@@ -459,28 +464,32 @@ bool sdio_WriteSectors(u32 sector,u32 numSectors,const void* buffer)
  
 	ret = __sd0_select();
 	if(ret<0) return false;
- 
-	wbuf = iosAlloc(hId,PAGE_SIZE512);
-	if(wbuf==NULL) {
-		__sd0_deselect();
-		return false;
-	}
- 
-	ptr = (u8*)buffer;
-	while(numSectors>0) {
-		blk_off = (sector*PAGE_SIZE512);
-		memcpy(wbuf,ptr,PAGE_SIZE512);
-		ret = __sdio_sendcommand(SDIO_CMD_WRITEMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,blk_off,1,PAGE_SIZE512,wbuf,NULL,0);
-		if(ret>=0) {
-			ptr += PAGE_SIZE512;
-			sector++;
-			numSectors--;
-		} else 
-			break;
-	}
+
+	if((u32)buffer & 0x1F) {
+		wbuf = iosAlloc(hId,PAGE_SIZE512);
+		if(wbuf==NULL) {
+			__sd0_deselect();
+			return false;
+		}
+
+		ptr = (u8*)buffer;
+		while(numSectors>0) {
+			blk_off = (sector*PAGE_SIZE512);
+			memcpy(wbuf,ptr,PAGE_SIZE512);
+			ret = __sdio_sendcommand(SDIO_CMD_WRITEMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,blk_off,1,PAGE_SIZE512,wbuf,NULL,0);
+			if(ret>=0) {
+				ptr += PAGE_SIZE512;
+				sector++;
+				numSectors--;
+			} else
+				break;
+		}
+		iosFree(hId,wbuf);
+	} else
+		ret = __sdio_sendcommand(SDIO_CMD_WRITEMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,sector*PAGE_SIZE512,numSectors,PAGE_SIZE512,(char *)buffer,NULL,0);
+
 	__sd0_deselect();
  
-	iosFree(hId,wbuf);
 	return (ret>=0);
 }
  
