@@ -561,8 +561,10 @@ free_and_return:
 	{
 		LWP_MutexDestroy(dev->lock);
 		LWP_CondDestroy(dev->cond);
-		__lwp_heap_free(&__heap, dev->buffer);
-		free(dev->sector_size);
+		if(dev->buffer != NULL)
+			__lwp_heap_free(&__heap, dev->buffer);
+		if(dev->sector_size != NULL)
+			free(dev->sector_size);
 		memset(dev, 0, sizeof(*dev));
 		return retval;
 	}
