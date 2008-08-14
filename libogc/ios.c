@@ -129,6 +129,7 @@ s32 IOS_GetPreferredVersion()
 	titles = iosAlloc(__ios_hid, sizeof(u64)*count);
 	if(!titles) {
 		printf(" iosAlloc titles failed\n");
+		return -1;
 	}
 	res = ES_GetTitles(titles, count);
 	if(res < 0) {
@@ -280,8 +281,6 @@ s32 __attribute__((weak)) __IOS_LoadStartupIOS()
 	return 0;
 }
 
-
-
 s32 IOS_ReloadIOS(int version)
 {
 	int ret = 0;
@@ -304,6 +303,5 @@ s32 IOS_ReloadIOS(int version)
 	if(res < 0) ret = res;
 	return ret;
 }
-
 
 #endif /* defined(HW_RVL) */

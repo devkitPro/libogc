@@ -66,6 +66,9 @@ distribution.
 #define IOS_IOCTL				0x06
 #define IOS_IOCTLV				0x07
 
+#define RELNCH_RELAUNCH 1
+#define RELNCH_BACKGROUND 2
+
 struct _ipcreq
 {						//ipc struct size: 32
 	u32 cmd;			//0
@@ -203,7 +206,7 @@ static s32 __ioctlvfmtCB(s32 result,void *userdata)
 	struct _ioctlvfmt_bufent *pbuf;
 
 	cbdata = (struct _ioctlvfmt_cbdata*)userdata;
-	
+
 	// deal with data buffers
 	if(cbdata->bufs) {
 		pbuf = cbdata->bufs;
@@ -218,20 +221,20 @@ static s32 __ioctlvfmtCB(s32 result,void *userdata)
 			pbuf++;
 		}
 	}
-	
+
 	user_cb = cbdata->user_cb;
 	user_data = cbdata->user_data;
-	
+
 	// free buffer list
 	__lwp_wkspace_free(cbdata->bufs);
-	
+
 	// free callback data
 	__lwp_wkspace_free(cbdata);
-		
+	
 	// call the user callback
 	if(user_cb) 
 		return user_cb(result, user_data);
-	
+
 	return result;
 }
 
@@ -242,7 +245,6 @@ static s32 __ipc_queuerequest(struct _ipcreq *req)
 #ifdef DEBUG_IPC
 	printf("__ipc_queuerequest(0x%p)\n",req);
 #endif
-	DCFlushRange(req,32);
 	_CPU_ISR_Disable(level);
 
 	cnt = (_ipc_responses.cnt_queue - _ipc_responses.cnt_sent);
@@ -290,11 +292,13 @@ static void __ipc_sendrequest()
 		req = _ipc_responses.reqs[_ipc_responses.req_send_no];
 		if(req!=NULL) {
 			req->magic = IPC_REQ_MAGIC;
-			if(req->relnch) {
+			if(req->relnch&RELNCH_RELAUNCH) {
 				_ipc_relnchFl = 1;
 				_ipc_relnchRpc = req;
-				_ipc_mailboxack--;
+				if(!(req->relnch&RELNCH_BACKGROUND))
+					_ipc_mailboxack--;
 			}
+			DCFlushRange(req,sizeof(struct _ipcreq));
 
 			IPC_WriteReg(0,MEM_VIRTUAL_TO_PHYSICAL(req));
 			_ipc_responses.req_send_no = ((_ipc_responses.req_send_no+1)&0x0f);
@@ -324,10 +328,10 @@ static void __ipc_replyhandler()
 
 	req = MEM_PHYSICAL_TO_K0(req);
 	DCInvalidateRange(req,32);
-	
+
 	if(req->magic==IPC_REQ_MAGIC) {
 #ifdef DEBUG_IPC
-		printf("IPC res: cmd %08x rcmd %08x res %08x\n",req->cmd,req->request_cmd,req->result);
+		printf("IPC res: cmd %08x rcmd %08x res %08x\n",req->cmd,req->req_cmd,req->result);
 #endif
 		if(req->req_cmd==IOS_READ) {
 			if(req->read.data!=NULL) {
@@ -376,7 +380,7 @@ static void __ipc_replyhandler()
 		// but we want to find out if they happen so loaders can be fixed.
 #ifdef DEBUG_IPC
 		printf("Received unknown IPC response (magic %08x):\n", req->magic);
-		printf("  CMD %08x RES %08x REQCMD %08x\n", req->cmd, req->result, req->request_cmd);
+		printf("  CMD %08x RES %08x REQCMD %08x\n", req->cmd, req->result, req->req_cmd);
 		printf("  Args: %08x %08x %08x %08x %08x\n", req->args[0], req->args[1], req->args[2], req->args[3], req->args[4]);
 		printf("  CB %08x DATA %08x REL %08x QUEUE %08x\n", (u32)req->cb, (u32)req->usrdata, req->relnch, (u32)req->syncqueue);
 #endif
@@ -681,7 +685,6 @@ static s32 __ipc_syncrequest(struct _ipcreq *req)
 	u32 level;
 
 	LWP_InitQueue(&req->syncqueue);
-	DCFlushRange(req,32);
 
 	_CPU_ISR_Disable(level);
 	ret = __ipc_syncqueuerequest(req);
@@ -691,7 +694,7 @@ static s32 __ipc_syncrequest(struct _ipcreq *req)
 		ret = req->result;
 	}
 	_CPU_ISR_Restore(level);
-	
+
 	LWP_CloseQueue(req->syncqueue);
 	return ret;
 }
@@ -703,7 +706,7 @@ s32 iosCreateHeap(s32 size)
 	u32 level;
 	u32 ipclo,ipchi;
 #ifdef DEBUG_IPC
-	printf("iosCreateHeap(0x%p,%d)\n",membase,size);
+	printf("iosCreateHeap(%d)\n",size);
 #endif
 	_CPU_ISR_Disable(level);
 
@@ -741,7 +744,7 @@ s32 iosDestroyHeap(s32 hid)
 	printf("iosDestroyHeap(%d)\n",hid);
 #endif
 	_CPU_ISR_Disable(level);
-	
+
 	if(hid>=0 && hid<IPC_NUMHEAPS) {
 		if(_ipc_heaps[hid].membase!=NULL) {
 			_ipc_heaps[hid].membase = NULL;
@@ -792,7 +795,7 @@ void IPC_SetBufferHi(void *bufferhi)
 	if(bufferhi<=_ipc_bufferhi) _ipc_currbufferhi = bufferhi;
 }
 
-void __IPC_Init()
+void __IPC_Init(void)
 {
 	if(!_ipc_initialized) {
 		_ipc_bufferlo = _ipc_currbufferlo = __SYS_GetIPCBufferLo();
@@ -801,7 +804,7 @@ void __IPC_Init()
 	}
 }
 
-u32 __IPC_ClntInit()
+u32 __IPC_ClntInit(void)
 {
 	if(!_ipc_clntinitialized) {
 		_ipc_clntinitialized = 1;
@@ -816,6 +819,26 @@ u32 __IPC_ClntInit()
 	return IPC_OK;
 }
 
+void __IPC_Reinitialize(void)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+
+	IPC_WriteReg(1,56);
+
+	_ipc_mailboxack = 1;
+	_ipc_relnchFl = 0;
+	_ipc_relnchRpc = NULL;
+
+	_ipc_responses.req_queue_no = 0;
+	_ipc_responses.cnt_queue = 0;
+	_ipc_responses.req_send_no = 0;
+	_ipc_responses.cnt_sent = 0;
+
+	_CPU_ISR_Restore(level);
+}
+
 s32 IOS_Open(const char *filepath,u32 mode)
 {
 	s32 ret;
@@ -825,7 +848,7 @@ s32 IOS_Open(const char *filepath,u32 mode)
 
 	req = __ipc_allocreq();
 	if(req==NULL) return IPC_ENOMEM;
-	
+
 	req->cmd = IOS_OPEN;
 	req->cb = NULL;
 	req->relnch = 0;
@@ -854,7 +877,7 @@ s32 IOS_OpenAsync(const char *filepath,u32 mode,ipccallback ipc_cb,void *usrdata
 	req->relnch = 0;
 
 	DCFlushRange((void*)filepath,strnlen(filepath,IPC_MAXPATH_LEN));
-	
+
 	req->open.filepath	= (char*)MEM_VIRTUAL_TO_PHYSICAL(filepath);
 	req->open.mode		= mode;
 
@@ -868,12 +891,12 @@ s32 IOS_Close(s32 fd)
 
 	req = __ipc_allocreq();
 	if(req==NULL) return IPC_ENOMEM;
-	
+
 	req->cmd = IOS_CLOSE;
 	req->fd = fd;
 	req->cb = NULL;
 	req->relnch = 0;
-	
+
 	ret = __ipc_syncrequest(req);
 
 	if(req!=NULL) __ipc_freereq(req);
@@ -886,13 +909,13 @@ s32 IOS_CloseAsync(s32 fd,ipccallback ipc_cb,void *usrdata)
 
 	req = __ipc_allocreq();
 	if(req==NULL) return IPC_ENOMEM;
-	
+
 	req->cmd = IOS_CLOSE;
 	req->fd = fd;
 	req->cb = ipc_cb;
 	req->usrdata = usrdata;
 	req->relnch = 0;
-	
+
 	return __ipc_asyncrequest(req);
 }
 
@@ -903,12 +926,12 @@ s32 IOS_Read(s32 fd,void *buf,s32 len)
 
 	req = __ipc_allocreq();
 	if(req==NULL) return IPC_ENOMEM;
-	
+
 	req->cmd = IOS_READ;
 	req->fd = fd;
 	req->cb = NULL;
 	req->relnch = 0;
-	
+
 	DCInvalidateRange(buf,len);
 	req->read.data	= (void*)MEM_VIRTUAL_TO_PHYSICAL(buf);
 	req->read.len	= len;
@@ -925,13 +948,13 @@ s32 IOS_ReadAsync(s32 fd,void *buf,s32 len,ipccallback ipc_cb,void *usrdata)
 
 	req = __ipc_allocreq();
 	if(req==NULL) return IPC_ENOMEM;
-	
+
 	req->cmd = IOS_READ;
 	req->fd = fd;
 	req->cb = ipc_cb;
 	req->usrdata = usrdata;
 	req->relnch = 0;
-	
+
 	DCInvalidateRange(buf,len);
 	req->read.data	= (void*)MEM_VIRTUAL_TO_PHYSICAL(buf);
 	req->read.len	= len;
@@ -946,12 +969,12 @@ s32 IOS_Write(s32 fd,const void *buf,s32 len)
 
 	req = __ipc_allocreq();
 	if(req==NULL) return IPC_ENOMEM;
-	
+
 	req->cmd = IOS_WRITE;
 	req->fd = fd;
 	req->cb = NULL;
 	req->relnch = 0;
-	
+
 	DCFlushRange((void*)buf,len);
 	req->write.data	= (void*)MEM_VIRTUAL_TO_PHYSICAL(buf);
 	req->write.len	= len;
@@ -968,13 +991,13 @@ s32 IOS_WriteAsync(s32 fd,const void *buf,s32 len,ipccallback ipc_cb,void *usrda
 
 	req = __ipc_allocreq();
 	if(req==NULL) return IPC_ENOMEM;
-	
+
 	req->cmd = IOS_WRITE;
 	req->fd = fd;
 	req->cb = ipc_cb;
 	req->usrdata = usrdata;
 	req->relnch = 0;
-	
+
 	DCFlushRange((void*)buf,len);
 	req->write.data		= (void*)MEM_VIRTUAL_TO_PHYSICAL(buf);
 	req->write.len		= len;
@@ -989,7 +1012,7 @@ s32 IOS_Seek(s32 fd,s32 where,s32 whence)
 
 	req = __ipc_allocreq();
 	if(req==NULL) return IPC_ENOMEM;
-	
+
 	req->cmd = IOS_SEEK;
 	req->fd = fd;
 	req->cb = NULL;
@@ -1010,7 +1033,7 @@ s32 IOS_SeekAsync(s32 fd,s32 where,s32 whence,ipccallback ipc_cb,void *usrdata)
 
 	req = __ipc_allocreq();
 	if(req==NULL) return IPC_ENOMEM;
-	
+
 	req->cmd = IOS_SEEK;
 	req->fd = fd;
 	req->cb = ipc_cb;
@@ -1030,7 +1053,7 @@ s32 IOS_Ioctl(s32 fd,s32 ioctl,void *buffer_in,s32 len_in,void *buffer_io,s32 le
 
 	req = __ipc_allocreq();
 	if(req==NULL) return IPC_ENOMEM;
-	
+
 	req->cmd = IOS_IOCTL;
 	req->fd = fd;
 	req->cb = NULL;
@@ -1057,7 +1080,7 @@ s32 IOS_IoctlAsync(s32 fd,s32 ioctl,void *buffer_in,s32 len_in,void *buffer_io,s
 
 	req = __ipc_allocreq();
 	if(req==NULL) return IPC_ENOMEM;
-	
+
 	req->cmd = IOS_IOCTL;
 	req->fd = fd;
 	req->cb = ipc_cb;
@@ -1083,7 +1106,7 @@ s32 IOS_Ioctlv(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv)
 
 	req = __ipc_allocreq();
 	if(req==NULL) return IPC_ENOMEM;
-	
+
 	req->cmd = IOS_IOCTLV;
 	req->fd = fd;
 	req->cb = NULL;
@@ -1127,7 +1150,7 @@ s32 IOS_IoctlvAsync(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv,ipccallb
 
 	req = __ipc_allocreq();
 	if(req==NULL) return IPC_ENOMEM;
-	
+
 	req->cmd = IOS_IOCTLV;
 	req->fd = fd;
 	req->cb = ipc_cb;
@@ -1221,11 +1244,55 @@ s32 IOS_IoctlvReboot(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv)
 
 	req = __ipc_allocreq();
 	if(req==NULL) return IPC_ENOMEM;
-	
+
 	req->cmd = IOS_IOCTLV;
 	req->fd = fd;
 	req->cb = NULL;
-	req->relnch = 1;
+	req->relnch = RELNCH_RELAUNCH;
+
+	req->ioctlv.ioctl	= ioctl;
+	req->ioctlv.argcin	= cnt_in;
+	req->ioctlv.argcio	= cnt_io;
+	req->ioctlv.argv	= (struct _ioctlv*)MEM_VIRTUAL_TO_PHYSICAL(argv);
+
+	i = 0;
+	while(i<cnt_in) {
+		if(argv[i].data!=NULL && argv[i].len>0) {
+			DCFlushRange(argv[i].data,argv[i].len);
+			argv[i].data = (void*)MEM_VIRTUAL_TO_PHYSICAL(argv[i].data);
+		}
+		i++;
+	}
+
+	i = 0;
+	while(i<cnt_io) {
+		if(argv[cnt_in+i].data!=NULL && argv[cnt_in+i].len>0) {
+			DCFlushRange(argv[cnt_in+i].data,argv[cnt_in+i].len);
+			argv[cnt_in+i].data = (void*)MEM_VIRTUAL_TO_PHYSICAL(argv[cnt_in+i].data);
+		}
+		i++;
+	}
+	DCFlushRange(argv,((cnt_in+cnt_io)<<3));
+
+	ret = __ipc_syncrequest(req);
+
+	if(req!=NULL) __ipc_freereq(req);
+	return ret;
+}
+
+s32 IOS_IoctlvRebootBackground(s32 fd,s32 ioctl,s32 cnt_in,s32 cnt_io,ioctlv *argv)
+{
+	s32 i,ret;
+	struct _ipcreq *req;
+
+	req = __ipc_allocreq();
+	if(req==NULL) return IPC_ENOMEM;
+
+	req->cmd = IOS_IOCTLV;
+	req->result = 0;
+	req->fd = fd;
+	req->cb = NULL;
+	req->relnch = RELNCH_BACKGROUND|RELNCH_RELAUNCH;
 
 	req->ioctlv.ioctl	= ioctl;
 	req->ioctlv.argcin	= cnt_in;

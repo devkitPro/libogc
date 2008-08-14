@@ -30,10 +30,17 @@ distribution.
 
 #if defined(HW_RVL)
 
+#include <sys/iosupport.h>
+#include <sys/fcntl.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <malloc.h>
+#include <sys/errno.h>
 #include "ipc.h"
 #include "asm.h"
 #include "processor.h"
+#include "mutex.h"
 #include "es.h"
 
 //#define DEBUG_ES
@@ -104,27 +111,32 @@ static char __es_fs[] ATTRIBUTE_ALIGN(32) = "/dev/es";
 static s32 __es_fd = -1;
 static s32 __es_hid = -1;
 
+static void __ES_InitFS(void);
+static void __ES_DeinitFS(void);
+
 s32 __ES_Init(void)
 {
 	s32 ret = 0;
 
 #ifdef DEBUG_ES
 	printf("ES Init\n");
-#endif	
-	
+#endif
+
 	if(__es_hid <0 ) {
 		__es_hid = iosCreateHeap(ES_HEAP_SIZE);
 		if(__es_hid < 0) return __es_hid;
 	}
-	
+
 	ret = IOS_Open(__es_fs,0);
 	if(ret<0) return ret;
 	__es_fd = ret;
-	
+
 #ifdef DEBUG_ES
 	printf("ES FD %d\n",__es_fd);
-#endif	
-	
+#endif
+
+	__ES_InitFS();
+
 	return 0;
 }
 
@@ -133,9 +145,11 @@ s32 __ES_Close(void)
 	s32 ret;
 
 	if(__es_fd < 0) return 0;
-	
+
+	__ES_DeinitFS();
+
 	ret = IOS_Close(__es_fd);
-	
+
 	// If close fails, I'd rather return error but still reset the fd.
 	// Otherwise you're stuck with an uncloseable ES, and you can't open again either
 	//if(ret<0) return ret;
@@ -143,7 +157,7 @@ s32 __ES_Close(void)
 		__es_fd = -1;
 		return ret;
 	}
-	
+
 	__es_fd = -1;
 	return 0;
 }
@@ -162,7 +176,7 @@ s32 ES_GetTitleID(u64 *titleID)
 
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(!titleID) return ES_EINVAL;
-	
+
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTITLEID,":q",&title);
 	if(ret<0) return ret;
 
@@ -173,7 +187,7 @@ s32 ES_GetTitleID(u64 *titleID)
 s32 ES_SetUID(u64 uid)
 {
 	if(__es_fd<0) return ES_ENOTINIT;
-	
+
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_SETUID,"q:",uid);
 }
 
@@ -203,20 +217,49 @@ s32 ES_LaunchTitle(u64 titleID, const tikview *view)
 
 #ifdef DEBUG_ES
 	printf("ES LaunchTitle %d %016llx 0x%08x 0x%02x\n",__es_fd,titleID,(u32)view,sizeof(tikview));
-#endif	
+#endif
 
-	
+
 	*title = titleID;
 	vectors[0].data = (void*)title;
 	vectors[0].len = sizeof(u64);
 	vectors[1].data = (void*)view;
 	vectors[1].len = sizeof(tikview);
 	res = IOS_IoctlvReboot(__es_fd,IOCTL_ES_LAUNCH,2,0,vectors);
-	
+
 #ifdef DEBUG_ES
 	printf(" =%d\n",res);
-#endif	
-	
+#endif
+
+	return res;
+}
+
+s32 ES_LaunchTitleBackground(u64 titleID, const tikview *view)
+{
+
+	s32 res;
+	STACK_ALIGN(u64,title,1,32);
+	STACK_ALIGN(ioctlv,vectors,2,32);
+
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(!view) return ES_EINVAL;
+	if(!ISALIGNED(view)) return ES_EALIGN;
+
+#ifdef DEBUG_ES
+	printf("ES LaunchTitleBackground %d %016llx 0x%08x 0x%02x\n",__es_fd,titleID,(u32)view,sizeof(tikview));
+#endif
+
+	*title = titleID;
+	vectors[0].data = (void*)title;
+	vectors[0].len = sizeof(u64);
+	vectors[1].data = (void*)view;
+	vectors[1].len = sizeof(tikview);
+	res = IOS_IoctlvRebootBackground(__es_fd,IOCTL_ES_LAUNCH,2,0,vectors);
+
+#ifdef DEBUG_ES
+	printf(" =%d\n",res);
+#endif
+
 	return res;
 }
 
@@ -229,7 +272,7 @@ s32 ES_GetNumTicketViews(u64 titleID, u32 *cnt)
 	if(!cnt) return ES_EINVAL;
 
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETVIEWCNT,"q:i",titleID,&cntviews);
-	
+
 	if(ret<0) return ret;
 	*cnt = cntviews;
 	return ret;
@@ -241,7 +284,7 @@ s32 ES_GetTicketViews(u64 titleID, tikview *views, u32 cnt)
 	if(cnt <= 0) return ES_EINVAL;
 	if(!views) return ES_EINVAL;
 	if(!ISALIGNED(views)) return ES_EALIGN;
-	
+
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETVIEWS,"qi:d",titleID,cnt,views,sizeof(tikview)*cnt);
 }
 
@@ -254,7 +297,7 @@ s32 ES_GetNumOwnedTitles(u32 *cnt)
 	if(cnt == NULL) return ES_EINVAL;
 
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETOWNEDTITLECNT,":i",&cnttitles);
-	
+
 	if(ret<0) return ret;
 	*cnt = cnttitles;
 	return ret;
@@ -279,7 +322,7 @@ s32 ES_GetNumTitles(u32 *cnt)
 	if(cnt == NULL) return ES_EINVAL;
 
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTITLECNT,":i",&cnttitles);
-	
+
 	if(ret<0) return ret;
 	*cnt = cnttitles;
 	return ret;
@@ -306,7 +349,7 @@ s32 ES_GetNumStoredTMDContents(const signed_blob *stmd, u32 tmd_size, u32 *cnt)
 	if(!ISALIGNED(stmd)) return ES_EALIGN;
 
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDCONTENTCNT,"d:i",stmd,tmd_size,&cntct);
-	
+
 	if(ret<0) return ret;
 	*cnt = cntct;
 	return ret;
@@ -321,7 +364,7 @@ s32 ES_GetStoredTMDContents(const signed_blob *stmd, u32 tmd_size, u32 *contents
 	if(!ISALIGNED(stmd)) return ES_EALIGN;
 	if(!ISALIGNED(contents)) return ES_EALIGN;
 	if(tmd_size > MAX_SIGNED_TMD_SIZE) return ES_EINVAL;
-	
+
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDCONTENTS,"di:d",stmd,tmd_size,cnt,contents,sizeof(u32)*cnt);
 }
 
@@ -334,7 +377,7 @@ s32 ES_GetTitleContentsCount(u64 titleID, u32 *num)
 	if(!num) return ES_EINVAL;
 
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTITLECONTENTSCNT,"q:i",titleID,&_num);
-	
+
 	if(ret<0) return ret;
 	*num = _num;
 	return ret;
@@ -346,7 +389,7 @@ s32 ES_GetTitleContents(u64 titleID, u8 *data, u32 size)
 	if(size <= 0) return ES_EINVAL;
 	if(!data) return ES_EINVAL;
 	if(!ISALIGNED(data)) return ES_EALIGN;
-	
+
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDTMD,"qi:d",titleID,size,data,size);
 }
 
@@ -359,7 +402,7 @@ s32 ES_GetTMDViewSize(u64 titleID, u32 *size)
 	if(!size) return ES_EINVAL;
 
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTMDVIEWCNT,"q:i",titleID,&tmdsize);
-	
+
 	if(ret<0) return ret;
 	*size = tmdsize;
 	return ret;
@@ -371,7 +414,7 @@ s32 ES_GetTMDView(u64 titleID, u8 *data, u32 size)
 	if(size <= 0) return ES_EINVAL;
 	if(!data) return ES_EINVAL;
 	if(!ISALIGNED(data)) return ES_EALIGN;
-	
+
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTMDVIEWS,"qi:d",titleID,size,data,size);
 }
 
@@ -384,7 +427,7 @@ s32 ES_GetStoredTMDSize(u64 titleID, u32 *size)
 	if(!size) return ES_EINVAL;
 
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDTMDSIZE,"q:i",titleID,&tmdsize);
-	
+
 	if(ret<0) return ret;
 	*size = tmdsize;
 	return ret;
@@ -397,7 +440,7 @@ s32 ES_GetStoredTMD(u64 titleID, signed_blob *stmd, u32 size)
 	if(!stmd) return ES_EINVAL;
 	if(!ISALIGNED(stmd)) return ES_EALIGN;
 	if(size > MAX_SIGNED_TMD_SIZE) return ES_EINVAL;
-	
+
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDTMD,"qi:d",titleID,size,stmd,size);
 }
 
@@ -410,7 +453,7 @@ s32 ES_GetNumSharedContents(u32 *cnt)
 	if(!cnt) return ES_EINVAL;
 
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSHAREDCONTENTCNT,":i",&cntct);
-	
+
 	if(ret<0) return ret;
 	*cnt = cntct;
 	return ret;
@@ -422,7 +465,7 @@ s32 ES_GetSharedContents(sha1 *contents, u32 cnt)
 	if(cnt <= 0) return ES_EINVAL;
 	if(!contents) return ES_EINVAL;
 	if(!ISALIGNED(contents)) return ES_EALIGN;
-	
+
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSHAREDCONTENTS,"i:d",cnt,contents,sizeof(sha1)*cnt);
 }
 
@@ -439,9 +482,9 @@ s32 __ES_sanity_check_certlist(const signed_blob *certs, u32 certsize)
 {
 	int count = 0;
 	signed_blob *end;
-	
+
 	if(!certs || !certsize) return 0;
-	
+
 	end = (signed_blob*)(((u8*)certs) + certsize);
 	while(certs != end) {
 #ifdef DEBUG_ES
@@ -464,9 +507,9 @@ s32 ES_Identify(const signed_blob *certificates, u32 certificates_size, const si
 	u8 *hashes;
 	s32 ret;
 	u32 *keyid_buf;
-	
+
 	if(__es_fd<0) return ES_ENOTINIT;
-	
+
 	if(ticket_size != STD_SIGNED_TIK_SIZE) return ES_EINVAL;
 	if(!stmd || !tmd_size || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
 	if(!sticket || !IS_VALID_SIGNATURE(sticket)) return ES_EINVAL;
@@ -475,21 +518,21 @@ s32 ES_Identify(const signed_blob *certificates, u32 certificates_size, const si
 	if(!ISALIGNED(stmd)) return ES_EALIGN;
 	if(!ISALIGNED(sticket)) return ES_EALIGN;
 	if(tmd_size > MAX_SIGNED_TMD_SIZE) return ES_EINVAL;
-	
+
 	p_tmd = SIGNATURE_PAYLOAD(stmd);
-	
+
 	if(!(keyid_buf = iosAlloc(__es_hid, 4))) return ES_ENOMEM;
 	if(!(hashes = iosAlloc(__es_hid, p_tmd->num_contents*20))) {
 		iosFree(__es_hid, keyid_buf);
 		return ES_ENOMEM;
 	}
-	
+
 	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DIVERIFY, "dddd:id", certificates, certificates_size, 0, 0, sticket, ticket_size, stmd, tmd_size, keyid_buf, hashes, p_tmd->num_contents*20);
 	if(ret >= 0 && keyid) *keyid = *keyid_buf;
 
 	iosFree(__es_hid, keyid_buf);
 	iosFree(__es_hid, hashes);
-	
+
 	if(ret >= 0) {
 		__ES_Close();
 		__ES_Init();
@@ -501,7 +544,7 @@ s32 ES_Identify(const signed_blob *certificates, u32 certificates_size, const si
 s32 ES_AddTicket(const signed_blob *stik, u32 stik_size, const signed_blob *certificates, u32 certificates_size, const signed_blob *crl, u32 crl_size)
 {
 	s32 ret;
-	
+
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(stik_size != STD_SIGNED_TIK_SIZE) return ES_EINVAL;
 	if(!stik || !IS_VALID_SIGNATURE(stik)) return ES_EINVAL;
@@ -511,9 +554,9 @@ s32 ES_AddTicket(const signed_blob *stik, u32 stik_size, const signed_blob *cert
 	if(!ISALIGNED(stik)) return ES_EALIGN;
 	if(!ISALIGNED(certificates)) return ES_EALIGN;
 	if(!ISALIGNED(crl)) return ES_EALIGN;
-	
+
 	if(!crl_size) crl=NULL;
-	
+
 	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDTICKET, "ddd:", stik, stik_size, certificates, certificates_size, crl, crl_size);
 	return ret;
 
@@ -533,12 +576,12 @@ s32 ES_DeleteTicket(const tikview *view)
 s32 ES_AddTitleTMD(const signed_blob *stmd, u32 stmd_size)
 {
 	s32 ret;
-	
+
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(!stmd || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
 	if(stmd_size != SIGNED_TMD_SIZE(stmd)) return ES_EINVAL;
 	if(!ISALIGNED(stmd)) return ES_EALIGN;
-	
+
 	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDTMD, "d:", stmd, stmd_size);
 	return ret;
 
@@ -547,7 +590,7 @@ s32 ES_AddTitleTMD(const signed_blob *stmd, u32 stmd_size)
 s32 ES_AddTitleStart(const signed_blob *stmd, u32 tmd_size, const signed_blob *certificates, u32 certificates_size, const signed_blob *crl, u32 crl_size)
 {
 	s32 ret;
-	
+
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(!stmd || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
 	if(tmd_size != SIGNED_TMD_SIZE(stmd)) return ES_EINVAL;
@@ -557,9 +600,9 @@ s32 ES_AddTitleStart(const signed_blob *stmd, u32 tmd_size, const signed_blob *c
 	if(!ISALIGNED(stmd)) return ES_EALIGN;
 	if(!ISALIGNED(certificates)) return ES_EALIGN;
 	if(!ISALIGNED(crl)) return ES_EALIGN;
-	
+
 	if(!crl_size) crl=NULL;
-	
+
 	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDTITLESTART, "dddi:", stmd, tmd_size, certificates, certificates_size, crl, crl_size, 1);
 	return ret;
 }
@@ -694,8 +737,353 @@ s32 ES_GetBoot2Version(u32 *version)
 
 	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_GETBOOT2VERSION, ":i", &_version);
 	if (ret>=0) *version = _version;
-	
+
 	return ret;
+}
+
+// 64k buffer size for alignment
+#define ES_READ_BUF_SIZE 65536
+
+typedef struct {
+	s32 cfd;
+	u64 titleID;
+	tmd_content content;
+	void *iobuf;
+	mutex_t mutex;
+} es_fd;
+
+// valid path formats:
+// format            example                          description
+// es:%08x           es:00000004                      Content index for current title ID
+// es:ID%08x         es:ID00000033                    Content ID for current title ID
+// es:%016llx/%08x   es:0000000100000002/00000004     Content index for some title ID (not fully implemented yet)
+// es:%016llx/ID%08x es:0000000100000002/ID00000033   Content ID for some title ID (not fully implemented yet)
+// leading zeroes may be omitted, 0x prefix allowed. All numbers in hex.
+
+static s32 _ES_decodepath (struct _reent *r, const char *path, u64 *titleID, tmd_content *content)
+{
+	u64 _tid = 0;
+	u32 tmd_size;
+	STACK_ALIGN(u8, _tmdbuf, MAX_SIGNED_TMD_SIZE, 32);
+	signed_blob *_stmd;
+	tmd *_tmd;
+	tmd_content *_contents;
+	tmd_content _content;
+	int is_cid;
+	u32 arg;
+	char *bad;
+	int i;
+	u64 mytid;
+	
+	// check the device
+	if(strncmp(path,"es:",3)) {
+		r->_errno = EINVAL;
+		return -1;
+	}
+	path += 3;
+
+	// Get our Title ID
+	if(ES_GetTitleID(&mytid) < 0) {
+		r->_errno = EIO;
+		return -1;
+	}
+
+	// Read in Title ID, if this is an absolute path
+	if(path[0] == '/') {
+		path++;
+		if(!path[0]) {
+			r->_errno = EINVAL;
+			return -1;
+		}
+		r->_errno = 0;
+		_tid = _strtoull_r(r, path, &bad, 16);
+		if(r->_errno) return -1;
+		if((bad == path) || (bad[0] != '/')) {
+			r->_errno = EINVAL;
+			return -1;
+		}
+		path = bad + 1;
+	} else {
+		_tid = mytid;
+	}
+
+	// check if path is a content ID
+	if(!strncmp(path,"ID",2)) {
+		path += 2;
+		is_cid = 1;
+	} else {
+		is_cid = 0;
+	}
+
+	// read in the argument (content ID or content index)
+	r->_errno = 0;
+	arg = _strtoul_r(r, path, &bad, 16);
+	if(r->_errno) return -1;
+	if((bad == path) || (bad[0] != 0)) {
+		r->_errno = EINVAL;
+		return -1;
+	}
+
+	// now get the TMD and find the content entry
+	if(ES_GetStoredTMDSize(_tid, &tmd_size) < 0) {
+		r->_errno = ENOENT;
+		return -1;
+	}
+	
+	_stmd = (signed_blob*)_tmdbuf;
+	if(ES_GetStoredTMD(_tid, _stmd, tmd_size) < 0) {
+		r->_errno = EIO;
+		return -1;
+	}
+	if(!IS_VALID_SIGNATURE(_stmd)) {
+		r->_errno = EIO;
+		return -1;
+	}
+	_tmd = SIGNATURE_PAYLOAD(_stmd);
+	_contents = TMD_CONTENTS(_tmd);
+
+	for(i=0;i<_tmd->num_contents;i++) {
+		if(is_cid) {
+			if(_contents[i].cid == arg) {
+				_content = _contents[i];
+				break;
+			}
+		} else {
+			if(_contents[i].index == arg) {
+				_content = _contents[i];
+				break;
+			}
+		}
+	}
+	if(i >= _tmd->num_contents) {
+		r->_errno = ENOENT;
+		return -1;
+	}
+
+	if(titleID) {
+		if(_tid == mytid) *titleID = 0;
+		else *titleID = _tid;
+	}
+	if(content) *content = _content;
+	return 0;
+}
+
+static int _ES_open_r (struct _reent *r, void *fileStruct, const char *path, int flags, int mode) {
+	es_fd *file = (es_fd *) fileStruct;
+
+	// decode the path
+	if(_ES_decodepath(r, path, &file->titleID, &file->content) < 0) {
+		return -1;
+	}
+
+	// reading contents from other titles not supported yet
+	if(file->titleID != 0) {
+		r->_errno = EINVAL;
+		return -1;
+	}
+
+	// writing not supported
+	if ((flags & 0x03) != O_RDONLY) {
+		r->_errno = EROFS;
+		return -1;
+	}
+
+	// open the content
+	file->cfd = ES_OpenContent(file->content.index);
+	if(file->cfd<0) {
+		r->_errno = EIO;
+		return -1;
+	}
+
+	file->iobuf = NULL;
+
+	LWP_MutexInit(&file->mutex, false);
+
+	return (int)file;
+}
+
+static int _ES_close_r (struct _reent *r, int fd) {
+	es_fd *file = (es_fd *) fd;
+
+	LWP_MutexLock(file->mutex);
+
+	if(ES_CloseContent(file->cfd) < 0) {
+		r->_errno = EBADF;
+		return -1;
+	}
+	file->cfd = -1;
+
+	if(file->iobuf) _free_r(r,file->iobuf);
+
+	LWP_MutexUnlock(file->mutex);
+	LWP_MutexDestroy(file->mutex);
+	return 0;
+}
+
+static int _ES_read_r (struct _reent *r, int fd, char *ptr, int len) {
+	es_fd *file = (es_fd *) fd;
+	int read = 0;
+	int res;
+
+	
+	LWP_MutexLock(file->mutex);
+	if(file->cfd < 0) {
+		LWP_MutexUnlock(file->mutex);
+		r->_errno = EBADF;
+		return -1;
+	}
+
+	// if aligned, just pass through the read
+	if(ISALIGNED(ptr))
+	{
+		res = ES_ReadContent(file->cfd, (u8*)ptr, len);
+		if(res < 0) {
+			LWP_MutexUnlock(file->mutex);
+			// we don't really know what the error codes mean...
+			r->_errno = EIO;
+			return -1;
+		}
+		read = res;
+	// otherwise read in blocks to an aligned buffer
+	} else {
+		int chunk;
+		if(!file->iobuf) {
+			file->iobuf = _memalign_r(r, 32, ES_READ_BUF_SIZE);
+			if(!file->iobuf) {
+				r->_errno = ENOMEM;
+				return -1;
+			}
+		}
+		while(len) {
+			if(len > ES_READ_BUF_SIZE) chunk = ES_READ_BUF_SIZE;
+			else chunk = len;
+			res = ES_ReadContent(file->cfd, file->iobuf, chunk);
+			if(res < 0) {
+				LWP_MutexUnlock(file->mutex);
+				// we don't really know what the error codes mean...
+				r->_errno = EIO;
+				return -1;
+			}
+			len -= res;
+			read += res;
+			memcpy(ptr, file->iobuf, res);
+			ptr += res;
+			if(res < chunk) break;
+		}
+	}
+
+	LWP_MutexUnlock(file->mutex);
+	return read;
+}
+
+static int _ES_seek_r (struct _reent *r, int fd, int where, int whence) {
+	es_fd *file = (es_fd *) fd;
+	s32 res;
+
+	LWP_MutexLock(file->mutex);
+	if(file->cfd < 0) {
+		LWP_MutexUnlock(file->mutex);
+		r->_errno = EBADF;
+		return -1;
+	}
+
+	res = ES_SeekContent(file->cfd, where, whence);
+	LWP_MutexUnlock(file->mutex);
+
+	if(res < 0) {
+		r->_errno = EINVAL;
+		return -1;
+	}
+	return res;
+}
+
+static void _ES_fillstat(u64 titleID, tmd_content *content, struct stat *st) {
+	memset(st, 0, sizeof(*st));
+	// the inode is the content ID
+	// (pretend each Title ID is a different filesystem)
+	st->st_ino = content->cid;
+	// st_dev is only a short, so do the best we can and use the middle two letters
+	// of the title ID if it's not a system content, otherwise use the low 16 bits
+	if((titleID>>32) == 1)
+		st->st_dev = titleID & 0xFFFF;
+	else
+		st->st_dev = (titleID>>8) & 0xFFFF;
+
+	// not necessarily true due to shared contents, but
+	// we're not going to implement shared content scan here and now
+	st->st_nlink = 1;
+	// instead, give the file group read permissions if it's a shared content
+	st->st_mode = S_IFREG | S_IRUSR;
+	if(content->type & 0x8000)
+		st->st_mode |= S_IRGRP;
+
+	// use st_dev as a uid too, see above
+	st->st_uid = st->st_dev;
+	// no group
+	st->st_gid = 0;
+	// content size
+	st->st_size = content->size;
+	st->st_blocks = (st->st_size + 511) / 512;
+	// NAND fs cluster size (not like anyone cares, but...)
+	st->st_blksize = 16384;
+}
+
+static int _ES_fstat_r (struct _reent *r, int fd, struct stat *st) {
+	es_fd *file = (es_fd *) fd;
+
+	LWP_MutexLock(file->mutex);
+	if(file->cfd < 0) {
+		LWP_MutexUnlock(file->mutex);
+		r->_errno = EBADF;
+		return -1;
+	}
+
+	_ES_fillstat(file->titleID, &file->content, st);
+	LWP_MutexUnlock(file->mutex);
+
+	return 0;
+}
+
+static int _ES_stat_r (struct _reent *r, const char *path, struct stat *st) {
+	tmd_content content;
+	u64 titleID;
+
+	if(_ES_decodepath(r, path, &titleID, &content) < 0) {
+		return -1;
+	}
+	_ES_fillstat(titleID, &content, st);
+	return 0;
+}
+
+static const devoptab_t dotab_es = {
+	"es",
+	sizeof (es_fd),
+	_ES_open_r,
+	_ES_close_r,
+	NULL,
+	_ES_read_r,
+	_ES_seek_r,
+	_ES_fstat_r,
+	_ES_stat_r,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	0,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL
+};
+
+static void __ES_InitFS(void) {
+	AddDevice(&dotab_es);
+}
+
+static void __ES_DeinitFS(void) {
+	RemoveDevice("es");
 }
 
 #endif /* defined(HW_RVL) */

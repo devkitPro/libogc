@@ -48,6 +48,7 @@ distribution.
 s32 __IOS_InitializeSubsystems(void);
 s32 __IOS_ShutdownSubsystems(void);
 s32 __IOS_LoadStartupIOS(void);
+s32 __IOS_LaunchNewIOS(int version);
 s32 IOS_GetPreferredVersion(void);
 s32 IOS_ReloadIOS(int version);
 s32 IOS_GetVersion();

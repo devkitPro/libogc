@@ -42,6 +42,7 @@ export MODDIR		:= $(BASEDIR)/libmodplay
 export MADDIR		:= $(BASEDIR)/libmad
 export SAMPLEDIR	:= $(BASEDIR)/libsamplerate
 export DBDIR		:= $(BASEDIR)/libdb
+export DIDIR		:= $(BASEDIR)/libdi
 export BTEDIR		:= $(BASEDIR)/lwbt
 export WIIUSEDIR	:= $(BASEDIR)/wiiuse
 export TINYSMBDIR	:= $(BASEDIR)/libtinysmb
@@ -70,6 +71,7 @@ OGCLIB		:= $(LIBDIR)/libogc
 MODLIB		:= $(LIBDIR)/libmodplay
 MADLIB		:= $(LIBDIR)/libmad
 DBLIB		:= $(LIBDIR)/libdb
+DILIB		:= $(LIBDIR)/libdi
 BTELIB		:= $(LIBDIR)/libbte
 WIIUSELIB	:= $(LIBDIR)/libwiiuse
 TINYSMBLIB	:= $(LIBDIR)/libtinysmb
@@ -82,7 +84,8 @@ INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/ogc -I$(BASEDIR)/gc/ogc/machine -I$(BASEDIR)/gc/tinysmb \
 				-I$(BASEDIR)/gc/modplay -I$(BASEDIR)/gc/mad \
 				-I$(BASEDIR)/gc/z -I$(BASEDIR)/gc/bte \
-				-I$(BASEDIR)/gc/sdcard -I$(BASEDIR)/gc/wiiuse
+				-I$(BASEDIR)/gc/sdcard -I$(BASEDIR)/gc/wiiuse \
+				-I$(BASEDIR)/gc/di
 
 MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -fmodulo-sched -ffunction-sections -fdata-sections
 
@@ -110,6 +113,7 @@ VPATH :=	$(LWIPDIR)				\
 			$(SAMPLEDIR)			\
 			$(DBDIR)			\
 			$(DBDIR)/uIP		\
+			$(DIDIR)		\
 			$(BTEDIR)		\
 			$(WIIUSEDIR)		\
 			$(SDCARDDIR)			\
@@ -154,6 +158,8 @@ MADOBJ		:=	mp3player.o bit.o decoder.o fixed.o frame.o huffman.o \
 DBOBJ		:=	uip_ip.o uip_tcp.o uip_pbuf.o uip_netif.o uip_arp.o uip_arch.o \
 				uip_icmp.o memb.o memr.o bba.o tcpip.o debug.o debug_handler.o \
 				debug_supp.o geckousb.o
+#---------------------------------------------------------------------------------
+DIOBJ		:=	di.o di_read.o stubasm.o stubload.o 
 
 #---------------------------------------------------------------------------------
 BTEOBJ		:=	bte.o hci.o l2cap.o btmemb.o btmemr.o btpbuf.o physbusif.o
@@ -252,6 +258,8 @@ $(MADLIB).a: $(MADOBJ)
 #---------------------------------------------------------------------------------
 $(DBLIB).a: $(DBOBJ)
 #---------------------------------------------------------------------------------
+$(DILIB).a: $(DIOBJ)
+#---------------------------------------------------------------------------------
 $(TINYSMBLIB).a: $(TINYSMBOBJ)
 #---------------------------------------------------------------------------------
 $(ZLIB).a: $(ZLIBOBJ)
@@ -273,6 +281,7 @@ install-headers:
 	@mkdir -p $(INCDIR)/modplay
 	@mkdir -p $(INCDIR)/mad
 	@mkdir -p $(INCDIR)/sdcard
+	@mkdir -p $(INCDIR)/di
 	@cp ./gc/*.h $(INCDIR)
 	@cp ./gc/ogc/*.h $(INCDIR)/ogc
 	@cp ./gc/ogc/machine/*.h $(INCDIR)/ogc/machine
@@ -281,6 +290,7 @@ install-headers:
 	@cp ./gc/modplay/*.h $(INCDIR)/modplay
 	@cp ./gc/mad/*.h $(INCDIR)/mad
 	@cp ./gc/sdcard/*.h $(INCDIR)/sdcard
+	@cp ./gc/di/*.h $(INCDIR)/di
 
 #---------------------------------------------------------------------------------
 install: install-headers
@@ -306,7 +316,7 @@ ifeq ($(PLATFORM),cube)
 LIBRARIES	+=	$(BBALIB).a 
 endif
 ifeq ($(PLATFORM),wii)
-LIBRARIES	+=	$(BTELIB).a $(WIIUSELIB).a
+LIBRARIES	+=	$(BTELIB).a $(WIIUSELIB).a $(DILIB).a
 endif
 
 #---------------------------------------------------------------------------------
