@@ -1639,12 +1639,21 @@ static inline void __adjustPosition(u16 acv)
 
 static inline void __importAdjustingValues()
 {
+#ifdef HW_DOL
 	syssram *sram;
 
 	sram = __SYS_LockSram();
 	displayOffsetH = sram->display_offsetH;
-	displayOffsetV = 0;
 	__SYS_UnlockSram(0);
+#else
+	s8 offset;
+	if ( CONF_GetDisplayOffsetH(&offset) == 0 ) {
+		displayOffsetH = offset;
+	} else {
+		displayOffsetH = 0;
+	}
+#endif
+	displayOffsetV = 0;
 }
 
 static void __VIInit(u32 vimode)
