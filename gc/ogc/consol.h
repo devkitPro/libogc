@@ -53,6 +53,16 @@ s32 CON_InitEx(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidth,s32
  */
 void CON_GetMetrics(int *cols, int *rows);
 
+/*!
+ * \fn CON_GetPosition(int *col, int *row)
+ * \brief retrieve the current cursor position of the current console
+ *
+ * \param[out] col,row current cursor position
+ *
+ * \return none
+ */
+void CON_GetPosition(int *cols, int *rows);
+
 #ifdef __cplusplus
 	}
 #endif

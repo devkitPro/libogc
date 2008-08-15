@@ -195,7 +195,7 @@ extern void __reset(u32 reset_code);
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
 
-extern u32 __IPC_ClntInit();
+extern u32 __IPC_ClntInit(void);
 extern u32 __PADDisableRecalibration(s32 disable);
 
 extern void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_stride,int con_xres,int con_yres,int con_stride);

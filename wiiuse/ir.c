@@ -437,8 +437,8 @@ enum {
 
 // half-height of the IR sensor if half-width is 1
 #define HEIGHT (384.0f / 512.0f)
-// maximum sensor bar slope (tan(20 degrees))
-#define MAX_SB_SLOPE 0.36f
+// maximum sensor bar slope (tan(35 degrees))
+#define MAX_SB_SLOPE 0.7f
 // minimum sensor bar width in view, relative to half of the IR sensor area
 #define MIN_SB_WIDTH 0.1f
 // reject "sensor bars" that happen to have a dot towards the middle
@@ -588,6 +588,9 @@ void find_sensorbar(struct ir_t* ir, struct orient_t *orient) {
 				// failed middle dot check
 				if(i < ir->num_dots) continue;
 				WIIUSE_DEBUG("IR: passed middle dot check\n");
+
+				cand.score = 1 / (cand.rot_dots[1].x - cand.rot_dots[0].x);
+
 				// we have a candidate, store it
 				WIIUSE_DEBUG("IR: new candidate %d\n",num_candidates);
 				candidates[num_candidates++] = cand;
@@ -688,19 +691,19 @@ void find_sensorbar(struct ir_t* ir, struct orient_t *orient) {
 				WIIUSE_DEBUG("IR: found new dot to track\n");
 				break;
 		}
+		sb.score = 0;
 		ir->state = IR_STATE_SINGLE;
 	} else {
 		int bestidx = 0;
-		float best = 999.0f;
+		float best = 0.0f;
 		float d;
 		WIIUSE_DEBUG("IR: finding best candidate\n");
 		// look for the best candidate
 		// for now, the formula is simple: pick the one with the smallest distance
 		for(i=0; i<num_candidates; i++) {
-			d = fabsf(candidates[i].rot_dots[0].x - candidates[i].rot_dots[1].x);
-			if(d < best) {
+			if(candidates[i].score > best) {
 				bestidx = i;
-				best = d;
+				best = candidates[i].score;
 			}
 		}
 		WIIUSE_DEBUG("IR: best candidate: %d\n",bestidx);

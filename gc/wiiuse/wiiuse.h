@@ -341,6 +341,7 @@ typedef struct sb_t {
 	fdot_t rot_dots[2];
 	float angle;
 	float off_angle;
+	float score;
 } sb_t;
 
 /**

@@ -94,7 +94,7 @@ Open File Line16=0
 Open File Window Pos16=0,1,-1,-1,-4,-30,66,87,1099,457
 Open File17=
 [File View]
-Current Select=Project Files\gc\ogc\gx.h
+Current Select=Project Files\libogc\video.c
 Scroll Position=0
 
 [Files - libogc]

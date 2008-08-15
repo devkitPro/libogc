@@ -323,6 +323,7 @@ ps_guMtxTrans:
 	addi		r9,r9,Unit01@l
 	lfs			fr4,0(r9)
 	lfs			fr5,4(r9)
+	stfs		fr4,16(r3)
 	stfs		fr1,12(r3)
 	stfs		fr2,28(r3)
 	psq_st		fr4,4(r3),0,0
