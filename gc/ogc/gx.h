@@ -1354,7 +1354,7 @@ void GX_SetIndTexOrder(u8 indtexstage,u8 texcoord,u8 texmap);
 void GX_SetIndTexCoordScale(u8 indtexid,u8 scale_s,u8 scale_t);
 void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col);
 void GX_SetFogRangeAdj(u8 enable,u16 center,GXFogAdjTbl *table);
-void GX_SetIndTexMatrix(u8 indtexmtx,const f32 offset_mtx[2][3],s8 scale_exp);
+void GX_SetIndTexMatrix(u8 indtexmtx,f32 offset_mtx[2][3],s8 scale_exp);
 void GX_SetTevIndBumpST(u8 tevstage,u8 indstage,u8 mtx_sel);
 void GX_SetTevIndBumpXYZ(u8 tevstage,u8 indstage,u8 mtx_sel);
 void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 tilespacing_x,u16 tilespacing_y,u8 indtexfmt,u8 indtexmtx,u8 bias_sel,u8 alpha_sel);
