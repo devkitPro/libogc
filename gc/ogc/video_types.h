@@ -165,6 +165,16 @@ extern GXRModeObj TVPal524IntAa;			/*!< Video and render mode configuration for 
 extern GXRModeObj TVPal528Int;				/*!< Video and render mode configuration for 528 lines,interlaced,antialiased PAL mode */ 
 extern GXRModeObj TVPal528IntDf;			/*!< Video and render mode configuration for 264 lines,interlaced,doublefield antialiased PAL mode */ 
 extern GXRModeObj TVPal574IntDfScale;
+extern GXRModeObj TVEurgb60Hz240Ds;
+extern GXRModeObj TVEurgb60Hz240DsAa;
+extern GXRModeObj TVEurgb60Hz240Int;
+extern GXRModeObj TVEurgb60Hz240IntAa;
+extern GXRModeObj TVEurgb60Hz480Int;
+extern GXRModeObj TVEurgb60Hz480IntDf;
+extern GXRModeObj TVEurgb60Hz480IntAa;
+extern GXRModeObj TVEurgb60Hz480Prog;
+extern GXRModeObj TVEurgb60Hz480ProgSoft;
+extern GXRModeObj TVEurgb60Hz480ProgAa;
 
 /*!
  * @}
