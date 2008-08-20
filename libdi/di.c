@@ -23,9 +23,10 @@ static int _cover_callback(int ret, void* usrdata);
 
 int state = DVD_INIT | DVD_NO_DISC;
 
+static unsigned int bufferMutex = 0;
 static uint32_t outbuf[8] __attribute__((aligned(32)));
 static uint32_t dic[8] __attribute__((aligned(32)));
-static unsigned int bufferMutex = 0;
+static char di_path[] ATTRIBUTE_ALIGN(32) = "/dev/di";
 
 read_func DI_ReadDVDptr = NULL;
 read_func_async DI_ReadDVDAsyncptr = NULL;
@@ -49,7 +50,7 @@ int DI_Init(){
 	}
 
 	if(di_fd < 0)
-		di_fd = IOS_Open("/dev/di", 2);
+		di_fd = IOS_Open(di_path, 2);
 
 	return (di_fd >= 0)? di_fd : -1;
 }
