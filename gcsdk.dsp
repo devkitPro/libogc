@@ -1027,6 +1027,30 @@ SOURCE=.\wiiuse\wiiuse_internal.h
 SOURCE=.\wiiuse\wpad.c
 # End Source File
 # End Group
+# Begin Group "libdi.c"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\libdi\di.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdi\di_read.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdi\stubasm.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdi\stubasm.S
+# End Source File
+# Begin Source File
+
+SOURCE=.\libdi\stubload.c
+# End Source File
+# End Group
 # End Group
 # Begin Group "Header Files"
 
@@ -1605,6 +1629,14 @@ SOURCE=.\gc\sdcard\card_io.h
 # Begin Source File
 
 SOURCE=.\gc\sdcard\wiisd_io.h
+# End Source File
+# End Group
+# Begin Group "libdi.h"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\gc\di\di.h
 # End Source File
 # End Group
 # Begin Source File
