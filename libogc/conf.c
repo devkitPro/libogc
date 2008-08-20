@@ -330,7 +330,7 @@ s32 CONF_GetScreenSaverMode(void)
 s32 CONF_GetDisplayOffsetH(s8 *offset) 
 {
 	int res;
-	res = CONF_Get("IPL.SSV", offset, 1);
+	res = CONF_Get("IPL.DH", offset, 1);
 	if(res<0) return res;
 	if(res!=1) return CONF_EBADVALUE;
 	return 0;
