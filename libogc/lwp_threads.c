@@ -591,8 +591,8 @@ void __lwp_thread_closeall()
 	for(i=0;i<LWP_MAXPRIORITIES;i++) {
 		flag = 0;
 		while((ptr=(lwp_cntrl*)__lwp_queue_getI(&_lwp_thr_ready[i]))!=NULL) {
-			if(ptr==_thr_executing) flag = 1;
-			else __lwp_thread_close(ptr);
+			if(ptr!=_thr_executing) __lwp_thread_close(ptr);
+			else flag = 1;
 		}
 		if(flag) __lwp_queue_appendI(&_lwp_thr_ready[i],&_thr_executing->object.node);
 	}

@@ -94,7 +94,7 @@ static s32 __pad_onreset(s32 final)
 			__pad_recalibrated$207 = PAD_Recalibrate(0xf0000000);
 			return 0;
 		}
-		return ret;
+		return 1;
 	}
 	__pad_recalibrated$207 = 0;
 	return 1;
