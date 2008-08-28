@@ -366,9 +366,9 @@ _cpu_context_switch:
 	lwz		r6, GP_LR(r4)
 	mfmsr	r5
 	mtlr	r6
-	rlwinm	r5,r5,0,19,17
 	stw		r5, GP_MSR(r3)
 	lwz		r5, GP_MSR(r4)
+	rlwinm	r5, r5, 0, 19, 17
 	mtmsr	r5
 
 	blr
@@ -423,6 +423,7 @@ _cpu_context_restore:
 	lwz	r7, LR_OFFSET-8(r3)
 	mtlr	r7
 	lwz	r8, MSR_OFFSET-8(r3)
+	rlwinm  r8,r8,0,19,17
 	mtmsr	r8
 
 	lwz	r6, GQR1_OFFSET-8(r3)
@@ -506,10 +507,10 @@ _cpu_context_switch_ex:
 	lwz		r6, GP_LR(r4)
 	mfmsr	r5
 	mtlr	r6
-	rlwinm	r5,r5,0,19,17
 	stw		r5, GP_MSR(r3)
 	lwz		r5, GP_MSR(r4)
-	lmw		r6,GP_6(r4)
+	lmw		r6, GP_6(r4)
+	rlwinm	r5, r5, 0, 19, 17
 	mtmsr	r5
 
 	lwz		r5,GP_5(r4)

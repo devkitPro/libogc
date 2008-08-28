@@ -98,37 +98,74 @@
 #define _CPU_MSR_SET( _msr_value ) \
 { asm volatile ("mtmsr %0" : "=&r" ((_msr_value)) : "0" ((_msr_value))); }
 
-#define _CPU_ISR_Enable() \
-	{ register u32 _val = 0; \
-	  asm volatile ("mfmsr %0; ori %0,%0,0x8000; mtmsr %0" : \
-					"=&r" (_val) : "0" (_val));\
+#define _CPU_ISR_Enable( _isr_cookie ) \
+	{ register u32 _enable_mask = 0; \
+	  _isr_cookie = 0; \
+	  __asm__ __volatile__ ( \
+		"mfmsr %0\n" \
+		"ori %1,%0,0x8000\n" \
+		"mtmsr %1\n" \
+		"extrwi %0,%0,1,16" \
+		: "=&r" ((_isr_cookie),"=&r"((_enable_mask)) \
+		: "0" ((_isr_cookie)),"1"((_enable_mask)));\
 	}
 
 #define _CPU_ISR_Disable( _isr_cookie ) \
-  { register u32 _disable_mask = MSR_EE; \
-    _isr_cookie = 0; \
-    asm volatile ( \
-	"mfmsr %0; andc %1,%0,%1; mtmsr %1" : \
-	"=&r" ((_isr_cookie)), "=&r" ((_disable_mask)) : \
-	"0" ((_isr_cookie)), "1" ((_disable_mask)) \
+  { register u32 _disable_mask = 0; \
+	_isr_cookie = 0; \
+    __asm__ __volatile__ ( \
+	  "mfmsr %0\n" \
+	  "rlwinm %1,%0,0,17,15\n" \
+	  "mtmsr %1\n" \
+	  "extrwi %0,%0,1,16" \
+	  : "=&r" ((_isr_cookie)), "=&r" ((_disable_mask)) \
+	  : "0" ((_isr_cookie)), "1" ((_disable_mask)) \
 	); \
   }
 
 #define _CPU_ISR_Restore( _isr_cookie )  \
-  { \
-     asm volatile ( "mtmsr %0" : \
-		   "=r" ((_isr_cookie)) : \
-                   "0" ((_isr_cookie))); \
+  { register u32 _enable_mask = 0; \
+	__asm__ __volatile__ ( \
+    "    cmpwi %0,0\n" \
+	"    mfmsr %1\n" \
+	"    beq 1f\n" \
+	"    ori %0,%1,0x8000\n" \
+	"    b 2f\n" \
+	"1:  rlwinm %0,%1,0,17,15\n" \
+	"2:  mtmsr %0\n" \
+	"    extrwi %0,%1,1,16" \
+	: "=&r"((_isr_cookie)),"=&r" ((_enable_mask)) \
+	: "0"((_isr_cookie)),"1" ((_enable_mask)) \
+	); \
   }
 
 #define _CPU_ISR_Flash( _isr_cookie ) \
-  { register u32 _disable_mask = MSR_EE; \
-    asm volatile ( \
-      "mtmsr %0; andc %1,%0,%1; mtmsr %1" : \
-      "=r" ((_isr_cookie)), "=r" ((_disable_mask)) : \
-      "0" ((_isr_cookie)), "1" ((_disable_mask)) \
+  { register u32 _flash_mask = 0; \
+    __asm__ __volatile__ ( \
+    "   cmpwi %0,0\n" \
+	"   mfmsr %1\n" \
+	"   beq 1f\n" \
+	"   ori %0,%1,0x8000\n" \
+	"   mtmsr %0\n" \
+	"1: rlwinm %0,%1,0,17,15\n" \
+	"   mtmsr %0\n" \
+	"   extrwi %0,%1,1,16" : \
+    "=&r" ((_isr_cookie)), "=&r" ((_flash_mask)) : \
+    "0" ((_isr_cookie)), "1" ((_flash_mask)) \
     ); \
   }
+
+#define _CPU_FPR_Enable() \
+{ register u32 _val = 0; \
+	  asm volatile ("mfmsr %0; ori %0,%0,0x2000; mtmsr %0" : \
+					"=&r" (_val) : "0" (_val));\
+}
+
+#define _CPU_FPR_Disable() \
+{ register u32 _val = 0; \
+	  asm volatile ("mfmsr %0; rlwinm %0,%0,0,19,17; mtmsr %0" : \
+					"=&r" (_val) : "0" (_val));\
+}
 
 static inline u16 bswap16(u16 val)
 {

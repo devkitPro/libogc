@@ -115,8 +115,10 @@ void __lwp_thread_delayended(void *arg)
 
 void __thread_dispatch_fp()
 {
+	u32 level;
 	lwp_cntrl *exec;
 
+	_CPU_ISR_Disable(level);
 	exec = _thr_executing;
 #ifdef _LWPTHREADS_DEBUG
 	__lwp_dumpcontext_fp(exec,_thr_allocated_fp);
@@ -126,6 +128,7 @@ void __thread_dispatch_fp()
 		_cpu_context_restore_fp(&exec->context);
 		_thr_allocated_fp = exec;
 	}
+	_CPU_ISR_Restore(level);
 }
 
 void __thread_dispatch()
@@ -133,8 +136,8 @@ void __thread_dispatch()
 	u32 level;
 	lwp_cntrl *exec,*heir;
 
-	exec = _thr_executing;
 	_CPU_ISR_Disable(level);
+	exec = _thr_executing;
 	while(_context_switch_want==TRUE) {
 		heir = _thr_heir;
 		_thread_dispatch_disable_level = 1;
@@ -146,7 +149,7 @@ void __thread_dispatch()
 			exec->libc_reent = *__lwp_thr_libc_reent;
 			*__lwp_thr_libc_reent = heir->libc_reent;
 		}
-#ifdef _DEBUG
+#ifdef _LWPTHREADS_DEBUG
 		_cpu_context_switch_ex((void*)&exec->context,(void*)&heir->context);
 #else
 		_cpu_context_switch((void*)&exec->context,(void*)&heir->context);
