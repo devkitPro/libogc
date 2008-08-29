@@ -1102,8 +1102,6 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 	u32 level,ret = 0;
 	syssram *sram;
 
-	_CPU_ISR_Enable(level);
-
 	__dsp_shutdown();
 
 	if(reset==SYS_SHUTDOWN) {
@@ -1191,8 +1189,6 @@ s32 __SYS_LoadMenu()
 void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 {
 	u32 level,ret = 0;
-
-	_CPU_ISR_Enable(level);
 
 	__dsp_shutdown();
 
