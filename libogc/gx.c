@@ -4274,9 +4274,9 @@ void GX_InitSpecularDirHA(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz,f32 hx,f32 hy
 {
     f32 px, py, pz;
 
-    px = (nx * LARGE_NUMBER);
-    py = (ny * LARGE_NUMBER);
-    pz = (nz * LARGE_NUMBER);
+    px = (nx * BIG_NUMBER);
+    py = (ny * BIG_NUMBER);
+    pz = (nz * BIG_NUMBER);
 
 	((f32*)lit_obj)[10] = px;
 	((f32*)lit_obj)[11] = py;
@@ -4302,9 +4302,9 @@ void GX_InitSpecularDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz)
     hy *= mag;
     hz *= mag;
 
-    px  = (nx * LARGE_NUMBER);
-    py  = (ny * LARGE_NUMBER);
-    pz  = (nz * LARGE_NUMBER);
+    px  = (nx * BIG_NUMBER);
+    py  = (ny * BIG_NUMBER);
+    pz  = (nz * BIG_NUMBER);
 	
 	((f32*)lit_obj)[10] = px;
 	((f32*)lit_obj)[11] = py;
