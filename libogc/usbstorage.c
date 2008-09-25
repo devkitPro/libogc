@@ -74,6 +74,8 @@ distribution.
 
 #define USBSTORAGE_CYCLE_RETRIES	3
 
+#define MAX_TRANSFER_SIZE			4096
+
 static heap_cntrl __heap;
 static u8 __heap_created = 0;
 
@@ -265,8 +267,8 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 			}
 			while(len > 0)
 			{
-				thisLen = len > dev->ep_out_size ? dev->ep_out_size : len;
-				memset(dev->buffer, 0, dev->ep_out_size);
+				thisLen = len > MAX_TRANSFER_SIZE ? MAX_TRANSFER_SIZE : len;
+				memset(dev->buffer, 0, MAX_TRANSFER_SIZE);
 				memcpy(dev->buffer, buffer, thisLen);
 				retval = __USB_BlkMsgTimeout(dev, dev->ep_out, thisLen, dev->buffer);
 
@@ -311,7 +313,7 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 			}
 			while(len > 0)
 			{
-				thisLen = len > dev->ep_in_size ? dev->ep_in_size : len;
+				thisLen = len > MAX_TRANSFER_SIZE ? MAX_TRANSFER_SIZE : len;
 				retval = __USB_BlkMsgTimeout(dev, dev->ep_in, thisLen, dev->buffer);
 				if(retval < 0)
 					break;
@@ -463,7 +465,7 @@ s32 USBStorage_Open(usbstorage_handle *dev, const char *bus, u16 vid, u16 pid)
 				if(uid->bNumEndpoints < 2)
 					continue;
 
-				dev->ep_in = dev->ep_in_size = dev->ep_out = dev->ep_out_size = 0;
+				dev->ep_in = dev->ep_out = 0;
 				for(iEp = 0; iEp < uid->bNumEndpoints; iEp++)
 				{
 					ued = &uid->endpoints[iEp];
@@ -471,15 +473,9 @@ s32 USBStorage_Open(usbstorage_handle *dev, const char *bus, u16 vid, u16 pid)
 						continue;
 
 					if(ued->bEndpointAddress & USB_ENDPOINT_IN)
-					{
 						dev->ep_in = ued->bEndpointAddress;
-						dev->ep_in_size = ued->wMaxPacketSize;
-					}
 					else
-					{
 						dev->ep_out = ued->bEndpointAddress;
-						dev->ep_out_size = ued->wMaxPacketSize;
-					}
 				}
 				if(dev->ep_in != 0 && dev->ep_out != 0)
 				{
@@ -545,12 +541,7 @@ found:
 	USB_ClearHalt(dev->usb_fd, dev->ep_in);
 	USB_ClearHalt(dev->usb_fd, dev->ep_out);
 
-	if(dev->ep_in_size < CBW_SIZE && dev->ep_out_size < CBW_SIZE)
-		dev->buffer = __lwp_heap_allocate(&__heap, CBW_SIZE);
-	else if(dev->ep_in_size >= dev->ep_out_size)
-		dev->buffer = __lwp_heap_allocate(&__heap, dev->ep_in_size);
-	else
-		dev->buffer = __lwp_heap_allocate(&__heap, dev->ep_out_size);
+	dev->buffer = __lwp_heap_allocate(&__heap, MAX_TRANSFER_SIZE);
 	
 	if(dev->buffer == NULL) retval = IPC_ENOMEM;
 	else retval = USBSTORAGE_OK;
@@ -577,6 +568,7 @@ s32 USBStorage_Close(usbstorage_handle *dev)
 	LWP_MutexDestroy(dev->lock);
 	LWP_CondDestroy(dev->cond);
 	free(dev->sector_size);
+	__lwp_heap_free(&__heap, dev->buffer);
 	memset(dev, 0, sizeof(*dev));
 	return 0;
 }
