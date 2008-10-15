@@ -31,9 +31,6 @@ typedef struct
 	u8 ep_in;
 	u8 ep_out;
 
-	u32 ep_in_size;
-	u32 ep_out_size;
-
 	u8 max_lun;
 	u32 *sector_size;
 

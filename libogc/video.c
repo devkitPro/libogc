@@ -1796,28 +1796,61 @@ static u32 __VISendI2CData(u8 addr,void *val,u32 len)
 	return 1;
 }
 
+static void __VIWriteI2CRegister8(u8 reg, u8 data)
+{
+	u8 buf[2];
+	buf[0] = reg;
+	buf[1] = data;
+	__VISendI2CData(0xe0,buf,2);
+	udelay(2);
+}
+
+static void __VIWriteI2CRegister16(u8 reg, u16 data)
+{
+	u8 buf[3];
+	buf[0] = reg;
+	buf[1] = data >> 8;
+	buf[2] = data & 0xFF;
+	__VISendI2CData(0xe0,buf,3);
+	udelay(2);
+}
+
+static void __VIWriteI2CRegister32(u8 reg, u32 data)
+{
+	u8 buf[5];
+	buf[0] = reg;
+	buf[1] = data >> 24;
+	buf[2] = (data >> 16) & 0xFF;
+	buf[3] = (data >> 8) & 0xFF;
+	buf[4] = data & 0xFF;
+	__VISendI2CData(0xe0,buf,5);
+	udelay(2);
+}
+
+static void __VIWriteI2CRegisterBuf(u8 reg, int size, u8 *data)
+{
+	u8 buf[0x100];
+	buf[0] = reg;
+	memcpy(&buf[1], data, size);
+	__VISendI2CData(0xe0,buf,size+1);
+	udelay(2);
+}
+
+
 static void __VISetYUVSEL(u8 dtvstatus)
 {
-	u16 val;
-
 	if(currTvMode==VI_NTSC) vdacFlagRegion = 0x0000;
 	else if(currTvMode==VI_PAL || currTvMode==VI_EURGB60) vdacFlagRegion = 0x0002;
 	/* FIXME: setting this to 1 causes monochrome output on PAL systems*/
 	else if(currTvMode==VI_MPAL) vdacFlagRegion = 0x0002;
 	else vdacFlagRegion = 0x0000;
 
-	val = (_SHIFTL(0x01,8,8)|_SHIFTL(dtvstatus,5,3)|(vdacFlagRegion&0x1f));
-	__VISendI2CData(0xe0,&val,sizeof(u16));
-	udelay(2);
+	__VIWriteI2CRegister8(0x01, _SHIFTL(dtvstatus,5,3)|(vdacFlagRegion&0x1f));
 }
 
 static void __VISetFilterEURGB60(u8 enable)
 {
-	u16 val;
-
-	val = (_SHIFTL(0x6e,8,8)|enable);
-	__VISendI2CData(0xe0,&val,sizeof(u16));
-	udelay(2);
+	__VIWriteI2CRegister8(0x6e, enable);
 }
 
 #if 0
@@ -1839,6 +1872,59 @@ static void __VISet3in1Output(u8 enable)
 	udelay(2);
 }
 #endif
+
+static void __VISetupEncoder(void)
+{
+	u8 macrobuf[0x1a];
+
+	u8 gamma[0x21] = {
+		0x10, 0x00, 0x10, 0x00, 0x10, 0x00, 0x10, 0x00,
+		0x10, 0x00, 0x10, 0x00, 0x10, 0x20, 0x40, 0x60,
+		0x80, 0xa0, 0xeb, 0x10, 0x00, 0x20, 0x00, 0x40,
+		0x00, 0x60, 0x00, 0x80, 0x00, 0xa0, 0x00, 0xeb,
+		0x00
+	};
+
+	u8 dtv, tv;
+
+	tv = VIDEO_GetCurrentTvMode();
+	dtv = (_viReg[55]&0x01);
+	oldDtvStatus = dtv;
+
+	// SetRevolutionModeSimple
+
+	memset(macrobuf, 0, 0x1a);
+
+	__VIWriteI2CRegister8(0x6a, 1);
+	__VIWriteI2CRegister8(0x65, 1);
+	__VISetYUVSEL(dtv);
+	__VIWriteI2CRegister8(0x00, 0);
+	__VIWriteI2CRegister16(0x71, 0x8e8e);
+	__VIWriteI2CRegister8(0x02, 7);
+	__VIWriteI2CRegister16(0x05, 0x0000);
+	__VIWriteI2CRegister16(0x08, 0x0000);
+	__VIWriteI2CRegister32(0x7A, 0x00000000);
+
+	// Macrovision crap
+	__VIWriteI2CRegisterBuf(0x40, sizeof(macrobuf), macrobuf);
+
+	// Sometimes 1 in RGB mode? (reg 1 == 3)
+	__VIWriteI2CRegister8(0x0A, 0);
+
+	__VIWriteI2CRegister8(0x03, 1);
+
+	__VIWriteI2CRegisterBuf(0x10, sizeof(gamma), gamma);
+
+	__VIWriteI2CRegister8(0x04, 1);
+	__VIWriteI2CRegister32(0x7A, 0x00000000);
+	__VIWriteI2CRegister16(0x08, 0x0000);
+	__VIWriteI2CRegister8(0x03, 1);
+
+	if(tv==VI_EURGB60) __VISetFilterEURGB60(1);
+	else __VISetFilterEURGB60(0);
+	oldTvStatus = tv;
+
+}
 #endif
 
 static inline void __getCurrentDisplayPosition(u32 *px,u32 *py)
@@ -2142,6 +2228,9 @@ void VIDEO_Init()
 
 	IRQ_Request(IRQ_PI_VI,__VIRetraceHandler,NULL);
 	__UnmaskIrq(IRQMASK(IRQ_PI_VI));
+#if defined(HW_RVL)
+	__VISetupEncoder();
+#endif
 	_CPU_ISR_Restore(level);
 }
 

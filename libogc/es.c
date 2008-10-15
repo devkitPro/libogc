@@ -75,7 +75,7 @@ distribution.
 #define IOCTL_ES_DIVERIFY				0x1C
 #define IOCTL_ES_GETTITLEDIR			0x1D
 #define IOCTL_ES_GETDEVICECERT			0x1E
-//#define IOCTL_ES_IMPORTBOOT			0x1F
+#define IOCTL_ES_IMPORTBOOT				0x1F
 #define IOCTL_ES_GETTITLEID				0x20
 #define IOCTL_ES_SETUID					0x21
 #define IOCTL_ES_DELETETITLECONTENT		0x22
@@ -638,6 +638,23 @@ s32 ES_AddTitleCancel(void)
 {
 	if(__es_fd<0) return ES_ENOTINIT;
 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDTITLECANCEL, "");
+}
+
+s32 ES_ImportBoot(const signed_blob *tik, u32 tik_size,const signed_blob *tik_certs,u32 tik_certs_size,const signed_blob *tmd,u32 tmd_size,const signed_blob *tmd_certs,u32 tmd_certs_size,const u8 *content,u32 content_size)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	if(!tik || !tik_size) return ES_EINVAL;
+	if(!tik_certs || !tik_certs_size) return ES_EINVAL;
+	if(!tmd || !tmd_size) return ES_EINVAL;
+	if(!tmd_certs || !tmd_certs_size) return ES_EINVAL;
+	if(!content || !content_size) return ES_EINVAL;
+	if(!ISALIGNED(tik)) return ES_EALIGN;
+	if(!ISALIGNED(tmd)) return ES_EALIGN;
+	if(!ISALIGNED(tik_certs)) return ES_EALIGN;
+	if(!ISALIGNED(tmd_certs)) return ES_EALIGN;
+	if(!ISALIGNED(content)) return ES_EALIGN;
+	
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_IMPORTBOOT, "dddddd:", tik, tik_size, tik_certs, tik_certs_size, tmd, tmd_size, tmd_certs, tmd_certs_size, NULL, 0, content, content_size);
 }
 
 s32 ES_OpenContent(u16 index)

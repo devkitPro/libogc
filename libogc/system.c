@@ -44,6 +44,7 @@ distribution.
 #include "stm.h"
 #include "es.h"
 #include "conf.h"
+#include "wiilaunch.h"
 #endif
 #include "cache.h"
 #include "video.h"
@@ -1093,6 +1094,7 @@ void SYS_PreMain()
 	__IOS_InitializeSubsystems();
 	STM_RegisterEventHandler(__STMEventHandler);
 	CONF_Init();
+	WII_Initialize();
 #endif
 }
 
@@ -1146,46 +1148,6 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 
 #if defined(HW_RVL)
 
-s32 __SYS_LoadMenu()
-{
-	s32 res;
-	u32 numviews;
-	u64 titleID = 0x100000002LL;
-	STACK_ALIGN(tikview,views,4,32);
-#ifdef DEBUG_SYSTEM
-	printf("Launching menu TitleID: %016llx\n",titleID);
-#endif
-
-	res = ES_GetNumTicketViews(titleID, &numviews);
-	if(res < 0) {
-#ifdef DEBUG_SYSTEM
-		printf(" GetNumTicketViews failed: %d\n",res);
-#endif
-		return res;
-	}
-	if(numviews > 4) {
-		printf(" GetNumTicketViews too many views: %u\n",numviews);
-		return IOS_ETOOMANYVIEWS;
-	}
-	res = ES_GetTicketViews(titleID, views, numviews);
-	if(res < 0) {
-#ifdef DEBUG_SYSTEM
-		printf(" GetTicketViews failed: %d\n",res);
-#endif
-		return res;
-	}
-	res = ES_LaunchTitle(titleID, &views[0]);
-	if(res < 0) {
-#ifdef DEBUG_SYSTEM
-		printf(" LaunchTitle failed: %d\n",res);
-#endif
-		return res;
-	}
-	__ES_Reset();
-	return 0;
-
-}
-
 void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 {
 	u32 level,ret = 0;
@@ -1220,7 +1182,7 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 			STM_ShutdownToIdle();
 			break;
 		case SYS_RETURNTOMENU:
-			__SYS_LoadMenu();
+			WII_ReturnToMenu();
 			break;
 	}
 

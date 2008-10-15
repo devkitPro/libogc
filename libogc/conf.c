@@ -446,6 +446,7 @@ s32 CONF_GetRegion(void)
 	if(!strcmp(buf, "JP")) return CONF_REGION_JP;
 	if(!strcmp(buf, "US")) return CONF_REGION_US;
 	if(!strcmp(buf, "EU")) return CONF_REGION_EU;
+	if(!strcmp(buf, "KR")) return CONF_REGION_KR;
 	return CONF_EBADVALUE;
 }
 

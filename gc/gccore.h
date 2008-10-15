@@ -73,6 +73,7 @@ distribution.
 #include "ogc/isfs.h"
 #include "ogc/conf.h"
 #include "ogc/usbstorage.h"
+#include "ogc/wiilaunch.h"
 #endif
 
 /*

@@ -696,7 +696,6 @@ void find_sensorbar(struct ir_t* ir, struct orient_t *orient) {
 	} else {
 		int bestidx = 0;
 		float best = 0.0f;
-		float d;
 		WIIUSE_DEBUG("IR: finding best candidate\n");
 		// look for the best candidate
 		// for now, the formula is simple: pick the one with the smallest distance

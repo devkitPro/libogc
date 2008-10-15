@@ -64,7 +64,7 @@ LINK32=link.exe
 # PROP Intermediate_Dir "Debug"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
-# ADD CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
+# ADD CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /FR /YX /FD /GZ /c
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -433,6 +433,10 @@ SOURCE=.\libogc\video.c
 # Begin Source File
 
 SOURCE=.\libogc\video_asm.S
+# End Source File
+# Begin Source File
+
+SOURCE=.\libogc\wiilaunch.c
 # End Source File
 # Begin Source File
 
@@ -1285,6 +1289,10 @@ SOURCE=.\gc\ogc\video.h
 # Begin Source File
 
 SOURCE=.\gc\ogc\video_types.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\gc\ogc\wiilaunch.h
 # End Source File
 # End Group
 # Begin Group "ip4.h"
