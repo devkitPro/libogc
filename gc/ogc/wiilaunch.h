@@ -58,6 +58,10 @@ distribution.
 #define SETTINGS_WC24				"WiiConnect24/Wiiconnect24_index.html"
 #define SETTINGS_UPDATE				"Update/Update_index.html"
 
+#ifdef __cplusplus
+   extern "C" {
+#endif /* __cplusplus */
+
 s32 WII_Initialize(void);
 s32 WII_ReturnToMenu(void);
 s32 WII_ReturnToSettings(void);
@@ -65,6 +69,10 @@ s32 WII_ReturnToSettingsPage(const char *page);
 s32 WII_LaunchTitle(u64 titleID);
 s32 WII_LaunchTitleWithArgs(u64 titleID, int launchcode, ...);
 s32 WII_OpenURL(const char *url);
+
+#ifdef __cplusplus
+   }
+#endif /* __cplusplus */
 
 #endif
 
