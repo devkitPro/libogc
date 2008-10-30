@@ -21,7 +21,7 @@
 #include "debug_if.h"
 #include "debug_supp.h"
 
-#define GEKKO_MAX_BP	64
+#define GEKKO_MAX_BP	256
 
 #define SP_REGNUM		1			//register no. for stackpointer
 #define PC_REGNUM		64			//register no. for programcounter (srr0)
@@ -153,9 +153,6 @@ static u32 insert_bp(void *mem)
 	u32 i;
 	struct bp_entry *p;
 
-	for(p=p_bpentries;p;p=p->next) {
-		if(p->address==mem && p->instr==0xffffffff) goto setbreak;
-	}
 	for(i=0;i<GEKKO_MAX_BP;i++) {
 		if(bp_entries[i].address == NULL) break;
 	}
@@ -166,7 +163,6 @@ static u32 insert_bp(void *mem)
 	p->address = mem;
 	p_bpentries = p;
 
-setbreak:
 	p->instr = *(p->address);
 	*(p->address) = BPCODE;
 	
@@ -199,6 +195,7 @@ static u32 remove_bp(void *mem)
 
 	*(f->address) = f->instr;
 	f->instr = 0xffffffff;
+	f->address = NULL;
 
 	DCStoreRangeNoSync((void*)((u32)mem&~0x1f),32);
 	ICInvalidateRange((void*)((u32)mem&~0x1f),32);
