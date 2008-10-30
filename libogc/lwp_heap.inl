@@ -3,12 +3,12 @@
 
 static __inline__ heap_block* __lwp_heap_head(heap_cntrl *theheap)
 {
-	return (heap_block*)&theheap->start;
+	return (heap_block*)((void*)&theheap->start);
 }
 
 static __inline__ heap_block* __lwp_heap_tail(heap_cntrl *heap)
 {
-	return (heap_block*)&heap->final;
+	return (heap_block*)((void*)&heap->final);
 }
 
 static __inline__ heap_block* __lwp_heap_prevblock(heap_block *block)

@@ -253,7 +253,7 @@ time_t _DEFUN(time,(timer),
 	u32 wii_bias = 0;
 #endif
 
-	if(__getRTC((u32*)&gctime)==0) return (time_t)0;
+	if(__getRTC((u32*)((void*)&gctime))==0) return (time_t)0;
 
 #if defined(HW_DOL)
 	syssram* sram = __SYS_LockSram();

@@ -48,7 +48,7 @@ void btmemr_init()
 	MEMSET(ram_block,0,MEM_SIZE);
 
 	_CPU_ISR_Disable(level);
-	rmem = (struct mem*)ram_block;
+	rmem = (struct mem*)((void*)ram_block);
 	rmem->next = MEM_SIZE;
 	rmem->prev = 0;
 	rmem->used = 0;
@@ -58,7 +58,7 @@ void btmemr_init()
 	ram_end->prev = MEM_SIZE;
 	ram_end->next = MEM_SIZE;
 
-	ram_free = (struct mem*)ram_block;
+	ram_free = (struct mem*)((void*)ram_block);
 	_CPU_ISR_Restore(level);
 }
 

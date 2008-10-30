@@ -264,7 +264,7 @@ struct dbginterface* tcpip_init(struct uip_ip_addr *localip,struct uip_ip_addr *
 		name.sin_port = htons(port);
 		name.sin_family = AF_INET;
 
-		if(tcpip_bind(listensock,(struct sockaddr*)&name,&namelen)<0){
+		if(tcpip_bind(listensock,(struct sockaddr*)((void*)&name),&namelen)<0){
 			tcpip_close(listensock);
 			listensock = -1;
 			return NULL;

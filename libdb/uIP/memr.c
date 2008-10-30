@@ -49,7 +49,7 @@ void memr_init()
 	struct mem *rmem;
 
 	UIP_MEMSET(ram_block,0,UIP_MEM_SIZE);
-	rmem = (struct mem*)ram_block;
+	rmem = (struct mem*)((void*)ram_block);
 	rmem->next = UIP_MEM_SIZE;
 	rmem->prev = 0;
 	rmem->used = 0;
@@ -59,7 +59,7 @@ void memr_init()
 	ram_end->prev = UIP_MEM_SIZE;
 	ram_end->next = UIP_MEM_SIZE;
 
-	ram_free = (struct mem*)ram_block;
+	ram_free = (struct mem*)((void*)ram_block);
 }
 
 void* memr_malloc(u32 size)

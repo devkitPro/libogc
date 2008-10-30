@@ -8,7 +8,7 @@ static __inline__ lwp_node* __lwp_queue_head(lwp_queue *queue)
 
 static __inline__ lwp_node* __lwp_queue_tail(lwp_queue *queue)
 {
-	return (lwp_node*)&queue->perm_null;
+	return (lwp_node*)((void*)&queue->perm_null);
 }
 
 static __inline__ u32 __lwp_queue_istail(lwp_queue *queue,lwp_node *node)

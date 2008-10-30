@@ -440,7 +440,7 @@ static void __STMEventHandler(u32 event)
 
 static void __lowmem_init()
 {
-	u32 *_gx = (u32*)__gxregs;
+	u32 *_gx = (u32*)((void*)__gxregs);
 
 #if defined(HW_DOL)
 	void *ram_start = (void*)0x80000000;

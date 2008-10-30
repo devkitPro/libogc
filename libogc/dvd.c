@@ -1458,7 +1458,7 @@ static void __dvd_unlockdrivecb(s32 result)
 #endif
 	__dvd_callback = __dvd_finalunlockcb;
 	_diReg[1] = _diReg[1];
-	for(i=0;i<3;i++) _diReg[2+i] = ((u32*)__dvd_unlockcmd$222)[i];
+	for(i=0;i<3;i++) _diReg[2+i] = ((u32*)((void*)__dvd_unlockcmd$222))[i];
 	_diReg[7] = DVD_DI_START;
 }
 
@@ -1776,7 +1776,7 @@ s32 DVD_LowUnlockDrive(dvdcallbacklow cb)
 	__dvd_finalunlockcb = cb;
 	__dvd_stopnextint = 0;
 
-	for(i=0;i<3;i++) _diReg[2+i] = ((u32*)__dvd_unlockcmd$221)[i];
+	for(i=0;i<3;i++) _diReg[2+i] = ((u32*)((void*)__dvd_unlockcmd$221))[i];
 	_diReg[7] = DVD_DI_START;
 
 	return 1;
