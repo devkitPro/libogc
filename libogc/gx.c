@@ -15,8 +15,7 @@
 //#define _GP_DEBUG
 
 #define GX_FINISH		2
-#define BIG_NUMBER		(1024*1024)
-#define LARGE_NUMBER	-9.9999998e+017
+#define LARGE_NUMBER	(1024*1024)
 #define WGPIPE			(0xCC008000)
 
 #define _SHIFTL(v, s, w)	\
@@ -135,7 +134,7 @@ struct __gxfifo _gx_dl_fifo;
 u8 _gx_saved_data[1280];
 
 extern u8 __gxregs[];
-static u32 *_gx = (u32*)__gxregs;
+static u32 *_gx = (u32*)((void*)__gxregs);
 
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
@@ -2012,7 +2011,7 @@ void GX_BeginDispList(void *list,u32 size)
 	GX_SaveCPUFifo(curr_fifo);
 	_gxoldcpufifo = curr_fifo;
 
-	GX_SetGPFifo((GXFifoObj*)&_gx_dl_fifo);
+	GX_SetGPFifo((GXFifoObj*)((void*)&_gx_dl_fifo));
 }
 
 u32 GX_EndDispList()
@@ -2145,9 +2144,11 @@ void GX_SetChanMatColor(s32 channel,GXColor color)
 void GX_SetArray(u32 attr,void *ptr,u8 stride)
 {
 	u32 idx = 0;
+	
+	if(attr==GX_VA_NBT) attr = GX_VA_NRM;
 	if(attr>=GX_VA_POS && attr<=GX_LITMTXARRAY) {
 		idx = attr-GX_VA_POS;
-		GX_LOAD_CP_REG((0xA0+idx),((u32)ptr)&0x03FFFFFF);
+		GX_LOAD_CP_REG((0xA0+idx),((u32)ptr)&~0x80000000);
 		GX_LOAD_CP_REG((0xB0+idx),(u32)stride);
 	}
 }
@@ -4274,9 +4275,9 @@ void GX_InitSpecularDirHA(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz,f32 hx,f32 hy
 {
     f32 px, py, pz;
 
-    px = (nx * BIG_NUMBER);
-    py = (ny * BIG_NUMBER);
-    pz = (nz * BIG_NUMBER);
+    px = (nx * LARGE_NUMBER);
+    py = (ny * LARGE_NUMBER);
+    pz = (nz * LARGE_NUMBER);
 
 	((f32*)lit_obj)[10] = px;
 	((f32*)lit_obj)[11] = py;
@@ -4302,9 +4303,9 @@ void GX_InitSpecularDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz)
     hy *= mag;
     hz *= mag;
 
-    px  = (nx * BIG_NUMBER);
-    py  = (ny * BIG_NUMBER);
-    pz  = (nz * BIG_NUMBER);
+    px  = (nx * LARGE_NUMBER);
+    py  = (ny * LARGE_NUMBER);
+    pz  = (nz * LARGE_NUMBER);
 	
 	((f32*)lit_obj)[10] = px;
 	((f32*)lit_obj)[11] = py;
@@ -4695,5 +4696,4 @@ f32 GX_GetYScaleFactor(u16 efbHeight,u16 xfbHeight)
 	return yscale;
 }
 
-#undef BIG_NUMBER
 #undef LARGE_NUMBER
