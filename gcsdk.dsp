@@ -1055,6 +1055,10 @@ SOURCE=.\libdi\stubasm.S
 SOURCE=.\libdi\stubload.c
 # End Source File
 # End Group
+# Begin Source File
+
+SOURCE=..\wiirrlicht\examples\2\source\main.cpp
+# End Source File
 # End Group
 # Begin Group "Header Files"
 
