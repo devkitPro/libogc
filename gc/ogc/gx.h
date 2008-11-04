@@ -935,6 +935,16 @@
 
 #define GX_MAX_Z24						0x00ffffff
 
+#define WGPIPE			(0xCC008000)
+
+#define FIFO_PUTU8(x)	*(vu8*)WGPIPE = (u8)(x)
+#define FIFO_PUTS8(x)	*(vs8*)WGPIPE = (s8)(x)
+#define FIFO_PUTU16(x)	*(vu16*)WGPIPE = (u16)(x)
+#define FIFO_PUTS16(x)	*(vs16*)WGPIPE = (s16)(x)
+#define FIFO_PUTU32(x)	*(vu32*)WGPIPE = (u32)(x)
+#define FIFO_PUTS32(x)	*(vs32*)WGPIPE = (s32)(x)
+#define FIFO_PUTF32(x)	*(vf32*)WGPIPE = (f32)(x)
+
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
@@ -1120,51 +1130,234 @@ void GX_SetVtxDescv(GXVtxDesc *attr_list);
 
 u32 GX_EndDispList();
 void GX_Begin(u8 primitve,u8 vtxfmt,u16 vtxcnt);
-void GX_End();
 void GX_BeginDispList(void *list,u32 size);
 void GX_CallDispList(void *list,u32 nbytes);
 
-void GX_MatrixIndex1x8(u8 index);
+static inline void GX_End()
+{
+}
 
-void GX_Position3f32(f32 x,f32 y,f32 z);
-void GX_Position3u16(u16 x,u16 y,u16 z);
-void GX_Position3s16(s16 x,s16 y,s16 z);
-void GX_Position3u8(u8 x,u8 y,u8 z);
-void GX_Position3s8(s8 x,s8 y,s8 z);
-void GX_Position2f32(f32 x,f32 y);
-void GX_Position2u16(u16 x,u16 y);
-void GX_Position2s16(s16 x,s16 y);
-void GX_Position2u8(u8 x,u8 y);
-void GX_Position2s8(s8 x,s8 y);
-void GX_Position1x8(u8 index);
-void GX_Position1x16(u16 index);
+static inline void GX_Position3f32(f32 x,f32 y,f32 z)
+{
+	FIFO_PUTF32(x);
+	FIFO_PUTF32(y);
+	FIFO_PUTF32(z);
+}
 
-void GX_Normal3f32(f32 nx,f32 ny,f32 nz);
-void GX_Normal3s16(s16 nx,s16 ny,s16 nz);
-void GX_Normal3s8(s8 nx,s8 ny,s8 nz);
-void GX_Normal1x8(u8 index);
-void GX_Normal1x16(u16 index);
+static inline void GX_Position3u16(u16 x,u16 y,u16 z)
+{
+	FIFO_PUTU16(x);
+	FIFO_PUTU16(y);
+	FIFO_PUTU16(z);
+}
 
-void GX_Color4u8(u8 r,u8 g,u8 b,u8 a);
-void GX_Color3u8(u8 r,u8 g,u8 b);
-void GX_Color3f32(f32 r, f32 g, f32 b);
-void GX_Color1u32(u32 clr);
-void GX_Color1u16(u16 clr);
-void GX_Color1x8(u8 index);
-void GX_Color1x16(u16 index);
+static inline void GX_Position3s16(s16 x,s16 y,s16 z)
+{
+	FIFO_PUTS16(x);
+	FIFO_PUTS16(y);
+	FIFO_PUTS16(z);
+}
 
-void GX_TexCoord2f32(f32 s,f32 t);
-void GX_TexCoord2u16(u16 s,u16 t);
-void GX_TexCoord2s16(s16 s,s16 t);
-void GX_TexCoord2u8(u8 s,u8 t);
-void GX_TexCoord2s8(s8 s,s8 t);
-void GX_TexCoord1f32(f32 s);
-void GX_TexCoord1u16(u16 s);
-void GX_TexCoord1s16(s16 s);
-void GX_TexCoord1u8(u8 s);
-void GX_TexCoord1s8(s8 s);
-void GX_TexCoord1x8(u8 index);
-void GX_TexCoord1x16(u16 index);
+static inline void GX_Position3u8(u8 x,u8 y,u8 z)
+{
+	FIFO_PUTU8(x);
+	FIFO_PUTU8(y);
+	FIFO_PUTU8(z);
+}
+
+static inline void GX_Position3s8(s8 x,s8 y,s8 z)
+{
+	FIFO_PUTS8(x);
+	FIFO_PUTS8(y);
+	FIFO_PUTS8(z);
+}
+
+static inline void GX_Position2f32(f32 x,f32 y)
+{
+	FIFO_PUTF32(x);
+	FIFO_PUTF32(y);
+}
+
+static inline void GX_Position2u16(u16 x,u16 y)
+{
+	FIFO_PUTU16(x);
+	FIFO_PUTU16(y);
+}
+
+static inline void GX_Position2s16(s16 x,s16 y)
+{
+	FIFO_PUTS16(x);
+	FIFO_PUTS16(y);
+}
+
+static inline void GX_Position2u8(u8 x,u8 y)
+{
+	FIFO_PUTU8(x);
+	FIFO_PUTU8(y);
+}
+
+static inline void GX_Position2s8(s8 x,s8 y)
+{
+	FIFO_PUTS8(x);
+	FIFO_PUTS8(y);
+}
+
+static inline void GX_Position1x8(u8 index)
+{
+	FIFO_PUTU8(index);
+}
+
+static inline void GX_Position1x16(u16 index)
+{
+	FIFO_PUTU16(index);
+}
+
+static inline void GX_Normal3f32(f32 nx,f32 ny,f32 nz)
+{
+	FIFO_PUTF32(nx);
+	FIFO_PUTF32(ny);
+	FIFO_PUTF32(nz);
+}
+
+static inline void GX_Normal3s16(s16 nx,s16 ny,s16 nz)
+{
+	FIFO_PUTS16(nx);
+	FIFO_PUTS16(ny);
+	FIFO_PUTS16(nz);
+}
+
+static inline void GX_Normal3s8(s8 nx,s8 ny,s8 nz)
+{
+	FIFO_PUTS8(nx);
+	FIFO_PUTS8(ny);
+	FIFO_PUTS8(nz);
+}
+
+static inline void GX_Normal1x8(u8 index)
+{
+	FIFO_PUTU8(index);
+}
+
+static inline void GX_Normal1x16(u16 index)
+{
+	FIFO_PUTU16(index);
+}
+
+static inline void GX_Color4u8(u8 r,u8 g,u8 b,u8 a)
+{
+	FIFO_PUTU8(r);
+	FIFO_PUTU8(g);
+	FIFO_PUTU8(b);
+	FIFO_PUTU8(a);
+}
+
+static inline void GX_Color3u8(u8 r,u8 g,u8 b)
+{
+	FIFO_PUTU8(r);
+	FIFO_PUTU8(g);
+	FIFO_PUTU8(b);
+}
+
+static inline void GX_Color3f32(f32 r, f32 g, f32 b)
+{
+
+	FIFO_PUTU8((u8)(r * 255.0));
+	FIFO_PUTU8((u8)(g * 255.0));
+	FIFO_PUTU8((u8)(b * 255.0));
+
+}
+
+
+static inline void GX_Color1u32(u32 clr)
+{
+	FIFO_PUTU32(clr);
+}
+
+static inline void GX_Color1u16(u16 clr)
+{
+	FIFO_PUTU16(clr);
+}
+
+static inline void GX_Color1x8(u8 index)
+{
+	FIFO_PUTU8(index);
+}
+
+static inline void GX_Color1x16(u16 index)
+{
+	FIFO_PUTU16(index);
+}
+
+static inline void GX_TexCoord2f32(f32 s,f32 t)
+{
+	FIFO_PUTF32(s);
+	FIFO_PUTF32(t);
+}
+
+static inline void GX_TexCoord2u16(u16 s,u16 t)
+{
+	FIFO_PUTU16(s);
+	FIFO_PUTU16(t);
+}
+
+static inline void GX_TexCoord2s16(s16 s,s16 t)
+{
+	FIFO_PUTS16(s);
+	FIFO_PUTS16(t);
+}
+
+static inline void GX_TexCoord2u8(u8 s,u8 t)
+{
+	FIFO_PUTU8(s);
+	FIFO_PUTU8(t);
+}
+
+static inline void GX_TexCoord2s8(s8 s,s8 t)
+{
+	FIFO_PUTS8(s);
+	FIFO_PUTS8(t);
+}
+
+static inline void GX_TexCoord1f32(f32 s)
+{
+	FIFO_PUTF32(s);
+}
+
+static inline void GX_TexCoord1u16(u16 s)
+{
+	FIFO_PUTU16(s);
+}
+
+static inline void GX_TexCoord1s16(s16 s)
+{
+	FIFO_PUTS16(s);
+}
+
+static inline void GX_TexCoord1u8(u8 s)
+{
+	FIFO_PUTU8(s);
+}
+
+static inline void GX_TexCoord1s8(s8 s)
+{
+	FIFO_PUTS8(s);
+}
+
+static inline void GX_TexCoord1x8(u8 index)
+{
+	FIFO_PUTU8(index);
+}
+
+static inline void GX_TexCoord1x16(u16 index)
+{
+	FIFO_PUTU16(index);
+}
+
+static inline void GX_MatrixIndex1x8(u8 index)
+{
+	FIFO_PUTU8(index);
+}
+
 
 void GX_AdjustForOverscan(GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver);
 void GX_LoadPosMtxImm(Mtx mt,u32 pnidx);
