@@ -125,7 +125,7 @@ struct __gxfifo _gx_dl_fifo;
 u8 _gx_saved_data[1280];
 
 extern u8 __gxregs[];
-static u32 *_gx = (u32*)((void*)__gxregs);
+static u32 *_gx = (u32*)__gxregs;
 
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
@@ -2002,7 +2002,7 @@ void GX_BeginDispList(void *list,u32 size)
 	GX_SaveCPUFifo(curr_fifo);
 	_gxoldcpufifo = curr_fifo;
 
-	GX_SetGPFifo((GXFifoObj*)((void*)&_gx_dl_fifo));
+	GX_SetGPFifo((GXFifoObj*)&_gx_dl_fifo);
 }
 
 u32 GX_EndDispList()
