@@ -361,7 +361,7 @@ struct hostent * net_gethostbyname(char *addrString)
 		return NULL;
 	}
 
-	ipData = (struct hostent*)((void*)ipBuffer);
+	ipData = ((struct hostent*)ipBuffer);
 	addrOffset = (u32)MEM_PHYSICAL_TO_K0(ipData->h_name) - ((u32)ipBuffer + 0x10);
 
 	ipData->h_name = MEM_PHYSICAL_TO_K0(ipData->h_name) - addrOffset;

@@ -192,7 +192,7 @@ static void waitForReload() {
 
 		int buttonsDown = PAD_ButtonsDown(0);
 
-		if( buttonsDown & PAD_TRIGGER_Z ) {
+		if( (buttonsDown & PAD_TRIGGER_Z) || SYS_ResetButtonDown() ) {
 			_CPU_ISR_Disable(level);
 			Reload ();
 		}

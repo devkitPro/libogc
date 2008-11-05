@@ -262,11 +262,6 @@ static __inline__ void __lwp_syswd_free(alarm_st *alarm)
 	__lwp_objmgr_free(&sys_alarm_objects,&alarm->object);
 }
 
-static __inline__ u32 __sys_getresetbuttonraw()
-{
-	return (!(_piReg[0]&0x00010000));
-}
-
 static void __init_syscall_array() {
 	__syscalls.sbrk_r = __libogc_sbrk_r;
 	__syscalls.lock_init = __libogc_lock_init;
@@ -417,7 +412,7 @@ static void __STMEventHandler(u32 event)
 	resetcallback rswcb;
 
 	if(event==STM_EVENT_RESET) {
-		ret = __sys_getresetbuttonraw();
+		ret = SYS_ResetButtonDown();
 		if(ret) {
 			_CPU_ISR_Disable(level);
 			__sys_resetdown = 1;
@@ -440,7 +435,7 @@ static void __STMEventHandler(u32 event)
 
 static void __lowmem_init()
 {
-	u32 *_gx = (u32*)((void*)__gxregs);
+	u32 *_gx = (u32*)__gxregs;
 
 #if defined(HW_DOL)
 	void *ram_start = (void*)0x80000000;
@@ -1019,6 +1014,20 @@ void __sdloader_boot()
 	reload();
 }
 
+#if defined(HW_RVL)
+void __SYS_DoPowerCB(void)
+{
+	u32 level;
+	powercallback powcb;
+
+	_CPU_ISR_Disable(level);
+	powcb = __POWCallback;
+	__POWCallback = __POWDefaultHandler;
+	powcb();
+	_CPU_ISR_Restore(level);
+}
+#endif
+
 void __SYS_InitCallbacks()
 {
 #if defined(HW_RVL)
@@ -1096,6 +1105,11 @@ void SYS_PreMain()
 	CONF_Init();
 	WII_Initialize();
 #endif
+}
+
+u32 SYS_ResetButtonDown()
+{
+	return (!(_piReg[0]&0x00010000));
 }
 
 #if defined(HW_DOL)

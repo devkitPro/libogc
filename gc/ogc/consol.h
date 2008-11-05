@@ -63,6 +63,17 @@ void CON_GetMetrics(int *cols, int *rows);
  */
 void CON_GetPosition(int *cols, int *rows);
 
+/*!
+ * \fn CON_EnableGecko(int channel, int safe)
+ * \brief retrieve the current cursor position of the current console
+ *
+ * \param[in] channel EXI channel, or -1 ot disable the gecko console
+ * \param[in] safe If true, use safe mode (wait for peer)
+ *
+ * \return none
+ */
+void CON_EnableGecko(int channel,int safe);
+
 #ifdef __cplusplus
 	}
 #endif

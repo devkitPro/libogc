@@ -85,7 +85,7 @@ void ARQM_Init(u32 arambase,s32 len)
 	__ARQMStackPointer[0] = arambase;
 	__ARQMFreeBytes = len;
 	
-	for(i=0;i<ARQM_ZEROBYTES/sizeof(u32);i++) ((u32*)((void*)__ARQMZeroBuffer))[i] = 0;
+	for(i=0;i<ARQM_ZEROBYTES/sizeof(u32);i++) ((u32*)__ARQMZeroBuffer)[i] = 0;
 	ARQM_PushData(__ARQMZeroBuffer,ARQM_ZEROBYTES);
 	
 }

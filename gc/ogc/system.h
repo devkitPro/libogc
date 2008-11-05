@@ -319,6 +319,8 @@ u32 SYS_GetArena1Size();
 
 resetcallback SYS_SetResetCallback(resetcallback cb);
 
+u32 SYS_ResetButtonDown();
+
 #if defined(HW_RVL)
 u32 SYS_GetHollywoodRevision();
 void* SYS_GetArena2Lo();

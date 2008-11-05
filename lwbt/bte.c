@@ -827,7 +827,12 @@ err_t l2cap_disconnected_ind(void *arg, struct l2cap_pcb *pcb, err_t err)
 		bte->err = ERR_OK;
 		bte->state = (u32)STATE_DISCONNECTED;
 		__bte_close_ctrl_queue(bte);
-		if(bte->disconn_cfm!=NULL) bte->disconn_cfm(bte->cbarg,bte,ERR_OK);
+		if(bte->disconn_cfm!=NULL) {
+			if(err==L2CAP_DISCONN_R_REQ)
+				bte->disconn_cfm(bte->cbarg,bte,HIDP_DISCONN_REQ);
+			else
+				bte->disconn_cfm(bte->cbarg,bte,HIDP_DISCONN_UNK);
+		}
 	}
 	return ERR_OK;
 }
@@ -855,7 +860,7 @@ err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb)
 		bte->err = ERR_OK;
 		bte->state = (u32)STATE_DISCONNECTED;
 		__bte_close_ctrl_queue(bte);
-		if(bte->disconn_cfm!=NULL) bte->disconn_cfm(bte->cbarg,bte,ERR_OK);
+		if(bte->disconn_cfm!=NULL) bte->disconn_cfm(bte->cbarg,bte,HIDP_DISCONN_UNK);
 
 		hci_cmd_complete(NULL);
 		hci_disconnect(&(bte->bdaddr),HCI_OTHER_END_TERMINATED_CONN_USER_ENDED);

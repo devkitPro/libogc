@@ -2287,11 +2287,11 @@ static s32 __dounlock(s32 chn,u32 *key)
 	len = __card_dummylen();
 	if(__card_readarrayunlock(chn,array_addr,tmp_buffer,len+20,1)<0) return CARD_ERROR_NOCARD;
 
-	a = ((u32*)((void*)tmp_buffer))[0];
-	b = ((u32*)((void*)tmp_buffer))[1];
-	c = ((u32*)((void*)tmp_buffer))[2];
-	d = ((u32*)((void*)tmp_buffer))[3];
-	e = ((u32*)((void*)tmp_buffer))[4];
+	a = ((u32*)tmp_buffer)[0];
+	b = ((u32*)tmp_buffer)[1];
+	c = ((u32*)tmp_buffer)[2];
+	d = ((u32*)tmp_buffer)[3];
+	e = ((u32*)tmp_buffer)[4];
 	
 	a = a^card->cipher;
 	val = exnor(card->cipher,32);

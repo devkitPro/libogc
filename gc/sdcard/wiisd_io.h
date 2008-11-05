@@ -38,6 +38,7 @@
 
 bool sdio_Startup();
 bool sdio_IsInserted();
+bool sdio_IsInitialized();
 bool sdio_ReadSectors(u32 sector,u32 numSectors,void* buffer);
 bool sdio_WriteSectors(u32 sector,u32 numSectors,const void* buffer);
 bool sdio_ClearStatus();

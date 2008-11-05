@@ -621,7 +621,7 @@ static s32 do_netconnect(SMBHANDLE *handle)
 	nodelay = 1;
 	ret = net_setsockopt(sock,IPPROTO_TCP,TCP_NODELAY,&nodelay,sizeof(nodelay));
 
-	ret = net_connect(sock,(struct sockaddr*)((void*)&handle->server_addr),sizeof(handle->server_addr));
+	ret = net_connect(sock,(struct sockaddr*)&handle->server_addr,sizeof(handle->server_addr));
 	if(ret) {
 		net_close(sock);
 		return -1;
