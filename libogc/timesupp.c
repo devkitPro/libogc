@@ -288,3 +288,8 @@ unsigned int _DEFUN(usleep,(us),
 	tb.tv_nsec = us*TB_NSPERUS;
 	return nanosleep(&tb);
 }
+
+clock_t clock(void) {
+	return -1;
+}
+
