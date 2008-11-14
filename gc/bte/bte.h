@@ -66,9 +66,6 @@
 #define HIDP_PROTO_BOOT				0x00
 #define HIDP_PROTO_REPORT			0x01
 
-#define HIDP_DISCONN_UNK			0x00
-#define HIDP_DISCONN_REQ			0x01
-
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
@@ -125,7 +122,7 @@ s32 BTE_InitCore(btecallback cb);
 s32 BTE_ApplyPatch(btecallback cb);
 s32 BTE_InitSub(btecallback cb);
 s32 BTE_ReadStoredLinkKey(struct linkkey_info *keys,u8 max_cnt,btecallback cb);
-
+void (*BTE_SetDisconnectCallback(void (*callback)(struct bd_addr *bdaddr,u8 reason)))(struct bd_addr *bdaddr,u8 reason);
 
 struct bte_pcb* bte_new();
 void bte_arg(struct bte_pcb *pcb,void *arg);
