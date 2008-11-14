@@ -119,8 +119,6 @@ static __inline__ s32* snd_set0w( s32 *p, int n)
 
 static void __dsp_initcallback(dsptask_t *task)
 {
-	printf("DSP init callback\n");
-
 	DSP_SendMailTo(0x0123); // command to fix the data operation
 	while(DSP_CheckMailTo());
 
@@ -136,8 +134,6 @@ static void __dsp_requestcallback(dsptask_t *task)
 	s32 n;
 
 	if(DSP_DI_HANDLER) return;
-
-	//printf("DSP request callback\n");
 
 	DCInvalidateRange(&sound_data_dma, sizeof(t_sound_data));
 
@@ -227,7 +223,6 @@ static void __dsp_requestcallback(dsptask_t *task)
 		return;
 	}
 
-	//printf("DSP request callback: process next voice (%d)\n",snd_chan);
 	sound_data_dma=sound_data[snd_chan];
 
 	DCFlushRange(&sound_data_dma, sizeof(t_sound_data));
@@ -259,14 +254,12 @@ static void __dsp_requestcallback(dsptask_t *task)
 
 static void __dsp_donecallback(dsptask_t *task)
 {
-//	printf("DSP done callback\n");
 }
 
 static void audio_dma_callback()
 {
 	u32 n;
 
-	//printf("Audio DMA callback\n");
 	AUDIO_StopDMA();
 	AUDIO_InitDMA((u32)audio_buf[curr_audio_buf],SND_BUFFERSIZE);
 	if(DSP_DI_HANDLER || global_pause) {
@@ -331,7 +324,6 @@ static void audio_dma_callback()
 	sound_data_dma=sound_data[snd_chan];
 	DCFlushRange(&sound_data_dma, sizeof(t_sound_data));
 
-	//printf("Audio DMA callback: starting dsp voice mixing\n");
 	dsp_task_starttime = gettick();
 	DSP_SendMailTo(0x111); // send the first voice and clear the buffer
 	while(DSP_CheckMailTo());
