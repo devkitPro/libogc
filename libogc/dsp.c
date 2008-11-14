@@ -217,9 +217,7 @@ static void __dsp_def_taskcb()
 	u32 mail;
 #ifdef _DSP_DEBUG
 	printf("__dsp_def_taskcb()\n");
-#endif
-	_dspReg[5] = (_dspReg[5]&~(DSPCR_AIINT|DSPCR_ARINT))|DSPCR_DSPINT;
-	
+#endif	
 	while(!DSP_CheckMailFrom());
 	
 	mail = DSP_ReadMailFrom();
@@ -323,7 +321,7 @@ static void __dsp_def_taskcb()
 
 static void __dsp_inthandler(u32 nIrq,void *pCtx)
 {
-
+	_dspReg[5] = (_dspReg[5]&~(DSPCR_AIINT|DSPCR_ARINT))|DSPCR_DSPINT;
 	if(__dsp_intcb) __dsp_intcb();
 }
 
@@ -359,9 +357,12 @@ DSPCallback DSP_RegisterCallback(DSPCallback usr_cb)
 #ifdef _DSP_DEBUG
 	printf("DSP_RegisterCallback()\n");
 #endif
-	_CPU_ISR_Disable(level);	
+	_CPU_ISR_Disable(level);
 	ret = __dsp_intcb;
-	__dsp_intcb = usr_cb;
+	if(usr_cb)
+		__dsp_intcb = usr_cb;
+	else
+		__dsp_intcb = __dsp_def_taskcb;
 	_CPU_ISR_Restore(level);	
 
 	return ret;
