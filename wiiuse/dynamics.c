@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/dynamics.c,v 1.1 2008-05-08 09:42:14 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/dynamics.c,v 1.2 2008-11-14 13:34:57 shagkur Exp $
  *
  */
 
@@ -52,7 +52,7 @@
  *	@brief Calculate the roll, pitch, yaw.
  *
  *	@param ac			An accelerometer (accel_t) structure.
- *	@param accel		[in] Pointer to a vec3b_t structure that holds the raw acceleration data.
+ *	@param accel		[in] Pointer to a vec3w_t structure that holds the raw acceleration data.
  *	@param orient		[out] Pointer to a orient_t structure that will hold the orientation data.
  *	@param rorient		[out] Pointer to a orient_t structure that will hold the non-smoothed orientation data.
  *	@param smooth		If smoothing should be performed on the angles calculated. 1 to enable, 0 to disable.
@@ -60,7 +60,7 @@
  *	Given the raw acceleration data from the accelerometer struct, calculate
  *	the orientation of the device and set it in the \a orient parameter.
  */
-void calculate_orientation(struct accel_t* ac, struct vec3b_t* accel, struct orient_t* orient, int smooth) {
+void calculate_orientation(struct accel_t* ac, struct vec3w_t* accel, struct orient_t* orient, int smooth) {
 	float xg, yg, zg;
 	float x, y, z;
 
@@ -92,20 +92,22 @@ void calculate_orientation(struct accel_t* ac, struct vec3b_t* accel, struct ori
 	else if (z > 1.0f)		z = 1.0f;
 
 	/* if it is over 1g then it is probably accelerating and not reliable */
-	if (abs(accel->x - ac->cal_zero.x) <= ac->cal_g.x) {
+	if (abs(accel->x - ac->cal_zero.x) <= (ac->cal_g.x+10)) {
 		/* roll */
 		x = RAD_TO_DEGREE(atan2f(x, z));
-
-		orient->roll = x;
-		orient->a_roll = x;
+		if(isfinite(x)) {
+			orient->roll = x;
+			orient->a_roll = x;
+		}
 	}
 
-	if (abs(accel->y - ac->cal_zero.y) <= ac->cal_g.y) {
+	if (abs(accel->y - ac->cal_zero.y) <= (ac->cal_g.y+10)) {
 		/* pitch */
 		y = RAD_TO_DEGREE(atan2f(y, z));
-
-		orient->pitch = y;
-		orient->a_pitch = y;
+		if(isfinite(y)) {
+			orient->pitch = y;
+			orient->a_pitch = y;
+		}
 	}
 
 	/* smooth the angles if enabled */
@@ -120,10 +122,10 @@ void calculate_orientation(struct accel_t* ac, struct vec3b_t* accel, struct ori
  *	@brief Calculate the gravity forces on each axis.
  *
  *	@param ac			An accelerometer (accel_t) structure.
- *	@param accel		[in] Pointer to a vec3b_t structure that holds the raw acceleration data.
+ *	@param accel		[in] Pointer to a vec3w_t structure that holds the raw acceleration data.
  *	@param gforce		[out] Pointer to a gforce_t structure that will hold the gravity force data.
  */
-void calculate_gforce(struct accel_t* ac, struct vec3b_t* accel, struct gforce_t* gforce) {
+void calculate_gforce(struct accel_t* ac, struct vec3w_t* accel, struct gforce_t* gforce) {
 	float xg, yg, zg;
 
 	/* find out how much it has to move to be 1g */

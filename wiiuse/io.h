@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 void wiiuse_handshake(struct wiimote_t* wm,ubyte *data,uword len);
+void wiiuse_handshake_expansion_start(struct wiimote_t *wm);
 void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len);
 void wiiuse_disable_expansion(struct wiimote_t *wm);
 

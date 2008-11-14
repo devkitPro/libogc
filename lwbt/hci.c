@@ -1345,7 +1345,7 @@ static void hci_cc_info_param(u8_t ocf,struct pbuf *p)
 		case HCI_READ_BD_ADDR:
 			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
 				bdaddr = (void*)((u8_t*)p->payload+1);
-				LOG("hci_cc_info_param(HCI_READ_BD_ADDR): %02x:%02x:%02x:%02x:%02x:%02x",bdaddr.addr[0],bdaddr.addr[1],bdaddr.addr[2],bdaddr.addr[3],bdaddr.addr[4],bdaddr.addr[5]);
+				LOG("hci_cc_info_param(HCI_READ_BD_ADDR): %02x:%02x:%02x:%02x:%02x:%02x",bdaddr->addr[0],bdaddr->addr[1],bdaddr->addr[2],bdaddr->addr[3],bdaddr->addr[4],bdaddr->addr[5]);
 				bd_addr_set(&(hci_dev->bdaddr),bdaddr);
 			}
 			break;
@@ -1442,7 +1442,7 @@ static void hci_conn_complete_evt(struct pbuf *p)
 				if((link=hci_new())==NULL) {
 					ERROR("hci_conn_complete_evt: Could not allocate memory for link. Disconnect\n");
 					hci_disconnect(bdaddr, HCI_OTHER_END_TERMINATED_CONN_LOW_RESOURCES);
-					lp_disconnect_ind(bdaddr);
+					lp_disconnect_ind(bdaddr,HCI_CONN_TERMINATED_BY_LOCAL_HOST);
 					break;
 				}
 				bd_addr_set(&(link->bdaddr),bdaddr);
@@ -1554,7 +1554,7 @@ void hci_event_handler(struct pbuf *p)
 						if(link->connhdl==le16toh(*((u16_t*)(((u8_t*)p->payload)+1)))) break;
 					}
 					if(link!=NULL) {
-						lp_disconnect_ind(&(link->bdaddr));
+						lp_disconnect_ind(&(link->bdaddr),((u8_t*)p->payload)[3]);
 						hci_close(link);
 					}
 					break;
@@ -1651,7 +1651,7 @@ void hci_event_handler(struct pbuf *p)
 			HCI_EVENT_LINK_KEY_NOT(hci_dev, bdaddr, ((u8_t *)p->payload) + 6, ret); /* Notify application.*/
 			break;
 		default:
-			//LOG("hci_event_input: Undefined event code 0x%x\n", evhdr->code);
+			LOG("hci_event_input: Undefined event code 0x%x\n", evhdr->code);
 			break;
 	}
 }

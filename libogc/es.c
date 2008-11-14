@@ -80,7 +80,7 @@ distribution.
 #define IOCTL_ES_SETUID					0x21
 #define IOCTL_ES_DELETETITLECONTENT		0x22
 #define IOCTL_ES_SEEKCONTENT			0x23
-//#define IOCTL_ES_OPENTITLECONTENT		0x24
+#define IOCTL_ES_OPENTITLECONTENT		0x24
 //#define IOCTL_ES_LAUNCHBC				0x25
 //#define IOCTL_ES_EXPORTTITLEINIT		0x26
 //#define IOCTL_ES_EXPORTCONTENTBEGIN	0x27
@@ -663,6 +663,12 @@ s32 ES_OpenContent(u16 index)
 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_OPENCONTENT, "i:", index);
 }
 
+s32 ES_OpenTitleContent(u64 titleID, u16 index)
+{
+	if(__es_fd<0) return ES_ENOTINIT;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_OPENTITLECONTENT, "qi:", titleID, index);
+}
+
 s32 ES_ReadContent(s32 cfd, u8 *data, u32 data_size)
 {
 	if(__es_fd<0) return ES_ENOTINIT;
@@ -906,7 +912,11 @@ static int _ES_open_r (struct _reent *r, void *fileStruct, const char *path, int
 	}
 
 	// open the content
-	file->cfd = ES_OpenContent(file->content.index);
+	if(file->titleID == 0)
+		file->cfd = ES_OpenContent(file->content.index);
+	else
+		file->cfd = ES_OpenTitleContent(file->titleID, file->content.index);
+
 	if(file->cfd<0) {
 		r->_errno = EIO;
 		return -1;

@@ -34,7 +34,7 @@ static void nunchuk_pressed_buttons(struct nunchuk_t* nc, ubyte now) {
 
 int nunchuk_handshake(struct wiimote_t *wm,struct nunchuk_t *nc,ubyte *data,uword len)
 {
-	int i;
+	//int i;
 	int offset = 0;
 
 	nc->btns = 0;
@@ -43,7 +43,7 @@ int nunchuk_handshake(struct wiimote_t *wm,struct nunchuk_t *nc,ubyte *data,uwor
 	nc->flags = &wm->flags;
 	nc->accel_calib = wm->accel_calib;
 
-	for(i=0;i<len;i++) data[i] = (data[i]^0x17)+0x17;
+	//for(i=0;i<len;i++) data[i] = (data[i]^0x17)+0x17;
 	if(data[offset]==0xff) {
 		if(data[offset+16]==0xff) {
 			wiiuse_read_data(wm,data,WM_EXP_MEM_CALIBR,EXP_HANDSHAKE_LEN,wiiuse_handshake_expansion);
@@ -52,12 +52,12 @@ int nunchuk_handshake(struct wiimote_t *wm,struct nunchuk_t *nc,ubyte *data,uwor
 		offset += 16;
 	}
 
-	nc->accel_calib.cal_zero.x = data[offset + 0];
-	nc->accel_calib.cal_zero.y = data[offset + 1];
-	nc->accel_calib.cal_zero.z = data[offset + 2];
-	nc->accel_calib.cal_g.x = data[offset + 4];
-	nc->accel_calib.cal_g.y = data[offset + 5];
-	nc->accel_calib.cal_g.z = data[offset + 6];
+	nc->accel_calib.cal_zero.x = (data[offset + 0]<<2)|((data[offset + 3]>>4)&3);
+	nc->accel_calib.cal_zero.y = (data[offset + 1]<<2)|((data[offset + 3]>>2)&3);
+	nc->accel_calib.cal_zero.z = (data[offset + 2]<<2)|(data[offset + 3]&3);
+	nc->accel_calib.cal_g.x = (data[offset + 4]<<2)|((data[offset + 7]>>4)&3);
+	nc->accel_calib.cal_g.y = (data[offset + 5]<<2)|((data[offset + 7]>>2)&3);
+	nc->accel_calib.cal_g.z = (data[offset + 6]<<2)|(data[offset + 7]&3);
 	nc->js.max.x = data[offset + 8];
 	nc->js.min.x = data[offset + 9];
 	nc->js.center.x = data[offset + 10];
@@ -89,12 +89,13 @@ void nunchuk_disconnected(struct nunchuk_t* nc)
  *	@param msg		The message specified in the event packet.
  */
 void nunchuk_event(struct nunchuk_t* nc, ubyte* msg) {
-	int i;
+	//int i;
 
 	/* decrypt data */
+	/*
 	for (i = 0; i < 6; ++i)
 		msg[i] = (msg[i] ^ 0x17) + 0x17;
-
+	*/
 	/* get button states */
 	nunchuk_pressed_buttons(nc, msg[5]);
 
@@ -105,9 +106,9 @@ void nunchuk_event(struct nunchuk_t* nc, ubyte* msg) {
 	calc_joystick_state(&nc->js, nc->js.pos.x, nc->js.pos.y);
 #endif
 	/* calculate orientation */
-	nc->accel.x = msg[2];
-	nc->accel.y = msg[3];
-	nc->accel.z = msg[4];
+	nc->accel.x = (msg[2]<<2) + ((msg[5]>>2)&3);
+	nc->accel.y = (msg[3]<<2) + ((msg[5]>>4)&3);
+	nc->accel.z = (msg[4]<<2) + ((msg[5]>>6)&3);
 #ifndef GEKKO
 	calculate_orientation(&nc->accel_calib, &nc->accel, &nc->orient, NUNCHUK_IS_FLAG_SET(nc, WIIUSE_SMOOTHING));
 	calculate_gforce(&nc->accel_calib, &nc->accel, &nc->gforce);

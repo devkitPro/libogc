@@ -44,12 +44,7 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 	}
 	wm->cmd_tail = NULL;
 	
-	if(wm->event_cb) {
-		if(err==HIDP_DISCONN_REQ)
-			wm->event_cb(wm,WIIUSE_DISCONNECT);
-		else
-			wm->event_cb(wm,WIIUSE_UNEXPECTED_DISCONNECT);
-	}
+	if(wm->event_cb) wm->event_cb(wm,WIIUSE_DISCONNECT);
 	return ERR_OK;
 }
 

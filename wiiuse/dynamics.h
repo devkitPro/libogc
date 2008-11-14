@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/dynamics.h,v 1.1 2008-05-08 09:42:14 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/dynamics.h,v 1.2 2008-11-14 13:34:57 shagkur Exp $
  *
  */
 
@@ -44,8 +44,8 @@
 extern "C" {
 #endif
 
-void calculate_orientation(struct accel_t* ac, struct vec3b_t* accel, struct orient_t* orient, int smooth);
-void calculate_gforce(struct accel_t* ac, struct vec3b_t* accel, struct gforce_t* gforce);
+void calculate_orientation(struct accel_t* ac, struct vec3w_t* accel, struct orient_t* orient, int smooth);
+void calculate_gforce(struct accel_t* ac, struct vec3w_t* accel, struct gforce_t* gforce);
 void calc_joystick_state(struct joystick_t* js, float x, float y);
 void apply_smoothing(struct accel_t* ac, struct orient_t* orient, int type);
 

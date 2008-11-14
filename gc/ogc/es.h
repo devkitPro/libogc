@@ -237,6 +237,7 @@ s32 ES_AddTitleFinish(void);
 s32 ES_AddTitleCancel(void);
 s32 ES_ImportBoot(const signed_blob *tik, u32 tik_size,const signed_blob *tik_certs, u32 tik_certs_size,const signed_blob *tmd, u32 tmd_size,const signed_blob *tmd_certs, u32 tmd_certs_size,const u8 *content, u32 content_size);
 s32 ES_OpenContent(u16 index);
+s32 ES_OpenTitleContent(u64 titleID, u16 index);
 s32 ES_ReadContent(s32 cfd, u8 *data, u32 data_size);
 s32 ES_SeekContent(s32 cfd, s32 where, s32 whence);
 s32 ES_CloseContent(s32 cfd);

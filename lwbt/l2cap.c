@@ -28,6 +28,9 @@ struct l2cap_sig *l2cap_tmp_sig = NULL;
 struct l2cap_seg *l2cap_insegs = NULL;
 struct l2cap_seg *l2cap_tmp_inseg = NULL;
 
+/* Global Baseband disconnect callback. */
+static void (*l2cap_disconnect_bb_cb)(struct bd_addr *bdaddr,u8_t reason) = NULL;
+
 /* Forward declarations */
 static u16_t l2cap_cid_alloc(void);
 
@@ -57,6 +60,7 @@ void l2cap_init()
 	l2cap_tmp_sig = NULL;
 	l2cap_insegs = NULL;
 	l2cap_tmp_inseg = NULL;
+	l2cap_disconnect_bb_cb = NULL;
 
 	/* Initialize the signal identifier (0x00 shall never be used) */
 	sigid_nxt = 0x00;
@@ -94,7 +98,7 @@ void l2cap_tmr()
 							pcb->state = L2CAP_CLOSED;
 							/* Indicate disconnect to upper layer */
 							LOG("l2cap_tmr: Max number of retransmissions (rtx) has expired\n");
-							L2CA_ACTION_DISCONN_IND(pcb,L2CAP_DISCONN_R_RTX,ret);
+							L2CA_ACTION_DISCONN_IND(pcb,ERR_OK,ret);
 						} else {
 							--sig->nrtx;
 							/* Indicate timeout to upper layer */
@@ -114,7 +118,7 @@ void l2cap_tmr()
 							pcb->state = L2CAP_CLOSED;
 							/* Indicate disconnect to upper layer */
 							LOG("l2cap_tmr: Max number of retransmissions (ertx) has expired\n");
-							L2CA_ACTION_DISCONN_IND(pcb,L2CAP_DISCONN_R_ERTX,ret);
+							L2CA_ACTION_DISCONN_IND(pcb,ERR_OK,ret);
 						} else {
 							--sig->nrtx;
 							/* Indicate timeout to upper layer */
@@ -689,7 +693,7 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 						/* Give upper layer indication */
 						pcb->state = L2CAP_CLOSED;
 						LOG("l2cap_process_sig: Disconnection request\n");
-						L2CA_ACTION_DISCONN_IND(pcb,L2CAP_DISCONN_R_REQ,ret);  
+						L2CA_ACTION_DISCONN_IND(pcb,ERR_OK,ret);  
 					}	  
 				}
 				break;
@@ -1411,7 +1415,7 @@ void lp_connect_ind(struct bd_addr *bdaddr)
  * timeout event..
  */
 /*-----------------------------------------------------------------------------------*/
-void lp_disconnect_ind(struct bd_addr *bdaddr)
+void lp_disconnect_ind(struct bd_addr *bdaddr,u8_t reason)
 {
 	struct l2cap_pcb *pcb, *tpcb;
 	err_t ret;
@@ -1423,10 +1427,26 @@ void lp_disconnect_ind(struct bd_addr *bdaddr)
 		if(bd_addr_cmp(&(pcb->remote_bdaddr), bdaddr)) {// && pcb->state != L2CAP_CLOSED) {
 			pcb->state = L2CAP_CLOSED;
 			LOG("lp_disconnect_ind: Notify application\n");
-			L2CA_ACTION_DISCONN_IND(pcb,L2CAP_DISCONN_R_BASE,ret);
+			L2CA_ACTION_DISCONN_IND(pcb,ERR_OK,ret);
 		}
 		pcb = tpcb;
 	}
+	if(l2cap_disconnect_bb_cb) l2cap_disconnect_bb_cb(bdaddr,reason);
+}
+
+/*-----------------------------------------------------------------------------------*/
+/* 
+ * l2cap_disconnect_bb():
+ * 
+ * Register a callback to obtain the disconnection reason from the baseband
+ */
+/*-----------------------------------------------------------------------------------*/
+void (*l2cap_disconnect_bb(void (*l2ca_disconnect_bb)(struct bd_addr *bdaddr,u8_t reason)))(struct bd_addr *bdaddr,u8_t reason)
+{
+	void (*oldcb)(struct bd_addr *bdaddr,u8_t reason) = NULL;
+	oldcb = l2cap_disconnect_bb_cb;
+	l2cap_disconnect_bb_cb = l2ca_disconnect_bb;
+	return oldcb;
 }
 
 /*-----------------------------------------------------------------------------------*/

@@ -26,7 +26,6 @@ enum {
 #define WPAD_BUTTON_DOWN						0x0400
 #define WPAD_BUTTON_UP							0x0800
 #define WPAD_BUTTON_PLUS						0x1000
-#define WPAD_BUTTON_UNKNOWN						0x8000
 											
 #define WPAD_NUNCHUK_BUTTON_Z					(0x0001<<16)
 #define WPAD_NUNCHUK_BUTTON_C					(0x0002<<16)
@@ -115,14 +114,14 @@ typedef struct _wpad_data
 	u32 btns_u;
 
 	struct ir_t ir;
-	struct vec3b_t accel;
+	struct vec3w_t accel;
 	struct orient_t orient;
 	struct gforce_t gforce;
 	struct expansion_t exp;
 } WPADData;
 
 typedef void (*WPADDataCallback)(s32 chan, const WPADData *data);
-typedef void (*WPADPowerCallback)(s32 chan);
+typedef void (*WPADShutdownCallback)(s32 chan);
 
 s32 WPAD_Init();
 s32 WPAD_ReadEvent(s32 chan, WPADData *data);
@@ -137,7 +136,8 @@ s32 WPAD_SetEventBufs(s32 chan, WPADData *bufs, u32 cnt);
 s32 WPAD_Disconnect(s32 chan);
 void WPAD_Shutdown();
 void WPAD_SetIdleTimeout(u32 seconds);
-void WPAD_SetPowerCallback(WPADPowerCallback powercb);
+void WPAD_SetPowerButtonCallback(WPADShutdownCallback cb);
+void WPAD_SetBatteryDeadCallback(WPADShutdownCallback cb);
 s32 WPAD_ScanPads();
 s32 WPAD_Rumble(s32 chan, int status);
 s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js);
@@ -148,7 +148,7 @@ u32 WPAD_ButtonsHeld(int chan);
 void WPAD_IR(int chan, struct ir_t *ir);
 void WPAD_Orientation(int chan, struct orient_t *orient);
 void WPAD_GForce(int chan, struct gforce_t *gforce);
-void WPAD_Accel(int chan, struct vec3b_t *accel);
+void WPAD_Accel(int chan, struct vec3w_t *accel);
 void WPAD_Expansion(int chan, struct expansion_t *exp);
 
 #ifdef __cplusplus

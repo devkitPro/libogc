@@ -16,7 +16,10 @@
 #include "lwp_threads.h"
 #include "ogcsys.h"
 
-#define EVENTQUEUE_LENGTH		16
+#define EVENTQUEUE_LENGTH			16
+
+#define DISCONNECT_BATTERY_DIED		0x14
+#define DISCONNECT_POWER_OFF		0x15
 
 struct _wpad_thresh{
 	s32 btns;
@@ -58,7 +61,8 @@ static s32 __wpad_disconnect(struct _wpad_cb *wpdcb);
 static void __wpad_eventCB(struct wiimote_t *wm,s32 event);
 
 static void __wpad_def_powcb(s32 chan);
-static WPADPowerCallback __wpad_powcb = __wpad_def_powcb;
+static WPADShutdownCallback __wpad_batcb = NULL;
+static WPADShutdownCallback __wpad_powcb = __wpad_def_powcb;
 
 extern void __wiiuse_sensorbar_enable(int enable);
 extern void __SYS_DoPowerCB(void);
@@ -295,7 +299,6 @@ static void __save_state(struct wiimote_t* wm) {
 static u32 __wpad_read_expansion(struct wiimote_t *wm,WPADData *data, struct _wpad_thresh *thresh)
 {
 	int state_changed = 0;
-	data->exp.type = wm->exp.type;
 	switch(data->exp.type) {
 		case EXP_NUNCHUK:
 			data->exp.nunchuk = wm->exp.nunchuk;
@@ -333,6 +336,7 @@ static void __wpad_read_wiimote(struct wiimote_t *wm, WPADData *data, s32 *idle_
 	int state_changed = 0;
 	data->err = WPAD_ERR_TRANSFER;
 	data->data_present = 0;
+	data->exp.type = wm->exp.type;
 	if(wm && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_CONNECTED)) {
 		if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_HANDSHAKE_COMPLETE)) {
 			switch(wm->event_buf[0]) {
@@ -444,7 +448,6 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			__wpads_active |= (0x01<<chan);
 			break;
 		case WIIUSE_DISCONNECT:
-		case WIIUSE_UNEXPECTED_DISCONNECT:
 			chan = wm->unid;
 			wpdcb = &__wpdcb[chan];
 			wpdcb->wm = wm;
@@ -458,14 +461,30 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			memset(&wpaddata[chan],0,sizeof(WPADData));
 			memset(wpdcb->queue_int,0,(sizeof(WPADData)*EVENTQUEUE_LENGTH));
 			__wpads_active &= ~(0x01<<chan);
-
-			if(event==WIIUSE_DISCONNECT) __wpad_powcb(chan);
 			break;
 		default:
 			break;
 	}
 }
 
+void __wpad_disconnectCB(struct bd_addr *offaddr, u8 reason)
+{
+	struct bd_addr bdaddr;
+	int i;
+
+	if(__wpads_inited == WPAD_STATE_ENABLED) {
+		for(i=0;__wpads[i] && i<WPAD_MAX_WIIMOTES && i<__wpads_registered;i++) {
+			BD_ADDR(&(bdaddr),__wpad_devs[i].bdaddr[5],__wpad_devs[i].bdaddr[4],__wpad_devs[i].bdaddr[3],__wpad_devs[i].bdaddr[2],__wpad_devs[i].bdaddr[1],__wpad_devs[i].bdaddr[0]);
+			if(bd_addr_cmp(offaddr,&bdaddr)) {
+				if(reason == DISCONNECT_BATTERY_DIED) {
+					if(__wpad_batcb) __wpad_batcb(i);		//sanity check since this pointer can be NULL.
+				} else if(reason == DISCONNECT_POWER_OFF)
+					__wpad_powcb(i);						//no sanity check because there's a default callback iff not otherwise set.
+				break;
+			}
+		}
+	}
+}
 
 s32 WPAD_Init()
 {
@@ -505,6 +524,7 @@ s32 WPAD_Init()
 		__wiiuse_sensorbar_enable(1);
 
 		BTE_Init();
+		BTE_SetDisconnectCallback(__wpad_disconnectCB);
 		BTE_InitCore(__initcore_finished);
 
 		SYS_CreateAlarm(&__wpad_timer);
@@ -821,15 +841,24 @@ s32 WPAD_SetEventBufs(s32 chan, WPADData *bufs, u32 cnt)
 	return WPAD_ERR_NONE;
 }
 
-void WPAD_SetPowerCallback(WPADPowerCallback powercb)
+void WPAD_SetPowerButtonCallback(WPADShutdownCallback cb)
 {
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	if(powercb)
-		__wpad_powcb = powercb;
+	if(cb)
+		__wpad_powcb = cb;
 	else
 		__wpad_powcb = __wpad_def_powcb;
+	_CPU_ISR_Restore(level);
+}
+
+void WPAD_SetBatteryDeadCallback(WPADShutdownCallback cb)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	__wpad_batcb = cb;
 	_CPU_ISR_Restore(level);
 }
 
@@ -996,7 +1025,7 @@ void WPAD_GForce(int chan, struct gforce_t *gforce)
 	*gforce = wpaddata[chan].gforce;
 }
 
-void WPAD_Accel(int chan, struct vec3b_t *accel)
+void WPAD_Accel(int chan, struct vec3w_t *accel)
 {
 	if(chan<0 || chan>=WPAD_MAX_WIIMOTES || accel==NULL ) return;
 	*accel = wpaddata[chan].accel;

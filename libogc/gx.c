@@ -2139,7 +2139,7 @@ void GX_SetArray(u32 attr,void *ptr,u8 stride)
 	if(attr==GX_VA_NBT) attr = GX_VA_NRM;
 	if(attr>=GX_VA_POS && attr<=GX_LITMTXARRAY) {
 		idx = attr-GX_VA_POS;
-		GX_LOAD_CP_REG((0xA0+idx),((u32)ptr)&~0x80000000);
+		GX_LOAD_CP_REG((0xA0+idx),(u32)MEM_VIRTUAL_TO_PHYSICAL(ptr));
 		GX_LOAD_CP_REG((0xB0+idx),(u32)stride);
 	}
 }
@@ -2756,6 +2756,8 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 			else wd = 0x0001;
 			if(ht>0x0001) ht = (h>>1);
 			else ht = 0x0001;
+
+			--cnt;
 		}
 		return size;
 	}

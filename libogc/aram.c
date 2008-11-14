@@ -41,7 +41,7 @@ distribution.
 
 // DSPCR bits
 #define DSPCR_DSPRESET      0x0800        // Reset DSP
-#define DSPCR_ARDMA         0x0200        // ARAM dma in progress, if set
+#define DSPCR_DSPDMA        0x0200        // ARAM dma in progress, if set
 #define DSPCR_DSPINTMSK     0x0100        // * interrupt mask   (RW)
 #define DSPCR_DSPINT        0x0080        // * interrupt active (RWC)
 #define DSPCR_ARINTMSK      0x0040
@@ -94,7 +94,7 @@ u32 AR_GetDMAStatus()
 {
 	u32 level,ret;
 	_CPU_ISR_Disable(level);
-	ret = ((_dspReg[5]&DSPCR_ARDMA)==DSPCR_ARDMA);
+	ret = ((_dspReg[5]&DSPCR_DSPDMA)==DSPCR_DSPDMA);
 	_CPU_ISR_Restore(level);
 	return ret;
 }
@@ -244,7 +244,7 @@ static __inline__ void __ARClearInterrupt()
 
 static __inline__ void __ARWaitDma()
 {
-	while(_dspReg[5]&DSPCR_ARDMA);
+	while(_dspReg[5]&DSPCR_DSPDMA);
 }
 
 static void __ARReadDMA(u32 memaddr,u32 aramaddr,u32 len)

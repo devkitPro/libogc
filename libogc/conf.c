@@ -447,6 +447,7 @@ s32 CONF_GetRegion(void)
 	if(!strcmp(buf, "US")) return CONF_REGION_US;
 	if(!strcmp(buf, "EU")) return CONF_REGION_EU;
 	if(!strcmp(buf, "KR")) return CONF_REGION_KR;
+	if(!strcmp(buf, "CN")) return CONF_REGION_CN;
 	return CONF_EBADVALUE;
 }
 
@@ -469,6 +470,7 @@ s32 CONF_GetArea(void)
 	if(!strcmp(buf, "ASI")) return CONF_AREA_ASI;
 	if(!strcmp(buf, "LTN")) return CONF_AREA_LTN;
 	if(!strcmp(buf, "SAF")) return CONF_AREA_SAF;
+	if(!strcmp(buf, "CHN")) return CONF_AREA_CHN;
 	return CONF_EBADVALUE;
 }
 

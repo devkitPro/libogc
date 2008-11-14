@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/classic.c,v 1.6 2008-05-26 19:24:53 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/classic.c,v 1.7 2008-11-14 13:34:57 shagkur Exp $
  *
  */
 
@@ -59,7 +59,7 @@ static void classic_ctrl_pressed_buttons(struct classic_ctrl_t* cc, short now);
  *	@return	Returns 1 if handshake was successful, 0 if not.
  */
 int classic_ctrl_handshake(struct wiimote_t* wm, struct classic_ctrl_t* cc, ubyte* data, uword len) {
-	int i;
+	//int i;
 	int offset = 0;
 
 	cc->btns = 0;
@@ -67,9 +67,10 @@ int classic_ctrl_handshake(struct wiimote_t* wm, struct classic_ctrl_t* cc, ubyt
 	cc->btns_released = 0;
 
 	/* decrypt data */
+	/*
 	for (i = 0; i < len; ++i)
 		data[i] = (data[i] ^ 0x17) + 0x17;
-
+	*/
 	if (data[offset] == 0xFF) {
 		/*
 		 *	Sometimes the data returned here is not correct.
@@ -137,12 +138,13 @@ void classic_ctrl_disconnected(struct classic_ctrl_t* cc)
  *	@param msg		The message specified in the event packet.
  */
 void classic_ctrl_event(struct classic_ctrl_t* cc, ubyte* msg) {
-	int i;
+	//int i;
 
 	/* decrypt data */
+	/*
 	for (i = 0; i < 6; ++i)
 		msg[i] = (msg[i] ^ 0x17) + 0x17;
-
+	*/
 	classic_ctrl_pressed_buttons(cc, BIG_ENDIAN_SHORT(*(short*)(msg + 4)));
 
 	/* left/right buttons */
