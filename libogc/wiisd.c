@@ -41,6 +41,8 @@
 #include <gcutil.h>
 #include <ogc/ipc.h>
 #include <unistd.h>
+#include <ogc/disc_io.h>
+#include <sdcard/wiisd_io.h>
 
 #include <asm.h>
 #include <processor.h>
@@ -537,11 +539,11 @@ bool sdio_Shutdown()
 	return true;
 }
  
-bool sdio_ReadSectors(u32 sector,u32 numSectors,void* buffer)
+bool sdio_ReadSectors(sec_t sector, sec_t numSectors,void* buffer)
 {
 	s32 ret;
 	u8 *rbuf,*ptr;
-	u32 blk_off;
+	sec_t blk_off;
  
 	if(buffer==NULL) return false;
  
@@ -580,7 +582,7 @@ bool sdio_ReadSectors(u32 sector,u32 numSectors,void* buffer)
 	return (ret>=0);
 }
  
-bool sdio_WriteSectors(u32 sector,u32 numSectors,const void* buffer)
+bool sdio_WriteSectors(sec_t sector, sec_t numSectors,const void* buffer)
 {
 	s32 ret;
 	u8 *wbuf,*ptr;
@@ -638,4 +640,16 @@ bool sdio_IsInitialized()
 	return ((__sdio_getstatus() & SDIO_STATUS_CARD_INITIALIZED) ==
 			SDIO_STATUS_CARD_INITIALIZED);
 }
+
+const DISC_INTERFACE io_wiisd = {
+	DEVICE_TYPE_WII_SD,
+	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_WII_SD,
+	(FN_MEDIUM_STARTUP)&sdio_Startup,
+	(FN_MEDIUM_ISINSERTED)&sdio_IsInserted,
+	(FN_MEDIUM_READSECTORS)&sdio_ReadSectors,
+	(FN_MEDIUM_WRITESECTORS)&sdio_WriteSectors,
+	(FN_MEDIUM_CLEARSTATUS)&sdio_ClearStatus,
+	(FN_MEDIUM_SHUTDOWN)&sdio_Shutdown
+};
+
 #endif
