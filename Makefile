@@ -47,6 +47,7 @@ export BTEDIR		:= $(BASEDIR)/lwbt
 export WIIUSEDIR	:= $(BASEDIR)/wiiuse
 export TINYSMBDIR	:= $(BASEDIR)/libtinysmb
 export LIBZDIR		:= $(BASEDIR)/libz
+export LIBASNDDIR	:= $(BASEDIR)/libasnd
 export STUBSDIR		:= $(BASEDIR)/lockstubs
 export DEPS			:=	$(BASEDIR)/deps
 export LIBS			:=	$(BASEDIR)/lib
@@ -76,6 +77,7 @@ BTELIB		:= $(LIBDIR)/libbte
 WIIUSELIB	:= $(LIBDIR)/libwiiuse
 TINYSMBLIB	:= $(LIBDIR)/libtinysmb
 ZLIB		:= $(LIBDIR)/libz
+ASNDLIB		:= $(LIBDIR)/libasnd
 STUBSLIB	:= $(LIBDIR)/libgclibstubs
 
 #---------------------------------------------------------------------------------
@@ -119,6 +121,7 @@ VPATH :=	$(LWIPDIR)				\
 			$(SDCARDDIR)			\
 			$(TINYSMBDIR)		\
 			$(LIBZDIR)		\
+			$(LIBASNDDIR)		\
 			$(STUBSDIR)
 
 
@@ -175,6 +178,9 @@ TINYSMBOBJ	:=	des.o lmhash.o smb.o
 ZLIBOBJ		:=	adler32.o compress.o crc32.o gzio.o uncompr.o \
 			deflate.o trees.o zutil.o inflate.o infback.o \
 			inftrees.o inffast.o
+
+#---------------------------------------------------------------------------------
+ASNDLIBOBJ	:=	asndlib.o
 
 #---------------------------------------------------------------------------------
 # Build rules:
@@ -264,6 +270,8 @@ $(TINYSMBLIB).a: $(TINYSMBOBJ)
 #---------------------------------------------------------------------------------
 $(ZLIB).a: $(ZLIBOBJ)
 #---------------------------------------------------------------------------------
+$(ASNDLIB).a: $(ASNDLIBOBJ)
+#---------------------------------------------------------------------------------
 $(BTELIB).a: $(BTEOBJ)
 #---------------------------------------------------------------------------------
 $(WIIUSELIB).a: $(WIIUSEOBJ)
@@ -310,7 +318,7 @@ dist: install-headers
 	@tar -cvjf libogc-$(DATESTRING).tar.bz2 include lib libogc_license.txt
 
 
-LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(MADLIB).a $(DBLIB).a $(ZLIB).a $(TINYSMBLIB).a
+LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(MADLIB).a $(DBLIB).a $(ZLIB).a $(TINYSMBLIB).a $(ASNDLIB).a
 
 ifeq ($(PLATFORM),cube)
 LIBRARIES	+=	$(BBALIB).a 
