@@ -1385,26 +1385,6 @@
 					>
 				</File>
 				<File
-					RelativePath="libogc\tdf.c"
-					>
-					<FileConfiguration
-						Name="Release|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							PreprocessorDefinitions=""
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Debug|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							PreprocessorDefinitions=""
-						/>
-					</FileConfiguration>
-				</File>
-				<File
 					RelativePath="libogc\texconv.c"
 					>
 					<FileConfiguration
@@ -1446,6 +1426,10 @@
 				</File>
 				<File
 					RelativePath="libogc\timesupp.h"
+					>
+				</File>
+				<File
+					RelativePath=".\libogc\tpl.c"
 					>
 				</File>
 				<File
@@ -3920,7 +3904,7 @@
 					>
 				</File>
 				<File
-					RelativePath="gc\ogc\tdf.h"
+					RelativePath=".\gc\ogc\tpl.h"
 					>
 				</File>
 				<File
