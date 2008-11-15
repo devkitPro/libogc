@@ -75,13 +75,10 @@ typedef struct
 
 	u32 tick_counter; // voice tick counter
 
-	u32 _pad[2];
-} t_sound_data;
-
-struct  
-{
 	ASNDVoiceCallback cb;
-} snd_callbacks[MAX_SND_VOICES];
+
+	u32 _pad;
+} t_sound_data;
 
 static dsptask_t dsp_task;
 
@@ -146,7 +143,7 @@ static void __dsp_requestcallback(dsptask_t *task)
 	}
 
 	sound_data_dma.freq=sound_data[snd_chan].freq;
-
+	sound_data_dma.cb=sound_data[snd_chan].cb;
 	if(sound_data[snd_chan].flags & VOICE_UPDATE) // new song
 	{
 		sound_data[snd_chan].flags &=~(VOICE_UPDATE | VOICE_VOLUPDATE | VOICE_PAUSE | VOICE_UPDATEADD);
@@ -198,7 +195,7 @@ static void __dsp_requestcallback(dsptask_t *task)
 
 		}
 
-		if(!snd_callbacks[snd_chan].cb && (!sound_data_dma.start_addr && !sound_data_dma.start_addr2)) sound_data[snd_chan].flags=0;
+		if(!sound_data[snd_chan].cb && (!sound_data_dma.start_addr && !sound_data_dma.start_addr2)) sound_data[snd_chan].flags=0;
 		sound_data_dma.flags=sound_data[snd_chan].flags;
 		sound_data[snd_chan]=sound_data_dma;
 	}
@@ -210,7 +207,7 @@ static void __dsp_requestcallback(dsptask_t *task)
 
 	snd_chan++;
 
-	if(!snd_callbacks[snd_chan].cb && (!sound_data[snd_chan].start_addr && !sound_data[snd_chan].start_addr2)) sound_data[snd_chan].flags=0;
+	if(!sound_data[snd_chan].cb && (!sound_data[snd_chan].start_addr && !sound_data[snd_chan].start_addr2)) sound_data[snd_chan].flags=0;
 
 	while(snd_chan<16 && !(sound_data[snd_chan].flags>>16)) snd_chan++;
 
@@ -236,7 +233,7 @@ static void __dsp_requestcallback(dsptask_t *task)
 
 	if(n<16)
 	{
-		if(!sound_data[n].start_addr2 && (sound_data[n].flags>>16) && snd_callbacks[n].cb) snd_callbacks[n].cb(n);
+		if(!sound_data[n].start_addr2 && (sound_data[n].flags>>16) && sound_data[n].cb) sound_data[n].cb(n);
 
 		if(sound_data[snd_chan].flags & VOICE_VOLUPDATE)
 		{
@@ -248,7 +245,7 @@ static void __dsp_requestcallback(dsptask_t *task)
 			sound_data[n].flags &=~(VOICE_UPDATE | VOICE_VOLUPDATE | VOICE_PAUSE | VOICE_UPDATEADD);
 		}
 
-		if(!snd_callbacks[n].cb && (!sound_data[n].start_addr && !sound_data[n].start_addr2)) sound_data[n].flags=0;
+		if(!sound_data[n].cb && (!sound_data[n].start_addr && !sound_data[n].start_addr2)) sound_data[n].flags=0;
 	}
 }
 
@@ -275,13 +272,12 @@ static void audio_dma_callback()
 	curr_audio_buf ^= 1;
 	dsp_complete = 0;
 
-	DCInvalidateRange(&sound_data_dma,sizeof(t_sound_data));
 	for(n=0;n<MAX_SND_VOICES;n++) sound_data[n].out_buf = (void *)MEM_VIRTUAL_TO_PHYSICAL((void *)audio_buf[curr_audio_buf]);
 
 	if(global_callback) global_callback();
 
 	snd_chan = 0;
-	if(!sound_data[snd_chan].start_addr2 && (sound_data[snd_chan].flags>>16) && snd_callbacks[snd_chan].cb) snd_callbacks[snd_chan].cb(snd_chan);
+	if(!sound_data[snd_chan].start_addr2 && (sound_data[snd_chan].flags>>16) && sound_data[snd_chan].cb) sound_data[snd_chan].cb(snd_chan);
 
 	if(sound_data[snd_chan].flags & VOICE_VOLUPDATE)
 	{
@@ -319,7 +315,7 @@ static void audio_dma_callback()
 		}
 
 	}
-	if(!snd_callbacks[snd_chan].cb && (!sound_data[snd_chan].start_addr && !sound_data[snd_chan].start_addr2)) sound_data[snd_chan].flags=0;
+	if(!sound_data[snd_chan].cb && (!sound_data[snd_chan].start_addr && !sound_data[snd_chan].start_addr2)) sound_data[snd_chan].flags=0;
 
 	sound_data_dma=sound_data[snd_chan];
 	DCFlushRange(&sound_data_dma, sizeof(t_sound_data));
@@ -335,7 +331,7 @@ static void audio_dma_callback()
 
 	if(n<16)
 	{
-		if(!sound_data[n].start_addr2 && (sound_data[n].flags>>16) && snd_callbacks[n].cb) snd_callbacks[n].cb(n);
+		if(!sound_data[n].start_addr2 && (sound_data[n].flags>>16) && sound_data[n].cb) sound_data[n].cb(n);
 
 		if(sound_data[n].flags & (VOICE_VOLUPDATE | VOICE_UPDATEADD))
 		{
@@ -347,7 +343,7 @@ static void audio_dma_callback()
 			sound_data[n].flags &=~(VOICE_UPDATE | VOICE_VOLUPDATE| VOICE_PAUSE | VOICE_UPDATEADD);
 		}
 
-		if(!snd_callbacks[n].cb && (!sound_data[n].start_addr && !sound_data[n].start_addr2)) sound_data[n].flags=0;
+		if(!sound_data[n].cb && (!sound_data[n].start_addr && !sound_data[n].start_addr2)) sound_data[n].flags=0;
 	}
 }
 
@@ -456,7 +452,7 @@ s32 ASND_SetVoice(s32 voice, s32 format, s32 pitch,s32 delay, void *snd, s32 siz
 	sound_data[voice].flags=format;
 	sound_data[voice].tick_counter=0;
 
-	snd_callbacks[voice].cb = callback;
+	sound_data[voice].cb = callback;
 	_CPU_ISR_Restore(level);
 
 	return SND_OK;
@@ -524,7 +520,7 @@ s32 ASND_SetInfiniteVoice(s32 voice, s32 format, s32 pitch,s32 delay, void *snd,
 	sound_data[voice].flags=format;
 	sound_data[voice].tick_counter=0;
 
-	snd_callbacks[voice].cb=NULL;
+	sound_data[voice].cb=NULL;
 	_CPU_ISR_Restore(level);
 
 	return SND_OK;
