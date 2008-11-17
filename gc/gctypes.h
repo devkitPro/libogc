@@ -73,6 +73,19 @@ typedef unsigned int BOOL;
 #define NULL			0                        ///< Pointer to 0
 #endif
 /*+----------------------------------------------------------------------------------------------+*/
+#ifndef LITTLE_ENDIAN
+#define LITTLE_ENDIAN  3412
+#endif /* LITTLE_ENDIAN */
+/*+----------------------------------------------------------------------------------------------+*/
+#ifndef BIG_ENDIAN
+#define BIG_ENDIAN     1234
+#endif /* BIGE_ENDIAN */
+/*+----------------------------------------------------------------------------------------------+*/
+#ifndef BYTE_ORDER
+#define BYTE_ORDER     BIG_ENDIAN
+#endif /* BYTE_ORDER */
+/*+----------------------------------------------------------------------------------------------+*/
+
 
 //!	argv structure
 /*!	\struct __argv
