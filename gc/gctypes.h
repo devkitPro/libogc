@@ -11,13 +11,6 @@
    extern "C" {
 #endif /* __cplusplus */
 
-// bool is a standard type in cplusplus, but not in c.
-#ifndef __cplusplus
-/** C++ compatible bool for C
-
-*/
-typedef enum { false, true } bool;
-#endif
 /*+----------------------------------------------------------------------------------------------+*/
 typedef unsigned char u8;									///< 8bit unsigned integer
 typedef unsigned short u16;								///< 16bit unsigned integer
@@ -51,6 +44,16 @@ typedef double f64;
 typedef volatile float vf32;
 typedef volatile double vf64;
 /*+----------------------------------------------------------------------------------------------+*/
+
+// bool is a standard type in cplusplus, but not in c.
+#ifndef __cplusplus
+/** C++ compatible bool for C
+
+*/
+typedef u8 bool;
+enum { false, true };
+#endif
+
 typedef unsigned int BOOL;
 /*+----------------------------------------------------------------------------------------------+*/
 // alias type typedefs
