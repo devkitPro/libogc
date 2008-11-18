@@ -196,7 +196,7 @@ static void __dsp_requestcallback(dsptask_t *task)
 		}
 
 		if(!sound_data[snd_chan].cb && (!sound_data_dma.start_addr && !sound_data_dma.start_addr2)) sound_data[snd_chan].flags=0;
-		sound_data_dma.flags=sound_data[snd_chan].flags;
+		sound_data_dma.flags=sound_data[snd_chan].flags & ~(VOICE_UPDATE | VOICE_VOLUPDATE | VOICE_UPDATEADD);
 		sound_data[snd_chan]=sound_data_dma;
 	}
 
@@ -388,6 +388,19 @@ void ASND_Init()
 		curr_audio_buf ^= 1;
 	}
 	_CPU_ISR_Restore(level);
+}
+/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
+void ASND_End()
+{
+   if(asnd_inited) {
+       AUDIO_StopDMA();
+       DSP_DI_HANDLER=1;
+       usleep(100);
+       AUDIO_RegisterDMACallback(NULL);
+       asnd_inited=0;
+       DSP_DI_HANDLER=1;
+   }
 }
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
