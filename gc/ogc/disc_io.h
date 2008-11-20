@@ -30,8 +30,8 @@
 #ifndef OGC_DISC_IO_INCLUDE
 #define OGC_DISC_IO_INCLUDE
 
-#include "../gctypes.h"
-#include <stdint.h>
+#include <stdint.h>#include <gctypes.h>
+
 
 #define FEATURE_MEDIUM_CANREAD      0x00000001
 #define FEATURE_MEDIUM_CANWRITE     0x00000002

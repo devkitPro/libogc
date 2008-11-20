@@ -63,7 +63,7 @@ s32 USBStorage_Write(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, 
 
 #define DEVICE_TYPE_WII_USB (('W'<<24)|('U'<<16)|('S'<<8)|'B')
 
-extern const DISC_INTERFACE io_usbstorage;
+extern const DISC_INTERFACE __io_usbstorage;
 
 #ifdef __cplusplus
    }

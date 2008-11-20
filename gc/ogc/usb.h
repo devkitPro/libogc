@@ -157,6 +157,7 @@ s32 USB_GetConfiguration(s32 fd, u8 *configuration);
 s32 USB_SetConfiguration(s32 fd, u8 configuration);
 s32 USB_SetAlternativeInterface(s32 fd, u8 interface, u8 alternateSetting);
 s32 USB_ClearHalt(s32 fd, u8 endpointAddress);
+s32 USB_GetDeviceList(const char *devpath,void *descr_buffer,u8 num_descr,u8 b0,u8 *cnt_descr);
 
 #ifdef __cplusplus
    }
