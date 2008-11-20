@@ -34,13 +34,12 @@
 #ifndef __GCSD_H__
 #define __GCSD_H__
 
-#include "../gccore.h"
-#include "../ogc/disc_io.h"
+#include <gccore.h>
+#include <ogc/disc_io.h>
 
-#define DEVICE_TYPE_GC_SDA (('G'<<24)|('C'<<16)|('_'<<8)|'A')
-#define DEVICE_TYPE_GC_SDB (('G'<<24)|('C'<<16)|('_'<<8)|'B')
+#define DEVICE_TYPE_GC_SD	(('G'<<24)|('C'<<16)|('S'<<8)|'D')
 
-extern const DISC_INTERFACE io_gcsda;
-extern const DISC_INTERFACE io_gcsdb;
+extern const DISC_INTERFACE __io_gcsda;
+extern const DISC_INTERFACE __io_gcsdb;
 
 #endif

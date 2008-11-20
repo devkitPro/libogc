@@ -34,19 +34,11 @@
 #ifndef __WIISD_IO_H__
 #define __WIISD_IO_H__
 
-#include "gctypes.h"
-#include "../ogc/disc_io.h"
+#include <gctypes.h>
+#include <ogc/disc_io.h>
 
-bool sdio_Startup();
-bool sdio_IsInserted();
-bool sdio_IsInitialized();
-bool sdio_ReadSectors(u32 sector,u32 numSectors,void* buffer);
-bool sdio_WriteSectors(u32 sector,u32 numSectors,const void* buffer);
-bool sdio_ClearStatus();
-bool sdio_Shutdown();
+#define DEVICE_TYPE_WII_SD (('W'<<24)|('I'<<16)|('S'<<8)|'D')
 
-#define DEVICE_TYPE_WII_SD (('W'<<24)|('_'<<16)|('S'<<8)|'D')
-
-extern const DISC_INTERFACE io_wiisd;
+extern const DISC_INTERFACE __io_wiisd;
 
 #endif
