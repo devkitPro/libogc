@@ -35,9 +35,11 @@ distribution.
 #include <ogc/cond.h>
 #include <errno.h>
 #include <lwp_heap.h>
+#include <malloc.h>
 
 #include "asm.h"
 #include "processor.h"
+#include "disc_io.h"
 
 #define ROUNDDOWN32(v)				(((u32)(v)-0x1f)&~0x1f)
 
@@ -75,6 +77,8 @@ distribution.
 #define USBSTORAGE_CYCLE_RETRIES	3
 
 #define MAX_TRANSFER_SIZE			4096
+
+#define DEVLIST_MAXSIZE    8
 
 static heap_cntrl __heap;
 static u8 __heap_created = 0;
@@ -682,5 +686,186 @@ s32 USBStorage_Suspend(usbstorage_handle *dev)
 	return USBSTORAGE_OK;
 
 }
+
+/*
+The following is for implementing a DISC_INTERFACE 
+as used by libfat
+*/
+
+static usbstorage_handle __usbfd;
+static u8 __lun = 0;
+static u8 __mounted = 0;
+static u16 __vid = 0;
+static u16 __pid = 0;
+
+static bool __usbstorage_IsInserted(void);
+
+static bool __usbstorage_Startup(void)
+{
+       USB_Initialize();
+       USBStorage_Initialize();
+   /*
+   memset(&__usbfd, 0, sizeof(__usbfd));
+   __lun = 0;
+   __mounted = 0;
+   */
+
+   return __usbstorage_IsInserted();
+}
+
+static bool __usbstorage_IsInserted(void)
+{
+   u8 *buffer;
+   u8 dummy;
+   u8 i, j;
+   u16 vid, pid;
+   s32 maxLun;
+   s32 retval;
+
+   if(__mounted == 1)
+       return true;
+
+   buffer = memalign(32, DEVLIST_MAXSIZE << 3);
+   if(buffer == NULL)
+       return false;
+   memset(buffer, 0, DEVLIST_MAXSIZE << 3);
+
+   if(USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, 0, &dummy) < 0)
+   {
+       if(__vid!=0 || __pid!=0)USBStorage_Close(&__usbfd);
+       memset(&__usbfd, 0, sizeof(__usbfd));
+       __lun = 0;
+       __vid = 0;
+       __pid = 0;
+
+       free(buffer);
+       return false;
+   }
+
+  DCFlushRange(buffer,  DEVLIST_MAXSIZE << 3);
+   if(__vid!=0 || __pid!=0)
+   {
+       for(i = 0; i < DEVLIST_MAXSIZE; i++)
+       {
+           memcpy(&vid, (buffer + (i << 3) + 4), 2);
+           memcpy(&pid, (buffer + (i << 3) + 6), 2);
+           if(vid != 0 || pid != 0)
+           {
+
+               if( (vid == __vid) && (pid == __pid))
+               {
+                   __mounted = 1;
+                   free(buffer);
+                   usleep(50); // I don't know why I have to wait but it's needed
+                   return true;
+               }
+           }
+       }
+       USBStorage_Close(&__usbfd);
+   }
+   memset(&__usbfd, 0, sizeof(__usbfd));
+   __lun = 0;
+   __vid = 0;
+   __pid = 0;
+
+   for(i = 0; i < DEVLIST_MAXSIZE; i++)
+   {
+       memcpy(&vid, (buffer + (i << 3) + 4), 2);
+       memcpy(&pid, (buffer + (i << 3) + 6), 2);
+       if(vid == 0 || pid == 0)
+           continue;
+
+       if(USBStorage_Open(&__usbfd, "oh0", vid, pid) < 0)
+           continue;
+
+       maxLun = USBStorage_GetMaxLUN(&__usbfd);
+       if(maxLun == USBSTORAGE_ETIMEDOUT)
+           break;
+
+       for(j = 0; j < maxLun; j++)
+       {
+           retval = USBStorage_MountLUN(&__usbfd, j);
+           if(retval == USBSTORAGE_ETIMEDOUT)
+           {
+               USBStorage_Reset(&__usbfd);
+               //USBStorage_Close(&__usbfd); //probably this fix the problem with usb-ethernet when you call fatinit before initialize network (not ure)
+               break;
+           }
+
+           if(retval < 0)
+               continue;
+
+           __mounted = 1;
+           __lun = j;
+           __vid = vid;
+           __pid = pid;
+           i = DEVLIST_MAXSIZE;
+           break;
+       }
+   }
+   free(buffer);
+   if(__mounted == 1)
+       return true;
+   return false;
+}
+
+static bool __usbstorage_ReadSectors(u32 sector, u32 numSectors, void *buffer)
+{
+   s32 retval;
+
+   if(__mounted != 1)
+       return false;
+
+   retval = USBStorage_Read(&__usbfd, __lun, sector, numSectors, buffer);
+   if(retval == USBSTORAGE_ETIMEDOUT)
+   {
+       __mounted = 0;
+       USBStorage_Close(&__usbfd);
+   }
+   if(retval < 0)
+       return false;
+   return true;
+}
+
+static bool __usbstorage_WriteSectors(u32 sector, u32 numSectors, const void *buffer)
+{
+   s32 retval;
+
+   if(__mounted != 1)
+       return false;
+
+   retval = USBStorage_Write(&__usbfd, __lun, sector, numSectors, buffer);
+   if(retval == USBSTORAGE_ETIMEDOUT)
+   {
+       __mounted = 0;
+       USBStorage_Close(&__usbfd);
+   }
+   if(retval < 0)
+       return false;
+   return true;
+}
+
+static bool __usbstorage_ClearStatus(void)
+{
+   return true;
+}
+
+static bool __usbstorage_Shutdown(void)
+{
+   //if(__mounted == 1) USBStorage_Close(&__usbfd);
+   __mounted = 0;
+   return true;
+}
+
+const DISC_INTERFACE io_usbstorage = {
+   DEVICE_TYPE_WII_USB,
+   FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_WII_USB,
+   (FN_MEDIUM_STARTUP)&__usbstorage_Startup,
+   (FN_MEDIUM_ISINSERTED)&__usbstorage_IsInserted,
+   (FN_MEDIUM_READSECTORS)&__usbstorage_ReadSectors,
+   (FN_MEDIUM_WRITESECTORS)&__usbstorage_WriteSectors,
+   (FN_MEDIUM_CLEARSTATUS)&__usbstorage_ClearStatus,
+   (FN_MEDIUM_SHUTDOWN)&__usbstorage_Shutdown
+};
 
 #endif /* HW_RVL */

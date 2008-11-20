@@ -9,6 +9,7 @@
 
 #include <gctypes.h>
 #include <ogc/cond.h>
+#include <ogc/disc_io.h>
 
 #define	USBSTORAGE_OK			0
 #define	USBSTORAGE_ENOINTERFACE		-10000
@@ -59,6 +60,10 @@ s32 USBStorage_Suspend(usbstorage_handle *dev);
 s32 USBStorage_ReadCapacity(usbstorage_handle *dev, u8 lun, u32 *sector_size, u32 *n_sectors);
 s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u8 *buffer);
 s32 USBStorage_Write(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, const u8 *buffer);
+
+#define DEVICE_TYPE_WII_USB (('W'<<24)|('U'<<16)|('S'<<8)|'B')
+
+extern const DISC_INTERFACE io_usbstorage;
 
 #ifdef __cplusplus
    }
