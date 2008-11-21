@@ -164,7 +164,7 @@ static bool __gcsdb_shutdown(void)
 	return __gcsd_shutdown(1);
 }
 
-const DISC_INTERFACE io_gcsda = {
+const DISC_INTERFACE __io_gcsda = {
 	DEVICE_TYPE_GC_SD,
 	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_GAMECUBE_SLOTA,
 	(FN_MEDIUM_STARTUP)&__gcsda_startup,
@@ -174,7 +174,7 @@ const DISC_INTERFACE io_gcsda = {
 	(FN_MEDIUM_CLEARSTATUS)&__gcsda_clearStatus,
 	(FN_MEDIUM_SHUTDOWN)&__gcsda_shutdown
 } ;
-const DISC_INTERFACE io_gcsdb = {
+const DISC_INTERFACE __io_gcsdb = {
 	DEVICE_TYPE_GC_SD,
 	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_GAMECUBE_SLOTB,
 	(FN_MEDIUM_STARTUP)&__gcsdb_startup,
