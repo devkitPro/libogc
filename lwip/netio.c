@@ -10,8 +10,8 @@ extern int errno;
 #include "network.h"
 int netio_open(struct _reent *r, void *fileStruct, const char *path,int flags,int mode);
 int netio_close(struct _reent *r,int fd);
-int netio_write(struct _reent *r,int fd,const char *ptr,int len);
-int netio_read(struct _reent *r,int fd,char *ptr,int len);
+int netio_write(struct _reent *r,int fd,const char *ptr,size_t len);
+int netio_read(struct _reent *r,int fd,char *ptr,size_t len);
 
 //---------------------------------------------------------------------------------
 const devoptab_t dotab_stdnet = {
@@ -78,7 +78,7 @@ int netio_close(struct _reent *r,int fd)
 	return 0;
 }
 
-int netio_write(struct _reent *r,int fd,const char *ptr,int len)
+int netio_write(struct _reent *r,int fd,const char *ptr,size_t len)
 {
 	int ret;
 
@@ -89,7 +89,7 @@ int netio_write(struct _reent *r,int fd,const char *ptr,int len)
 	return ret;
 }
 
-int netio_read(struct _reent *r,int fd,char *ptr,int len)
+int netio_read(struct _reent *r,int fd,char *ptr,size_t len)
 {
 	int ret;
 

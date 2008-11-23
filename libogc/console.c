@@ -432,7 +432,7 @@ static int __console_parse_escsequence(char *pchr)
 	return(i);
 }
 
-int __console_write(struct _reent *r,int fd,const char *ptr,int len)
+int __console_write(struct _reent *r,int fd,const char *ptr,size_t len)
 {
 	int i = 0;
 	char *tmp = (char*)ptr;
