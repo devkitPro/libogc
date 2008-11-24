@@ -947,7 +947,7 @@ static int _ES_close_r (struct _reent *r, int fd) {
 	return 0;
 }
 
-static int _ES_read_r (struct _reent *r, int fd, char *ptr, int len) {
+static int _ES_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 	es_fd *file = (es_fd *) fd;
 	int read = 0;
 	int res;
@@ -1003,7 +1003,7 @@ static int _ES_read_r (struct _reent *r, int fd, char *ptr, int len) {
 	return read;
 }
 
-static int _ES_seek_r (struct _reent *r, int fd, int where, int whence) {
+static off_t _ES_seek_r (struct _reent *r, int fd, off_t where, int whence) {
 	es_fd *file = (es_fd *) fd;
 	s32 res;
 
