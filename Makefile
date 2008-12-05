@@ -13,7 +13,7 @@ endif
 export PATH	:=	$(DEVKITPPC)/bin:$(PATH)
 
 export LIBOGC_MAJOR	:= 1
-export LIBOGC_MINOR	:= 6
+export LIBOGC_MINOR	:= 7
 export LIBOGC_PATCH	:= 0
 
 #---------------------------------------------------------------------------------
@@ -30,7 +30,8 @@ OBJCOPY		:=	$(PREFIX)-objcopy
 BUILD		:=	build
 
 GCC_VERSION	:=	$(shell $(DEVKITPPC)/bin/$(CC) -dumpversion)
-DATESTRING	:=	$(shell date +%Y)$(shell date +%m)$(shell date +%d)
+DATESTRING	:=	$(shell date +%Y%m%d)
+VERSTRING	:=	$(LIBOGC_MAJOR).$(LIBOGC_MINOR).$(LIBOGC_PATCH)
 
 #---------------------------------------------------------------------------------
 ifeq ($(strip $(PLATFORM)),)
@@ -314,8 +315,8 @@ dist: install-headers
 #---------------------------------------------------------------------------------
 	@tar    --exclude=*CVS* --exclude=wii --exclude=cube --exclude=*deps* \
 		--exclude=*.bz2  --exclude=*include* --exclude=*lib/* --exclude=*docs/*\
-		-cvjf libogc-src-$(DATESTRING).tar.bz2 *
-	@tar -cvjf libogc-$(DATESTRING).tar.bz2 include lib libogc_license.txt
+		-cvjf libogc-src-$(VERSTRING).tar.bz2 *
+	@tar -cvjf libogc-$(VERSTRING).tar.bz2 include lib libogc_license.txt
 
 
 LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(MADLIB).a $(DBLIB).a $(ZLIB).a $(TINYSMBLIB).a $(ASNDLIB).a
