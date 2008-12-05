@@ -38,7 +38,7 @@ distribution.
 */
 
 
-#include <gctypes.h>
+#include "gctypes.h"
 
 /*!
  * \addtogroup exi_tx_mode EXI tranfer types

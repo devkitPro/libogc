@@ -1,7 +1,7 @@
 #ifndef __TPL_H__
 #define __TPL_H__
 
-#include <gx.h>
+#include "gx.h"
 
 #ifdef __cplusplus
    extern "C" {
