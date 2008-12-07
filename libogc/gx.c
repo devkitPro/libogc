@@ -2367,12 +2367,12 @@ void GX_SetTexCoordGen(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc)
 
 void GX_SetTexCoordGen2(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc,u32 normalize,u32 postmtx)
 {
-	u32 texcoords = 0;
-	u32 dttexcoords = 0;
-	u8 vtxrow,stq = 0;
+	u32 texcoords;
+	u8 vtxrow,stq;
 
 	if(texcoord>=GX_MAXCOORD) return;
 	
+	stq = 0;
 	switch(tgen_src) {
 		case GX_TG_POS:
 			vtxrow = 0;
@@ -2422,68 +2422,63 @@ void GX_SetTexCoordGen2(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc,u32 no
 			break;
 		default:
 			vtxrow = 5;
-			stq = 0;
 			break;
 	}
-	texcoords = (texcoords&~0xF80)|(_SHIFTL(vtxrow,7,5));
 
-	texcoords = (texcoords&~0x70);
-	if((tgen_typ==GX_TG_MTX3x4 || tgen_typ==GX_TG_MTX2x4)
-		&& (tgen_src>=GX_TG_POS && tgen_src<=GX_TG_TEX7)
-		&& ((mtxsrc>=GX_TEXMTX0 && mtxsrc<=GX_TEXMTX9)
-		|| mtxsrc==GX_IDENTITY)) {
-
-		texcoords = (texcoords&~0x2);
-		if(tgen_typ==GX_TG_MTX3x4) texcoords |= 0x2;
+	texcoords = 0;
+	if((tgen_typ==GX_TG_MTX3x4 || tgen_typ==GX_TG_MTX2x4))
+	{
+		if(tgen_typ==GX_TG_MTX3x4) texcoords = 0x02;
 		
-		texcoords = (texcoords&~0x4)|(_SHIFTL(stq,2,1));
-		if(tgen_src>=GX_TG_TEX0 && tgen_src<=GX_TG_TEX7) {
-			switch(tgen_src) {
-				case GX_TG_TEX0:
-					_gx[0x03] = (_gx[0x03]&~0xfc0)|(_SHIFTL(mtxsrc,6,6));
-					break;
-				case GX_TG_TEX1:
-					_gx[0x03] = (_gx[0x03]&~0x3f000)|(_SHIFTL(mtxsrc,12,6));
-					break;
-				case GX_TG_TEX2:
-					_gx[0x03] = (_gx[0x03]&~0xfc0000)|(_SHIFTL(mtxsrc,18,6));
-					break;
-				case GX_TG_TEX3:
-					_gx[0x03] = (_gx[0x03]&~0x3f000000)|(_SHIFTL(mtxsrc,24,6));
-					break;
-				case GX_TG_TEX4:
-					_gx[0x04] = (_gx[0x04]&~0x3f)|(mtxsrc&0x3f);
-					break;
-				case GX_TG_TEX5:
-					_gx[0x04] = (_gx[0x04]&~0xfc0)|(_SHIFTL(mtxsrc,6,6));
-					break;
-				case GX_TG_TEX6:
-					_gx[0x04] = (_gx[0x04]&~0x3f000)|(_SHIFTL(mtxsrc,12,6));
-					break;
-				case GX_TG_TEX7:
-					_gx[0x04] = (_gx[0x04]&~0xfc0000)|(_SHIFTL(mtxsrc,18,6));
-					break;
-			}
-		}
-	} else if((tgen_typ>=GX_TG_BUMP0 && tgen_typ<=GX_TG_BUMP7)
-		&& (tgen_src>=GX_TG_TEXCOORD0 && tgen_src<=GX_TG_TEXCOORD6
-		&& tgen_src!=texcoord)) {
-		texcoords |= 0x10;
+		texcoords |= (_SHIFTL(stq,2,1));
+		texcoords |= (_SHIFTL(vtxrow,7,5));
+	} else if((tgen_typ>=GX_TG_BUMP0 && tgen_typ<=GX_TG_BUMP7)) 
+	{
 		tgen_src -= GX_TG_TEXCOORD0;
 		tgen_typ -= GX_TG_BUMP0;
-		texcoords = (texcoords&~0x7000)|(_SHIFTL(tgen_src,12,3));
-		texcoords = (texcoords&~0x38000)|(_SHIFTL(tgen_typ,15,3));
-	} else if(tgen_typ==GX_TG_SRTG && (tgen_src==GX_TG_COLOR0 || tgen_src==GX_TG_COLOR1)) {
-		if(tgen_src==GX_TG_COLOR0) texcoords |= 0x20;
-		else if(tgen_src==GX_TG_COLOR1) texcoords |= 0x30;
+
+		texcoords = 0x10;
+		texcoords |= (_SHIFTL(stq,2,1));
+		texcoords |= (_SHIFTL(vtxrow,7,5));
+		texcoords |= (_SHIFTL(tgen_src,12,3));
+		texcoords |= (_SHIFTL(tgen_typ,15,3));
+	} else if(tgen_typ==GX_TG_SRTG) {
+		if(tgen_src==GX_TG_COLOR0) texcoords = 0x20;
+		else if(tgen_src==GX_TG_COLOR1) texcoords = 0x30;
+		texcoords |= (_SHIFTL(stq,2,1));
+		texcoords |= (_SHIFTL(2,7,5));
 	}
 
 	postmtx -= GX_DTTMTX0;
-	dttexcoords = (dttexcoords&~0x3f)|(postmtx&0x3f);
-	dttexcoords = (dttexcoords&~0x100)|(_SHIFTL(normalize,8,1));
-
 	_gx[0xe0+(texcoord<<1)] = texcoords;
-	_gx[0xe1+(texcoord<<1)] = dttexcoords;
+	_gx[0xe1+(texcoord<<1)] = ((_SHIFTL(normalize,8,1))|(postmtx&0x3f));
+
+	switch(texcoord) {
+		case GX_TEXCOORD0:
+			_gx[0x03] = (_gx[0x03]&~0xfc0)|(_SHIFTL(mtxsrc,6,6));
+			break;
+		case GX_TEXCOORD1:
+			_gx[0x03] = (_gx[0x03]&~0x3f000)|(_SHIFTL(mtxsrc,12,6));
+			break;
+		case GX_TEXCOORD2:
+			_gx[0x03] = (_gx[0x03]&~0xfc0000)|(_SHIFTL(mtxsrc,18,6));
+			break;
+		case GX_TEXCOORD3:
+			_gx[0x03] = (_gx[0x03]&~0x3f000000)|(_SHIFTL(mtxsrc,24,6));
+			break;
+		case GX_TEXCOORD4:
+			_gx[0x04] = (_gx[0x04]&~0x3f)|(mtxsrc&0x3f);
+			break;
+		case GX_TEXCOORD5:
+			_gx[0x04] = (_gx[0x04]&~0xfc0)|(_SHIFTL(mtxsrc,6,6));
+			break;
+		case GX_TEXCOORD6:
+			_gx[0x04] = (_gx[0x04]&~0x3f000)|(_SHIFTL(mtxsrc,12,6));
+			break;
+		case GX_TEXCOORD7:
+			_gx[0x04] = (_gx[0x04]&~0xfc0000)|(_SHIFTL(mtxsrc,18,6));
+			break;
+	}
 	_gx[0x09] |= (0x04000000|(0x00010000<<texcoord));
 }
  
@@ -2709,7 +2704,6 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 			break;
 		case GX_TF_Z8:
 		case GX_TF_I8:
-		case GX_TF_IA8:
 		case GX_CTF_RA8:
 		case GX_CTF_A8:
 		case GX_CTF_R8:
@@ -2722,6 +2716,7 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 			xshift = 3;
 			yshift = 2;
 			break;
+		case GX_TF_IA8:
 		case GX_TF_Z16:
 		case GX_TF_Z24X8:
 		case GX_CTF_Z16L:
