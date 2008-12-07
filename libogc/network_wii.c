@@ -554,7 +554,7 @@ s32 net_sendto(s32 s, const void *data, s32 len, u32 flags, struct sockaddr *to,
 
 s32 net_recv(s32 s, void *mem, s32 len, u32 flags)
 {
-    return net_recvfrom(s, mem, len, 0, NULL, NULL);	
+    return net_recvfrom(s, mem, len, flags, NULL, NULL);	
 }
 
 s32 net_recvfrom(s32 s, void *mem, s32 len, u32 flags, struct sockaddr *from, socklen_t *fromlen)
