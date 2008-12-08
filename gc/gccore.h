@@ -58,6 +58,7 @@ distribution.
 #include "ogc/message.h"
 #include "ogc/semaphore.h"
 #include "ogc/pad.h"
+#include "ogc/tpl.h"
 #include "ogc/system.h"
 #include "ogc/video.h"
 #include "ogc/usbgecko.h"
