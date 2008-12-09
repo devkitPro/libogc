@@ -32,7 +32,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "defines.h"
 #include "modplay.h"
 
-int mix_mono_16bit ( MOD * mod, u16 * buf, int numSamples );
-int mix_stereo_16bit ( MOD * mod, u16 * buf, int numSamples );
+int mix_mono_16bit ( MOD * mod, s16 * buf, int numSamples );
+int mix_stereo_16bit ( MOD * mod, s16 * buf, int numSamples );
 
 #endif

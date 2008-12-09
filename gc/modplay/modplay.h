@@ -119,7 +119,8 @@ typedef struct _mod
     u8 sfxvolume;
     
     BOOL set;
-    
+    BOOL *notify;
+
   } MOD;
 
 s32 MOD_SetMOD ( MOD *, u8 * );
