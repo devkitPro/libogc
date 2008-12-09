@@ -202,7 +202,7 @@ static void __dsp_requestcallback(dsptask_t *task)
 
 	if(sound_data[snd_chan].flags>>16)
 	{
-		if(!sound_data[snd_chan].delay_samples && !(sound_data[snd_chan].flags & VOICE_PAUSE)) sound_data[snd_chan].tick_counter++;
+		if(!sound_data[snd_chan].delay_samples && !(sound_data[snd_chan].flags & VOICE_PAUSE) && (sound_data_dma.start_addr || sound_data_dma.start_addr2)) sound_data[snd_chan].tick_counter++;
 	}
 
 	snd_chan++;
