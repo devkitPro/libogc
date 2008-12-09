@@ -291,20 +291,19 @@ s32 net_init(void)
 	net_ip_top_fd = _net_convert_error(IOS_Open(__iptop_fs, 0));
 	if (net_ip_top_fd < 0) {
 		debug_printf("IOS_Open(/dev/net/ip/top)=%d\n", net_ip_top_fd);
-		ret = net_ip_top_fd;
-		goto done;
+		return net_ip_top_fd;
 	}
 
 	ret = NWC24iStartupSocket(); // this must also be called during init
 	if (ret < 0) {
 		debug_printf("NWC24iStartupSocket returned %d\n", ret);
-		goto done;
+		goto error;
 	}
 
 	ret = _net_convert_error(IOS_Ioctl(net_ip_top_fd, IOCTL_SO_STARTUP, 0, 0, 0, 0));
 	if (ret < 0) {
 		debug_printf("IOCTL_SO_STARTUP returned %d\n", ret);
-		goto done;
+		goto error;
 	}
 
 #ifdef DEBUG_NET
@@ -317,12 +316,14 @@ s32 net_init(void)
 	if (!ip_addr) {
 		debug_printf("Unable to obtain IP address\n");
 		ret = -ETIMEDOUT;
-		goto done;
+		goto error;
 	}
 
 	debug_printf(" %d.%d.%d.%d\n", octets[0], octets[1], octets[2], octets[3]);
 
-done:
+error:
+	IOS_Close(net_ip_top_fd);
+	net_ip_top_fd = -1;
 	return ret;	
 }
 
