@@ -261,8 +261,8 @@ void MODPlay_Init(MODPlay *mod)
 s32 MODPlay_SetFrequency(MODPlay *mod,u32 freq)
 {
 	if(freq==mod->playfreq) return 0;
-#ifndef __SNDLIB_H__
 	if(freq==32000 || freq==48000) {
+#ifndef __SNDLIB_H__
 		if(freq==32000)
 			AUDIO_SetDSPSampleRate(AI_SAMPLERATE_32KHZ);
 		else
