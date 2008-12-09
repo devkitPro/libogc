@@ -94,7 +94,7 @@ static s32 __pad_onreset(s32 final)
 			__pad_recalibrated$207 = PAD_Recalibrate(0xf0000000);
 			return 0;
 		}
-		return 1;
+		return ret;
 	}
 	__pad_recalibrated$207 = 0;
 	return 1;
@@ -751,7 +751,6 @@ u32 PAD_ScanPads()
 		} else {
 			if(__pad_keys[i].chan!=-1) memset(&__pad_keys[i],0,sizeof(keyinput));
 			__pad_keys[i].chan = -1;
-			break;
 		}
 	}
 #ifdef _PAD_DEBUG
