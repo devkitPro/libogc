@@ -35,6 +35,7 @@ s32 MODPlay_Start(MODPlay *mod);
 s32 MODPlay_Stop(MODPlay *mod);
 s32 MODPlay_TriggerNote(MODPlay *mod,u32 chan,u8 inst,u16 freq,u8 vol);
 s32 MODPlay_Pause(MODPlay *mod,BOOL);
+void MODPlay_SetVolume(MODPlay * mod, s32 musicvolume, s32 sfxvolume);
 
 #ifdef __cplusplus
    }
