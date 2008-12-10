@@ -85,6 +85,7 @@ enum {
 #define WPAD_ERR_BAD_CHANNEL					-6
 #define WPAD_ERR_QUEUE_EMPTY					-7
 #define WPAD_ERR_BADVALUE						-8
+#define WPAD_ERR_BADCONF                        -9
 
 #define WPAD_DATA_BUTTONS						0x01
 #define WPAD_DATA_ACCEL							0x02

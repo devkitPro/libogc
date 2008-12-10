@@ -22,7 +22,7 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/wiiuse_internal.h,v 1.7 2008-11-14 13:34:57 shagkur Exp $
+ *	$Header: /lvm/shared/ds/ds/cvs/devkitpro-cvsbackup/libogc/wiiuse/wiiuse_internal.h,v 1.8 2008-12-10 16:16:40 shagkur Exp $
  *
  */
 
@@ -169,7 +169,7 @@
 
 /* wiimote state flags - (some duplicated in wiiuse.h)*/
 #define WIIMOTE_STATE_DEV_FOUND					0x00001
-#define WIIMOTE_STATE_DEV_REGISTER				0x00002
+//#define WIIMOTE_STATE_DEV_REGISTER				0x00002
 #define WIIMOTE_STATE_HANDSHAKE					0x00004	/* actual connection exists but no handshake yet */
 #define WIIMOTE_STATE_HANDSHAKE_COMPLETE		0x00008	/* actual connection exists but no handshake yet */
 #define WIIMOTE_STATE_CONNECTED					0x00010

@@ -31,7 +31,10 @@ static __inline__ void ACR_WriteReg(u32 reg,u32 val)
 
 static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 {
-	struct wiimote_t *wm = (struct wiimote_t*)arg;
+    struct wiimote_listen_t *wml = (struct wiimote_listen_t*)arg;
+    struct wiimote_t *wm = wml->wm;
+
+    if(!wm) return ERR_OK;
 
 	//printf("wiimote disconnected\n");
 	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_IR|WIIMOTE_STATE_IR_INIT));
@@ -45,14 +48,17 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 	wm->cmd_tail = NULL;
 	
 	if(wm->event_cb) wm->event_cb(wm,WIIUSE_DISCONNECT);
+
+	wml->wm = NULL;
 	return ERR_OK;
 }
 
 static s32 __wiiuse_receive(void *arg,void *buffer,u16 len)
 {
-	struct wiimote_t *wm = (struct wiimote_t*)arg;
+    struct wiimote_listen_t *wml = (struct wiimote_listen_t*)arg;
+    struct wiimote_t *wm = wml->wm;
 
-	if(!buffer || len==0) return ERR_OK;
+	if(!wm || !buffer || len==0) return ERR_OK;
 
 	//printf("__wiiuse_receive[%02x]\n",*(char*)buffer);
 	wm->event = WIIUSE_NONE;
@@ -69,7 +75,20 @@ static s32 __wiiuse_receive(void *arg,void *buffer,u16 len)
 
 static s32 __wiiuse_connected(void *arg,struct bte_pcb *pcb,u8 err)
 {
-	struct wiimote_t *wm = (struct wiimote_t*)arg;
+	struct wiimote_listen_t *wml = (struct wiimote_listen_t*)arg;
+	struct wiimote_t *wm;
+
+	wm = wml->assign_cb(&wml->bdaddr);
+
+	if(!wm) {
+	   bte_disconnect(wml->sock);
+	   return ERR_OK;
+	}
+
+	wml->wm = wm;
+
+	wm->sock = wml->sock;
+	wm->bdaddr = wml->bdaddr;
 
 	//printf("__wiiuse_connected()\n");
 	WIIMOTE_ENABLE_STATE(wm,(WIIMOTE_STATE_CONNECTED|WIIMOTE_STATE_HANDSHAKE));
@@ -82,8 +101,13 @@ static s32 __wiiuse_connected(void *arg,struct bte_pcb *pcb,u8 err)
 
 static s32 __wiiuse_sent(void *arg,struct bte_pcb *pcb,u8 err)
 {
-	struct wiimote_t *wm = (struct wiimote_t*)arg;
-	struct cmd_blk_t *cmd = wm->cmd_head;
+	struct cmd_blk_t *cmd = NULL;
+	struct wiimote_listen_t *wml = (struct wiimote_listen_t*)arg;
+	struct wiimote_t *wm = wml->wm;
+
+	if(!wm) return ERR_OK;
+
+	cmd = wm->cmd_head;
 
 	if(!cmd) return ERR_OK;
 	if(cmd->state!=CMD_SENT) return ERR_OK;
@@ -121,26 +145,24 @@ void __wiiuse_sensorbar_enable(int enable)
 	IRQ_Restore(level);
 }
 
-int wiiuse_register(struct wiimote_t *wm,struct bd_addr *bdaddr)
+int wiiuse_register(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct wiimote_t *(*assign_cb)(struct bd_addr *bdaddr))
 {
 	s32 err;
 
-	if(!wm || !bdaddr) return 0;
+	if(!wml || !bdaddr || !assign_cb) return 0;
 
-	wm->bdaddr = *bdaddr;
+	wml->wm = NULL;
+	wml->bdaddr = *bdaddr;
+	wml->sock = bte_new();
+	wml->assign_cb = assign_cb;
+	if(wml->sock==NULL) return 0;
 
-	wm->sock = bte_new();
-	if(wm->sock==NULL) return 0;
-
-	bte_arg(wm->sock,wm);
-	bte_received(wm->sock,__wiiuse_receive);
-	bte_disconnected(wm->sock,__wiiuse_disconnected);
+	bte_arg(wml->sock,wml);
+	bte_received(wml->sock,__wiiuse_receive);
+	bte_disconnected(wml->sock,__wiiuse_disconnected);
 	
-	err = bte_registerdeviceasync(wm->sock,bdaddr,__wiiuse_connected);
-	if(err==ERR_OK) {
-		WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_DEV_REGISTER);
-		return 1;
-	}
+	err = bte_registerdeviceasync(wml->sock,bdaddr,__wiiuse_connected);
+	if(err==ERR_OK) return 1;
 
 	return 0;
 }	

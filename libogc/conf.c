@@ -336,25 +336,14 @@ s32 CONF_GetDisplayOffsetH(s8 *offset)
 	return 0;
 }
 
-s32 CONF_GetPadDevices(conf_pad_device *devs, int count) 
+s32 CONF_GetPadDevices(conf_pads *pads)
 {
 	int res;
-	u8 buf[0x461];
 	
-	res = CONF_Get("BT.DINF", buf, 0x461);
+	res = CONF_Get("BT.DINF", pads, sizeof(conf_pads));
 	if(res < 0) return res;
-	if((res < 1) || (buf[0] > 0x10)) return CONF_EBADVALUE;
-
-	if(count && devs) {
-		memset(devs,0,count*sizeof(conf_pad_device));
-		if(count < buf[0])
-			memcpy(devs,&buf[1],count*sizeof(conf_pad_device));
-		else
-			memcpy(devs,&buf[1],buf[0]*sizeof(conf_pad_device));
-	}
-
-	res = buf[0];
-	return res;
+	if(res < sizeof(conf_pads)) return CONF_EBADVALUE;
+	return 0;
 }
 
 s32 CONF_GetNickName(u8 *nickname)

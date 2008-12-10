@@ -126,11 +126,24 @@ enum {
 	CONF_SENSORBAR_TOP
 };
 
+#define CONF_PAD_MAX_REGISTERED 10
+#define CONF_PAD_MAX_ACTIVE 4
+
 typedef struct _conf_pad_device conf_pad_device;
 
 struct _conf_pad_device {
 	u8 bdaddr[6];
 	char name[0x40];
+} ATTRIBUTE_PACKED;
+
+typedef struct _conf_pads conf_pads;
+
+struct _conf_pads {
+   u8 num_registered;
+   conf_pad_device registered[CONF_PAD_MAX_REGISTERED];
+   conf_pad_device active[CONF_PAD_MAX_ACTIVE];
+   conf_pad_device balance_board;
+   conf_pad_device unknown;
 } ATTRIBUTE_PACKED;
 
 s32 CONF_Init(void);
@@ -150,7 +163,7 @@ s32 CONF_GetLanguage(void);
 s32 CONF_GetCounterBias(u32 *bias);
 s32 CONF_GetScreenSaverMode(void);
 s32 CONF_GetDisplayOffsetH(s8 *offset);
-s32 CONF_GetPadDevices(conf_pad_device *devs, int count);
+s32 CONF_GetPadDevices(conf_pads *pads);
 s32 CONF_GetNickName(u8 *nickname);
 s32 CONF_GetAspectRatio(void);
 s32 CONF_GetEULA(void);

@@ -241,6 +241,7 @@ void bt_log(const char *filename,int line_nb,char *msg);
 
 /* ---------- Memory options ---------- */
 #define MAX_NUM_CLIENTS					6 /* Maximum number of connected Bluetooth clients. No more than 6 */ 
+#define MAX_NUM_OPT_CLIENTS             10 /* Maximum number of possible Bluetooth clients we might listen to */
 
 #define MEMB_NUM_HCI_PCB				1 /* Always set to one */
 #define MEMB_NUM_HCI_LINK				MAX_NUM_CLIENTS /* One for DT + One per ACL connection */
@@ -252,7 +253,7 @@ void bt_log(const char *filename,int line_nb,char *msg);
 #define MEMB_NUM_L2CAP_PCB				(2 + 2 * MAX_NUM_CLIENTS) /* One for a closing connection + one for DT + one per number of connected Bluetooth clients */
 /* MEMP_NUM_L2CAP_PCB_LISTEN: the number of listening L2CAP
    connections. */
-#define MEMB_NUM_L2CAP_PCB_LISTEN		(2 * MAX_NUM_CLIENTS) /* One per listening PSM */
+#define MEMB_NUM_L2CAP_PCB_LISTEN		(2 * MAX_NUM_OPT_CLIENTS) /* One per listening PSM */
 /* MEMP_NUM_L2CAP_SIG: the number of simultaneously unresponded
    L2CAP signals */
 #define MEMB_NUM_L2CAP_SIG				(2 * MAX_NUM_CLIENTS)/* Two per number of connected Bluetooth clients but min 2 */
