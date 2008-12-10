@@ -14,7 +14,7 @@ export PATH	:=	$(DEVKITPPC)/bin:$(PATH)
 
 export LIBOGC_MAJOR	:= 1
 export LIBOGC_MINOR	:= 7
-export LIBOGC_PATCH	:= 0
+export LIBOGC_PATCH	:= 1
 
 #---------------------------------------------------------------------------------
 PREFIX	:=	powerpc-gekko
