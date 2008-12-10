@@ -450,7 +450,10 @@ static s32 __ios_ioctlvformat_parse(const char *format,va_list args,struct _ioct
 	if(cbdata->bufs==NULL) return IPC_ENOMEM;
 
 	argp = iosAlloc(hId,(sizeof(struct _ioctlv)*(maxbufs+1)));
-	if(argp==NULL) return IPC_ENOMEM;
+	if(argp==NULL) {
+		__lwp_wkspace_free(cbdata->bufs);
+		return IPC_ENOMEM;
+	}
 
 	*argv = argp;
 	bufp = cbdata->bufs;
@@ -1201,7 +1204,7 @@ s32 IOS_IoctlvFormat(s32 hId,s32 fd,s32 ioctl,const char *format,...)
 	ret = __ios_ioctlvformat_parse(format,args,cbdata,&cnt_in,&cnt_io,&argv,hId);
 	va_end(args);
 	if(ret<0) {
-		free(cbdata);
+		__lwp_wkspace_free(cbdata);
 		return ret;
 	}
 
@@ -1228,7 +1231,7 @@ s32 IOS_IoctlvFormatAsync(s32 hId,s32 fd,s32 ioctl,ipccallback usr_cb,void *usr_
 	ret = __ios_ioctlvformat_parse(format,args,cbdata,&cnt_in,&cnt_io,&argv,hId);
 	va_end(args);
 	if(ret<0) {
-		free(cbdata);
+		__lwp_wkspace_free(cbdata);
 		return ret;
 	}
 
