@@ -189,7 +189,8 @@ stmcallback STM_RegisterEventHandler(stmcallback newhandler)
 s32 STM_ShutdownToStandby()
 {
 	int res;
-	//_viReg[1] = 0;
+	
+	_viReg[1] = 0;
 	if(__stm_initialized==0) {
 #ifdef DEBUG_STM
 		printf("STM notinited\n");
@@ -209,7 +210,8 @@ s32 STM_ShutdownToStandby()
 s32 STM_ShutdownToIdle()
 {
 	int res;
-	//_viReg[1] = 0;
+	
+	_viReg[1] = 0;
 	if(__stm_initialized==0) {
 #ifdef DEBUG_STM
 		printf("STM notinited\n");
@@ -255,7 +257,8 @@ s32 STM_SetLedMode(u32 mode)
 s32 STM_RebootSystem()
 {
 	int res;
-	//_viReg[1] = 0;
+	
+	_viReg[1] = 0;
 	if(__stm_initialized==0) {
 #ifdef DEBUG_STM
 		printf("STM notinited\n");
