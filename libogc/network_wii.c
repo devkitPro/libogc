@@ -321,6 +321,8 @@ s32 net_init(void)
 
 	debug_printf(" %d.%d.%d.%d\n", octets[0], octets[1], octets[2], octets[3]);
 
+	return 0;
+
 error:
 	IOS_Close(net_ip_top_fd);
 	net_ip_top_fd = -1;
