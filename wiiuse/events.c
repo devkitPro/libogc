@@ -20,6 +20,7 @@
 #include "nunchuk.h"
 #include "classic.h"
 #include "guitar_hero_3.h"
+#include "wiiboard.h"
 #include "ir.h"
 #include "io.h"
 
@@ -163,6 +164,9 @@ static void handle_expansion(struct wiimote_t *wm,ubyte *msg)
 		case EXP_GUITAR_HERO_3:
 			guitar_hero_3_event(&wm->exp.gh3, msg);
 			break;
+ 		case EXP_WII_BOARD:
+ 			wii_board_event(&wm->exp.wb, msg);
+ 			break;
 		default:
 			break;
 	}

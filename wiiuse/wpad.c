@@ -11,6 +11,7 @@
 #include "ir.h"
 #include "dynamics.h"
 #include "guitar_hero_3.h"
+#include "wiiboard.h"
 #include "wiiuse_internal.h"
 #include "wiiuse/wpad.h"
 #include "lwp_threads.h"
@@ -26,6 +27,7 @@ struct _wpad_thresh{
 	s32 ir;
 	s32 js;
 	s32 acc;
+	s32 wb;
 };
 
 struct _wpad_cb {
@@ -142,7 +144,7 @@ wiimote *__wpad_assign_slot(struct bd_addr *pad_addr)
     _CPU_ISR_Disable(level);
 
     // Try preassigned slots
-    for(i=0; i<CONF_PAD_MAX_ACTIVE && i<WPAD_MAX_WIIMOTES; i++) {
+    for(i=0; i<CONF_PAD_MAX_ACTIVE /*&& i<WPAD_MAX_WIIMOTES*/; i++) {
         BD_ADDR(&(bdaddr),__wpad_devs.active[i].bdaddr[5],__wpad_devs.active[i].bdaddr[4],__wpad_devs.active[i].bdaddr[3],__wpad_devs.active[i].bdaddr[2],__wpad_devs.active[i].bdaddr[1],__wpad_devs.active[i].bdaddr[0]);
         if(bd_addr_cmp(pad_addr,&bdaddr) && !(__wpads_used & (1<<i))) {
             //printf("WPAD Got Preassigned Slot %d\n", i);
@@ -151,6 +153,16 @@ wiimote *__wpad_assign_slot(struct bd_addr *pad_addr)
             return __wpads[i];
         }
     }
+
+	// check for balance board
+	BD_ADDR(&(bdaddr),__wpad_devs.balance_board.bdaddr[5],__wpad_devs.balance_board.bdaddr[4],__wpad_devs.balance_board.bdaddr[3],__wpad_devs.balance_board.bdaddr[2],__wpad_devs.balance_board.bdaddr[1],__wpad_devs.balance_board.bdaddr[0]);
+	if(bd_addr_cmp(pad_addr,&bdaddr)) {
+		if(!(__wpads_used&(1<<WPAD_BALANCE_BOARD))) {
+			__wpads_used |= (0x01<<WPAD_BALANCE_BOARD);
+			_CPU_ISR_Restore(level);
+			return __wpads[WPAD_BALANCE_BOARD];
+		}
+	}
 
     // No match, pick the first free slot
     for(i=0; i<WPAD_MAX_WIIMOTES; i++) {
@@ -174,9 +186,14 @@ static s32 __wpad_init_finished(s32 result,void *usrdata)
 	//printf("__wpad_init_finished(%d)\n",result);
 	
 	if(result==ERR_OK) {
-        for(i=0;__wpads[i] && i<__wpad_devs.num_registered;i++) {
+        for(i=0;/*__wpads[i] && */i<__wpad_devs.num_registered;i++) {
             BD_ADDR(&(bdaddr),__wpad_devs.registered[i].bdaddr[5],__wpad_devs.registered[i].bdaddr[4],__wpad_devs.registered[i].bdaddr[3],__wpad_devs.registered[i].bdaddr[2],__wpad_devs.registered[i].bdaddr[1],__wpad_devs.registered[i].bdaddr[0]);
             wiiuse_register(&__wpads_listen[i],&(bdaddr),__wpad_assign_slot);
+		}
+
+		BD_ADDR(&(bdaddr),__wpad_devs.balance_board.bdaddr[5],__wpad_devs.balance_board.bdaddr[4],__wpad_devs.balance_board.bdaddr[3],__wpad_devs.balance_board.bdaddr[2],__wpad_devs.balance_board.bdaddr[1],__wpad_devs.balance_board.bdaddr[0]);
+		if(i<CONF_PAD_MAX_REGISTERED && !bd_addr_cmp(&bdaddr,BD_ADDR_ANY)) {
+			wiiuse_register(&__wpads_listen[i],&(bdaddr),__wpad_assign_slot);
 		}
 		__wpads_inited = WPAD_STATE_ENABLED;
 	}
@@ -288,6 +305,13 @@ static void __wpad_calc_data(WPADData *data,WPADData *lstate,struct accel_t *acc
 			}
 			break;
 
+ 			case EXP_WII_BOARD:
+ 			{
+ 				struct wii_board_t *wb = &data->exp.wb;
+				calc_balanceboard_state(wb);
+ 			}
+ 			break;
+ 
 			default:
 				break;
 		}
@@ -316,6 +340,9 @@ static void __save_state(struct wiimote_t* wm) {
 		case EXP_GUITAR_HERO_3:
 			wm->lstate.exp.gh3 = wm->exp.gh3;
 			break;
+ 		case EXP_WII_BOARD:
+ 			wm->lstate.exp.wb = wm->exp.wb;
+ 			break;
 	}
 }
 
@@ -359,6 +386,13 @@ static u32 __wpad_read_expansion(struct wiimote_t *wm,WPADData *data, struct _wp
 			STATE_CHECK(thresh->js, wm->exp.gh3.js.pos.x, wm->lstate.exp.gh3.js.pos.x);
 			STATE_CHECK(thresh->js, wm->exp.gh3.js.pos.y, wm->lstate.exp.gh3.js.pos.y);
 			break;
+ 		case EXP_WII_BOARD:
+			data->exp.wb = wm->exp.wb;
+			STATE_CHECK(thresh->wb,wm->exp.wb.rtl,wm->lstate.exp.wb.rtl);
+			STATE_CHECK(thresh->wb,wm->exp.wb.rtr,wm->lstate.exp.wb.rtr);
+			STATE_CHECK(thresh->wb,wm->exp.wb.rbl,wm->lstate.exp.wb.rbl);
+			STATE_CHECK(thresh->wb,wm->exp.wb.rbr,wm->lstate.exp.wb.rbr);
+ 			break;
 	}
 	return state_changed;
 }
@@ -476,7 +510,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			memset(wpdcb->queue_int,0,(sizeof(WPADData)*EVENTQUEUE_LENGTH));
 			wiiuse_set_ir_position(wm,(CONF_GetSensorBarPosition()^1));
 			wiiuse_set_ir_sensitivity(wm,CONF_GetIRSensitivity());
-			wiiuse_set_leds(wm,(WIIMOTE_LED_1<<chan),NULL);
+			wiiuse_set_leds(wm,(WIIMOTE_LED_1<<(chan%WPAD_BALANCE_BOARD)),NULL);
 			__wpad_setfmt(chan);
 			__wpads_active |= (0x01<<chan);
 			break;
@@ -540,6 +574,7 @@ s32 WPAD_Init()
 			__wpdcb[i].thresh.ir = WPAD_THRESH_DEFAULT_IR;
 			__wpdcb[i].thresh.acc = WPAD_THRESH_DEFAULT_ACCEL;
 			__wpdcb[i].thresh.js = WPAD_THRESH_DEFAULT_JOYSTICK;
+			__wpdcb[i].thresh.wb = WPAD_THRESH_DEFAULT_BALANCEBOARD;
 		}
 
 		if(CONF_GetPadDevices(&__wpad_devs) < 0) {
@@ -846,6 +881,7 @@ s32 WPAD_Probe(s32 chan,u32 *type)
 					case WPAD_EXP_NUNCHUK:
 					case WPAD_EXP_CLASSIC:
 					case WPAD_EXP_GUITARHERO3:
+ 					case WPAD_EXP_WIIBOARD:
 						dev = wm->exp.type;
 						break;
 				}
