@@ -192,8 +192,8 @@ static inline void __bte_close_ctrl_queue(struct bte_pcb *pcb)
 {
 	struct ctrl_req_t *req;
 
-	while(pcb->ctrl_req!=NULL) {
-		req = pcb->ctrl_req;
+	while(pcb->ctrl_req_head!=NULL) {
+		req = pcb->ctrl_req_head;
 		req->err = ERR_CLSD;
 		req->state = STATE_DISCONNECTED;
 		if(req->sent!=NULL) {
@@ -202,8 +202,9 @@ static inline void __bte_close_ctrl_queue(struct bte_pcb *pcb)
 		} else
 			LWP_ThreadSignal(pcb->cmdq);
 	
-		pcb->ctrl_req = req->next;
+		pcb->ctrl_req_head = req->next;
 	}
+	pcb->ctrl_req_tail = NULL;
 }
 
 static s32 __bte_send_pending_request(struct bte_pcb *pcb)
@@ -211,17 +212,17 @@ static s32 __bte_send_pending_request(struct bte_pcb *pcb)
 	s32 err;
 	struct ctrl_req_t *req;
 
-	if(pcb->ctrl_req==NULL) return ERR_OK;
+	if(pcb->ctrl_req_head==NULL) return ERR_OK;
 	if(pcb->state==STATE_DISCONNECTING || pcb->state==STATE_DISCONNECTED) return ERR_CLSD;
 
-	req = pcb->ctrl_req;
+	req = pcb->ctrl_req_head;
 	req->state = STATE_SENDING;
 
 	err = l2ca_datawrite(pcb->out_pcb,req->p);
 	btpbuf_free(req->p);
 
 	if(err!=ERR_OK) {
-		pcb->ctrl_req = req->next;
+		pcb->ctrl_req_head = req->next;
 
 		req->err = err;
 		req->state = STATE_FAILED;
@@ -245,18 +246,17 @@ static s32 __bte_send_request(struct ctrl_req_t *req)
 	req->state = STATE_READY;
 
 	_CPU_ISR_Disable(level);
-	err = ERR_OK;
-	if(req->pcb->ctrl_req==NULL) {
-		req->pcb->ctrl_req = req;
+	if(req->pcb->ctrl_req_head==NULL) {
+		req->pcb->ctrl_req_head = req->pcb->ctrl_req_tail = req;
 		err = __bte_send_pending_request(req->pcb);
 	} else {
-		struct ctrl_req_t *nptr = req->pcb->ctrl_req;
-		for(;nptr->next!=NULL;nptr=nptr->next);
-		nptr->next = req;
+		req->pcb->ctrl_req_tail->next = req;
+		req->pcb->ctrl_req_tail = req;
+		err = ERR_OK;
 	}
 	_CPU_ISR_Restore(level);
 
-	return ERR_OK;
+	return err;
 }	
 
 static err_t __bte_shutdown_finished(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result)
@@ -285,8 +285,8 @@ static void bte_process_handshake(struct bte_pcb *pcb,u8_t param,void *buf,u16_t
 	LOG("bte_process_handshake(%p)\n",pcb);
 	switch(param) {
 		case HIDP_HSHK_SUCCESSFULL:
-			req = pcb->ctrl_req;
-			pcb->ctrl_req = req->next;
+			req = pcb->ctrl_req_head;
+			pcb->ctrl_req_head = req->next;
 
 			req->err = ERR_OK;
 			req->state = STATE_SENT;
@@ -498,7 +498,7 @@ struct bte_pcb* bte_new()
 	return pcb;
 }
 
-s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
+s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
 {
 	u32 level;
 	s32 err = ERR_OK;
