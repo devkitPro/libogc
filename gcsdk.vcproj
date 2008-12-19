@@ -3462,6 +3462,14 @@
 					>
 				</File>
 				<File
+					RelativePath=".\wiiuse\wiiboard.c"
+					>
+				</File>
+				<File
+					RelativePath=".\wiiuse\wiiboard.h"
+					>
+				</File>
+				<File
 					RelativePath="wiiuse\wiiuse.c"
 					>
 					<FileConfiguration

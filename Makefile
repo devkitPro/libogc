@@ -170,7 +170,7 @@ BTEOBJ		:=	bte.o hci.o l2cap.o btmemb.o btmemr.o btpbuf.o physbusif.o
 
 #---------------------------------------------------------------------------------
 WIIUSEOBJ	:=	classic.o dynamics.o events.o guitar_hero_3.o io.o io_wii.o ir.o \
-				nunchuk.o wiiuse.o wpad.o
+				nunchuk.o wiiboard.o wiiuse.o wpad.o
 
 #---------------------------------------------------------------------------------
 TINYSMBOBJ	:=	des.o lmhash.o smb.o
