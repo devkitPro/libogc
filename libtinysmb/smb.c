@@ -3,7 +3,7 @@
  *
  * Nintendo Gamecube SaMBa implementation.
  *
- * Copyright softdev@tehskeen.com
+ * Copyright softdev
  *
  * Authentication modules, LMhash and DES are 
  *
