@@ -99,7 +99,9 @@ struct bte_pcb
 	u8 err;
 	u32 state;
 	void *cbarg;
-	struct ctrl_req_t *ctrl_req;
+
+	struct ctrl_req_t *ctrl_req_head;
+	struct ctrl_req_t *ctrl_req_tail;
 
 	lwpq_t cmdq;
 
