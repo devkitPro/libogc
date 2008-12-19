@@ -95,6 +95,7 @@
 #define EXP_NUNCHUK						1
 #define EXP_CLASSIC						2
 #define EXP_GUITAR_HERO_3				3
+#define EXP_WII_BOARD					4
 
 /* IR correction types */
 typedef enum ir_position_t {
@@ -480,6 +481,26 @@ typedef struct guitar_hero_3_t {
 	struct joystick_t js;			/**< joystick calibration					*/
 } guitar_hero_3_t;
 
+/**
+  * @struct wii_board_t
+  * @brief Wii Balance Board expansion device.
+  */
+typedef struct wii_board_t {
+	float tl;  /* Interpolated */
+	float tr;
+	float bl;
+	float br;  /* End interp */
+	short rtl; /* RAW */
+	short rtr;
+	short rbl;
+	short rbr; /* /RAW */
+	short ctl[3]; /* Calibration */
+	short ctr[3];
+	short cbl[3];
+	short cbr[3]; /* /Calibration */
+	float x;
+	float y;
+} wii_board_t;
 
 /**
  *	@struct expansion_t
@@ -492,6 +513,7 @@ typedef struct expansion_t {
 		struct nunchuk_t nunchuk;
 		struct classic_ctrl_t classic;
 		struct guitar_hero_3_t gh3;
+ 		struct wii_board_t wb;
 	};
 } expansion_t;
 
@@ -538,7 +560,9 @@ typedef enum WIIUSE_EVENT_TYPE {
 	WIIUSE_CLASSIC_CTRL_INSERTED,
 	WIIUSE_CLASSIC_CTRL_REMOVED,
 	WIIUSE_GUITAR_HERO_3_CTRL_INSERTED,
-	WIIUSE_GUITAR_HERO_3_CTRL_REMOVED
+ 	WIIUSE_GUITAR_HERO_3_CTRL_REMOVED,
+ 	WIIUSE_WII_BOARD_INSERTED,
+ 	WIIUSE_WII_BOARD_REMOVED
 } WIIUSE_EVENT_TYPE;
 
 /**
