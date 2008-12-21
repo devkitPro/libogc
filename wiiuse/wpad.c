@@ -143,6 +143,19 @@ wiimote *__wpad_assign_slot(struct bd_addr *pad_addr)
     //printf("WPAD Assigning slot (active: 0x%02x)\n", __wpads_used);
     _CPU_ISR_Disable(level);
 
+	// check for balance board
+	BD_ADDR(&(bdaddr),__wpad_devs.balance_board.bdaddr[5],__wpad_devs.balance_board.bdaddr[4],__wpad_devs.balance_board.bdaddr[3],__wpad_devs.balance_board.bdaddr[2],__wpad_devs.balance_board.bdaddr[1],__wpad_devs.balance_board.bdaddr[0]);
+	if(bd_addr_cmp(pad_addr,&bdaddr)) {
+		if(!(__wpads_used&(1<<WPAD_BALANCE_BOARD))) {
+			__wpads_used |= (0x01<<WPAD_BALANCE_BOARD);
+			_CPU_ISR_Restore(level);
+			return __wpads[WPAD_BALANCE_BOARD];
+		} else {
+			_CPU_ISR_Restore(level);
+			return NULL;
+		}
+	}
+
     // Try preassigned slots
     for(i=0; i<CONF_PAD_MAX_ACTIVE /*&& i<WPAD_MAX_WIIMOTES*/; i++) {
         BD_ADDR(&(bdaddr),__wpad_devs.active[i].bdaddr[5],__wpad_devs.active[i].bdaddr[4],__wpad_devs.active[i].bdaddr[3],__wpad_devs.active[i].bdaddr[2],__wpad_devs.active[i].bdaddr[1],__wpad_devs.active[i].bdaddr[0]);
@@ -153,16 +166,6 @@ wiimote *__wpad_assign_slot(struct bd_addr *pad_addr)
             return __wpads[i];
         }
     }
-
-	// check for balance board
-	BD_ADDR(&(bdaddr),__wpad_devs.balance_board.bdaddr[5],__wpad_devs.balance_board.bdaddr[4],__wpad_devs.balance_board.bdaddr[3],__wpad_devs.balance_board.bdaddr[2],__wpad_devs.balance_board.bdaddr[1],__wpad_devs.balance_board.bdaddr[0]);
-	if(bd_addr_cmp(pad_addr,&bdaddr)) {
-		if(!(__wpads_used&(1<<WPAD_BALANCE_BOARD))) {
-			__wpads_used |= (0x01<<WPAD_BALANCE_BOARD);
-			_CPU_ISR_Restore(level);
-			return __wpads[WPAD_BALANCE_BOARD];
-		}
-	}
 
     // No match, pick the first free slot
     for(i=0; i<WPAD_MAX_WIIMOTES; i++) {
