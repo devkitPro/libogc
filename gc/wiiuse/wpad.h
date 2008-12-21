@@ -100,7 +100,7 @@ enum {
 #define WPAD_THRESH_DEFAULT_IR					WPAD_THRESH_IGNORE
 #define WPAD_THRESH_DEFAULT_ACCEL				20
 #define WPAD_THRESH_DEFAULT_JOYSTICK			2
-#define WPAD_THRESH_DEFAULT_BALANCEBOARD		30
+#define WPAD_THRESH_DEFAULT_BALANCEBOARD		90
 
 #ifdef __cplusplus
    extern "C" {
@@ -144,7 +144,7 @@ void WPAD_SetPowerButtonCallback(WPADShutdownCallback cb);
 void WPAD_SetBatteryDeadCallback(WPADShutdownCallback cb);
 s32 WPAD_ScanPads();
 s32 WPAD_Rumble(s32 chan, int status);
-s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js);
+s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb);
 WPADData *WPAD_Data(int chan);
 u32 WPAD_ButtonsUp(int chan);
 u32 WPAD_ButtonsDown(int chan);
