@@ -986,7 +986,7 @@ u32 process ( MOD * mod )
         mod->patternline = 0;
         if (mod->songpos>=mod->song_length)
           {
-	        if(mod->notify) *mod->notify = TRUE;
+			if(mod->notify) *mod->notify = TRUE;
             mod->songpos = 0;
             mod->patternline = 0;
           }
@@ -1008,7 +1008,7 @@ u32 process ( MOD * mod )
           }
         if (mod->songpos>=mod->song_length)
           {
-		    if(mod->notify) *mod->notify = TRUE;
+			if(mod->notify) *mod->notify = TRUE;
             mod->songpos = 0;
             mod->patternline = 0;
           }
