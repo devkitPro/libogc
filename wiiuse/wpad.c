@@ -1026,7 +1026,7 @@ s32 WPAD_Rumble(s32 chan, int status)
 	return WPAD_ERR_NONE;
 }
 
-s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js)
+s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb)
 {
 	int i;
 	s32 ret;
@@ -1034,7 +1034,7 @@ s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js)
 
 	if(chan == WPAD_CHAN_ALL) {
 		for(i=WPAD_CHAN_0; i<WPAD_MAX_WIIMOTES; i++)
-			if((ret = WPAD_SetIdleThresholds(i,btns,ir,accel,js)) < WPAD_ERR_NONE)
+			if((ret = WPAD_SetIdleThresholds(i,btns,ir,accel,js,wb)) < WPAD_ERR_NONE)
 				return ret;
 		return WPAD_ERR_NONE;
 	}
@@ -1051,6 +1051,7 @@ s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js)
 	__wpdcb[chan].thresh.ir = ir;
 	__wpdcb[chan].thresh.acc = accel;
 	__wpdcb[chan].thresh.js = js;
+	__wpdcb[chan].thresh.wb = wb;
 
 	_CPU_ISR_Restore(level);
 	return WPAD_ERR_NONE;
