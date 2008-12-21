@@ -339,7 +339,7 @@ static void __wpad_calc_data(WPADData *data,WPADData *lstate,struct accel_t *acc
 
  			case EXP_WII_BOARD:
  			{
- 				struct wii_board_t *wb = &data->exp.wb;
+				struct wii_board_t *wb = &data->exp.wb;
 				calc_balanceboard_state(wb);
  			}
  			break;
@@ -372,9 +372,9 @@ static void __save_state(struct wiimote_t* wm) {
 		case EXP_GUITAR_HERO_3:
 			wm->lstate.exp.gh3 = wm->exp.gh3;
 			break;
- 		case EXP_WII_BOARD:
- 			wm->lstate.exp.wb = wm->exp.wb;
- 			break;
+		case EXP_WII_BOARD:
+			wm->lstate.exp.wb = wm->exp.wb;
+			break;
 	}
 }
 
@@ -614,11 +614,11 @@ s32 WPAD_Init()
 			return WPAD_ERR_BADCONF;
 		}
 
-        if(__wpad_devs.num_registered == 0)
-            return WPAD_ERR_NONEREGISTERED;
+		if(__wpad_devs.num_registered == 0)
+			return WPAD_ERR_NONEREGISTERED;
 
-        if(__wpad_devs.num_registered > CONF_PAD_MAX_REGISTERED)
-            return WPAD_ERR_BADCONF;
+		if(__wpad_devs.num_registered > CONF_PAD_MAX_REGISTERED)
+			return WPAD_ERR_BADCONF;
 
 		__wpads = wiiuse_init(WPAD_MAX_WIIMOTES,__wpad_eventCB);
 		if(__wpads==NULL) {

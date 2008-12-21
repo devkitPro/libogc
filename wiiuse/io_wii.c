@@ -31,10 +31,10 @@ static __inline__ void ACR_WriteReg(u32 reg,u32 val)
 
 static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 {
-    struct wiimote_listen_t *wml = (struct wiimote_listen_t*)arg;
-    struct wiimote_t *wm = wml->wm;
+	struct wiimote_listen_t *wml = (struct wiimote_listen_t*)arg;
+	struct wiimote_t *wm = wml->wm;
 
-    if(!wm) return ERR_OK;
+	if(!wm) return ERR_OK;
 
 	//printf("wiimote disconnected\n");
 	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_IR|WIIMOTE_STATE_IR_INIT));
@@ -55,8 +55,8 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 
 static s32 __wiiuse_receive(void *arg,void *buffer,u16 len)
 {
-    struct wiimote_listen_t *wml = (struct wiimote_listen_t*)arg;
-    struct wiimote_t *wm = wml->wm;
+	struct wiimote_listen_t *wml = (struct wiimote_listen_t*)arg;
+	struct wiimote_t *wm = wml->wm;
 
 	if(!wm || !buffer || len==0) return ERR_OK;
 
@@ -81,8 +81,8 @@ static s32 __wiiuse_connected(void *arg,struct bte_pcb *pcb,u8 err)
 	wm = wml->assign_cb(&wml->bdaddr);
 
 	if(!wm) {
-	   bte_disconnect(wml->sock);
-	   return ERR_OK;
+		bte_disconnect(wml->sock);
+		return ERR_OK;
 	}
 
 	wml->wm = wm;
