@@ -1,3 +1,5 @@
+// Modified by Francisco Mu�oz 'Hermes' MAY 2008
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
