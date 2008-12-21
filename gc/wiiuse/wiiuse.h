@@ -636,10 +636,10 @@ typedef struct wiimote_t {
  * @brief Wiimote listen structure.
  */
 typedef struct wiimote_listen_t {
-   WCONST struct bd_addr bdaddr;
-   WCONST struct bte_pcb *sock;
-   WCONST struct wiimote_t *(*assign_cb)(struct bd_addr *bdaddr);
-   WCONST struct wiimote_t *wm;
+	WCONST struct bd_addr bdaddr;
+	WCONST struct bte_pcb *sock;
+	WCONST struct wiimote_t *(*assign_cb)(struct bd_addr *bdaddr);
+	WCONST struct wiimote_t *wm;
 } wiimote_listen;
 #endif
 
