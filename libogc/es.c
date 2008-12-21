@@ -899,12 +899,6 @@ static int _ES_open_r (struct _reent *r, void *fileStruct, const char *path, int
 		return -1;
 	}
 
-	// reading contents from other titles not supported yet
-	if(file->titleID != 0) {
-		r->_errno = EINVAL;
-		return -1;
-	}
-
 	// writing not supported
 	if ((flags & 0x03) != O_RDONLY) {
 		r->_errno = EROFS;
