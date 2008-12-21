@@ -139,11 +139,11 @@ struct _conf_pad_device {
 typedef struct _conf_pads conf_pads;
 
 struct _conf_pads {
-   u8 num_registered;
-   conf_pad_device registered[CONF_PAD_MAX_REGISTERED];
-   conf_pad_device active[CONF_PAD_MAX_ACTIVE];
-   conf_pad_device balance_board;
-   conf_pad_device unknown;
+	u8 num_registered;
+	conf_pad_device registered[CONF_PAD_MAX_REGISTERED];
+	conf_pad_device active[CONF_PAD_MAX_ACTIVE];
+	conf_pad_device balance_board;
+	conf_pad_device unknown;
 } ATTRIBUTE_PACKED;
 
 s32 CONF_Init(void);
