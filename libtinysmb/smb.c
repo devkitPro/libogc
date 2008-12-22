@@ -3,7 +3,14 @@
  *
  * Nintendo Gamecube SaMBa implementation.
  *
+<<<<<<< .mine
  * Copyright softdev
+ * Modified by Tantric to utilize NTLM authentication
+ * PathInfo added by rodries
+ * SMB devoptab by scip, rodries
+=======
+ * Copyright softdev
+>>>>>>> .r3116
  *
  * Authentication modules, LMhash and DES are 
  *
@@ -45,10 +52,7 @@
 #include <processor.h>
 #include <lwp_threads.h>
 #include <lwp_objmgr.h>
-
-#include "des.h"
-#include "lmhash.h"
-#include "smb.h"
+#include <smb.h>
 
 
 /**
@@ -123,6 +127,7 @@
 #define SMB_PROTO					0x424d53ff
 #define SMB_HANDLE_NULL				0xffffffff
 #define SMB_MAX_BUFFERSIZE			(62*1024)
+#define SMB_MAX_TRANSMIT_SIZE		7236
 #define SMB_DEF_READOFFSET			59
 								
 #define SMB_CONNHANDLES_MAX			8
@@ -150,7 +155,7 @@ typedef struct _nbtsmb
   u8 msg;		 /*** NBT Message ***/
   u8 flags;		 /*** Not much here really ***/
   u16 length;	 /*** Length, excluding NBT ***/
-  u8 smb[2916];		 /*** GC Actual is 2920 bytes ***/
+  u8 smb[SMB_MAX_TRANSMIT_SIZE];		 /*** Wii Actual is 7240 bytes ***/
 } NBTSMB;
 
 /**
@@ -191,7 +196,9 @@ static BOOL smb_inited = FALSE;
 static lwp_objinfo smb_handle_objects;
 static lwp_queue smb_filehandle_queue;
 static struct _smbfile smb_filehandles[SMB_FILEHANDLES_MAX];
-static const char *smb_dialects[] = {"LM1.2X002",NULL};
+static const char *smb_dialects[] = {"NT LM 0.12",NULL};
+
+extern void ntlm_smb_nt_encrypt(const char *passwd, const u8 * challenge, u8 * answer);
 
 /**
  * SMB Endian aware supporting functions 
@@ -374,7 +381,7 @@ static s32 SMBCheck(u8 command, s32 readlen,SMBHANDLE *handle)
  * SMB_SetupAndX
  *
  * Setup the SMB session, including authentication with the 
- * magic 'LM Response'
+ * magic 'NTLM Response'
  */
 static s32 SMB_SetupAndX(SMBHANDLE *handle)
 {
@@ -383,12 +390,12 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	s32 i, ret;
 	u8 *ptr = handle->message.smb;
 	SMBSESSION *sess = &handle->session;
-	char pwd[24], LMh[24], LMr[24];
+	char pwd[200], ntRespData[24];
 
 	MakeSMBHeader(SMB_SETUP_ANDX,0x08,0x01,handle);
 	pos = SMB_HEADER_SIZE;
 
-	setUChar(ptr,pos,10);
+	setUChar(ptr,pos,13);
 	pos++;				    /*** Word Count ***/
 	setUChar(ptr,pos,0xff);
 	pos++;				      /*** Next AndX ***/
@@ -401,21 +408,21 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	setUShort(ptr,pos,sess->MaxVCS);
 	pos += 2;
 	pos += 4; /*** Session key, unknown at this point ***/
-	setUShort(ptr,pos,24);
-	pos += 2;				 /*** Password length ***/
+	setUShort(ptr,pos,0);	/*** Password length (case-insensitive) ***/
+	pos += 2;
+	setUShort(ptr,pos,24);	/*** Password length (case-sensitive) ***/
+	pos += 2;
 	pos += 4; /*** Reserved ***/
+	pos += 4; /*** Capabilities ***/
 	bcpos = pos;
 	pos += 2; /*** Byte count ***/
 
-	/*** The magic 'LM Response' ***/
+	/*** The magic 'NTLM Response' ***/
 	strcpy(pwd, handle->pwd);
-	for(i=0;i<strlen(pwd);i++)pwd[i] = toupper(pwd[i]);
-
-	auth_LMhash((u8*)LMh,(u8*)pwd,strlen(pwd));
-	auth_LMresponse((u8*)LMr,(u8*)LMh,sess->challenge);
+	ntlm_smb_nt_encrypt((const char *) pwd, (const u8 *) sess->challenge, (u8*) ntRespData);
 
 	/*** Build information ***/
-	memcpy(&ptr[pos],LMr,24);
+	memcpy(&ptr[pos],ntRespData,24);
 	pos += 24;
 
 	/*** Account ***/
@@ -434,7 +441,7 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	pos += strlen(pwd)+1;
 
 	/*** Native LAN Manager ***/
-	strcpy(pwd,"Nintendo GameCube 0.1");
+	strcpy(pwd,"Nintendo Wii");
 	memcpy(&ptr[pos],pwd,strlen(pwd));
 	pos += strlen (pwd)+1;
 
@@ -518,13 +525,13 @@ static s32 SMB_TreeAndX(SMBHANDLE *handle)
 /**
  * SMB_NegotiateProtocol
  *
- * The only protocol we admit to is 'DOS LANMAN 2.1'
+ * The only protocol we admit to is 'NT LM 0.12'
  */
 static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *handle)
 {
 	u8 *ptr;
 	s32 pos;
-	s32 bcnt,i;
+	s32 bcnt,i,j;
 	s32 ret,len;
 	u16 bytecount;
 	SMBSESSION *sess;
@@ -566,32 +573,34 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 		ptr = handle->message.smb;
 
 		/*** Collect information ***/
-		if(getUChar(ptr,pos)!=13) return SMB_PROTO_FAIL;
+		if(getUChar(ptr,pos)!=17) return SMB_PROTO_FAIL;	// UCHAR WordCount; Count of parameter words = 17
 
 		pos++;
-		if(getUShort(ptr,pos)) return SMB_PROTO_FAIL;
+		if(getUShort(ptr,pos)) return SMB_PROTO_FAIL;	// USHORT DialectIndex; Index of selected dialect - should always be 0 since we only supplied 1!
 
 		pos += 2;
-		if(getUShort(ptr,pos)!=3) return SMB_NOT_USER;
+		if(getUShort(ptr,pos)!=3) return SMB_NOT_USER;	//UCHAR SecurityMode; Security mode:
+
+		pos++;
+		sess->MaxMpx = getUShort(ptr, pos);	//USHORT MaxMpxCount; Max pending outstanding requests
 
 		pos += 2;
-		sess->MaxBuffer = getUShort(ptr, pos);
-		if(sess->MaxBuffer>2916) sess->MaxBuffer = 2916;
+		sess->MaxVCS = getUShort(ptr, pos);	//USHORT MaxNumberVcs; Max VCs between client and server
 
 		pos += 2;
-		sess->MaxMpx = getUShort(ptr,pos);
+		sess->MaxBuffer = getUShort(ptr, pos);	//ULONG MaxBufferSize; Max transmit buffer size			
+		if(sess->MaxBuffer>SMB_MAX_TRANSMIT_SIZE) sess->MaxBuffer = SMB_MAX_TRANSMIT_SIZE;
 
-		pos += 2;
-		sess->MaxVCS = getUShort(ptr,pos);
+		pos += 4;
+		pos += 4;	//ULONG MaxRawSize; Maximum raw buffer size
+		pos += 4;	//ULONG SessionKey; Unique token identifying this session
+		pos += 4;	//ULONG Capabilities; Server capabilities
+		pos += 4;	//ULONG SystemTimeLow; System (UTC) time of the server (low).
+		pos += 4;	//ULONG SystemTimeHigh; System (UTC) time of the server (high).
+		pos += 2;	//USHORT ServerTimeZone; Time zone of server (minutes from UTC)
+		if(getUShort(ptr,pos)!=8) return SMB_BAD_KEYLEN;	//UCHAR EncryptionKeyLength - 0 or 8
 
-		pos += 2;
-		pos += 2;	 /*** Raw Mode ***/
-		pos += 4;	 /*** Session Key ***/
-		pos += 6;	 /*** Time information ***/
-		if(getUShort(ptr,pos)!=8) return SMB_BAD_KEYLEN;
-
-		pos += 2;
-		pos += 2;	 /*** Reserved ***/
+		pos++;
 		bytecount = getUShort(ptr,pos);
 
 		/*** Copy challenge key ***/
@@ -600,7 +609,14 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 
 		/*** Primary domain ***/
 		pos += 8;
-		strcpy((char*)sess->p_domain,(const char*)&ptr[pos]);
+		i = j = 0;
+		while(ptr[pos+j]!=0) {
+			sess->p_domain[i] = ptr[pos+j];
+			j += 2;
+			i++;
+		}
+		sess->p_domain[i] = '\0';
+
 		return SMB_SUCCESS;
 	}
 
@@ -658,7 +674,7 @@ static s32 do_smbconnect(SMBHANDLE *handle)
 /****************************************************************************
  * Primary setup, logon and connection all in one :)
  ****************************************************************************/
-s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const char *client, const char *server, const char *share, const char *IP)
+s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const char *share, const char *IP)
 {
 	s32 ret;
 	SMBHANDLE *handle;
@@ -677,7 +693,6 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 
 	handle->user = strdup(user);
 	handle->pwd = strdup(password);
-	handle->server_name = strdup(server);
 	handle->share_name = strdup(share);
 
 	handle->server_addr.sin_family = AF_INET;
@@ -940,7 +955,7 @@ s32 SMB_WriteFile(const char *buffer, int size, int offset, SMBFILE sfid)
 	
 	src = (u8*)buffer;
 	copy_len = size;
-	if((copy_len+pos)>2916) copy_len = (2916-pos);
+	if((copy_len+pos)>SMB_MAX_TRANSMIT_SIZE) copy_len = (SMB_MAX_TRANSMIT_SIZE-pos);
 
 	memcpy(&ptr[pos],src,copy_len);
 	size -= copy_len;
@@ -962,6 +977,75 @@ s32 SMB_WriteFile(const char *buffer, int size, int offset, SMBFILE sfid)
 		ret = getUShort(ptr,(SMB_HEADER_SIZE+5));
 	}
 
+	return ret;
+}
+
+/**
+* SMB_PathInfo
+*/
+s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl)
+{
+	u8 *ptr;
+	s32 pos;
+	s32 ret;
+	s32 bpos;
+	SMBHANDLE *handle;
+	char realfile[256];
+
+	handle = __smb_handle_open(smbhndl);
+	if (!handle) return SMB_ERROR;
+
+	MakeSMBHeader(SMB_TRANS2, 0x08, 0x01, handle);
+	MakeTRANS2Header(SMB_QUERY_PATH_INFO, handle);
+
+	bpos = pos = (T2_BYTE_CNT + 2);
+	pos += 3; /*** Padding ***/
+	ptr = handle->message.smb;
+	setUShort(ptr, pos, 0x107); //SMB_QUERY_FILE_ALL_INFO
+
+	pos += 2;
+	setUInt(ptr, pos, 0);
+	pos += 4; /*** reserved ***/
+
+	if (filename[0] != '\\') {
+		strcpy(realfile, "\\");
+		strcat(realfile, filename);
+	} else
+		strcpy(realfile, filename);
+
+	memcpy(&ptr[pos], realfile, strlen(realfile));
+	pos += strlen(realfile) + 1; /*** Include padding ***/
+
+	/*** Update counts ***/
+	setUShort(ptr, T2_PRM_CNT, (7 + strlen(realfile)));
+	setUShort(ptr, T2_SPRM_CNT, (7 + strlen(realfile)));
+	setUShort(ptr, T2_SPRM_OFS, 68);
+	setUShort(ptr, T2_SDATA_OFS, (75 + strlen(realfile)));
+	setUShort(ptr, T2_BYTE_CNT, (pos - bpos));
+
+	handle->message.msg = NBT_SESSISON_MSG;
+	handle->message.length = htons(pos);
+
+	pos += 4;
+	ret = net_send(handle->sck_server, (char*) &handle->message, pos, 0);
+
+	ret = SMB_ERROR;
+	if (SMBCheck(SMB_TRANS2, sizeof(NBTSMB), handle) == SMB_SUCCESS) {
+
+		ptr = handle->message.smb;
+		/*** Get parameter offset ***/
+		pos = getUShort(ptr, (SMB_HEADER_SIZE + 9));
+		sdir->attributes = getUShort(ptr,pos+36);
+
+		pos += 52;
+		sdir->size_low = getUInt(ptr, pos);
+		pos += 4;
+		sdir->size_high = getUInt(ptr, pos);
+		pos += 4;
+		strcpy(sdir->name,realfile);
+
+		ret = SMB_SUCCESS;
+	}
 	return ret;
 }
 
