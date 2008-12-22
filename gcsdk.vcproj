@@ -3623,24 +3623,12 @@
 					</FileConfiguration>
 				</File>
 				<File
-					RelativePath="libtinysmb\lmhash.c"
+					RelativePath=".\libtinysmb\md4.c"
 					>
-					<FileConfiguration
-						Name="Release|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							PreprocessorDefinitions=""
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Debug|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							PreprocessorDefinitions=""
-						/>
-					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\libtinysmb\ntlm.c"
+					>
 				</File>
 				<File
 					RelativePath="libtinysmb\smb.c"
@@ -3661,6 +3649,10 @@
 							PreprocessorDefinitions=""
 						/>
 					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\libtinysmb\smb_devoptab.c"
+					>
 				</File>
 			</Filter>
 		</Filter>
@@ -4201,19 +4193,6 @@
 				</File>
 				<File
 					RelativePath="gc\mad\version.h"
-					>
-				</File>
-			</Filter>
-			<Filter
-				Name="tinysmb.h"
-				Filter=".h"
-				>
-				<File
-					RelativePath="gc\tinysmb\DES.h"
-					>
-				</File>
-				<File
-					RelativePath="gc\tinysmb\LMhash.h"
 					>
 				</File>
 			</Filter>

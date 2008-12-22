@@ -84,7 +84,7 @@ STUBSLIB	:= $(LIBDIR)/libgclibstubs
 #---------------------------------------------------------------------------------
 DEFINCS		:= -I$(BASEDIR) -I$(BASEDIR)/gc
 INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
-				-I$(BASEDIR)/gc/ogc -I$(BASEDIR)/gc/ogc/machine -I$(BASEDIR)/gc/tinysmb \
+				-I$(BASEDIR)/gc/ogc -I$(BASEDIR)/gc/ogc/machine \
 				-I$(BASEDIR)/gc/modplay -I$(BASEDIR)/gc/mad \
 				-I$(BASEDIR)/gc/z -I$(BASEDIR)/gc/bte \
 				-I$(BASEDIR)/gc/sdcard -I$(BASEDIR)/gc/wiiuse \
@@ -173,7 +173,7 @@ WIIUSEOBJ	:=	classic.o dynamics.o events.o guitar_hero_3.o io.o io_wii.o ir.o \
 				nunchuk.o wiiboard.o wiiuse.o wpad.o
 
 #---------------------------------------------------------------------------------
-TINYSMBOBJ	:=	des.o lmhash.o smb.o
+TINYSMBOBJ	:=	des.o md4.o ntlm.o smb.o smb_devoptab.o
 
 #---------------------------------------------------------------------------------
 ZLIBOBJ		:=	adler32.o compress.o crc32.o gzio.o uncompr.o \
