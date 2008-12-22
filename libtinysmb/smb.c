@@ -575,7 +575,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 		if(getUShort(ptr,pos)) return SMB_PROTO_FAIL;	// USHORT DialectIndex; Index of selected dialect - should always be 0 since we only supplied 1!
 
 		pos += 2;
-		if(getUShort(ptr,pos)!=3) return SMB_NOT_USER;	//UCHAR SecurityMode; Security mode:
+		if(getUChar(ptr,pos)!=3) return SMB_NOT_USER;	//UCHAR SecurityMode; Security mode:
 
 		pos++;
 		sess->MaxMpx = getUShort(ptr, pos);	//USHORT MaxMpxCount; Max pending outstanding requests
@@ -584,7 +584,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 		sess->MaxVCS = getUShort(ptr, pos);	//USHORT MaxNumberVcs; Max VCs between client and server
 
 		pos += 2;
-		sess->MaxBuffer = getUShort(ptr, pos);	//ULONG MaxBufferSize; Max transmit buffer size			
+		sess->MaxBuffer = getUInt(ptr, pos);	//ULONG MaxBufferSize; Max transmit buffer size			
 		if(sess->MaxBuffer>SMB_MAX_TRANSMIT_SIZE) sess->MaxBuffer = SMB_MAX_TRANSMIT_SIZE;
 
 		pos += 4;
@@ -594,7 +594,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 		pos += 4;	//ULONG SystemTimeLow; System (UTC) time of the server (low).
 		pos += 4;	//ULONG SystemTimeHigh; System (UTC) time of the server (high).
 		pos += 2;	//USHORT ServerTimeZone; Time zone of server (minutes from UTC)
-		if(getUShort(ptr,pos)!=8) return SMB_BAD_KEYLEN;	//UCHAR EncryptionKeyLength - 0 or 8
+		if(getUChar(ptr,pos)!=8) return SMB_BAD_KEYLEN;	//UCHAR EncryptionKeyLength - 0 or 8
 
 		pos++;
 		bytecount = getUShort(ptr,pos);
@@ -885,6 +885,7 @@ s32 SMB_ReadFile(char *buffer, int size, int offset, SMBFILE sfid)
 		if(ofs>SMB_DEF_READOFFSET) {
 			char pad[1024];
 			ret = net_recv(handle->sck_server,pad,(ofs-SMB_DEF_READOFFSET), 0);
+			if(ret<0) return ret;
 		}
 
 		/*** Finally, go grab the data ***/
@@ -892,6 +893,8 @@ s32 SMB_ReadFile(char *buffer, int size, int offset, SMBFILE sfid)
 		dest = (u8*)buffer;
 		if(length>0) {
 			while ((ret=net_recv(handle->sck_server,&dest[ofs],length, 0))!=0) {
+				if(ret<0) return ret;
+
 				ofs += ret;
 				if (ofs>=length) break;
 			}
@@ -1159,7 +1162,8 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	setUShort(ptr, pos, 260);
 	pos += 2;					  /*** Level of Interest ***/
 	pos += 4;    /*** Storage Type == 0 ***/
-	setUShort(ptr, pos, 12); pos+=2; /*** Search flags ***/
+	setUShort(ptr, pos, 12);
+	pos+=2; /*** Search flags ***/
 	pos++;
 
 	/*** Update counts ***/
