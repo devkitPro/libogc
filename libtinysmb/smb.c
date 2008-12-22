@@ -689,6 +689,7 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 
 	handle->user = strdup(user);
 	handle->pwd = strdup(password);
+	handle->server_name = strdup(IP);
 	handle->share_name = strdup(share);
 
 	handle->server_addr.sin_family = AF_INET;
