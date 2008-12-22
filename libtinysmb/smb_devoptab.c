@@ -46,17 +46,8 @@ typedef struct
 	SMBDIRENTRY smbdir;
 } SMBDIRSTATESTRUCT;
 
-typedef struct
-{
-	char ip[16];
-	char share[20];
-	char user[20];
-	char password[20];
-} SMBCONFIG;
-
 //globals
 static SMBCONN smbconn;
-static SMBCONFIG smbconfig;
 static u8 SMBCONNECTED = false;
 
 ///////////////////////////////////////////
@@ -948,14 +939,8 @@ const devoptab_t dotab_smb =
 		NULL       	/* Device data */
 };
 
-bool smbInit(const char *user, const char *password, const char *share,
-		const char *ip)
+bool smbInit(const char *user, const char *password, const char *share,	const char *ip)
 {
-	strncpy(smbconfig.user, user, 19);
-	strncpy(smbconfig.password, password, 19);
-	strncpy(smbconfig.share, share, 19);
-	strncpy(smbconfig.ip, ip, 15);
-
 	char myIP[16];
 	if (if_config(myIP, NULL, NULL, true) < 0)
 		return false;
@@ -964,8 +949,7 @@ bool smbInit(const char *user, const char *password, const char *share,
 
 	//root connect
 	_SMB_lock();
-	if (SMB_Connect(&smbconn, smbconfig.user, smbconfig.password,
-			smbconfig.share, smbconfig.ip) != SMB_SUCCESS)
+	if (SMB_Connect(&smbconn, user, password, share, ip) != SMB_SUCCESS)
 	{
 		_SMB_unlock();
 		LWP_MutexDestroy(_SMB_mutex);
