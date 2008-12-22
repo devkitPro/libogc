@@ -3,14 +3,10 @@
  *
  * Nintendo Gamecube SaMBa implementation.
  *
-<<<<<<< .mine
  * Copyright softdev
  * Modified by Tantric to utilize NTLM authentication
  * PathInfo added by rodries
  * SMB devoptab by scip, rodries
-=======
- * Copyright softdev
->>>>>>> .r3116
  *
  * Authentication modules, LMhash and DES are 
  *
