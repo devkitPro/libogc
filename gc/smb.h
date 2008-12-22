@@ -3,7 +3,10 @@
  *
  * Nintendo Gamecube SaMBa implementation.
  *
- * Copyright softdev@tehskeen.com
+ * Copyright softdev
+ * Modified by Tantric to utilize NTLM authentication
+ * PathInfo added by rodries
+ * SMB devoptab by scip, rodries
  *
  * Authentication modules, LMhash and DES are 
  *
@@ -39,8 +42,8 @@
 #include <gctypes.h>
 
 /**
- * SMB Error codes
- */
+* SMB Error codes
+*/
 #define SMB_SUCCESS					0
 #define SMB_ERROR				   -1
 #define SMB_BAD_PROTOCOL		   -2
@@ -51,15 +54,15 @@
 #define SMB_BAD_DATALEN			   -7
 
 /**
- * SMB File Open Function
- */
+* SMB File Open Function
+*/
 #define SMB_OF_OPEN					1
 #define SMB_OF_TRUNCATE				2
 #define SMB_OF_CREATE				16
 
 /**
- * FileSearch
- */
+* FileSearch
+*/
 #define SMB_SRCH_DIRECTORY			16
 #define SMB_SRCH_READONLY  			1
 #define SMB_SRCH_HIDDEN				2
@@ -67,8 +70,8 @@
 #define SMB_SRCH_VOLUME				8
 
 /**
- * SMB File Access Modes
- */
+* SMB File Access Modes
+*/
 #define SMB_OPEN_READING			0
 #define SMB_OPEN_WRITING			1
 #define SMB_OPEN_READWRITE			2
@@ -77,6 +80,7 @@
 #define SMB_DENY_WRITE				0x20
 #define SMB_DENY_READ				0x30
 #define SMB_DENY_NONE				0x40
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -103,28 +107,16 @@ typedef struct
   char name[256];
 } SMBDIRENTRY;
 
-typedef struct
-{
-	char gcip[16];
-	char gwip[16];
-	char mask[16];
-	char smbip[16];
-	char smbuser[20];
-	char smbpwd[20];
-	char smbgcid[20];
-	char smbsvid[20];
-	char smbshare[20];
-} SMBINFO;
-
 /**
  * Prototypes
  */
 
 /*** Session ***/
-s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const char *client, const char *server, const char *share, const char *IP);
+s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const char *share, const char *IP);
 void SMB_Close(SMBCONN smbhndl);
 
 /*** File Find ***/
+s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl);
 s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,SMBCONN smbhndl);
 s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl);
 s32 SMB_FindClose(SMBCONN smbhndl);
