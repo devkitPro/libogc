@@ -282,10 +282,14 @@ unsigned int _DEFUN(sleep,(s),
 unsigned int _DEFUN(usleep,(us),
            unsigned int us)
 {
+	u32 sec,rem;
 	struct timespec tb;
 
-	tb.tv_sec = 0;
-	tb.tv_nsec = us*TB_NSPERUS;
+	sec = us/TB_USPERSEC;
+	rem = us - (sec*TB_USPERSEC);
+
+	tb.tv_sec = sec;
+	tb.tv_nsec = rem*TB_NSPERUS;
 	return nanosleep(&tb);
 }
 
