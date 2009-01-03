@@ -240,7 +240,7 @@ void MODPlay_Init(MODPlay *mod)
 {
 	memset(mod,0,sizeof(MODPlay));
 
-#ifndef    __SNDLIB_H__
+#ifndef __SNDLIB_H__
     AUDIO_Init(NULL);
 #else
     SND_Pause(0);
