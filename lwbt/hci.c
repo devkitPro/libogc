@@ -1651,7 +1651,7 @@ void hci_event_handler(struct pbuf *p)
 			HCI_EVENT_LINK_KEY_NOT(hci_dev, bdaddr, ((u8_t *)p->payload) + 6, ret); /* Notify application.*/
 			break;
 		default:
-			LOG("hci_event_input: Undefined event code 0x%x\n", evhdr->code);
+			LOG("hci_event_input: Undefined event code 0x%x\n", evthdr->code);
 			break;
 	}
 }
