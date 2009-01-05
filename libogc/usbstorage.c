@@ -118,7 +118,7 @@ static s32 __USB_BlkMsgTimeout(usbstorage_handle *dev, u8 bEndpoint, u16 wLength
 
 	if(retval == ETIMEDOUT)
 	{
-		USB_CloseDevice(&dev->usb_fd);
+		USBStorage_Close(dev);
 		return USBSTORAGE_ETIMEDOUT;
 	}
 
@@ -144,7 +144,7 @@ static s32 __USB_CtrlMsgTimeout(usbstorage_handle *dev, u8 bmRequestType, u8 bmR
 
 	if(retval == ETIMEDOUT)
 	{
-		USB_CloseDevice(&dev->usb_fd);
+		USBStorage_Close(dev);
 		return USBSTORAGE_ETIMEDOUT;
 	}
 
