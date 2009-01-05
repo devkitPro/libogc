@@ -228,6 +228,7 @@ void __console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,in
 	_CPU_ISR_Restore(level);
 
 	setvbuf(stdout, NULL , _IONBF, 0);
+	setvbuf(stderr, NULL , _IONBF, 0);
 }
 
 void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_stride,int con_xres,int con_yres,int con_stride)
@@ -268,6 +269,7 @@ void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_str
 	_CPU_ISR_Restore(level);
 
 	setvbuf(stdout, NULL , _IONBF, 0);
+	setvbuf(stderr, NULL , _IONBF, 0);
 }
 
 static int __console_parse_escsequence(char *pchr)
@@ -435,15 +437,18 @@ static int __console_parse_escsequence(char *pchr)
 int __console_write(struct _reent *r,int fd,const char *ptr,size_t len)
 {
 	int i = 0;
+	u32 level;
 	char *tmp = (char*)ptr;
 	console_data_s *con;
 	char chr;
 
 	if(__gecko_status>=0) {
+		_CPU_ISR_Disable(level);
 		if(__gecko_safe)
 			usb_sendbuffer_safe(__gecko_status,ptr,len);
 		else
 			usb_sendbuffer(__gecko_status,ptr,len);
+		_CPU_ISR_Restore(level);
 	}
 
 	if(!curr_con) return -1;
@@ -567,6 +572,12 @@ void CON_EnableGecko(int channel,int safe)
 	if(__gecko_status!=-1) {
 		devoptab_list[STD_OUT] = &dotab_stdout;
 		devoptab_list[STD_ERR] = &dotab_stdout;
+
+		// line buffered output for threaded apps when only using the usbgecko
+		if(!curr_con) {
+			setvbuf(stdout, NULL, _IOLBF, 0);
+			setvbuf(stderr, NULL, _IOLBF, 0);
+		}
 	}
 }
 
