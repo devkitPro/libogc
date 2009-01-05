@@ -779,9 +779,6 @@ static bool __usbstorage_IsInserted(void)
            continue;
 
        maxLun = USBStorage_GetMaxLUN(&__usbfd);
-       if(maxLun == USBSTORAGE_ETIMEDOUT)
-           break;
-
        for(j = 0; j < maxLun; j++)
        {
            retval = USBStorage_MountLUN(&__usbfd, j);
