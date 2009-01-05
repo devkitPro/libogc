@@ -1593,6 +1593,11 @@ s32 SYS_CancelAlarm(syswd_t thealarm)
 	alarm = __lwp_syswd_open(thealarm);
 	if(!alarm) return -1;
 
+	alarm->alarmhandler = NULL;
+	alarm->ticks = 0;
+	alarm->periodic = 0;
+	alarm->start_per = 0;
+
 	__lwp_wd_remove_ticks(&alarm->alarm);
 	__lwp_thread_dispatchenable();
 	return 0;
