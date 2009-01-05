@@ -732,7 +732,7 @@ static bool __usbstorage_IsInserted(void)
 
    if(USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, 0, &dummy) < 0)
    {
-       if(__vid!=0 || __pid!=0)USBStorage_Close(&__usbfd);
+       if(__vid!=0 || __pid!=0) USBStorage_Close(&__usbfd);
        memset(&__usbfd, 0, sizeof(__usbfd));
        __lun = 0;
        __vid = 0;
@@ -762,6 +762,7 @@ static bool __usbstorage_IsInserted(void)
        }
        USBStorage_Close(&__usbfd);
    }
+
    memset(&__usbfd, 0, sizeof(__usbfd));
    __lun = 0;
    __vid = 0;
@@ -786,8 +787,6 @@ static bool __usbstorage_IsInserted(void)
            retval = USBStorage_MountLUN(&__usbfd, j);
            if(retval == USBSTORAGE_ETIMEDOUT)
            {
-               USBStorage_Reset(&__usbfd);
-               //USBStorage_Close(&__usbfd); //probably this fix the problem with usb-ethernet when you call fatinit before initialize network (not ure)
                break;
            }
 
@@ -819,7 +818,6 @@ static bool __usbstorage_ReadSectors(u32 sector, u32 numSectors, void *buffer)
    if(retval == USBSTORAGE_ETIMEDOUT)
    {
        __mounted = 0;
-       USBStorage_Close(&__usbfd);
    }
    if(retval < 0)
        return false;
@@ -837,7 +835,6 @@ static bool __usbstorage_WriteSectors(u32 sector, u32 numSectors, const void *bu
    if(retval == USBSTORAGE_ETIMEDOUT)
    {
        __mounted = 0;
-       USBStorage_Close(&__usbfd);
    }
    if(retval < 0)
        return false;
