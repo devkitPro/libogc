@@ -722,8 +722,7 @@ static bool __usbstorage_IsInserted(void)
    s32 maxLun;
    s32 retval;
 
-   if(__mounted == 1)
-       return true;
+   __mounted = 0;		//reset it here and check if device is still attached
 
    buffer = memalign(32, DEVLIST_MAXSIZE << 3);
    if(buffer == NULL)
