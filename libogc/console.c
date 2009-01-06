@@ -437,18 +437,15 @@ static int __console_parse_escsequence(char *pchr)
 int __console_write(struct _reent *r,int fd,const char *ptr,size_t len)
 {
 	int i = 0;
-	u32 level;
 	char *tmp = (char*)ptr;
 	console_data_s *con;
 	char chr;
 
 	if(__gecko_status>=0) {
-		_CPU_ISR_Disable(level);
 		if(__gecko_safe)
 			usb_sendbuffer_safe(__gecko_status,ptr,len);
 		else
 			usb_sendbuffer(__gecko_status,ptr,len);
-		_CPU_ISR_Restore(level);
 	}
 
 	if(!curr_con) return -1;
