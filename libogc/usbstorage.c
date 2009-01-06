@@ -741,7 +741,6 @@ static bool __usbstorage_IsInserted(void)
        return false;
    }
 
-   DCFlushRange(buffer,  DEVLIST_MAXSIZE << 3);
    if(__vid!=0 || __pid!=0)
    {
        for(i = 0; i < DEVLIST_MAXSIZE; i++)
