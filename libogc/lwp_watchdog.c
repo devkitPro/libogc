@@ -16,9 +16,13 @@ static void __lwp_wd_settimer(wd_cntrl *wd)
 {
 	u64 now;
 	s64 diff;
+	union uulc {
+		u64 ull;
+		u32 ul[2];
+	} v;
 
 	now = gettime();
-	diff = (wd->fire - now);
+	v.ull = diff = diff_ticks(now,wd->fire);
 #ifdef _LWPWD_DEBUG
 	printf("__lwp_wd_settimer(%p,%llu,%lld)\n",wd,wd->fire,diff);
 #endif
@@ -28,11 +32,11 @@ static void __lwp_wd_settimer(wd_cntrl *wd)
 #endif
 		wd->fire = 0;
 		mtdec(0);
-	} else if((u64)diff<((u64)0x0000000080000000)) {
+	} else if(diff<0x0000000080000000LL) {
 #ifdef _LWPWD_DEBUG
-		printf("__lwp_wd_settimer(%d): %lld<0x0000000080000000\n",(u32)diff,diff);
+		printf("__lwp_wd_settimer(%d): %lld<0x0000000080000000LL\n",v.ul[1],diff);
 #endif
-		mtdec((u32)diff);
+		mtdec(v.ul[1]);
 	} else {
 #ifdef _LWPWD_DEBUG
 		printf("__lwp_wd_settimer(0x7fffffff)\n");
@@ -129,7 +133,7 @@ void __lwp_wd_tickle(lwp_queue *queue)
 
 	wd = __lwp_wd_first(queue);
 	now = gettime();
-	diff = (wd->fire - now);
+	diff = diff_ticks(now,wd->fire);
 #ifdef _LWPWD_DEBUG
 	printf("__lwp_wd_tickle(%p,%08x%08x,%08x%08x,%08x%08x,%08x%08x)\n",wd,(u32)(now>>32),(u32)now,(u32)(wd->start>>32),(u32)wd->start,(u32)(wd->fire>>32),(u32)wd->fire,(u32)(diff>>32),(u32)diff);
 #endif
