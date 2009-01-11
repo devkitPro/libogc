@@ -10,11 +10,17 @@
 #include "context.h"
 
 //#define _LWPTHREADS_DEBUG
-
+#define LWP_TIMESLICE_TIMER_ID			0x00060040
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef enum
+{
+	LWP_CPU_BUDGET_ALGO_NONE = 0,
+	LWP_CPU_BUDGET_ALGO_TIMESLICE	
+} lwp_cpu_budget_algorithms;
 
 typedef struct _lwpwaitinfo {
 	u32 id;
@@ -33,6 +39,8 @@ typedef struct _lwpcntrl {
 	u32 suspendcnt,res_cnt;
 	u32 isr_level;
 	u32 cur_state;
+	u32 cpu_time_budget;
+	lwp_cpu_budget_algorithms budget_algo;
 	boolean is_preemptible;
 	lwp_waitinfo wait;
 	prio_cntrl priomap;
@@ -54,10 +62,12 @@ extern lwp_cntrl *_thr_idle;
 extern lwp_cntrl *_thr_executing;
 extern lwp_cntrl *_thr_heir;
 extern lwp_cntrl *_thr_allocated_fp;
-extern lwp_queue _lwp_thr_ready[];
-extern volatile boolean _context_switch_want;
+extern vu32 _context_switch_want;
 extern vu32 _thread_dispatch_disable_level;
+
+extern wd_cntrl _lwp_wd_timeslice;
 extern void **__lwp_thr_libc_reent;
+extern lwp_queue _lwp_thr_ready[];
 
 void __thread_dispatch();
 void __lwp_thread_yield();
@@ -78,11 +88,13 @@ void __lwp_thread_close(lwp_cntrl *);
 void __lwp_thread_startmultitasking();
 void __lwp_thread_stopmultitasking(void (*exitfunc)());
 lwp_obj* __lwp_thread_getobject(lwp_cntrl *);
-boolean __lwp_evaluatemode();
+u32 __lwp_evaluatemode();
 
 u32 __lwp_isr_in_progress();
+void __lwp_thread_resettimeslice();
 void __lwp_rotate_readyqueue(u32);
 void __lwp_thread_delayended(void *);
+void __lwp_thread_tickle_timeslice(void *);
 
 #ifdef LIBOGC_INTERNAL
 #include <libogc/lwp_threads.inl>
