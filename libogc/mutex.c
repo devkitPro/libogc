@@ -94,7 +94,7 @@ static mutex_st* __lwp_mutex_allocate()
 		__lwp_objmgr_open(&_lwp_mutex_objects,&lock->object);
 		return lock;
 	}
-	__lwp_thread_dispatchenable();
+	__lwp_thread_dispatchunnest();
 	return NULL;
 }
 
@@ -115,7 +115,7 @@ s32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
 	__lwp_mutex_initialize(&ret->mutex,&attr,LWP_MUTEX_UNLOCKED);
 
 	*mutex = (mutex_t)(LWP_OBJMASKTYPE(LWP_OBJTYPE_MUTEX)|LWP_OBJMASKID(ret->object.id));
-	__lwp_thread_dispatchenable();
+	__lwp_thread_dispatchunnest();
 	return 0;
 }
 
