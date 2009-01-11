@@ -12,6 +12,8 @@ extern int errno;
 #include "processor.h"
 #include "lwp_mutex.h"
 
+#define MEMLOCK_MUTEX_ID			0x00020040
+
 static int initialized = 0;
 static lwp_mutex mem_lock;
 
@@ -29,7 +31,7 @@ void __memlock_init()
 		attr.prioceil = 1;
 		__lwp_mutex_initialize(&mem_lock,&attr,LWP_MUTEX_UNLOCKED);
 	}
-	__lwp_thread_dispatchenable();
+	__lwp_thread_dispatchunnest();
 }
 
 #ifndef REENTRANT_SYSCALLS_PROVIDED
@@ -41,7 +43,7 @@ void _DEFUN(__libogc_malloc_lock,(r),
 	if(!initialized) return;
 
 	_CPU_ISR_Disable(level);
-	__lwp_mutex_seize(&mem_lock,1,TRUE,LWP_THREADQ_NOTIMEOUT,level);
+	__lwp_mutex_seize(&mem_lock,MEMLOCK_MUTEX_ID,TRUE,LWP_THREADQ_NOTIMEOUT,level);
 }
 
 void _DEFUN(__libogc_malloc_unlock,(r),
@@ -63,7 +65,7 @@ void _DEFUN(__libogc_malloc_lock,(ptr),
 	if(!initialized) return;
 
 	_CPU_ISR_Disable(level);
-	__lwp_mutex_seize(&mem_lock,1,TRUE,LWP_THREADQ_NOTIMEOUT,level);
+	__lwp_mutex_seize(&mem_lock,MEMLOCK_MUTEX_ID,TRUE,LWP_THREADQ_NOTIMEOUT,level);
 	ptr->_errno = _thr_executing->wait.ret_code;
 }
 
