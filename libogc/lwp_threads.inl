@@ -76,4 +76,9 @@ static __inline__ boolean __lwp_thread_isdispatchenabled()
 	return (_thread_dispatch_disable_level==0);
 }
 
+static __inline__ void __lwp_thread_inittimeslice()
+{
+	__lwp_wd_initialize(&_lwp_wd_timeslice,__lwp_thread_tickle_timeslice,LWP_TIMESLICE_TIMER_ID,NULL);
+}
+
 #endif
