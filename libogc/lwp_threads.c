@@ -122,17 +122,17 @@ void __lwp_thread_tickle_timeslice(void *arg)
 	lwp_cntrl *exec;
 
 	exec = _thr_executing;
+	ticks = millisecs_to_ticks(1);
 	
 	__lwp_thread_dispatchdisable();
 
-	ticks = millisecs_to_ticks(1);
-	__lwp_wd_insert_ticks(&_lwp_wd_timeslice,ticks);
-
 	if(!exec->is_preemptible) {
+		__lwp_wd_insert_ticks(&_lwp_wd_timeslice,ticks);
 		__lwp_thread_dispatchunnest();
 		return;
 	}
 	if(!__lwp_stateready(exec->cur_state)) {
+		__lwp_wd_insert_ticks(&_lwp_wd_timeslice,ticks);
 		__lwp_thread_dispatchunnest();
 		return;
 	}
@@ -147,6 +147,8 @@ void __lwp_thread_tickle_timeslice(void *arg)
 			}
 			break;
 	}
+
+	__lwp_wd_insert_ticks(&_lwp_wd_timeslice,ticks);
 	__lwp_thread_dispatchunnest();
 }
 
