@@ -81,4 +81,13 @@ static __inline__ void __lwp_thread_inittimeslice()
 	__lwp_wd_initialize(&_lwp_wd_timeslice,__lwp_thread_tickle_timeslice,LWP_TIMESLICE_TIMER_ID,NULL);
 }
 
+static __inline__ void __lwp_thread_starttimeslice()
+{
+	__lwp_wd_insert_ticks(&_lwp_wd_timeslice,millisecs_to_ticks(1));
+}
+
+static __inline__ void __lwp_thread_stoptimeslice()
+{
+	__lwp_wd_remove_ticks(&_lwp_wd_timeslice);
+}
 #endif
