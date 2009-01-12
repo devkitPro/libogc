@@ -708,7 +708,22 @@ s32 if_config(char *local_ip, char *netmask, char *gateway,boolean use_dhcp)
 	}
 	
 	return 0;
-	
-			
 }
+
+s32 if_configex(struct in_addr *local_ip, struct in_addr *netmask, struct in_addr *gateway,boolean use_dhcp)
+{
+	s32 i,ret;
+	struct in_addr hostip;
+
+	if ( use_dhcp != true ) return -EINVAL;
+
+	for(i=0;i<MAX_INIT_RETRIES && (ret=net_init())==-EAGAIN;i++);
+	if(ret<0) return ret;
+
+	hostip.s_addr = net_gethostip();
+	if ( local_ip!=NULL && hostip.s_addr ) *local_ip = hostip;
+
+	return 0;
+}
+
 #endif /* defined(HW_RVL) */
