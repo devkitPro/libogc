@@ -702,22 +702,17 @@ u32 __lwp_thread_start(lwp_cntrl *thethread,void* (*entry)(void*),void *arg)
 
 void __lwp_thread_startmultitasking()
 {
-	s64 ticks;
-
 	_lwp_exitfunc = NULL;
 
 	__sys_state_set(SYS_STATE_BEGIN_MT);
 	__sys_state_set(SYS_STATE_UP);
-
-	ticks = millisecs_to_ticks(1);
-	__lwp_wd_insert_ticks(&_lwp_wd_timeslice,ticks);
 
 	_context_switch_want = FALSE;
 	_thr_executing = _thr_heir;
 #ifdef _LWPTHREADS_DEBUG
 	kprintf("__lwp_start_multitasking(%p,%p)\n",_thr_executing,_thr_heir);
 #endif
-	//_cpu_context_restore_fp((void*)&_thr_heir->context);
+	__lwp_thread_starttimeslice();
 	_cpu_context_switch((void*)&core_context,(void*)&_thr_heir->context);
 
 	if(_lwp_exitfunc) _lwp_exitfunc();
@@ -727,8 +722,8 @@ void __lwp_thread_stopmultitasking(void (*exitfunc)())
 {
 	_lwp_exitfunc = exitfunc;
 	if(__sys_state_get()!=SYS_STATE_SHUTDOWN) {
+		__lwp_thread_stoptimeslice();
 		__sys_state_set(SYS_STATE_SHUTDOWN);
-		__lwp_wd_remove_ticks(&_lwp_wd_timeslice);
 		_cpu_context_switch((void*)&_thr_executing->context,(void*)&core_context);
 	}
 }
