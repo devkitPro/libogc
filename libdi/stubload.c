@@ -16,6 +16,7 @@
 
 #include "stubasm.h"
 
+#include <ogc/lwp_threads.h>
 #include <ogc/machine/processor.h>
 
 context_storage di_ctx;
@@ -65,9 +66,6 @@ void dumpregs(void)
 
 register_storage di_regs;
 
-u64 gettime(void);
-void settime(u64 t);
-
 void __distub_saveregs(void)
 {
 	int i;
@@ -95,6 +93,9 @@ s32 __DI_StubLaunch(void)
 	
 	u32 ints;
 	
+	dprintf("Stopping thread timeslice ticker\n");
+	__lwp_thread_stoptimeslice();
+
 	dprintf("Shutting down IOS subsystems\n");
 	res = __IOS_ShutdownSubsystems();
 	if(res < 0) {
@@ -165,7 +166,10 @@ s32 __DI_StubLaunch(void)
 		return res;
 	}
 	dprintf(" GetNumTicketViews: %d",numviews);
-	
+
+	dprintf("Restarting threads timeslice ticker\n");
+	__lwp_thread_starttimeslice();
+
 	return 0;
 }
 
