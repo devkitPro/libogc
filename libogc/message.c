@@ -36,7 +36,7 @@ distribution.
 #include <lwp_config.h>
 #include "message.h"
 
-#define LWP_OBJTYPE_MBOX			5
+#define LWP_OBJTYPE_MBOX			6
 
 #define LWP_CHECK_MBOX(hndl)		\
 {									\

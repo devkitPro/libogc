@@ -81,7 +81,7 @@ distribution.
 #define FONT_SIZE_ANSI				(288 + 131072)
 #define FONT_SIZE_SJIS				(3840 + 1179648)
 
-#define LWP_OBJTYPE_SYSWD			6
+#define LWP_OBJTYPE_SYSWD			7
 
 #define LWP_CHECK_SYSWD(hndl)		\
 {									\

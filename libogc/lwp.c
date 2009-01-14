@@ -39,8 +39,8 @@ distribution.
 #include "lwp_config.h"
 #include "lwp.h"
 
-#define LWP_OBJTYPE_THREAD			0
-#define LWP_OBJTYPE_TQUEUE			1
+#define LWP_OBJTYPE_THREAD			1
+#define LWP_OBJTYPE_TQUEUE			2
 
 #define LWP_CHECK_THREAD(hndl)		\
 {									\
