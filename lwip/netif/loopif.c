@@ -48,7 +48,7 @@
 
 #include "lwp_watchdog.h"
 
-#define LOOP_TIMER_ID			0x00060045
+#define LOOP_TIMER_ID			0x00070045
 
 static u64 loopif_ticks;
 static wd_cntrl loopif_tmr_cntrl;
