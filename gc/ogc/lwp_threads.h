@@ -10,7 +10,7 @@
 #include "context.h"
 
 //#define _LWPTHREADS_DEBUG
-#define LWP_TIMESLICE_TIMER_ID			0x00060040
+#define LWP_TIMESLICE_TIMER_ID			0x00070040
 
 #ifdef __cplusplus
 extern "C" {
