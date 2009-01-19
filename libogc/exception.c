@@ -158,11 +158,13 @@ static void _cpu_print_stack(void *pc,void *lr,void *r1)
 	p = r1;
 	if(!p) __asm__ __volatile__("mr %0,%%r1" : "=r"(p));
 
+	kprintf("\n\tSTACK DUMP:");
+
 	for(i=0;i<CPU_STACK_TRACE_DEPTH-1 && p->up;p=p->up,i++) {
-		if(i%4) kprintf("--> ");
+		if(i%4) kprintf(" --> ");
 		else {
-			if(i>0) kprintf("-->\n");
-			else kprintf("\n");
+			if(i>0) kprintf(" -->\n\t");
+			else kprintf("\n\t");
 		}
 
 		switch(i) {
@@ -193,13 +195,14 @@ static void waitForReload() {
 		int buttonsDown = PAD_ButtonsDown(0);
 
 		if( (buttonsDown & PAD_TRIGGER_Z) || SYS_ResetButtonDown() ) {
+			kprintf("\n\tReload\n\n\n");
 			_CPU_ISR_Disable(level);
 			Reload ();
 		}
 
 		if ( buttonsDown & PAD_BUTTON_A )
 		{
-			kprintf("Reset\n");
+			kprintf("\n\tReset\n\n\n");
 			SYS_ResetSystem(SYS_HOTRESET,0,FALSE);
 		}
 
@@ -214,27 +217,27 @@ void c_default_exceptionhandler(frame_context *pCtx)
 	VIDEO_SetFramebuffer(exception_xfb);
 	__console_init(exception_xfb,20,20,640,574,1280);
 
-	kprintf("\n\nException (%s) occurred!\n", exception_name[pCtx->EXCPT_Number]);
+	kprintf("\n\n\n\tException (%s) occurred!\n", exception_name[pCtx->EXCPT_Number]);
 
-	kprintf("GPR00 %08X GPR08 %08X GPR16 %08X GPR24 %08X\n",pCtx->GPR[0], pCtx->GPR[8], pCtx->GPR[16], pCtx->GPR[24]);
-	kprintf("GPR01 %08X GPR09 %08X GPR17 %08X GPR25 %08X\n",pCtx->GPR[1], pCtx->GPR[9], pCtx->GPR[17], pCtx->GPR[25]);
-	kprintf("GPR02 %08X GPR10 %08X GPR18 %08X GPR26 %08X\n",pCtx->GPR[2], pCtx->GPR[10], pCtx->GPR[18], pCtx->GPR[26]);
-	kprintf("GPR03 %08X GPR11 %08X GPR19 %08X GPR27 %08X\n",pCtx->GPR[3], pCtx->GPR[11], pCtx->GPR[19], pCtx->GPR[27]);
-	kprintf("GPR04 %08X GPR12 %08X GPR20 %08X GPR28 %08X\n",pCtx->GPR[4], pCtx->GPR[12], pCtx->GPR[20], pCtx->GPR[28]);
-	kprintf("GPR05 %08X GPR13 %08X GPR21 %08X GPR29 %08X\n",pCtx->GPR[5], pCtx->GPR[13], pCtx->GPR[21], pCtx->GPR[29]);
-	kprintf("GPR06 %08X GPR14 %08X GPR22 %08X GPR30 %08X\n",pCtx->GPR[6], pCtx->GPR[14], pCtx->GPR[22], pCtx->GPR[30]);
-	kprintf("GPR07 %08X GPR15 %08X GPR23 %08X GPR31 %08X\n",pCtx->GPR[7], pCtx->GPR[15], pCtx->GPR[23], pCtx->GPR[31]);
-	kprintf("LR %08X SRR0 %08x SRR1 %08x MSR %08x\n", pCtx->LR, pCtx->SRR0, pCtx->SRR1,pCtx->MSR);
-	kprintf("DAR %08X DSISR %08X\n", mfspr(19), mfspr(18));
+	kprintf("\tGPR00 %08X GPR08 %08X GPR16 %08X GPR24 %08X\n",pCtx->GPR[0], pCtx->GPR[8], pCtx->GPR[16], pCtx->GPR[24]);
+	kprintf("\tGPR01 %08X GPR09 %08X GPR17 %08X GPR25 %08X\n",pCtx->GPR[1], pCtx->GPR[9], pCtx->GPR[17], pCtx->GPR[25]);
+	kprintf("\tGPR02 %08X GPR10 %08X GPR18 %08X GPR26 %08X\n",pCtx->GPR[2], pCtx->GPR[10], pCtx->GPR[18], pCtx->GPR[26]);
+	kprintf("\tGPR03 %08X GPR11 %08X GPR19 %08X GPR27 %08X\n",pCtx->GPR[3], pCtx->GPR[11], pCtx->GPR[19], pCtx->GPR[27]);
+	kprintf("\tGPR04 %08X GPR12 %08X GPR20 %08X GPR28 %08X\n",pCtx->GPR[4], pCtx->GPR[12], pCtx->GPR[20], pCtx->GPR[28]);
+	kprintf("\tGPR05 %08X GPR13 %08X GPR21 %08X GPR29 %08X\n",pCtx->GPR[5], pCtx->GPR[13], pCtx->GPR[21], pCtx->GPR[29]);
+	kprintf("\tGPR06 %08X GPR14 %08X GPR22 %08X GPR30 %08X\n",pCtx->GPR[6], pCtx->GPR[14], pCtx->GPR[22], pCtx->GPR[30]);
+	kprintf("\tGPR07 %08X GPR15 %08X GPR23 %08X GPR31 %08X\n",pCtx->GPR[7], pCtx->GPR[15], pCtx->GPR[23], pCtx->GPR[31]);
+	kprintf("\tLR %08X SRR0 %08x SRR1 %08x MSR %08x\n", pCtx->LR, pCtx->SRR0, pCtx->SRR1,pCtx->MSR);
+	kprintf("\tDAR %08X DSISR %08X\n", mfspr(19), mfspr(18));
 
 	_cpu_print_stack((void*)pCtx->SRR0,(void*)pCtx->LR,(void*)pCtx->GPR[1]);
 
 	if((pCtx->EXCPT_Number==EX_DSI) || (pCtx->EXCPT_Number==EX_FP)) {
 		u32 i;
 		u32 *pAdd = (u32*)pCtx->SRR0;
-		kprintf("\n\nCODE DUMP:\n\n");
+		kprintf("\n\n\tCODE DUMP:\n");
 		for (i=0; i<12; i+=4)
-			kprintf("%p:  %08X %08X %08X %08X\n",
+			kprintf("\t%p:  %08X %08X %08X %08X\n",
 			&(pAdd[i]),pAdd[i], pAdd[i+1], pAdd[i+2], pAdd[i+3]);
 	}
 
