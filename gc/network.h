@@ -196,6 +196,13 @@ struct linger {
 #define ip4_addr4(ipaddr) ((u32)(ntohl((ipaddr)->s_addr)) & 0xff)
 #endif
 
+#define POLLIN				0x0001
+#define POLLPRI				0x0002
+#define POLLOUT				0x0004
+#define POLLERR				0x0008
+#define POLLHUP				0x0010
+#define POLLNVAL			0x0020
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -229,6 +236,12 @@ struct hostent {
   char    **h_addr_list;  /* list of addresses from name server */
 };
 
+struct pollsd {
+	s32 socket;
+	u32 events;
+	u32 revents;
+};
+
 u32 inet_addr(const char *cp);
 s8 inet_aton(const char *cp, struct in_addr *addr);
 char *inet_ntoa(struct in_addr addr); /* returns ptr to static buffer; not reentrant! */
@@ -254,6 +267,7 @@ s32 net_select(s32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset,st
 s32 net_setsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optlen);
 s32 net_ioctl(s32 s, u32 cmd, void *argp);
 s32 net_fcntl(s32 s, u32 cmd, u32 flags);
+s32 net_poll(struct pollsd *sds,s32 nsds,s32 timeout);
 s32 net_shutdown(s32 s, u32 how);
 
 struct hostent * net_gethostbyname(char *addrString);
