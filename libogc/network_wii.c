@@ -692,6 +692,53 @@ s32 net_fcntl(s32 s, u32 cmd, u32 flags)
 }
 
 
+/*! 
+ * \fn s32 net_poll(struct pollsd *sds, u32 nsds, s64 timeout)
+ * \brief Poll a set of sockets for a set of events.
+ *
+ * \param[in] sds a pointer to an array of pollsd structures 
+ * \param[in] nsds the number of elements in the sds array
+ * \param[in] time in milliseconds before the function should timeout
+ *
+ * \return the number of structures in sds that now have non-zero revent fields
+ */
+s32 net_poll(struct pollsd *sds,s32 nsds,s32 timeout)
+{
+	union ullc {
+		u64 ull;
+		u32 ul[2];
+	};
+
+	s32 ret;
+	union ullc outv;
+	struct pollsd *psds;
+	STACK_ALIGN(u64,params,1,32);
+
+	if(net_ip_top_fd<0) return -ENXIO;
+	if(sds==NULL || nsds==0) return -EINVAL;
+
+	psds = iosAlloc(__net_hid,(nsds*sizeof(struct pollsd)));
+	if(psds==NULL) {
+		debug_printf("net_poll: failed to alloc %d bytes\n", nsds * sizeof(struct pollsd));
+		return IPC_ENOMEM;
+	}
+	
+	outv.ul[0] = 0;
+	outv.ul[1] = timeout;
+	params[0] = outv.ull;
+	memcpy(psds,sds,(nsds*sizeof(struct pollsd)));
+
+	ret = _net_convert_error(IOS_Ioctl(net_ip_top_fd, IOCTL_SO_POLL, params, 8, psds, (nsds * sizeof(struct pollsd))));
+
+	memcpy(sds,psds,(nsds*sizeof(struct pollsd)));
+
+	iosFree(__net_hid,psds);
+
+	debug_printf("net_poll(sds, %d, %lld)=%d\n", nsds, params[0], ret);
+
+	return ret;
+}
+
 s32 if_config(char *local_ip, char *netmask, char *gateway,boolean use_dhcp)
 {
 	s32 i,ret;
