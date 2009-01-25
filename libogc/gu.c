@@ -346,14 +346,14 @@ void c_guMtxScale(Mtx mt,f32 xS,f32 yS,f32 zS)
 
 void c_guMtxScaleApply(Mtx src,Mtx dst,f32 xS,f32 yS,f32 zS)
 {
-    dst[0][0] = src[0][0] * xS;     dst[0][1] = src[0][1] * xS;
-    dst[0][2] = src[0][2] * xS;     dst[0][3] = src[0][3] * xS;
+    dst[0][0] = src[0][0] * xS;     dst[0][1] = src[0][1] * yS;
+    dst[0][2] = src[0][2] * zS;     dst[0][3] = src[0][3];
 
-    dst[1][0] = src[1][0] * yS;     dst[1][1] = src[1][1] * yS;
-    dst[1][2] = src[1][2] * yS;     dst[1][3] = src[1][3] * yS;
+    dst[1][0] = src[1][0] * xS;     dst[1][1] = src[1][1] * yS;
+    dst[1][2] = src[1][2] * zS;     dst[1][3] = src[1][3];
 
-    dst[2][0] = src[2][0] * zS;     dst[2][1] = src[2][1] * zS;
-    dst[2][2] = src[2][2] * zS;     dst[2][3] = src[2][3] * zS;
+    dst[2][0] = src[2][0] * xS;     dst[2][1] = src[2][1] * yS;
+    dst[2][2] = src[2][2] * zS;     dst[2][3] = src[2][3];
 }
 
 void c_guMtxTrans(Mtx mt,f32 xT,f32 yT,f32 zT)
@@ -372,9 +372,9 @@ void c_guMtxTransApply(Mtx src,Mtx dst,f32 xT,f32 yT,f32 zT)
         dst[2][0] = src[2][0];    dst[2][1] = src[2][1];    dst[2][2] = src[2][2];
     }
     
-    dst[0][3] = src[0][3] + xT;
-    dst[1][3] = src[1][3] + yT;
-    dst[2][3] = src[2][3] + zT;
+    dst[0][3] = src[0][0]*xT + src[0][1]*yT + src[0][2]*zT + src[0][3];
+    dst[1][3] = src[1][0]*xT + src[1][1]*yT + src[1][2]*zT + src[1][3];
+    dst[2][3] = src[2][0]*xT + src[2][1]*yT + src[2][2]*zT + src[2][3];
 }
 
 u32 c_guMtxInverse(Mtx src,Mtx inv)
