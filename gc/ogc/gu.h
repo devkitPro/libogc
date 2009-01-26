@@ -103,8 +103,10 @@ void c_guMtxCopy(Mtx src,Mtx dst);
 void c_guMtxConcat(Mtx a,Mtx b,Mtx ab);
 void c_guMtxScale(Mtx mt,f32 xS,f32 yS,f32 zS);
 void c_guMtxScaleApply(Mtx src,Mtx dst,f32 xS,f32 yS,f32 zS);
+void c_guMtxApplyScale(Mtx src,Mtx dst,f32 xS,f32 yS,f32 zS);
 void c_guMtxTrans(Mtx mt,f32 xT,f32 yT,f32 zT);
 void c_guMtxTransApply(Mtx src,Mtx dst,f32 xT,f32 yT,f32 zT);
+void c_guMtxApplyTrans(Mtx src,Mtx dst,f32 xT,f32 yT,f32 zT);
 u32 c_guMtxInverse(Mtx src,Mtx inv);
 void c_guMtxTranspose(Mtx src,Mtx xPose);
 void c_guMtxRotRad(Mtx mt,const char axis,f32 rad);
@@ -121,8 +123,10 @@ u32 ps_guMtxInverse(register Mtx src,register Mtx inv);
 u32 ps_guMtxInvXpos(register Mtx src,register Mtx invx);
 void ps_guMtxScale(register Mtx mt,register f32 xS,register f32 yS,register f32 zS);
 void ps_guMtxScaleApply(register Mtx src,register Mtx dst,register f32 xS,register f32 yS,register f32 zS);
+void ps_guMtxApplyScale(register Mtx src,register Mtx dst,register f32 xS,register f32 yS,register f32 zS);
 void ps_guMtxTrans(register Mtx mt,register f32 xT,register f32 yT,register f32 zT);
 void ps_guMtxTransApply(register Mtx src,register Mtx dst,register f32 xT,register f32 yT,register f32 zT);
+void ps_guMtxApplyTrans(register Mtx src,register Mtx dst,register f32 xT,register f32 yT,register f32 zT);
 void ps_guMtxRotRad(register Mtx mt,const register char axis,register f32 rad);
 void ps_guMtxRotTrig(register Mtx mt,const register char axis,register f32 sinA,register f32 cosA);
 void ps_guMtxRotAxisRad(register Mtx mt,register Vector *axis,register f32 tmp0);
@@ -149,8 +153,10 @@ void ps_guMtxReflect(register Mtx m,register Vector *p,register Vector *n);
 #define guMtxConcat				c_guMtxConcat
 #define guMtxScale				c_guMtxScale
 #define guMtxScaleApply			c_guMtxScaleApply
+#define guMtxApplyScale			c_guMtxApplyScale
 #define guMtxTrans				c_guMtxTrans
 #define guMtxTransApply			c_guMtxTransApply
+#define guMtxApplyTrans			c_guMtxApplyTrans
 #define guMtxInverse			c_guMtxInverse
 #define guMtxTranspose			c_guMtxTranspose
 #define guMtxRotRad				c_guMtxRotRad
@@ -177,8 +183,10 @@ void ps_guMtxReflect(register Mtx m,register Vector *p,register Vector *n);
 #define guMtxConcat				ps_guMtxConcat
 #define guMtxScale				ps_guMtxScale
 #define guMtxScaleApply			ps_guMtxScaleApply
+#define guMtxApplyScale			ps_guMtxApplyScale
 #define guMtxTrans				ps_guMtxTrans
 #define guMtxTransApply			ps_guMtxTransApply
+#define guMtxApplyTrans			ps_guMtxApplyTrans
 #define guMtxInverse			ps_guMtxInverse
 #define guMtxTranspose			ps_guMtxTranspose
 #define guMtxRotRad				ps_guMtxRotRad
