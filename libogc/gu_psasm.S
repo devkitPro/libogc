@@ -316,6 +316,37 @@ ps_guMtxScaleApply:
 	psq_st		fr2,40(r4),0,0
 	blr
 
+	.globl ps_guMtxApplyScale
+	//r3 = src,r4 = dst,fr1 = xS,fr2 = yS,fr3 = zS
+ps_guMtxApplyScale:
+	lis			r9,Unit01@ha
+	addi		r9,r9,Unit01@l
+	lfs			fr6,4(r9)
+	frsp		fr1,fr1
+	psq_l		fr4,0(r3),0,0
+	frsp		fr2,fr2
+	psq_l		fr5,8(r3),0,0
+	frsp		fr3,fr3
+	ps_merge00	fr10,fr1,fr2
+	ps_merge00	fr11,fr3,fr6
+	ps_mul		fr4,fr4,fr10
+	psq_l		fr6,16(r3),0,0
+	ps_mul		fr5,fr5,fr11
+	psq_l		fr7,24(r3),0,0
+	ps_mul		fr6,fr6,fr10
+	psq_l		fr8,32(r3),0,0
+	psq_st		fr4,0(r4),0,0
+	ps_mul		fr7,fr7,fr11
+	psq_l		fr2,40(r3),0,0
+	psq_st		fr5,8(r4),0,0
+	ps_mul		fr8,fr8,fr10
+	psq_st		fr6,16(r4),0,0
+	ps_mul		fr2,fr2,fr11
+	psq_st		fr7,24(r4),0,0
+	psq_st		fr8,32(r4),0,0
+	psq_st		fr2,40(r4),0,0
+	blr
+
 	.globl ps_guMtxTrans
 	//r3 = mtx,fr1 = xT,fr2 = yT,fr3 = zT
 ps_guMtxTrans:
@@ -356,6 +387,43 @@ ps_guMtxTransApply:
 	psq_st		fr7,24(r4),0,0
 	psq_st		fr9,32(r4),0,0
 	psq_st		fr8,40(r4),0,0
+	blr
+
+	.globl ps_guMtxApplyTrans
+	//r3 = src,r4 = dst,fr1 = xT,fr2 = yT,fr3 = zT
+ps_guMtxApplyTrans:
+	lis			r9,Unit01@ha
+	addi		r9,r9,Unit01@l
+	lfs			fr6,4(r9)
+	psq_l		fr4,0(r3),0,0
+	frsp		fr1,fr1
+	psq_l		fr5,8(r3),0,0
+	frsp		fr2,fr2
+	ps_merge00	fr10,fr1,fr2
+	psq_l		fr7,24(r3),0,0
+	frsp		fr3,fr3
+	ps_mul		fr1,fr4,fr10
+	ps_merge00	fr11,fr3,fr6
+	psq_l		fr8,40(r3),0,0
+	ps_madd		fr2,fr5,fr11,fr1
+	psq_l		fr6,16(r3),0,0
+	ps_sum0		fr3,fr2,fr3,fr2
+	psq_l		fr9,32(r3),0,0
+	ps_mul		fr12,fr6,fr10
+	psq_st		fr4,0(r4),0,0
+	ps_madd		fr4,fr7,fr11,fr12
+	psq_st		fr5,8(r4),1,0
+	ps_sum0		fr12,fr4,fr12,fr4
+	psq_st		fr3,12(r4),1,0
+	ps_mul		fr3,fr9,fr10
+	psq_st		fr6,16(r4),0,0
+	ps_madd		fr2,fr8,fr11,fr3
+	psq_st		fr7,24(r4),1,0
+	ps_sum0		fr3,fr2,fr3,fr2
+	psq_st		fr12,28(r4),1,0
+	psq_st		fr9,32(r4),0,0
+	psq_st		fr8,40(r4),1,0
+	psq_st		fr3,44(r4),1,0
 	blr
 
 	.globl ps_guMtxRotTrig
