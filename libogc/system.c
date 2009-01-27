@@ -985,7 +985,7 @@ u32 __SYS_LoadFont(void *src,void *dest)
 	decode_szp(src,dest);
 
 	sys_fontdata = (sys_fontheader*)dest;
-	sys_fontwidthtab = dest+sys_fontdata->width_table;
+	sys_fontwidthtab = (u8*)dest+sys_fontdata->width_table;
 	sys_fontcharsinsheet = sys_fontdata->sheet_column*sys_fontdata->sheet_row;
 
 	/* TODO: implement SJIS handling */
@@ -1420,7 +1420,6 @@ u32 SYS_GetFontEncoding()
 u32 SYS_InitFont(sys_fontheader *font_header)
 {
 	void *packed_data = NULL;
-	void *unpacked_data = NULL;
 
 	if(!font_header) return 0;
 
@@ -1428,19 +1427,17 @@ u32 SYS_InitFont(sys_fontheader *font_header)
 	if(SYS_GetFontEncoding()==1) {
 		sys_fontarea = memalign(32,FONT_SIZE_SJIS);
 		memset(sys_fontarea,0,FONT_SIZE_SJIS);
-		packed_data = (void*)(((u32)sys_fontarea+868096)&~31);
-		unpacked_data = sys_fontarea+3840;
+		packed_data = (void*)((u32)sys_fontarea+868096);
 	} else {
 		sys_fontarea = memalign(32,FONT_SIZE_ANSI);
 		memset(sys_fontarea,0,FONT_SIZE_ANSI);
-		packed_data = (void*)(((u32)sys_fontarea+119072)&~31);
-		unpacked_data = sys_fontarea+288;
+		packed_data = (void*)((u32)sys_fontarea+119072);
 	}
 
-	if(__SYS_LoadFont(packed_data,unpacked_data)==1) {
-		sys_fontimage = (u8*)((((u32)unpacked_data+sys_fontdata->sheet_image)+31)&~31);
-		__expand_font(unpacked_data+sys_fontdata->sheet_image,sys_fontimage);
-		*font_header = *sys_fontdata;
+	if(__SYS_LoadFont(packed_data,sys_fontarea)==1) {
+		sys_fontimage = (u8*)((((u32)sys_fontarea+sys_fontdata->sheet_image)+31)&~31);
+		__expand_font((u8*)sys_fontarea+sys_fontdata->sheet_image,sys_fontimage);
+		memcpy(font_header,sys_fontdata,sizeof(sys_fontheader));
 		return 1;
 	}
 
@@ -1472,40 +1469,36 @@ void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width)
 	u32 sheets,rem;
 	u32 xoff,yoff;
 	u32 xpos,ypos;
-	u32 idx,val,mask;
 	u8 *img_start;
 	u8 *ptr1,*ptr2;
-	u8 *data = (u8*)sys_fontdata+44;
 
 	if(!sys_fontwidthtab || ! sys_fontimage) return;
 
-	if(c>0x20 && c<0xff) c -= 0x20;
-	else c = 0;
+	if(c<sys_fontdata->first_char || c>sys_fontdata->last_char) c = sys_fontdata->inval_char;
+	else c -= sys_fontdata->first_char;
 
 	sheets = c/sys_fontcharsinsheet;
 	rem = c%sys_fontcharsinsheet;
 	xoff = (rem%sys_fontdata->sheet_column)*sys_fontdata->cell_width;
 	yoff = (rem/sys_fontdata->sheet_column)*sys_fontdata->cell_height;
-	img_start = (u8*)sys_fontdata+sys_fontdata->sheet_image+(sys_fontdata->sheet_size*sheets);
+	img_start = sys_fontimage+(sys_fontdata->sheet_size*sheets);
 
-	xpos = 0; ypos = 0;
+	ypos = 0;
 	while(ypos<sys_fontdata->cell_height) {
+		xpos = 0;
 		while(xpos<sys_fontdata->cell_width) {
-			ptr1 = img_start+((((sys_fontdata->sheet_width/8)<<5)/2)*((ypos+yoff)/8));
-			ptr1 = ptr1+(((xpos+xoff)/8)<<4);
-			ptr1 = ptr1+(((ypos+yoff)%8)<<1);
-			ptr1 = ptr1+(((xpos+xoff)%8)/4);
+			ptr1 = img_start+(((sys_fontdata->sheet_width/8)<<5)*((ypos+yoff)/8));
+			ptr1 = ptr1+(((xpos+xoff)/8)<<5);
+			ptr1 = ptr1+(((ypos+yoff)%8)<<2);
+			ptr1 = ptr1+(((xpos+xoff)%8)/2);
 
-			ptr2 = image+((ypos/8)*(((stride<<2)/8)<<5));
+			ptr2 = image+((ypos/8)*(((stride<<1)/8)<<5));
 			ptr2 = ptr2+(((xpos+pos)/8)<<5);
 			ptr2 = ptr2+(((xpos+pos)%8)/2);
+			ptr2 = ptr2+((ypos%8)<<2);
 
-			idx = (*ptr1>>(6-(((xpos+pos)%4)<<1)))&0x03;
-			val = data[idx];
-			if(((xpos+pos)%2)) mask = 0x0f;
-			else mask = 0xf0;
+			*ptr2 = *ptr1;
 
-			*ptr2 = *ptr2|(val&mask);
 			xpos++;
 		}
 		ypos++;
