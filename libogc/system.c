@@ -1417,13 +1417,13 @@ u32 SYS_GetFontEncoding()
 	return ret;
 }
 
-u32 SYS_InitFont(sys_fontheader *font_header)
+u32 SYS_InitFont(sys_fontheader **font_header)
 {
 	void *packed_data = NULL;
 
 	if(!font_header) return 0;
 
-	memset(font_header,0,sizeof(sys_fontheader));
+	*font_header = NULL;
 	if(SYS_GetFontEncoding()==1) {
 		sys_fontarea = memalign(32,FONT_SIZE_SJIS);
 		memset(sys_fontarea,0,FONT_SIZE_SJIS);
@@ -1437,7 +1437,7 @@ u32 SYS_InitFont(sys_fontheader *font_header)
 	if(__SYS_LoadFont(packed_data,sys_fontarea)==1) {
 		sys_fontimage = (u8*)((((u32)sys_fontarea+sys_fontdata->sheet_image)+31)&~31);
 		__expand_font((u8*)sys_fontarea+sys_fontdata->sheet_image,sys_fontimage);
-		memcpy(font_header,sys_fontdata,sizeof(sys_fontheader));
+		*font_header = sys_fontdata;
 		return 1;
 	}
 
@@ -1499,7 +1499,7 @@ void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width)
 
 			*ptr2 = *ptr1;
 
-			xpos++;
+			xpos += 2;
 		}
 		ypos++;
 	}
