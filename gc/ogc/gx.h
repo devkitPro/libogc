@@ -1049,10 +1049,9 @@ void GX_InitFifoBase(GXFifoObj *fifo,void *base,u32 size);
 void GX_InitFifoLimits(GXFifoObj *fifo,u32 hiwatermark,u32 lowatermark);
 void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr);
 void GX_SetCPUFifo(GXFifoObj *fifo);
-void GX_SaveCPUFifo(GXFifoObj *fifo);
 void GX_SetGPFifo(GXFifoObj *fifo);
-GXFifoObj* GX_GetCPUFifo();
-GXFifoObj* GX_GetGPFifo();
+void GX_GetCPUFifo(GXFifoObj *fifo);
+void GX_GetGPFifo(GXFifoObj *fifo);
 GXDrawDoneCallback GX_SetDrawDoneCallback(GXDrawDoneCallback cb);
 GXBreakPtCallback GX_SetBreakPtCallback(GXBreakPtCallback cb);
 
