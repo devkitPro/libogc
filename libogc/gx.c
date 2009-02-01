@@ -11,6 +11,7 @@
 #include "video_types.h"
 #include "lwp_watchdog.h"
 #include "gx.h"
+#include "gx_regdef.h"
 
 //#define _GP_DEBUG
 
@@ -122,10 +123,10 @@ static u32 _gxtexregionaddrtable[48] =
 #endif
 
 struct __gxfifo _gx_dl_fifo;
-u8 _gx_saved_data[1280];
+u8 _gx_saved_data[STRUCT_REGDEF_SIZE] ATTRIBUTE_ALIGN(32);
 
 extern u8 __gxregs[];
-static u32 *_gx = (u32*)__gxregs;
+static struct _gx_regdef *__gx = (struct _gx_regdef*)__gxregs;
 
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
@@ -162,32 +163,32 @@ static __inline__ void EnableWriteGatherPipe()
 
 static __inline__ void __GX_FifoLink(u8 enable)
 {
-	((u16*)_gx)[1] = ((((u16*)_gx)[1]&~0x10)|(_SHIFTL(enable,4,1)));
-	_cpReg[1] = ((u16*)_gx)[1];
+	__gx->cpCRreg = ((__gx->cpCRreg&~0x10)|(_SHIFTL(enable,4,1)));
+	_cpReg[1] = __gx->cpCRreg;
 }
 
 static __inline__ void __GX_WriteFifoIntReset(u8 inthi,u8 intlo)
 {
-	((u16*)_gx)[2] = ((((u16*)_gx)[2]&~0x03)|(_SHIFTL(intlo,1,1))|(inthi&1));
-	_cpReg[2] = ((u16*)_gx)[2];
+	__gx->cpCLreg = ((__gx->cpCLreg&~0x03)|(_SHIFTL(intlo,1,1))|(inthi&1));
+	_cpReg[2] = __gx->cpCLreg;
 }
 
 static __inline__ void __GX_WriteFifoIntEnable(u8 inthi, u8 intlo)
 {
-	((u16*)_gx)[1] = ((((u16*)_gx)[1]&~0x0C)|(_SHIFTL(intlo,3,1))|(_SHIFTL(inthi,2,1)));
-	_cpReg[1] = ((u16*)_gx)[1];
+	__gx->cpCRreg = ((__gx->cpCRreg&~0x0C)|(_SHIFTL(intlo,3,1))|(_SHIFTL(inthi,2,1)));
+	_cpReg[1] = __gx->cpCRreg;
 }
 
 static __inline__ void __GX_FifoReadEnable()
 {
-	((u16*)_gx)[1] = ((((u16*)_gx)[1]&~0x01)|1);
-	_cpReg[1] = ((u16*)_gx)[1];
+	__gx->cpCRreg = ((__gx->cpCRreg&~0x01)|1);
+	_cpReg[1] = __gx->cpCRreg;
 }
 
 static __inline__ void __GX_FifoReadDisable()
 {
-	((u16*)_gx)[1] = ((((u16*)_gx)[1]&~0x01)|0);
-	_cpReg[1] = ((u16*)_gx)[1];
+	__gx->cpCRreg = ((__gx->cpCRreg&~0x01)|0);
+	_cpReg[1] = __gx->cpCRreg;
 }
 
 static s32 __gx_onreset(s32 final)
@@ -220,9 +221,9 @@ static void __GX_InitRevBits()
 	
 	i=0;
 	while(i<8) {
-		_gx[0x10+i] = 0x40000000;
-		_gx[0x18+i] = 0x80000000;
-		GX_LOAD_CP_REG((0x0080|i),_gx[0x18+i]);
+		__gx->VAT0reg[i] = 0x40000000;
+		__gx->VAT1reg[i] = 0x80000000;
+		GX_LOAD_CP_REG((0x0080|i),__gx->VAT1reg[i]);
 		i++;
 	}
 	
@@ -271,7 +272,7 @@ static void __GX_WaitAbortPixelEngine()
 
 static void __GX_Abort()
 {
-	if(_gx[0x1ff] && __GX_IsGPFifoReady())
+	if(__gx->gxFifoInited && __GX_IsGPFifoReady())
 		__GX_WaitAbortPixelEngine();
 	
 	_piReg[6] = 1;
@@ -338,8 +339,8 @@ static void __GX_CleanGPFifo()
 		__GX_WriteFifoIntEnable(TRUE,FALSE);
 		__GX_FifoLink(TRUE);
 	}
-	((u16*)_gx)[1] &= ~0x22;
-	_cpReg[1] = ((u16*)_gx)[1];
+	__gx->cpCRreg &= ~0x22;
+	_cpReg[1] = __gx->cpCRreg;
 	breakPtCB = NULL;
 	
 	__GX_WriteFifoIntReset(TRUE,TRUE);
@@ -370,17 +371,17 @@ static void __GXUnderflowHandler()
 
 static void __GXCPInterruptHandler(u32 irq,void *ctx)
 {
-	((u16*)_gx)[0] = _cpReg[0];
+	__gx->cpSRreg = _cpReg[0];
 
-	if((((u16*)_gx)[1]&0x08) && (((u16*)_gx)[0]&0x02)) 
+	if((__gx->cpCRreg&0x08) && (__gx->cpSRreg&0x02)) 
 		__GXUnderflowHandler();
 
-	if((((u16*)_gx)[1]&0x04) && (((u16*)_gx)[0]&0x01))
+	if((__gx->cpCRreg&0x04) && (__gx->cpSRreg&0x01))
 		__GXOverflowHandler();
 
-	if((((u16*)_gx)[1]&0x20) && (((u16*)_gx)[0]&0x10)) {
-		((u16*)_gx)[1] &= ~0x20;
-		_cpReg[1] = ((u16*)_gx)[1];
+	if((__gx->cpCRreg&0x20) && (__gx->cpSRreg&0x10)) {
+		__gx->cpCRreg &= ~0x20;
+		_cpReg[1] = __gx->cpCRreg;
 		if(breakPtCB)
 			breakPtCB();
 	}
@@ -520,17 +521,17 @@ static GXTexRegion* __GXDefRegionCallback(GXTexObj *obj,u8 mapid)
 	fmt = GX_GetTexFmt(obj);
 	if(fmt==0x0008 || fmt==0x0009 || fmt==0x000a) {
 		idx = regionB++;
-		ret = (GXTexRegion*)(&_gx[0x120+((idx&0x3)*(sizeof(GXTexRegion)>>2))]);
+		ret = &__gx->texRegion[(idx&3)+8];
 	} else {
 		idx = regionA++;
-		ret = (GXTexRegion*)(&_gx[0x100+((idx&0x7)*(sizeof(GXTexRegion)>>2))]);
+		ret = &__gx->texRegion[(idx&7)];
 	}
 	return ret;
 }
 
 static GXTlutRegion* __GXDefTlutRegionCallback(u32 tlut_name)
 {
-	return (GXTlutRegion*)(&_gx[0x150+(tlut_name*(sizeof(GXTlutRegion)>>2))]);
+	return &__gx->tlutRegion[tlut_name];
 }
 
 static void __GX_InitGX()
@@ -683,7 +684,7 @@ static void __GX_InitGX()
 
 static void __GX_FlushTextureState()
 {
-	GX_LOAD_BP_REG(_gx[0xaf]);
+	GX_LOAD_BP_REG(__gx->tevIndMask);
 }
 
 static void __GX_XfVtxSpecs()
@@ -692,22 +693,22 @@ static void __GX_XfVtxSpecs()
 	u32 nrms,texs,cols;
 
 	cols = 0;
-	if(_gx[0x06]&0x6000) cols++;
-	if(_gx[0x06]&0x18000) cols++;
+	if(__gx->vcdLo&0x6000) cols++;
+	if(__gx->vcdLo&0x18000) cols++;
 
 	nrms = 0;
-	if(_gx[0x08]==1) nrms = 1;
-	else if(_gx[0x08]==2) nrms = 2;
+	if(__gx->vcdNrms==1) nrms = 1;
+	else if(__gx->vcdNrms==2) nrms = 2;
 	
 	texs = 0;
-	if(_gx[0x07]&0x3) texs++;
-	if(_gx[0x07]&0xc) texs++;
-	if(_gx[0x07]&0x30) texs++;
-	if(_gx[0x07]&0xc0) texs++;
-	if(_gx[0x07]&0x300) texs++;
-	if(_gx[0x07]&0xc00) texs++;
-	if(_gx[0x07]&0x3000) texs++;
-	if(_gx[0x07]&0xc000) texs++;
+	if(__gx->vcdHi&0x3) texs++;
+	if(__gx->vcdHi&0xc) texs++;
+	if(__gx->vcdHi&0x30) texs++;
+	if(__gx->vcdHi&0xc0) texs++;
+	if(__gx->vcdHi&0x300) texs++;
+	if(__gx->vcdHi&0xc00) texs++;
+	if(__gx->vcdHi&0x3000) texs++;
+	if(__gx->vcdHi&0xc000) texs++;
 	
 	xfvtxspecs = (_SHIFTL(texs,4,4))|(_SHIFTL(nrms,2,2))|(cols&0x3);
 	GX_LOAD_XF_REG(0x1008,xfvtxspecs);
@@ -716,11 +717,11 @@ static void __GX_XfVtxSpecs()
 static void __GX_SetMatrixIndex(u32 mtx)
 {
 	if(mtx<5) {
-		GX_LOAD_CP_REG(0x30,_gx[0x03]);
-		GX_LOAD_XF_REG(0x1018,_gx[0x03]);
+		GX_LOAD_CP_REG(0x30,__gx->mtxIdxLo);
+		GX_LOAD_XF_REG(0x1018,__gx->mtxIdxLo);
 	} else {
-		GX_LOAD_CP_REG(0x40,_gx[0x04]);
-		GX_LOAD_XF_REG(0x1019,_gx[0x04]);
+		GX_LOAD_CP_REG(0x40,__gx->mtxIdxHi);
+		GX_LOAD_XF_REG(0x1019,__gx->mtxIdxHi);
 	}
 }
 
@@ -728,10 +729,10 @@ static void __GX_SendFlushPrim()
 {
 	u32 tmp,tmp2,cnt;
 
-	tmp = ((u16*)_gx)[30]*((u16*)_gx)[31];
+	tmp = (__gx->xfFlush*__gx->xfFlushExp);
 
 	FIFO_PUTU8(0x98);
-	FIFO_PUTU16(((u16*)_gx)[30]);
+	FIFO_PUTU16(__gx->xfFlush);
 
 	tmp2 = (tmp+3)/4;
 	if(tmp>0) {
@@ -755,13 +756,13 @@ static void __GX_SendFlushPrim()
 			}
 		}
 	}
-	((u16*)_gx)[29] = 1;
+	__gx->xfFlush = 1;
 }
 
 static void __GX_SetVCD()
 {
-	GX_LOAD_CP_REG(0x50,_gx[0x06]);
-	GX_LOAD_CP_REG(0x60,_gx[0x07]);
+	GX_LOAD_CP_REG(0x50,__gx->vcdLo);
+	GX_LOAD_CP_REG(0x60,__gx->vcdHi);
 	__GX_XfVtxSpecs();
 }
 
@@ -772,35 +773,34 @@ static void __GX_SetVAT()
 
 	for(i=0;i<8;i++) {
 		setvtx = (1<<i);
-		if(_gx[0x02]&setvtx) {
-			GX_LOAD_CP_REG((0x70|(i&7)),_gx[0x10+i]);
-			GX_LOAD_CP_REG((0x80|(i&7)),_gx[0x18+i]);
-			GX_LOAD_CP_REG((0x90|(i&7)),_gx[0x20+i]);
+		if(__gx->VATTable&setvtx) {
+			GX_LOAD_CP_REG((0x70+(i&7)),__gx->VAT0reg[i]);
+			GX_LOAD_CP_REG((0x80+(i&7)),__gx->VAT1reg[i]);
+			GX_LOAD_CP_REG((0x90+(i&7)),__gx->VAT2reg[i]);
 		}
 	}
-	_gx[0x02] = 0;
+	__gx->VATTable = 0;
 }
 
 static void __SetSURegs(u8 texmap,u8 texcoord)
 {
+	u32 reg;
 	u16 wd,ht;
 	u8 wrap_s,wrap_t;
-	u32 regA,regB;
 
-	wd = _gx[0x40+texmap]&0x3ff;
-	ht = _SHIFTR(_gx[0x40+texmap],10,10);
-	wrap_s = _gx[0x50+texmap]&3;
-	wrap_t = _SHIFTR(_gx[0x50+texmap],2,2);
+	wd = __gx->texMapSize[texmap]&0x3ff;
+	ht = _SHIFTR(__gx->texMapSize[texmap],10,10);
+	wrap_s = __gx->texMapWrap[texmap]&3;
+	wrap_t = _SHIFTR(__gx->texMapWrap[texmap],2,2);
 	
-	regA = 0xa0+(texcoord&0x7);
-	regB = 0xb0+(texcoord&0x7);
-	_gx[regA] = (_gx[regA]&~0x0000ffff)|wd;
-	_gx[regB] = (_gx[regB]&~0x0000ffff)|ht;
-	_gx[regA] = (_gx[regA]&~0x00010000)|(_SHIFTL(wrap_s,16,1));
-	_gx[regB] = (_gx[regB]&~0x00010000)|(_SHIFTL(wrap_t,16,1));
+	reg = (texcoord&0x7);
+	__gx->suSsize[reg] = (__gx->suSsize[reg]&~0x0000ffff)|wd;
+	__gx->suTsize[reg] = (__gx->suTsize[reg]&~0x0000ffff)|ht;
+	__gx->suSsize[reg] = (__gx->suSsize[reg]&~0x00010000)|(_SHIFTL(wrap_s,16,1));
+	__gx->suTsize[reg] = (__gx->suTsize[reg]&~0x00010000)|(_SHIFTL(wrap_t,16,1));
 
-	GX_LOAD_BP_REG(_gx[regA]);
-	GX_LOAD_BP_REG(_gx[regB]);
+	GX_LOAD_BP_REG(__gx->suSsize[reg]);
+	GX_LOAD_BP_REG(__gx->suTsize[reg]);
 }
 
 static void __GX_SetSUTexRegs()
@@ -810,27 +810,27 @@ static void __GX_SetSUTexRegs()
 	u8 texcoord,texmap;
 	u32 tevreg,tevm,texcm;
 
-	dirtev = (_SHIFTR(_gx[0xac],10,4))+1;
-	indtev = _SHIFTR(_gx[0xac],16,3);
+	dirtev = (_SHIFTR(__gx->genMode,10,4))+1;
+	indtev = _SHIFTR(__gx->genMode,16,3);
 
 	//indirect texture order
 	for(i=0;i<indtev;i++) {
 		switch(i) {
 			case GX_INDTEXSTAGE0:
-				texmap = _gx[0xc2]&7;
-				texcoord = _SHIFTR(_gx[0xc2],3,3);
+				texmap = __gx->tevRasOrder[2]&7;
+				texcoord = _SHIFTR(__gx->tevRasOrder[2],3,3);
 				break;
 			case GX_INDTEXSTAGE1:
-				texmap = _SHIFTR(_gx[0xc2],6,3);
-				texcoord = _SHIFTR(_gx[0xc2],9,3);
+				texmap = _SHIFTR(__gx->tevRasOrder[2],6,3);
+				texcoord = _SHIFTR(__gx->tevRasOrder[2],9,3);
 				break;
 			case GX_INDTEXSTAGE2:
-				texmap = _SHIFTR(_gx[0xc2],12,3);
-				texcoord = _SHIFTR(_gx[0xc2],15,3);
+				texmap = _SHIFTR(__gx->tevRasOrder[2],12,3);
+				texcoord = _SHIFTR(__gx->tevRasOrder[2],15,3);
 				break;
 			case GX_INDTEXSTAGE3:
-				texmap = _SHIFTR(_gx[0xc2],18,3);
-				texcoord = _SHIFTR(_gx[0xc2],21,3);
+				texmap = _SHIFTR(__gx->tevRasOrder[2],18,3);
+				texcoord = _SHIFTR(__gx->tevRasOrder[2],21,3);
 				break;
 			default:
 				texmap = 0;
@@ -839,21 +839,21 @@ static void __GX_SetSUTexRegs()
 		}
 
 		texcm = _SHIFTL(1,texcoord,1); 
-		if(!(_gx[0x05]&texcm))
+		if(!(__gx->texCoordManually&texcm))
 			__SetSURegs(texmap,texcoord);
 	}
 
 	//direct texture order
 	for(i=0;i<dirtev;i++) {
-		tevreg = 0xc3+(_SHIFTR(i,1,3));
-		texmap = (_gx[0x30+i]&0xff);
+		tevreg = 3+(_SHIFTR(i,1,3));
+		texmap = (__gx->tevTexMap[i]&0xff);
 
-		if(i&1) texcoord = _SHIFTR(_gx[tevreg],15,3);
-		else texcoord = _SHIFTR(_gx[tevreg],3,3);
+		if(i&1) texcoord = _SHIFTR(__gx->tevRasOrder[tevreg],15,3);
+		else texcoord = _SHIFTR(__gx->tevRasOrder[tevreg],3,3);
 		
 		tevm = _SHIFTL(1,i,1);
 		texcm = _SHIFTL(1,texcoord,1);
-		if(texmap!=0xff && (_gx[0x0a]&tevm) && !(_gx[0x05]&texcm)) {
+		if(texmap!=0xff && (__gx->tevTexCoordEnable&tevm) && !(__gx->texCoordManually&texcm)) {
 			__SetSURegs(texmap,texcoord);
 		}
 	}
@@ -861,8 +861,8 @@ static void __GX_SetSUTexRegs()
 
 static void __GX_SetGenMode()
 {
-	GX_LOAD_BP_REG(_gx[0xac]);
-	((u16*)_gx)[29] = 0;
+	GX_LOAD_BP_REG(__gx->genMode);
+	__gx->xfFlush = 0;
 }
 
 static void __GX_UpdateBPMask()
@@ -872,22 +872,22 @@ static void __GX_UpdateBPMask()
 	u32 nbmp,nres;
 	u8 ntexmap;
 
-	nbmp = _SHIFTR(_gx[0xac],16,3);
+	nbmp = _SHIFTR(__gx->genMode,16,3);
 
 	nres = 0;
 	for(i=0;i<nbmp;i++) {
 		switch(i) {
 			case GX_INDTEXSTAGE0:
-				ntexmap = _gx[0xc2]&7;
+				ntexmap = __gx->tevRasOrder[2]&7;
 				break;
 			case GX_INDTEXSTAGE1:
-				ntexmap = _SHIFTR(_gx[0xc2],6,3);
+				ntexmap = _SHIFTR(__gx->tevRasOrder[2],6,3);
 				break;
 			case GX_INDTEXSTAGE2:
-				ntexmap = _SHIFTR(_gx[0xc2],12,3);
+				ntexmap = _SHIFTR(__gx->tevRasOrder[2],12,3);
 				break;
 			case GX_INDTEXSTAGE3:
-				ntexmap = _SHIFTR(_gx[0xc2],18,3);
+				ntexmap = _SHIFTR(__gx->tevRasOrder[2],18,3);
 				break;
 			default:
 				ntexmap = 0;
@@ -896,17 +896,17 @@ static void __GX_UpdateBPMask()
 		nres |= (1<<ntexmap);
 	}
 
-	if((_gx[0xaf]&0xff)!=nres) {
-		_gx[0xaf] = (_gx[0xaf]&~0xff)|(nres&0xff);
-		GX_LOAD_BP_REG(_gx[0xaf]);
+	if((__gx->tevIndMask&0xff)!=nres) {
+		__gx->tevIndMask = (__gx->tevIndMask&~0xff)|(nres&0xff);
+		GX_LOAD_BP_REG(__gx->tevIndMask);
 	}
 #endif
 }
 
 static void __GX_SetIndirectMask(u32 mask)
 {
-	_gx[0xaf] = ((_gx[0xaf]&~0xff)|(mask&0xff));
-	GX_LOAD_BP_REG(_gx[0xaf]);
+	__gx->tevIndMask = ((__gx->tevIndMask&~0xff)|(mask&0xff));
+	GX_LOAD_BP_REG(__gx->tevIndMask);
 }
 
 static void __GX_SetTexCoordGen()
@@ -914,15 +914,15 @@ static void __GX_SetTexCoordGen()
 	u32 i,mask;
 	u32 texcoord;
 
-	if(_gx[0x09]&0x02000000) GX_LOAD_XF_REG(0x103f,(_gx[0xac]&0xf));
+	if(__gx->dirtyState&0x02000000) GX_LOAD_XF_REG(0x103f,(__gx->genMode&0xf));
 
 	i = 0;
 	texcoord = 0x1040;
-	mask = _SHIFTR(_gx[0x09],16,8);
+	mask = _SHIFTR(__gx->dirtyState,16,8);
 	while(mask) {
 		if(mask&0x0001) {
-			GX_LOAD_XF_REG(texcoord,_gx[0xe0+(i<<1)]);
-			GX_LOAD_XF_REG((texcoord+0x10),_gx[0xe1+(i<<1)]);
+			GX_LOAD_XF_REG(texcoord,__gx->texCoordGen[i]);
+			GX_LOAD_XF_REG((texcoord+0x10),__gx->texCoordGen2[i]);
 		}
 		mask >>= 1;
 		texcoord++;
@@ -932,27 +932,27 @@ static void __GX_SetTexCoordGen()
 
 static void __GX_SetChanColor()
 {
-	if(_gx[0x09]&0x0100)
-		GX_LOAD_XF_REG(0x100a,_gx[0xf0]);
-	if(_gx[0x09]&0x0200)
-		GX_LOAD_XF_REG(0x100b,_gx[0xf1]);
-	if(_gx[0x09]&0x0400)
-		GX_LOAD_XF_REG(0x100c,_gx[0xf2]);
-	if(_gx[0x09]&0x0800)
-		GX_LOAD_XF_REG(0x100d,_gx[0xf3]);
+	if(__gx->dirtyState&0x0100)
+		GX_LOAD_XF_REG(0x100a,__gx->chnAmbColor[0]);
+	if(__gx->dirtyState&0x0200)
+		GX_LOAD_XF_REG(0x100b,__gx->chnAmbColor[1]);
+	if(__gx->dirtyState&0x0400)
+		GX_LOAD_XF_REG(0x100c,__gx->chnMatColor[0]);
+	if(__gx->dirtyState&0x0800)
+		GX_LOAD_XF_REG(0x100d,__gx->chnMatColor[1]);
 }
 
 static void __GX_SetChanCntrl()
 {
 	u32 i,chan,mask;
 
-	if(_gx[0x09]&0x01000000) GX_LOAD_XF_REG(0x1009,(_SHIFTR(_gx[0xac],4,3)));
+	if(__gx->dirtyState&0x01000000) GX_LOAD_XF_REG(0x1009,(_SHIFTR(__gx->genMode,4,3)));
 
 	i = 0;
 	chan = 0x100e;
-	mask = _SHIFTR(_gx[0x09],12,4);
+	mask = _SHIFTR(__gx->dirtyState,12,4);
 	while(mask) {
-		if(mask&0x0001) GX_LOAD_XF_REG(chan,_gx[0xf4+i]);
+		if(mask&0x0001) GX_LOAD_XF_REG(chan,__gx->chnCntrl[i]);
 		
 		mask >>= 1;
 		chan++;
@@ -962,37 +962,37 @@ static void __GX_SetChanCntrl()
 
 static void __GX_SetDirtyState()
 {
-	if(_gx[0x09]&0x0001) {
+	if(__gx->dirtyState&0x0001) {
 		__GX_SetSUTexRegs();
 	}
-	if(_gx[0x09]&0x0002) {
+	if(__gx->dirtyState&0x0002) {
 		__GX_UpdateBPMask();
 	}
-	if(_gx[0x09]&0x0004) {
+	if(__gx->dirtyState&0x0004) {
 		__GX_SetGenMode();
 	}
-	if(_gx[0x09]&0x0008) {
+	if(__gx->dirtyState&0x0008) {
 		__GX_SetVCD();
 	}
-	if(_gx[0x09]&0x0010) {
+	if(__gx->dirtyState&0x0010) {
 		__GX_SetVAT();
 	}
-	if(_gx[0x09]&~0xff) {
-		if(_gx[0x09]&0x0f00) {
+	if(__gx->dirtyState&~0xff) {
+		if(__gx->dirtyState&0x0f00) {
 			__GX_SetChanColor();
 		}
-		if(_gx[0x09]&0x0100f000) {
+		if(__gx->dirtyState&0x0100f000) {
 			__GX_SetChanCntrl();
 		}
-		if(_gx[0x09]&0x02ff0000) {
+		if(__gx->dirtyState&0x02ff0000) {
 			__GX_SetTexCoordGen();
 		}
-		if(_gx[0x09]&0x04000000) {
+		if(__gx->dirtyState&0x04000000) {
 			__GX_SetMatrixIndex(0);
 			__GX_SetMatrixIndex(5);
 		}
 	}
-	_gx[0x09] = 0;
+	__gx->dirtyState = 0;
 }
 
 static u32 __GX_GetNumXfbLines(u16 efbHeight,u32 yscale)
@@ -1012,7 +1012,7 @@ static u32 __GX_GetNumXfbLines(u16 efbHeight,u32 yscale)
 
 GXFifoObj* GX_Init(void *base,u32 size)
 {
-	s32 i,re0,re1,addr;
+	s32 i,re0,re1;
 #ifdef TEXCACHE_TESTING
 	u32 tmem;
 #else
@@ -1026,7 +1026,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	LWP_InitQueue(&_gxwaitfinish);
 	SYS_RegisterResetFunc(&__gx_resetinfo);
 
-	memset(_gx,0,2048);
+	memset(__gxregs,0,STRUCT_REGDEF_SIZE);
 	
 	__GX_FifoInit();
 	GX_InitFifoBase(&_gxdefiniobj,base,size);
@@ -1035,54 +1035,49 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	__GX_PEInit();
 	EnableWriteGatherPipe();
 
-	_gx[0x1ff] = 1;
+	__gx->gxFifoInited = 1;
 
-	_gx[0xaf] = 0xff;
-	_gx[0xaf] = (_gx[0xaf]&~0xff000000)|(_SHIFTL(0x0f,24,8));
+	__gx->tevIndMask = 0xff;
+	__gx->tevIndMask = (__gx->tevIndMask&~0xff000000)|(_SHIFTL(0x0f,24,8));
 
 	i=0;
 	re0 = 0xc0;
 	re1 = 0xc1;
 	while(i<16) {
-		addr = 0x80+i;
-		_gx[addr] = (_gx[addr]&~0xff000000)|(_SHIFTL(re0,24,8));
-		addr = 0x90+i;
-		_gx[addr] = (_gx[addr]&~0xff000000)|(_SHIFTL(re1,24,8));
+		__gx->tevColorEnv[i] = (__gx->tevColorEnv[i]&~0xff000000)|(_SHIFTL(re0,24,8));
+		__gx->tevAlphaEnv[i] = (__gx->tevAlphaEnv[i]&~0xff000000)|(_SHIFTL(re1,24,8));
 		re0 += 2; re1 += 2; i++;
 	}
 	
-	_gx[0x05] = 0;
-	_gx[0x09] = 0;
+	__gx->texCoordManually = 0;
+	__gx->dirtyState = 0;
 
-	((u8*)_gx)[0x371] = 1;
-	((u8*)_gx)[0x372] = 0;
+	__gx->saveDLctx = 1;
+	__gx->gxFifoUnlinked = 0;
 	
-	_gx[0xa8] = (_gx[0xa8]&~0xff000000)|(_SHIFTL(0x20,24,8));
-	_gx[0xa9] = (_gx[0xa9]&~0xff000000)|(_SHIFTL(0x21,24,8));
-	_gx[0xaa] = (_gx[0xaa]&~0xff000000)|(_SHIFTL(0x22,24,8));
-	_gx[0xac] = (_gx[0xac]&~0xff000000)|(_SHIFTL(0x00,24,8));
+	__gx->sciTLcorner = (__gx->sciTLcorner&~0xff000000)|(_SHIFTL(0x20,24,8));
+	__gx->sciBRcorner = (__gx->sciBRcorner&~0xff000000)|(_SHIFTL(0x21,24,8));
+	__gx->lpWidth = (__gx->lpWidth&~0xff000000)|(_SHIFTL(0x22,24,8));
+	__gx->genMode = (__gx->genMode&~0xff000000)|(_SHIFTL(0x00,24,8));
 
 	i=0;
 	re0 = 0x30;
 	re1 = 0x31;
 	while(i<8) {
-		addr = 0xa0+i;
-		_gx[addr] = (_gx[addr]&~0xff000000)|(_SHIFTL(re0,24,8));
-		addr = 0xb0+i;
-		_gx[addr] = (_gx[addr]&~0xff000000)|(_SHIFTL(re1,24,8));
+		__gx->suSsize[i] = (__gx->suSsize[i]&~0xff000000)|(_SHIFTL(re0,24,8));
+		__gx->suTsize[i] = (__gx->suTsize[i]&~0xff000000)|(_SHIFTL(re1,24,8));
 		re0 += 2; re1 += 2; i++;
 	}
 	
-	_gx[0xb8] = (_gx[0xb8]&~0xff000000)|(_SHIFTL(0x40,24,8));
-	_gx[0xb9] = (_gx[0xb9]&~0xff000000)|(_SHIFTL(0x41,24,8));
-	_gx[0xba] = (_gx[0xba]&~0xff000000)|(_SHIFTL(0x42,24,8));
-	_gx[0xbb] = (_gx[0xbb]&~0xff000000)|(_SHIFTL(0x43,24,8));
+	__gx->peZMode = (__gx->peZMode&~0xff000000)|(_SHIFTL(0x40,24,8));
+	__gx->peCMode0 = (__gx->peCMode0&~0xff000000)|(_SHIFTL(0x41,24,8));
+	__gx->peCMode1 = (__gx->peCMode1&~0xff000000)|(_SHIFTL(0x42,24,8));
+	__gx->peCntrl = (__gx->peCntrl&~0xff000000)|(_SHIFTL(0x43,24,8));
 
 	i=0;
 	re0 = 0x25;
 	while(i<11) {
-		addr = 0xc0+i;
-		_gx[addr] = (_gx[addr]&~0xff000000)|(_SHIFTL(re0,24,8));
+		__gx->tevRasOrder[i] = (__gx->tevRasOrder[i]&~0xff000000)|(_SHIFTL(re0,24,8));
 		re0++; i++;
 	}
 
@@ -1099,21 +1094,20 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	i=0;
 	re0 = 0xf6;
 	while(i<8) {
-		addr = 0xd0+i;
-		_gx[addr] = (_gx[addr]&~0xff000000)|(_SHIFTL(re0,24,8));
+		__gx->tevSwapModeTable[i] = (__gx->tevSwapModeTable[i]&~0xff000000)|(_SHIFTL(re0,24,8));
 		re0++; i++;
 	}
 
-	_gx[0x0a] = 0;
-	_gx[0x0b] = GX_PERF0_NONE;
-	_gx[0x0c] = GX_PERF1_NONE;
-	_gx[0x0d] = 0;
+	__gx->tevTexCoordEnable = 0;
+	__gx->perf0Mode = GX_PERF0_NONE;
+	__gx->perf1Mode = GX_PERF1_NONE;
+	__gx->cpPerfMode = 0;
 
 	__GX_InitRevBits();
 
 	i=0;
 	while(i<16) {
-		_gx[0x30+i] = 0xff;
+		__gx->tevTexMap[i] = 0xff;
 		i++;
 	}
 
@@ -1150,23 +1144,23 @@ GXFifoObj* GX_Init(void *base,u32 size)
 #else
 	for(i=0;i<8;i++) {
 		tmem_even = tmem_odd = (i<<15);
-		region = (GXTexRegion*)(&_gx[0x100+(i*(sizeof(GXTexRegion)>>2))]);
+		region = &__gx->texRegion[i];
 		GX_InitTexCacheRegion(region,GX_FALSE,tmem_even,GX_TEXCACHE_32K,(tmem_odd+0x00080000),GX_TEXCACHE_32K);
 	}
 	for(i=0;i<4;i++) {
 		tmem_even = ((0x08+(i<<1))<<15);
 		tmem_odd = ((0x09+(i<<1))<<15);
-		region = (GXTexRegion*)(&_gx[0x120+(i*(sizeof(GXTexRegion)>>2))]);
+		region = &__gx->texRegion[i+8];
 		GX_InitTexCacheRegion(region,GX_FALSE,tmem_even,GX_TEXCACHE_32K,tmem_odd,GX_TEXCACHE_32K);
 	}
 	for(i=0;i<16;i++) {
 		tmem_even = (i<<13)+0x000C0000;
-		tregion = (GXTlutRegion*)(&_gx[0x150+(i*(sizeof(GXTlutRegion)>>2))]);
+		tregion = &__gx->tlutRegion[i];
 		GX_InitTlutRegion(tregion,tmem_even,GX_TLUT_256);
 	}
 	for(i=0;i<4;i++) {
 		tmem_even = (i<<15)+0x000E0000;
-		tregion = (GXTlutRegion*)(&_gx[0x150+((i+16)*(sizeof(GXTlutRegion)>>2))]);
+		tregion = &__gx->tlutRegion[i+16];
 		GX_InitTlutRegion(tregion,tmem_even,GX_TLUT_1K);
 	}
 #endif
@@ -1436,7 +1430,7 @@ void GX_RestoreWriteGatherPipe()
 
 void GX_Flush()
 {
-	if(_gx[0x09]) 
+	if(__gx->dirtyState) 
 		__GX_SetDirtyState();
 
 	FIFO_PUTU32(0);
@@ -1458,8 +1452,8 @@ void GX_EnableBreakPt(void *break_pt)
 	__GX_FifoReadDisable();
 	_cpReg[30] = _SHIFTL(MEM_VIRTUAL_TO_PHYSICAL(break_pt),0,16);
 	_cpReg[31] = _SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(break_pt),16,16);
-	((u16*)_gx)[1] = (((u16*)_gx)[1]&~0x22)|0x22;
-	_cpReg[1] = ((u16*)_gx)[1];
+	__gx->cpCRreg = (__gx->cpCRreg&~0x22)|0x22;
+	_cpReg[1] = __gx->cpCRreg;
 	_gxcurrbp = break_pt;
 	__GX_FifoReadEnable();
  	_CPU_ISR_Restore(level);
@@ -1469,8 +1463,8 @@ void GX_DisableBreakPt()
 {
 	u32 level = 0;
 	_CPU_ISR_Disable(level);
-	((u16*)_gx)[1] = (((u16*)_gx)[1]&~0x22);
-	_cpReg[1] = ((u16*)_gx)[1];
+	__gx->cpCRreg = (__gx->cpCRreg&~0x22);
+	_cpReg[1] = __gx->cpCRreg;
 	_gxcurrbp = NULL;
 	_CPU_ISR_Restore(level);
 }
@@ -1494,7 +1488,7 @@ void GX_AbortFrame()
 		__GX_CleanGPFifo();
 		__GX_InitRevBits();
 		
-		_gx[0x09] = 0;
+		__gx->dirtyState = 0;
 		GX_Flush();
 	}
 }
@@ -1589,7 +1583,7 @@ GXBreakPtCallback GX_SetBreakPtCallback(GXBreakPtCallback cb)
 
 void GX_PixModeSync()
 {
-	GX_LOAD_BP_REG(_gx[0xbb]);
+	GX_LOAD_BP_REG(__gx->peCntrl);
 }
 
 void GX_TexModeSync()
@@ -1602,16 +1596,16 @@ void GX_SetMisc(u32 token,u32 value)
 	u32 cnt;
 
 	if(token==GX_MT_XF_FLUSH) {
-		((u16*)_gx)[30] = value;
-		cnt = cntlzw(((u16*)_gx)[30]);
-		((u16*)_gx)[28] = _SHIFTR(cnt,5,16);
+		__gx->xfFlushSafe = value;
+		cnt = cntlzw(__gx->xfFlushSafe);
+		__gx->xfFlushExp = _SHIFTR(cnt,5,16);
 
-		((u16*)_gx)[29] = 1;
-		if(!((u16*)_gx)[30]) return;
+		__gx->xfFlush = 1;
+		if(!__gx->xfFlushSafe) return;
 
-		_gx[0x09] |= 0x0008;
+		__gx->dirtyState |= 0x0008;
 	} else if(token==GX_MT_DL_SAVE_CTX) {
-		((u8*)_gx)[0x371] = (value&0xff);
+		__gx->saveDLctx = (value&0xff);
 	}
 	return;
 }
@@ -1752,13 +1746,13 @@ void GX_SetCopyClear(GXColor color,u32 zvalue)
 
 void GX_SetCopyClamp(u8 clamp)
 {
-	_gx[0xab] = (_gx[0xab]&~1)|(clamp&1);
-	_gx[0xab] = (_gx[0xab]&~2)|(clamp&2);
+	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~1)|(clamp&1);
+	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~2)|(clamp&2);
 }
 
 void GX_SetDispCopyGamma(u8 gamma)
 {
-	_gx[0xab] = (_gx[0xab]&~0x180)|(_SHIFTL(gamma,7,2));
+	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~0x180)|(_SHIFTL(gamma,7,2));
 }
 
 void GX_SetCopyFilter(u8 aa,u8 sample_pattern[12][2],u8 vf,u8 vfilter[7])
@@ -1826,7 +1820,7 @@ void GX_SetCopyFilter(u8 aa,u8 sample_pattern[12][2],u8 vf,u8 vfilter[7])
 
 void GX_SetDispCopyFrame2Field(u8 mode)
 {
-	_gx[0xab] = (_gx[0xab]&~0x3000)|(_SHIFTL(mode,12,2));
+	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~0x3000)|(_SHIFTL(mode,12,2));
 }
 
 u32 GX_SetDispCopyYScale(f32 yscale)
@@ -1836,23 +1830,23 @@ u32 GX_SetDispCopyYScale(f32 yscale)
 	yScale = ((u32)(256.0f/yscale))&0x1ff;
 	GX_LOAD_BP_REG(0x4e000000|yScale);
 
-	_gx[0xab] = (_gx[0xab]&~0x400)|(_SHIFTL(((256-yScale)>0),10,1));
-	ht = _SHIFTR(_gx[0xcc],12,10)+1;
+	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~0x400)|(_SHIFTL(((256-yScale)>0),10,1));
+	ht = _SHIFTR(__gx->dispCopyWH,12,10)+1;
 	return __GX_GetNumXfbLines(ht,yScale);
 }
 
 void GX_SetDispCopyDst(u16 wd,u16 ht)
 {
-	_gx[0xcd] = (_gx[0xcd]&~0x3ff)|(_SHIFTR(wd,4,10));
-	_gx[0xcd] = (_gx[0xcd]&~0xff000000)|(_SHIFTL(0x4d,24,8));
+	__gx->dispCopyDst = (__gx->dispCopyDst&~0x3ff)|(_SHIFTR(wd,4,10));
+	__gx->dispCopyDst = (__gx->dispCopyDst&~0xff000000)|(_SHIFTL(0x4d,24,8));
 }
 
 void GX_SetDispCopySrc(u16 left,u16 top,u16 wd,u16 ht)
 {
-	_gx[0xcb] = (_gx[0xcb]&~0x00ffffff)|XY(left,top);
-	_gx[0xcb] = (_gx[0xcb]&~0xff000000)|(_SHIFTL(0x49,24,8));
-	_gx[0xcc] = (_gx[0xcc]&~0x00ffffff)|XY((wd-1),(ht-1));
-	_gx[0xcc] = (_gx[0xcc]&~0xff000000)|(_SHIFTL(0x4a,24,8));
+	__gx->dispCopyTL = (__gx->dispCopyTL&~0x00ffffff)|XY(left,top);
+	__gx->dispCopyTL = (__gx->dispCopyTL&~0xff000000)|(_SHIFTL(0x49,24,8));
+	__gx->dispCopyWH = (__gx->dispCopyWH&~0x00ffffff)|XY((wd-1),(ht-1));
+	__gx->dispCopyWH = (__gx->dispCopyWH&~0xff000000)|(_SHIFTL(0x4a,24,8));
 }
 
 void GX_CopyDisp(void *dest,u8 clear)
@@ -1861,40 +1855,40 @@ void GX_CopyDisp(void *dest,u8 clear)
 	u32 val;
 
 	if(clear) {
-		val= (_gx[0xb8]&~0xf)|0xf;
+		val= (__gx->peZMode&~0xf)|0xf;
 		GX_LOAD_BP_REG(val);
-		val = (_gx[0xb9]&~0x3);
+		val = (__gx->peCMode0&~0x3);
 		GX_LOAD_BP_REG(val);
 	}
 	
 	clflag = 0;
-	if(clear || (_gx[0xbb]&0x7)==0x0003) {
-		if(_gx[0xbb]&0x40) {
+	if(clear || (__gx->peCntrl&0x7)==0x0003) {
+		if(__gx->peCntrl&0x40) {
 			clflag = 1;
-			val = (_gx[0xbb]&~0x40);
+			val = (__gx->peCntrl&~0x40);
 			GX_LOAD_BP_REG(val);
 		}
 	}
 	
-	GX_LOAD_BP_REG(_gx[0xcb]);  // set source top
-	GX_LOAD_BP_REG(_gx[0xcc]);
+	GX_LOAD_BP_REG(__gx->dispCopyTL);  // set source top
+	GX_LOAD_BP_REG(__gx->dispCopyWH);
 
-	GX_LOAD_BP_REG(_gx[0xcd]);
+	GX_LOAD_BP_REG(__gx->dispCopyDst);
 
 	val = 0x4b000000|(_SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(dest),5,24));
 	GX_LOAD_BP_REG(val);
 
-	_gx[0xab] = (_gx[0xab]&~0x800)|(_SHIFTL(clear,11,1));
-	_gx[0xab] = (_gx[0xab]&~0x4000)|0x4000;
-	_gx[0xab] = (_gx[0xab]&~0xff000000)|(_SHIFTL(0x52,24,8));
+	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~0x800)|(_SHIFTL(clear,11,1));
+	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~0x4000)|0x4000;
+	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~0xff000000)|(_SHIFTL(0x52,24,8));
 	
-	GX_LOAD_BP_REG(_gx[0xab]);
+	GX_LOAD_BP_REG(__gx->dispCopyCntrl);
 
 	if(clear) {
-		GX_LOAD_BP_REG(_gx[0xb8]);
-		GX_LOAD_BP_REG(_gx[0xb9]);
+		GX_LOAD_BP_REG(__gx->peZMode);
+		GX_LOAD_BP_REG(__gx->peCMode0);
 	}
-	if(clflag) GX_LOAD_BP_REG(_gx[0xbb]);
+	if(clflag) GX_LOAD_BP_REG(__gx->peCntrl);
 }
 
 void GX_CopyTex(void *dest,u8 clear)
@@ -1903,15 +1897,15 @@ void GX_CopyTex(void *dest,u8 clear)
 	u32 val;
 
 	if(clear) {
-		val = (_gx[0xb8]&~0xf)|0xf;
+		val = (__gx->peZMode&~0xf)|0xf;
 		GX_LOAD_BP_REG(val);
-		val = (_gx[0xb9]&~0x3);
+		val = (__gx->peCMode0&~0x3);
 		GX_LOAD_BP_REG(val);
 	}
 
 	clflag = 0;
-	val = _gx[0xbb];
-	if(((u8*)_gx)[0x370] && (val&0x7)!=0x0003) {
+	val = __gx->peCntrl;
+	if(__gx->texCopyZTex && (val&0x7)!=0x0003) {
 		clflag = 1;
 		val = (val&~0x7)|0x0003;
 	}
@@ -1925,29 +1919,29 @@ void GX_CopyTex(void *dest,u8 clear)
 
 	val = 0x4b000000|(_SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(dest),5,24));
 	
-	GX_LOAD_BP_REG(_gx[0xd8]);
-	GX_LOAD_BP_REG(_gx[0xd9]);
-	GX_LOAD_BP_REG(_gx[0xda]);
+	GX_LOAD_BP_REG(__gx->texCopyTL);
+	GX_LOAD_BP_REG(__gx->texCopyWH);
+	GX_LOAD_BP_REG(__gx->texCopyDst);
 	GX_LOAD_BP_REG(val);
 
-	_gx[0xdb] = (_gx[0xdb]&~0x800)|(_SHIFTL(clear,11,1));
-	_gx[0xdb] = (_gx[0xdb]&~0x4000);
-	_gx[0xdb] = (_gx[0xdb]&~0xff000000)|(_SHIFTL(0x52,24,8));
-	GX_LOAD_BP_REG(_gx[0xdb]);
+	__gx->texCopyCntrl = (__gx->texCopyCntrl&~0x800)|(_SHIFTL(clear,11,1));
+	__gx->texCopyCntrl = (__gx->texCopyCntrl&~0x4000);
+	__gx->texCopyCntrl = (__gx->texCopyCntrl&~0xff000000)|(_SHIFTL(0x52,24,8));
+	GX_LOAD_BP_REG(__gx->texCopyCntrl);
 
 	if(clear) {
-		GX_LOAD_BP_REG(_gx[0xb8]);
-		GX_LOAD_BP_REG(_gx[0xb9]);
+		GX_LOAD_BP_REG(__gx->peZMode);
+		GX_LOAD_BP_REG(__gx->peCMode0);
 	}
-	if(clflag) GX_LOAD_BP_REG(_gx[0xbb]);
+	if(clflag) GX_LOAD_BP_REG(__gx->peCntrl);
 }
 
 void GX_SetTexCopySrc(u16 left,u16 top,u16 wd,u16 ht)
 {
-	_gx[0xd8] = (_gx[0xd8]&~0x00ffffff)|XY(left,top);
-	_gx[0xd8] = (_gx[0xd8]&~0xff000000)|(_SHIFTL(0x49,24,8));
-	_gx[0xd9] = (_gx[0xd9]&~0x00ffffff)|XY((wd-1),(ht-1));
-	_gx[0xd9] = (_gx[0xd9]&~0xff000000)|(_SHIFTL(0x4a,24,8));
+	__gx->texCopyTL = (__gx->texCopyTL&~0x00ffffff)|XY(left,top);
+	__gx->texCopyTL = (__gx->texCopyTL&~0xff000000)|(_SHIFTL(0x49,24,8));
+	__gx->texCopyWH = (__gx->texCopyWH&~0x00ffffff)|XY((wd-1),(ht-1));
+	__gx->texCopyWH = (__gx->texCopyWH&~0xff000000)|(_SHIFTL(0x4a,24,8));
 }
 
 void GX_SetTexCopyDst(u16 wd,u16 ht,u32 fmt,u8 mipmap)
@@ -1956,20 +1950,20 @@ void GX_SetTexCopyDst(u16 wd,u16 ht,u32 fmt,u8 mipmap)
 	u32 xtiles,ytiles,zplanes;
 
 	__GetImageTileCount(fmt,wd,ht,&xtiles,&ytiles,&zplanes);
-	_gx[0xda] = (_gx[0xda]&~0x3ff)|((xtiles*zplanes)&0x3ff);
+	__gx->texCopyDst = (__gx->texCopyDst&~0x3ff)|((xtiles*zplanes)&0x3ff);
 
 	if(fmt==GX_TF_Z16) lfmt = 11;
-	if(fmt==GX_CTF_YUVA8 || (fmt>=GX_TF_I4 && fmt<GX_TF_RGB565)) _gx[0xdb] = (_gx[0xdb]&~0x18000)|0x18000;
-	else _gx[0xdb] = (_gx[0xdb]&~0x18000)|0x10000;
+	if(fmt==GX_CTF_YUVA8 || (fmt>=GX_TF_I4 && fmt<GX_TF_RGB565)) __gx->texCopyCntrl = (__gx->texCopyCntrl&~0x18000)|0x18000;
+	else __gx->texCopyCntrl = (__gx->texCopyCntrl&~0x18000)|0x10000;
 
-	_gx[0xdb] = (_gx[0xdb]&~0x8)|(lfmt&0x8);
-	_gx[0xdb] = (_gx[0xdb]&~0x200)|(_SHIFTL(mipmap,9,1));
-	_gx[0xdb] = (_gx[0xdb]&~0x70)|(_SHIFTL(lfmt,4,3));
+	__gx->texCopyCntrl = (__gx->texCopyCntrl&~0x8)|(lfmt&0x8);
+	__gx->texCopyCntrl = (__gx->texCopyCntrl&~0x200)|(_SHIFTL(mipmap,9,1));
+	__gx->texCopyCntrl = (__gx->texCopyCntrl&~0x70)|(_SHIFTL(lfmt,4,3));
 
-	_gx[0xda] = (_gx[0xda]&~0xff000000)|(_SHIFTL(0x4d,24,8));
+	__gx->texCopyDst = (__gx->texCopyDst&~0xff000000)|(_SHIFTL(0x4d,24,8));
 
-	((u8*)_gx)[0x370] = 0;
-	((u8*)_gx)[0x370] = ((fmt&0x10)-16)?0:1;
+	__gx->texCopyZTex = 0;
+	__gx->texCopyZTex = ((fmt&0x10)-16)?0:1;
 }
 
 void GX_ClearBoundingBox()
@@ -1983,11 +1977,11 @@ void GX_BeginDispList(void *list,u32 size)
 	GXFifoObj *curr_fifo;
 
 	curr_fifo = GX_GetCPUFifo();
-	if(_gx[0x09]) 
+	if(__gx->dirtyState) 
 		__GX_SetDirtyState();
 
-	if(((u8*)_gx)[0x371]) 
-		memcpy(_gx_saved_data,_gx,1280);
+	if(__gx->saveDLctx) 
+		memcpy(_gx_saved_data,__gxregs,STRUCT_REGDEF_SIZE);
 
 	_gx_dl_fifo.buf_start = (u32)list;
 	_gx_dl_fifo.buf_end = (u32)list + size - 4;
@@ -1997,7 +1991,7 @@ void GX_BeginDispList(void *list,u32 size)
 	_gx_dl_fifo.wt_ptr = (u32)list;
 	_gx_dl_fifo.rdwt_dst = 0;
 	
-	((u8*)_gx)[0x372] = 1;
+	__gx->gxFifoUnlinked = 1;
 
 	GX_SaveCPUFifo(curr_fifo);
 	_gxoldcpufifo = curr_fifo;
@@ -2010,20 +2004,20 @@ u32 GX_EndDispList()
 	u32 val;
 	u32 level,ret = 0;
 	
-	if(_gx[0x09])
+	if(__gx->dirtyState)
 		__GX_SetDirtyState();
 
 	__GX_SaveCPUFifoAux(&_gx_dl_fifo);
 	GX_SetCPUFifo(_gxoldcpufifo);
 
 	val = _SHIFTR(_piReg[5],26,1);
-	if(((u8*)_gx)[0x371]) {
+	if(__gx->saveDLctx) {
 		_CPU_ISR_Disable(level);
-		memcpy(_gx,_gx_saved_data,1272);
+		memcpy(__gxregs,_gx_saved_data,STRUCT_REGDEF_SIZE);
 		_CPU_ISR_Restore(level);
 	}
 
-	((u8*)_gx)[0x372] = 0;
+	__gx->gxFifoUnlinked = 0;
 	if(	_SHIFTR(_piReg[5],26,1)) ret = _gx_dl_fifo.rdwt_dst;
 
 	return ret;
@@ -2031,10 +2025,10 @@ u32 GX_EndDispList()
 
 void GX_CallDispList(void *list,u32 nbytes)
 {
-	if(_gx[0x09]) 
+	if(__gx->dirtyState) 
 		__GX_SetDirtyState();
 
-	if(!_gx[0xf8])
+	if(!__gx->vcdClear)
 		__GX_SendFlushPrim();
 	
 	FIFO_PUTU8(0x40);			//call displaylist
@@ -2048,15 +2042,15 @@ void GX_SetChanCtrl(s32 channel,u8 enable,u8 ambsrc,u8 matsrc,u8 litmask,u8 diff
 	u32 val = (matsrc&1)|(_SHIFTL(enable,1,1))|(_SHIFTL(litmask,2,4))|(_SHIFTL(ambsrc,6,1))|(_SHIFTL(difffn,7,2))|(_SHIFTL(((GX_AF_NONE-attn_fn)>0),9,1))|(_SHIFTL((attn_fn&1),10,1))|(_SHIFTL((_SHIFTR(litmask,4,4)),11,4));
 
 	reg = (channel&0x03);
-	_gx[0xf4+reg] = val;
-	_gx[0x09] |= (0x1000<<reg);
+	__gx->chnCntrl[reg] = val;
+	__gx->dirtyState |= (0x1000<<reg);
 
 	if(channel==GX_COLOR0A0) {
-		_gx[0xf6] = val;
-		_gx[0x09] |= 0x5000;
+		__gx->chnCntrl[2] = val;
+		__gx->dirtyState |= 0x5000;
 	} else {
-		_gx[0xf7] = val;
-		_gx[0x09] |= 0xa000;
+		__gx->chnCntrl[3] = val;
+		__gx->dirtyState |= 0xa000;
 	}
 }
 
@@ -2066,19 +2060,19 @@ void GX_SetChanAmbColor(s32 channel,GXColor color)
 	switch(channel) {
 		case GX_COLOR0:
 			reg = 0;
-			val |= (_gx[0xf0]&0xff); 
+			val |= (__gx->chnAmbColor[0]&0xff); 
 			break;
 		case GX_COLOR1:
 			reg = 1;
-			val |= (_gx[0xf1]&0xff);
+			val |= (__gx->chnAmbColor[1]&0xff);
 			break;
 		case GX_ALPHA0:
 			reg = 0;
-			val = ((_gx[0xf0]&~0xff)|(color.a&0xff));
+			val = ((__gx->chnAmbColor[0]&~0xff)|(color.a&0xff));
 			break;
 		case GX_ALPHA1:
 			reg = 1;
-			val = ((_gx[0xf1]&~0xff)|(color.a&0xff));
+			val = ((__gx->chnAmbColor[1]&~0xff)|(color.a&0xff));
 			break;
 		case GX_COLOR0A0:
 			reg = 0;
@@ -2092,8 +2086,8 @@ void GX_SetChanAmbColor(s32 channel,GXColor color)
 			return;
 	}
 
-	_gx[0xf0+reg] = val;
-	_gx[0x09] |= (0x0100<<reg);
+	__gx->chnAmbColor[reg] = val;
+	__gx->dirtyState |= (0x0100<<reg);
 }
 
 void GX_SetChanMatColor(s32 channel,GXColor color)
@@ -2102,19 +2096,19 @@ void GX_SetChanMatColor(s32 channel,GXColor color)
 	switch(channel) {
 		case GX_COLOR0:
 			reg = 0;
-			val |= (_gx[0xf2]&0xff);
+			val |= (__gx->chnMatColor[0]&0xff);
 			break;
 		case GX_COLOR1:
 			reg = 1;
-			val |= (_gx[0xf3]&0xff);
+			val |= (__gx->chnMatColor[1]&0xff);
 			break;
 		case GX_ALPHA0:
 			reg = 0;
-			val = ((_gx[0xf2]&~0xff)|(color.a&0xff));
+			val = ((__gx->chnMatColor[0]&~0xff)|(color.a&0xff));
 			break;
 		case GX_ALPHA1:
 			reg = 1;
-			val = ((_gx[0xf3]&~0xff)|(color.a&0xff));
+			val = ((__gx->chnMatColor[1]&~0xff)|(color.a&0xff));
 			break;
 		case GX_COLOR0A0:
 			reg = 0;
@@ -2128,8 +2122,8 @@ void GX_SetChanMatColor(s32 channel,GXColor color)
 			return;
 	}
 
-	_gx[0xf2+reg] = val;
-	_gx[0x09] |= (0x0400<<reg);
+	__gx->chnMatColor[reg] = val;
+	__gx->dirtyState |= (0x0400<<reg);
 }
 
 void GX_SetArray(u32 attr,void *ptr,u8 stride)
@@ -2148,72 +2142,72 @@ static __inline__ void __SETVCDATTR(u8 attr,u8 type)
 {
 	switch(attr) {
 		case GX_VA_PTNMTXIDX:
-			_gx[0x06] = (_gx[0x06]&~0x1)|(type&0x1);
+			__gx->vcdLo = (__gx->vcdLo&~0x1)|(type&0x1);
 			break;
 		case GX_VA_TEX0MTXIDX:
-			_gx[0x06] = (_gx[0x06]&~0x2)|(_SHIFTL(type,1,1));
+			__gx->vcdLo = (__gx->vcdLo&~0x2)|(_SHIFTL(type,1,1));
 			break;
 		case GX_VA_TEX1MTXIDX:
-			_gx[0x06] = (_gx[0x06]&~0x4)|(_SHIFTL(type,2,1));
+			__gx->vcdLo = (__gx->vcdLo&~0x4)|(_SHIFTL(type,2,1));
 			break;
 		case GX_VA_TEX2MTXIDX:
-			_gx[0x06] = (_gx[0x06]&~0x8)|(_SHIFTL(type,3,1));
+			__gx->vcdLo = (__gx->vcdLo&~0x8)|(_SHIFTL(type,3,1));
 			break;
 		case GX_VA_TEX3MTXIDX:
-			_gx[0x06] = (_gx[0x06]&~0x10)|(_SHIFTL(type,4,1));
+			__gx->vcdLo = (__gx->vcdLo&~0x10)|(_SHIFTL(type,4,1));
 			break;
 		case GX_VA_TEX4MTXIDX:
-			_gx[0x06] = (_gx[0x06]&~0x20)|(_SHIFTL(type,5,1));
+			__gx->vcdLo = (__gx->vcdLo&~0x20)|(_SHIFTL(type,5,1));
 			break;
 		case GX_VA_TEX5MTXIDX:
-			_gx[0x06] = (_gx[0x06]&~0x40)|(_SHIFTL(type,6,1));
+			__gx->vcdLo = (__gx->vcdLo&~0x40)|(_SHIFTL(type,6,1));
 			break;
 		case GX_VA_TEX6MTXIDX:
-			_gx[0x06] = (_gx[0x06]&~0x80)|(_SHIFTL(type,7,1));
+			__gx->vcdLo = (__gx->vcdLo&~0x80)|(_SHIFTL(type,7,1));
 			break;
 		case GX_VA_TEX7MTXIDX:
-			_gx[0x06] = (_gx[0x06]&~0x100)|(_SHIFTL(type,8,1));
+			__gx->vcdLo = (__gx->vcdLo&~0x100)|(_SHIFTL(type,8,1));
 			break;
 		case GX_VA_POS:
-			_gx[0x06] = (_gx[0x06]&~0x600)|(_SHIFTL(type,9,2));
+			__gx->vcdLo = (__gx->vcdLo&~0x600)|(_SHIFTL(type,9,2));
 			break;
 		case GX_VA_NRM:
-			_gx[0x06] = (_gx[0x06]&~0x1800)|(_SHIFTL(type,11,2));
-			_gx[0x08] = 1;
+			__gx->vcdLo = (__gx->vcdLo&~0x1800)|(_SHIFTL(type,11,2));
+			__gx->vcdNrms = 1;
 			break;
 		case GX_VA_NBT:
-			_gx[0x06] = (_gx[0x06]&~0x1800)|(_SHIFTL(type,11,2));
-			_gx[0x08] = 2;
+			__gx->vcdLo = (__gx->vcdLo&~0x1800)|(_SHIFTL(type,11,2));
+			__gx->vcdNrms = 2;
 			break;
 		case GX_VA_CLR0:
-			_gx[0x06] = (_gx[0x06]&~0x6000)|(_SHIFTL(type,13,2));
+			__gx->vcdLo = (__gx->vcdLo&~0x6000)|(_SHIFTL(type,13,2));
 			break;
 		case GX_VA_CLR1:
-			_gx[0x06] = (_gx[0x06]&~0x18000)|(_SHIFTL(type,15,2));
+			__gx->vcdLo = (__gx->vcdLo&~0x18000)|(_SHIFTL(type,15,2));
 			break;
 		case GX_VA_TEX0:
-			_gx[0x07] = (_gx[0x07]&~0x3)|(type&0x3);
+			__gx->vcdHi = (__gx->vcdHi&~0x3)|(type&0x3);
 			break;
 		case GX_VA_TEX1:
-			_gx[0x07] = (_gx[0x07]&~0xc)|(_SHIFTL(type,2,2));
+			__gx->vcdHi = (__gx->vcdHi&~0xc)|(_SHIFTL(type,2,2));
 			break;
 		case GX_VA_TEX2:
-			_gx[0x07] = (_gx[0x07]&~0x30)|(_SHIFTL(type,4,2));
+			__gx->vcdHi = (__gx->vcdHi&~0x30)|(_SHIFTL(type,4,2));
 			break;
 		case GX_VA_TEX3:
-			_gx[0x07] = (_gx[0x07]&~0xc0)|(_SHIFTL(type,6,2));
+			__gx->vcdHi = (__gx->vcdHi&~0xc0)|(_SHIFTL(type,6,2));
 			break;
 		case GX_VA_TEX4:
-			_gx[0x07] = (_gx[0x07]&~0x300)|(_SHIFTL(type,8,2));
+			__gx->vcdHi = (__gx->vcdHi&~0x300)|(_SHIFTL(type,8,2));
 			break;
 		case GX_VA_TEX5:
-			_gx[0x07] = (_gx[0x07]&~0xc00)|(_SHIFTL(type,10,2));
+			__gx->vcdHi = (__gx->vcdHi&~0xc00)|(_SHIFTL(type,10,2));
 			break;
 		case GX_VA_TEX6:
-			_gx[0x07] = (_gx[0x07]&~0x3000)|(_SHIFTL(type,12,2));
+			__gx->vcdHi = (__gx->vcdHi&~0x3000)|(_SHIFTL(type,12,2));
 			break;
 		case GX_VA_TEX7:
-			_gx[0x07] = (_gx[0x07]&~0xc000)|(_SHIFTL(type,14,2));
+			__gx->vcdHi = (__gx->vcdHi&~0xc000)|(_SHIFTL(type,14,2));
 			break;
 	}
 }
@@ -2221,7 +2215,7 @@ static __inline__ void __SETVCDATTR(u8 attr,u8 type)
 void GX_SetVtxDesc(u8 attr,u8 type)
 {
 	__SETVCDATTR(attr,type);
-	_gx[0x09] |= 0x0008;
+	__gx->dirtyState |= 0x0008;
 }
 
 void GX_SetVtxDescv(GXVtxDesc *attr_list)
@@ -2235,105 +2229,103 @@ void GX_SetVtxDescv(GXVtxDesc *attr_list)
 		
 		__SETVCDATTR(attr_list[i].attr,attr_list[i].type);
 	}
-	_gx[0x09] |= 0x0008;
+	__gx->dirtyState |= 0x0008;
 }
 
 static __inline__ void __SETVCDFMT(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac)
 {
-	u8 vat0 = 0x10+vtxfmt;
-	u8 vat1 = 0x18+vtxfmt;
-	u8 vat2 = 0x20+vtxfmt;
+	u8 vat = (vtxfmt&7);
 
 	if(vtxattr==GX_VA_POS && (comptype==GX_POS_XY || comptype==GX_POS_XYZ)
 		&& (compsize>=GX_U8 && compsize<=GX_F32)) {
-		_gx[vat0] = (_gx[vat0]&~0x1)|(comptype&1);
-		_gx[vat0] = (_gx[vat0]&~0xe)|(_SHIFTL(compsize,1,3));
-		_gx[vat0] = (_gx[vat0]&~0x1f0)|(_SHIFTL(frac,4,5));
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x1)|(comptype&1);
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0xe)|(_SHIFTL(compsize,1,3));
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x1f0)|(_SHIFTL(frac,4,5));
 		if(frac)
-			_gx[vat0] = (_gx[vat0]&~0x40000000)|0x40000000;
+			__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x40000000)|0x40000000;
 	} else if(vtxattr==GX_VA_NRM && comptype==GX_NRM_XYZ
 		&& (compsize==GX_S8 || compsize==GX_S16 || compsize==GX_F32)) {
-		_gx[vat0] = (_gx[vat0]&~0x200);
-		_gx[vat0] = (_gx[vat0]&~0x1C00)|(_SHIFTL(compsize,10,3));
-		_gx[vat0] = (_gx[vat0]&~0x80000000);
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x200);
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x1C00)|(_SHIFTL(compsize,10,3));
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x80000000);
 	} else if(vtxattr==GX_VA_NBT && (comptype==GX_NRM_NBT || comptype==GX_NRM_NBT3)
 		&& (compsize==GX_S8 || compsize==GX_S16 || compsize==GX_F32)) {
-		_gx[vat0] = (_gx[vat0]&~0x200)|0x200;
-		_gx[vat0] = (_gx[vat0]&~0x1C00)|(_SHIFTL(compsize,10,3));
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x200)|0x200;
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x1C00)|(_SHIFTL(compsize,10,3));
 		if(comptype==GX_NRM_NBT3)
-			_gx[vat0] = (_gx[vat0]&~0x80000000)|0x80000000;
+			__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x80000000)|0x80000000;
 	} else if(vtxattr==GX_VA_CLR0 && (comptype==GX_CLR_RGB || comptype==GX_CLR_RGBA)
 		&& (compsize>=GX_RGB565 && compsize<=GX_RGBA8)) {
-		_gx[vat0] = (_gx[vat0]&~0x2000)|(_SHIFTL(comptype,13,1));
-		_gx[vat0] = (_gx[vat0]&~0x1C000)|(_SHIFTL(compsize,14,3));
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x2000)|(_SHIFTL(comptype,13,1));
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x1C000)|(_SHIFTL(compsize,14,3));
 	} else if(vtxattr==GX_VA_CLR1 && (comptype==GX_CLR_RGB || comptype==GX_CLR_RGBA)
 		&& (compsize>=GX_RGB565 && compsize<=GX_RGBA8)) {
-		_gx[vat0] = (_gx[vat0]&~0x20000)|(_SHIFTL(comptype,17,1));
-		_gx[vat0] = (_gx[vat0]&~0x1C0000)|(_SHIFTL(compsize,18,3));
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x20000)|(_SHIFTL(comptype,17,1));
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x1C0000)|(_SHIFTL(compsize,18,3));
 	} else if(vtxattr==GX_VA_TEX0 && (comptype==GX_TEX_S || comptype==GX_TEX_ST)
 		&& (compsize>=GX_U8 && compsize<=GX_F32)) {
-		_gx[vat0] = (_gx[vat0]&~0x200000)|(_SHIFTL(comptype,21,1));
-		_gx[vat0] = (_gx[vat0]&~0x1C00000)|(_SHIFTL(compsize,22,3));
-		_gx[vat0] = (_gx[vat0]&~0x3E000000)|(_SHIFTL(frac,25,5));
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x200000)|(_SHIFTL(comptype,21,1));
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x1C00000)|(_SHIFTL(compsize,22,3));
+		__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x3E000000)|(_SHIFTL(frac,25,5));
 		if(frac)
-			_gx[vat0] = (_gx[vat0]&~0x40000000)|0x40000000;
+			__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x40000000)|0x40000000;
 	} else if(vtxattr==GX_VA_TEX1 && (comptype==GX_TEX_S || comptype==GX_TEX_ST)
 		&& (compsize>=GX_U8 && compsize<=GX_F32)) {
-		_gx[vat1] = (_gx[vat1]&~0x1)|(comptype&1);
-		_gx[vat1] = (_gx[vat1]&~0xe)|(_SHIFTL(compsize,1,3));
-		_gx[vat1] = (_gx[vat1]&~0x1F0)|(_SHIFTL(frac,4,5));
+		__gx->VAT1reg[vat] = (__gx->VAT1reg[vat]&~0x1)|(comptype&1);
+		__gx->VAT1reg[vat] = (__gx->VAT1reg[vat]&~0xe)|(_SHIFTL(compsize,1,3));
+		__gx->VAT1reg[vat] = (__gx->VAT1reg[vat]&~0x1F0)|(_SHIFTL(frac,4,5));
 		if(frac)
-			_gx[vat0] = (_gx[vat0]&~0x40000000)|0x40000000;
+			__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x40000000)|0x40000000;
 	} else if(vtxattr==GX_VA_TEX2 && (comptype==GX_TEX_S || comptype==GX_TEX_ST)
 		&& (compsize>=GX_U8 && compsize<=GX_F32)) {
-		_gx[vat1] = (_gx[vat1]&~0x200)|(_SHIFTL(comptype,9,1));
-		_gx[vat1] = (_gx[vat1]&~0x1C00)|(_SHIFTL(compsize,10,3));
-		_gx[vat1] = (_gx[vat1]&~0x3E000)|(_SHIFTL(frac,13,5));
+		__gx->VAT1reg[vat] = (__gx->VAT1reg[vat]&~0x200)|(_SHIFTL(comptype,9,1));
+		__gx->VAT1reg[vat] = (__gx->VAT1reg[vat]&~0x1C00)|(_SHIFTL(compsize,10,3));
+		__gx->VAT1reg[vat] = (__gx->VAT1reg[vat]&~0x3E000)|(_SHIFTL(frac,13,5));
 		if(frac)
-			_gx[vat0] = (_gx[vat0]&~0x40000000)|0x40000000;
+			__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x40000000)|0x40000000;
 	} else if(vtxattr==GX_VA_TEX3 && (comptype==GX_TEX_S || comptype==GX_TEX_ST)
 		&& (compsize>=GX_U8 && compsize<=GX_F32)) {
-		_gx[vat1] = (_gx[vat1]&~0x40000)|(_SHIFTL(comptype,18,1));
-		_gx[vat1] = (_gx[vat1]&~0x380000)|(_SHIFTL(compsize,19,3));
-		_gx[vat1] = (_gx[vat1]&~0x7C00000)|(_SHIFTL(frac,22,5));
+		__gx->VAT1reg[vat] = (__gx->VAT1reg[vat]&~0x40000)|(_SHIFTL(comptype,18,1));
+		__gx->VAT1reg[vat] = (__gx->VAT1reg[vat]&~0x380000)|(_SHIFTL(compsize,19,3));
+		__gx->VAT1reg[vat] = (__gx->VAT1reg[vat]&~0x7C00000)|(_SHIFTL(frac,22,5));
 		if(frac)
-			_gx[vat0] = (_gx[vat0]&~0x40000000)|0x40000000;
+			__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x40000000)|0x40000000;
 	} else if(vtxattr==GX_VA_TEX4 && (comptype==GX_TEX_S || comptype==GX_TEX_ST)
 		&& (compsize>=GX_U8 && compsize<=GX_F32)) {
-		_gx[vat1] = (_gx[vat1]&~0x8000000)|(_SHIFTL(comptype,27,1));
-		_gx[vat1] = (_gx[vat1]&~0x70000000)|(_SHIFTL(compsize,28,3));
-		_gx[vat2] = (_gx[vat2]&~0x1f)|(frac&0x1f);
+		__gx->VAT1reg[vat] = (__gx->VAT1reg[vat]&~0x8000000)|(_SHIFTL(comptype,27,1));
+		__gx->VAT1reg[vat] = (__gx->VAT1reg[vat]&~0x70000000)|(_SHIFTL(compsize,28,3));
+		__gx->VAT2reg[vat] = (__gx->VAT2reg[vat]&~0x1f)|(frac&0x1f);
 		if(frac)
-			_gx[vat0] = (_gx[vat0]&~0x40000000)|0x40000000;
+			__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x40000000)|0x40000000;
 	} else if(vtxattr==GX_VA_TEX5 && (comptype==GX_TEX_S || comptype==GX_TEX_ST)
 		&& (compsize>=GX_U8 && compsize<=GX_F32)) {
-		_gx[vat2] = (_gx[vat2]&~0x20)|(_SHIFTL(comptype,5,1));
-		_gx[vat2] = (_gx[vat2]&~0x1C0)|(_SHIFTL(compsize,6,3));
-		_gx[vat2] = (_gx[vat2]&~0x3E00)|(_SHIFTL(frac,9,5));
+		__gx->VAT2reg[vat] = (__gx->VAT2reg[vat]&~0x20)|(_SHIFTL(comptype,5,1));
+		__gx->VAT2reg[vat] = (__gx->VAT2reg[vat]&~0x1C0)|(_SHIFTL(compsize,6,3));
+		__gx->VAT2reg[vat] = (__gx->VAT2reg[vat]&~0x3E00)|(_SHIFTL(frac,9,5));
 		if(frac)
-			_gx[vat0] = (_gx[vat0]&~0x40000000)|0x40000000;
+			__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x40000000)|0x40000000;
 	} else if(vtxattr==GX_VA_TEX6 && (comptype==GX_TEX_S || comptype==GX_TEX_ST)
 		&& (compsize>=GX_U8 && compsize<=GX_F32)) {
-		_gx[vat2] = (_gx[vat2]&~0x4000)|(_SHIFTL(comptype,14,1));
-		_gx[vat2] = (_gx[vat2]&~0x38000)|(_SHIFTL(compsize,15,3));
-		_gx[vat2] = (_gx[vat2]&~0x7C0000)|(_SHIFTL(frac,18,5));
+		__gx->VAT2reg[vat] = (__gx->VAT2reg[vat]&~0x4000)|(_SHIFTL(comptype,14,1));
+		__gx->VAT2reg[vat] = (__gx->VAT2reg[vat]&~0x38000)|(_SHIFTL(compsize,15,3));
+		__gx->VAT2reg[vat] = (__gx->VAT2reg[vat]&~0x7C0000)|(_SHIFTL(frac,18,5));
 		if(frac)
-			_gx[vat0] = (_gx[vat0]&~0x40000000)|0x40000000;
+			__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x40000000)|0x40000000;
 	} else if(vtxattr==GX_VA_TEX7 && (comptype==GX_TEX_S || comptype==GX_TEX_ST)
 		&& (compsize>=GX_U8 && compsize<=GX_F32)) {
-		_gx[vat2] = (_gx[vat2]&~0x800000)|(_SHIFTL(comptype,23,1));
-		_gx[vat2] = (_gx[vat2]&~0x7000000)|(_SHIFTL(compsize,24,3));
-		_gx[vat2] = (_gx[vat2]&~0xF8000000)|(_SHIFTL(frac,27,5));
+		__gx->VAT2reg[vat] = (__gx->VAT2reg[vat]&~0x800000)|(_SHIFTL(comptype,23,1));
+		__gx->VAT2reg[vat] = (__gx->VAT2reg[vat]&~0x7000000)|(_SHIFTL(compsize,24,3));
+		__gx->VAT2reg[vat] = (__gx->VAT2reg[vat]&~0xF8000000)|(_SHIFTL(frac,27,5));
 		if(frac)
-			_gx[vat0] = (_gx[vat0]&~0x40000000)|0x40000000;
+			__gx->VAT0reg[vat] = (__gx->VAT0reg[vat]&~0x40000000)|0x40000000;
 	}
 }
 
 void GX_SetVtxAttrFmt(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac)
 {
 	__SETVCDFMT(vtxfmt,vtxattr,comptype,compsize,frac);
-	_gx[0x02] |= (1<<vtxfmt);
-	_gx[0x09] |= 0x0010;
+	__gx->VATTable |= (1<<vtxfmt);
+	__gx->dirtyState |= 0x0010;
 }
 
 void GX_SetVtxAttrFmtv(u8 vtxfmt,GXVtxAttrFmt *attr_list)
@@ -2345,15 +2337,15 @@ void GX_SetVtxAttrFmtv(u8 vtxfmt,GXVtxAttrFmt *attr_list)
 
 		__SETVCDFMT(vtxfmt,attr_list[i].vtxattr,attr_list[i].comptype,attr_list[i].compsize,attr_list[i].frac);
 	}
-	_gx[0x02] |= (1<<vtxfmt);
-	_gx[0x09] |= 0x0010;
+	__gx->VATTable |= (1<<vtxfmt);
+	__gx->dirtyState |= 0x0010;
 }
 
 void GX_Begin(u8 primitve,u8 vtxfmt,u16 vtxcnt)
 {
 	u8 reg = primitve|(vtxfmt&7);
 	
-	if(_gx[0x09]) 
+	if(__gx->dirtyState) 
 		__GX_SetDirtyState();
 
 	FIFO_PUTU8(reg);
@@ -2367,6 +2359,7 @@ void GX_SetTexCoordGen(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc)
 
 void GX_SetTexCoordGen2(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc,u32 normalize,u32 postmtx)
 {
+	u32 txc;
 	u32 texcoords;
 	u8 vtxrow,stq;
 
@@ -2426,6 +2419,7 @@ void GX_SetTexCoordGen2(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc,u32 no
 	}
 
 	texcoords = 0;
+	txc = (texcoord&7);
 	if((tgen_typ==GX_TG_MTX3x4 || tgen_typ==GX_TG_MTX2x4))
 	{
 		if(tgen_typ==GX_TG_MTX3x4) texcoords = 0x02;
@@ -2450,36 +2444,36 @@ void GX_SetTexCoordGen2(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc,u32 no
 	}
 
 	postmtx -= GX_DTTMTX0;
-	_gx[0xe0+(texcoord<<1)] = texcoords;
-	_gx[0xe1+(texcoord<<1)] = ((_SHIFTL(normalize,8,1))|(postmtx&0x3f));
+	__gx->texCoordGen[txc] = texcoords;
+	__gx->texCoordGen2[txc] = ((_SHIFTL(normalize,8,1))|(postmtx&0x3f));
 
 	switch(texcoord) {
 		case GX_TEXCOORD0:
-			_gx[0x03] = (_gx[0x03]&~0xfc0)|(_SHIFTL(mtxsrc,6,6));
+			__gx->mtxIdxLo = (__gx->mtxIdxLo&~0xfc0)|(_SHIFTL(mtxsrc,6,6));
 			break;
 		case GX_TEXCOORD1:
-			_gx[0x03] = (_gx[0x03]&~0x3f000)|(_SHIFTL(mtxsrc,12,6));
+			__gx->mtxIdxLo = (__gx->mtxIdxLo&~0x3f000)|(_SHIFTL(mtxsrc,12,6));
 			break;
 		case GX_TEXCOORD2:
-			_gx[0x03] = (_gx[0x03]&~0xfc0000)|(_SHIFTL(mtxsrc,18,6));
+			__gx->mtxIdxLo = (__gx->mtxIdxLo&~0xfc0000)|(_SHIFTL(mtxsrc,18,6));
 			break;
 		case GX_TEXCOORD3:
-			_gx[0x03] = (_gx[0x03]&~0x3f000000)|(_SHIFTL(mtxsrc,24,6));
+			__gx->mtxIdxLo = (__gx->mtxIdxLo&~0x3f000000)|(_SHIFTL(mtxsrc,24,6));
 			break;
 		case GX_TEXCOORD4:
-			_gx[0x04] = (_gx[0x04]&~0x3f)|(mtxsrc&0x3f);
+			__gx->mtxIdxHi = (__gx->mtxIdxHi&~0x3f)|(mtxsrc&0x3f);
 			break;
 		case GX_TEXCOORD5:
-			_gx[0x04] = (_gx[0x04]&~0xfc0)|(_SHIFTL(mtxsrc,6,6));
+			__gx->mtxIdxHi = (__gx->mtxIdxHi&~0xfc0)|(_SHIFTL(mtxsrc,6,6));
 			break;
 		case GX_TEXCOORD6:
-			_gx[0x04] = (_gx[0x04]&~0x3f000)|(_SHIFTL(mtxsrc,12,6));
+			__gx->mtxIdxHi = (__gx->mtxIdxHi&~0x3f000)|(_SHIFTL(mtxsrc,12,6));
 			break;
 		case GX_TEXCOORD7:
-			_gx[0x04] = (_gx[0x04]&~0xfc0000)|(_SHIFTL(mtxsrc,18,6));
+			__gx->mtxIdxHi = (__gx->mtxIdxHi&~0xfc0000)|(_SHIFTL(mtxsrc,18,6));
 			break;
 	}
-	_gx[0x09] |= (0x04000000|(0x00010000<<texcoord));
+	__gx->dirtyState |= (0x04000000|(0x00010000<<texcoord));
 }
  
 void GX_SetZTexture(u8 op,u8 fmt,u32 bias)
@@ -2619,14 +2613,14 @@ void GX_LoadTexMtxIdx(u16 mtxidx,u32 texidx,u8 type)
 
 void GX_SetCurrentMtx(u32 mtx)
 {
-	_gx[0x03] = (_gx[0x03]&~0x3f)|(mtx&0x3f);
-	_gx[0x09] |= 0x04000000;
+	__gx->mtxIdxLo = (__gx->mtxIdxLo&~0x3f)|(mtx&0x3f);
+	__gx->dirtyState |= 0x04000000;
 }
 
 void GX_SetNumTexGens(u32 nr)
 {
-	_gx[0xac] = (_gx[0xac]&~0xf)|(nr&0xf);
-	_gx[0x09] |= 0x02000004;
+	__gx->genMode = (__gx->genMode&~0xf)|(nr&0xf);
+	__gx->dirtyState |= 0x02000004;
 }
 
 void GX_InvVtxCache()
@@ -2636,10 +2630,10 @@ void GX_InvVtxCache()
 
 void GX_SetZMode(u8 enable,u8 func,u8 update_enable)
 {
-	_gx[0xb8] = (_gx[0xb8]&~0x1)|(enable&1);
-	_gx[0xb8] = (_gx[0xb8]&~0xe)|(_SHIFTL(func,1,3));
-	_gx[0xb8] = (_gx[0xb8]&~0x10)|(_SHIFTL(update_enable,4,1));
-	GX_LOAD_BP_REG(_gx[0xb8]);
+	__gx->peZMode = (__gx->peZMode&~0x1)|(enable&1);
+	__gx->peZMode = (__gx->peZMode&~0xe)|(_SHIFTL(func,1,3));
+	__gx->peZMode = (__gx->peZMode&~0x10)|(_SHIFTL(update_enable,4,1));
+	GX_LOAD_BP_REG(__gx->peZMode);
 }
 
 static void __GetTexTileShift(u32 fmt,u32 *xshift,u32 *yshift)
@@ -2979,10 +2973,10 @@ void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid)
 		GX_LOAD_BP_REG(tlut->val[1]);
 	}
 	
-	_gx[0x40+mapid] = obj->val[2];
-	_gx[0x50+mapid] = obj->val[0];
+	__gx->texMapSize[mapid] = obj->val[2];
+	__gx->texMapWrap[mapid] = obj->val[0];
 	
-	_gx[0x09] |= 0x0001;
+	__gx->dirtyState |= 0x0001;
 }
 
 void GX_PreloadEntireTex(GXTexObj *obj,GXTexRegion *region)
@@ -3051,51 +3045,45 @@ void GX_LoadTlut(GXTlutObj *obj,u32 tlut_name)
 
 void GX_SetTexCoorScaleManually(u8 texcoord,u8 enable,u16 ss,u16 ts)
 {
-	u32 regA,regB;
+	u32 reg;
 
-	_gx[0x05] = (_gx[0x05]&~(_SHIFTL(1,texcoord,1)))|(_SHIFTL(enable,texcoord,1));
+	__gx->texCoordManually = (__gx->texCoordManually&~(_SHIFTL(1,texcoord,1)))|(_SHIFTL(enable,texcoord,1));
 	if(!enable) return;
 
-	regA = 0xa0+(texcoord&0x7);
-	regB = 0xb0+(texcoord&0x7);
+	reg = (texcoord&0x7);
+	__gx->suSsize[reg] = (__gx->suSsize[reg]&~0xffff)|((ss-1)&0xffff);
+	__gx->suTsize[reg] = (__gx->suTsize[reg]&~0xffff)|((ts-1)&0xffff);
 
-	_gx[regA] = (_gx[regA]&~0xffff)|((ss-1)&0xffff);
-	_gx[regB] = (_gx[regB]&~0xffff)|((ts-1)&0xffff);
-
-	GX_LOAD_BP_REG(_gx[regA]);
-	GX_LOAD_BP_REG(_gx[regB]);
+	GX_LOAD_BP_REG(__gx->suSsize[reg]);
+	GX_LOAD_BP_REG(__gx->suTsize[reg]);
 }
 
 void GX_SetTexCoordCylWrap(u8 texcoord,u8 s_enable,u8 t_enable)
 {
-	u32 regA,regB;
+	u32 reg;
 	
-	regA = 0xa0+(texcoord&0x7);
-	regB = 0xb0+(texcoord&0x7);
+	reg = (texcoord&0x7);
+	__gx->suSsize[reg] = (__gx->suSsize[reg]&~0x20000)|(_SHIFTL(s_enable,17,1));
+	__gx->suTsize[reg] = (__gx->suTsize[reg]&~0x20000)|(_SHIFTL(t_enable,17,1));
 
-	_gx[regA] = (_gx[regA]&~0x20000)|(_SHIFTL(s_enable,17,1));
-	_gx[regB] = (_gx[regB]&~0x20000)|(_SHIFTL(t_enable,17,1));
-
-	if(!(_gx[0x05]&(_SHIFTL(1,texcoord,1)))) return;
+	if(!(__gx->texCoordManually&(_SHIFTL(1,texcoord,1)))) return;
 	
-	GX_LOAD_BP_REG(_gx[regA]);
-	GX_LOAD_BP_REG(_gx[regB]);
+	GX_LOAD_BP_REG(__gx->suSsize[reg]);
+	GX_LOAD_BP_REG(__gx->suTsize[reg]);
 }
 
 void GX_SetTexCoordBias(u8 texcoord,u8 s_enable,u8 t_enable)
 {
-	u32 regA,regB;
+	u32 reg;
 	
-	regA = 0xa0+(texcoord&0x7);
-	regB = 0xb0+(texcoord&0x7);
+	reg = (texcoord&0x7);
+	__gx->suSsize[reg] = (__gx->suSsize[reg]&~0x10000)|(_SHIFTL(s_enable,16,1));
+	__gx->suTsize[reg] = (__gx->suTsize[reg]&~0x10000)|(_SHIFTL(t_enable,16,1));
 
-	_gx[regA] = (_gx[regA]&~0x10000)|(_SHIFTL(s_enable,16,1));
-	_gx[regB] = (_gx[regB]&~0x10000)|(_SHIFTL(t_enable,16,1));
-
-	if(!(_gx[0x05]&(_SHIFTL(1,texcoord,1)))) return;
+	if(!(__gx->texCoordManually&(_SHIFTL(1,texcoord,1)))) return;
 	
-	GX_LOAD_BP_REG(_gx[regA]);
-	GX_LOAD_BP_REG(_gx[regB]);
+	GX_LOAD_BP_REG(__gx->suSsize[reg]);
+	GX_LOAD_BP_REG(__gx->suTsize[reg]);
 }
 
 GXTexRegionCallback GX_SetTexRegionCallback(GXTexRegionCallback cb)
@@ -3126,42 +3114,42 @@ GXTlutRegionCallback GX_SetTlutRegionCallback(GXTlutRegionCallback cb)
 
 void GX_SetBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op)
 {
-	_gx[0xb9] = (_gx[0xb9]&~0x1);
-	if(type==GX_BM_BLEND || type==GX_BM_SUBSTRACT) _gx[0xb9] |= 0x1;
+	__gx->peCMode0 = (__gx->peCMode0&~0x1);
+	if(type==GX_BM_BLEND || type==GX_BM_SUBSTRACT) __gx->peCMode0 |= 0x1;
 	
-	_gx[0xb9] = (_gx[0xb9]&~0x800);
-	if(type==GX_BM_SUBSTRACT) _gx[0xb9] |= 0x800;
+	__gx->peCMode0 = (__gx->peCMode0&~0x800);
+	if(type==GX_BM_SUBSTRACT) __gx->peCMode0 |= 0x800;
 
-	_gx[0xb9] = (_gx[0xb9]&~0x2);
-	if(type==GX_BM_LOGIC) _gx[0xb9] |= 0x2;
+	__gx->peCMode0 = (__gx->peCMode0&~0x2);
+	if(type==GX_BM_LOGIC) __gx->peCMode0 |= 0x2;
 	
-	_gx[0xb9] = (_gx[0xb9]&~0xF000)|(_SHIFTL(op,12,4));
-	_gx[0xb9] = (_gx[0xb9]&~0xE0)|(_SHIFTL(dst_fact,5,3));
-	_gx[0xb9] = (_gx[0xb9]&~0x700)|(_SHIFTL(src_fact,8,3));
+	__gx->peCMode0 = (__gx->peCMode0&~0xF000)|(_SHIFTL(op,12,4));
+	__gx->peCMode0 = (__gx->peCMode0&~0xE0)|(_SHIFTL(dst_fact,5,3));
+	__gx->peCMode0 = (__gx->peCMode0&~0x700)|(_SHIFTL(src_fact,8,3));
 
-	GX_LOAD_BP_REG(_gx[0xb9]);
+	GX_LOAD_BP_REG(__gx->peCMode0);
 }
 
 void GX_ClearVtxDesc()
 {
-	_gx[0x08] = 0;
-	_gx[0xf8] = ((_gx[0xf8]&~0x0600)|0x0200);
-	_gx[0x06] = _gx[0x07] = 0;
-	_gx[0x09] |= 0x0008;
+	__gx->vcdNrms = 0;
+	__gx->vcdClear = ((__gx->vcdClear&~0x0600)|0x0200);
+	__gx->vcdLo = __gx->vcdHi = 0;
+	__gx->dirtyState |= 0x0008;
 }
 
 void GX_SetLineWidth(u8 width,u8 fmt)
 {
-	_gx[0xaa] = (_gx[0xaa]&~0xff)|(width&0xff);
-	_gx[0xaa] = (_gx[0xaa]&~0x70000)|(_SHIFTL(fmt,16,3));
-	GX_LOAD_BP_REG(_gx[0xaa]);
+	__gx->lpWidth = (__gx->lpWidth&~0xff)|(width&0xff);
+	__gx->lpWidth = (__gx->lpWidth&~0x70000)|(_SHIFTL(fmt,16,3));
+	GX_LOAD_BP_REG(__gx->lpWidth);
 }
 
 void GX_SetPointSize(u8 width,u8 fmt)
 {
-	_gx[0xaa] = (_gx[0xaa]&~0xFF00)|(_SHIFTL(width,8,8));
-	_gx[0xaa] = (_gx[0xaa]&~0x380000)|(_SHIFTL(fmt,19,3));
-	GX_LOAD_BP_REG(_gx[0xaa]);
+	__gx->lpWidth = (__gx->lpWidth&~0xFF00)|(_SHIFTL(width,8,8));
+	__gx->lpWidth = (__gx->lpWidth&~0x380000)|(_SHIFTL(fmt,19,3));
+	GX_LOAD_BP_REG(__gx->lpWidth);
 }
 
 void GX_SetTevColor(u8 tev_regid,GXColor color)
@@ -3262,83 +3250,83 @@ void GX_SetTevOp(u8 tevstage,u8 mode)
 
 void GX_SetTevColorIn(u8 tevstage,u8 a,u8 b,u8 c,u8 d)
 {
-	u32 reg = 0x80+(tevstage&0xf);
-	_gx[reg] = (_gx[reg]&~0xF000)|(_SHIFTL(a,12,4));
-	_gx[reg] = (_gx[reg]&~0xF00)|(_SHIFTL(b,8,4));
-	_gx[reg] = (_gx[reg]&~0xF0)|(_SHIFTL(c,4,4));
-	_gx[reg] = (_gx[reg]&~0xf)|(d&0xf);
+	u32 reg = (tevstage&0xf);
+	__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0xF000)|(_SHIFTL(a,12,4));
+	__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0xF00)|(_SHIFTL(b,8,4));
+	__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0xF0)|(_SHIFTL(c,4,4));
+	__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0xf)|(d&0xf);
 
-	GX_LOAD_BP_REG(_gx[reg]);
+	GX_LOAD_BP_REG(__gx->tevColorEnv[reg]);
 }
 
 void GX_SetTevAlphaIn(u8 tevstage,u8 a,u8 b,u8 c,u8 d)
 {
-	u32 reg = 0x90+(tevstage&0xf);
-	_gx[reg] = (_gx[reg]&~0xE000)|(_SHIFTL(a,13,3));
-	_gx[reg] = (_gx[reg]&~0x1C00)|(_SHIFTL(b,10,3));
-	_gx[reg] = (_gx[reg]&~0x380)|(_SHIFTL(c,7,3));
-	_gx[reg] = (_gx[reg]&~0x70)|(_SHIFTL(d,4,3));
+	u32 reg = (tevstage&0xf);
+	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0xE000)|(_SHIFTL(a,13,3));
+	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0x1C00)|(_SHIFTL(b,10,3));
+	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0x380)|(_SHIFTL(c,7,3));
+	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0x70)|(_SHIFTL(d,4,3));
 
-	GX_LOAD_BP_REG(_gx[reg]);
+	GX_LOAD_BP_REG(__gx->tevAlphaEnv[reg]);
 }
 
 void GX_SetTevColorOp(u8 tevstage,u8 tevop,u8 tevbias,u8 tevscale,u8 clamp,u8 tevregid)
 {
 	/* set tev op add/sub*/
-	u32 reg = 0x80+(tevstage&0xf);
-	_gx[reg] = (_gx[reg]&~0x40000)|(_SHIFTL(tevop,18,1));
+	u32 reg = (tevstage&0xf);
+	__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0x40000)|(_SHIFTL(tevop,18,1));
 	if(tevop<=GX_TEV_SUB) {
-		_gx[reg] = (_gx[reg]&~0x300000)|(_SHIFTL(tevscale,20,2));
-		_gx[reg] = (_gx[reg]&~0x30000)|(_SHIFTL(tevbias,16,2));
+		__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0x300000)|(_SHIFTL(tevscale,20,2));
+		__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0x30000)|(_SHIFTL(tevbias,16,2));
 	} else {
-		_gx[reg] = (_gx[reg]&~0x300000)|((_SHIFTL(tevop,19,4))&0x300000);
-		_gx[reg] = (_gx[reg]&~0x30000)|0x30000;
+		__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0x300000)|((_SHIFTL(tevop,19,4))&0x300000);
+		__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0x30000)|0x30000;
 	}
-	_gx[reg] = (_gx[reg]&~0x80000)|(_SHIFTL(clamp,19,1));
-	_gx[reg] = (_gx[reg]&~0xC00000)|(_SHIFTL(tevregid,22,2));
+	__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0x80000)|(_SHIFTL(clamp,19,1));
+	__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0xC00000)|(_SHIFTL(tevregid,22,2));
 	
-	GX_LOAD_BP_REG(_gx[reg]);
+	GX_LOAD_BP_REG(__gx->tevColorEnv[reg]);
 }
 
 void GX_SetTevAlphaOp(u8 tevstage,u8 tevop,u8 tevbias,u8 tevscale,u8 clamp,u8 tevregid)
 {
 	/* set tev op add/sub*/
-	u32 reg = 0x90+(tevstage&0xf);
-	_gx[reg] = (_gx[reg]&~0x40000)|(_SHIFTL(tevop,18,1));
+	u32 reg = (tevstage&0xf);
+	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0x40000)|(_SHIFTL(tevop,18,1));
 	if(tevop<=GX_TEV_SUB) {
-		_gx[reg] = (_gx[reg]&~0x300000)|(_SHIFTL(tevscale,20,2));
-		_gx[reg] = (_gx[reg]&~0x30000)|(_SHIFTL(tevbias,16,2));
+		__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0x300000)|(_SHIFTL(tevscale,20,2));
+		__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0x30000)|(_SHIFTL(tevbias,16,2));
 	} else {
-		_gx[reg] = (_gx[reg]&~0x300000)|((_SHIFTL(tevop,19,4))&0x300000);
-		_gx[reg] = (_gx[reg]&~0x30000)|0x30000;
+		__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0x300000)|((_SHIFTL(tevop,19,4))&0x300000);
+		__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0x30000)|0x30000;
 	}
-	_gx[reg] = (_gx[reg]&~0x80000)|(_SHIFTL(clamp,19,1));
-	_gx[reg] = (_gx[reg]&~0xC00000)|(_SHIFTL(tevregid,22,2));
+	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0x80000)|(_SHIFTL(clamp,19,1));
+	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0xC00000)|(_SHIFTL(tevregid,22,2));
 	
-	GX_LOAD_BP_REG(_gx[reg]);
+	GX_LOAD_BP_REG(__gx->tevAlphaEnv[reg]);
 }
 
 void GX_SetCullMode(u8 mode)
 {
     static u8 cm2hw[] = { 0, 2, 1, 3 };
 	
-	_gx[0xac] = (_gx[0xac]&~0xC000)|(_SHIFTL(cm2hw[mode],14,2));
-	_gx[0x09] |= 0x0004;
+	__gx->genMode = (__gx->genMode&~0xC000)|(_SHIFTL(cm2hw[mode],14,2));
+	__gx->dirtyState |= 0x0004;
 }
 
 void GX_SetCoPlanar(u8 enable)
 {
-	_gx[0xac] = (_gx[0xac]&~0x80000)|(_SHIFTL(enable,19,1));
+	__gx->genMode = (__gx->genMode&~0x80000)|(_SHIFTL(enable,19,1));
 	GX_LOAD_BP_REG(0xFE080000);
-	GX_LOAD_BP_REG(_gx[0xac]);
+	GX_LOAD_BP_REG(__gx->genMode);
 }
 
 void GX_EnableTexOffsets(u8 coord,u8 line_enable,u8 point_enable)
 {
-	u32 reg = 0xa0+(coord&0x7);
-	_gx[reg] = (_gx[reg]&~0x40000)|(_SHIFTL(line_enable,18,1));
-	_gx[reg] = (_gx[reg]&~0x80000)|(_SHIFTL(point_enable,19,1));
-	GX_LOAD_BP_REG(_gx[reg]);
+	u32 reg = (coord&0x7);
+	__gx->suSsize[reg] = (__gx->suSsize[reg]&~0x40000)|(_SHIFTL(line_enable,18,1));
+	__gx->suSsize[reg] = (__gx->suSsize[reg]&~0x80000)|(_SHIFTL(point_enable,19,1));
+	GX_LOAD_BP_REG(__gx->suSsize[reg]);
 }
  
 void GX_SetClipMode(u8 mode)
@@ -3353,14 +3341,14 @@ void GX_SetScissor(u32 xOrigin,u32 yOrigin,u32 wd,u32 ht)
 	u32 nwd = xo+(wd-1);
 	u32 nht = yo+(ht-1);
 	
-	_gx[0xa8] = (_gx[0xa8]&~0x7ff)|(yo&0x7ff);
-	_gx[0xa8] = (_gx[0xa8]&~0x7FF000)|(_SHIFTL(xo,12,11));
+	__gx->sciTLcorner = (__gx->sciTLcorner&~0x7ff)|(yo&0x7ff);
+	__gx->sciTLcorner = (__gx->sciTLcorner&~0x7FF000)|(_SHIFTL(xo,12,11));
 
-	_gx[0xa9] = (_gx[0xa9]&~0x7ff)|(nht&0xfff);
-	_gx[0xa9] = (_gx[0xa9]&~0x7FF000)|(_SHIFTL(nwd,12,11));
+	__gx->sciBRcorner = (__gx->sciBRcorner&~0x7ff)|(nht&0xfff);
+	__gx->sciBRcorner = (__gx->sciBRcorner&~0x7FF000)|(_SHIFTL(nwd,12,11));
 
-	GX_LOAD_BP_REG(_gx[0xa8]);
-	GX_LOAD_BP_REG(_gx[0xa9]);
+	GX_LOAD_BP_REG(__gx->sciTLcorner);
+	GX_LOAD_BP_REG(__gx->sciBRcorner);
 }
  
 void GX_SetScissorBoxOffset(s32 xoffset,s32 yoffset)
@@ -3373,59 +3361,59 @@ void GX_SetScissorBoxOffset(s32 xoffset,s32 yoffset)
 
 void GX_SetNumChans(u8 num)
 {
-	_gx[0xac] = (_gx[0xac]&~0x70)|(_SHIFTL(num,4,3));
-	_gx[0x09] |= 0x01000004;
+	__gx->genMode = (__gx->genMode&~0x70)|(_SHIFTL(num,4,3));
+	__gx->dirtyState |= 0x01000004;
 }
 
 void GX_SetTevOrder(u8 tevstage,u8 texcoord,u32 texmap,u8 color)
 {
 	u8 colid;
 	u32 texm,texc,tmp;
-	u32 reg = 0xc3+(_SHIFTR(tevstage,1,3));
+	u32 reg = 3+(_SHIFTR(tevstage,1,3));
 	
-	_gx[0x30+tevstage] = texmap;
+	__gx->tevTexMap[(tevstage&0xf)] = texmap;
 
 	texm = (texmap&~0x100);
 	if(texm>=GX_MAX_TEXMAP) texm = 0;
 	if(texcoord>=GX_MAXCOORD) {
 		texc = 0;
-		_gx[0x0a] &= ~(_SHIFTL(1,tevstage,1));
+		__gx->tevTexCoordEnable &= ~(_SHIFTL(1,tevstage,1));
 	} else {
 		texc = texcoord;
-		_gx[0x0a] |= (_SHIFTL(1,tevstage,1));
+		__gx->tevTexCoordEnable |= (_SHIFTL(1,tevstage,1));
 	}
 
 	if(tevstage&1) {
-		_gx[reg] = (_gx[reg]&~0x7000)|(_SHIFTL(texm,12,3));
-		_gx[reg] = (_gx[reg]&~0x38000)|(_SHIFTL(texc,15,3));
+		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x7000)|(_SHIFTL(texm,12,3));
+		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x38000)|(_SHIFTL(texc,15,3));
 		
 		colid = GX_BUMP;
 		if(color!=GX_COLORNULL) colid = _gxtevcolid[color];
-		_gx[reg] = (_gx[reg]&~0x380000)|(_SHIFTL(colid,19,3));
+		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x380000)|(_SHIFTL(colid,19,3));
 
 		tmp = 1;
 		if(texmap==GX_TEXMAP_NULL || texmap&0x100) tmp = 0;
-		_gx[reg] = (_gx[reg]&~0x40000)|(_SHIFTL(tmp,18,1));
+		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x40000)|(_SHIFTL(tmp,18,1));
 	} else {
-		_gx[reg] = (_gx[reg]&~0x7)|(texm&0x7);
-		_gx[reg] = (_gx[reg]&~0x38)|(_SHIFTL(texc,3,3));
+		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x7)|(texm&0x7);
+		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x38)|(_SHIFTL(texc,3,3));
 		
 		colid = GX_BUMP;
 		if(color!=GX_COLORNULL) colid = _gxtevcolid[color];
-		_gx[reg] = (_gx[reg]&~0x380)|(_SHIFTL(colid,7,3));
+		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x380)|(_SHIFTL(colid,7,3));
 
 		tmp = 1;
 		if(texmap==GX_TEXMAP_NULL || texmap&0x100) tmp = 0;
-		_gx[reg] = (_gx[reg]&~0x40)|(_SHIFTL(tmp,6,1));
+		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x40)|(_SHIFTL(tmp,6,1));
 	}
-	GX_LOAD_BP_REG(_gx[reg]);
-	_gx[0x09] |= 0x0001;
+	GX_LOAD_BP_REG(__gx->tevRasOrder[reg]);
+	__gx->dirtyState |= 0x0001;
 }
 
 void GX_SetNumTevStages(u8 num)
 {
-	_gx[0xac] = (_gx[0xac]&~0x3C00)|(_SHIFTL((num-1),10,4));
-	_gx[0x09] |= 0x0004;
+	__gx->genMode = (__gx->genMode&~0x3C00)|(_SHIFTL((num-1),10,4));
+	__gx->dirtyState |= 0x0004;
 }
 
 void GX_SetAlphaCompare(u8 comp0,u8 ref0,u8 aop,u8 comp1,u8 ref1)
@@ -3437,46 +3425,46 @@ void GX_SetAlphaCompare(u8 comp0,u8 ref0,u8 aop,u8 comp1,u8 ref1)
 
 void GX_SetTevKColorSel(u8 tevstage,u8 sel)
 {
-	u32 reg = 0xd0+(_SHIFTR(tevstage,1,3));
+	u32 reg = (_SHIFTR(tevstage,1,3));
 
 	if(tevstage&1)
-		_gx[reg] = (_gx[reg]&~0x7C000)|(_SHIFTL(sel,14,5));
+		__gx->tevSwapModeTable[reg] = (__gx->tevSwapModeTable[reg]&~0x7C000)|(_SHIFTL(sel,14,5));
 	else
-		_gx[reg] = (_gx[reg]&~0x1F0)|(_SHIFTL(sel,4,5));
-	GX_LOAD_BP_REG(_gx[reg]);
+		__gx->tevSwapModeTable[reg] = (__gx->tevSwapModeTable[reg]&~0x1F0)|(_SHIFTL(sel,4,5));
+	GX_LOAD_BP_REG(__gx->tevSwapModeTable[reg]);
 }
 
 void GX_SetTevKAlphaSel(u8 tevstage,u8 sel)
 {
-	u32 reg = 0xd0+(_SHIFTR(tevstage,1,3));
+	u32 reg = (_SHIFTR(tevstage,1,3));
 
 	if(tevstage&1)
-		_gx[reg] = (_gx[reg]&~0xF80000)|(_SHIFTL(sel,19,5));
+		__gx->tevSwapModeTable[reg] = (__gx->tevSwapModeTable[reg]&~0xF80000)|(_SHIFTL(sel,19,5));
 	else
-		_gx[reg] = (_gx[reg]&~0x3E00)|(_SHIFTL(sel,9,5));
-	GX_LOAD_BP_REG(_gx[reg]);
+		__gx->tevSwapModeTable[reg] = (__gx->tevSwapModeTable[reg]&~0x3E00)|(_SHIFTL(sel,9,5));
+	GX_LOAD_BP_REG(__gx->tevSwapModeTable[reg]);
 }
 
 void GX_SetTevSwapMode(u8 tevstage,u8 ras_sel,u8 tex_sel)
 {
-	u32 reg = 0x90+(tevstage&0xf);
-	_gx[reg] = (_gx[reg]&~0x3)|(ras_sel&0x3);
-	_gx[reg] = (_gx[reg]&~0xC)|(_SHIFTL(tex_sel,2,2));
-	GX_LOAD_BP_REG(_gx[reg]);
+	u32 reg = (tevstage&0xf);
+	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0x3)|(ras_sel&0x3);
+	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0xC)|(_SHIFTL(tex_sel,2,2));
+	GX_LOAD_BP_REG(__gx->tevAlphaEnv[reg]);
 }
 
 void GX_SetTevSwapModeTable(u8 swapid,u8 r,u8 g,u8 b,u8 a)
 {
-	u32 regA = 0xd0+(_SHIFTL(swapid,1,3));
-	u32 regB = 0xd1+(_SHIFTL(swapid,1,3));
+	u32 regA = 0+(_SHIFTL(swapid,1,3));
+	u32 regB = 1+(_SHIFTL(swapid,1,3));
 
-	_gx[regA] = (_gx[regA]&~0x3)|(r&0x3);
-	_gx[regA] = (_gx[regA]&~0xC)|(_SHIFTL(g,2,2));
-	GX_LOAD_BP_REG(_gx[regA]);
+	__gx->tevSwapModeTable[regA] = (__gx->tevSwapModeTable[regA]&~0x3)|(r&0x3);
+	__gx->tevSwapModeTable[regA] = (__gx->tevSwapModeTable[regA]&~0xC)|(_SHIFTL(g,2,2));
+	GX_LOAD_BP_REG(__gx->tevSwapModeTable[regA]);
 
-	_gx[regB] = (_gx[regB]&~0x3)|(b&0x3);
-	_gx[regB] = (_gx[regB]&~0xC)|(_SHIFTL(a,2,2));
-	GX_LOAD_BP_REG(_gx[regB]);
+	__gx->tevSwapModeTable[regB] = (__gx->tevSwapModeTable[regB]&~0x3)|(b&0x3);
+	__gx->tevSwapModeTable[regB] = (__gx->tevSwapModeTable[regB]&~0xC)|(_SHIFTL(a,2,2));
+	GX_LOAD_BP_REG(__gx->tevSwapModeTable[regB]);
 }
 
 void GX_SetTevIndirect(u8 tevstage,u8 indtexid,u8 format,u8 bias,u8 mtxid,u8 wrap_s,u8 wrap_t,u8 addprev,u8 utclod,u8 a)
@@ -3492,8 +3480,8 @@ void GX_SetTevDirect(u8 tevstage)
 
 void GX_SetNumIndStages(u8 nstages)
 {
-	_gx[0xac] = (_gx[0xac]&~0x70000)|(_SHIFTL(nstages,16,3));
-	_gx[0x09] |= 0x0006;
+	__gx->genMode = (__gx->genMode&~0x70000)|(_SHIFTL(nstages,16,3));
+	__gx->dirtyState |= 0x0006;
 }
 
 void GX_SetIndTexMatrix(u8 indtexmtx,f32 offset_mtx[2][3],s8 scale_exp)
@@ -3562,24 +3550,24 @@ void GX_SetIndTexCoordScale(u8 indtexid,u8 scale_s,u8 scale_t)
 {
 	switch(indtexid) {
 		case GX_INDTEXSTAGE0:
-			_gx[0xc0] = (_gx[0xc0]&~0x0f)|(scale_s&0x0f);
-			_gx[0xc0] = (_gx[0xc0]&~0xF0)|(_SHIFTL(scale_t,4,4));
-			GX_LOAD_BP_REG(_gx[0xc0]);
+			__gx->tevRasOrder[0] = (__gx->tevRasOrder[0]&~0x0f)|(scale_s&0x0f);
+			__gx->tevRasOrder[0] = (__gx->tevRasOrder[0]&~0xF0)|(_SHIFTL(scale_t,4,4));
+			GX_LOAD_BP_REG(__gx->tevRasOrder[0]);
 			break;
 		case GX_INDTEXSTAGE1:
-			_gx[0xc0] = (_gx[0xc0]&~0xF00)|(_SHIFTL(scale_s,8,4));
-			_gx[0xc0] = (_gx[0xc0]&~0xF000)|(_SHIFTL(scale_t,12,4));
-			GX_LOAD_BP_REG(_gx[0xc0]);
+			__gx->tevRasOrder[0] = (__gx->tevRasOrder[0]&~0xF00)|(_SHIFTL(scale_s,8,4));
+			__gx->tevRasOrder[0] = (__gx->tevRasOrder[0]&~0xF000)|(_SHIFTL(scale_t,12,4));
+			GX_LOAD_BP_REG(__gx->tevRasOrder[0]);
 			break;
 		case GX_INDTEXSTAGE2:
-			_gx[0xc1] = (_gx[0xc1]&~0x0f)|(scale_s&0x0f);
-			_gx[0xc1] = (_gx[0xc1]&~0xF0)|(_SHIFTL(scale_t,4,4));
-			GX_LOAD_BP_REG(_gx[0xc1]);
+			__gx->tevRasOrder[1] = (__gx->tevRasOrder[1]&~0x0f)|(scale_s&0x0f);
+			__gx->tevRasOrder[1] = (__gx->tevRasOrder[1]&~0xF0)|(_SHIFTL(scale_t,4,4));
+			GX_LOAD_BP_REG(__gx->tevRasOrder[1]);
 			break;
 		case GX_INDTEXSTAGE3:
-			_gx[0xc1] = (_gx[0xc1]&~0xF00)|(_SHIFTL(scale_s,8,4));
-			_gx[0xc1] = (_gx[0xc1]&~0xF000)|(_SHIFTL(scale_t,12,4));
-			GX_LOAD_BP_REG(_gx[0xc1]);
+			__gx->tevRasOrder[1] = (__gx->tevRasOrder[1]&~0xF00)|(_SHIFTL(scale_s,8,4));
+			__gx->tevRasOrder[1] = (__gx->tevRasOrder[1]&~0xF000)|(_SHIFTL(scale_t,12,4));
+			GX_LOAD_BP_REG(__gx->tevRasOrder[1]);
 			break;
 	}
 }
@@ -3687,20 +3675,20 @@ void GX_SetFogRangeAdj(u8 enable,u16 center,GXFogAdjTbl *table)
 
 void GX_SetColorUpdate(u8 enable)
 {
-	_gx[0xb9] = (_gx[0xb9]&~0x8)|(_SHIFTL(enable,3,1));
-	GX_LOAD_BP_REG(_gx[0xb9]);
+	__gx->peCMode0 = (__gx->peCMode0&~0x8)|(_SHIFTL(enable,3,1));
+	GX_LOAD_BP_REG(__gx->peCMode0);
 }
 
 void GX_SetAlphaUpdate(u8 enable)
 {
-	_gx[0xb9] = (_gx[0xb9]&~0x10)|(_SHIFTL(enable,4,1));
-	GX_LOAD_BP_REG(_gx[0xb9]);
+	__gx->peCMode0 = (__gx->peCMode0&~0x10)|(_SHIFTL(enable,4,1));
+	GX_LOAD_BP_REG(__gx->peCMode0);
 }
 
 void GX_SetZCompLoc(u8 before_tex)
 {
-	_gx[0xbb] = (_gx[0xbb]&~0x40)|(_SHIFTL(before_tex,6,1));
-	GX_LOAD_BP_REG(_gx[0xbb]);
+	__gx->peCntrl = (__gx->peCntrl&~0x40)|(_SHIFTL(before_tex,6,1));
+	GX_LOAD_BP_REG(__gx->peCntrl);
 }
 
 void GX_SetPixelFmt(u8 pix_fmt,u8 z_fmt)
@@ -3708,32 +3696,32 @@ void GX_SetPixelFmt(u8 pix_fmt,u8 z_fmt)
 	u8 ms_en = 0;
 	u32 realfmt[8] = {0,1,2,3,4,4,4,5};
 	
-	_gx[0xbb] = (_gx[0xbb]&~0x7)|(realfmt[pix_fmt]&0x7);
-	_gx[0xbb] = (_gx[0xbb]&~0x38)|(_SHIFTL(z_fmt,3,3));
-	GX_LOAD_BP_REG(_gx[0xbb]);
-	_gx[0x09] |= 0x0004;
+	__gx->peCntrl = (__gx->peCntrl&~0x7)|(realfmt[pix_fmt]&0x7);
+	__gx->peCntrl = (__gx->peCntrl&~0x38)|(_SHIFTL(z_fmt,3,3));
+	GX_LOAD_BP_REG(__gx->peCntrl);
+	__gx->dirtyState |= 0x0004;
 
 	if(pix_fmt==GX_PF_RGB565_Z16) ms_en = 1;
-	_gx[0xac] = (_gx[0xac]&~0x200)|(_SHIFTL(ms_en,9,1));
+	__gx->genMode = (__gx->genMode&~0x200)|(_SHIFTL(ms_en,9,1));
 
 	if(realfmt[pix_fmt]==GX_PF_Y8) {
 		pix_fmt -= GX_PF_Y8;
-		_gx[0xba] = (_gx[0xba]&~0xC00)|(_SHIFTL(pix_fmt,10,2));
-		GX_LOAD_BP_REG(_gx[0xba]);
+		__gx->peCMode1 = (__gx->peCMode1&~0xC00)|(_SHIFTL(pix_fmt,10,2));
+		GX_LOAD_BP_REG(__gx->peCMode1);
 	}
 }
 
 void GX_SetDither(u8 dither)
 {
-	_gx[0xb9] = (_gx[0xb9]&~0x4)|(_SHIFTL(dither,2,1));
-	GX_LOAD_BP_REG(_gx[0xb9]);
+	__gx->peCMode0 = (__gx->peCMode0&~0x4)|(_SHIFTL(dither,2,1));
+	GX_LOAD_BP_REG(__gx->peCMode0);
 }
 
 void GX_SetDstAlpha(u8 enable,u8 a)
 {
-	_gx[0xba] = (_gx[0xba]&~0xff)|(a&0xff);
-	_gx[0xba] = (_gx[0xba]&~0x100)|(_SHIFTL(enable,8,1));
-	GX_LOAD_BP_REG(_gx[0xba]);
+	__gx->peCMode1 = (__gx->peCMode1&~0xff)|(a&0xff);
+	__gx->peCMode1 = (__gx->peCMode1&~0x100)|(_SHIFTL(enable,8,1));
+	GX_LOAD_BP_REG(__gx->peCMode1);
 }
 
 void GX_SetFieldMask(u8 even_mask,u8 odd_mask)
@@ -3746,8 +3734,8 @@ void GX_SetFieldMask(u8 even_mask,u8 odd_mask)
 
 void GX_SetFieldMode(u8 field_mode,u8 half_aspect_ratio)
 {
-	_gx[0xaa] = (_gx[0xaa]&~0x400000)|(_SHIFTL(half_aspect_ratio,22,1));
-	GX_LOAD_BP_REG(_gx[0xaa]);
+	__gx->lpWidth = (__gx->lpWidth&~0x400000)|(_SHIFTL(half_aspect_ratio,22,1));
+	GX_LOAD_BP_REG(__gx->lpWidth);
 	
 	__GX_FlushTextureState();
 	GX_LOAD_BP_REG(0x68000000|(field_mode&1));
@@ -3836,24 +3824,24 @@ void GX_SetIndTexOrder(u8 indtexstage,u8 texcoord,u8 texmap)
 {
 	switch(indtexstage) {
 		case GX_INDTEXSTAGE0:
-			_gx[0xc2] = (_gx[0xc2]&~0x7)|(texmap&0x7);
-			_gx[0xc2] = (_gx[0xc2]&~0x38)|(_SHIFTL(texcoord,3,3));
+			__gx->tevRasOrder[2] = (__gx->tevRasOrder[2]&~0x7)|(texmap&0x7);
+			__gx->tevRasOrder[2] = (__gx->tevRasOrder[2]&~0x38)|(_SHIFTL(texcoord,3,3));
 			break;
 		case GX_INDTEXSTAGE1:
-			_gx[0xc2] = (_gx[0xc2]&~0x1C0)|(_SHIFTL(texmap,6,3));
-			_gx[0xc2] = (_gx[0xc2]&~0xE00)|(_SHIFTL(texcoord,9,3));
+			__gx->tevRasOrder[2] = (__gx->tevRasOrder[2]&~0x1C0)|(_SHIFTL(texmap,6,3));
+			__gx->tevRasOrder[2] = (__gx->tevRasOrder[2]&~0xE00)|(_SHIFTL(texcoord,9,3));
 			break;
 		case GX_INDTEXSTAGE2:
-			_gx[0xc2] = (_gx[0xc2]&~0x7000)|(_SHIFTL(texmap,12,3));
-			_gx[0xc2] = (_gx[0xc2]&~0x38000)|(_SHIFTL(texcoord,15,3));
+			__gx->tevRasOrder[2] = (__gx->tevRasOrder[2]&~0x7000)|(_SHIFTL(texmap,12,3));
+			__gx->tevRasOrder[2] = (__gx->tevRasOrder[2]&~0x38000)|(_SHIFTL(texcoord,15,3));
 			break;
 		case GX_INDTEXSTAGE3:
-			_gx[0xc2] = (_gx[0xc2]&~0x1C0000)|(_SHIFTL(texmap,18,3));
-			_gx[0xc2] = (_gx[0xc2]&~0xE00000)|(_SHIFTL(texcoord,21,3));
+			__gx->tevRasOrder[2] = (__gx->tevRasOrder[2]&~0x1C0000)|(_SHIFTL(texmap,18,3));
+			__gx->tevRasOrder[2] = (__gx->tevRasOrder[2]&~0xE00000)|(_SHIFTL(texcoord,21,3));
 			break;
 	}
-	GX_LOAD_BP_REG(_gx[0xc2]);
-	_gx[0x09] |= 0x0003;
+	GX_LOAD_BP_REG(__gx->tevRasOrder[2]);
+	__gx->dirtyState |= 0x0003;
 }
 
 void GX_InitLightPos(GXLightObj *lit_obj,f32 x,f32 y,f32 z)
@@ -4135,25 +4123,25 @@ void GX_InitLightSpot(GXLightObj *lit_obj,f32 cut_off,u8 spotfn)
 void GX_SetGPMetric(u32 perf0,u32 perf1)
 {
 	// check last setted perf0 counters
-	if(_gx[0x0b]>=GX_PERF0_TRIANGLES && _gx[0x0b]<GX_PERF0_QUAD_0CVG)
+	if(__gx->perf0Mode>=GX_PERF0_TRIANGLES && __gx->perf0Mode<GX_PERF0_QUAD_0CVG)
 		GX_LOAD_BP_REG(0x23000000);
-	else if(_gx[0x0b]>=GX_PERF0_QUAD_0CVG && _gx[0x0b]<GX_PERF0_CLOCKS)
+	else if(__gx->perf0Mode>=GX_PERF0_QUAD_0CVG && __gx->perf0Mode<GX_PERF0_CLOCKS)
 		GX_LOAD_BP_REG(0x24000000);
-	else if(_gx[0x0b]>=GX_PERF0_VERTICES && _gx[0x0b]<=GX_PERF0_CLOCKS)
+	else if(__gx->perf0Mode>=GX_PERF0_VERTICES && __gx->perf0Mode<=GX_PERF0_CLOCKS)
 		GX_LOAD_XF_REG(0x1006,0);
 
 	// check last setted perf1 counters
-	if(_gx[0x0c]>=GX_PERF1_VC_ELEMQ_FULL && _gx[0x0c]<GX_PERF1_FIFO_REQ) {
-		_gx[0x0d] = (_gx[0x0d]&~0xf0);
-		GX_LOAD_CP_REG(0x20,_gx[0x0d]);
-	} else if(_gx[0x0c]>=GX_PERF1_FIFO_REQ && _gx[0x0c]<GX_PERF1_CLOCKS) {
+	if(__gx->perf1Mode>=GX_PERF1_VC_ELEMQ_FULL && __gx->perf1Mode<GX_PERF1_FIFO_REQ) {
+		__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0);
+		GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
+	} else if(__gx->perf1Mode>=GX_PERF1_FIFO_REQ && __gx->perf1Mode<GX_PERF1_CLOCKS) {
 		_cpReg[3] = 0;
-	} else if(_gx[0x0c]>=GX_PERF1_TEXELS && _gx[0x0c]<=GX_PERF1_CLOCKS) {
+	} else if(__gx->perf1Mode>=GX_PERF1_TEXELS && __gx->perf1Mode<=GX_PERF1_CLOCKS) {
 		GX_LOAD_BP_REG(0x67000000);
 	}
 
-	_gx[0x0b] = perf0;
-	switch(_gx[0x0b]) {
+	__gx->perf0Mode = perf0;
+	switch(__gx->perf0Mode) {
 		case GX_PERF0_CLOCKS:
 			GX_LOAD_XF_REG(0x1006,0x00000273);
 			break;
@@ -4263,8 +4251,8 @@ void GX_SetGPMetric(u32 perf0,u32 perf1)
 			break;
 	}
 
-	_gx[0x0c] = perf1;
-	switch(_gx[0x0c]) {
+	__gx->perf1Mode = perf1;
+	switch(__gx->perf1Mode) {
 		case GX_PERF1_CLOCKS:
 			GX_LOAD_BP_REG(0x67000042);
 			break;			
@@ -4296,36 +4284,36 @@ void GX_SetGPMetric(u32 perf0,u32 perf1)
 			GX_LOAD_BP_REG(0x67000211);
 			break;			
 		case GX_PERF1_VC_ELEMQ_FULL:
-			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x20;
-			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
+			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x20;
+			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
 			break;			
 		case GX_PERF1_VC_MISSQ_FULL:
-			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x30;
-			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
+			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x30;
+			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
 			break;			
 		case GX_PERF1_VC_MEMREQ_FULL:
-			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x40;
-			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
+			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x40;
+			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
 			break;			
 		case GX_PERF1_VC_STATUS7:
-			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x50;
-			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
+			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x50;
+			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
 			break;			
 		case GX_PERF1_VC_MISSREP_FULL:
-			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x60;
-			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
+			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x60;
+			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
 			break;			
 		case GX_PERF1_VC_STREAMBUF_LOW:
-			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x70;
-			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
+			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x70;
+			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
 			break;			
 		case GX_PERF1_VC_ALL_STALLS:
-			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x90;
-			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
+			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x90;
+			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
 			break;			
 		case GX_PERF1_VERTICES:
-			_gx[0x0d] = (_gx[0x0d]&~0xf0)|0x80;
-			GX_LOAD_CP_REG(0x20,_gx[0x0d]);
+			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x80;
+			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
 			break;			
 		case GX_PERF1_FIFO_REQ:
 			_cpReg[3] = 2;
@@ -4408,10 +4396,10 @@ void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1)
 	reg4 = (_SHIFTL(_cpReg[39],16,16))|(_cpReg[38]&0xffff);
 
 	*cnt0 = 0;
-	if(_gx[0x0b]==GX_PERF0_CLIP_RATIO) {
+	if(__gx->perf0Mode==GX_PERF0_CLIP_RATIO) {
 		tmp = reg2*1000;
 		*cnt0 = tmp/reg1;
-	} else if(_gx[0x0b]>=GX_PERF0_VERTICES && _gx[0x0b]<GX_PERF0_NONE) *cnt0 = reg1;
+	} else if(__gx->perf0Mode>=GX_PERF0_VERTICES && __gx->perf0Mode<GX_PERF0_NONE) *cnt0 = reg1;
 
 	//further implementation needed.....
 	// cnt1 fails....
