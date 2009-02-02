@@ -14,6 +14,8 @@
 #include "gx_regdef.h"
 
 //#define _GP_DEBUG
+#define TEXCACHE_TESTING
+
 
 #define GX_FINISH		2
 #define LARGE_NUMBER	(1024*1024)
@@ -55,21 +57,6 @@
 #define BLACK			{0,0,0,0}
 #define WHITE			{255,255,255,255}
 
-struct __gxfifo {
-	u32 buf_start;
-	u32 buf_end;
-	u32 size;
-	u32 hi_mark;
-	u32 lo_mark;
-	u32 rd_ptr;
-	u32 wt_ptr;
-	u32 rdwt_dst;
-	u8 fifo_wrap;
-	u8 cpufifo_ready;
-	u8 gpfifo_ready;
-	u8 pad0[93];
-} __attribute__((packed));
-
 static GXFifoObj _gxdefiniobj;
 static void *_gxcurrbp = NULL;
 static lwp_t _gxcurrentlwp = LWP_THREAD_NULL;
@@ -106,7 +93,7 @@ static u8 _gxteximg2ids[8] = {0x90,0x91,0x92,0x93,0xB0,0xB1,0xB2,0xB3};
 static u8 _gxteximg3ids[8] = {0x94,0x95,0x96,0x97,0xB4,0xB5,0xB6,0xB7};
 static u8 _gxtextlutids[8] = {0x98,0x99,0x9A,0x9B,0xB8,0xB9,0xBA,0xBB};
 
-#ifdef TEXCACHE_TESTING
+#if defined(HW_RVL)
 static u32 _gxtexregionaddrtable[48] =
 {
 	0x00000000,0x00010000,0x00020000,0x00030000,
@@ -129,7 +116,7 @@ extern u8 __gxregs[];
 
 static GXFifoObj _gx_dl_fifo;
 static GXFifoObj _gx_old_cpufifo;
-static struct _gx_regdef *__gx = (struct _gx_regdef*)__gxregs;
+static struct __gx_regdef *__gx = (struct __gx_regdef*)__gxregs;
 static u8 _gx_saved_data[STRUCT_REGDEF_SIZE] ATTRIBUTE_ALIGN(32);
 
 extern void __UnmaskIrq(u32);
@@ -527,15 +514,35 @@ static void __GX_SetTmemConfig(u8 nr)
 	}
 }
 
-static GXTexRegion* __GXDefRegionCallback(GXTexObj *obj,u8 mapid)
+#if defined(HW_RVL)
+static GXTexRegion* __GXDefTexRegionCallback(GXTexObj *obj,u8 mapid)
 {
-	u8 fmt;
+	u32 fmt,mipmap;
+	GXTexRegion *ret = NULL;
+
+	fmt = GX_GetTexObjFmt(obj);
+	mipmap = GX_GetTexObjMipMap(obj);
+	if(fmt>=GX_TF_CI4 && fmt<=GX_TF_CI14)
+		return &__gx->texRegion[mapid];
+	else if(fmt==GX_TF_CMPR)
+		ret = &__gx->texRegion[mapid];
+	else
+		ret = &__gx->texRegion[mapid+8];
+
+	if(mipmap) ret = &__gx->texRegion[mapid+16];
+	
+	return ret;
+}
+#else
+static GXTexRegion* __GXDefTexRegionCallback(GXTexObj *obj,u8 mapid)
+{
+	u32 fmt;
 	u32 idx;
 	static u32 regionA = 0;
 	static u32 regionB = 0;
 	GXTexRegion *ret = NULL;
 
-	fmt = GX_GetTexFmt(obj);
+	fmt = GX_GetTexObjFmt(obj);
 	if(fmt==0x0008 || fmt==0x0009 || fmt==0x000a) {
 		idx = regionB++;
 		ret = &__gx->texRegion[(idx&3)+8];
@@ -545,6 +552,7 @@ static GXTexRegion* __GXDefRegionCallback(GXTexObj *obj,u8 mapid)
 	}
 	return ret;
 }
+#endif
 
 static GXTlutRegion* __GXDefTlutRegionCallback(u32 tlut_name)
 {
@@ -615,7 +623,7 @@ static void __GX_InitGX()
 	GX_SetChanMatColor(GX_COLOR1A1,(GXColor)WHITE);
 
 	GX_InvalidateTexAll();
-	GX_SetTexRegionCallback(__GXDefRegionCallback);
+	GX_SetTexRegionCallback(__GXDefTexRegionCallback);
 	GX_SetTlutRegionCallback(__GXDefTlutRegionCallback);
 
 	GX_SetTevOrder(GX_TEVSTAGE0,GX_TEXCOORD0,GX_TEXMAP0,GX_COLOR0A0);
@@ -1030,7 +1038,7 @@ static u32 __GX_GetNumXfbLines(u16 efbHeight,u32 yscale)
 GXFifoObj* GX_Init(void *base,u32 size)
 {
 	s32 i,re0,re1;
-#ifdef TEXCACHE_TESTING
+#if defined(HW_RVL)
 	u32 tmem;
 #else
 	u32 tmem_even,tmem_odd;
@@ -1128,16 +1136,16 @@ GXFifoObj* GX_Init(void *base,u32 size)
 		i++;
 	}
 
-#ifdef TEXCACHE_TESTING
+#if defined(HW_RVL)
 	i = 0;
 	while(i<8) {
-		region = (GXTexRegion*)(&_gx[0x100+(i*(sizeof(GXTexRegion)>>2))]);
+		region = &__gx->texRegion[i];
 		GX_InitTexCacheRegion(region,GX_FALSE,_gxtexregionaddrtable[i+0],GX_TEXCACHE_32K,_gxtexregionaddrtable[i+8],GX_TEXCACHE_32K);
 
-		region = (GXTexRegion*)(&_gx[0x120+(i*(sizeof(GXTexRegion)>>2))]);
+		region = &__gx->texRegion[i+8];
 		GX_InitTexCacheRegion(region,GX_FALSE,_gxtexregionaddrtable[i+16],GX_TEXCACHE_32K,_gxtexregionaddrtable[i+24],GX_TEXCACHE_32K);
 
-		region = (GXTexRegion*)(&_gx[0x140+(i*(sizeof(GXTexRegion)>>2))]);
+		region = &__gx->texRegion[i+16];
 		GX_InitTexCacheRegion(region,GX_TRUE,_gxtexregionaddrtable[i+32],GX_TEXCACHE_32K,_gxtexregionaddrtable[i+40],GX_TEXCACHE_32K);
 
 		i++;
@@ -1146,7 +1154,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	i=0;
 	while(i<16) {
 		tmem = 0x000C0000+(i<<13);
-		tregion = (GXTlutRegion*)(&_gx[0x160+(i*(sizeof(GXTlutRegion)>>2))]);
+		tregion = &__gx->tlutRegion[i];
 		GX_InitTlutRegion(tregion,tmem,GX_TLUT_256);
 		i++;
 	}
@@ -1154,7 +1162,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	i=0;
 	while(i<4) {
 		tmem = 0x000E0000+(i<<15);
-		tregion = (GXTlutRegion*)(&_gx[0x160+((i+16)*(sizeof(GXTlutRegion)>>2))]);
+		tregion = &__gx->tlutRegion[i+16];
 		GX_InitTlutRegion(tregion,tmem,GX_TLUT_1K);
 		i++;
 	}
@@ -1190,7 +1198,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	GX_LOAD_BP_REG(0x67000000);
 
 	__GX_SetIndirectMask(0);
-#ifdef TEXCACHE_TESTING
+#if defined(HW_RVL)
 	__GX_SetTmemConfig(2);
 #else
 	__GX_SetTmemConfig(0);
@@ -2714,9 +2722,14 @@ static void __GetTexTileShift(u32 fmt,u32 *xshift,u32 *yshift)
 	}
 }
 
-u8 GX_GetTexFmt(GXTexObj *obj)
+u32 GX_GetTexObjFmt(GXTexObj *obj)
 {
-	return obj->val[5];	
+	return ((struct __gx_texobj*)obj)->tex_fmt;	
+}
+
+u32 GX_GetTexObjMipMap(GXTexObj *obj)
+{
+	return (((struct __gx_texobj*)obj)->tex_flag&0x01);
 }
 
 u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
@@ -2801,6 +2814,8 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 void GX_InitTexCacheRegion(GXTexRegion *region,u8 is32bmipmap,u32 tmem_even,u8 size_even,u32 tmem_odd,u8 size_odd)
 {
 	u32 sze = 0;
+	struct __gx_texregion *ptr = (struct __gx_texregion*)region;
+
 	switch(size_even) {
 		case GX_TEXCACHE_32K:
 			sze = 3;
@@ -2812,18 +2827,15 @@ void GX_InitTexCacheRegion(GXTexRegion *region,u8 is32bmipmap,u32 tmem_even,u8 s
 			sze = 5;
 			break;
 		default:
-			sze = -1;
-			return;
+			sze = 3;
+			break;
 	}
-	region->val[0] = 0;
-	region->val[0] = (region->val[0]&~0x7fff)|(_SHIFTR(tmem_even,5,15));
-	region->val[0] = (region->val[0]&~0x38000)|(_SHIFTL(sze,15,3));
-	region->val[0] = (region->val[0]&~0x1C0000)|(_SHIFTL(sze,18,3));
+	ptr->tmem_even = 0;
+	ptr->tmem_even = (ptr->tmem_even&~0x7fff)|(_SHIFTR(tmem_even,5,15));
+	ptr->tmem_even = (ptr->tmem_even&~0x38000)|(_SHIFTL(sze,15,3));
+	ptr->tmem_even = (ptr->tmem_even&~0x1C0000)|(_SHIFTL(sze,18,3));
 
 	switch(size_odd) {
-		case GX_TEXCACHE_NONE:
-			sze = 0;
-			break;
 		case GX_TEXCACHE_32K:
 			sze = 3;
 			break;
@@ -2834,80 +2846,88 @@ void GX_InitTexCacheRegion(GXTexRegion *region,u8 is32bmipmap,u32 tmem_even,u8 s
 			sze = 5;
 			break;
 		default:
-			sze = -1;
-			return;
+			sze = 3;
+			break;
 	}
-	region->val[1] = 0;
-	region->val[1] = (region->val[1]&~0x7fff)|(_SHIFTR(tmem_odd,5,15));
-	region->val[1] = (region->val[1]&~0x38000)|(_SHIFTL(sze,15,3));
-	region->val[1] = (region->val[1]&~0x1C0000)|(_SHIFTL(sze,18,3));
-	((u8*)region->val)[12] = is32bmipmap;
-	((u8*)region->val)[13] = 1;
+	ptr->tmem_odd = 0;
+	ptr->tmem_odd = (ptr->tmem_odd&~0x7fff)|(_SHIFTR(tmem_odd,5,15));
+	ptr->tmem_odd = (ptr->tmem_odd&~0x38000)|(_SHIFTL(sze,15,3));
+	ptr->tmem_odd = (ptr->tmem_odd&~0x1C0000)|(_SHIFTL(sze,18,3));
+
+	ptr->ismipmap = is32bmipmap;
+	ptr->iscached = 1;
 }
 
 void GX_InitTexPreloadRegion(GXTexRegion *region,u32 tmem_even,u32 size_even,u32 tmem_odd,u32 size_odd)
 {
-	region->val[0] = 0;
-	region->val[0] = (region->val[0]&~0x7FFF)|(_SHIFTR(tmem_even,5,15));
-	region->val[0] = (region->val[0]&~0x38000);
-	region->val[0] = (region->val[0]&~0x1C0000);
-	region->val[0] = (region->val[0]&~0x200000)|0x200000;
-	
-	region->val[1] = 0;
-	region->val[1] = (region->val[1]&~0x7FFF)|(_SHIFTR(tmem_odd,5,15));
-	region->val[1] = (region->val[0]&~0x38000);
-	region->val[1] = (region->val[0]&~0x1C0000);
-	
-	((u8*)region->val)[12] = 0;
-	((u8*)region->val)[13] = 0;
+	struct __gx_texregion *ptr = (struct __gx_texregion*)region;
 
-	((u16*)region->val)[4] = _SHIFTR(size_even,5,16);
-	((u16*)region->val)[5] = _SHIFTR(size_odd,5,16);
+	ptr->tmem_even = 0;
+	ptr->tmem_even = (ptr->tmem_even&~0x7FFF)|(_SHIFTR(tmem_even,5,15));
+	ptr->tmem_even = (ptr->tmem_even&~0x38000);
+	ptr->tmem_even = (ptr->tmem_even&~0x1C0000);
+	ptr->tmem_even = (ptr->tmem_even&~0x200000)|0x200000;
+	
+	ptr->tmem_odd = 0;
+	ptr->tmem_odd = (ptr->tmem_odd&~0x7FFF)|(_SHIFTR(tmem_odd,5,15));
+	ptr->tmem_odd = (ptr->tmem_odd&~0x38000);
+	ptr->tmem_odd = (ptr->tmem_odd&~0x1C0000);
+
+	ptr->size_even = _SHIFTR(size_even,5,16);
+	ptr->size_odd = _SHIFTR(size_odd,5,16);
+
+	ptr->ismipmap = 0;
+	ptr->iscached = 0;
 }
 
 void GX_InitTlutRegion(GXTlutRegion *region,u32 tmem_addr,u8 tlut_sz)
 {
-	region->val[0] = 0;
+	struct __gx_tlutregion *ptr = (struct __gx_tlutregion*)region;
+
 	tmem_addr -= 0x80000;
-	region->val[0] = (region->val[0]&~0x3ff)|(_SHIFTR(tmem_addr,9,10));
-	region->val[0] = (region->val[0]&~0x1FFC00)|(_SHIFTL(tlut_sz,10,10));
-	region->val[0] = (region->val[0]&~0xff000000)|(_SHIFTL(0x65,24,8));
+
+	ptr->tmem_addr = 0;
+	ptr->tmem_addr = (ptr->tmem_addr&~0x3ff)|(_SHIFTR(tmem_addr,9,10));
+	ptr->tmem_addr = (ptr->tmem_addr&~0x1FFC00)|(_SHIFTL(tlut_sz,10,10));
+	ptr->tmem_addr = (ptr->tmem_addr&~0xff000000)|(_SHIFTL(0x65,24,8));
 }
 
 void GX_InitTexObj(GXTexObj *obj,void *img_ptr,u16 wd,u16 ht,u8 fmt,u8 wrap_s,u8 wrap_t,u8 mipmap)
 {
 	u8 tmp1,tmp2;
 	u32 nwd,nht,res;
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
 
 	if(!obj) return;
 
 	memset(obj,0,sizeof(GXTexObj));
-	obj->val[0] = (obj->val[0]&~0x03)|(wrap_s&3);
-	obj->val[0] = (obj->val[0]&~0x0c)|(_SHIFTL(wrap_t,2,2));
-	obj->val[0] = (obj->val[0]&~0x10)|0x10;
+
+	ptr->tex_filt = (ptr->tex_filt&~0x03)|(wrap_s&3);
+	ptr->tex_filt = (ptr->tex_filt&~0x0c)|(_SHIFTL(wrap_t,2,2));
+	ptr->tex_filt = (ptr->tex_filt&~0x10)|0x10;
 	
 	if(mipmap) {
-		((u8*)obj->val)[31] |= 0x0001;
-		if(fmt==0x0008 || fmt==0x0009 || fmt==0x000a) 
-			obj->val[0] = (obj->val[0]&~0xe0)|0x00a0;
+		ptr->tex_flag |= 0x01;
+		if(fmt==GX_TF_CI4 || fmt==GX_TF_CI8 || fmt==GX_TF_CI14) 
+			ptr->tex_filt = (ptr->tex_filt&~0xe0)|0x00a0;
 		else
-			obj->val[0] = (obj->val[0]&~0xe0)|0x00c0;
+			ptr->tex_filt = (ptr->tex_filt&~0xe0)|0x00c0;
 	} else 
-		obj->val[0]= (obj->val[0]&~0xE0)|0x0080;
+		ptr->tex_filt= (ptr->tex_filt&~0xE0)|0x0080;
 	
-	obj->val[5] = fmt;
-	obj->val[2] = (obj->val[2]&~0x3ff)|((wd-1)&0x3ff);
-	obj->val[2] = (obj->val[2]&~0xFFC00)|(_SHIFTL((ht-1),10,10));
-	obj->val[2] = (obj->val[2]&~0xF00000)|(_SHIFTL(fmt,20,4));
-	obj->val[3] = (obj->val[3]&~0x01ffffff)|(_SHIFTR((((u32)img_ptr)&~0xc0000000),5,24));
+	ptr->tex_fmt = fmt;
+	ptr->tex_size = (ptr->tex_size&~0x3ff)|((wd-1)&0x3ff);
+	ptr->tex_size = (ptr->tex_size&~0xFFC00)|(_SHIFTL((ht-1),10,10));
+	ptr->tex_size = (ptr->tex_size&~0xF00000)|(_SHIFTL(fmt,20,4));
+	ptr->tex_maddr = (ptr->tex_maddr&~0x01ffffff)|(_SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(img_ptr),5,24));
 
 	tmp1 = 2;
 	tmp2 = 2;
-	((u8*)obj->val)[30] = 2;
+	ptr->tex_tile_shift = 2;
 	if(fmt<=GX_TF_CMPR) {
 		tmp1 = 3;
 		tmp2 = 3;
-		((u8*)obj->val)[30] = 1;
+		ptr->tex_tile_shift = 1;
 	}
 
 	nwd = ((1<<tmp1)-1)+wd;
@@ -2915,40 +2935,40 @@ void GX_InitTexObj(GXTexObj *obj,void *img_ptr,u16 wd,u16 ht,u8 fmt,u8 wrap_s,u8
 	nht = ((1<<tmp2)-1)+ht;
 	nht >>= tmp2;
 	res = nwd*nht;
-	((u16*)obj->val)[14] = res&0x7fff;
+	ptr->tex_tile_cnt = res&0x7fff;
 
-	((u8*)obj->val)[31] |= 0x0002;
+	ptr->tex_flag |= 0x0002;
 }
 
 void GX_InitTexObjCI(GXTexObj *obj,void *img_ptr,u16 wd,u16 ht,u8 fmt,u8 wrap_s,u8 wrap_t,u8 mipmap,u32 tlut_name)
 {
-	u8 flag;
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
 
 	GX_InitTexObj(obj,img_ptr,wd,ht,fmt,wrap_s,wrap_t,mipmap);
-	flag = ((u8*)obj->val)[31];
-	((u8*)obj->val)[31] = flag&~0x2;
-	obj->val[6] = tlut_name;
+	ptr->tex_flag &= ~0x02;
+	ptr->tex_tlut = tlut_name;
 }
 
 void GX_InitTexObjTlut(GXTexObj *obj,u32 tlut_name)
 {
-	obj->val[6] = tlut_name;
+	((struct __gx_texobj*)obj)->tex_tlut = tlut_name;
 }
 
 void GX_InitTexObjLOD(GXTexObj *obj,u8 minfilt,u8 magfilt,f32 minlod,f32 maxlod,f32 lodbias,u8 biasclamp,u8 edgelod,u8 maxaniso)
 {
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
 	static u8 GX2HWFiltConv[] = {0x00,0x04,0x01,0x05,0x02,0x06,0x00,0x00};
 	//static u8 HW2GXFiltConv[] = {0x00,0x02,0x04,0x00,0x01,0x03,0x05,0x00};
 	
 	if(lodbias<-4.0f) lodbias = -4.0f;
 	else if(lodbias==4.0f) lodbias = 3.99f;
 	
-	obj->val[0] = (obj->val[0]&~0x1fe00)|(_SHIFTL(((u32)(32.0f*lodbias)),9,8));
-	obj->val[0] = (obj->val[0]&~0x10)|(_SHIFTL((magfilt==GX_LINEAR?1:0),4,1));
-	obj->val[0] = (obj->val[0]&~0xe0)|(_SHIFTL(GX2HWFiltConv[minfilt],5,3));
-	obj->val[0] = (obj->val[0]&~0x100)|(_SHIFTL(!(edgelod&0xff),8,1));
-	obj->val[0] = (obj->val[0]&~0x180000)|(_SHIFTL(maxaniso,19,2));
-	obj->val[0] = (obj->val[0]&~0x200000)|(_SHIFTL(biasclamp,21,1));
+	ptr->tex_filt = (ptr->tex_filt&~0x1fe00)|(_SHIFTL(((u32)(32.0f*lodbias)),9,8));
+	ptr->tex_filt = (ptr->tex_filt&~0x10)|(_SHIFTL((magfilt==GX_LINEAR?1:0),4,1));
+	ptr->tex_filt = (ptr->tex_filt&~0xe0)|(_SHIFTL(GX2HWFiltConv[minfilt],5,3));
+	ptr->tex_filt = (ptr->tex_filt&~0x100)|(_SHIFTL(!(edgelod&0xff),8,1));
+	ptr->tex_filt = (ptr->tex_filt&~0x180000)|(_SHIFTL(maxaniso,19,2));
+	ptr->tex_filt = (ptr->tex_filt&~0x200000)|(_SHIFTL(biasclamp,21,1));
 	
 	if(minlod<0.0f) minlod = 0.0f;
 	else if(minlod>10.0f) minlod = 10.0f;
@@ -2956,17 +2976,20 @@ void GX_InitTexObjLOD(GXTexObj *obj,u8 minfilt,u8 magfilt,f32 minlod,f32 maxlod,
 	if(maxlod<0.0f) maxlod = 0.0f;
 	else if(maxlod>10.0f) maxlod = 10.0f;
 
-	obj->val[1] = (obj->val[1]&~0xff)|(((u32)(16.0f*minlod))&0xff);
-	obj->val[1] = (obj->val[1]&~0xff00)|(_SHIFTL(((u32)(16.0f*maxlod)),8,8));
+	ptr->tex_lod = (ptr->tex_lod&~0xff)|(((u32)(16.0f*minlod))&0xff);
+	ptr->tex_lod = (ptr->tex_lod&~0xff00)|(_SHIFTL(((u32)(16.0f*maxlod)),8,8));
 }
 
 void GX_InitTlutObj(GXTlutObj *obj,void *lut,u8 fmt,u16 entries)
 {
+	struct __gx_tlutobj *ptr = (struct __gx_tlutobj*)obj;
+
 	memset(obj,0,sizeof(GXTlutObj));
-	obj->val[0] = (obj->val[0]&~0xC00)|(_SHIFTL(fmt,10,2));
-	obj->val[1] = (obj->val[1]&~0x01ffffff)|(_SHIFTR((((u32)lut)&~0xc0000000),5,24));
-	obj->val[1] = (obj->val[1]&~0xff000000)|(_SHIFTL(0x64,24,8));
-	((u16*)obj->val)[4] = entries;
+	
+	ptr->tlut_fmt = (ptr->tlut_fmt&~0xC00)|(_SHIFTL(fmt,10,2));
+	ptr->tlut_maddr = (ptr->tlut_maddr&~0x01ffffff)|(_SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(lut),5,24));
+	ptr->tlut_maddr = (ptr->tlut_maddr&~0xff000000)|(_SHIFTL(0x64,24,8));
+	ptr->tlut_nentries = entries;
 }
 
 void GX_LoadTexObj(GXTexObj *obj,u8 mapid)
@@ -2982,35 +3005,37 @@ void GX_LoadTexObj(GXTexObj *obj,u8 mapid)
 void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid)
 {
 	u8 type;
-	GXTlutRegion *tlut = NULL;
+	struct __gx_tlutregion *tlut = NULL;
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+	struct __gx_texregion *reg = (struct __gx_texregion*)region;
 
-	obj->val[0] = (obj->val[0]&~0xff000000)|(_SHIFTL(_gxtexmode0ids[mapid],24,8));
-	obj->val[1] = (obj->val[1]&~0xff000000)|(_SHIFTL(_gxtexmode1ids[mapid],24,8));
-	obj->val[2] = (obj->val[2]&~0xff000000)|(_SHIFTL(_gxteximg0ids[mapid],24,8));
-	obj->val[3] = (obj->val[3]&~0xff000000)|(_SHIFTL(_gxteximg3ids[mapid],24,8));
+	ptr->tex_filt = (ptr->tex_filt&~0xff000000)|(_SHIFTL(_gxtexmode0ids[mapid],24,8));
+	ptr->tex_lod = (ptr->tex_lod&~0xff000000)|(_SHIFTL(_gxtexmode1ids[mapid],24,8));
+	ptr->tex_size = (ptr->tex_size&~0xff000000)|(_SHIFTL(_gxteximg0ids[mapid],24,8));
+	ptr->tex_maddr = (ptr->tex_maddr&~0xff000000)|(_SHIFTL(_gxteximg3ids[mapid],24,8));
 	
-	region->val[0] = (region->val[0]&~0xff000000)|(_SHIFTL(_gxteximg1ids[mapid],24,8));
-	region->val[1] = (region->val[1]&~0xff000000)|(_SHIFTL(_gxteximg2ids[mapid],24,8));
+	reg->tmem_even = (reg->tmem_even&~0xff000000)|(_SHIFTL(_gxteximg1ids[mapid],24,8));
+	reg->tmem_odd = (reg->tmem_odd&~0xff000000)|(_SHIFTL(_gxteximg2ids[mapid],24,8));
 
-	GX_LOAD_BP_REG(obj->val[0]);
-	GX_LOAD_BP_REG(obj->val[1]);
-	GX_LOAD_BP_REG(obj->val[2]);
+	GX_LOAD_BP_REG(ptr->tex_filt);
+	GX_LOAD_BP_REG(ptr->tex_lod);
+	GX_LOAD_BP_REG(ptr->tex_size);
 
-	GX_LOAD_BP_REG(region->val[0]);
-	GX_LOAD_BP_REG(region->val[1]);
+	GX_LOAD_BP_REG(reg->tmem_even);
+	GX_LOAD_BP_REG(reg->tmem_odd);
 
-	GX_LOAD_BP_REG(obj->val[3]);
+	GX_LOAD_BP_REG(ptr->tex_maddr);
 
-	type = ((u8*)obj->val)[31];
-	if(!(type&0x0002)) {
+	type = ptr->tex_flag;
+	if(!(type&0x02)) {
 		if(tlut_regionCB)
-			tlut = tlut_regionCB(obj->val[6]);
-		tlut->val[1] = (tlut->val[1]&~0xff000000)|(_SHIFTL(_gxtextlutids[mapid],24,8));
-		GX_LOAD_BP_REG(tlut->val[1]);
+			tlut = (struct __gx_tlutregion*)tlut_regionCB(ptr->tex_tlut);
+		tlut->tmem_addr = (tlut->tmem_addr&~0xff000000)|(_SHIFTL(_gxtextlutids[mapid],24,8));
+		GX_LOAD_BP_REG(tlut->tlut_maddr);
 	}
 	
-	__gx->texMapSize[mapid] = obj->val[2];
-	__gx->texMapWrap[mapid] = obj->val[0];
+	__gx->texMapSize[mapid] = ptr->tex_size;
+	__gx->texMapWrap[mapid] = ptr->tex_filt;
 	
 	__gx->dirtyState |= 0x0001;
 }
@@ -3032,28 +3057,29 @@ void GX_InvalidateTexRegion(GXTexRegion *region)
 	u8 ismipmap;
 	s32 cw_e,ch_e,cw_o,ch_o;
 	u32 size,tmp,regvalA = 0,regvalB = 0;
+	struct __gx_texregion *ptr = (struct __gx_texregion*)region;
 
-	cw_e = (_SHIFTR(region->val[0],15,3))-1;
-	ch_e = (_SHIFTR(region->val[0],18,3))-1;
+	cw_e = (_SHIFTR(ptr->tmem_even,15,3))-1;
+	ch_e = (_SHIFTR(ptr->tmem_even,18,3))-1;
 
-	cw_o = (_SHIFTR(region->val[1],15,3))-1;
-	ch_o = (_SHIFTR(region->val[1],18,3))-1;
+	cw_o = (_SHIFTR(ptr->tmem_odd,15,3))-1;
+	ch_o = (_SHIFTR(ptr->tmem_odd,18,3))-1;
 
 	if(cw_e<0) cw_e = 0;
 	if(ch_e<0) ch_e = 0;
 	if(cw_o<0) cw_o = 0;
 	if(ch_o<0) ch_o = 0;
 	
-	ismipmap = ((u8*)region->val)[12];
+	ismipmap = ptr->ismipmap;
 	
 	tmp = size = cw_e+ch_e;
 	if(ismipmap) size = tmp+(cw_o+ch_o-2);
-	regvalA = _SHIFTR((region->val[0]&0x7fff),6,24)|(_SHIFTL(size,9,24))|(_SHIFTL(0x66,24,8));
+	regvalA = _SHIFTR((ptr->tmem_even&0x7fff),6,24)|(_SHIFTL(size,9,24))|(_SHIFTL(0x66,24,8));
 
 	if(cw_o!=0) {
 		size = cw_o+ch_o;
 		if(ismipmap) size += (tmp-2);
-		regvalB = _SHIFTR((region->val[1]&0x7fff),6,24)|(_SHIFTL(size,9,24))|(_SHIFTL(0x66,24,8));
+		regvalB = _SHIFTR((ptr->tmem_odd&0x7fff),6,24)|(_SHIFTL(size,9,24))|(_SHIFTL(0x66,24,8));
 	}
 	__GX_FlushTextureState();
 	GX_LOAD_BP_REG(regvalA);
@@ -3063,20 +3089,21 @@ void GX_InvalidateTexRegion(GXTexRegion *region)
 
 void GX_LoadTlut(GXTlutObj *obj,u32 tlut_name)
 {
-	GXTlutRegion *region = NULL;
+	struct __gx_tlutregion *region = NULL;
+	struct __gx_tlutobj *ptr = (struct __gx_tlutobj*)obj;
 
 	if(tlut_regionCB)
-		region = tlut_regionCB(tlut_name);
+		region = (struct __gx_tlutregion*)tlut_regionCB(tlut_name);
 
 	__GX_FlushTextureState();
-	GX_LOAD_BP_REG(obj->val[1]);
-	GX_LOAD_BP_REG(region->val[0]);
+	GX_LOAD_BP_REG(ptr->tlut_maddr);
+	GX_LOAD_BP_REG(region->tmem_baseaddr);
 	__GX_FlushTextureState();
 
-	obj->val[0] = (region->val[0]&~0xFFFFFC00)|(obj->val[0]&0xFFFFFC00);
-	region->val[1] = obj->val[0];
-	region->val[2] = obj->val[1];
-	region->val[3] = obj->val[2];
+	ptr->tlut_fmt = (region->tmem_baseaddr&0x3ff)|(ptr->tlut_fmt&~0x3ff);
+	region->tmem_addr = ptr->tlut_fmt;
+	region->tlut_maddr = ptr->tlut_maddr;
+	region->tlut_nentries = ptr->tlut_nentries;
 }
 
 void GX_SetTexCoorScaleManually(u8 texcoord,u8 enable,u16 ss,u16 ts)

@@ -3,16 +3,13 @@
 
 #include <gctypes.h>
 
-#define STRUCT_REGDEF_SIZE		1280
+#define STRUCT_REGDEF_SIZE		1440
 
-struct _gx_regdef
+struct __gx_regdef
 {
 	u16 cpSRreg;
 	u16 cpCRreg;
 	u16 cpCLreg;
-	u8 saveDLctx;
-	u8 gxFifoUnlinked;
-	u8 texCopyZTex;
 	u16 xfFlush;
 	u16 xfFlushExp;
 	u16 xfFlushSafe;
@@ -64,9 +61,69 @@ struct _gx_regdef
 	u32 chnAmbColor[2];
 	u32 chnMatColor[2];
 	u32 chnCntrl[4];
-	u8 _pad[1];
-	GXTexRegion texRegion[12];
+	GXTexRegion texRegion[24];
 	GXTlutRegion tlutRegion[20];
+	u8 saveDLctx;
+	u8 gxFifoUnlinked;
+	u8 texCopyZTex;
+	u8 _pad;
+} __attribute__((packed));
+
+struct __gxfifo {
+	u32 buf_start;
+	u32 buf_end;
+	u32 size;
+	u32 hi_mark;
+	u32 lo_mark;
+	u32 rd_ptr;
+	u32 wt_ptr;
+	u32 rdwt_dst;
+	u8 fifo_wrap;
+	u8 cpufifo_ready;
+	u8 gpfifo_ready;
+	u8 _pad[93];
+} __attribute__((packed));
+
+struct __gx_texobj
+{
+	u32 tex_filt;
+	u32 tex_lod;
+	u32 tex_size;
+	u32 tex_maddr;
+	u32 _pad;
+	u32 tex_fmt;
+	u32 tex_tlut;
+	u16 tex_tile_cnt;
+	u8 tex_tile_shift;
+	u8 tex_flag;
+} __attribute__((packed));
+
+struct __gx_tlutobj
+{
+	u32 tlut_fmt;
+	u32 tlut_maddr;
+	u16 tlut_nentries;
+	u8 _pad[2];
+} __attribute__((packed));
+
+struct __gx_texregion
+{
+	u32 tmem_even;
+	u32 tmem_odd;
+	u16 size_even;
+	u16 size_odd;
+	u8 ismipmap;
+	u8 iscached;
+	u8 _pad[2];
+} __attribute__((packed));
+
+struct __gx_tlutregion
+{
+	u32 tmem_baseaddr;
+	u32 tmem_addr;
+	u32 tlut_maddr;
+	u16 tlut_nentries;
+	u8 _pad[2];
 } __attribute__((packed));
 
 #endif
