@@ -15,7 +15,8 @@
 #include <ogcsys.h>
 #include <smb.h>
 
-#define SMB_MAXPATH 4096
+#define SMB_MAXPATH					4096
+#define SMB_SRCH_ARCHIVE			32
 
 static char currentpath[SMB_MAXPATH];
 static bool first_item_dir = false;
@@ -344,8 +345,8 @@ int WriteSMBUsingCache(const char *buf, int len, SMBFILESTRUCT *file)
 		send_buf = memalign(32, SMB_WRITE_BUFFERSIZE);
 		if (SMBWriteCache.len > 0)
 			memcpy(send_buf, SMBWriteCache.ptr, SMBWriteCache.len);
+loop:
 		rest = SMB_WRITE_BUFFERSIZE - SMBWriteCache.len;
-
 		memcpy(send_buf + SMBWriteCache.len, buf, rest);
 		written = SMB_WriteFile(send_buf, SMB_WRITE_BUFFERSIZE,
 				SMBWriteCache.file->offset, SMBWriteCache.file->handle);
@@ -368,6 +369,7 @@ int WriteSMBUsingCache(const char *buf, int len, SMBFILESTRUCT *file)
 		SMBWriteCache.used = gettick();
 		SMBWriteCache.len = 0;
 
+		if(len>=SMB_WRITE_BUFFERSIZE) goto loop;
 	}
 	if (len > 0)
 	{
@@ -681,6 +683,7 @@ static int __smb_chdir(struct _reent *r, const char *path)
 
 static int __smb_dirreset(struct _reent *r, DIR_ITER *dirState)
 {
+	char path_abs[SMB_MAXPATH];
 	SMBDIRSTATESTRUCT* state = (SMBDIRSTATESTRUCT*) (dirState->dirStruct);
 	SMBDIRENTRY dentry;
 
@@ -688,8 +691,10 @@ static int __smb_dirreset(struct _reent *r, DIR_ITER *dirState)
 
 	_SMB_lock();
 	SMB_FindClose(smbconn);
-	int found = SMB_FindFirst(currentpath, SMB_SRCH_DIRECTORY | SMB_SRCH_SYSTEM
-			| SMB_SRCH_HIDDEN, &dentry, smbconn);
+
+	strcpy(path_abs,currentpath);
+	strcat(path_abs,"*");
+	int found = SMB_FindFirst(path_abs, SMB_SRCH_DIRECTORY | SMB_SRCH_SYSTEM | SMB_SRCH_HIDDEN | SMB_SRCH_READONLY | SMB_SRCH_ARCHIVE, &dentry, smbconn);
 	_SMB_unlock();
 
 	if (found != SMB_SUCCESS)
@@ -740,8 +745,7 @@ static DIR_ITER* __smb_diropen(struct _reent *r, DIR_ITER *dirState, const char 
 	memset(&dentry, 0, sizeof(SMBDIRENTRY));
 
 	_SMB_lock();
-	found = SMB_FindFirst(path_absolute, SMB_SRCH_DIRECTORY | SMB_SRCH_SYSTEM
-			| SMB_SRCH_HIDDEN, &dentry, smbconn);
+	found = SMB_FindFirst(path_absolute, SMB_SRCH_DIRECTORY | SMB_SRCH_SYSTEM | SMB_SRCH_HIDDEN | SMB_SRCH_READONLY | SMB_SRCH_ARCHIVE, &dentry, smbconn);
 	_SMB_unlock();
 
 	if (found != SMB_SUCCESS)

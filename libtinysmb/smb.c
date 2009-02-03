@@ -1,24 +1,18 @@
 /****************************************************************************
- * TinySMB-GC
- *
- * Nintendo Gamecube SaMBa implementation.
+ * TinySMB
+ * Nintendo Wii/GameCube SMB implementation
  *
  * Copyright softdev
  * Modified by Tantric to utilize NTLM authentication
  * PathInfo added by rodries
  * SMB devoptab by scip, rodries
  *
- * Authentication modules, LMhash and DES are 
- *
- * Copyright Christopher R Hertel.
- * http://www.ubiqx.org
- *
- * You WILL find Ethereal, available from http://www.ethereal.com
- * invaluable for debugging each new SAMBA implementation.
+ * You will find WireShark (http://www.wireshark.org/)
+ * invaluable for debugging SAMBA implementations.
  *
  * Recommended Reading
  *	Implementing CIFS - Christopher R Hertel
- *	SNIA CIFS Documentation - http://www.snia.org
+ *	http://www.ubiqx.org/cifs/SMB.html
  *
  * License:
  *
@@ -122,7 +116,7 @@
 								
 #define SMB_PROTO					0x424d53ff
 #define SMB_HANDLE_NULL				0xffffffff
-#define SMB_MAX_BUFFERSIZE			(62*1024)
+#define SMB_MAX_BUFFERSIZE			(62*1024)	// cannot be larger than u16 (65536)
 #define SMB_MAX_TRANSMIT_SIZE		7236
 #define SMB_DEF_READOFFSET			59
 								
@@ -163,7 +157,7 @@ typedef struct _smbsession
   u16 PID;
   u16 UID;
   u16 MID;
-  u16 sKey;
+  u32 sKey;
   u16 MaxBuffer;
   u16 MaxMpx;
   u16 MaxVCS;
@@ -183,6 +177,7 @@ typedef struct _smbhandle
 	char *server_name;
 	s32 sck_server;
 	struct sockaddr_in server_addr;
+	BOOL conn_valid;
 	SMBSESSION session;
 	NBTSMB message;
 } SMBHANDLE;
@@ -287,6 +282,7 @@ static SMBHANDLE* __smb_allocate_handle()
 		handle->server_name = NULL;
 		handle->share_name = NULL;
 		handle->sck_server = INVALID_SOCKET;
+		handle->conn_valid = FALSE;
 		__lwp_objmgr_open(&smb_handle_objects,&handle->object);
 	}
 	_CPU_ISR_Restore(level);
@@ -403,7 +399,8 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	pos += 2;
 	setUShort(ptr,pos,sess->MaxVCS);
 	pos += 2;
-	pos += 4; /*** Session key, unknown at this point ***/
+	setUInt(ptr,pos,sess->sKey);
+	pos += 4;
 	setUShort(ptr,pos,0);	/*** Password length (case-insensitive) ***/
 	pos += 2;
 	setUShort(ptr,pos,24);	/*** Password length (case-sensitive) ***/
@@ -428,6 +425,7 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	pos += strlen(pwd)+1;
 
 	/*** Primary Domain ***/
+	if(handle->user[0]=='\0') sess->p_domain[0] = '\0';
 	memcpy(&ptr[pos],sess->p_domain,strlen((const char*)sess->p_domain));
 	pos += strlen((const char*)sess->p_domain)+1;
 
@@ -530,6 +528,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 	s32 bcnt,i,j;
 	s32 ret,len;
 	u16 bytecount;
+	u32 serverMaxBuffer;
 	SMBSESSION *sess;
 
 	if(!handle || !dialects || dialectc<=0) 
@@ -584,12 +583,16 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 		sess->MaxVCS = getUShort(ptr, pos);	//USHORT MaxNumberVcs; Max VCs between client and server
 
 		pos += 2;
-		sess->MaxBuffer = getUInt(ptr, pos);	//ULONG MaxBufferSize; Max transmit buffer size			
-		if(sess->MaxBuffer>SMB_MAX_TRANSMIT_SIZE) sess->MaxBuffer = SMB_MAX_TRANSMIT_SIZE;
+		serverMaxBuffer = getUInt(ptr, pos);	//ULONG MaxBufferSize; Max transmit buffer size
+		if(serverMaxBuffer>SMB_MAX_TRANSMIT_SIZE)
+			sess->MaxBuffer = SMB_MAX_TRANSMIT_SIZE;
+		else
+			sess->MaxBuffer = serverMaxBuffer;
 
 		pos += 4;
 		pos += 4;	//ULONG MaxRawSize; Maximum raw buffer size
-		pos += 4;	//ULONG SessionKey; Unique token identifying this session
+		sess->sKey = getUInt(ptr,pos);
+		pos += 4;	
 		pos += 4;	//ULONG Capabilities; Server capabilities
 		pos += 4;	//ULONG SystemTimeLow; System (UTC) time of the server (low).
 		pos += 4;	//ULONG SystemTimeHigh; System (UTC) time of the server (high).
@@ -664,6 +667,8 @@ static s32 do_smbconnect(SMBHANDLE *handle)
 		net_close(handle->sck_server);
 		return -1;
 	}
+
+	handle->conn_valid = TRUE;
 	return 0;
 }
 
@@ -723,14 +728,44 @@ void SMB_Close(SMBCONN smbhndl)
 	__smb_free_handle(handle);
 }
 
+s32 SMB_Reconnect(SMBCONN smbhndl, BOOL test_conn)
+{
+	s32 ret = SMB_SUCCESS;
+	SMBHANDLE *handle = __smb_handle_open(smbhndl);
+	if(!handle)
+		return SMB_ERROR; // we have no handle, so we can't reconnect
+
+	if(handle->conn_valid && test_conn)
+	{
+		SMBDIRENTRY dentry;
+		SMB_PathInfo("\\", &dentry, smbhndl);
+	}
+
+	if(!handle->conn_valid)
+	{
+		// save connection details
+		const char * user = strdup(handle->user);
+		const char * pwd = strdup(handle->pwd);
+		const char * ip = strdup(handle->server_name);
+		const char * share = strdup(handle->share_name);
+
+		// shut down connection, and reopen
+		SMB_Close(smbhndl);
+		ret = SMB_Connect(&smbhndl, user, pwd, share, ip);
+	}
+	return ret;
+}
+
 SMBFILE SMB_OpenFile(const char *filename, u16 access, u16 creation,SMBCONN smbhndl)
 {
 	s32 pos;
 	s32 bpos,ret;
 	u8 *ptr;
-	struct _smbfile *fid;
+	struct _smbfile *fid = NULL;
 	SMBHANDLE *handle;
 	char realfile[256];
+
+	if(SMB_Reconnect(smbhndl,TRUE)!=SMB_SUCCESS) return NULL;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return NULL;
@@ -775,8 +810,8 @@ SMBFILE SMB_OpenFile(const char *filename, u16 access, u16 creation,SMBCONN smbh
 
 	pos += 4;
 	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
+	if(ret<0) goto failed;
 
-	fid = NULL;
 	if(SMBCheck(SMB_OPEN_ANDX,sizeof(NBTSMB),handle)==SMB_SUCCESS) {
 		/*** Check file handle ***/
 		fid = (struct _smbfile*)__lwp_queue_get(&smb_filehandle_queue);
@@ -786,6 +821,10 @@ SMBFILE SMB_OpenFile(const char *filename, u16 access, u16 creation,SMBCONN smbh
 		}
 	}
 	return (SMBFILE)fid;
+
+failed:
+	handle->conn_valid = FALSE;
+	return NULL;
 }
 
 /**
@@ -820,6 +859,7 @@ void SMB_CloseFile(SMBFILE sfid)
 
 	pos += 4;
 	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
+	if(ret<0) handle->conn_valid = FALSE;
 
 	SMBCheck(SMB_CLOSE,sizeof(NBTSMB),handle);
 	__lwp_queue_append(&smb_filehandle_queue,&fid->node);
@@ -872,6 +912,7 @@ s32 SMB_ReadFile(char *buffer, int size, int offset, SMBFILE sfid)
 
 	pos += 4;
 	ret = net_send(handle->sck_server,(char*)&handle->message, pos, 0);
+	if(ret<0) goto  failed;
 
 	/*** SMBCheck should now only read up to the end of a standard header ***/
 	if((ret=SMBCheck(SMB_READ_ANDX,(SMB_HEADER_SIZE+27+4),handle))==SMB_SUCCESS) {
@@ -902,6 +943,10 @@ s32 SMB_ReadFile(char *buffer, int size, int offset, SMBFILE sfid)
 		return ofs;
 	}
 	return 0;
+
+failed:
+	handle->conn_valid = FALSE;
+	return ret;
 }
 
 /**
@@ -966,9 +1011,12 @@ s32 SMB_WriteFile(const char *buffer, int size, int offset, SMBFILE sfid)
 
 	/*** Send Header Information ***/
 	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
+	if(ret<0) goto failed;
+
 	if(size>0) {
 		/*** Send the data ***/
 		ret = net_send(handle->sck_server,src,size,0);
+		if(ret<0) goto failed;
 	}
 
 	ret = 0;
@@ -977,6 +1025,10 @@ s32 SMB_WriteFile(const char *buffer, int size, int offset, SMBFILE sfid)
 		ret = getUShort(ptr,(SMB_HEADER_SIZE+5));
 	}
 
+	return ret;
+
+failed:
+	handle->conn_valid = FALSE;
 	return ret;
 }
 
@@ -1028,6 +1080,7 @@ s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl)
 
 	pos += 4;
 	ret = net_send(handle->sck_server, (char*) &handle->message, pos, 0);
+	if(ret<0) goto failed;
 
 	ret = SMB_ERROR;
 	if (SMBCheck(SMB_TRANS2, sizeof(NBTSMB), handle) == SMB_SUCCESS) {
@@ -1047,6 +1100,10 @@ s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl)
 		ret = SMB_SUCCESS;
 	}
 	return ret;
+
+failed:
+	handle->conn_valid = FALSE;
+	return ret;
 }
 
 /**
@@ -1062,6 +1119,8 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 	s32 bpos;
 	SMBHANDLE *handle;
 	SMBSESSION *sess;
+
+	if(SMB_Reconnect(smbhndl,TRUE)!=SMB_SUCCESS) return SMB_ERROR;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return SMB_ERROR;
@@ -1097,6 +1156,7 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 
 	pos += 4;
 	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
+	if(ret<0) goto failed;
 
 	sess->eos = 1;
 	sess->sid = 0;
@@ -1129,6 +1189,9 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 	}
 	return ret;
 
+failed:
+	handle->conn_valid = FALSE;
+	return ret;
 }
 
 /**
@@ -1142,6 +1205,8 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	s32 bpos;
 	SMBHANDLE *handle;
 	SMBSESSION *sess;
+
+	if(SMB_Reconnect(smbhndl,TRUE)!=SMB_SUCCESS) return SMB_ERROR;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return SMB_ERROR;
@@ -1178,6 +1243,7 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 
 	pos += 4;
 	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
+	if(ret<0) goto failed;
 
 	ret = SMB_ERROR;
 	if (SMBCheck(SMB_TRANS2,sizeof(NBTSMB),handle)==SMB_SUCCESS) {
@@ -1204,6 +1270,10 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 		}
 	}
 	return ret;
+
+failed:
+	handle->conn_valid = FALSE;
+	return ret;
 }
 
 /**
@@ -1216,6 +1286,8 @@ s32 SMB_FindClose(SMBCONN smbhndl)
 	s32 ret;
 	SMBHANDLE *handle;
 	SMBSESSION *sess;
+
+	if(SMB_Reconnect(smbhndl,TRUE)!=SMB_SUCCESS) return SMB_ERROR;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return SMB_ERROR;
@@ -1238,7 +1310,12 @@ s32 SMB_FindClose(SMBCONN smbhndl)
 
 	pos += 4;
 	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
+	if(ret<0) goto failed;
 
 	ret = SMBCheck(SMB_FIND_CLOSE2,sizeof(NBTSMB),handle);
+	return ret;
+
+failed:
+	handle->conn_valid = FALSE;
 	return ret;
 }
