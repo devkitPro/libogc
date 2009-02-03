@@ -59,7 +59,7 @@ distribution.
 static u32 __dsp_inited = FALSE;
 static u32 __dsp_rudetask_pend = FALSE;
 static DSPCallback __dsp_intcb = NULL;
-static dsptask_t *curr_task,*last_task,*first_task,*tmp_task,*rude_task;
+static dsptask_t *__dsp_currtask,*__dsp_lasttask,*__dsp_firsttask,*__dsp_rudetask,*tmp_task;
 
 static vu16* const _dspReg = (u16*)0xCC005000;
 
@@ -70,23 +70,23 @@ static void __dsp_inserttask(dsptask_t *task)
 {
 	dsptask_t *t;
 
-	if(!first_task) {
-		curr_task = task;
-		last_task = task;
-		first_task = task;
+	if(!__dsp_firsttask) {
+		__dsp_currtask = task;
+		__dsp_lasttask = task;
+		__dsp_firsttask = task;
 		task->next = NULL;
 		task->prev = NULL;
 		return;
 	}
 
-	t = first_task;
+	t = __dsp_firsttask;
 	while(t) {
 		if(task->prio<t->prio) {
 			task->prev = t->prev;
 			t->prev = task;
 			task->next = t;
 			if(!task->prev) {
-				first_task = task;
+				__dsp_firsttask = task;
 				break;
 			} else {
 				task->prev->next = task;
@@ -97,34 +97,34 @@ static void __dsp_inserttask(dsptask_t *task)
 	}
 	if(t) return;
 
-	last_task->next = task;
+	__dsp_lasttask->next = task;
 	task->next = NULL;
-	task->prev = last_task;
-	last_task = task;
+	task->prev = __dsp_lasttask;
+	__dsp_lasttask = task;
 }
 
 static void __dsp_removetask(dsptask_t *task)
 {
 	task->flags = DSPTASK_CLEARALL;
 	task->state = DSPTASK_DONE;
-	if(first_task==task) {
+	if(__dsp_firsttask==task) {
 		if(task->next) {
-			first_task = task->next;
-			first_task->prev = NULL;
+			__dsp_firsttask = task->next;
+			__dsp_firsttask->prev = NULL;
 			return;
 		}
-		curr_task = NULL;
-		last_task = NULL;
-		first_task = NULL;
+		__dsp_currtask = NULL;
+		__dsp_lasttask = NULL;
+		__dsp_firsttask = NULL;
 		return;
 	}
-	if(last_task==task) {
-		last_task = task->prev;
-		last_task->next = NULL;
-		curr_task = first_task;
+	if(__dsp_lasttask==task) {
+		__dsp_lasttask = task->prev;
+		__dsp_lasttask->next = NULL;
+		__dsp_currtask = __dsp_firsttask;
 		return;		
 	}
-	curr_task = curr_task->next;
+	__dsp_currtask = __dsp_currtask->next;
 }
 
 static void __dsp_boottask(dsptask_t *task)
@@ -224,96 +224,96 @@ static void __dsp_def_taskcb()
 #ifdef _DSP_DEBUG
 	printf("__dsp_def_taskcb(mail = 0x%08x)\n",mail);
 #endif
-	if(curr_task->flags&DSPTASK_CANCEL) {
+	if(__dsp_currtask->flags&DSPTASK_CANCEL) {
 		if(mail==0xDCD10002) mail = 0xDCD10003;
 	}
 
 	switch(mail) {
 		case 0xDCD10000:
-			curr_task->state = DSPTASK_RUN;
-			if(curr_task->init_cb) curr_task->init_cb(curr_task);
+			__dsp_currtask->state = DSPTASK_RUN;
+			if(__dsp_currtask->init_cb) __dsp_currtask->init_cb(__dsp_currtask);
 			break;
 		case 0xDCD10001:
-			curr_task->state = DSPTASK_RUN;
-			if(curr_task->res_cb) curr_task->res_cb(curr_task);
+			__dsp_currtask->state = DSPTASK_RUN;
+			if(__dsp_currtask->res_cb) __dsp_currtask->res_cb(__dsp_currtask);
 			break;
 		case 0xDCD10002:
 			if(__dsp_rudetask_pend==TRUE) {
-				if(rude_task==curr_task) {
+				if(__dsp_rudetask==__dsp_currtask) {
 					DSP_SendMailTo(0xCDD10003);
 					while(DSP_CheckMailTo());
 					
-					rude_task = NULL;
+					__dsp_rudetask = NULL;
 					__dsp_rudetask_pend = FALSE;
-					if(curr_task->res_cb) curr_task->res_cb(curr_task);
+					if(__dsp_currtask->res_cb) __dsp_currtask->res_cb(__dsp_currtask);
 				} else {
 					DSP_SendMailTo(0xCDD10001);
 					while(DSP_CheckMailTo());
 					
-					__dsp_exectask(curr_task,rude_task);
-					curr_task->flags = DSPTASK_YIELD;
-					curr_task = rude_task;
-					rude_task = NULL;
+					__dsp_exectask(__dsp_currtask,__dsp_rudetask);
+					__dsp_currtask->flags = DSPTASK_YIELD;
+					__dsp_currtask = __dsp_rudetask;
+					__dsp_rudetask = NULL;
 					__dsp_rudetask_pend = FALSE;
 				}
-			} else if(curr_task->next==NULL) {
-				if(first_task==curr_task) {
+			} else if(__dsp_currtask->next==NULL) {
+				if(__dsp_firsttask==__dsp_currtask) {
 					DSP_SendMailTo(0xCDD10003);
 					while(DSP_CheckMailTo());
 
-					if(curr_task->res_cb) curr_task->res_cb(curr_task);
+					if(__dsp_currtask->res_cb) __dsp_currtask->res_cb(__dsp_currtask);
 				} else {
 					DSP_SendMailTo(0xCDD10001);
 					while(DSP_CheckMailTo());
 
-					__dsp_exectask(curr_task,first_task);
-					curr_task->state = DSPTASK_YIELD;
-					curr_task = first_task;
+					__dsp_exectask(__dsp_currtask,__dsp_firsttask);
+					__dsp_currtask->state = DSPTASK_YIELD;
+					__dsp_currtask = __dsp_firsttask;
 				}
 			} else {
 				DSP_SendMailTo(0xCDD10001);
 				while(DSP_CheckMailTo());
 				
-				__dsp_exectask(curr_task,curr_task->next);
-				curr_task->state = DSPTASK_YIELD;
-				curr_task = curr_task->next;
+				__dsp_exectask(__dsp_currtask,__dsp_currtask->next);
+				__dsp_currtask->state = DSPTASK_YIELD;
+				__dsp_currtask = __dsp_currtask->next;
 			}
 			break;
 		case 0xDCD10003:
 			if(__dsp_rudetask_pend==TRUE) {
-				if(curr_task->done_cb) curr_task->done_cb(curr_task);
+				if(__dsp_currtask->done_cb) __dsp_currtask->done_cb(__dsp_currtask);
 				DSP_SendMailTo(0xCDD10001);
 				while(DSP_CheckMailTo());
 				
-				__dsp_exectask(NULL,rude_task);
-				__dsp_removetask(curr_task);
+				__dsp_exectask(NULL,__dsp_rudetask);
+				__dsp_removetask(__dsp_currtask);
 				
-				curr_task = rude_task;
+				__dsp_currtask = __dsp_rudetask;
 				__dsp_rudetask_pend = FALSE;
-				rude_task = NULL;
-			} else if(curr_task->next==NULL) {
-				if(first_task==curr_task) {
-					if(curr_task->done_cb) curr_task->done_cb(curr_task);
+				__dsp_rudetask = NULL;
+			} else if(__dsp_currtask->next==NULL) {
+				if(__dsp_firsttask==__dsp_currtask) {
+					if(__dsp_currtask->done_cb) __dsp_currtask->done_cb(__dsp_currtask);
 					DSP_SendMailTo(0xCDD10002);
 					while(DSP_CheckMailTo());
 
-					curr_task->state = DSPTASK_DONE;
-					__dsp_removetask(curr_task);
+					__dsp_currtask->state = DSPTASK_DONE;
+					__dsp_removetask(__dsp_currtask);
 				}
 			} else {
-				if(curr_task->done_cb) curr_task->done_cb(curr_task);
+				if(__dsp_currtask->done_cb) __dsp_currtask->done_cb(__dsp_currtask);
 				
 				DSP_SendMailTo(0xCDD10001);
 				while(DSP_CheckMailTo());
 
-				curr_task->state = DSPTASK_DONE;
-				__dsp_exectask(NULL,first_task);
-				curr_task = first_task;
-				__dsp_removetask(last_task);
+				__dsp_currtask->state = DSPTASK_DONE;
+				__dsp_exectask(NULL,__dsp_firsttask);
+				__dsp_currtask = __dsp_firsttask;
+				__dsp_removetask(__dsp_lasttask);
 			}
 			break;
 		case 0xDCD10004:
-			if(curr_task->req_cb) curr_task->req_cb(curr_task);
+			if(__dsp_currtask->req_cb) __dsp_currtask->req_cb(__dsp_currtask);
 			break;
 	}
 
@@ -341,9 +341,9 @@ void DSP_Init()
 		_dspReg[5] = (_dspReg[5]&~(DSPCR_AIINT|DSPCR_ARINT|DSPCR_DSPINT))|DSPCR_DSPRESET;
 		_dspReg[5] = (_dspReg[5]&~(DSPCR_HALT|DSPCR_AIINT|DSPCR_ARINT|DSPCR_DSPINT));
 		
-		curr_task = NULL;
-		first_task = NULL;
-		last_task = NULL;
+		__dsp_currtask = NULL;
+		__dsp_firsttask = NULL;
+		__dsp_lasttask = NULL;
 		tmp_task = NULL;
 		__dsp_inited = TRUE;
 	}
@@ -475,6 +475,40 @@ dsptask_t* DSP_AddTask(dsptask_t *task)
 	task->flags = DSPTASK_ATTACH;
 	_CPU_ISR_Restore(level);
 	
-	if(first_task==task) __dsp_boottask(task);
+	if(__dsp_firsttask==task) __dsp_boottask(task);
 	return task;
+}
+
+void DSP_CancelTask(dsptask_t *task)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	task->flags |= DSPTASK_CANCEL;
+	_CPU_ISR_Restore(level);
+}
+
+dsptask_t* DSP_AssertTask(dsptask_t *task)
+{
+	u32 level;
+	dsptask_t *ret = NULL;
+
+	_CPU_ISR_Disable(level);
+	if(task==__dsp_currtask) {
+		__dsp_rudetask = task;
+		__dsp_rudetask_pend = TRUE;
+		ret = task;
+	} else {
+		if(task->prio<__dsp_currtask->prio) {
+			__dsp_rudetask = task;
+			__dsp_rudetask_pend = TRUE;
+			if(__dsp_currtask->state==DSPTASK_RUN)
+				_dspReg[5] = ((_dspReg[5]&~(DSPCR_DSPINT|DSPCR_ARINT|DSPCR_AIINT))|DSPCR_PIINT);
+
+			ret = task;
+		}
+	}
+	_CPU_ISR_Restore(level);
+
+	return ret;
 }
