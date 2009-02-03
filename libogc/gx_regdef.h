@@ -94,7 +94,7 @@ struct __gx_texobj
 	u32 tex_fmt;
 	u32 tex_tlut;
 	u16 tex_tile_cnt;
-	u8 tex_tile_shift;
+	u8 tex_tile_type;
 	u8 tex_flag;
 } __attribute__((packed));
 

@@ -2739,6 +2739,7 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 	switch(fmt) {
 		case GX_TF_I4:
 		case GX_TF_IA4:
+		case GX_TF_CMPR:
 		case GX_CTF_R4:
 		case GX_CTF_RA4:
 		case GX_CTF_Z4:
@@ -2762,16 +2763,16 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 		case GX_TF_IA8:
 		case GX_TF_Z16:
 		case GX_TF_Z24X8:
-		case GX_CTF_Z16L:
 		case GX_TF_RGB565:
 		case GX_TF_RGB5A3:
 		case GX_TF_RGBA8:
+		case GX_CTF_Z16L:
 			xshift = 2;
 			yshift = 2;
 			break;
 		default:
-			xshift = 0;
-			yshift = 0;
+			xshift = 2;
+			yshift = 2;
 			break;
 	}
 
@@ -2784,8 +2785,8 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 		while(cnt) {
 			u32 w = wd&0xffff;
 			u32 h = ht&0xffff;
-			xtiles = (w+((1<<xshift)-1))>>xshift;
-			ytiles = (h+((1<<yshift)-1))>>yshift;
+			xtiles = ((w+(1<<xshift))-1)>>xshift;
+			ytiles = ((h+(1<<yshift))-1)>>yshift;
 			if(cnt==0) return size;
 
 			size += ((xtiles*ytiles)*bitsize);
@@ -2864,14 +2865,10 @@ void GX_InitTexPreloadRegion(GXTexRegion *region,u32 tmem_even,u32 size_even,u32
 
 	ptr->tmem_even = 0;
 	ptr->tmem_even = (ptr->tmem_even&~0x7FFF)|(_SHIFTR(tmem_even,5,15));
-	ptr->tmem_even = (ptr->tmem_even&~0x38000);
-	ptr->tmem_even = (ptr->tmem_even&~0x1C0000);
 	ptr->tmem_even = (ptr->tmem_even&~0x200000)|0x200000;
 	
 	ptr->tmem_odd = 0;
 	ptr->tmem_odd = (ptr->tmem_odd&~0x7FFF)|(_SHIFTR(tmem_odd,5,15));
-	ptr->tmem_odd = (ptr->tmem_odd&~0x38000);
-	ptr->tmem_odd = (ptr->tmem_odd&~0x1C0000);
 
 	ptr->size_even = _SHIFTR(size_even,5,16);
 	ptr->size_odd = _SHIFTR(size_odd,5,16);
@@ -2894,8 +2891,8 @@ void GX_InitTlutRegion(GXTlutRegion *region,u32 tmem_addr,u8 tlut_sz)
 
 void GX_InitTexObj(GXTexObj *obj,void *img_ptr,u16 wd,u16 ht,u8 fmt,u8 wrap_s,u8 wrap_t,u8 mipmap)
 {
-	u8 tmp1,tmp2;
-	u32 nwd,nht,res;
+	u32 nwd,nht;
+	u32 xshift,yshift;
 	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
 
 	if(!obj) return;
@@ -2921,21 +2918,48 @@ void GX_InitTexObj(GXTexObj *obj,void *img_ptr,u16 wd,u16 ht,u8 fmt,u8 wrap_s,u8
 	ptr->tex_size = (ptr->tex_size&~0xF00000)|(_SHIFTL(fmt,20,4));
 	ptr->tex_maddr = (ptr->tex_maddr&~0x01ffffff)|(_SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(img_ptr),5,24));
 
-	tmp1 = 2;
-	tmp2 = 2;
-	ptr->tex_tile_shift = 2;
-	if(fmt<=GX_TF_CMPR) {
-		tmp1 = 3;
-		tmp2 = 3;
-		ptr->tex_tile_shift = 1;
+	switch(fmt) {
+		case GX_TF_I4:
+		case GX_TF_CI4:
+		case GX_TF_IA4:
+			xshift = 3;
+			yshift = 3;
+			ptr->tex_tile_type = 1;
+			break;
+		case GX_TF_I8:
+		case GX_TF_CI8:
+			xshift = 3;
+			yshift = 2;
+			ptr->tex_tile_type = 2;
+			break;
+		case GX_TF_IA8:
+		case GX_TF_RGB565:
+		case GX_TF_RGB5A3:
+		case GX_TF_RGBA8:
+			xshift = 2;
+			yshift = 2;
+			ptr->tex_tile_type = 2;
+			break;
+		case GX_TF_CI14:
+			xshift = 2;
+			yshift = 2;
+			ptr->tex_tile_type = 3;
+			break;
+		case GX_TF_CMPR:
+			xshift = 3;
+			yshift = 3;
+			ptr->tex_tile_type = 0;
+			break;
+		default:
+			xshift = 2;
+			yshift = 2;
+			ptr->tex_tile_type = 2;
+			break;
 	}
 
-	nwd = ((1<<tmp1)-1)+wd;
-	nwd >>= tmp1;
-	nht = ((1<<tmp2)-1)+ht;
-	nht >>= tmp2;
-	res = nwd*nht;
-	ptr->tex_tile_cnt = res&0x7fff;
+	nwd = ((wd+(1<<xshift))-1)>>xshift;
+	nht = ((ht+(1<<yshift))-1)>>yshift;
+	ptr->tex_tile_cnt = (nwd*nht)&0x7fff;
 
 	ptr->tex_flag |= 0x0002;
 }
@@ -3040,8 +3064,127 @@ void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid)
 	__gx->dirtyState |= 0x0001;
 }
 
-void GX_PreloadEntireTex(GXTexObj *obj,GXTexRegion *region)
+void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region)
 {
+	u32 i,fmt;
+	s32 wd,ht;
+	u16 cnt = 0;
+	u32 regA = 0;
+	u32 regB = 0;
+	u32 regC = 0;
+	u32 regD = 0;
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+	struct __gx_texregion *reg = (struct __gx_texregion*)region;
+
+	regA = (regA&~0xff000000)|(_SHIFTL(0x60,24,8));
+	regA = (regA&~0x00ffffff)|(ptr->tex_maddr&~0xff000000);
+
+	regB = (regB&~0xff000000)|(_SHIFTL(0x61,24,8));
+	regB = (regB&~0x00007fff)|(reg->tmem_even&0x00007fff);
+
+	regC = (regC&~0xff000000)|(_SHIFTL(0x62,24,8));
+	regC = (regC&~0x00007fff)|(reg->tmem_odd&0x00007fff);
+
+	regD = (regD&~0xff000000)|(_SHIFTL(0x63,24,8));
+	regB = (regD&~0x00007fff)|(ptr->tex_tile_cnt&0x00007fff);
+
+	fmt = _SHIFTR(ptr->tex_size,20,4);
+
+	__GX_FlushTextureState();
+	GX_LOAD_BP_REG(regA);
+	GX_LOAD_BP_REG(regB);
+	GX_LOAD_BP_REG(regC);
+	GX_LOAD_BP_REG(regD);
+
+	if(ptr->tex_flag&0x01) {
+		wd = (ptr->tex_size&0x3ff)+1;
+		ht = _SHIFTR(ptr->tex_size,10,10)+1;
+		if(wd>ht)
+			cnt = (31 - (cntlzw(wd)));
+		else
+			cnt = (31 - (cntlzw(ht)));
+	}
+
+	if(cnt>0) {
+		u32 tmem_even,tmem_odd,maddr;
+		u32 tile_cnt = ptr->tex_tile_cnt;
+
+		tmem_even = (reg->tmem_even&0xffff);
+		tmem_odd = (reg->tmem_odd&0xffff);
+		maddr = (ptr->tex_maddr&~0xff000000);
+
+		i = 0;
+		while(cnt) {
+			u32 w,h;
+			u32 te,to;
+			u32 xshift,yshift;
+
+			if(fmt==GX_TF_RGBA8) {
+				tmem_even += tile_cnt;  
+				tmem_odd += tile_cnt;
+				maddr += (tile_cnt<<1);
+			} else {
+				maddr += tile_cnt;
+				if(i&1) tmem_odd += tile_cnt;
+				else tmem_even += tile_cnt;
+			}
+
+			te = tmem_even;
+			to = tmem_odd;
+			if(i&1) {
+				te = tmem_odd;
+				to = tmem_even;
+			}
+
+			w = wd>>(i+1);
+			h = wd>>(i+1);
+			switch(ptr->tex_fmt) {
+				case GX_TF_I4:
+				case GX_TF_IA4:
+				case GX_TF_CI4:
+				case GX_TF_CMPR:
+					xshift = 3;
+					yshift = 3;
+					break;
+				case GX_TF_I8:
+				case GX_TF_CI8:
+					xshift = 3;
+					yshift = 2;
+					break;
+				case GX_TF_IA8:
+				case GX_TF_RGB5A3:
+				case GX_TF_RGB565:
+				case GX_TF_CI14:
+					xshift = 2;
+					yshift = 2;
+					break;
+				default:
+					xshift = 0;
+					yshift = 0;
+					break;
+			}
+
+			if(!w) w = 1;
+			if(!h) h = 1;
+			
+			regA = ((regA&~0x00ffffff)|(maddr&0x00ffffff));
+			GX_LOAD_BP_REG(regA);
+
+			regB = ((regB&~0x00007fff)|(te&0x00007fff));
+			GX_LOAD_BP_REG(regB);
+
+			regC = ((regC&~0x00007fff)|(to&0x00007fff));
+			GX_LOAD_BP_REG(regC);
+
+			tile_cnt = (((w+(1<<xshift))-1)>>xshift)*(((h+(1<<yshift))-1)>>yshift);
+			regD = ((regD&~0x00007fff)|(tile_cnt&0x00007fff));
+			GX_LOAD_BP_REG(regD);
+
+			++i;
+			--cnt;
+		}
+	}
+	__GX_FlushTextureState();
 }
 
 void GX_InvalidateTexAll()
