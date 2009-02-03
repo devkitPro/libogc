@@ -203,6 +203,10 @@ u32 DSP_ReadCPUtoDSP();
 */
 dsptask_t* DSP_AddTask(dsptask_t *task);
 
+dsptask_t* DSP_AssertTask(dsptask_t *task);
+
+void DSP_CancelTask(dsptask_t *task);
+
 void DSP_Reset();
 
 void DSP_Halt();
