@@ -1721,6 +1721,9 @@ void GX_PokeARGB(u16 x,u16 y,GXColor color);
 void GX_PokeZ(u16 x,u16 y,u32 z);
 void GX_PokeZMode(u8 comp_enable,u8 func,u8 update_enable);
 
+u32 GX_GetTexObjFmt(GXTexObj *obj);
+u32 GX_GetTexObjMipMap(GXTexObj *obj);
+
 u8 GX_GetTexFmt(GXTexObj *obj);
 u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod);
 void GX_InvalidateTexAll();
