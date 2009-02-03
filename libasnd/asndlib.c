@@ -398,8 +398,10 @@ void ASND_End()
        DSP_DI_HANDLER=1;
        usleep(100);
        AUDIO_RegisterDMACallback(NULL);
-       asnd_inited=0;
        DSP_DI_HANDLER=1;
+	   DSP_CancelTask(&dsp_task);
+	   DSP_AssertInt();
+	   asnd_inited=0;
    }
 }
 
