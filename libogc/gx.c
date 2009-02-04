@@ -138,7 +138,7 @@ extern int printk(const char *fmt,...);
 static __inline__ s32 IsWriteGatherBufferEmpty()
 {
 	_sync();
-	return (mfwpar()&0x0001);
+	return !(mfwpar()&1);
 }
 
 static __inline__ void DisableWriteGatherPipe()
@@ -154,7 +154,7 @@ static __inline__ void EnableWriteGatherPipe()
 
 static __inline__ void __GX_ResetWriteGatherPipe()
 {
-	while(!(mfwpar()&0x1));
+	while(mfwpar()&1);
 	mtwpar(0x0C008000);
 }
 
