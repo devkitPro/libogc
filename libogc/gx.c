@@ -135,9 +135,8 @@ static sys_resetinfo __gx_resetinfo = {
 extern int printk(const char *fmt,...);
 #endif
 
-static __inline__ s32 IsWriteGatherBufferEmpty()
+static __inline__ BOOL IsWriteGatherBufferEmpty()
 {
-	_sync();
 	return !(mfwpar()&1);
 }
 
