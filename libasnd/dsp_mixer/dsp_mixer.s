@@ -217,9 +217,11 @@ recv_cmd:
 
 	call	wait_for_cpu_mail
 
-    si	@DMBH, #0xdcd1
+	si		@DMBH, #0xdcd1
 
-	cmpi	$ACM1,#0xcdd1
+	clr		$ACC0
+	lri		$ACM0,#0xcdd1
+	cmp
 	jz		sys_command
 	
 	clr	$ACC1
@@ -246,10 +248,18 @@ recv_cmd:
 	cmpi    $ACM1, #0x888	// Used for test
 	jz	polla_loca 
 
+	cmpi	$ACM1, #0x999
+	jz	task_terminate
+	
 	si	@DMBL, #0x0004	// return 0 as ignore command
 	si	@DIRQ, #0x1 // set the interrupt
 	jmp	recv_cmd
 
+task_terminate:
+	si	@DMBL, #0x0003
+	si	@DIRQ, #0x1
+	jmp	recv_cmd
+	
 sys_command:
 	clr	$ACC1
 	lrs	$ACM1, @CMBL
