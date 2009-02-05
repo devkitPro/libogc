@@ -86,6 +86,7 @@ static vu32 time_of_process;
 static vu32 dsp_complete = 1;
 static vu32 dsp_task_starttime = 0;
 static vu32 curr_audio_buf = 0;
+static vu32 dsp_done = 0;
 
 static vs32 snd_chan = 0;
 static vs32 global_pause = 1;
@@ -251,6 +252,7 @@ static void __dsp_requestcallback(dsptask_t *task)
 
 static void __dsp_donecallback(dsptask_t *task)
 {
+	dsp_done = 1;
 }
 
 static void audio_dma_callback()
@@ -362,6 +364,7 @@ void ASND_Init()
 		curr_audio_buf = 0;
 		DSP_DI_HANDLER = 1;
 		dsp_complete = 0;
+		dsp_done = 0;
 
 		snd_set0w((s32*)audio_buf[0], SND_BUFFERSIZE>>2);
 		snd_set0w((s32*)audio_buf[1], SND_BUFFERSIZE>>2);
@@ -399,8 +402,10 @@ void ASND_End()
        usleep(100);
        AUDIO_RegisterDMACallback(NULL);
        DSP_DI_HANDLER=1;
-	   DSP_CancelTask(&dsp_task);
-	   DSP_AssertInt();
+	   dsp_done = 0;
+	   DSP_SendMailTo(0x999);
+	   while(DSP_CheckMailTo());
+	   while(!dsp_done);
 	   asnd_inited=0;
    }
 }
