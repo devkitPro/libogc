@@ -232,10 +232,9 @@ static void putpacket(const char *buffer)
 	const char *inp;
 	static char outbuf[2048];
 
-	outbuf[0] = '+';
 	do {
 		inp = buffer;
-		ptr = &outbuf[1];
+		ptr = outbuf;
 		
 		*ptr++ = '$';
 		
@@ -286,6 +285,7 @@ static void getpacket(char *buffer)
 			
 			if(chksum!=xmitsum) putdbgchar('-');
 			else {
+				putdbgchar('+');
 				if(buffer[2]==':') {
 					putdbgchar(buffer[0]);
 					putdbgchar(buffer[1]);
@@ -462,6 +462,13 @@ void c_debug_handler(frame_context *frame)
 				strcpy(remcomOutBuffer,"OK");
 				host_has_detached = 1;
 				break;
+			case 'k':
+				dbg_instep = 0;
+				dbg_active = 0;
+				frame->SRR1 &= ~MSR_SE;
+				frame->SRR0 = 0x80001800;
+				host_has_detached = 1;
+				goto exit;
 			case 'g':
 				regptr = frame;
 				ptr = remcomOutBuffer;
