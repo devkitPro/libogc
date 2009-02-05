@@ -2716,11 +2716,14 @@ void GX_LoadNrmMtxIdx3x3(u16 mtxidx,u32 pnidx)
 
 void GX_LoadTexMtxImm(Mtx mt,u32 texidx,u8 type)
 {
-	u32 addr;
+	u32 addr = 0;
 	u32 rows = (type==GX_MTX2x4)?2:3;
 
-	if(texidx<GX_DTTMTX0) addr = 0x0000|(_SHIFTL(texidx,2,8));
-	else addr = 0x0500|(_SHIFTL((texidx-GX_DTTMTX0),2,8));
+	if(texidx<GX_DTTMTX0) addr = (_SHIFTL(texidx,2,8));
+	else {
+		texidx -= GX_DTTMTX0;
+		addr = 0x0500 + (_SHIFTL(texidx,2,8));
+	}
 
 	GX_LOAD_XF_REGS(addr,(rows*4));
 	if(type==GX_MTX2x4)
