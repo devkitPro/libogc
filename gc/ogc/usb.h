@@ -82,6 +82,8 @@ typedef struct _usbinterfacedesc
 	u8 bInterfaceSubClass;
 	u8 bInterfaceProtocol;
 	u8 iInterface;
+	u8 *extra;
+	u8 extra_size;
 	struct _usbendpointdesc *endpoints;
 } ATTRIBUTE_PACKED usb_interfacedesc;
 
