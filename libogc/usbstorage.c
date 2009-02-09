@@ -554,6 +554,7 @@ free_and_return:
 	if(max_lun!=NULL) __lwp_heap_free(&__heap, max_lun);
 	if(retval < 0)
 	{
+		USB_CloseDevice(&dev->usb_fd);
 		LWP_MutexDestroy(dev->lock);
 		LWP_CondDestroy(dev->cond);
 		if(dev->buffer != NULL)
