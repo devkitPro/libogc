@@ -646,7 +646,7 @@ s32 ASND_StatusVoice(s32 voice)
 
 	if(voice<0 || voice>=MAX_SND_VOICES) return SND_INVALID; // invalid voice
 
-	_CPU_ISR_Disable(level)
+	_CPU_ISR_Disable(level);
 	if(!(sound_data[voice].flags>>16)) status=SND_UNUSED;
 	if(sound_data[voice].flags & VOICE_PAUSE) status=SND_WAITING;
 	_CPU_ISR_Restore(level);
@@ -665,7 +665,7 @@ s32 ASND_ChangeVolumeVoice(s32 voice, s32 volume_l, s32 volume_r)
 	volume_l &=255;
 	volume_r &=255;
 
-	_CPU_ISR_Disable(level)
+	_CPU_ISR_Disable(level);
 	sound_data[voice].flags |=VOICE_VOLUPDATE;
 	sound_data[voice].volume_l= sound_data[voice].volume2_l= volume_l;
 	sound_data[voice].volume_r= sound_data[voice].volume2_r= volume_r;
