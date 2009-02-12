@@ -759,9 +759,9 @@ ps_guQuatMultiply:
 	ps_merge10	fr8,fr8,fr8
 	ps_madds1	fr10,fr0,fr3,fr10
 	ps_merge10	fr9,fr9,fr9
-	ps_add		fr8,fr8,fr8
+	ps_add		fr8,fr8,fr10
 	psq_st		fr8,0(r5),0,0
-	ps_sub		fr9,fr9,fr9
+	ps_sub		fr9,fr9,fr11
 	psq_st		fr9,8(r5),0,0
 	blr
 
