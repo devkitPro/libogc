@@ -71,6 +71,9 @@
 #define SMB_SETUP_ANDX				0x73
 #define SMB_TREEC_ANDX				0x75
 
+#define NBT_KEEPALIVE_MSG			0x85
+#define KEEPALIVE_SIZE				4
+
 /**
  * SMBTrans2 
  */
@@ -349,12 +352,21 @@ static void MakeTRANS2Header(u8 subcommand,SMBHANDLE *handle)
 static s32 SMBCheck(u8 command, s32 readlen,SMBHANDLE *handle)
 {
 	s32 ret,recvd;
-	u8 *ptr = handle->message.smb;
+	u8 *ptr2,*ptr = handle->message.smb;
 	NBTSMB *nbt = &handle->message;
 
+	ptr2 = (u8*)nbt;
 	memset(nbt,0,sizeof(NBTSMB));
-	recvd = net_recv(handle->sck_server,nbt,readlen,0);
+	recvd = net_recv(handle->sck_server,ptr2,readlen,0);
 	if(recvd<12) return SMB_BAD_DATALEN;
+
+	// Verify and ignore keepalive packet
+	while(nbt->msg==NBT_KEEPALIVE_MSG) {
+		// discard KEEPALIVE packet
+		memmove(ptr2,ptr2+KEEPALIVE_SIZE,readlen-KEEPALIVE_SIZE);
+		recvd = net_recv(handle->sck_server,ptr2+(readlen-KEEPALIVE_SIZE),KEEPALIVE_SIZE,0);
+		if(recvd<KEEPALIVE_SIZE) return SMB_BAD_DATALEN;
+	}
 
 	/*** Do basic SMB Header checks ***/
 	ret = getUInt(ptr,SMB_OFFSET_PROTO);
