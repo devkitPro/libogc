@@ -119,8 +119,8 @@ struct __gx_texregion
 
 struct __gx_tlutregion
 {
-	u32 tmem_baseaddr;
-	u32 tmem_addr;
+	u32 tmem_addr_conf;
+	u32 tmem_addr_base;
 	u32 tlut_maddr;
 	u16 tlut_nentries;
 	u8 _pad[2];

@@ -2971,10 +2971,10 @@ void GX_InitTlutRegion(GXTlutRegion *region,u32 tmem_addr,u8 tlut_sz)
 
 	tmem_addr -= 0x80000;
 
-	ptr->tmem_addr = 0;
-	ptr->tmem_addr = (ptr->tmem_addr&~0x3ff)|(_SHIFTR(tmem_addr,9,10));
-	ptr->tmem_addr = (ptr->tmem_addr&~0x1FFC00)|(_SHIFTL(tlut_sz,10,10));
-	ptr->tmem_addr = (ptr->tmem_addr&~0xff000000)|(_SHIFTL(0x65,24,8));
+	ptr->tmem_addr_conf = 0;
+	ptr->tmem_addr_conf = (ptr->tmem_addr_conf&~0x3ff)|(_SHIFTR(tmem_addr,9,10));
+	ptr->tmem_addr_conf = (ptr->tmem_addr_conf&~0x1FFC00)|(_SHIFTL(tlut_sz,10,10));
+	ptr->tmem_addr_conf = (ptr->tmem_addr_conf&~0xff000000)|(_SHIFTL(0x65,24,8));
 }
 
 void GX_InitTexObj(GXTexObj *obj,void *img_ptr,u16 wd,u16 ht,u8 fmt,u8 wrap_s,u8 wrap_t,u8 mipmap)
@@ -3098,8 +3098,8 @@ void GX_InitTlutObj(GXTlutObj *obj,void *lut,u8 fmt,u16 entries)
 
 	memset(obj,0,sizeof(GXTlutObj));
 	
-	ptr->tlut_fmt = (ptr->tlut_fmt&~0xC00)|(_SHIFTL(fmt,10,2));
-	ptr->tlut_maddr = (ptr->tlut_maddr&~0x01ffffff)|(_SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(lut),5,24));
+	ptr->tlut_fmt = _SHIFTL(fmt,10,2);
+	ptr->tlut_maddr = (ptr->tlut_maddr&~0x00ffffff)|(_SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(lut),5,24));
 	ptr->tlut_maddr = (ptr->tlut_maddr&~0xff000000)|(_SHIFTL(0x64,24,8));
 	ptr->tlut_nentries = entries;
 }
@@ -3142,8 +3142,8 @@ void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid)
 	if(!(type&0x02)) {
 		if(tlut_regionCB)
 			tlut = (struct __gx_tlutregion*)tlut_regionCB(ptr->tex_tlut);
-		tlut->tmem_addr = (tlut->tmem_addr&~0xff000000)|(_SHIFTL(_gxtextlutids[mapid],24,8));
-		GX_LOAD_BP_REG(tlut->tlut_maddr);
+		tlut->tmem_addr_base = (tlut->tmem_addr_base&~0xff000000)|(_SHIFTL(_gxtextlutids[mapid],24,8));
+		GX_LOAD_BP_REG(tlut->tmem_addr_base);
 	}
 	
 	__gx->texMapSize[mapid] = ptr->tex_size;
@@ -3328,11 +3328,10 @@ void GX_LoadTlut(GXTlutObj *obj,u32 tlut_name)
 
 	__GX_FlushTextureState();
 	GX_LOAD_BP_REG(ptr->tlut_maddr);
-	GX_LOAD_BP_REG(region->tmem_baseaddr);
+	GX_LOAD_BP_REG(region->tmem_addr_conf);
 	__GX_FlushTextureState();
 
-	ptr->tlut_fmt = (region->tmem_baseaddr&0x3ff)|(ptr->tlut_fmt&~0x3ff);
-	region->tmem_addr = ptr->tlut_fmt;
+	region->tmem_addr_base = (ptr->tlut_fmt&~0x3ff)|(region->tmem_addr_conf&0x3ff);
 	region->tlut_maddr = ptr->tlut_maddr;
 	region->tlut_nentries = ptr->tlut_nentries;
 }
