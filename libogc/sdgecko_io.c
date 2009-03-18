@@ -17,6 +17,13 @@
 
 //#define _CARDIO_DEBUG
 
+// SDHC support
+// added by emu_kidid
+#define SECTOR_ADDRESSING					0
+#define BYTE_ADDRESSING						1
+#define TYPE_SD								0
+#define TYPE_SDHC							1
+
 #define MMC_ERROR_PARAM						0x0040
 #define MMC_ERROR_ADDRESS					0x0020
 #define MMC_ERROR_ERASE_SEQ					0x0010
@@ -75,6 +82,10 @@ static boolean _ioCardInserted[MAX_DRIVE];
 static u8 _ioResponse[MAX_DRIVE][128];
 static u8 _ioCrc7Table[256];
 static u16 _ioCrc16Table[256];
+
+// SDHC support
+static u32 _initType[MAX_DRIVE];
+static u32 _ioAddressingType[MAX_DRIVE];
 
 extern unsigned long gettick();
 
@@ -1075,6 +1086,26 @@ static s32 __card_response2(s32 drv_no)
 	return CARDIO_ERROR_FATALERROR;
 }
 
+static s32 __card_sendappcmd(s32 drv_no)
+{
+	s32 ret;
+	u8 ccmd[5] = {0,0,0,0,0};
+
+	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
+
+	ccmd[0] = 0x37;
+	if((ret=__card_writecmd(drv_no,ccmd,5))!=0) {
+#ifdef _CARDIO_DEBUG
+		printf("__card_sendappcmd(%d): sd write cmd failed.\n",ret);
+#endif
+		return ret;
+	}
+	if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],1))!=0) return ret;
+	ret = __check_response(drv_no,_ioResponse[drv_no][0]);
+
+	return ret;
+}
+
 static s32 __card_sendopcond(s32 drv_no)
 {
 	u8 ccmd[5] = {0,0,0,0,0};
@@ -1088,7 +1119,13 @@ static s32 __card_sendopcond(s32 drv_no)
 	ret = 0;
 	startT = gettick();
 	do {
-		ccmd[0] = 0x01;
+		if(_initType[drv_no]==TYPE_SDHC) {
+			__card_sendappcmd(drv_no);
+			ccmd[0] = 0x29;
+			ccmd[1] = 0x40;
+		} else
+			ccmd[0] = 0x01;
+
 		if((ret=__card_writecmd(drv_no,ccmd,5))!=0) {
 #ifdef _CARDIO_DEBUG
 			printf("__card_sendopcond(%d): sd write cmd failed.\n",ret);
@@ -1102,7 +1139,13 @@ static s32 __card_sendopcond(s32 drv_no)
 		ret = __card_checktimeout(drv_no,startT,1500);
 	} while(ret==0);
 
-	ccmd[0] = 0x01;
+	if(_initType[drv_no]==TYPE_SDHC) {
+		__card_sendappcmd(drv_no);
+		ccmd[0] = 0x29;
+		ccmd[1] = 0x40;
+	} else
+		ccmd[0] = 0x01;
+
 	if((ret=__card_writecmd(drv_no,ccmd,5))!=0) {
 #ifdef _CARDIO_DEBUG
 		printf("__card_sendopcond(%d): sd write cmd failed.\n",ret);
@@ -1116,21 +1159,43 @@ static s32 __card_sendopcond(s32 drv_no)
 	return CARDIO_ERROR_READY;
 }
 
-static s32 __card_sendappcmd(s32 drv_no)
+static s32 __card_sendCMD8(s32 drv_no)
 {
 	s32 ret;
 	u8 ccmd[5] = {0,0,0,0,0};
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
-	ccmd[0] = 0x37;
+	ccmd[0] = 0x08;
+	ccmd[3] = 0x01;
+	ccmd[4] = 0xAA;
 	if((ret=__card_writecmd(drv_no,ccmd,5))!=0){
 #ifdef _CARDIO_DEBUG
-		printf("__card_sendappcmd(%d): sd write cmd failed.\n",ret);
+		printf("__card_sendCMD8(%d): sd write cmd failed.\n",ret);
 #endif
 		return ret;
 	}
-	if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],1))!=0) return ret;
+	if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],5))!=0) return ret;
+	ret = __check_response(drv_no,_ioResponse[drv_no][0]);
+
+	return ret;
+}
+
+static s32 __card_sendCMD58(s32 drv_no)
+{
+	s32 ret;
+	u8 ccmd[5] = {0,0,0,0,0};
+
+	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
+
+	ccmd[0]= 0x3A;
+	if((ret=__card_writecmd(drv_no,ccmd,5))!=0) {
+#ifdef _CARDIO_DEBUG
+		printf("__card_sendCMD58(%d): sd write cmd failed.\n",ret);
+#endif
+		return ret;
+	}
+	if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],5))!=0) return ret;
 	ret = __check_response(drv_no,_ioResponse[drv_no][0]);
 
 	return ret;
@@ -1301,6 +1366,21 @@ static s32 __card_retrycb(s32 drv_no)
 	return sdgecko_initIO(drv_no);
 }
 
+static void __convert_sector(s32 drv_no,u32 sector_no,u8 *arg)
+{
+	if(_ioAddressingType[drv_no]==BYTE_ADDRESSING) {
+		arg[0] = (sector_no>>15)&0xff;
+		arg[1] = (sector_no>>7)&0xff;
+		arg[2] = (sector_no<<1)&0xff;
+		arg[3] = (sector_no<<9)&0xff;
+	} else if(_ioAddressingType[drv_no]==SECTOR_ADDRESSING) {
+		arg[0] = (sector_no>>24)&0xff;
+		arg[1] = (sector_no>>16)&0xff;
+		arg[2] = (sector_no>>8)&0xff;
+		arg[3] = sector_no&0xff;
+	}
+}
+
 void sdgecko_initIODefault()
 {
 	u32 i;
@@ -1314,6 +1394,8 @@ void sdgecko_initIODefault()
 		_ioError[i] = 0;
 		_ioCardInserted[i] = FALSE;
 		_ioFlag[i] = NOT_INITIALIZED;
+		_ioAddressingType[i] = BYTE_ADDRESSING;
+		_initType[i] = TYPE_SD;
 		LWP_InitQueue(&_ioEXILock[i]);
 	}
 }
@@ -1342,9 +1424,23 @@ s32 sdgecko_initIO(s32 drv_no)
 			if(__card_softreset(drv_no)!=0) goto exit;
 		}
 		
+		if(__card_sendCMD8(drv_no)!=0) goto exit;
+#ifdef _CARDIO_DEBUG
+		printf("Response %02X,%02X,%02X,%02X,%02X\n",_ioResponse[drv_no][0],_ioResponse[drv_no][1],_ioResponse[drv_no][2],_ioResponse[drv_no][3],_ioResponse[drv_no][4]);
+#endif
+		if((_ioResponse[drv_no][3]==1) && (_ioResponse[drv_no][4]==0xAA)) _initType[drv_no] = TYPE_SDHC;
+
 		if(__card_sendopcond(drv_no)!=0) goto exit;
 		if(__card_readcsd(drv_no)!=0) goto exit;
 		if(__card_readcid(drv_no)!=0) goto exit;
+
+		if(_initType[drv_no]==TYPE_SDHC) {
+			if(__card_sendCMD58(drv_no)!=0) goto exit;
+#ifdef _CARDIO_DEBUG
+			printf("Response %02X,%02X,%02X,%02X,%02X\n",_ioResponse[drv_no][0],_ioResponse[drv_no][1],_ioResponse[drv_no][2],_ioResponse[drv_no][3],_ioResponse[drv_no][4]);
+#endif
+			if(_ioResponse[drv_no][1]&0x40) _ioAddressingType[drv_no] = SECTOR_ADDRESSING;     
+		}
 
 		_ioPageSize[drv_no] = 1<<WRITE_BL_LEN(drv_no);
 		if(__card_setblocklen(drv_no,_ioPageSize[drv_no])!=0) goto exit; 
@@ -1433,10 +1529,8 @@ s32 sdgecko_readSector(s32 drv_no,u32 sector_no,u8 *buf,u32 len)
 #ifdef _CARDIO_DEBUG
 	printf("sdgecko_readSector(%d,%d,%d,%d)\n",drv_no,sector_no,len,_ioPageSize[drv_no]);
 #endif
-	arg[0] = (sector_no>>15)&0xff;
-	arg[1] = (sector_no>>7)&0xff;
-	arg[2] = (sector_no<<1)&0xff;
-	arg[3] = (sector_no<<9)&0xff;
+	// SDHC support fix
+	__convert_sector(drv_no,sector_no,arg);
 
 	if(len!=_ioPageSize[drv_no]) {
 		_ioPageSize[drv_no] = len;
@@ -1463,10 +1557,8 @@ s32 sdgecko_writeSector(s32 drv_no,u32 sector_no,const void *buf,u32 len)
 #ifdef _CARDIO_DEBUG
 	printf("sdgecko_writeSector(%d,%d,%d,%d)\n",drv_no,sector_no,len,_ioPageSize[drv_no]);
 #endif
-	arg[0] = (sector_no>>15)&0xff;
-	arg[1] = (sector_no>>7)&0xff;
-	arg[2] = (sector_no<<1)&0xff;
-	arg[3] = (sector_no<<9)&0xff;
+	// SDHC support fix
+	__convert_sector(drv_no,sector_no,arg);
 
 	if(len!=_ioPageSize[drv_no]) {
 		_ioPageSize[drv_no] = len;
@@ -1504,17 +1596,13 @@ s32 sdgecko_erasePartialBlock(s32 drv_no,u32 block_no,u32 offset,u32 len)
 
 	sect_end = (sect_start+(len/PAGE_SIZE512));
 
-	arg[0] = (sect_start>>15)&0xff;
-	arg[1] = (sect_start>>7)&0xff;
-	arg[2] = (sect_start<<1)&0xff;
-	arg[3] = (sect_start<<9)&0xff;
+	// SDHC support fix
+	__convert_sector(drv_no,sect_start,arg);
 	if((ret=__card_sendcmd(drv_no,0x20,arg))!=0) return ret;
 	if((ret=__card_response1(drv_no))!=0) return ret;
 
-	arg[0] = (sect_end>>15)&0xff;
-	arg[1] = (sect_end>>7)&0xff;
-	arg[2] = (sect_end<<1)&0xff;
-	arg[3] = (sect_end<<9)&0xff;
+	// SDHC support fix
+	__convert_sector(drv_no,sect_end,arg);
 	if((ret=__card_sendcmd(drv_no,0x21,arg))!=0) return ret;
 	if((ret=__card_response1(drv_no))!=0) return ret;
 
@@ -1543,17 +1631,13 @@ s32 sdgecko_eraseWholeBlock(s32 drv_no,u32 block_no)
 	sect_start = block_no*sects_per_block;
 	sect_end = (sect_start+sects_per_block);
 
-	arg[0] = (sect_start>>15)&0xff;
-	arg[1] = (sect_start>>7)&0xff;
-	arg[2] = (sect_start<<1)&0xff;
-	arg[3] = (sect_start<<9)&0xff;
+	// SDHC support fix
+	__convert_sector(drv_no,sect_start,arg);
 	if((ret=__card_sendcmd(drv_no,0x20,arg))!=0) return ret;
 	if((ret=__card_response1(drv_no))!=0) return ret;
 
-	arg[0] = (sect_end>>15)&0xff;
-	arg[1] = (sect_end>>7)&0xff;
-	arg[2] = (sect_end<<1)&0xff;
-	arg[3] = (sect_end<<9)&0xff;
+	// SDHC support fix
+	__convert_sector(drv_no,sect_end,arg);
 	if((ret=__card_sendcmd(drv_no,0x21,arg))!=0) return ret;
 	if((ret=__card_response1(drv_no))!=0) return ret;
 
@@ -1575,17 +1659,14 @@ s32 sdgecko_eraseSector(s32 drv_no,u32 sector_no)
 #ifdef _CARDIO_DEBUG
 	printf("sdgecko_eraseSector(%d,%d)\n",drv_no,sector_no);
 #endif
-	arg[0] = (sector_no>>15)&0xff;
-	arg[1] = (sector_no>>7)&0xff;
-	arg[2] = (sector_no<<1)&0xff;
-	arg[3] = (sector_no<<9)&0xff;
+
+	// SDHC support fix
+	__convert_sector(drv_no,sector_no,arg);
 	if((ret=__card_sendcmd(drv_no,0x20,arg))!=0) return ret;
 	if((ret=__card_response1(drv_no))!=0) return ret;
 
-	arg[0] = ((sector_no+1)>>15)&0xff;
-	arg[1] = ((sector_no+1)>>7)&0xff;
-	arg[2] = ((sector_no+1)<<1)&0xff;
-	arg[3] = ((sector_no+1)<<9)&0xff;
+	// SDHC support fix
+	__convert_sector(drv_no,(sector_no+1),arg);
 	if((ret=__card_sendcmd(drv_no,0x21,arg))!=0) return ret;
 	if((ret=__card_response1(drv_no))!=0) return ret;
 
