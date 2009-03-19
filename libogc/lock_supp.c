@@ -1,4 +1,3 @@
-#include <config.h>
 #include <_ansi.h>
 #include <_syslist.h>
 #include <stdio.h>
