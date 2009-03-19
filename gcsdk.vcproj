@@ -633,6 +633,10 @@
 					</FileConfiguration>
 				</File>
 				<File
+					RelativePath=".\libogc\gx_regdef.h"
+					>
+				</File>
+				<File
 					RelativePath="libogc\ios.c"
 					>
 					<FileConfiguration
@@ -2173,6 +2177,14 @@
 					</FileConfiguration>
 				</File>
 				<File
+					RelativePath=".\libmad\bit.h"
+					>
+				</File>
+				<File
+					RelativePath=".\libmad\config.h"
+					>
+				</File>
+				<File
 					RelativePath="libmad\D.dat"
 					>
 				</File>
@@ -2197,6 +2209,10 @@
 					</FileConfiguration>
 				</File>
 				<File
+					RelativePath=".\libmad\decoder.h"
+					>
+				</File>
+				<File
 					RelativePath="libmad\fixed.c"
 					>
 					<FileConfiguration
@@ -2215,6 +2231,10 @@
 							PreprocessorDefinitions=""
 						/>
 					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\libmad\fixed.h"
+					>
 				</File>
 				<File
 					RelativePath="libmad\frame.c"
@@ -2237,6 +2257,14 @@
 					</FileConfiguration>
 				</File>
 				<File
+					RelativePath=".\libmad\frame.h"
+					>
+				</File>
+				<File
+					RelativePath=".\libmad\global.h"
+					>
+				</File>
+				<File
 					RelativePath="libmad\huffman.c"
 					>
 					<FileConfiguration
@@ -2255,6 +2283,10 @@
 							PreprocessorDefinitions=""
 						/>
 					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\libmad\huffman.h"
+					>
 				</File>
 				<File
 					RelativePath="libmad\imdct_s.dat"
@@ -2281,6 +2313,10 @@
 					</FileConfiguration>
 				</File>
 				<File
+					RelativePath=".\libmad\layer12.h"
+					>
+				</File>
+				<File
 					RelativePath="libmad\layer3.c"
 					>
 					<FileConfiguration
@@ -2299,6 +2335,10 @@
 							PreprocessorDefinitions=""
 						/>
 					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\libmad\layer3.h"
+					>
 				</File>
 				<File
 					RelativePath="libmad\mp3player.c"
@@ -2353,6 +2393,10 @@
 					</FileConfiguration>
 				</File>
 				<File
+					RelativePath=".\libmad\stream.h"
+					>
+				</File>
+				<File
 					RelativePath="libmad\synth.c"
 					>
 					<FileConfiguration
@@ -2371,6 +2415,10 @@
 							PreprocessorDefinitions=""
 						/>
 					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\libmad\synth.h"
+					>
 				</File>
 				<File
 					RelativePath="libmad\timer.c"
@@ -2393,6 +2441,10 @@
 					</FileConfiguration>
 				</File>
 				<File
+					RelativePath=".\libmad\timer.h"
+					>
+				</File>
+				<File
 					RelativePath="libmad\version.c"
 					>
 					<FileConfiguration
@@ -2411,6 +2463,10 @@
 							PreprocessorDefinitions=""
 						/>
 					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\libmad\version.h"
+					>
 				</File>
 			</Filter>
 			<Filter
@@ -3462,6 +3518,14 @@
 					>
 				</File>
 				<File
+					RelativePath=".\wiiuse\speaker.c"
+					>
+				</File>
+				<File
+					RelativePath=".\wiiuse\speaker.h"
+					>
+				</File>
+				<File
 					RelativePath=".\wiiuse\wiiboard.c"
 					>
 				</File>
@@ -3655,6 +3719,14 @@
 					>
 				</File>
 			</Filter>
+			<Filter
+				Name="libiso9660"
+				>
+				<File
+					RelativePath=".\libiso9660\iso9660.c"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -3682,6 +3754,10 @@
 			</File>
 			<File
 				RelativePath="gc\gcutil.h"
+				>
+			</File>
+			<File
+				RelativePath=".\gc\iso9660.h"
 				>
 			</File>
 			<File
@@ -4133,66 +4209,6 @@
 				</File>
 				<File
 					RelativePath="gc\modplay\semitonetab.h"
-					>
-				</File>
-			</Filter>
-			<Filter
-				Name="mad.h"
-				>
-				<File
-					RelativePath="gc\mad\bit.h"
-					>
-				</File>
-				<File
-					RelativePath="gc\mad\config.h"
-					>
-				</File>
-				<File
-					RelativePath="gc\mad\decoder.h"
-					>
-				</File>
-				<File
-					RelativePath="gc\mad\fixed.h"
-					>
-				</File>
-				<File
-					RelativePath="gc\mad\frame.h"
-					>
-				</File>
-				<File
-					RelativePath="gc\mad\global.h"
-					>
-				</File>
-				<File
-					RelativePath="gc\mad\huffman.h"
-					>
-				</File>
-				<File
-					RelativePath="gc\mad\layer12.h"
-					>
-				</File>
-				<File
-					RelativePath="gc\mad\layer3.h"
-					>
-				</File>
-				<File
-					RelativePath="gc\mad\mad.h"
-					>
-				</File>
-				<File
-					RelativePath="gc\mad\stream.h"
-					>
-				</File>
-				<File
-					RelativePath="gc\mad\synth.h"
-					>
-				</File>
-				<File
-					RelativePath="gc\mad\timer.h"
-					>
-				</File>
-				<File
-					RelativePath="gc\mad\version.h"
 					>
 				</File>
 			</Filter>
