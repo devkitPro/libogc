@@ -31,7 +31,6 @@ typedef struct _keyinput {
 	u16 up;
 	u16 down;
 	u16 state;
-	u16 oldstate;
 	u32 chan;
 } keyinput;
 
@@ -737,9 +736,8 @@ u32 PAD_ScanPads()
 				__pad_keys[i].substickY	= padstatus[i].substickY;
 				__pad_keys[i].triggerL	= padstatus[i].triggerL;
 				__pad_keys[i].triggerR	= padstatus[i].triggerR;
-				__pad_keys[i].up		= (oldstate^state)&oldstate;
-				__pad_keys[i].down		= (oldstate^state)&state;
-				__pad_keys[i].oldstate	= oldstate;
+				__pad_keys[i].up		= oldstate&~state;
+				__pad_keys[i].down		= state&(state^oldstate);
 				__pad_keys[i].state		= state;
 				__pad_keys[i].chan		= i;
 			}
@@ -748,9 +746,6 @@ u32 PAD_ScanPads()
 			if(__pad_keys[i].chan!=-1) memset(&__pad_keys[i],0,sizeof(keyinput));
 			__pad_keys[i].chan = -1;
 			resetBits |= padBit;
-		} else {
-			if(__pad_keys[i].chan!=-1) memset(&__pad_keys[i],0,sizeof(keyinput));
-			__pad_keys[i].chan = -1;
 		}
 	}
 #ifdef _PAD_DEBUG
