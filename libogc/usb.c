@@ -464,6 +464,31 @@ free_and_error:
 	return retval;
 }
 
+s32 USB_GetHIDDescriptor(s32 fd,usb_hiddesc *uhd)
+{
+	u8 *buffer = NULL;
+	s32 retval = IPC_OK;
+
+	buffer = iosAlloc(hId,sizeof(usb_hiddesc));
+	if(buffer==NULL) {
+		retval = IPC_ENOMEM;
+		goto free_and_error;
+	}
+
+	retval = __usb_getdesc(fd,buffer,USB_DT_HID,0,USB_DT_HID_SIZE);
+	if(retval<0) goto free_and_error;
+
+	memcpy(uhd,buffer,USB_DT_HID_SIZE);
+	uhd->bcdHID = bswap16(uhd->bcdHID);
+	uhd->descr[0].wDescriptorLength = bswap16(uhd->descr[0].wDescriptorLength);
+
+	retval = IPC_OK;
+
+free_and_error:
+	if(buffer!=NULL) iosFree(hId,buffer);
+	return retval;
+}
+
 void USB_FreeDescriptors(usb_devdesc *udd)
 {
 	int iConf, iInterface;
