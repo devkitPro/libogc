@@ -35,6 +35,7 @@ s32 sdgecko_readCID(s32 drv_no);
 s32 sdgecko_readCSD(s32 drv_no);
 s32 sdgecko_readStatus(s32 drv_no);
 s32 sdgecko_readSector(s32 drv_no,u32 sector_no,u8 *buf,u32 len);
+s32 sdgecko_readSectors(s32 drv_no,u32 sector_no,u8 *buf,u32 num_sectors);
 s32 sdgecko_writeSector(s32 drv_no,u32 sector_no,const void *buf,u32 len);
 s32 sdgecko_eraseSector(s32 drv_no,u32 sector_no);
 s32 sdgecko_erasePartialBlock(s32 drv_no,u32 block_no,u32 offset,u32 len);
