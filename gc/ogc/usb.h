@@ -17,6 +17,8 @@
 #define USB_DT_STRING					0x03
 #define USB_DT_INTERFACE				0x04
 #define USB_DT_ENDPOINT					0x05
+#define USB_DT_HID						0x21
+#define USB_DT_REPORT					0x22
 
 /* Standard requests */
 #define USB_REQ_GETSTATUS				0x00
@@ -37,6 +39,7 @@
 #define USB_DT_INTERFACE_SIZE			9
 #define USB_DT_ENDPOINT_SIZE			7
 #define USB_DT_ENDPOINT_AUDIO_SIZE		9	/* Audio extension */
+#define USB_DT_HID_SIZE					9
 #define USB_DT_HUB_NONVAR_SIZE			7
 
 /* control message request type bitmask */
@@ -53,6 +56,7 @@
 
 #define USB_FEATURE_ENDPOINT_HALT		0
     
+#define USB_ENDPOINT_INTERRUPT			0x03
 #define USB_ENDPOINT_IN					0x80
 #define USB_ENDPOINT_OUT				0x00
 
@@ -119,6 +123,19 @@ typedef struct _usbdevdesc
 	struct _usbconfdesc *configurations;
 } ATTRIBUTE_PACKED usb_devdesc;
 
+typedef struct _usbhiddesc
+{
+	u8 bLength;
+	u8 bDescriptorType;
+	u16 bcdHID;
+	u8 bCountryCode;
+	u8 bNumDescriptors;
+	struct {
+		u8 bDescriptorType;
+		u16 wDescriptorLength;
+	} descr[1];
+} ATTRIBUTE_PACKED usb_hiddesc;
+
 typedef s32 (*usbcallback)(s32 result,void *usrdata);
 
 s32 USB_Initialize();
@@ -130,6 +147,8 @@ s32 USB_CloseDeviceAsync(s32 *fd,usbcallback cb,void *usrdata);
 
 s32 USB_GetDescriptors(s32 fd, usb_devdesc *udd);
 void USB_FreeDescriptors(usb_devdesc *udd);
+
+s32 USB_GetHIDDescriptor(s32 fd,usb_hiddesc *uhd);
 
 s32 USB_GetDeviceDescription(s32 fd,usb_devdesc *devdesc);
 s32 USB_DeviceRemovalNotifyAsync(s32 fd,usbcallback cb,void *userdata);
