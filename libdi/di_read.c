@@ -76,7 +76,7 @@ Internal function, used when a modchip has been detected.
 Please refrain from using this function directly.
 */
 int _DI_ReadDVD_A8(void* buf, uint32_t len, uint32_t lba){
-	int ret, retry_count = MAX_RETRY;
+	int ret, retry_count = LIBDI_MAX_RETRY;
 	
 	if(!buf){
 		errno = EINVAL;
@@ -107,7 +107,7 @@ Internal function, used when the drive is DVDVideo compatible.
 Please refrain from using this function directly.
 */
 int _DI_ReadDVD_D0(void* buf, uint32_t len, uint32_t lba){
-	int ret, retry_count = MAX_RETRY;
+	int ret, retry_count = LIBDI_MAX_RETRY;
 	
 	if(!buf){
 		errno = EINVAL;

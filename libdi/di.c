@@ -45,17 +45,31 @@ int DI_Init(){
 
 	if(!init){
 		__DI_LoadStub();	// Marcan's 1337 magics happen here!
-		LWP_MutexInit(&bufferMutex, false);
 		init = 1;
 	}
 
 	if(di_fd < 0)
 		di_fd = IOS_Open(di_path, 2);
 
+	if(!bufferMutex)
+		LWP_MutexInit(&bufferMutex, false);
+
 	return (di_fd >= 0)? di_fd : -1;
 }
 
 void DI_Mount(){
+	uint32_t status;
+
+	if(DI_GetCoverRegister(&status)!=0) {
+		state = DVD_NO_DISC;
+		return;
+	}
+
+	if((status&DVD_COVER_DISC_INSERTED)==0) {
+		state = DVD_NO_DISC;
+		return;
+	}
+
 	state = DVD_INIT | DVD_NO_DISC;
 	_cover_callback(1, NULL);	// Initialize the callback chain.
 }
@@ -69,14 +83,19 @@ void DI_Close(){
 	DI_ReadDVDptr = NULL;
 	DI_ReadDVDAsyncptr = NULL;
 	state = DVD_INIT | DVD_NO_DISC;
+
+	if(bufferMutex) {
+		LWP_MutexDestroy(bufferMutex);
+		bufferMutex = 0;
+	}
 }
 	
 
-#define COVER_CLOSED (*((uint32_t*)usrdata) & 0x2)
+#define COVER_CLOSED (*((uint32_t*)usrdata) & DVD_COVER_DISC_INSERTED)
 
 static int _cover_callback(int ret, void* usrdata){
 	static int cur_state = 0;
-	static int retry_count = MAX_RETRY;
+	static int retry_count = LIBDI_MAX_RETRY;
 	const int callback_table[] = {
 		DVD_GETCOVER,
 		DVD_WAITFORCOVERCLOSE,
@@ -96,13 +115,13 @@ static int _cover_callback(int ret, void* usrdata){
 			else
 				cur_state++; // If the previous callback succeeded, moving on to the next
 
-			retry_count = MAX_RETRY;
+			retry_count = LIBDI_MAX_RETRY;
 		}
 		else
 		{
 			retry_count--;
 			if(retry_count < 0){		// Drive init failed for unknown reasons.
-				retry_count = MAX_RETRY;
+				retry_count = LIBDI_MAX_RETRY;
 				cur_state = 0;
 				state = DVD_UNKNOWN;
 				return 0;
@@ -129,7 +148,7 @@ static int _cover_callback(int ret, void* usrdata){
 		if(di_cb)
 			di_cb(state,0);
 
-		retry_count = MAX_RETRY;
+		retry_count = LIBDI_MAX_RETRY;
 		cur_state = 0;
 	}
 	return 0;
@@ -317,7 +336,7 @@ Returns 0x800 bytes worth of Disc key
 int DI_ReadDVDDiscKey(void* buf){
 
 	int ret;
-	int retry_count = MAX_RETRY;
+	int retry_count = LIBDI_MAX_RETRY;
 
 	if(!buf){
 		errno = EINVAL;
@@ -352,7 +371,7 @@ int DI_ReadDVDPhysical(void* buf){
 
 
 	int ret;
-	int retry_count = MAX_RETRY;
+	int retry_count = LIBDI_MAX_RETRY;
 
 	if(!buf){
 		errno = EINVAL;
@@ -531,7 +550,7 @@ int DI_Read(void *buf, uint32_t size, uint32_t offset)
 
 int DI_UnencryptedRead(void *buf, uint32_t size, uint32_t offset)
 {
-	int ret, retry_count = MAX_RETRY;
+	int ret, retry_count = LIBDI_MAX_RETRY;
 
 	if(!buf){
 		errno = EINVAL;
@@ -578,3 +597,49 @@ int DI_ReadDiscID(uint64_t *id)
 	LWP_MutexUnlock(bufferMutex);
 	return(ret == 1)? 0 : -ret;
 }
+
+bool diio_Startup()
+{
+	return true;
+}
+
+bool diio_Shutdown()
+{
+	return true;
+}
+
+bool diio_ReadSectors(sec_t sector,sec_t numSectors,void *buffer)
+{
+	return true;
+}
+
+bool diio_WriteSectors(sec_t sector,sec_t numSectors,const void *buffer)
+{
+	return true;
+}
+
+bool diio_ClearStatus()
+{
+	return true;
+}
+
+bool diio_IsInserted()
+{
+	return true;
+}
+
+bool diio_IsInitialized()
+{
+	return true;
+}
+
+const DISC_INTERFACE __io_wiidvd = {
+	DEVICE_TYPE_WII_DVD,
+	FEATURE_MEDIUM_CANREAD | FEATURE_WII_DVD,
+	(FN_MEDIUM_STARTUP)&diio_Startup,
+	(FN_MEDIUM_ISINSERTED)&diio_IsInserted,
+	(FN_MEDIUM_READSECTORS)&diio_ReadSectors,
+	(FN_MEDIUM_WRITESECTORS)&diio_WriteSectors,
+	(FN_MEDIUM_CLEARSTATUS)&diio_ClearStatus,
+	(FN_MEDIUM_SHUTDOWN)&diio_Shutdown
+};
