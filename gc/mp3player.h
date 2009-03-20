@@ -1,7 +1,7 @@
 #ifndef __MP3PLAYER_H__
 #define __MP3PLAYER_H__
 
-#include <mad/mad.h>
+#include <mad.h>
 #include <gctypes.h>
 
 #ifdef __cplusplus
