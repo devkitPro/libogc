@@ -49,6 +49,7 @@ export WIIUSEDIR	:= $(BASEDIR)/wiiuse
 export TINYSMBDIR	:= $(BASEDIR)/libtinysmb
 export LIBZDIR		:= $(BASEDIR)/libz
 export LIBASNDDIR	:= $(BASEDIR)/libasnd
+export LIBWIIKEYB	:= $(BASEDIR)/libwiikeyboard
 export STUBSDIR		:= $(BASEDIR)/lockstubs
 export DEPS			:=	$(BASEDIR)/deps
 export LIBS			:=	$(BASEDIR)/lib
@@ -79,13 +80,14 @@ WIIUSELIB	:= $(LIBDIR)/libwiiuse
 TINYSMBLIB	:= $(LIBDIR)/libtinysmb
 ZLIB		:= $(LIBDIR)/libz
 ASNDLIB		:= $(LIBDIR)/libasnd
+WIIKEYBLIB	:= $(LIBDIR)/libwiikeyboard
 STUBSLIB	:= $(LIBDIR)/libgclibstubs
 
 #---------------------------------------------------------------------------------
 DEFINCS		:= -I$(BASEDIR) -I$(BASEDIR)/gc
 INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/ogc -I$(BASEDIR)/gc/ogc/machine \
-				-I$(BASEDIR)/gc/modplay -I$(BASEDIR)/gc/mad \
+				-I$(BASEDIR)/gc/modplay \
 				-I$(BASEDIR)/gc/z -I$(BASEDIR)/gc/bte \
 				-I$(BASEDIR)/gc/sdcard -I$(BASEDIR)/gc/wiiuse \
 				-I$(BASEDIR)/gc/di
@@ -123,6 +125,7 @@ VPATH :=	$(LWIPDIR)				\
 			$(TINYSMBDIR)		\
 			$(LIBZDIR)		\
 			$(LIBASNDDIR)		\
+			$(LIBWIIKEYB)		\
 			$(STUBSDIR)
 
 
@@ -182,6 +185,9 @@ ZLIBOBJ		:=	adler32.o compress.o crc32.o gzio.o uncompr.o \
 
 #---------------------------------------------------------------------------------
 ASNDLIBOBJ	:=	asndlib.o
+
+#---------------------------------------------------------------------------------
+WIIKEYBLIBOBJ	:=	usbkeyboard.o keyboard.o ukbdmap.o wskbdutil.o
 
 #---------------------------------------------------------------------------------
 # Build rules:
@@ -273,6 +279,8 @@ $(ZLIB).a: $(ZLIBOBJ)
 #---------------------------------------------------------------------------------
 $(ASNDLIB).a: $(ASNDLIBOBJ)
 #---------------------------------------------------------------------------------
+$(WIIKEYBLIB).a: $(WIIKEYBLIBOBJ)
+#---------------------------------------------------------------------------------
 $(BTELIB).a: $(BTEOBJ)
 #---------------------------------------------------------------------------------
 $(WIIUSELIB).a: $(WIIUSEOBJ)
@@ -288,18 +296,18 @@ install-headers:
 	@mkdir -p $(INCDIR)/bte
 	@mkdir -p $(INCDIR)/wiiuse
 	@mkdir -p $(INCDIR)/modplay
-	@mkdir -p $(INCDIR)/mad
 	@mkdir -p $(INCDIR)/sdcard
 	@mkdir -p $(INCDIR)/di
+	@mkdir -p $(INCDIR)/wiikeyboard
 	@cp ./gc/*.h $(INCDIR)
 	@cp ./gc/ogc/*.h $(INCDIR)/ogc
 	@cp ./gc/ogc/machine/*.h $(INCDIR)/ogc/machine
 	@cp ./gc/bte/*.h $(INCDIR)/bte
 	@cp ./gc/wiiuse/*.h $(INCDIR)/wiiuse
 	@cp ./gc/modplay/*.h $(INCDIR)/modplay
-	@cp ./gc/mad/*.h $(INCDIR)/mad
 	@cp ./gc/sdcard/*.h $(INCDIR)/sdcard
 	@cp ./gc/di/*.h $(INCDIR)/di
+	@cp ./gc/wiikeyboard/*.h $(INCDIR)/wiikeyboard
 
 #---------------------------------------------------------------------------------
 install: install-headers
@@ -325,7 +333,7 @@ ifeq ($(PLATFORM),cube)
 LIBRARIES	+=	$(BBALIB).a 
 endif
 ifeq ($(PLATFORM),wii)
-LIBRARIES	+=	$(BTELIB).a $(WIIUSELIB).a $(DILIB).a
+LIBRARIES	+=	$(BTELIB).a $(WIIUSELIB).a $(DILIB).a $(WIIKEYBLIB).a
 endif
 
 #---------------------------------------------------------------------------------
