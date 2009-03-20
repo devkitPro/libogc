@@ -40,6 +40,7 @@
 #define FEATURE_GAMECUBE_SLOTB      0x00000020
 #define FEATURE_WII_SD              0x00000100
 #define FEATURE_WII_USB             0x00000200
+#define FEATURE_WII_DVD             0x00000400
 
 typedef uint32_t sec_t;
 
