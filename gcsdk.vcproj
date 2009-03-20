@@ -3727,6 +3727,30 @@
 					>
 				</File>
 			</Filter>
+			<Filter
+				Name="libwiikeyboard"
+				>
+				<File
+					RelativePath=".\libwiikeyboard\keyboard.c"
+					>
+				</File>
+				<File
+					RelativePath=".\libwiikeyboard\ukbdmap.c"
+					>
+				</File>
+				<File
+					RelativePath=".\libwiikeyboard\usbkeyboard.c"
+					>
+				</File>
+				<File
+					RelativePath=".\libwiikeyboard\wskbdutil.c"
+					>
+				</File>
+				<File
+					RelativePath=".\libwiikeyboard\wsksymvar.h"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -4209,6 +4233,22 @@
 				</File>
 				<File
 					RelativePath="gc\modplay\semitonetab.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="wiikeyboard.h"
+				>
+				<File
+					RelativePath=".\gc\wiikeyboard\keyboard.h"
+					>
+				</File>
+				<File
+					RelativePath=".\gc\wiikeyboard\usbkeyboard.h"
+					>
+				</File>
+				<File
+					RelativePath=".\gc\wiikeyboard\wsksymdef.h"
 					>
 				</File>
 			</Filter>
