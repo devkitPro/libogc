@@ -361,7 +361,7 @@ static s32 SMBCheck(u8 command, s32 readlen,SMBHANDLE *handle)
 	if(recvd<12) return SMB_BAD_DATALEN;
 
 	// Verify and ignore keepalive packet
-	while(nbt->msg==NBT_KEEPALIVE_MSG) {
+	if(nbt->msg==NBT_KEEPALIVE_MSG) {
 		// discard KEEPALIVE packet
 		memmove(ptr2,ptr2+KEEPALIVE_SIZE,readlen-KEEPALIVE_SIZE);
 		recvd = net_recv(handle->sck_server,ptr2+(readlen-KEEPALIVE_SIZE),KEEPALIVE_SIZE,0);
@@ -750,7 +750,7 @@ s32 SMB_Reconnect(SMBCONN smbhndl, BOOL test_conn)
 	if(handle->conn_valid && test_conn)
 	{
 		SMBDIRENTRY dentry;
-		SMB_PathInfo("\\", &dentry, smbhndl);
+		if(SMB_PathInfo("\\", &dentry, smbhndl)==SMB_SUCCESS) return SMB_SUCCESS;	// no need to reconnect
 	}
 
 	if(!handle->conn_valid)
