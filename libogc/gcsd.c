@@ -58,18 +58,12 @@ static bool __gcsd_startup(int n)
 
 static bool __gcsd_readSectors(int n, u32 sector, u32 numSectors, void *buffer)
 {
-	s32 i;
 	s32 ret;
 
-	for(i = 0; i < numSectors; i++)
-	{
-		ret = sdgecko_readSector(n, sector + i, buffer + (i * 512), 512);
-		if(ret != CARDIO_ERROR_READY)
-			return false;
-	}
-
+	ret = sdgecko_readSectors(n,sector,buffer,numSectors);
 	if(ret == CARDIO_ERROR_READY)
 		return true;
+
 	return false;
 }
 
