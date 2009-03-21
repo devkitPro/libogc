@@ -82,9 +82,7 @@ static void event_data_write(struct wiimote_t *wm,ubyte *msg)
 	wiiuse_pressed_buttons(wm,msg);
 
 	if(!cmd) return;
-	if(!(cmd->state==CMD_SENT && cmd->data[0]==WM_CMD_WRITE_DATA)) return;
-
-	//printf("event_data_write(%p)\n",cmd);
+	if(!(cmd->state==CMD_SENT && (cmd->data[0]==WM_CMD_WRITE_DATA || cmd->data[0]==WM_CMD_STREAM_DATA))) return;
 
 	wm->cmd_head = cmd->next;
 
@@ -100,6 +98,7 @@ static void event_status(struct wiimote_t *wm,ubyte *msg)
 {
 	int ir = 0;
 	int attachment = 0;
+	int speaker = 0;
 	int led[4]= {0};
 	struct cmd_blk_t *cmd = wm->cmd_head;
 
@@ -112,7 +111,7 @@ static void event_status(struct wiimote_t *wm,ubyte *msg)
 	if(msg[2]&WM_CTRL_STATUS_BYTE1_LED_4) led[3] = 1;
 
 	if((msg[2]&WM_CTRL_STATUS_BYTE1_ATTACHMENT)==WM_CTRL_STATUS_BYTE1_ATTACHMENT) attachment = 1;
-		
+	if((msg[2]&WM_CTRL_STATUS_BYTE1_SPEAKER_ENABLED)==WM_CTRL_STATUS_BYTE1_SPEAKER_ENABLED) speaker = 1;
 	if((msg[2]&WM_CTRL_STATUS_BYTE1_IR_ENABLED)==WM_CTRL_STATUS_BYTE1_IR_ENABLED) ir = 1;
 
 	wm->battery_level = msg[5];
@@ -124,6 +123,14 @@ static void event_status(struct wiimote_t *wm,ubyte *msg)
 	}
 	if(ir && !WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR)) WIIMOTE_ENABLE_STATE(wm,WIIMOTE_STATE_IR);
 	else if(!ir && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR)) WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_IR);
+
+	if(!speaker && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_SPEAKER_INIT)) {
+		WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_SPEAKER_INIT);
+		wiiuse_set_speaker(wm,1);
+		goto done;
+	}
+	if(speaker && !WIIMOTE_IS_SET(wm,WIIMOTE_STATE_SPEAKER)) WIIMOTE_ENABLE_STATE(wm,WIIMOTE_STATE_SPEAKER);
+	else if(!speaker && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_SPEAKER)) WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_SPEAKER);
 
 	if(attachment) {
 		if(!WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP) && !WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP_FAILED) && !WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP_HANDSHAKE)) {
@@ -204,7 +211,7 @@ void parse_event(struct wiimote_t *wm)
 
 	event = wm->event_buf[0];
 	msg = wm->event_buf+1;
-//	printf("parse_event(%02x,%p)\n",event,msg);
+	//printf("parse_event(%02x,%p)\n",event,msg);
 	switch(event) {
 		case WM_RPT_CTRL_STATUS:
 			event_status(wm,msg);

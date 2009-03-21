@@ -38,6 +38,7 @@ distribution.
 #include "bte.h"
 #include "conf.h"
 #include "ir.h"
+#include "speaker.h"
 #include "dynamics.h"
 #include "guitar_hero_3.h"
 #include "wiiboard.h"
@@ -46,6 +47,7 @@ distribution.
 #include "lwp_threads.h"
 #include "ogcsys.h"
 
+#define MAX_STREAMDATA_LEN			20
 #define EVENTQUEUE_LENGTH			16
 
 #define DISCONNECT_BATTERY_DIED		0x14
@@ -68,7 +70,13 @@ struct _wpad_cb {
 	u32 queue_length;
 	u32 dropped_events;
 	s32 idle_time;
+	s32 speaker_enabled;
 	struct _wpad_thresh thresh;
+
+	void *sound_data;
+	u32 sound_len;
+	u32 sound_off;
+	syswd_t sound_alarm;
 
 	WPADData lstate;
 	WPADData *queue_ext;
@@ -140,6 +148,33 @@ static void __wpad_timeouthandler(syswd_t alarm)
 		}
 	}
 	__lwp_thread_dispatchunnest();
+}
+
+static void __wpad_sounddata_alarmhandler(syswd_t alarm)
+{
+	s32 i;
+	u8 *snd_data;
+	u32 snd_off;
+	struct wiimote_t *wm;
+
+	for(i=0;i<WPAD_MAX_WIIMOTES;i++) {
+		if(__wpdcb[i].sound_alarm==alarm) break;
+	}
+	if(i>=WPAD_MAX_WIIMOTES) return;
+
+	if(__wpdcb[i].sound_off>=__wpdcb[i].sound_len) {
+		__wpdcb[i].sound_data = NULL;
+		__wpdcb[i].sound_len = 0;
+		__wpdcb[i].sound_off = 0;
+		SYS_CancelAlarm(alarm);
+		return;
+	}
+
+	wm = __wpdcb[i].wm;
+	snd_data = __wpdcb[i].sound_data;
+	snd_off = __wpdcb[i].sound_off;
+	__wpdcb[i].sound_off += MAX_STREAMDATA_LEN;
+	wiiuse_write_streamdata(wm,(snd_data+snd_off),MAX_STREAMDATA_LEN,NULL);
 }
 
 static void __wpad_setfmt(s32 chan)
@@ -435,6 +470,7 @@ static void __wpad_read_wiimote(struct wiimote_t *wm, WPADData *data, s32 *idle_
 	int state_changed = 0;
 	data->err = WPAD_ERR_TRANSFER;
 	data->data_present = 0;
+	data->battery_level = wm->battery_level;
 	data->exp.type = wm->exp.type;
 	if(wm && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_CONNECTED)) {
 		if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_HANDSHAKE_COMPLETE)) {
@@ -543,6 +579,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			wiiuse_set_ir_position(wm,(CONF_GetSensorBarPosition()^1));
 			wiiuse_set_ir_sensitivity(wm,CONF_GetIRSensitivity());
 			wiiuse_set_leds(wm,(WIIMOTE_LED_1<<(chan%WPAD_BALANCE_BOARD)),NULL);
+			wiiuse_set_speaker(wm,wpdcb->speaker_enabled);
 			__wpad_setfmt(chan);
 			__wpads_active |= (0x01<<chan);
 			break;
@@ -607,6 +644,8 @@ s32 WPAD_Init()
 			__wpdcb[i].thresh.acc = WPAD_THRESH_DEFAULT_ACCEL;
 			__wpdcb[i].thresh.js = WPAD_THRESH_DEFAULT_JOYSTICK;
 			__wpdcb[i].thresh.wb = WPAD_THRESH_DEFAULT_BALANCEBOARD;
+
+			SYS_CreateAlarm(&__wpdcb[i].sound_alarm);
 		}
 
 		if(CONF_GetPadDevices(&__wpad_devs) < 0) {
@@ -1089,11 +1128,122 @@ s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb
 	return WPAD_ERR_NONE;
 }
 
+s32 WPAD_ControlSpeaker(s32 chan,s32 enable)
+{
+	int i;
+	s32 ret;
+	u32 level;
+
+	if(chan == WPAD_CHAN_ALL) {
+		for(i=WPAD_CHAN_0; i<WPAD_MAX_WIIMOTES; i++)
+			if((ret = WPAD_ControlSpeaker(i,enable)) < WPAD_ERR_NONE)
+				return ret;
+		return WPAD_ERR_NONE;
+	}
+
+	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
+
+	_CPU_ISR_Disable(level);
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
+		_CPU_ISR_Restore(level);
+		return WPAD_ERR_NOT_READY;
+	}
+
+	if(__wpads[chan]!=NULL) {
+		__wpdcb[chan].speaker_enabled = enable;
+		wiiuse_set_speaker(__wpads[chan],enable);
+	}
+
+	_CPU_ISR_Restore(level);
+	return WPAD_ERR_NONE;
+}
+
+s32 WPAD_IsSpeakerEnabled(s32 chan)
+{
+	s32 ret;
+	u32 level;
+	wiimote *wm = NULL;
+
+	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
+
+	_CPU_ISR_Disable(level);
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
+		_CPU_ISR_Restore(level);
+		return WPAD_ERR_NOT_READY;
+	}
+
+	wm = __wpads[chan];
+	ret = WPAD_ERR_NOT_READY;
+	if(wm && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_CONNECTED)) {
+		if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_HANDSHAKE_COMPLETE)
+			&& WIIMOTE_IS_SET(wm,WIIMOTE_STATE_SPEAKER)) ret = WPAD_ERR_NONE;
+	}
+
+	_CPU_ISR_Restore(level);
+	return ret;
+}
+
+s32 WPAD_SendStreamData(s32 chan,void *buf,u32 len)
+{
+	int i;
+	u32 level;
+	struct timespec tb;
+	wiimote *wm = NULL;
+
+	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
+
+	_CPU_ISR_Disable(level);
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
+		_CPU_ISR_Restore(level);
+		return WPAD_ERR_NOT_READY;
+	}
+
+	wm = __wpads[chan];
+	if(wm!=NULL  && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_CONNECTED)) {
+		if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_HANDSHAKE_COMPLETE)
+			&& WIIMOTE_IS_SET(wm,WIIMOTE_STATE_SPEAKER)) {
+			__wpdcb[chan].sound_data = buf;
+			__wpdcb[chan].sound_len = len;
+			__wpdcb[chan].sound_off = 0;
+
+			tb.tv_sec = 0;
+			tb.tv_nsec = 6666667;
+			SYS_SetPeriodicAlarm(__wpdcb[chan].sound_alarm,&tb,&tb,__wpad_sounddata_alarmhandler);
+		}
+	}
+
+	_CPU_ISR_Restore(level);
+	return WPAD_ERR_NONE;
+}
+
+void WPAD_EncodeData(WPADEncStatus *info,u32 flag,const s16 *pcmSamples,s32 numSamples,u8 *encData)
+{
+	int n,i;
+	short *samples = (short*)pcmSamples;
+	WENCStatus *status = (WENCStatus*)info;
+
+	if(!(flag&WPAD_ENC_CONT)) status->step = 0;
+
+	n = (numSamples+1)/2;
+	for(;n>0;n--) {
+		int nibble;
+		nibble = (wencdata(status,samples[0]))<<4;
+		nibble |= (wencdata(status,samples[1]));
+		*encData++ = nibble;
+		samples += 2;
+	}
+}
 
 WPADData *WPAD_Data(int chan)
 {
 	if(chan<0 || chan>=WPAD_MAX_WIIMOTES) return NULL;
 	return &wpaddata[chan];
+}
+
+u8 WPAD_BatteryLevel(int chan)
+{
+	if(chan<0 || chan>=WPAD_MAX_WIIMOTES) return 0;
+	return wpaddata[chan].battery_level;
 }
 
 u32 WPAD_ButtonsUp(int chan)

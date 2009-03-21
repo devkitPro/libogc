@@ -11,7 +11,7 @@
 #include "io.h"
 #include "lwp_wkspace.h"
 
-#define MAX_COMMANDS					0x20
+#define MAX_COMMANDS					0x100
 
 static vu32 *_ipcReg = (u32*)0xCD000000;
 
@@ -38,6 +38,7 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 
 	//printf("wiimote disconnected\n");
 	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_IR|WIIMOTE_STATE_IR_INIT));
+	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_SPEAKER|WIIMOTE_STATE_SPEAKER_INIT));
 	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_EXP|WIIMOTE_STATE_EXP_HANDSHAKE|WIIMOTE_STATE_EXP_FAILED));
 	WIIMOTE_DISABLE_STATE(wm,(WIIMOTE_STATE_CONNECTED|WIIMOTE_STATE_HANDSHAKE|WIIMOTE_STATE_HANDSHAKE_COMPLETE));
 
@@ -70,6 +71,7 @@ static s32 __wiiuse_receive(void *arg,void *buffer,u16 len)
 	if(wm->event!=WIIUSE_NONE) {
 		if(wm->event_cb) wm->event_cb(wm,wm->event);
 	}
+
 	return ERR_OK;
 }
 
@@ -112,13 +114,10 @@ static s32 __wiiuse_sent(void *arg,struct bte_pcb *pcb,u8 err)
 	if(!cmd) return ERR_OK;
 	if(cmd->state!=CMD_SENT) return ERR_OK;
 
-	//printf("__wiiuse_sent(%p,%02x)\n",cmd,cmd->data[0]);
-
 	switch(cmd->data[0]) {
 		case WM_CMD_CTRL_STATUS:
 		case WM_CMD_WRITE_DATA:
 		case WM_CMD_READ_DATA:
-		case WM_CMD_STREAM_DATA:
 			return ERR_OK;
 		default:
 			wm->cmd_head = cmd->next;
