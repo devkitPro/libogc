@@ -711,6 +711,9 @@ WIIUSE_EXPORT extern void wiiuse_set_ir_position(struct wiimote_t* wm, enum ir_p
 WIIUSE_EXPORT extern void wiiuse_set_aspect_ratio(struct wiimote_t* wm, enum aspect_t aspect);
 WIIUSE_EXPORT extern void wiiuse_set_ir_sensitivity(struct wiimote_t* wm, int level);
 
+/* speaker.c */
+WIIUSE_EXPORT extern void wiiuse_set_speaker(struct wiimote_t *wm, int status);
+
 #ifdef __cplusplus
 }
 #endif

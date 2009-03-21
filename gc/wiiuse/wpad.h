@@ -124,6 +124,9 @@ enum {
 #define WPAD_DATA_EXPANSION						0x04
 #define WPAD_DATA_IR							0x08
 
+#define WPAD_ENC_FIRST							0x00
+#define WPAD_ENC_CONT							0x01
+
 #define WPAD_THRESH_IGNORE						-1
 #define WPAD_THRESH_ANY							0
 #define WPAD_THRESH_DEFAULT_BUTTONS				0
@@ -141,6 +144,7 @@ typedef struct _wpad_data
 	s16 err;
 
 	u32 data_present;
+	u8 battery_level;
 
 	u32 btns_h;
 	u32 btns_l;
@@ -154,10 +158,16 @@ typedef struct _wpad_data
 	struct expansion_t exp;
 } WPADData;
 
+typedef struct _wpad_encstatus
+{
+	u8 data[32];
+}WPADEncStatus;
+
 typedef void (*WPADDataCallback)(s32 chan, const WPADData *data);
 typedef void (*WPADShutdownCallback)(s32 chan);
 
 s32 WPAD_Init();
+s32 WPAD_ControlSpeaker(s32 chan,s32 enable);
 s32 WPAD_ReadEvent(s32 chan, WPADData *data);
 s32 WPAD_DroppedEvents(s32 chan);
 s32 WPAD_Flush(s32 chan);
@@ -168,6 +178,8 @@ s32 WPAD_GetStatus();
 s32 WPAD_Probe(s32 chan,u32 *type);
 s32 WPAD_SetEventBufs(s32 chan, WPADData *bufs, u32 cnt);
 s32 WPAD_Disconnect(s32 chan);
+s32 WPAD_IsSpeakerEnabled(s32 chan);
+s32 WPAD_SendStreamData(s32 chan,void *buf,u32 len);
 void WPAD_Shutdown();
 void WPAD_SetIdleTimeout(u32 seconds);
 void WPAD_SetPowerButtonCallback(WPADShutdownCallback cb);
@@ -175,7 +187,9 @@ void WPAD_SetBatteryDeadCallback(WPADShutdownCallback cb);
 s32 WPAD_ScanPads();
 s32 WPAD_Rumble(s32 chan, int status);
 s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb);
+void WPAD_EncodeData(WPADEncStatus *info,u32 flag,const s16 *pcmSamples,s32 numSamples,u8 *encData);
 WPADData *WPAD_Data(int chan);
+u8 WPAD_BatteryLevel(int chan);
 u32 WPAD_ButtonsUp(int chan);
 u32 WPAD_ButtonsDown(int chan);
 u32 WPAD_ButtonsHeld(int chan);
