@@ -49,6 +49,7 @@ export WIIUSEDIR	:= $(BASEDIR)/wiiuse
 export TINYSMBDIR	:= $(BASEDIR)/libtinysmb
 export LIBZDIR		:= $(BASEDIR)/libz
 export LIBASNDDIR	:= $(BASEDIR)/libasnd
+export LIBISODIR	:= $(BASEDIR)/libiso9660
 export LIBWIIKEYB	:= $(BASEDIR)/libwiikeyboard
 export STUBSDIR		:= $(BASEDIR)/lockstubs
 export DEPS			:=	$(BASEDIR)/deps
@@ -80,6 +81,7 @@ WIIUSELIB	:= $(LIBDIR)/libwiiuse
 TINYSMBLIB	:= $(LIBDIR)/libtinysmb
 ZLIB		:= $(LIBDIR)/libz
 ASNDLIB		:= $(LIBDIR)/libasnd
+ISOLIB		:= $(LIBDIR)/libiso9660
 WIIKEYBLIB	:= $(LIBDIR)/libwiikeyboard
 STUBSLIB	:= $(LIBDIR)/libgclibstubs
 
@@ -125,6 +127,7 @@ VPATH :=	$(LWIPDIR)				\
 			$(TINYSMBDIR)		\
 			$(LIBZDIR)		\
 			$(LIBASNDDIR)		\
+			$(LIBISODIR)		\
 			$(LIBWIIKEYB)		\
 			$(STUBSDIR)
 
@@ -173,7 +176,7 @@ BTEOBJ		:=	bte.o hci.o l2cap.o btmemb.o btmemr.o btpbuf.o physbusif.o
 
 #---------------------------------------------------------------------------------
 WIIUSEOBJ	:=	classic.o dynamics.o events.o guitar_hero_3.o io.o io_wii.o ir.o \
-				nunchuk.o wiiboard.o wiiuse.o wpad.o
+				nunchuk.o wiiboard.o wiiuse.o speaker.o wpad.o
 
 #---------------------------------------------------------------------------------
 TINYSMBOBJ	:=	des.o md4.o ntlm.o smb.o smb_devoptab.o
@@ -185,6 +188,9 @@ ZLIBOBJ		:=	adler32.o compress.o crc32.o gzio.o uncompr.o \
 
 #---------------------------------------------------------------------------------
 ASNDLIBOBJ	:=	asndlib.o
+
+#---------------------------------------------------------------------------------
+ISOLIBOBJ	:=	iso9660.o
 
 #---------------------------------------------------------------------------------
 WIIKEYBLIBOBJ	:=	usbkeyboard.o keyboard.o ukbdmap.o wskbdutil.o
@@ -279,6 +285,8 @@ $(ZLIB).a: $(ZLIBOBJ)
 #---------------------------------------------------------------------------------
 $(ASNDLIB).a: $(ASNDLIBOBJ)
 #---------------------------------------------------------------------------------
+$(ISOLIB).a: $(ISOLIBOBJ)
+#---------------------------------------------------------------------------------
 $(WIIKEYBLIB).a: $(WIIKEYBLIBOBJ)
 #---------------------------------------------------------------------------------
 $(BTELIB).a: $(BTEOBJ)
@@ -327,7 +335,7 @@ dist: install-headers
 	@tar -cvjf libogc-$(VERSTRING).tar.bz2 include lib libogc_license.txt
 
 
-LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(MADLIB).a $(DBLIB).a $(ZLIB).a $(TINYSMBLIB).a $(ASNDLIB).a
+LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(MADLIB).a $(DBLIB).a $(ZLIB).a $(TINYSMBLIB).a $(ASNDLIB).a $(ISOLIB).a
 
 ifeq ($(PLATFORM),cube)
 LIBRARIES	+=	$(BBALIB).a 
