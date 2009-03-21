@@ -283,6 +283,7 @@ static void bte_process_handshake(struct bte_pcb *pcb,u8_t param,void *buf,u16_t
 	struct ctrl_req_t *req;
 
 	LOG("bte_process_handshake(%p)\n",pcb);
+
 	switch(param) {
 		case HIDP_HSHK_SUCCESSFULL:
 			req = pcb->ctrl_req_head;
@@ -700,6 +701,28 @@ s32 bte_accept(struct bte_pcb *pcb,s32 (*recv)(void *arg,void *buffer,u16 len))
 	return err;
 }
 */
+
+s32 bte_senddata(struct bte_pcb *pcb,void *message,u16 len)
+{
+	err_t err;
+	struct pbuf *p;
+
+	if(pcb==NULL || message==NULL || len==0) return ERR_VAL;
+	if(pcb->state==STATE_DISCONNECTING || pcb->state==STATE_DISCONNECTED) return ERR_CLSD;
+
+	if((p=btpbuf_alloc(PBUF_RAW,(1 + len),PBUF_RAM))==NULL) {
+		ERROR("bte_senddata: Could not allocate memory for pbuf\n");
+		return ERR_MEM;
+	}
+
+	((u8*)p->payload)[0] = (HIDP_TRANS_DATA|HIDP_DATA_RTYPE_OUPUT);
+	memcpy(p->payload+1,message,len);
+
+	err = l2ca_datawrite(pcb->out_pcb,p);
+	btpbuf_free(p);
+
+	return err;
+}
 
 s32 bte_sendmessageasync(struct bte_pcb *pcb,void *message,u16 len,s32 (*sent)(void *arg,struct bte_pcb *pcb,u8 err))
 {
