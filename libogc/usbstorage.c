@@ -572,8 +572,10 @@ s32 USBStorage_Close(usbstorage_handle *dev)
 	USB_CloseDevice(&dev->usb_fd);
 	LWP_MutexDestroy(dev->lock);
 	LWP_CondDestroy(dev->cond);
-	free(dev->sector_size);
-	__lwp_heap_free(&__heap, dev->buffer);
+	if(dev->sector_size!=NULL)
+		free(dev->sector_size);
+	if(dev->buffer!=NULL)
+		__lwp_heap_free(&__heap, dev->buffer);
 	memset(dev, 0, sizeof(*dev));
 	return 0;
 }
