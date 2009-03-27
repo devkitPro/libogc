@@ -71,11 +71,12 @@
 #define SMB_SETUP_ANDX				0x73
 #define SMB_TREEC_ANDX				0x75
 
-#define NBT_KEEPALIVE_MSG			0x85
-#define KEEPALIVE_SIZE				4
+
+#define NBT_KEEPALIVE_MSG		  0x85
+#define KEEPALIVE_SIZE        4
 
 /**
- * SMBTrans2 
+ * SMBTrans2
  */
 #define SMB_TRANS2					0x32
 
@@ -89,6 +90,7 @@
 #define SMB_SET_FILE_INFO			8
 #define SMB_CREATE_DIR				13
 #define SMB_FIND_CLOSE2				0x34
+#define SMB_QUERY_FILE_ALL_INFO		0x107
 
 /**
  * File I/O
@@ -115,14 +117,14 @@
 #define T2_SSETUP_CNT			    (T2_SDATA_OFS+2)
 #define T2_SUB_CMD				    (T2_SSETUP_CNT+2)
 #define T2_BYTE_CNT				    (T2_SUB_CMD+2)
-								
-								
+
+
 #define SMB_PROTO					0x424d53ff
 #define SMB_HANDLE_NULL				0xffffffff
 #define SMB_MAX_BUFFERSIZE			(62*1024)	// cannot be larger than u16 (65536)
 #define SMB_MAX_TRANSMIT_SIZE		7236
 #define SMB_DEF_READOFFSET			59
-								
+
 #define SMB_CONNHANDLES_MAX			8
 #define SMB_FILEHANDLES_MAX			(32*SMB_CONNHANDLES_MAX)
 
@@ -141,7 +143,7 @@ struct _smbfile
 };
 
 /**
- * NBT/SMB Wrapper 
+ * NBT/SMB Wrapper
  */
 typedef struct _nbtsmb
 {
@@ -166,6 +168,7 @@ typedef struct _smbsession
   u16 MaxVCS;
   u8 challenge[10];
   u8 p_domain[64];
+  u8 timeOffset;
   u16 sid;
   u16 count;
   u16 eos;
@@ -195,7 +198,7 @@ static const char *smb_dialects[] = {"NT LM 0.12",NULL};
 extern void ntlm_smb_nt_encrypt(const char *passwd, const u8 * challenge, u8 * answer);
 
 /**
- * SMB Endian aware supporting functions 
+ * SMB Endian aware supporting functions
  *
  * SMB always uses Intel Little-Endian values, so htons etc are
  * of little or no use :) ... Thanks M$
@@ -239,6 +242,12 @@ static __inline__ void setUInt(u8 *buffer,u32 offset,u32 value)
 	buffer[offset+1] = ((value&0xff00)>>8);
 	buffer[offset+2] = ((value&0xff0000)>>16);
 	buffer[offset+3] = ((value&0xff000000)>>24);
+}
+
+/*** get unsigned long long ***/
+static __inline__ u64 getULongLong(u8 *buffer,u32 offset)
+{
+	return (u64)(getUInt(buffer, offset) | (u64)getUInt(buffer, offset+4) << 32);
 }
 
 static __inline__ SMBHANDLE* __smb_handle_open(SMBCONN smbhndl)
@@ -304,7 +313,7 @@ static void __smb_free_handle(SMBHANDLE *handle)
 	handle->server_name = NULL;
 	handle->share_name = NULL;
 	handle->sck_server = INVALID_SOCKET;
-	
+
 	__smb_handle_free(handle);
 }
 
@@ -315,7 +324,7 @@ static void MakeSMBHeader(u8 command,u8 flags,u16 flags2,SMBHANDLE *handle)
 	SMBSESSION *sess = &handle->session;
 
 	memset(nbt,0,sizeof(NBTSMB));
-	
+
 	setUInt(ptr,SMB_OFFSET_PROTO,SMB_PROTO);
 	setUChar(ptr,SMB_OFFSET_CMD,command);
 	setUChar(ptr,SMB_OFFSET_FLAGS,flags);
@@ -324,7 +333,7 @@ static void MakeSMBHeader(u8 command,u8 flags,u16 flags2,SMBHANDLE *handle)
 	setUShort(ptr,SMB_OFFSET_PID,sess->PID);
 	setUShort(ptr,SMB_OFFSET_UID,sess->UID);
 	setUShort(ptr,SMB_OFFSET_MID,sess->MID);
-	
+
 	ptr[SMB_HEADER_SIZE] = 0;
 }
 
@@ -384,7 +393,7 @@ static s32 SMBCheck(u8 command, s32 readlen,SMBHANDLE *handle)
 /**
  * SMB_SetupAndX
  *
- * Setup the SMB session, including authentication with the 
+ * Setup the SMB session, including authentication with the
  * magic 'NTLM Response'
  */
 static s32 SMB_SetupAndX(SMBHANDLE *handle)
@@ -543,7 +552,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 	u32 serverMaxBuffer;
 	SMBSESSION *sess;
 
-	if(!handle || !dialects || dialectc<=0) 
+	if(!handle || !dialects || dialectc<=0)
 		return SMB_ERROR;
 
 	/*** Clear session variables ***/
@@ -570,7 +579,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 	handle->message.msg = NBT_SESSISON_MSG;
 	handle->message.length = htons(pos);
 	pos += 4;
-	
+
 	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
 	if(ret<=0) return SMB_ERROR;
 
@@ -603,12 +612,11 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 
 		pos += 4;
 		pos += 4;	//ULONG MaxRawSize; Maximum raw buffer size
-		sess->sKey = getUInt(ptr,pos);
-		pos += 4;	
+		sess->sKey = getUInt(ptr,pos); pos += 4;
 		pos += 4;	//ULONG Capabilities; Server capabilities
 		pos += 4;	//ULONG SystemTimeLow; System (UTC) time of the server (low).
 		pos += 4;	//ULONG SystemTimeHigh; System (UTC) time of the server (high).
-		pos += 2;	//USHORT ServerTimeZone; Time zone of server (minutes from UTC)
+		sess->timeOffset = getUChar(ptr,pos); pos += 2;	//USHORT ServerTimeZone; Time zone of server (minutes from UTC)
 		if(getUChar(ptr,pos)!=8) return SMB_BAD_KEYLEN;	//UCHAR EncryptionKeyLength - 0 or 8
 
 		pos++;
@@ -667,7 +675,7 @@ static s32 do_smbconnect(SMBHANDLE *handle)
 		net_close(handle->sck_server);
 		return -1;
 	}
-	
+
 	ret = SMB_SetupAndX(handle);
 	if(ret!=SMB_SUCCESS) {
 		net_close(handle->sck_server);
@@ -700,7 +708,7 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 		if(smb_inited==FALSE) __smb_init();
 		_CPU_ISR_Restore(level);
 	}
-	
+
 	handle = __smb_allocate_handle();
 	if(!handle) return SMB_ERROR;
 
@@ -751,6 +759,7 @@ s32 SMB_Reconnect(SMBCONN smbhndl, BOOL test_conn)
 	{
 		SMBDIRENTRY dentry;
 		if(SMB_PathInfo("\\", &dentry, smbhndl)==SMB_SUCCESS) return SMB_SUCCESS;	// no need to reconnect
+		handle->conn_valid = false;
 	}
 
 	if(!handle->conn_valid)
@@ -796,11 +805,11 @@ SMBFILE SMB_OpenFile(const char *filename, u16 access, u16 creation,SMBCONN smbh
 	setUShort(ptr, pos, access);
 	pos += 2;					 /*** Access mode ***/
 	setUShort(ptr, pos, 0x6);
-	pos += 2;				       /*** Type of file ***/
+	pos += 2;  /*** Type of file ***/
 	pos += 2;  /*** Attributes ***/
 	pos += 4;  /*** File time - don't care - let server decide ***/
 	setUShort(ptr, pos, creation);
-	pos += 2;				       /*** Creation flags ***/
+	pos += 2;  /*** Creation flags ***/
 	pos += 4;  /*** Allocation size ***/
 	pos += 8;  /*** Reserved ***/
 	pos += 2;  /*** Byte Count ***/
@@ -1009,7 +1018,7 @@ s32 SMB_WriteFile(const char *buffer, int size, int offset, SMBFILE sfid)
 
 	handle->message.msg = NBT_SESSISON_MSG;
 	handle->message.length = htons(pos+size);
-	
+
 	src = (u8*)buffer;
 	copy_len = size;
 	if((copy_len+pos)>SMB_MAX_TRANSMIT_SIZE) copy_len = (SMB_MAX_TRANSMIT_SIZE-pos);
@@ -1065,7 +1074,7 @@ s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl)
 	bpos = pos = (T2_BYTE_CNT + 2);
 	pos += 3; /*** Padding ***/
 	ptr = handle->message.smb;
-	setUShort(ptr, pos, 0x107); //SMB_QUERY_FILE_ALL_INFO
+	setUShort(ptr, pos, SMB_QUERY_FILE_ALL_INFO);
 
 	pos += 2;
 	setUInt(ptr, pos, 0);
@@ -1100,13 +1109,24 @@ s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl)
 		ptr = handle->message.smb;
 		/*** Get parameter offset ***/
 		pos = getUShort(ptr, (SMB_HEADER_SIZE + 9));
-		sdir->attributes = getUShort(ptr,pos+36);
 
-		pos += 52;
-		sdir->size_low = getUInt(ptr, pos);
-		pos += 4;
-		sdir->size_high = getUInt(ptr, pos);
-		pos += 4;
+		sdir->ctime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - creation time
+		sdir->atime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - access time
+		sdir->mtime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - write time
+		pos += 8; // ULONGLONG - change time low
+		sdir->attributes = getUInt(ptr,pos); pos += 4; // ULONG - file attributes
+		pos += 4; // padding
+		pos += 4; // padding
+		pos += 4; // ULONG - allocated file size low
+		pos += 4; // ULONG - allocated file size high
+		sdir->size = getULongLong(ptr, pos); pos += 8; // ULONG - file size low
+		pos += 4; // ULONG   NumberOfLinks;
+		pos += 2; // UCHAR   DeletePending;
+		pos += 2; // UCHAR   Directory;
+		pos += 2; // USHORT  Pad2; // for alignment only
+		pos += 4; // ULONG   EaSize;
+		pos += 4; // ULONG   FileNameLength;
+
 		strcpy(sdir->name,realfile);
 
 		ret = SMB_SUCCESS;
@@ -1150,7 +1170,7 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 	pos += 2;					  /*** Count ***/
 	setUShort(ptr, pos, 6);
 	pos += 2;					  /*** Internal Flags ***/
-	setUShort(ptr, pos, 260);
+	setUShort(ptr, pos, 260); // SMB_FIND_FILE_BOTH_DIRECTORY_INFO
 	pos += 2;					  /*** Level of Interest ***/
 	pos += 4;    /*** Storage Type == 0 ***/
 	memcpy(&ptr[pos], filename, strlen(filename));
@@ -1178,22 +1198,25 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 		ptr = handle->message.smb;
 		/*** Get parameter offset ***/
 		pos = getUShort(ptr,(SMB_HEADER_SIZE+9));
-		sess->sid = getUShort(ptr, pos);
-		pos += 2;
-		sess->count = getUShort(ptr, pos);
-		pos += 2;
-		sess->eos = getUShort(ptr, pos);
-		pos += 2;
-		pos += 46;
+		sess->sid = getUShort(ptr, pos); pos += 2;
+		sess->count = getUShort(ptr, pos); pos += 2;
+		sess->eos = getUShort(ptr, pos); pos += 2;
+		pos += 2; // USHORT EaErrorOffset;
+		pos += 2; // USHORT LastNameOffset;
+		pos += 2; // padding?
 
-		if (sess->count) {
-			sdir->size_low = getUInt(ptr, pos);
-			pos += 4;
-			sdir->size_high = getUInt(ptr, pos);
-			pos += 4;
+		if (sess->count)
+		{
+			pos += 4; // ULONG NextEntryOffset;
+			pos += 4; // ULONG FileIndex;
+			sdir->ctime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - creation time
+			sdir->atime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - access time
+			sdir->mtime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - write time
+			pos += 8; // ULONGLONG - change time low
+			sdir->size = getULongLong(ptr, pos); pos += 8;
 			pos += 8;
-			sdir->attributes = getUInt(ptr, pos);
-			pos += 38;
+			sdir->attributes = getUInt(ptr, pos); pos += 4;
+			pos += 34;
 			strcpy(sdir->name, (const char*)&ptr[pos]);
 
 			ret = SMB_SUCCESS;
@@ -1222,7 +1245,7 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return SMB_ERROR;
-	
+
 	sess = &handle->session;
 	if(sess->eos || sess->sid==0) return SMB_ERROR;
 
@@ -1236,7 +1259,7 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	pos += 2;						    /*** Search ID ***/
 	setUShort(ptr, pos, 1);
 	pos += 2;					  /*** Count ***/
-	setUShort(ptr, pos, 260);
+	setUShort(ptr, pos, 260); // SMB_FIND_FILE_BOTH_DIRECTORY_INFO
 	pos += 2;					  /*** Level of Interest ***/
 	pos += 4;    /*** Storage Type == 0 ***/
 	setUShort(ptr, pos, 12);
@@ -1262,20 +1285,23 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 		ptr = handle->message.smb;
 		/*** Get parameter offset ***/
 		pos = getUShort(ptr,(SMB_HEADER_SIZE+9));
-		sess->count = getUShort(ptr, pos);
-		pos += 2;
-		sess->eos = getUShort(ptr, pos);
-		pos += 2;
-		pos += 44;
+		sess->count = getUShort(ptr, pos); pos += 2;
+		sess->eos = getUShort(ptr, pos); pos += 2;
+		pos += 2; // USHORT EaErrorOffset;
+		pos += 2; // USHORT LastNameOffset;
 
-		if (sess->count) {
-			sdir->size_low = getUInt(ptr, pos);
-			pos += 4;
-			sdir->size_high = getUInt(ptr, pos);
-			pos += 4;
+		if (sess->count)
+		{
+			pos += 4; // ULONG NextEntryOffset;
+			pos += 4; // ULONG FileIndex;
+			sdir->ctime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - creation time
+			sdir->atime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - access time
+			sdir->mtime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - write time
+			pos += 8; // ULONGLONG - change time low
+			sdir->size = getULongLong(ptr, pos); pos += 8;
 			pos += 8;
-			sdir->attributes = getUInt(ptr, pos);
-			pos += 38;
+			sdir->attributes = getUInt(ptr, pos); pos += 4;
+			pos += 34;
 			strcpy (sdir->name, (const char*)&ptr[pos]);
 
 			ret = SMB_SUCCESS;
@@ -1303,7 +1329,7 @@ s32 SMB_FindClose(SMBCONN smbhndl)
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return SMB_ERROR;
-	
+
 	sess = &handle->session;
 	if(sess->sid==0) return SMB_ERROR;
 
