@@ -168,7 +168,7 @@ typedef struct _smbsession
   u16 MaxVCS;
   u8 challenge[10];
   u8 p_domain[64];
-  u8 timeOffset;
+  s64 timeOffset;
   u16 sid;
   u16 count;
   u16 eos;
@@ -214,6 +214,12 @@ static __inline__ u8 getUChar(u8 *buffer,u32 offset)
 static __inline__ void setUChar(u8 *buffer,u32 offset,u8 value)
 {
 	buffer[offset] = value;
+}
+
+/*** get signed short ***/
+static __inline__ s16 getShort(u8 *buffer,u32 offset)
+{
+	return (s16)((buffer[offset+1]<<8)|(buffer[offset]));
 }
 
 /*** get unsigned short ***/
@@ -616,7 +622,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 		pos += 4;	//ULONG Capabilities; Server capabilities
 		pos += 4;	//ULONG SystemTimeLow; System (UTC) time of the server (low).
 		pos += 4;	//ULONG SystemTimeHigh; System (UTC) time of the server (high).
-		sess->timeOffset = getUChar(ptr,pos); pos += 2;	//USHORT ServerTimeZone; Time zone of server (minutes from UTC)
+		sess->timeOffset = getShort(ptr,pos) * 600000000LL; pos += 2; //SHORT ServerTimeZone; Time zone of server (minutes from UTC)
 		if(getUChar(ptr,pos)!=8) return SMB_BAD_KEYLEN;	//UCHAR EncryptionKeyLength - 0 or 8
 
 		pos++;
@@ -1109,17 +1115,15 @@ s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl)
 		ptr = handle->message.smb;
 		/*** Get parameter offset ***/
 		pos = getUShort(ptr, (SMB_HEADER_SIZE + 9));
-
-		sdir->ctime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - creation time
-		sdir->atime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - access time
-		sdir->mtime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - write time
-		pos += 8; // ULONGLONG - change time low
+		pos += 4; // padding
+		sdir->ctime = getULongLong(ptr, pos) - handle->session.timeOffset; pos += 8; // ULONGLONG - creation time
+		sdir->atime = getULongLong(ptr, pos) - handle->session.timeOffset; pos += 8; // ULONGLONG - access time
+		sdir->mtime = getULongLong(ptr, pos) - handle->session.timeOffset; pos += 8; // ULONGLONG - write time
+		pos += 8; // ULONGLONG - change time
 		sdir->attributes = getUInt(ptr,pos); pos += 4; // ULONG - file attributes
 		pos += 4; // padding
-		pos += 4; // padding
-		pos += 4; // ULONG - allocated file size low
-		pos += 4; // ULONG - allocated file size high
-		sdir->size = getULongLong(ptr, pos); pos += 8; // ULONG - file size low
+		pos += 8; // ULONGLONG - allocated file size
+		sdir->size = getULongLong(ptr, pos); pos += 8; // ULONGLONG - file size
 		pos += 4; // ULONG   NumberOfLinks;
 		pos += 2; // UCHAR   DeletePending;
 		pos += 2; // UCHAR   Directory;
@@ -1209,9 +1213,9 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 		{
 			pos += 4; // ULONG NextEntryOffset;
 			pos += 4; // ULONG FileIndex;
-			sdir->ctime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - creation time
-			sdir->atime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - access time
-			sdir->mtime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - write time
+			sdir->ctime = getULongLong(ptr, pos) - handle->session.timeOffset; pos += 8; // ULONGLONG - creation time
+			sdir->atime = getULongLong(ptr, pos) - handle->session.timeOffset; pos += 8; // ULONGLONG - access time
+			sdir->mtime = getULongLong(ptr, pos) - handle->session.timeOffset; pos += 8; // ULONGLONG - write time
 			pos += 8; // ULONGLONG - change time low
 			sdir->size = getULongLong(ptr, pos); pos += 8;
 			pos += 8;
@@ -1294,9 +1298,9 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 		{
 			pos += 4; // ULONG NextEntryOffset;
 			pos += 4; // ULONG FileIndex;
-			sdir->ctime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - creation time
-			sdir->atime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - access time
-			sdir->mtime = getULongLong(ptr, pos); pos += 8; // ULONGLONG - write time
+			sdir->ctime = getULongLong(ptr, pos) - handle->session.timeOffset; pos += 8; // ULONGLONG - creation time
+			sdir->atime = getULongLong(ptr, pos) - handle->session.timeOffset; pos += 8; // ULONGLONG - access time
+			sdir->mtime = getULongLong(ptr, pos) - handle->session.timeOffset; pos += 8; // ULONGLONG - write time
 			pos += 8; // ULONGLONG - change time low
 			sdir->size = getULongLong(ptr, pos); pos += 8;
 			pos += 8;

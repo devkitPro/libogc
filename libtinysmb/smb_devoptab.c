@@ -18,9 +18,6 @@
 
 #include "smb.h"
 
-#define SMB_MAXPATH					4096
-#define SMB_SRCH_ARCHIVE			32
-
 static mutex_t _SMB_mutex=LWP_MUTEX_NULL;
 
 static inline void _SMB_lock()

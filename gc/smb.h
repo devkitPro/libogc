@@ -36,6 +36,8 @@
 
 #include <gctypes.h>
 
+#define SMB_MAXPATH					4096
+
 /**
 * SMB Error codes
 */
@@ -58,11 +60,12 @@
 /**
 * FileSearch
 */
-#define SMB_SRCH_DIRECTORY			16
 #define SMB_SRCH_READONLY  			1
 #define SMB_SRCH_HIDDEN				2
 #define SMB_SRCH_SYSTEM				4
 #define SMB_SRCH_VOLUME				8
+#define SMB_SRCH_DIRECTORY			16
+#define SMB_SRCH_ARCHIVE			32
 
 /**
 * SMB File Access Modes
