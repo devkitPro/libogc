@@ -367,10 +367,10 @@ static void MakeTRANS2Header(u8 subcommand,SMBHANDLE *handle)
 static s32 SMBCheck(u8 command, s32 readlen,SMBHANDLE *handle)
 {
 	s32 ret,recvd;
-	u8 *ptr2,*ptr = handle->message.smb;
+	u8 *ptr = handle->message.smb;
 	NBTSMB *nbt = &handle->message;
+	u8 *ptr2 = (u8*)nbt;
 
-	ptr2 = (u8*)nbt;
 	memset(nbt,0,sizeof(NBTSMB));
 	recvd = net_recv(handle->sck_server,ptr2,readlen,0);
 	if(recvd<12) return SMB_BAD_DATALEN;
@@ -711,7 +711,7 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 	if(smb_inited==FALSE) {
 		u32 level;
 		_CPU_ISR_Disable(level);
-		if(smb_inited==FALSE) __smb_init();
+		__smb_init();
 		_CPU_ISR_Restore(level);
 	}
 
@@ -754,9 +754,10 @@ void SMB_Close(SMBCONN smbhndl)
 	__smb_free_handle(handle);
 }
 
-s32 SMB_Reconnect(SMBCONN smbhndl, BOOL test_conn)
+s32 SMB_Reconnect(SMBCONN *_smbhndl, BOOL test_conn)
 {
 	s32 ret = SMB_SUCCESS;
+	SMBCONN smbhndl = *_smbhndl;
 	SMBHANDLE *handle = __smb_handle_open(smbhndl);
 	if(!handle)
 		return SMB_ERROR; // we have no handle, so we can't reconnect
@@ -778,7 +779,7 @@ s32 SMB_Reconnect(SMBCONN smbhndl, BOOL test_conn)
 
 		// shut down connection, and reopen
 		SMB_Close(smbhndl);
-		ret = SMB_Connect(&smbhndl, user, pwd, share, ip);
+		ret = SMB_Connect(_smbhndl, user, pwd, share, ip);
 	}
 	return ret;
 }
@@ -792,7 +793,7 @@ SMBFILE SMB_OpenFile(const char *filename, u16 access, u16 creation,SMBCONN smbh
 	SMBHANDLE *handle;
 	char realfile[256];
 
-	if(SMB_Reconnect(smbhndl,TRUE)!=SMB_SUCCESS) return NULL;
+	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return NULL;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return NULL;
@@ -1156,7 +1157,7 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 	SMBHANDLE *handle;
 	SMBSESSION *sess;
 
-	if(SMB_Reconnect(smbhndl,TRUE)!=SMB_SUCCESS) return SMB_ERROR;
+	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return SMB_ERROR;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return SMB_ERROR;
@@ -1245,7 +1246,7 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	SMBHANDLE *handle;
 	SMBSESSION *sess;
 
-	if(SMB_Reconnect(smbhndl,TRUE)!=SMB_SUCCESS) return SMB_ERROR;
+	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return SMB_ERROR;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return SMB_ERROR;
@@ -1329,7 +1330,7 @@ s32 SMB_FindClose(SMBCONN smbhndl)
 	SMBHANDLE *handle;
 	SMBSESSION *sess;
 
-	if(SMB_Reconnect(smbhndl,TRUE)!=SMB_SUCCESS) return SMB_ERROR;
+	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return SMB_ERROR;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return SMB_ERROR;
