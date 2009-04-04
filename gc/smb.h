@@ -116,7 +116,7 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 bool smbInit(const char *user, const char *password, const char *share,	const char *ip);
 void smbClose(const char* name);
 bool CheckSMBConnection(const char* name);
-s32 SMB_Reconnect(SMBCONN smbhndl, BOOL test_conn);
+s32 SMB_Reconnect(SMBCONN *_smbhndl, BOOL test_conn);
 
 /*** Session ***/
 s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const char *share, const char *IP);

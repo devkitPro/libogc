@@ -697,12 +697,12 @@ static int __smb_close(struct _reent *r, int fd)
 	SMBFILESTRUCT *file = (SMBFILESTRUCT*) fd;
 	int j;
 	j=file->env;
+	_SMB_lock();
 	if (SMBEnv[j].SMBWriteCache.file == file)
 	{
 		FlushWriteSMBCache(SMBEnv[j].name);
 	}
 	ClearSMBFileCache(file);
-	_SMB_lock();
 	SMB_CloseFile(file->handle);
 	_SMB_unlock();
 	file->len = 0;
@@ -1148,7 +1148,7 @@ bool CheckSMBConnection(const char* name)
 	env=FindSMBEnv(device);
 	if(env==NULL) return false;
 	_SMB_lock();
-	ret=(SMB_Reconnect(env->smbconn,true)==SMB_SUCCESS);
+	ret=(SMB_Reconnect(&env->smbconn,true)==SMB_SUCCESS);
 	_SMB_unlock();
 	return ret;
 }
