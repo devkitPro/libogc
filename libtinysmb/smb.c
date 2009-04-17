@@ -42,8 +42,13 @@
 #include <processor.h>
 #include <lwp_threads.h>
 #include <lwp_objmgr.h>
+#include <ogc/lwp_watchdog.h>
+#include <ogc/lwp_watchdog.h>
+#include <fcntl.h>
 #include <smb.h>
 
+#define IOS_O_NONBLOCK				0x04
+#define RECV_TIMEOUT				5000  // in ms
 
 /**
  * Field offsets.
@@ -359,6 +364,31 @@ static void MakeTRANS2Header(u8 subcommand,SMBHANDLE *handle)
 }
 
 
+static inline s32 smb_send(s32 s,const void *data,s32 size)
+{
+	return net_send(s,data,size,0);
+}
+
+static s32 smb_recv(s32 s,void *mem,s32 len)
+{
+	s32 ret;
+	u32 t1,t2;
+
+	t1=ticks_to_millisecs(gettime());
+	while(1)
+	{
+		ret=net_recv(s,mem,len,0);
+		if(ret>=0)break;
+		t2=ticks_to_millisecs(gettime());
+		if(t2-t1 > RECV_TIMEOUT)
+		{
+			ret=-1;
+			break;  //2secs
+		}
+	}
+	return ret;
+}
+
 /**
  * SMBCheck
  *
@@ -372,14 +402,15 @@ static s32 SMBCheck(u8 command, s32 readlen,SMBHANDLE *handle)
 	u8 *ptr2 = (u8*)nbt;
 
 	memset(nbt,0,sizeof(NBTSMB));
-	recvd = net_recv(handle->sck_server,ptr2,readlen,0);
+	recvd = smb_recv(handle->sck_server,ptr2,readlen);
 	if(recvd<12) return SMB_BAD_DATALEN;
 
 	// Verify and ignore keepalive packet
-	if(nbt->msg==NBT_KEEPALIVE_MSG) {
+	if(nbt->msg == NBT_KEEPALIVE_MSG)
+	{
 		// discard KEEPALIVE packet
 		memmove(ptr2,ptr2+KEEPALIVE_SIZE,readlen-KEEPALIVE_SIZE);
-		recvd = net_recv(handle->sck_server,ptr2+(readlen-KEEPALIVE_SIZE),KEEPALIVE_SIZE,0);
+		recvd = smb_recv(handle->sck_server,ptr2+(readlen-KEEPALIVE_SIZE),KEEPALIVE_SIZE);
 		if(recvd<KEEPALIVE_SIZE) return SMB_BAD_DATALEN;
 	}
 
@@ -473,7 +504,8 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	handle->message.length = htons (pos);
 	pos += 4;
 
-	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
+	ret = smb_send(handle->sck_server,(char*)&handle->message,pos);
+	if(ret<=0) return SMB_ERROR;
 
 	if((ret=SMBCheck(SMB_SETUP_ANDX,sizeof(NBTSMB),handle))==SMB_SUCCESS) {
 		/*** Collect UID ***/
@@ -533,7 +565,8 @@ static s32 SMB_TreeAndX(SMBHANDLE *handle)
 	handle->message.length = htons (pos);
 	pos += 4;
 
-	ret = net_send(handle->sck_server,(char *)&handle->message,pos,0);
+	ret = smb_send(handle->sck_server,(char *)&handle->message,pos);
+	if(ret<=0) return SMB_ERROR;
 
 	if((ret=SMBCheck(SMB_TREEC_ANDX,sizeof(NBTSMB),handle))==SMB_SUCCESS) {
 		/*** Collect Tree ID ***/
@@ -586,7 +619,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 	handle->message.length = htons(pos);
 	pos += 4;
 
-	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
+	ret = smb_send(handle->sck_server,(char*)&handle->message,pos);
 	if(ret<=0) return SMB_ERROR;
 
 	/*** Check response ***/
@@ -653,6 +686,7 @@ static s32 do_netconnect(SMBHANDLE *handle)
 	u32 nodelay;
 	s32 ret;
 	s32 sock;
+	u32 flags=0;
 
 	/*** Create the global net_socket ***/
 	sock = net_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -667,6 +701,11 @@ static s32 do_netconnect(SMBHANDLE *handle)
 		net_close(sock);
 		return -1;
 	}
+
+	//create non blocking socket
+	flags = net_fcntl(sock, F_GETFL, 0);
+	flags |= IOS_O_NONBLOCK;
+	ret=net_fcntl(sock, F_SETFL, flags);
 
 	handle->sck_server = sock;
 	return 0;
@@ -765,8 +804,8 @@ s32 SMB_Reconnect(SMBCONN *_smbhndl, BOOL test_conn)
 	if(handle->conn_valid && test_conn)
 	{
 		SMBDIRENTRY dentry;
-		if(SMB_PathInfo("\\", &dentry, smbhndl)==SMB_SUCCESS) return SMB_SUCCESS;	// no need to reconnect
-		handle->conn_valid = false;
+		if(SMB_PathInfo("\\", &dentry, smbhndl)==SMB_SUCCESS) return SMB_SUCCESS; // no need to reconnect
+		handle->conn_valid = FALSE; // else connection is invalid
 	}
 
 	if(!handle->conn_valid)
@@ -837,7 +876,7 @@ SMBFILE SMB_OpenFile(const char *filename, u16 access, u16 creation,SMBCONN smbh
 	handle->message.length = htons(pos);
 
 	pos += 4;
-	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
+	ret = smb_send(handle->sck_server,(char*)&handle->message,pos);
 	if(ret<0) goto failed;
 
 	if(SMBCheck(SMB_OPEN_ANDX,sizeof(NBTSMB),handle)==SMB_SUCCESS) {
@@ -886,10 +925,9 @@ void SMB_CloseFile(SMBFILE sfid)
 	handle->message.length = htons(pos);
 
 	pos += 4;
-	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
+	ret = smb_send(handle->sck_server,(char*)&handle->message,pos);
 	if(ret<0) handle->conn_valid = FALSE;
-
-	SMBCheck(SMB_CLOSE,sizeof(NBTSMB),handle);
+	else SMBCheck(SMB_CLOSE,sizeof(NBTSMB),handle);
 	__lwp_queue_append(&smb_filehandle_queue,&fid->node);
 }
 
@@ -939,7 +977,7 @@ s32 SMB_ReadFile(char *buffer, int size, int offset, SMBFILE sfid)
 	handle->message.length = htons(pos);
 
 	pos += 4;
-	ret = net_send(handle->sck_server,(char*)&handle->message, pos, 0);
+	ret = smb_send(handle->sck_server,(char*)&handle->message, pos);
 	if(ret<0) goto  failed;
 
 	/*** SMBCheck should now only read up to the end of a standard header ***/
@@ -953,7 +991,7 @@ s32 SMB_ReadFile(char *buffer, int size, int offset, SMBFILE sfid)
 		/*** Default offset, with no padding is 59, so grab any outstanding padding ***/
 		if(ofs>SMB_DEF_READOFFSET) {
 			char pad[1024];
-			ret = net_recv(handle->sck_server,pad,(ofs-SMB_DEF_READOFFSET), 0);
+			ret = smb_recv(handle->sck_server,pad,(ofs-SMB_DEF_READOFFSET));
 			if(ret<0) return ret;
 		}
 
@@ -961,7 +999,7 @@ s32 SMB_ReadFile(char *buffer, int size, int offset, SMBFILE sfid)
 		ofs = 0;
 		dest = (u8*)buffer;
 		if(length>0) {
-			while ((ret=net_recv(handle->sck_server,&dest[ofs],length, 0))!=0) {
+			while ((ret=smb_recv(handle->sck_server,&dest[ofs],length))!=0) {
 				if(ret<0) return ret;
 
 				ofs += ret;
@@ -1038,12 +1076,12 @@ s32 SMB_WriteFile(const char *buffer, int size, int offset, SMBFILE sfid)
 	pos += 4;
 
 	/*** Send Header Information ***/
-	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
+	ret = smb_send(handle->sck_server,(char*)&handle->message,pos);
 	if(ret<0) goto failed;
 
 	if(size>0) {
 		/*** Send the data ***/
-		ret = net_send(handle->sck_server,src,size,0);
+		ret = smb_send(handle->sck_server,src,size);
 		if(ret<0) goto failed;
 	}
 
@@ -1107,7 +1145,7 @@ s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl)
 	handle->message.length = htons(pos);
 
 	pos += 4;
-	ret = net_send(handle->sck_server, (char*) &handle->message, pos, 0);
+	ret = smb_send(handle->sck_server, (char*) &handle->message, pos);
 	if(ret<0) goto failed;
 
 	ret = SMB_ERROR;
@@ -1192,7 +1230,7 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 	handle->message.length = htons(pos);
 
 	pos += 4;
-	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
+	ret = smb_send(handle->sck_server,(char*)&handle->message,pos);
 	if(ret<0) goto failed;
 
 	sess->eos = 1;
@@ -1282,7 +1320,7 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	handle->message.length = htons(pos);
 
 	pos += 4;
-	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
+	ret = smb_send(handle->sck_server,(char*)&handle->message,pos);
 	if(ret<0) goto failed;
 
 	ret = SMB_ERROR;
@@ -1352,7 +1390,7 @@ s32 SMB_FindClose(SMBCONN smbhndl)
 	handle->message.length = htons(pos);
 
 	pos += 4;
-	ret = net_send(handle->sck_server,(char*)&handle->message,pos,0);
+	ret = smb_send(handle->sck_server,(char*)&handle->message,pos);
 	if(ret<0) goto failed;
 
 	ret = SMBCheck(SMB_FIND_CLOSE2,sizeof(NBTSMB),handle);
