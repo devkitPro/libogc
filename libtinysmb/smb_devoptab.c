@@ -36,6 +36,7 @@ typedef struct
 	off_t offset;
 	off_t len;
 	char filename[SMB_MAXPATH];
+	unsigned short access;
 	int env;
 } SMBFILESTRUCT;
 
@@ -563,6 +564,8 @@ static int __smb_open(struct _reent *r, void *fileStruct, const char *path, int 
 	else
 		file->offset = 0;
 
+	file->access=access;
+
 	strcpy(file->filename, fixedpath);
 	return 0;
 }
@@ -646,8 +649,32 @@ static ssize_t __smb_read(struct _reent *r, int fd, char *ptr, size_t len)
 		return -1;
 	}
 
+	int cnt_retry=2;
+	retry_read:
 	if (ReadSMBFromCache(ptr, len, file) < 0)
 	{
+		retry_reconnect:
+		cnt_retry--;
+		if(cnt_retry>=0)
+		{
+			_SMB_lock();
+			if(CheckSMBConnection(SMBEnv[file->env].name))
+			{
+				ClearSMBFileCache(file);
+				file->handle = SMB_OpenFile(file->filename, file->access, SMB_OF_OPEN, SMBEnv[file->env].smbconn);
+				if (!file->handle)
+				{
+					r->_errno = ENOENT;
+					_SMB_unlock();
+					return -1;
+				}
+				_SMB_unlock();
+				goto retry_read;
+			}
+			_SMB_unlock();
+			usleep(50000);
+			goto retry_reconnect;
+		}
 		r->_errno = EOVERFLOW;
 		return -1;
 	}
