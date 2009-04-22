@@ -395,7 +395,7 @@ static inline s32 smb_send(s32 s,const void *data,s32 size)
 		{
 			return ret;	/* some error happened */
 		}
-		elsedo
+		else
 		{
 			data+=ret;
 			len-=ret;
