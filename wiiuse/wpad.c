@@ -251,7 +251,7 @@ static s32 __wpad_init_finished(s32 result,void *usrdata)
 	struct bd_addr bdaddr;
 
 	//printf("__wpad_init_finished(%d)\n",result);
-	
+
 	if(result==ERR_OK) {
         for(i=0;/*__wpads[i] && */i<__wpad_devs.num_registered;i++) {
             BD_ADDR(&(bdaddr),__wpad_devs.registered[i].bdaddr[5],__wpad_devs.registered[i].bdaddr[4],__wpad_devs.registered[i].bdaddr[3],__wpad_devs.registered[i].bdaddr[2],__wpad_devs.registered[i].bdaddr[1],__wpad_devs.registered[i].bdaddr[0]);
@@ -378,7 +378,7 @@ static void __wpad_calc_data(WPADData *data,WPADData *lstate,struct accel_t *acc
 				calc_balanceboard_state(wb);
  			}
  			break;
- 
+
 			default:
 				break;
 		}
@@ -541,7 +541,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 		case WIIUSE_EVENT:
 			chan = wm->unid;
 			wpdcb = &__wpdcb[chan];
-			
+
 			if(wpdcb->queue_ext!=NULL) {
 				maxbufs = wpdcb->queue_length;
 				wpadd = &(wpdcb->queue_ext[wpdcb->queue_tail]);
@@ -637,7 +637,7 @@ s32 WPAD_Init()
 		memset(__wpdcb,0,sizeof(struct _wpad_cb)*WPAD_MAX_WIIMOTES);
 		memset(&__wpad_devs,0,sizeof(conf_pads));
 		memset(__wpad_keys,0,sizeof(struct linkkey_info)*WPAD_MAX_WIIMOTES);
-		
+
 		for(i=0;i<WPAD_MAX_WIIMOTES;i++) {
 			__wpdcb[i].thresh.btns = WPAD_THRESH_DEFAULT_BUTTONS;
 			__wpdcb[i].thresh.ir = WPAD_THRESH_DEFAULT_IR;
@@ -673,7 +673,7 @@ s32 WPAD_Init()
 
 		SYS_CreateAlarm(&__wpad_timer);
 		SYS_RegisterResetFunc(&__wpad_resetinfo);
-	
+
 		tb.tv_sec = 1;
 		tb.tv_nsec = 0;
 		SYS_SetPeriodicAlarm(__wpad_timer,&tb,&tb,__wpad_timeouthandler);
@@ -730,7 +730,7 @@ s32 WPAD_ReadEvent(s32 chan, WPADData *data)
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NO_CONTROLLER;
 	}
-	
+
 	_CPU_ISR_Restore(level);
 	if(data)
 		__wpad_calc_data(data,lstate,accel_calib,smoothed);
@@ -743,7 +743,7 @@ s32 WPAD_DroppedEvents(s32 chan)
 	s32 ret;
 	int i;
 	int dropped = 0;
-	
+
 	if(chan == WPAD_CHAN_ALL) {
 		for(i=WPAD_CHAN_0; i<WPAD_MAX_WIIMOTES; i++)
 			if((ret = WPAD_DroppedEvents(i)) < WPAD_ERR_NONE)
@@ -754,7 +754,7 @@ s32 WPAD_DroppedEvents(s32 chan)
 	}
 
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
-	
+
 	_CPU_ISR_Disable(level);
 	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
@@ -782,7 +782,7 @@ s32 WPAD_Flush(s32 chan)
 				count += ret;
 		return count;
 	}
-	
+
 	while((ret = WPAD_ReadEvent(chan, NULL)) >= 0)
 		count++;
 	if(ret == WPAD_ERR_QUEUE_EMPTY) return count;
@@ -807,19 +807,19 @@ s32 WPAD_ReadPending(s32 chan, WPADDataCallback datacb)
 				count += ret;
 		return count;
 	}
-	
+
 	btns_p = btns_nh = btns_l = wpaddata[chan].btns_h;
 	while(1) {
 		ret = WPAD_ReadEvent(chan,&wpaddata[chan]);
 		if(ret < WPAD_ERR_NONE) break;
 		if(datacb)
 			datacb(chan, &wpaddata[chan]);
-		
+
 		// we ignore everything except _h, since we have our
 		// own "fake" _l and everything gets recalculated at
 		// the end of the function
 		btns_h = wpaddata[chan].btns_h;
-		
+
 		/* Button event coalescing:
 		 * What we're doing here is get the very first button event
 		 * (press or release) for each button. This gets propagated
@@ -832,7 +832,7 @@ s32 WPAD_ReadPending(s32 chan, WPADDataCallback datacb)
 		 * into one. It also keeps the output consistent, if possibly
 		 * not fully up to date.
 		 */
-		
+
 		// buttons that changed that haven't changed before
 		btns_ch = (btns_h ^ btns_p) & ~btns_ev;
 		btns_p = btns_h;
@@ -840,7 +840,7 @@ s32 WPAD_ReadPending(s32 chan, WPADDataCallback datacb)
 		btns_nh = (btns_nh & ~btns_ch) | (btns_h & btns_ch);
 		// store these new changes to btns_ev
 		btns_ev |= btns_ch;
-		
+
 		count++;
 	}
 	wpaddata[chan].btns_h = btns_nh;
@@ -856,7 +856,7 @@ s32 WPAD_SetDataFormat(s32 chan, s32 fmt)
 	u32 level;
 	s32 ret;
 	int i;
-	
+
 	if(chan == WPAD_CHAN_ALL) {
 		for(i=WPAD_CHAN_0; i<WPAD_MAX_WIIMOTES; i++)
 			if((ret = WPAD_SetDataFormat(i, fmt)) < WPAD_ERR_NONE)
@@ -865,7 +865,7 @@ s32 WPAD_SetDataFormat(s32 chan, s32 fmt)
 	}
 
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
-	
+
 	_CPU_ISR_Disable(level);
 	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
@@ -894,7 +894,7 @@ s32 WPAD_SetVRes(s32 chan,u32 xres,u32 yres)
 	u32 level;
 	s32 ret;
 	int i;
-	
+
 	if(chan == WPAD_CHAN_ALL) {
 		for(i=WPAD_CHAN_0; i<WPAD_MAX_WIIMOTES; i++)
 			if((ret = WPAD_SetVRes(i, xres, yres)) < WPAD_ERR_NONE)
@@ -903,14 +903,14 @@ s32 WPAD_SetVRes(s32 chan,u32 xres,u32 yres)
 	}
 
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
-	
+
 	_CPU_ISR_Disable(level);
 	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
 
-	if(__wpads[chan]!=NULL) 
+	if(__wpads[chan]!=NULL)
 		wiiuse_set_ir_vres(__wpads[chan],xres,yres);
 
 	_CPU_ISR_Restore(level);
@@ -925,7 +925,7 @@ s32 WPAD_GetStatus()
 	_CPU_ISR_Disable(level);
 	ret = __wpads_inited;
 	_CPU_ISR_Restore(level);
-	
+
 	return ret;
 }
 
@@ -1013,13 +1013,13 @@ s32 WPAD_Disconnect(s32 chan)
 	struct _wpad_cb *wpdcb = NULL;
 
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
-	
+
 	_CPU_ISR_Disable(level);
 	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
-	
+
 	wpdcb = &__wpdcb[chan];
 	__wpad_disconnect(wpdcb);
 	_CPU_ISR_Restore(level);
@@ -1033,7 +1033,7 @@ void WPAD_Shutdown()
 	s32 i;
 	u32 level;
 	struct _wpad_cb *wpdcb = NULL;
-	
+
 	_CPU_ISR_Disable(level);
 	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
@@ -1049,7 +1049,7 @@ void WPAD_Shutdown()
 	__wiiuse_sensorbar_enable(0);
 	__wpads_inited = WPAD_STATE_DISABLED;
 	_CPU_ISR_Restore(level);
-	
+
 	while(__wpads_active);
 
 	BTE_Shutdown();
@@ -1081,16 +1081,16 @@ s32 WPAD_Rumble(s32 chan, int status)
 				return ret;
 		return WPAD_ERR_NONE;
 	}
-	
+
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
-	
+
 	_CPU_ISR_Disable(level);
 	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
 
-	if(__wpads[chan]!=NULL) 
+	if(__wpads[chan]!=NULL)
 		wiiuse_rumble(__wpads[chan],status);
 
 	_CPU_ISR_Restore(level);
@@ -1109,9 +1109,9 @@ s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb
 				return ret;
 		return WPAD_ERR_NONE;
 	}
-	
+
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
-	
+
 	_CPU_ISR_Disable(level);
 	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
@@ -1185,7 +1185,6 @@ s32 WPAD_IsSpeakerEnabled(s32 chan)
 
 s32 WPAD_SendStreamData(s32 chan,void *buf,u32 len)
 {
-	int i;
 	u32 level;
 	struct timespec tb;
 	wiimote *wm = NULL;
@@ -1218,7 +1217,7 @@ s32 WPAD_SendStreamData(s32 chan,void *buf,u32 len)
 
 void WPAD_EncodeData(WPADEncStatus *info,u32 flag,const s16 *pcmSamples,s32 numSamples,u8 *encData)
 {
-	int n,i;
+	int n;
 	short *samples = (short*)pcmSamples;
 	WENCStatus *status = (WENCStatus*)info;
 
@@ -1258,7 +1257,7 @@ u32 WPAD_ButtonsDown(int chan)
 	return wpaddata[chan].btns_d;
 }
 
-u32 WPAD_ButtonsHeld(int chan) 
+u32 WPAD_ButtonsHeld(int chan)
 {
 	if(chan<0 || chan>=WPAD_MAX_WIIMOTES) return 0;
 	return wpaddata[chan].btns_h;
@@ -1287,7 +1286,7 @@ void WPAD_Accel(int chan, struct vec3w_t *accel)
 	if(chan<0 || chan>=WPAD_MAX_WIIMOTES || accel==NULL ) return;
 	*accel = wpaddata[chan].accel;
 }
-	
+
 void WPAD_Expansion(int chan, struct expansion_t *exp)
 {
 	if(chan<0 || chan>=WPAD_MAX_WIIMOTES || exp==NULL ) return;
