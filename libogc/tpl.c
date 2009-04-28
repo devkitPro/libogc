@@ -223,8 +223,8 @@ s32 TPL_GetTexture(TPLFile *tdf,s32 id,GXTexObj *texObj)
 
 	DCFlushRange(imghead->data,size);
 	GX_InitTexObj(texObj,imghead->data,imghead->width,imghead->height,imghead->fmt,imghead->wraps,imghead->wrapt,bMipMap);
-	if(bMipMap==true) GX_InitTexObjLOD(texObj,imghead->minfilter,imghead->magfilter,imghead->minfilter,imghead->maxlod,
-									   imghead->lodbias,biasclamp,biasclamp,imghead->edgelod);
+	if(bMipMap) GX_InitTexObjLOD(texObj,imghead->minfilter,imghead->magfilter,imghead->minlod,imghead->maxlod,
+								 imghead->lodbias,biasclamp,biasclamp,imghead->edgelod);
 
 	return 0;
 }
@@ -282,8 +282,8 @@ s32 TPL_GetTextureCI(TPLFile *tdf,s32 id,GXTexObj *texObj,GXTlutObj *tlutObj,u8 
 	DCFlushRange(palhead->data,(palhead->nitems*sizeof(u16)));
 	GX_InitTlutObj(tlutObj,palhead->data,palhead->fmt,palhead->nitems);
 	GX_InitTexObjCI(texObj,imghead->data,imghead->width,imghead->height,imghead->fmt,imghead->wraps,imghead->wrapt,bMipMap,tluts);
-	if(bMipMap==true) GX_InitTexObjLOD(texObj,imghead->minfilter,imghead->magfilter,imghead->minfilter,imghead->maxlod,
-									   imghead->lodbias,biasclamp,biasclamp,imghead->edgelod);
+	if(bMipMap) GX_InitTexObjLOD(texObj,imghead->minfilter,imghead->magfilter,imghead->minlod,imghead->maxlod,
+							     imghead->lodbias,biasclamp,biasclamp,imghead->edgelod);
 	
 	return 0;
 }
