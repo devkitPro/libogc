@@ -67,7 +67,10 @@ struct isfs_cb
 {
 	char filepath[ISFS_MAXPATH];
 	union {
-		char filepath_ren[ISFS_MAXPATH];
+		struct {
+			char filepathOld[ISFS_MAXPATH];
+			char filepathNew[ISFS_MAXPATH];
+		} fsrename;
 		struct {
 			u32 owner_id;
 			u16 group_id;
@@ -696,9 +699,9 @@ s32 ISFS_Rename(const char *filepathOld,const char *filepathNew)
 	param = (struct isfs_cb*)iosAlloc(hId,ISFS_STRUCTSIZE);
 	if(param==NULL) return ISFS_ENOMEM;
 
-	memcpy(param->filepath,filepathOld,(len0+1));
-	memcpy(param->filepath_ren,filepathNew,(len0+1));
-	ret = IOS_Ioctl(_fs_fd,ISFS_IOCTL_RENAME,param->filepath,(ISFS_MAXPATH<<1),NULL,0);
+	memcpy(param->fsrename.filepathOld,filepathOld,(len0+1));
+	memcpy(param->fsrename.filepathNew,filepathNew,(len1+1));
+	ret = IOS_Ioctl(_fs_fd,ISFS_IOCTL_RENAME,&param->fsrename,sizeof(param->fsrename),NULL,0);
 
 	if(param!=NULL) iosFree(hId,param);
 	return ret;
@@ -723,9 +726,9 @@ s32 ISFS_RenameAsync(const char *filepathOld,const char *filepathNew,isfscallbac
 	param->cb = cb;
 	param->usrdata = usrdata;
 	param->functype = ISFS_FUNCNULL;
-	memcpy(param->filepath,filepathOld,(len0+1));
-	memcpy(param->filepath_ren,filepathNew,(len0+1));
-	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_RENAME,param->filepath,(ISFS_MAXPATH<<1),NULL,0,__isfsFunctionCB,param);
+	memcpy(param->fsrename.filepathOld,filepathOld,(len0+1));
+	memcpy(param->fsrename.filepathNew,filepathNew,(len1+1));
+	return IOS_IoctlAsync(_fs_fd,ISFS_IOCTL_RENAME,&param->fsrename,sizeof(param->fsrename),NULL,0,__isfsFunctionCB,param);
 }
 
 s32 ISFS_SetAttr(const char *filepath,u32 ownerID,u16 groupID,u8 attributes,u8 ownerperm,u8 groupperm,u8 otherperm)
