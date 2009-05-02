@@ -39,7 +39,10 @@ const devoptab_t dotab_stdout = {
 	NULL,		// device dirreset_r
 	NULL,		// device dirnext_r
 	NULL,		// device dirclose_r
-	NULL		// device statvfs_r
+	NULL,		// device statvfs_r
+	NULL,		// device ftrunctate_r
+	NULL,		// device fsync_r
+	NULL,		// deviceData;
 };
 
 //color table
@@ -436,7 +439,7 @@ static int __console_parse_escsequence(char *pchr)
 
 int __console_write(struct _reent *r,int fd,const char *ptr,size_t len)
 {
-	int i = 0;
+	size_t i = 0;
 	char *tmp = (char*)ptr;
 	console_data_s *con;
 	char chr;
