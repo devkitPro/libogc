@@ -270,7 +270,7 @@ static u32 __SetInterrupts(u32 iMask,u32 nMask)
 	u32 irq;
 
 	irq = cntlzw(iMask);
-	if(irq>=IRQ_MEM0 && irq<=IRQ_MEMADDRESS) {
+	if(irq<=IRQ_MEMADDRESS) {
 		imask = 0;
 		if(!(nMask&IM_MEM0)) imask |= 0x0001;
 		if(!(nMask&IM_MEM1)) imask |= 0x0002;
