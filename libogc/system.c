@@ -1181,7 +1181,7 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 		case SYS_POWEROFF:
 			if(CONF_GetShutdownMode() == CONF_SHUTDOWN_IDLE) {
 				ret = CONF_GetIdleLedMode();
-				if(ret >= 0 && ret <= 2) STM_SetLedMode(ret);
+				if(ret <= 2) STM_SetLedMode(ret);
 				STM_ShutdownToIdle();
 			} else {
 				STM_ShutdownToStandby();
