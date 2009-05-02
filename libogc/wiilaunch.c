@@ -348,7 +348,7 @@ s32 WII_OpenURL(const char *url)
 	u64 *list;
 	u32 titlecount;
 	s32 ret;
-	int i;
+	u32 i;
 
 	if(!__initialized)
 		return WII_ENOTINIT;
