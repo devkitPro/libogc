@@ -128,22 +128,22 @@ static inline f32 __casts16f32(register s16 *in)
 	return rval;
 }
 
-static inline void castu8f32(register u8 *in,volatile register f32 *out)
+static inline void castu8f32(register u8 *in,register volatile f32 *out)
 {
 	*out = __castu8f32(in);
 }
 
-static inline void castu16f32(register u16 *in,volatile register f32 *out)
+static inline void castu16f32(register u16 *in,register volatile f32 *out)
 {
 	*out = __castu16f32(in);
 }
 
-static inline void casts8f32(register s8 *in,volatile register f32 *out)
+static inline void casts8f32(register s8 *in,register volatile f32 *out)
 {
 	*out = __casts8f32(in);
 }
 
-static inline void casts16f32(register s16 *in,volatile register f32 *out)
+static inline void casts16f32(register s16 *in,register volatile f32 *out)
 {
 	*out = __casts16f32(in);
 }
@@ -210,22 +210,22 @@ static inline s16 __castf32s16(register f32 in)
 	return rval;
 }
 
-static inline void castf32u8(register f32 *in,volatile register u8 *out)
+static inline void castf32u8(register f32 *in,register vu8 *out)
 {
 	*out = __castf32u8(*in);
 }
 
-static inline void castf32u16(register f32 *in,volatile register u16 *out)
+static inline void castf32u16(register f32 *in,register vu16 *out)
 {
 	*out = __castf32u16(*in);
 }
 
-static inline void castf32s8(register f32 *in,volatile register s8 *out)
+static inline void castf32s8(register f32 *in,register vs8 *out)
 {
 	*out = __castf32s8(*in);
 }
 
-static inline void castf32s16(register f32 *in,volatile register s16 *out)
+static inline void castf32s16(register f32 *in,register vs16 *out)
 {
 	*out = __castf32s16(*in);
 }
