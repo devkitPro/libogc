@@ -350,7 +350,7 @@ void uip_tcpinput(struct uip_pbuf *p,struct uip_netif *inp)
 		}
 		if(uip_inseg.p!=NULL) uip_pbuf_free(uip_inseg.p);
 	} else {
-		if(!UIP_TCPH_FLAGS(uip_tcphdr)&UIP_TCP_RST) 
+		if(!(UIP_TCPH_FLAGS(uip_tcphdr)&UIP_TCP_RST)) 
 			uip_tcp_rst(uip_ackno,uip_seqno+uip_tcplen,&uip_iphdr->dst,&uip_iphdr->src,uip_tcphdr->dst,uip_tcphdr->src);
 
 		uip_pbuf_free(p);
