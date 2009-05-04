@@ -6,6 +6,10 @@
 
 //#define _LWPWD_DEBUG
 
+#ifdef _LWPWD_DEBUG
+#include <stdio.h>
+#endif
+
 vu32 _wd_sync_level;
 vu32 _wd_sync_count;
 u32 _wd_ticks_since_boot;
