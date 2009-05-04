@@ -1617,7 +1617,7 @@ void hci_event_handler(struct pbuf *p)
 					if(link->connhdl == connhdl) break;
 				}
 
-				q = link->p;
+				q = link == NULL ? NULL : link->p;
 				/* Queued packet present? */
 				if (q != NULL) {
 					/* NULL attached buffer immediately */
