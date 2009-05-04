@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -16,7 +15,9 @@
 #include "card_io.h"
 
 //#define _CARDIO_DEBUG
-
+#ifdef _CARDIO_DEBUG
+#include <stdio.h>
+#endif
 // SDHC support
 // added by emu_kidid
 #define SECTOR_ADDRESSING					0
