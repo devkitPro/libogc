@@ -185,7 +185,7 @@ struct _syssramex {
 	u8 __padding1[4];
 } ATTRIBUTE_PACKED;
 
-typedef void (*alarmcallback)(syswd_t alarm);
+typedef void (*alarmcallback)(syswd_t alarm,void *cb_arg);
 
 typedef struct _sys_fontheader sys_fontheader;
 
@@ -267,7 +267,7 @@ s32 SYS_CreateAlarm(syswd_t *thealarm);
 
 \return 0 on succuess, non-zero on error
 */
-s32 SYS_SetAlarm(syswd_t thealarm,const struct timespec *tp,alarmcallback cb);
+s32 SYS_SetAlarm(syswd_t thealarm,const struct timespec *tp,alarmcallback cb,void *cbarg);
 
 
 /*! \fn s32 SYS_SetPeriodicAlarm(syswd_t thealarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb)
@@ -279,7 +279,7 @@ s32 SYS_SetAlarm(syswd_t thealarm,const struct timespec *tp,alarmcallback cb);
 
 \return 0 on succuess, non-zero on error
 */
-s32 SYS_SetPeriodicAlarm(syswd_t thealarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb);
+s32 SYS_SetPeriodicAlarm(syswd_t thealarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb,void *cbarg);
 
 
 /*! \fn s32 SYS_RemoveAlarm(syswd_t thealarm)
