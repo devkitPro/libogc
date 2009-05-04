@@ -856,7 +856,7 @@ s32 IOS_Open(const char *filepath,u32 mode)
 	req->cb = NULL;
 	req->relnch = 0;
 
-	DCFlushRange((void*)filepath,strnlen(filepath,IPC_MAXPATH_LEN));
+	DCFlushRange((void*)filepath,strnlen(filepath,IPC_MAXPATH_LEN) + 1);
 
 	req->open.filepath	= (char*)MEM_VIRTUAL_TO_PHYSICAL(filepath);
 	req->open.mode		= mode;
