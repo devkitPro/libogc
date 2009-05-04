@@ -737,15 +737,9 @@ static bool __usbstorage_IsInserted(void);
 
 static bool __usbstorage_Startup(void)
 {
-       USB_Initialize();
-       USBStorage_Initialize();
-   /*
-   memset(&__usbfd, 0, sizeof(__usbfd));
-   __lun = 0;
-   __mounted = 0;
-   */
-
-   return __usbstorage_IsInserted();
+	USB_Initialize();
+	USBStorage_Initialize();
+	return __usbstorage_IsInserted();
 }
 
 static bool __usbstorage_IsInserted(void)
