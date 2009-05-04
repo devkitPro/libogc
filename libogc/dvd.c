@@ -500,7 +500,7 @@ static dvdcmdblk* __dvd_popwaitingqueue()
 	return NULL;
 }
 
-static void __dvd_timeouthandler(syswd_t alarm)
+static void __dvd_timeouthandler(syswd_t alarm,void *cbarg)
 {
 	dvdcallbacklow cb;
 
@@ -554,8 +554,7 @@ static u32 __dvd_categorizeerror(u32 errorcode)
 
 static void __SetupTimeoutAlarm(const struct timespec *tp)
 {
-	SYS_CreateAlarm(&__dvd_timeoutalarm);
-	SYS_SetAlarm(__dvd_timeoutalarm,tp,__dvd_timeouthandler);
+	SYS_SetAlarm(__dvd_timeoutalarm,tp,__dvd_timeouthandler,NULL);
 }
 
 static void __Read(void *buffer,u32 len,s64 offset,dvdcallbacklow cb)
@@ -2621,6 +2620,7 @@ void DVD_Init()
 		IRQ_Request(IRQ_PI_DI,__DVDInterruptHandler,NULL);
 		__UnmaskIrq(IRQMASK(IRQ_PI_DI));
 
+		SYS_CreateAlarm(&__dvd_timeoutalarm);
 		LWP_InitQueue(&__dvd_wait_queue);
 	}
 }

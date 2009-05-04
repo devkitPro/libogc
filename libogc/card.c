@@ -968,7 +968,7 @@ static s32 __card_txhandler(s32 chn,s32 dev)
 	return 1;
 }
 
-static void __timeouthandler(syswd_t alarm)
+static void __timeouthandler(syswd_t alarm,void *cbarg)
 {
 	u32 chn;
 	s32 ret = CARD_ERROR_READY;
@@ -1011,14 +1011,14 @@ static void __setuptimeout(card_block *card)
 #endif
 		tb.tv_sec = 1*(card->sector_size/8192);
 		tb.tv_nsec = 0;
-		SYS_SetAlarm(card->timeout_svc,&tb,__timeouthandler);
+		SYS_SetAlarm(card->timeout_svc,&tb,__timeouthandler,NULL);
 	} else if(card->cmd[0]==0xf2) {
 #ifdef _CARD_DEBUG
 		printf("__setuptimeout(0xf2, 100ms)\n");
 #endif
 		tb.tv_sec = 0;
 		tb.tv_nsec = 100*TB_NSPERMS;
-		SYS_SetAlarm(card->timeout_svc,&tb,__timeouthandler);
+		SYS_SetAlarm(card->timeout_svc,&tb,__timeouthandler,NULL);
 	}
 }
 
