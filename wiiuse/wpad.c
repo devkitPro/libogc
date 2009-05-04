@@ -676,7 +676,7 @@ s32 WPAD_Init()
 
 		tb.tv_sec = 1;
 		tb.tv_nsec = 0;
-		SYS_SetPeriodicAlarm(__wpad_timer,&tb,&tb,__wpad_timeouthandler);
+		SYS_SetPeriodicAlarm(__wpad_timer,&tb,&tb,__wpad_timeouthandler,NULL);
 
 		__wpads_inited = WPAD_STATE_ENABLING;
 	}
@@ -1207,7 +1207,7 @@ s32 WPAD_SendStreamData(s32 chan,void *buf,u32 len)
 
 			tb.tv_sec = 0;
 			tb.tv_nsec = 6666667;
-			SYS_SetPeriodicAlarm(__wpdcb[chan].sound_alarm,&tb,&tb,__wpad_sounddata_alarmhandler);
+			SYS_SetPeriodicAlarm(__wpdcb[chan].sound_alarm,&tb,&tb,__wpad_sounddata_alarmhandler, NULL);
 		}
 	}
 

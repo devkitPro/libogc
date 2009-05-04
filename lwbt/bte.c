@@ -390,7 +390,7 @@ void BTE_Init()
 
 	tb.tv_sec = 1;
 	tb.tv_nsec = 0;
-	SYS_SetPeriodicAlarm(btstate.timer_svc,&tb,&tb,bt_alarmhandler);
+	SYS_SetPeriodicAlarm(btstate.timer_svc,&tb,&tb,bt_alarmhandler, NULL);
 }
 
 void BTE_Shutdown()
