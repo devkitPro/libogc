@@ -82,6 +82,18 @@ distribution.
 
 static heap_cntrl __heap;
 static u8 __heap_created = 0;
+static lwpq_t __usbstorage_waitq = 0;
+
+/*
+The following is for implementing a DISC_INTERFACE 
+as used by libfat
+*/
+
+static usbstorage_handle __usbfd;
+static u8 __lun = 0;
+static u8 __mounted = 0;
+static u16 __vid = 0;
+static u16 __pid = 0;
 
 static s32 __usbstorage_reset(usbstorage_handle *dev);
 static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun);
@@ -92,42 +104,62 @@ static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun);
  *      for the USB data/IOS reply..
  */
 
-static s32 __usb_blkmsgtimeout_cb(s32 retval, void *dummy)
+static s32 __usb_blkmsg_cb(s32 retval, void *dummy)
 {
 	usbstorage_handle *dev = (usbstorage_handle *)dummy;
 	dev->retval = retval;
-	LWP_CondSignal(dev->cond);
+	SYS_CancelAlarm(dev->alarm);
+	LWP_ThreadBroadcast(__usbstorage_waitq);
 	return 0;
 }
 
-static s32 __USB_BlkMsgTimeout(usbstorage_handle *dev, u8 bEndpoint, u16 wLength, void *rpData)
+static s32 __usb_deviceremoved_cb(s32 retval,void *arg)
 {
-	s32 retval;
+	return 0;
+}
+
+static void __usb_timeouthandler(syswd_t alarm,void *cbarg)
+{
+	usbstorage_handle *dev = (usbstorage_handle*)cbarg;
+	dev->retval = USBSTORAGE_ETIMEDOUT;
+	LWP_ThreadBroadcast(__usbstorage_waitq);
+}
+
+static void __usb_settimeout(usbstorage_handle *dev)
+{
 	struct timespec ts;
 
 	ts.tv_sec = 2;
 	ts.tv_nsec = 0;
+	SYS_SetAlarm(dev->alarm,&ts,__usb_timeouthandler,dev);
+}
 
+static s32 __USB_BlkMsgTimeout(usbstorage_handle *dev, u8 bEndpoint, u16 wLength, void *rpData)
+{
+	u32 level;
+	s32 retval;
 
-	dev->retval = USBSTORAGE_ETIMEDOUT;
-	retval = USB_WriteBlkMsgAsync(dev->usb_fd, bEndpoint, wLength, rpData, __usb_blkmsgtimeout_cb, (void *)dev);
-	if(retval < 0)
-		return retval;
+	dev->retval = USBSTORAGE_PROCESSING;
+	retval = USB_WriteBlkMsgAsync(dev->usb_fd, bEndpoint, wLength, rpData, __usb_blkmsg_cb, (void *)dev);
+	if(retval < 0) return retval;
 
-	retval = LWP_CondTimedWait(dev->cond, dev->lock, &ts);
+	__usb_settimeout(dev);
 
-	if(retval == ETIMEDOUT)
-	{
-		USBStorage_Close(dev);
-		return USBSTORAGE_ETIMEDOUT;
-	}
+	_CPU_ISR_Disable(level);
+	do {
+		retval = dev->retval;
+		if(retval!=USBSTORAGE_PROCESSING) break;
+		else LWP_ThreadSleep(__usbstorage_waitq);
+	} while(retval==USBSTORAGE_PROCESSING);
+	_CPU_ISR_Restore(level);
 
-	retval = dev->retval;
+	if(retval==USBSTORAGE_ETIMEDOUT) USBStorage_Close(dev);
 	return retval;
 }
 
 static s32 __USB_CtrlMsgTimeout(usbstorage_handle *dev, u8 bmRequestType, u8 bmRequest, u16 wValue, u16 wIndex, u16 wLength, void *rpData)
 {
+	u32 level;
 	s32 retval;
 	struct timespec ts;
 
@@ -135,20 +167,21 @@ static s32 __USB_CtrlMsgTimeout(usbstorage_handle *dev, u8 bmRequestType, u8 bmR
 	ts.tv_nsec = 0;
 
 
-	dev->retval = USBSTORAGE_ETIMEDOUT;
-	retval = USB_WriteCtrlMsgAsync(dev->usb_fd, bmRequestType, bmRequest, wValue, wIndex, wLength, rpData, __usb_blkmsgtimeout_cb, (void *)dev);
-	if(retval < 0)
-		return retval;
+	dev->retval = USBSTORAGE_PROCESSING;
+	retval = USB_WriteCtrlMsgAsync(dev->usb_fd, bmRequestType, bmRequest, wValue, wIndex, wLength, rpData, __usb_blkmsg_cb, (void *)dev);
+	if(retval < 0) return retval;
 
-	retval = LWP_CondTimedWait(dev->cond, dev->lock, &ts);
+	__usb_settimeout(dev);
 
-	if(retval == ETIMEDOUT)
-	{
-		USBStorage_Close(dev);
-		return USBSTORAGE_ETIMEDOUT;
-	}
+	_CPU_ISR_Disable(level);
+	do {
+		retval = dev->retval;
+		if(retval!=USBSTORAGE_PROCESSING) break;
+		else LWP_ThreadSleep(__usbstorage_waitq);
+	} while(retval==USBSTORAGE_PROCESSING);
+	_CPU_ISR_Restore(level);
 
-	retval = dev->retval;
+	if(retval==USBSTORAGE_ETIMEDOUT) USBStorage_Close(dev);
 	return retval;
 }
 
@@ -163,6 +196,8 @@ s32 USBStorage_Initialize()
 		return IPC_OK;
 	}
 	
+	LWP_InitQueue(&__usbstorage_waitq);
+
 	ptr = (u8*)ROUNDDOWN32(((u32)SYS_GetArena2Hi() - HEAP_SIZE));
 	if((u32)ptr < (u32)SYS_GetArena2Lo()) {
 		_CPU_ISR_Restore(level);
@@ -445,7 +480,7 @@ s32 USBStorage_Open(usbstorage_handle *dev, const char *bus, u16 vid, u16 pid)
 	dev->tag = TAG_START;
 	if(LWP_MutexInit(&dev->lock, false) < 0)
 		goto free_and_return;
-	if(LWP_CondInit(&dev->cond) < 0)
+	if(SYS_CreateAlarm(&dev->alarm)<0)
 		goto free_and_return;
 
 	retval = USB_OpenDevice(bus, vid, pid, &dev->usb_fd);
@@ -548,7 +583,10 @@ found:
 	dev->buffer = __lwp_heap_allocate(&__heap, MAX_TRANSFER_SIZE);
 	
 	if(dev->buffer == NULL) retval = IPC_ENOMEM;
-	else retval = USBSTORAGE_OK;
+	else {
+		USB_DeviceRemovalNotifyAsync(dev->usb_fd,__usb_deviceremoved_cb,dev);
+		retval = USBSTORAGE_OK;
+	}
 
 free_and_return:
 	if(max_lun!=NULL) __lwp_heap_free(&__heap, max_lun);
@@ -556,7 +594,7 @@ free_and_return:
 	{
 		USB_CloseDevice(&dev->usb_fd);
 		LWP_MutexDestroy(dev->lock);
-		LWP_CondDestroy(dev->cond);
+		SYS_RemoveAlarm(dev->alarm);
 		if(dev->buffer != NULL)
 			__lwp_heap_free(&__heap, dev->buffer);
 		if(dev->sector_size != NULL)
@@ -571,7 +609,7 @@ s32 USBStorage_Close(usbstorage_handle *dev)
 {
 	USB_CloseDevice(&dev->usb_fd);
 	LWP_MutexDestroy(dev->lock);
-	LWP_CondDestroy(dev->cond);
+	SYS_RemoveAlarm(dev->alarm);
 	if(dev->sector_size!=NULL)
 		free(dev->sector_size);
 	if(dev->buffer!=NULL)
@@ -694,12 +732,6 @@ s32 USBStorage_Suspend(usbstorage_handle *dev)
 The following is for implementing a DISC_INTERFACE 
 as used by libfat
 */
-
-static usbstorage_handle __usbfd;
-static u8 __lun = 0;
-static u8 __mounted = 0;
-static u16 __vid = 0;
-static u16 __pid = 0;
 
 static bool __usbstorage_IsInserted(void);
 
