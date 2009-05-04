@@ -34,7 +34,6 @@
 #if defined(HW_RVL)
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <malloc.h>
 #include <time.h>
