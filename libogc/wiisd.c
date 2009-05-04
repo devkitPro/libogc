@@ -497,10 +497,6 @@ bool sdio_Deinitialize()
 	if(__sd0_fd>=0)
 		IOS_Close(__sd0_fd);
  
-	if(hId>=0)
-		iosDestroyHeap(hId);
- 
-	hId = -1;
 	__sdio_initialized = 0;
 	return true;
 }
@@ -509,8 +505,10 @@ bool sdio_Startup()
 {
 	if(__sdio_initialized==1) return true;
  
-	hId = iosCreateHeap(SDIO_HEAPSIZE);
-	if(hId<0) return false;
+	if(hId<0) {
+		hId = iosCreateHeap(SDIO_HEAPSIZE);
+		if(hId<0) return false;
+	}
  
 	__sd0_fd = IOS_Open(_sd0_fs,1);
 
