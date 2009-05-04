@@ -84,6 +84,24 @@ struct __gxfifo {
 	u8 _pad[93];
 } __attribute__((packed));
 
+struct __gx_litobj
+{
+	u32 _pad[3];
+	u32 col;
+	f32 a0;
+	f32 a1;
+	f32 a2;
+	f32 k0;
+	f32 k1;
+	f32 k2;
+	f32 px;
+	f32 py;
+	f32 pz;
+	f32 nx;
+	f32 ny;
+	f32 nz;
+} __attribute__((packed));
+
 struct __gx_texobj
 {
 	u32 tex_filt;

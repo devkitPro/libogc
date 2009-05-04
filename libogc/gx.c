@@ -4139,20 +4139,24 @@ void GX_SetIndTexOrder(u8 indtexstage,u8 texcoord,u8 texmap)
 
 void GX_InitLightPos(GXLightObj *lit_obj,f32 x,f32 y,f32 z)
 {
-	((f32*)lit_obj->val)[10] = x;
-	((f32*)lit_obj->val)[11] = y;
-	((f32*)lit_obj->val)[12] = z;
+	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
+
+	lit->px = x;
+	lit->py = y;
+	lit->pz = z;
 }
 
 void GX_InitLightColor(GXLightObj *lit_obj,GXColor col)
 {
-	((u32*)lit_obj->val)[3] = ((_SHIFTL(col.r,24,8))|(_SHIFTL(col.g,16,8))|(_SHIFTL(col.b,8,8))|(col.a&0xff));
+	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
+	lit->col = ((_SHIFTL(col.r,24,8))|(_SHIFTL(col.g,16,8))|(_SHIFTL(col.b,8,8))|(col.a&0xff));
 }
 
 void GX_LoadLightObj(GXLightObj *lit_obj,u8 lit_id)
 {
 	u32 id;
 	u16 reg;
+	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
 
 	switch(lit_id) {
 		case GX_LIGHT0:
@@ -4189,19 +4193,19 @@ void GX_LoadLightObj(GXLightObj *lit_obj,u8 lit_id)
 	FIFO_PUTU32(0);
 	FIFO_PUTU32(0);
 	FIFO_PUTU32(0);
-	FIFO_PUTU32(((u32*)lit_obj->val)[3]);
-	FIFO_PUTF32(((f32*)lit_obj->val)[4]);
-	FIFO_PUTF32(((f32*)lit_obj->val)[5]);
-	FIFO_PUTF32(((f32*)lit_obj->val)[6]);
-	FIFO_PUTF32(((f32*)lit_obj->val)[7]);
-	FIFO_PUTF32(((f32*)lit_obj->val)[8]);
-	FIFO_PUTF32(((f32*)lit_obj->val)[9]);
-	FIFO_PUTF32(((f32*)lit_obj->val)[10]);
-	FIFO_PUTF32(((f32*)lit_obj->val)[11]);
-	FIFO_PUTF32(((f32*)lit_obj->val)[12]);
-	FIFO_PUTF32(((f32*)lit_obj->val)[13]);
-	FIFO_PUTF32(((f32*)lit_obj->val)[14]);
-	FIFO_PUTF32(((f32*)lit_obj->val)[15]);
+	FIFO_PUTU32(lit->col);
+	FIFO_PUTF32(lit->a0);
+	FIFO_PUTF32(lit->a1);
+	FIFO_PUTF32(lit->a2);
+	FIFO_PUTF32(lit->k0);
+	FIFO_PUTF32(lit->k1);
+	FIFO_PUTF32(lit->k2);
+	FIFO_PUTF32(lit->px);
+	FIFO_PUTF32(lit->py);
+	FIFO_PUTF32(lit->pz);
+	FIFO_PUTF32(lit->nx);
+	FIFO_PUTF32(lit->ny);
+	FIFO_PUTF32(lit->nz);
 }
 
 void GX_LoadLightObjIdx(u32 litobjidx,u8 litid)
@@ -4240,8 +4244,7 @@ void GX_LoadLightObjIdx(u32 litobjidx,u8 litid)
 
 	}
 
-	reg = 0x600|(_SHIFTL(idx,4,8));
-	reg = (reg&~0xf000)|0xf000;
+	reg = 0xf600|(_SHIFTL(idx,4,8));
 	reg = (reg&~0xffff0000)|(_SHIFTL(litobjidx,16,16));
 
 	FIFO_PUTU8(0x38);
@@ -4250,14 +4253,17 @@ void GX_LoadLightObjIdx(u32 litobjidx,u8 litid)
 
 void GX_InitLightDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz)
 {
-	((f32*)lit_obj->val)[13] = -(nx);
-	((f32*)lit_obj->val)[14] = -(ny);
-	((f32*)lit_obj->val)[15] = -(nz);
+	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
+
+	lit->nx = -(nx);
+	lit->ny = -(ny);
+	lit->nz = -(nz);
 }
 
 void GX_InitLightDistAttn(GXLightObj *lit_obj,f32 ref_dist,f32 ref_brite,u8 dist_fn)
 {
 	f32 k0,k1,k2;
+	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
 
 	if(ref_dist<0.0f ||
 		ref_brite<0.0f || ref_brite>=1.0f) dist_fn = GX_DA_OFF;
@@ -4285,55 +4291,64 @@ void GX_InitLightDistAttn(GXLightObj *lit_obj,f32 ref_dist,f32 ref_brite,u8 dist
 			k2 = 0.0f;
 			break;
 	}
-	((f32*)lit_obj->val)[7] = k0;	
-	((f32*)lit_obj->val)[8] = k1;	
-	((f32*)lit_obj->val)[9] = k2;	
+
+	lit->k0 = k0;	
+	lit->k1 = k1;	
+	lit->k2 = k2;	
 }
 
 void GX_InitLightAttn(GXLightObj *lit_obj,f32 a0,f32 a1,f32 a2,f32 k0,f32 k1,f32 k2)
 {
-	((f32*)lit_obj->val)[4] = a0;	
-	((f32*)lit_obj->val)[5] = a1;	
-	((f32*)lit_obj->val)[6] = a2;	
-	((f32*)lit_obj->val)[7] = k0;	
-	((f32*)lit_obj->val)[8] = k1;	
-	((f32*)lit_obj->val)[9] = k2;	
+	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
+
+	lit->a0 = a0;	
+	lit->a1 = a1;	
+	lit->a2 = a2;	
+	lit->k0 = k0;	
+	lit->k1 = k1;	
+	lit->k2 = k2;	
 }
 
 void GX_InitLightAttnA(GXLightObj *lit_obj,f32 a0,f32 a1,f32 a2)
 {
-	((f32*)lit_obj->val)[4] = a0;	
-	((f32*)lit_obj->val)[5] = a1;	
-	((f32*)lit_obj->val)[6] = a2;	
+	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
+
+	lit->a0 = a0;	
+	lit->a1 = a1;	
+	lit->a2 = a2;	
 }
 
 void GX_InitLightAttnK(GXLightObj *lit_obj,f32 k0,f32 k1,f32 k2)
 {
-	((f32*)lit_obj->val)[7] = k0;	
-	((f32*)lit_obj->val)[8] = k1;	
-	((f32*)lit_obj->val)[9] = k2;	
+	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
+
+	lit->k0 = k0;	
+	lit->k1 = k1;	
+	lit->k2 = k2;	
 }
 
 void GX_InitSpecularDirHA(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz,f32 hx,f32 hy,f32 hz)
 {
     f32 px, py, pz;
+	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
 
     px = (nx * LARGE_NUMBER);
     py = (ny * LARGE_NUMBER);
     pz = (nz * LARGE_NUMBER);
 
-	((f32*)lit_obj)[10] = px;
-	((f32*)lit_obj)[11] = py;
-	((f32*)lit_obj)[12] = pz;
-	((f32*)lit_obj)[13] = hx;
-	((f32*)lit_obj)[14] = hy;
-	((f32*)lit_obj)[15] = hz;
+	lit->px = px;
+	lit->py = py;
+	lit->pz = pz;
+	lit->nx = hx;
+	lit->ny = hy;
+	lit->nz = hz;
 }
 
 void GX_InitSpecularDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz)
 {
     f32 px, py, pz;
     f32 hx, hy, hz, mag;
+	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
 
     // Compute half-angle vector
     hx  = -nx;
@@ -4350,17 +4365,18 @@ void GX_InitSpecularDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz)
     py  = (ny * LARGE_NUMBER);
     pz  = (nz * LARGE_NUMBER);
 	
-	((f32*)lit_obj)[10] = px;
-	((f32*)lit_obj)[11] = py;
-	((f32*)lit_obj)[12] = pz;
-	((f32*)lit_obj)[13] = hx;
-	((f32*)lit_obj)[14] = hy;
-	((f32*)lit_obj)[15] = hz;
+	lit->px = px;
+	lit->py = py;
+	lit->pz = pz;
+	lit->nx = hx;
+	lit->ny = hy;
+	lit->nz = hz;
 }
 
 void GX_InitLightSpot(GXLightObj *lit_obj,f32 cut_off,u8 spotfn)
 {
 	f32 r,d,cr,a0,a1,a2;
+	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
 
 	if(cut_off<0.0f ||	cut_off>90.0f) spotfn = GX_SP_OFF;
 	
@@ -4408,9 +4424,10 @@ void GX_InitLightSpot(GXLightObj *lit_obj,f32 cut_off,u8 spotfn)
 			a2 = 0.0f;
 			break;
 	}
-	((f32*)lit_obj)[4] = a0;
-	((f32*)lit_obj)[5] = a1;
-	((f32*)lit_obj)[6] = a2;
+
+	lit->a0 = a0;
+	lit->a1 = a1;
+	lit->a2 = a2;
 }
 
 void GX_SetGPMetric(u32 perf0,u32 perf1)
