@@ -20,28 +20,37 @@ extern u32 __SYS_GetRTC(u32 *gctime);
 extern syssram* __SYS_LockSram();
 extern u32 __SYS_UnlockSram(u32 write);
 
+
+
 unsigned long _DEFUN(gettick,(),
-						  _NOARGS)
+	_NOARGS)
+
 {
-	__asm__ __volatile__ (
-		"1:	mftb	3\n\
-		    blr"
-			: : : "memory");
-	return 0;
+	unsigned long result;
+	__asm__ (
+		"mftb	%0\n"
+		: "=r" (result)
+		:
+	);
+	return result;
 }
 
-long long _DEFUN(gettime,(),
+
+u64 _DEFUN(gettime,(),
 						  _NOARGS)
 {
-	__asm__ __volatile__ (
-		"1:	mftbu	3\n\
-		    mftb	4\n\
-		    mftbu	5\n\
-			cmpw	3,5\n\
-			bne		1b\n\
-			blr"
-			: : : "memory");
-	return 0;
+	unsigned long resulthi, resultlo, tmp;
+	
+	__asm__ (
+		"1:	mftbu	%0\n\
+		    mftb	%1\n\
+		    mftbu	%2\n\
+			cmpw	%0,%2\n\
+			bne		1b\n"
+		: "=r" (resulthi), "=r" (resultlo), "=r" (tmp)
+		:
+	);
+	return ((u64)resulthi << 32 ) | resultlo;
 }
 
 void _DEFUN(settime,(t),
@@ -51,8 +60,7 @@ void _DEFUN(settime,(t),
 		"li		5,0\n\
 		 mttbl  5\n\
 		 mttbu  3\n\
-		 mttbl  4\n\
-	     blr"
+		 mttbl  4\n"
 		 : : : "memory");
 }
 
