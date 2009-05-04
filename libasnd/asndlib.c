@@ -39,7 +39,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #undef SND_BUFFERSIZE
 
 #define MAX_SND_VOICES			16
-#define SND_BUFFERSIZE			(4096) // don´t modify this value
+#define SND_BUFFERSIZE			(4096) // donÂ´t modify this value
 
 #define VOICE_UPDATEADD   256
 #define VOICE_UPDATE      128
@@ -759,7 +759,7 @@ s32 ASND_GetFirstUnusedVoice()
 	for(n=1;n<MAX_SND_VOICES;n++)
 		if(!(sound_data[n].flags>>16)) return n;
 
-	if(!(sound_data[n].flags>>16)) return 0; // voice 0 is a special case
+	if(!(sound_data[0].flags>>16)) return 0; // voice 0 is a special case
 
 	return SND_INVALID;  // all voices used
 
