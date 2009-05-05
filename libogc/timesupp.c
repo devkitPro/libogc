@@ -56,7 +56,7 @@ u64 _DEFUN(gettime,(),
 }
 
 void _DEFUN(settime,(t),
-			long long t)
+			u64 t)
 {
 	u32 tmp;
 	union uulc {
