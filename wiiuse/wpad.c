@@ -32,6 +32,7 @@ distribution.
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "asm.h"
 #include "processor.h"
@@ -127,7 +128,7 @@ static void __wpad_def_powcb(s32 chan)
 	__SYS_DoPowerCB();
 }
 
-static void __wpad_timeouthandler(syswd_t alarm)
+static void __wpad_timeouthandler(syswd_t alarm,void *cbarg)
 {
 	s32 i;
 	struct wiimote_t *wm = NULL;
@@ -150,30 +151,27 @@ static void __wpad_timeouthandler(syswd_t alarm)
 	__lwp_thread_dispatchunnest();
 }
 
-static void __wpad_sounddata_alarmhandler(syswd_t alarm)
+static void __wpad_sounddata_alarmhandler(syswd_t alarm,void *cbarg)
 {
-	s32 i;
 	u8 *snd_data;
 	u32 snd_off;
 	struct wiimote_t *wm;
+	struct _wpad_cb *wpdcb = (struct _wpad_cb*)cbarg;
 
-	for(i=0;i<WPAD_MAX_WIIMOTES;i++) {
-		if(__wpdcb[i].sound_alarm==alarm) break;
-	}
-	if(i>=WPAD_MAX_WIIMOTES) return;
+	if(!wpdcb) return;
 
-	if(__wpdcb[i].sound_off>=__wpdcb[i].sound_len) {
-		__wpdcb[i].sound_data = NULL;
-		__wpdcb[i].sound_len = 0;
-		__wpdcb[i].sound_off = 0;
-		SYS_CancelAlarm(alarm);
+	if(wpdcb->sound_off>=wpdcb->sound_len) {
+		wpdcb->sound_data = NULL;
+		wpdcb->sound_len = 0;
+		wpdcb->sound_off = 0;
+		SYS_CancelAlarm(wpdcb->sound_alarm);
 		return;
 	}
 
-	wm = __wpdcb[i].wm;
-	snd_data = __wpdcb[i].sound_data;
-	snd_off = __wpdcb[i].sound_off;
-	__wpdcb[i].sound_off += MAX_STREAMDATA_LEN;
+	wm = wpdcb->wm;
+	snd_data = wpdcb->sound_data;
+	snd_off = wpdcb->sound_off;
+	wpdcb->sound_off += MAX_STREAMDATA_LEN;
 	wiiuse_write_streamdata(wm,(snd_data+snd_off),MAX_STREAMDATA_LEN,NULL);
 }
 
@@ -1050,7 +1048,11 @@ void WPAD_Shutdown()
 	__wpads_inited = WPAD_STATE_DISABLED;
 	_CPU_ISR_Restore(level);
 
-	while(__wpads_active);
+	while(__wpads_active)
+		usleep(50);
+
+	for(i=0;i<WPAD_MAX_WIIMOTES;i++) SYS_RemoveAlarm(__wpdcb[i].sound_alarm);
+	SYS_RemoveAlarm(__wpad_timer);
 
 	BTE_Shutdown();
 }
@@ -1207,7 +1209,7 @@ s32 WPAD_SendStreamData(s32 chan,void *buf,u32 len)
 
 			tb.tv_sec = 0;
 			tb.tv_nsec = 6666667;
-			SYS_SetPeriodicAlarm(__wpdcb[chan].sound_alarm,&tb,&tb,__wpad_sounddata_alarmhandler, NULL);
+			SYS_SetPeriodicAlarm(__wpdcb[chan].sound_alarm,&tb,&tb,__wpad_sounddata_alarmhandler, &__wpdcb[chan]);
 		}
 	}
 
