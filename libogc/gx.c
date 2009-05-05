@@ -2619,68 +2619,84 @@ void GX_SetZTexture(u8 op,u8 fmt,u32 bias)
 
 static inline void WriteMtxPS4x3(register Mtx mt,register void *wgpipe)
 {
-	__asm__ __volatile__
-		("psq_l 0,0(%0),0,0\n\
-		  psq_l 1,8(%0),0,0\n\
-		  psq_l 2,16(%0),0,0\n\
-		  psq_l 3,24(%0),0,0\n\
-		  psq_l 4,32(%0),0,0\n\
-		  psq_l 5,40(%0),0,0\n\
-		  psq_st 0,0(%1),0,0\n\
-		  psq_st 1,0(%1),0,0\n\
-		  psq_st 2,0(%1),0,0\n\
-		  psq_st 3,0(%1),0,0\n\
-		  psq_st 4,0(%1),0,0\n\
-		  psq_st 5,0(%1),0,0"
-		  : : "r"(mt), "r"(wgpipe));
+	register f32 tmp0,tmp1,tmp2,tmp3,tmp4,tmp5;
+	__asm__ __volatile__ (
+		 "psq_l %0,0(%6),0,0\n\
+		  psq_l %1,8(%6),0,0\n\
+		  psq_l %2,16(%6),0,0\n\
+		  psq_l %3,24(%6),0,0\n\
+		  psq_l %4,32(%6),0,0\n\
+		  psq_l %5,40(%6),0,0\n\
+		  psq_st %0,0(%7),0,0\n\
+		  psq_st %1,0(%7),0,0\n\
+		  psq_st %2,0(%7),0,0\n\
+		  psq_st %3,0(%7),0,0\n\
+		  psq_st %4,0(%7),0,0\n\
+		  psq_st %5,0(%7),0,0"
+		  : "=&f"(tmp0),"=&f"(tmp1),"=&f"(tmp2),"=&f"(tmp3),"=&f"(tmp4),"=&f"(tmp5)
+		  : "r"(mt), "r"(wgpipe)
+		  : "memory"
+	);
 }
 
 static inline void WriteMtxPS3x3from4x3(register Mtx mt,register void *wgpipe)
 {
+	register f32 tmp0,tmp1,tmp2,tmp3,tmp4,tmp5;
 	__asm__ __volatile__
-		("psq_l 0,0(%0),0,0\n\
-		  lfs 1,8(%0)\n\
-		  psq_l 2,16(%0),0,0\n\
-		  lfs 3,24(%0)\n\
-		  psq_l 4,32(%0),0,0\n\
-		  lfs 5,40(%0)\n\
-		  psq_st 0,0(%1),0,0\n\
-		  stfs 1,0(%1)\n\
-		  psq_st 2,0(%1),0,0\n\
-		  stfs 3,0(%1)\n\
-		  psq_st 4,0(%1),0,0\n\
-		  stfs 5,0(%1)"
-		  : : "r"(mt), "r"(wgpipe));
+		("psq_l %0,0(%6),0,0\n\
+		  lfs	%1,8(%6)\n\
+		  psq_l %2,16(%6),0,0\n\
+		  lfs	%3,24(%6)\n\
+		  psq_l %4,32(%6),0,0\n\
+		  lfs	%5,40(%6)\n\
+		  psq_st %0,0(%7),0,0\n\
+		  stfs	 %1,0(%7)\n\
+		  psq_st %2,0(%7),0,0\n\
+		  stfs	 %3,0(%7)\n\
+		  psq_st %4,0(%7),0,0\n\
+		  stfs	 %5,0(%7)"
+		  : "=&f"(tmp0),"=&f"(tmp1),"=&f"(tmp2),"=&f"(tmp3),"=&f"(tmp4),"=&f"(tmp5) 
+		  : "r"(mt), "r"(wgpipe)
+		  : "memory"
+	);
 }
 
 static inline void WriteMtxPS3x3(register Mtx33 mt,register void *wgpipe)
 {
+	register f32 tmp0,tmp1,tmp2,tmp3,tmp4;
 	__asm__ __volatile__
-		("psq_l 0,0(%0),0,0\n\
-		  psq_l 1,8(%0),0,0\n\
-		  psq_l 2,16(%0),0,0\n\
-		  psq_l 3,24(%0),0,0\n\
-		  lfs 4,32(%0)\n\
-		  psq_st 0,0(%1),0,0\n\
-		  psq_st 1,0(%1),0,0\n\
-		  psq_st 2,0(%1),0,0\n\
-		  psq_st 3,0(%1),0,0\n\
-		  stfs 4,0(%1)"
-		  : : "r"(mt), "r"(wgpipe));
+		("psq_l %0,0(%5),0,0\n\
+		  psq_l %1,8(%5),0,0\n\
+		  psq_l %2,16(%5),0,0\n\
+		  psq_l %3,24(%5),0,0\n\
+		  lfs	%4,32(%5)\n\
+		  psq_st %0,0(%6),0,0\n\
+		  psq_st %1,0(%6),0,0\n\
+		  psq_st %2,0(%6),0,0\n\
+		  psq_st %3,0(%6),0,0\n\
+		  stfs	 %4,0(%6)"
+		  : "=&f"(tmp0),"=&f"(tmp1),"=&f"(tmp2),"=&f"(tmp3),"=&f"(tmp4) 
+		  : "r"(mt), "r"(wgpipe)
+		  : "memory"
+	);
 }
 
 static inline void WriteMtxPS4x2(register Mtx mt,register void *wgpipe)
 {
+	register f32 tmp0,tmp1,tmp2,tmp3;
 	__asm__ __volatile__
-		("psq_l 0,0(%0),0,0\n\
-		  psq_l 1,8(%0),0,0\n\
-		  psq_l 2,16(%0),0,0\n\
-		  psq_l 3,24(%0),0,0\n\
-		  psq_st 0,0(%1),0,0\n\
-		  psq_st 1,0(%1),0,0\n\
-		  psq_st 2,0(%1),0,0\n\
-		  psq_st 3,0(%1),0,0"
-		  : : "r"(mt), "r"(wgpipe));
+		("psq_l %0,0(%4),0,0\n\
+		  psq_l %1,8(%4),0,0\n\
+		  psq_l %2,16(%4),0,0\n\
+		  psq_l %3,24(%4),0,0\n\
+		  psq_st %0,0(%5),0,0\n\
+		  psq_st %1,0(%5),0,0\n\
+		  psq_st %2,0(%5),0,0\n\
+		  psq_st %3,0(%5),0,0"
+		  : "=&f"(tmp0),"=&f"(tmp1),"=&f"(tmp2),"=&f"(tmp3)
+		  : "r"(mt), "r"(wgpipe)
+		  : "memory"
+	);
 }
 
 void GX_LoadPosMtxImm(Mtx mt,u32 pnidx)
