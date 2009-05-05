@@ -120,7 +120,6 @@ static u8 _gx_saved_data[STRUCT_REGDEF_SIZE] ATTRIBUTE_ALIGN(32);
 
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
-extern long long gettime();
 
 static s32 __gx_onreset(s32 final);
 
