@@ -56,12 +56,18 @@ u64 _DEFUN(gettime,(),
 void _DEFUN(settime,(t),
 			long long t)
 {
-	__asm__ __volatile__ (
-		"li		5,0\n\
-		 mttbl  5\n\
-		 mttbu  3\n\
-		 mttbl  4\n"
-		 : : : "memory");
+	u32 timelo = t & 0xffff;
+	u32 timehi = t >> 32;
+	u32 tmp;
+
+	__asm__(
+		"li		%0,0\n\
+		 mttbl  %0\n\
+		 mttbu  %1\n\
+		 mttbl  %2\n"
+		 : "=r" (tmp)
+		 : "r" (timehi), "r" (timelo)
+	);
 }
 
 u32 diff_sec(long long start,long long end)
