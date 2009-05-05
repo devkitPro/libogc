@@ -128,7 +128,7 @@ static void bte_reset_all()
 	btstate.last_err = ERR_OK;
 }
 
-static void bt_alarmhandler(syswd_t alarm)
+static void bt_alarmhandler(syswd_t alarm,void *cbarg)
 {
 	__lwp_thread_dispatchdisable();
 	SYS_SwitchFiber(0,0,0,0,(u32)l2cap_tmr,(u32)(&ppc_stack[STACKSIZE]));
