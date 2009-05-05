@@ -30,7 +30,6 @@ unsigned long _DEFUN(gettick,(),
 	__asm__ (
 		"mftb	%0\n"
 		: "=r" (result)
-		:
 	);
 	return result;
 }
@@ -39,7 +38,11 @@ unsigned long _DEFUN(gettick,(),
 u64 _DEFUN(gettime,(),
 						  _NOARGS)
 {
-	unsigned long resulthi, resultlo, tmp;
+	u32 tmp;
+	union uulc {
+		u64 ull;
+		u32 ul[2];
+	} v;
 	
 	__asm__ (
 		"1:	mftbu	%0\n\
@@ -47,26 +50,28 @@ u64 _DEFUN(gettime,(),
 		    mftbu	%2\n\
 			cmpw	%0,%2\n\
 			bne		1b\n"
-		: "=r" (resulthi), "=r" (resultlo), "=r" (tmp)
-		:
+		: "=r" (v.ul[0]), "=r" (v.ul[1]), "=r" (tmp)
 	);
-	return ((u64)resulthi << 32 ) | resultlo;
+	return v.ull;
 }
 
 void _DEFUN(settime,(t),
 			long long t)
 {
-	u32 timelo = t & 0xffff;
-	u32 timehi = t >> 32;
 	u32 tmp;
+	union uulc {
+		u64 ull;
+		u32 ul[2];
+	} v;
 
-	__asm__(
+	v.ull = t;
+	__asm__ __volatile__ (
 		"li		%0,0\n\
 		 mttbl  %0\n\
 		 mttbu  %1\n\
 		 mttbl  %2\n"
-		 : "=r" (tmp)
-		 : "r" (timehi), "r" (timelo)
+		 : "=&r" (tmp)
+		 : "r" (v.ul[0]), "r" (v.ul[1])
 	);
 }
 
