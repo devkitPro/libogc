@@ -27,7 +27,7 @@ unsigned long _DEFUN(gettick,(),
 
 {
 	unsigned long result;
-	__asm__ (
+	__asm__ __volatile__ (
 		"mftb	%0\n"
 		: "=r" (result)
 	);
@@ -44,7 +44,7 @@ u64 _DEFUN(gettime,(),
 		u32 ul[2];
 	} v;
 	
-	__asm__ (
+	__asm__ __volatile__(
 		"1:	mftbu	%0\n\
 		    mftb	%1\n\
 		    mftbu	%2\n\
@@ -169,9 +169,9 @@ int clock_gettime(struct timespec *tp)
 
 // this function spins till timeout is reached
 void _DEFUN(udelay,(us),
-			int us)
+			unsigned us)
 {
-	long long start, end;
+	unsigned long long start, end;
 	start = gettime();
 	while (1)
 	{
