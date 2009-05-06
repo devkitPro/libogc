@@ -2634,7 +2634,7 @@ static inline void WriteMtxPS4x3(register Mtx mt,register void *wgpipe)
 		  psq_st %4,0(%7),0,0\n\
 		  psq_st %5,0(%7),0,0"
 		  : "=&f"(tmp0),"=&f"(tmp1),"=&f"(tmp2),"=&f"(tmp3),"=&f"(tmp4),"=&f"(tmp5)
-		  : "r"(mt), "r"(wgpipe)
+		  : "b"(mt), "b"(wgpipe)
 		  : "memory"
 	);
 }
@@ -2656,7 +2656,7 @@ static inline void WriteMtxPS3x3from4x3(register Mtx mt,register void *wgpipe)
 		  psq_st %4,0(%7),0,0\n\
 		  stfs	 %5,0(%7)"
 		  : "=&f"(tmp0),"=&f"(tmp1),"=&f"(tmp2),"=&f"(tmp3),"=&f"(tmp4),"=&f"(tmp5) 
-		  : "r"(mt), "r"(wgpipe)
+		  : "b"(mt), "b"(wgpipe)
 		  : "memory"
 	);
 }
@@ -2676,7 +2676,7 @@ static inline void WriteMtxPS3x3(register Mtx33 mt,register void *wgpipe)
 		  psq_st %3,0(%6),0,0\n\
 		  stfs	 %4,0(%6)"
 		  : "=&f"(tmp0),"=&f"(tmp1),"=&f"(tmp2),"=&f"(tmp3),"=&f"(tmp4) 
-		  : "r"(mt), "r"(wgpipe)
+		  : "b"(mt), "b"(wgpipe)
 		  : "memory"
 	);
 }
@@ -2694,7 +2694,7 @@ static inline void WriteMtxPS4x2(register Mtx mt,register void *wgpipe)
 		  psq_st %2,0(%5),0,0\n\
 		  psq_st %3,0(%5),0,0"
 		  : "=&f"(tmp0),"=&f"(tmp1),"=&f"(tmp2),"=&f"(tmp3)
-		  : "r"(mt), "r"(wgpipe)
+		  : "b"(mt), "b"(wgpipe)
 		  : "memory"
 	);
 }
