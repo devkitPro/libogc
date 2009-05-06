@@ -270,7 +270,7 @@ static inline s32 __usb_getdesc(s32 fd, u8 *buffer, u8 type, u8 index, u8 size)
 	return __usb_control_message(fd, USB_ENDPOINT_IN ,USB_REQ_GETDESCRIPTOR, (type << 8) | index, 0, size, buffer, NULL, NULL);
 }
 
-static s16 __find_next_endpoint(u8 *buffer,u16 size)
+static u32 __find_next_endpoint(u8 *buffer,u32 size)
 {
 	u8 *ptr = buffer;
 
@@ -360,7 +360,7 @@ s32 USB_GetDescriptors(s32 fd, usb_devdesc *udd)
 	usb_interfacedesc *uid = NULL;
 	usb_endpointdesc *ued = NULL;
 	s32 retval = 0;
-	s16 size,i;
+	u32 size,i;
 	u32 iConf, iInterface, iEndpoint;
 
 	buffer = iosAlloc(hId, sizeof(*udd));
@@ -436,13 +436,16 @@ s32 USB_GetDescriptors(s32 fd, usb_devdesc *udd)
 			/* This skips vendor and class specific descriptors */
 			i = __find_next_endpoint(ptr, size);
 			uid->extra_size = i;
-			uid->extra = malloc(i);
-			if(uid->extra == NULL)
-				goto free_and_error;
-			memcpy(uid->extra, ptr, i);
-			ptr += i;
-			size -= i;
-
+			if(i>0)
+			{
+				uid->extra = malloc(i);
+				if(uid->extra == NULL)
+					goto free_and_error;
+				memcpy(uid->extra, ptr, i);
+				ptr += i;
+				size -= i;
+			}
+			memset(uid->endpoints,0,uid->bNumEndpoints* sizeof(*uid->endpoints));
 			for(iEndpoint = 0; iEndpoint < uid->bNumEndpoints; iEndpoint++)
 			{
 				ued = &uid->endpoints[iEndpoint];

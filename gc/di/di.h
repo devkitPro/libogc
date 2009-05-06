@@ -42,6 +42,10 @@ All buffers in this document need to be 32-byte aligned!
 #include <ogc/ipc.h>
 #include <ogc/disc_io.h>
 
+#ifdef __cplusplus
+	extern "C" {
+#endif
+
 /*
 DEFINES GO HERE!
 */
@@ -125,5 +129,9 @@ int DI_ReportKey(int keytype, uint32_t lba, void* buf);
 
 int DI_OpenPartition(u32 offset);
 int DI_ClosePartition(void);
+
+#ifdef __cplusplus
+	}
+#endif
 
 #endif
