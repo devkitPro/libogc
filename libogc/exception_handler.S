@@ -225,12 +225,16 @@ fpu_exceptionhandler:
 
 	.global systemcallhandler_start,systemcallhandler_end
 systemcallhandler_start:
-	mfspr  r9,HID0
-	ori    r10,r9,0x0008
-	mtspr  HID0,r10
+	mtspr	SPRG2,r9
+	mtspr	SPRG3,r10
+	mfspr	r9,HID0
+	ori		r10,r9,0x0008
+	mtspr	HID0,r10
 	isync
 	sync
-	mtspr  HID0,r9
+	mtspr	HID0,r9
+	mfspr	r9,SPRG2
+	mfspr	r10,SPRG3
 	rfi
 systemcallhandler_end:
 	nop
