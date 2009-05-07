@@ -70,17 +70,17 @@ struct __gx_regdef
 } __attribute__((packed));
 
 struct __gxfifo {
-	u32 buf_start;
-	u32 buf_end;
-	u32 size;
-	u32 hi_mark;
-	u32 lo_mark;
-	u32 rd_ptr;
-	u32 wt_ptr;
-	u32 rdwt_dst;
-	u8 fifo_wrap;
-	u8 cpufifo_ready;
-	u8 gpfifo_ready;
+	vu32 buf_start;
+	vu32 buf_end;
+	vu32 size;
+	vu32 hi_mark;
+	vu32 lo_mark;
+	vu32 rd_ptr;
+	vu32 wt_ptr;
+	vu32 rdwt_dst;
+	vu8 fifo_wrap;
+	vu8 cpufifo_ready;
+	vu8 gpfifo_ready;
 	u8 _pad[93];
 } __attribute__((packed));
 
