@@ -211,16 +211,12 @@ static u32 __GX_IsCPUFifoReady()
 
 static u32 __GX_CPGPLinkCheck()
 {
-	u32 ret;
 	struct __gxfifo *gpfifo = (struct __gxfifo*)&_gpfifo;
 	struct __gxfifo *cpufifo = (struct __gxfifo*)&_cpufifo;
 
 	if(!_gxcpufifoready || !_gxgpfifoready) return 0;
 
-	ret = 0;
-	if(cpufifo->buf_start==gpfifo->buf_start) ret++;
-	if(cpufifo->buf_end==gpfifo->buf_end) ret++;
-	if(ret==2) return 1;
+	if((cpufifo->buf_start==gpfifo->buf_start)&&(cpufifo->buf_end==gpfifo->buf_end)) return 1;
 
 	return 0;
 }
