@@ -66,7 +66,7 @@ struct __gx_regdef
 	vu8 saveDLctx;
 	vu8 gxFifoUnlinked;
 	vu8 texCopyZTex;
-	vu8 _pad;
+	u8 _pad;
 } __attribute__((packed));
 
 struct __gxfifo {
@@ -87,60 +87,60 @@ struct __gxfifo {
 struct __gx_litobj
 {
 	u32 _pad[3];
-	u32 col;
-	f32 a0;
-	f32 a1;
-	f32 a2;
-	f32 k0;
-	f32 k1;
-	f32 k2;
-	f32 px;
-	f32 py;
-	f32 pz;
-	f32 nx;
-	f32 ny;
-	f32 nz;
+	vu32 col;
+	vf32 a0;
+	vf32 a1;
+	vf32 a2;
+	vf32 k0;
+	vf32 k1;
+	vf32 k2;
+	vf32 px;
+	vf32 py;
+	vf32 pz;
+	vf32 nx;
+	vf32 ny;
+	vf32 nz;
 } __attribute__((packed));
 
 struct __gx_texobj
 {
-	u32 tex_filt;
-	u32 tex_lod;
-	u32 tex_size;
-	u32 tex_maddr;
+	vu32 tex_filt;
+	vu32 tex_lod;
+	vu32 tex_size;
+	vu32 tex_maddr;
 	u32 _pad;
-	u32 tex_fmt;
-	u32 tex_tlut;
-	u16 tex_tile_cnt;
-	u8 tex_tile_type;
-	u8 tex_flag;
+	vu32 tex_fmt;
+	vu32 tex_tlut;
+	vu16 tex_tile_cnt;
+	vu8 tex_tile_type;
+	vu8 tex_flag;
 } __attribute__((packed));
 
 struct __gx_tlutobj
 {
-	u32 tlut_fmt;
-	u32 tlut_maddr;
-	u16 tlut_nentries;
+	vu32 tlut_fmt;
+	vu32 tlut_maddr;
+	vu16 tlut_nentries;
 	u8 _pad[2];
 } __attribute__((packed));
 
 struct __gx_texregion
 {
-	u32 tmem_even;
-	u32 tmem_odd;
-	u16 size_even;
-	u16 size_odd;
-	u8 ismipmap;
-	u8 iscached;
+	vu32 tmem_even;
+	vu32 tmem_odd;
+	vu16 size_even;
+	vu16 size_odd;
+	vu8 ismipmap;
+	vu8 iscached;
 	u8 _pad[2];
 } __attribute__((packed));
 
 struct __gx_tlutregion
 {
-	u32 tmem_addr_conf;
-	u32 tmem_addr_base;
-	u32 tlut_maddr;
-	u16 tlut_nentries;
+	vu32 tmem_addr_conf;
+	vu32 tmem_addr_base;
+	vu32 tlut_maddr;
+	vu16 tlut_nentries;
 	u8 _pad[2];
 } __attribute__((packed));
 
