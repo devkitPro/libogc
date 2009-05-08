@@ -188,6 +188,10 @@ struct linger {
 #define ntohl(x) (x)
 #endif
 
+#ifndef h_addr
+#define h_addr h_addr_list[0]
+#endif
+
 #ifndef IP4_ADDR
 #define IP4_ADDR(ipaddr, a,b,c,d) (ipaddr)->s_addr = htonl(((u32)(a&0xff)<<24)|((u32)(b&0xff)<<16)|((u32)(c&0xff)<<8)|(u32)(d&0xff))
 #define ip4_addr1(ipaddr) ((u32)(ntohl((ipaddr)->s_addr) >> 24) & 0xff)
@@ -270,7 +274,7 @@ s32 net_fcntl(s32 s, u32 cmd, u32 flags);
 s32 net_poll(struct pollsd *sds,s32 nsds,s32 timeout);
 s32 net_shutdown(s32 s, u32 how);
 
-struct hostent * net_gethostbyname(char *addrString);
+struct hostent * net_gethostbyname(const char *addrString);
 
 #ifdef __cplusplus
 	}
