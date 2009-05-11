@@ -134,66 +134,82 @@ struct setsockopt_params {
 // I sense a pattern here...
 static u8 _net_error_code_map[] = {
 	0, // 0
-	0,
-	0,
-	0,
-	0,
-	0, // 5
+ 	E2BIG, 
+ 	EACCES, 
+ 	EADDRINUSE,
+ 	EADDRNOTAVAIL, 
+ 	EAFNOSUPPORT, // 5
 	EAGAIN,
 	EALREADY,
 	EBADFD,
-	0,
-	0, // 10
-	0,
-	0,
-	0,
-	0,
-	0, // 15
-	0,
-	0,
-	0,
-	0,
-	0, // 20
-	0,
-	0,
-	0,
-	0,
-	0, // 25
+ 	EBADMSG,
+ 	EBUSY, // 10
+ 	ECANCELED,
+ 	ECHILD,
+ 	ECONNABORTED,
+ 	ECONNREFUSED,
+ 	ECONNRESET, // 15
+ 	EDEADLK,
+ 	EDESTADDRREQ,
+ 	EDOM,
+ 	EDQUOT,
+ 	EEXIST, // 20
+ 	EFAULT,
+ 	EFBIG,
+ 	EHOSTUNREACH,
+ 	EIDRM,
+ 	EILSEQ, // 25
 	EINPROGRESS,
-	0,
-	0,
-	0,
+ 	EINTR,
+ 	EINVAL,
+ 	EIO,
 	EISCONN, // 30
-	0,
-	0,
-	0,
-	0,
-	0, // 35
-	0,
-	0,
-	0,
-	ENETDOWN, //?
-	0, // 40
-	0,
-	0,
-	0,
-	0,
-	0, // 45
-	0,
-	0,
-	0,
-	0,
-	0, // 50
-	0,
-	0,
-	0,
-	0,
-	0, // 55
-	0,
-	0,
-	0,
-	0,
-	0, // 60
+ 	EISDIR,
+ 	ELOOP,
+ 	EMFILE,
+ 	EMLINK,
+ 	EMSGSIZE, // 35
+ 	EMULTIHOP,
+ 	ENAMETOOLONG,
+ 	ENETDOWN,
+ 	ENETRESET,
+ 	ENETUNREACH, // 40
+ 	ENFILE,
+ 	ENOBUFS,
+ 	ENODATA,
+ 	ENODEV,
+ 	ENOENT, // 45
+ 	ENOEXEC,
+ 	ENOLCK,
+ 	ENOLINK,
+ 	ENOMEM,
+ 	ENOMSG, // 50
+ 	ENOPROTOOPT,
+ 	ENOSPC,
+ 	ENOSR,
+ 	ENOSTR,
+ 	ENOSYS, // 55
+ 	ENOTCONN,
+ 	ENOTDIR,
+ 	ENOTEMPTY,
+ 	ENOTSOCK,
+ 	ENOTSUP, // 60
+ 	ENOTTY,
+ 	ENXIO,
+ 	EOPNOTSUPP,
+ 	EOVERFLOW,
+ 	EPERM, // 65
+ 	EPIPE,
+ 	EPROTO,
+ 	EPROTONOSUPPORT,
+ 	EPROTOTYPE,
+ 	ERANGE, // 70
+ 	EROFS,
+ 	ESPIPE,
+ 	ESRCH,
+ 	ESTALE,
+ 	ETIME, // 75
+ 	ETIMEDOUT,
 };
 
 static s32 net_ip_top_fd = -1;
