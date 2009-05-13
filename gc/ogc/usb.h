@@ -11,6 +11,16 @@
 #define USB_OK							0
 #define USB_FAILED						1
 
+#define USB_CLASS_HID					0x03
+#define USB_SUBCLASS_BOOT				0x01
+#define USB_PROTOCOL_KEYBOARD			0x01
+#define USB_PROTOCOL_MOUSE				0x02
+#define USB_REPTYPE_INPUT				0x01
+#define USB_REPTYPE_OUTPUT				0x02
+#define USB_REPTYPE_FEATURE				0x03
+#define USB_REQTYPE_GET					0xA1
+#define USB_REQTYPE_SET					0x21
+
 /* Descriptor types */
 #define USB_DT_DEVICE					0x01
 #define USB_DT_CONFIG					0x02
@@ -32,6 +42,11 @@
 #define USB_REQ_GETINTERFACE			0x0a
 #define USB_REQ_SETINTERFACE			0x0b
 #define USB_REQ_SYNCFRAME				0x0c
+
+#define USB_REQ_GETPROTOCOL				0x03
+#define USB_REQ_SETPROTOCOL				0x0B
+#define USB_REQ_GETREPORT				0x01
+#define USB_REQ_SETREPORT				0x09
 
 /* Descriptor sizes per descriptor type */
 #define USB_DT_DEVICE_SIZE				18
@@ -55,7 +70,7 @@
 #define USB_CTRLTYPE_REC_OTHER			3
 
 #define USB_FEATURE_ENDPOINT_HALT		0
-    
+
 #define USB_ENDPOINT_INTERRUPT			0x03
 #define USB_ENDPOINT_IN					0x80
 #define USB_ENDPOINT_OUT				0x00
@@ -104,7 +119,7 @@ typedef struct _usbconfdesc
 	struct _usbinterfacedesc *interfaces;
 } ATTRIBUTE_PACKED usb_configurationdesc;
 
-typedef struct _usbdevdesc 
+typedef struct _usbdevdesc
 {
 	u8  bLength;
 	u8  bDescriptorType;

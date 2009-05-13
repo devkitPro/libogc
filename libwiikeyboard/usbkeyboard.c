@@ -49,22 +49,6 @@ distribution.
 #define USB_MOD_ALT_R				0x40
 #define USB_MOD_META_R				0x80
 
-#define USB_CLASS_HID				0x03
-#define USB_SUBCLASS_BOOT			0x01
-#define USB_PROTOCOL_KEYBOARD		0x01
-
-#define USB_REQ_GETPROTOCOL			0x03
-#define USB_REQ_SETPROTOCOL			0x0B
-#define USB_REQ_GETREPORT			0x01
-#define USB_REQ_SETREPORT			0x09
-
-#define USB_REPTYPE_INPUT			0x01
-#define USB_REPTYPE_OUTPUT			0x02
-#define USB_REPTYPE_FEATURE			0x03
-
-#define USB_REQTYPE_GET				0xA1
-#define USB_REQTYPE_SET				0x21
-
 struct ukbd_data {
 	u16	modifiers;
 	u8	keycode[MAXKEYCODE];
@@ -74,12 +58,12 @@ struct ukbd {
 	bool connected;
 
 	s32 fd;
-	
+
 	struct ukbd_data sc_ndata;
 	struct ukbd_data sc_odata;
 
 	u8 leds;
-	
+
 	eventcallback cb;
 
 	u8 configuration;
@@ -273,17 +257,17 @@ s32 USBKeyboard_Open(const eventcallback cb)
 		if (!_kbd)
 			return -1;
 	}
-	
+
 	memset(_kbd, 0, sizeof(struct ukbd));
 
 	for (i = 0; i < DEVLIST_MAXSIZE; i++)
 	{
 		vid = *((u16 *) (buffer + (i << 3) + 4));
 		pid = *((u16 *) (buffer + (i << 3) + 6));
-		
+
 		if ((vid == 0) || (pid == 0))
 			continue;
-		
+
 		s32 fd = 0;
 		if (USB_OpenDevice("oh0", vid, pid, &fd) < 0)
 			continue;
@@ -367,7 +351,7 @@ s32 USBKeyboard_Open(const eventcallback cb)
 		USBKeyboard_Close();
 		return -6;
 	}
-	
+
 	if (_get_protocol() != 0)
 	{
 		if (_set_protocol(0) < 0)
@@ -382,7 +366,7 @@ s32 USBKeyboard_Open(const eventcallback cb)
 			return -7;
 		}
 	}
-	
+
 	if (USB_DeviceRemovalNotifyAsync(_kbd->fd, &_disconnect, NULL) < 0)
 	{
 		USBKeyboard_Close();
@@ -439,7 +423,7 @@ s32 USBKeyboard_Scan(void)
 				_submit(USBKEYBOARD_PRESSED, _ukbd_mod_map[i][1]);
 		}
 	}
-		
+
 	for (i = 0; i < MAXKEYCODE; i++) {
 		if (_kbd->sc_odata.keycode[i] > 3) {
 			index = -1;
