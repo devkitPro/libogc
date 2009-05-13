@@ -255,7 +255,7 @@ static void USBMouse_Close(void)
 s32 MOUSE_Init(void)
 {
 	if(mousedata) free(mousedata);
-	mousedata = (signed char*) memalign(32, 20);
+	mousedata = (signed char*) iosAlloc(32, 20);
 
 	if (USB_Initialize() != IPC_OK)
 		return -1;
