@@ -3072,11 +3072,6 @@ void GX_InitTexObjCI(GXTexObj *obj,void *img_ptr,u16 wd,u16 ht,u8 fmt,u8 wrap_s,
 	ptr->tex_tlut = tlut_name;
 }
 
-void GX_InitTexObjTlut(GXTexObj *obj,u32 tlut_name)
-{
-	((struct __gx_texobj*)obj)->tex_tlut = tlut_name;
-}
-
 void GX_InitTexObjLOD(GXTexObj *obj,u8 minfilt,u8 magfilt,f32 minlod,f32 maxlod,f32 lodbias,u8 biasclamp,u8 edgelod,u8 maxaniso)
 {
 	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
@@ -3101,6 +3096,82 @@ void GX_InitTexObjLOD(GXTexObj *obj,u8 minfilt,u8 magfilt,f32 minlod,f32 maxlod,
 
 	ptr->tex_lod = (ptr->tex_lod&~0xff)|(((u32)(16.0f*minlod))&0xff);
 	ptr->tex_lod = (ptr->tex_lod&~0xff00)|(_SHIFTL(((u32)(16.0f*maxlod)),8,8));
+}
+
+void GX_InitTexObjData(GXTexObj *obj,void *img_ptr)
+{
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+	ptr->tex_maddr = (ptr->tex_maddr&~0x01ffffff)|(_SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(img_ptr),5,24));
+}
+
+void GX_InitTexObjTlut(GXTexObj *obj,u32 tlut_name)
+{
+	((struct __gx_texobj*)obj)->tex_tlut = tlut_name;
+}
+
+void GX_InitTexObjWrapMode(GXTexObj *obj,u8 wrap_s,u8 wrap_t)
+{
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+
+	ptr->tex_filt = (ptr->tex_filt&~0x03)|(wrap_s&3);
+	ptr->tex_filt = (ptr->tex_filt&~0x0c)|(_SHIFTL(wrap_t,2,2));
+}
+
+void GX_InitTexObjFilterMode(GXTexObj *obj,u8 minfilt,u8 magfilt)
+{
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+	static u8 GX2HWFiltConv[] = {0x00,0x04,0x01,0x05,0x02,0x06,0x00,0x00};
+
+	ptr->tex_filt = (ptr->tex_filt&~0x10)|(_SHIFTL((magfilt==GX_LINEAR?1:0),4,1));
+	ptr->tex_filt = (ptr->tex_filt&~0xe0)|(_SHIFTL(GX2HWFiltConv[minfilt],5,3));
+}
+
+void GX_InitTexObjMinLOD(GXTexObj *obj,f32 minlod)
+{
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+
+	if(minlod<0.0f) minlod = 0.0f;
+	else if(minlod>10.0f) minlod = 10.0f;
+
+	ptr->tex_lod = (ptr->tex_lod&~0xff)|(((u32)(16.0f*minlod))&0xff);
+}
+
+void GX_InitTexObjMaxLOD(GXTexObj *obj,f32 maxlod)
+{
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+
+	if(maxlod<0.0f) maxlod = 0.0f;
+	else if(maxlod>10.0f) maxlod = 10.0f;
+
+	ptr->tex_lod = (ptr->tex_lod&~0xff00)|(_SHIFTL(((u32)(16.0f*maxlod)),8,8));
+}
+
+void GX_InitTexObjLODBias(GXTexObj *obj,f32 lodbias)
+{
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+
+	if(lodbias<-4.0f) lodbias = -4.0f;
+	else if(lodbias==4.0f) lodbias = 3.99f;
+
+	ptr->tex_filt = (ptr->tex_filt&~0x1fe00)|(_SHIFTL(((u32)(32.0f*lodbias)),9,8));
+}
+
+void GX_InitTexObjBiasClamp(GXTexObj *obj,u8 biasclamp)
+{
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+	ptr->tex_filt = (ptr->tex_filt&~0x200000)|(_SHIFTL(biasclamp,21,1));
+}
+
+void GX_InitTexObjEdgeLOD(GXTexObj *obj,u8 edgelod)
+{
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+	ptr->tex_filt = (ptr->tex_filt&~0x100)|(_SHIFTL(!(edgelod&0xff),8,1));
+}
+
+void GX_InitTexObjMaxAniso(GXTexObj *obj,u8 maxaniso)
+{
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+	ptr->tex_filt = (ptr->tex_filt&~0x180000)|(_SHIFTL(maxaniso,19,2));
 }
 
 void GX_InitTlutObj(GXTlutObj *obj,void *lut,u8 fmt,u16 entries)
