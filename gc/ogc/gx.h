@@ -1733,6 +1733,15 @@ void GX_InitTexPreloadRegion(GXTexRegion *region,u32 tmem_even,u32 size_even,u32
 void GX_InitTexObj(GXTexObj *obj,void *img_ptr,u16 wd,u16 ht,u8 fmt,u8 wrap_s,u8 wrap_t,u8 mipmap);
 void GX_InitTexObjCI(GXTexObj *obj,void *img_ptr,u16 wd,u16 ht,u8 fmt,u8 wrap_s,u8 wrap_t,u8 mipmap,u32 tlut_name);
 void GX_InitTexObjTlut(GXTexObj *obj,u32 tlut_name);	
+void GX_InitTexObjData(GXTexObj *obj,void *img_ptr);
+void GX_InitTexObjWrapMode(GXTexObj *obj,u8 wrap_s,u8 wrap_t);
+void GX_InitTexObjFilterMode(GXTexObj *obj,u8 minfilt,u8 magfilt);
+void GX_InitTexObjMinLOD(GXTexObj *obj,f32 minlod);
+void GX_InitTexObjMaxLOD(GXTexObj *obj,f32 maxlod);
+void GX_InitTexObjLODBias(GXTexObj *obj,f32 lodbias);
+void GX_InitTexObjBiasClamp(GXTexObj *obj,u8 biasclamp);
+void GX_InitTexObjEdgeLOD(GXTexObj *obj,u8 edgelod);
+void GX_InitTexObjMaxAniso(GXTexObj *obj,u8 maxaniso);
 void GX_LoadTexObj(GXTexObj *obj,u8 mapid);
 void GX_LoadTlut(GXTlutObj *obj,u32 tlut_name);
 void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid);
