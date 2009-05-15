@@ -75,11 +75,14 @@ typedef struct {
 	u16 symbol;
 } keyboard_event;
 
-s32 KEYBOARD_Init(void);
+typedef void (*keyPressCallback)(char symbol);
+
+s32 KEYBOARD_Init(keyPressCallback keypress_cb);
 s32 KEYBOARD_Deinit(void);
 
 s32 KEYBOARD_GetEvent(keyboard_event *event);
 s32 KEYBOARD_FlushEvents(void);
+
 
 #ifdef __cplusplus
    }

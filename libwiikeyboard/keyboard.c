@@ -30,6 +30,8 @@ distribution.
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/iosupport.h>
+#include <stdio.h>
 #include <malloc.h>
 #include <ctype.h>
 #include <string.h>
@@ -140,6 +142,7 @@ static kbd_t _get_keymap_by_name(const char *identifier) {
 
 static lwpq_t _kbd_queue;
 static lwp_t _kbd_thread;
+static lwp_t _kbd_buf_thread;
 static u8 *_kbd_stack;
 static bool _kbd_thread_running = false;
 static bool _kbd_thread_quit = false;
@@ -417,8 +420,64 @@ static void * _kbd_thread_func(void *arg) {
 	return NULL;
 }
 
+struct {
+	vu8 head;
+	vu8 tail;
+	char buf[256];
+} _keyBuffer;
+
+static void * _kbd_buf_thread_func(void *arg) {
+	keyboard_event event;
+	while (!_kbd_thread_quit) {
+		if (((_keyBuffer.tail+1)&255) != _keyBuffer.head) {
+			if ( KEYBOARD_GetEvent(&event)) {
+				if (event.type == KEYBOARD_PRESSED) {
+					_keyBuffer.buf[_keyBuffer.tail] = event.symbol;
+					_keyBuffer.tail++;
+				}
+			}
+		}
+		usleep(KBD_THREAD_UDELAY);
+	}
+	return NULL;
+}
+
+static keyPressCallback _readKey_cb = NULL;
+
+	
+static ssize_t _keyboardRead(struct _reent *r, int unused, char *ptr, size_t len)
+{
+	ssize_t count = len;
+	while ( count > 0 ) {
+		if (_keyBuffer.head != _keyBuffer.tail) {
+			char key = _keyBuffer.buf[_keyBuffer.head];
+			*ptr++ = key;
+			if (_readKey_cb != NULL) _readKey_cb(key); 
+			_keyBuffer.head++;
+			count--;
+		}
+	}
+	return len;
+}
+
+static const devoptab_t std_in = 
+{
+	"stdin",
+	0,
+	NULL,
+	NULL,
+	NULL,
+	_keyboardRead,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL
+};
+
 //Initialize USB and USB_KEYBOARD and the event queue
-s32 KEYBOARD_Init(void)
+s32 KEYBOARD_Init(keyPressCallback keypress_cb)
 {
 	int fd;
 	struct stat st;
@@ -502,12 +561,11 @@ s32 KEYBOARD_Init(void)
 		// start the keyboard thread
 		_kbd_thread_quit = false;
 
-		_kbd_stack = (u8 *) memalign(32, KBD_THREAD_STACKSIZE);
-
+		_kbd_stack = (u8 *) memalign(32, KBD_THREAD_STACKSIZE * 2);
 		if (!_kbd_stack)
 			return -5;
 
-		memset(_kbd_stack, 0, KBD_THREAD_STACKSIZE);
+		memset(_kbd_stack, 0, KBD_THREAD_STACKSIZE * 2);
 
 		LWP_InitQueue(&_kbd_queue);
 
@@ -523,10 +581,31 @@ s32 KEYBOARD_Init(void)
 
 			return -6;
 		}
+		_keyBuffer.head = 0;
+		_keyBuffer.tail = 0;
 
-		_kbd_thread_running = res == 0;
+		res = LWP_CreateThread(&_kbd_buf_thread, _kbd_buf_thread_func, NULL,
+								_kbd_stack + KBD_THREAD_STACKSIZE, KBD_THREAD_STACKSIZE,
+								KBD_THREAD_PRIO);
+		if(res) {
+			_kbd_thread_quit = true;
+			LWP_ThreadBroadcast(_kbd_queue);
+
+			LWP_JoinThread(_kbd_thread, NULL);
+			LWP_CloseQueue(_kbd_queue);
+
+			free(_kbd_stack);
+			USBKeyboard_Close();
+			KEYBOARD_FlushEvents();
+			USBKeyboard_Deinitialize();
+			_kbd_thread_running = false;
+			return -6;
+		}
+		_kbd_thread_running = true;
 	}
-
+	devoptab_list[STD_IN] = &std_in;
+	setvbuf(stdin, NULL , _IONBF, 0);
+	_readKey_cb = keypress_cb;
 	return 0;
 }
 
@@ -538,6 +617,7 @@ s32 KEYBOARD_Deinit(void)
 		LWP_ThreadBroadcast(_kbd_queue);
 
 		LWP_JoinThread(_kbd_thread, NULL);
+		LWP_JoinThread(_kbd_buf_thread, NULL);
 		LWP_CloseQueue(_kbd_queue);
 
 		free(_kbd_stack);
