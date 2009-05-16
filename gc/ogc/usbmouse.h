@@ -18,6 +18,7 @@ s32 MOUSE_Deinit(void);
 
 s32 MOUSE_GetEvent(mouse_event *event);
 s32 MOUSE_FlushEvents(void);
+bool MOUSE_IsConnected(void);
 
 #ifdef __cplusplus
    }

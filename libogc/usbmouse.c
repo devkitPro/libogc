@@ -30,10 +30,21 @@ distribution.
 
 #include <string.h>
 #include <malloc.h>
+#include <unistd.h>
 
 #include <gccore.h>
 #include <ogc/usb.h>
 #include <ogc/usbmouse.h>
+
+#define MOUSE_THREAD_STACKSIZE (1024 * 4)
+#define MOUSE_THREAD_PRIO 65
+#define MOUSE_THREAD_UDELAY (1000 * 1000)
+#define MOUSE_THREAD_MOUSE_SCAN_INTERVAL (3 * 100)
+
+static lwp_t _mouse_thread;
+static u8 *_mouse_stack;
+static bool _mouse_thread_running = false;
+static bool _mouse_thread_quit = false;
 
 static lwp_queue _queue;
 
@@ -95,6 +106,13 @@ static s32 _mouse_event_cb(s32 result,void *usrdata)
 	return 0;
 }
 
+//Callback when the mouse is disconnected
+static s32 _disconnect(s32 retval, void *data)
+{
+	_mouse->connected = false;
+	return 1;
+}
+
 //init the ioheap
 static s32 USBMouse_Initialize(void)
 {
@@ -120,6 +138,20 @@ static s32 USBMouse_Deinitialize(void)
 	hId = -1;
 
 	return retval;
+}
+
+//Close the device
+static void USBMouse_Close(void)
+{
+	if (!_mouse)
+		return;
+
+	USB_CloseDevice(&_mouse->fd);
+
+	free(_mouse);
+	_mouse = NULL;
+
+	return;
 }
 
 //Search for a mouse connected to the wii usb port
@@ -150,6 +182,7 @@ static s32 USBMouse_Open()
 
 	if (_mouse) {
 		USB_CloseDevice(&_mouse->fd);
+		free(_mouse);
 	} else {
 		_mouse = (struct umouse *) malloc(sizeof(struct umouse));
 
@@ -230,6 +263,12 @@ static s32 USBMouse_Open()
 	if (!found)
 		return -3;
 
+	if (USB_DeviceRemovalNotifyAsync(_mouse->fd, &_disconnect, NULL) < 0)
+	{
+		USBMouse_Close();
+		return -8;
+	}
+
 	//set boot protocol
 	USB_WriteCtrlMsg(_mouse->fd, USB_REQTYPE_SET, USB_REQ_SETPROTOCOL, 0, 0, 0, 0);
 	USB_ReadIntrMsgAsync(_mouse->fd, 0x81, 4, mousedata, _mouse_event_cb, 0);
@@ -237,18 +276,21 @@ static s32 USBMouse_Open()
 	return 1;
 }
 
-//Close the device
-static void USBMouse_Close(void)
+bool MOUSE_IsConnected(void)
 {
-	if (!_mouse)
-		return;
+	if (!_mouse) return false;
+	return _mouse->connected;
+}
 
-	USB_CloseDevice(&_mouse->fd);
-
-	free(_mouse);
-	_mouse = NULL;
-
-	return;
+static void * _mouse_thread_func(void *arg)
+{
+	while (!_mouse_thread_quit)
+	{
+		// scan for new attached mice
+		if (!MOUSE_IsConnected()) USBMouse_Open();
+		usleep(MOUSE_THREAD_UDELAY);
+	}
+	return NULL;
 }
 
 //Initialize USB and USB_MOUSE and the event queue
@@ -264,8 +306,34 @@ s32 MOUSE_Init(void)
 		return -2;
 	}
 
-	if(!USBMouse_Open())
-		return -3;
+	if (!_mouse_thread_running)
+	{
+		// start the mouse thread
+		_mouse_thread_quit = false;
+
+		_mouse_stack = (u8 *) memalign(32, MOUSE_THREAD_STACKSIZE * 2);
+		if (!_mouse_stack)
+			return -5;
+
+		memset(_mouse_stack, 0, MOUSE_THREAD_STACKSIZE * 2);
+
+		s32 res = LWP_CreateThread(&_mouse_thread, _mouse_thread_func, NULL,
+									_mouse_stack, MOUSE_THREAD_STACKSIZE,
+									MOUSE_THREAD_PRIO);
+
+		if (res)
+		{
+			free(_mouse_stack);
+
+			USBMouse_Close();
+			MOUSE_FlushEvents();
+			USBMouse_Deinitialize();
+			_mouse_thread_running = false;
+
+			return -6;
+		}
+		_mouse_thread_running = true;
+	}
 
 	__lwp_queue_initialize(&_queue, 0, 0, 0);
 	LWP_InitQueue(&_mouse_queue);
@@ -276,6 +344,15 @@ s32 MOUSE_Init(void)
 // Deinitialize USB_MOUSE and the event queue
 s32 MOUSE_Deinit(void)
 {
+	if (_mouse_thread_running) {
+		_mouse_thread_quit = true;
+
+		LWP_JoinThread(_mouse_thread, NULL);
+
+		free(_mouse_stack);
+		_mouse_thread_running = false;
+	}
+
 	LWP_ThreadBroadcast(_mouse_queue);
 	LWP_CloseQueue(_mouse_queue);
 
