@@ -67,6 +67,11 @@ extern lwp_queue _wd_ticks_queue;
 extern u64 gettime();
 extern void settime(u64);
 
+u32 diff_sec(long long start,long long end);
+u32 diff_msec(long long start,long long end);
+u32 diff_usec(long long start,long long end);
+u32 diff_nsec(long long start,long long end);
+
 typedef void (*wd_service_routine)(void *);
 
 typedef struct _wdcntrl {
