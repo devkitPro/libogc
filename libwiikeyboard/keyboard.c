@@ -84,7 +84,7 @@ typedef struct {
 
 #define MAXHELD 8
 static _keyheld _held[MAXHELD];
-	
+
 static lwp_queue _queue;
 
 typedef struct {
@@ -140,10 +140,10 @@ static kbd_t _get_keymap_by_name(const char *identifier) {
 #define KBD_THREAD_UDELAY (1000 * 10)
 #define KBD_THREAD_KBD_SCAN_INTERVAL (3 * 100)
 
-static lwpq_t _kbd_queue;
-static lwp_t _kbd_thread;
-static lwp_t _kbd_buf_thread;
-static u8 *_kbd_stack;
+static lwpq_t _kbd_queue = LWP_TQUEUE_NULL;
+static lwp_t _kbd_thread = LWP_THREAD_NULL;
+static lwp_t _kbd_buf_thread = LWP_THREAD_NULL;
+static u8 *_kbd_stack = NULL;
 static bool _kbd_thread_running = false;
 static bool _kbd_thread_quit = false;
 
@@ -444,7 +444,7 @@ static void * _kbd_buf_thread_func(void *arg) {
 
 static keyPressCallback _readKey_cb = NULL;
 
-	
+
 static ssize_t _keyboardRead(struct _reent *r, int unused, char *ptr, size_t len)
 {
 	ssize_t count = len;
@@ -452,7 +452,7 @@ static ssize_t _keyboardRead(struct _reent *r, int unused, char *ptr, size_t len
 		if (_keyBuffer.head != _keyBuffer.tail) {
 			char key = _keyBuffer.buf[_keyBuffer.head];
 			*ptr++ = key;
-			if (_readKey_cb != NULL) _readKey_cb(key); 
+			if (_readKey_cb != NULL) _readKey_cb(key);
 			_keyBuffer.head++;
 			count--;
 		}
@@ -460,7 +460,7 @@ static ssize_t _keyboardRead(struct _reent *r, int unused, char *ptr, size_t len
 	return len;
 }
 
-static const devoptab_t std_in = 
+static const devoptab_t std_in =
 {
 	"stdin",
 	0,
@@ -581,31 +581,36 @@ s32 KEYBOARD_Init(keyPressCallback keypress_cb)
 
 			return -6;
 		}
-		_keyBuffer.head = 0;
-		_keyBuffer.tail = 0;
 
-		res = LWP_CreateThread(&_kbd_buf_thread, _kbd_buf_thread_func, NULL,
-								_kbd_stack + KBD_THREAD_STACKSIZE, KBD_THREAD_STACKSIZE,
-								KBD_THREAD_PRIO);
-		if(res) {
-			_kbd_thread_quit = true;
-			LWP_ThreadBroadcast(_kbd_queue);
+		if(keypress_cb)
+		{
+			_keyBuffer.head = 0;
+			_keyBuffer.tail = 0;
 
-			LWP_JoinThread(_kbd_thread, NULL);
-			LWP_CloseQueue(_kbd_queue);
+			res = LWP_CreateThread(&_kbd_buf_thread, _kbd_buf_thread_func, NULL,
+									_kbd_stack + KBD_THREAD_STACKSIZE, KBD_THREAD_STACKSIZE,
+									KBD_THREAD_PRIO);
+			if(res) {
+				_kbd_thread_quit = true;
+				LWP_ThreadBroadcast(_kbd_queue);
 
-			free(_kbd_stack);
-			USBKeyboard_Close();
-			KEYBOARD_FlushEvents();
-			USBKeyboard_Deinitialize();
-			_kbd_thread_running = false;
-			return -6;
+				LWP_JoinThread(_kbd_thread, NULL);
+				LWP_CloseQueue(_kbd_queue);
+
+				free(_kbd_stack);
+				USBKeyboard_Close();
+				KEYBOARD_FlushEvents();
+				USBKeyboard_Deinitialize();
+				_kbd_thread_running = false;
+				return -6;
+			}
+
+			devoptab_list[STD_IN] = &std_in;
+			setvbuf(stdin, NULL , _IONBF, 0);
+			_readKey_cb = keypress_cb;
 		}
 		_kbd_thread_running = true;
 	}
-	devoptab_list[STD_IN] = &std_in;
-	setvbuf(stdin, NULL , _IONBF, 0);
-	_readKey_cb = keypress_cb;
 	return 0;
 }
 
@@ -616,8 +621,10 @@ s32 KEYBOARD_Deinit(void)
 		_kbd_thread_quit = true;
 		LWP_ThreadBroadcast(_kbd_queue);
 
-		LWP_JoinThread(_kbd_thread, NULL);
-		LWP_JoinThread(_kbd_buf_thread, NULL);
+		if(_kbd_thread != LWP_THREAD_NULL)
+			LWP_JoinThread(_kbd_thread, NULL);
+		if(_kbd_buf_thread != LWP_THREAD_NULL)
+			LWP_JoinThread(_kbd_buf_thread, NULL);
 		LWP_CloseQueue(_kbd_queue);
 
 		free(_kbd_stack);
