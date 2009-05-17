@@ -47,6 +47,19 @@ distribution.
 
 #include "wsksymvar.h"
 
+#define KBD_THREAD_STACKSIZE (1024 * 4)
+#define KBD_THREAD_PRIO 64
+#define KBD_THREAD_UDELAY (1000 * 10)
+#define KBD_THREAD_KBD_SCAN_INTERVAL (3 * 100)
+
+static lwp_queue _queue;
+static lwpq_t _kbd_queue = LWP_TQUEUE_NULL;
+static lwp_t _kbd_thread = LWP_THREAD_NULL;
+static lwp_t _kbd_buf_thread = LWP_THREAD_NULL;
+static u8 *_kbd_stack = NULL;
+static bool _kbd_thread_running = false;
+static bool _kbd_thread_quit = false;
+
 keysym_t ksym_upcase(keysym_t);
 
 extern const struct wscons_keydesc ukbd_keydesctab[];
@@ -85,12 +98,12 @@ typedef struct {
 #define MAXHELD 8
 static _keyheld _held[MAXHELD];
 
-static lwp_queue _queue;
-
 typedef struct {
 	lwp_node node;
 	keyboard_event event;
 } _node;
+
+static keyPressCallback _readKey_cb = NULL;
 
 static kbd_t _get_keymap_by_name(const char *identifier) {
 	char name[64];
@@ -134,18 +147,6 @@ static kbd_t _get_keymap_by_name(const char *identifier) {
 
 	return res;
 }
-
-#define KBD_THREAD_STACKSIZE (1024 * 4)
-#define KBD_THREAD_PRIO 64
-#define KBD_THREAD_UDELAY (1000 * 10)
-#define KBD_THREAD_KBD_SCAN_INTERVAL (3 * 100)
-
-static lwpq_t _kbd_queue = LWP_TQUEUE_NULL;
-static lwp_t _kbd_thread = LWP_THREAD_NULL;
-static lwp_t _kbd_buf_thread = LWP_THREAD_NULL;
-static u8 *_kbd_stack = NULL;
-static bool _kbd_thread_running = false;
-static bool _kbd_thread_quit = false;
 
 //Add an event to the event queue
 static s32 _kbd_addEvent(const keyboard_event *event) {
@@ -441,9 +442,6 @@ static void * _kbd_buf_thread_func(void *arg) {
 	}
 	return NULL;
 }
-
-static keyPressCallback _readKey_cb = NULL;
-
 
 static ssize_t _keyboardRead(struct _reent *r, int unused, char *ptr, size_t len)
 {
