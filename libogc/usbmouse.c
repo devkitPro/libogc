@@ -38,15 +38,21 @@ distribution.
 
 #define MOUSE_THREAD_STACKSIZE (1024 * 4)
 #define MOUSE_THREAD_PRIO 65
-#define MOUSE_THREAD_UDELAY (1000 * 1000)
-#define MOUSE_THREAD_MOUSE_SCAN_INTERVAL (3 * 100)
+#define MOUSE_THREAD_UDELAY (1000 * 1000 * 3)
 
-static lwp_t _mouse_thread;
-static u8 *_mouse_stack;
+#define	HEAP_SIZE					4096
+#define DEVLIST_MAXSIZE				8
+
+static bool _mouse_is_inited = false;
+static lwp_t _mouse_thread = LWP_THREAD_NULL;
+static u8 *_mouse_stack = NULL;
 static bool _mouse_thread_running = false;
 static bool _mouse_thread_quit = false;
-
 static lwp_queue _queue;
+static lwpq_t _mouse_queue;
+static s32 hId = -1;
+static struct umouse *_mouse = NULL;
+static signed char *_mousedata = NULL;
 
 typedef struct {
 	lwp_node node;
@@ -66,15 +72,6 @@ struct umouse {
 	u32 ep_size;
 };
 
-static s32 hId = -1;
-static struct umouse *_mouse;
-static signed char *mousedata = 0;
-
-#define	HEAP_SIZE					4096
-#define DEVLIST_MAXSIZE				8
-
-static lwpq_t _mouse_queue;
-
 //Add an event to the event queue
 static s32 _mouse_addEvent(const mouse_event *event) {
 	_node *n = malloc(sizeof(_node));
@@ -92,16 +89,15 @@ static s32 _mouse_event_cb(s32 result,void *usrdata)
 
 	if (result>0)
 	{
-		event.button = mousedata[0];
-		event.rx = mousedata[1];
-		event.ry = mousedata[2];
+		event.button = _mousedata[0];
+		event.rx = _mousedata[1];
+		event.ry = _mousedata[2];
 		_mouse_addEvent(&event);
-		USB_ReadIntrMsgAsync(_mouse->fd, 0x81, 4, mousedata, _mouse_event_cb, 0);
+		USB_ReadIntrMsgAsync(_mouse->fd, 0x81, 4, _mousedata, _mouse_event_cb, 0);
 	}
 	else
 	{
-		_mouse->connected = false;
-		_mouse->fd = 0;
+		//_mouse->connected = false;
 	}
 	return 0;
 }
@@ -143,15 +139,9 @@ static s32 USBMouse_Deinitialize(void)
 //Close the device
 static void USBMouse_Close(void)
 {
-	if (!_mouse)
-		return;
-
-	USB_CloseDevice(&_mouse->fd);
-
-	free(_mouse);
-	_mouse = NULL;
-
-	return;
+	if (_mouse && _mouse->fd > 0)
+		USB_CloseDevice(&_mouse->fd);
+	_mouse->fd = 0;
 }
 
 //Search for a mouse connected to the wii usb port
@@ -179,18 +169,6 @@ static s32 USBMouse_Open()
 		free(buffer);
 		return -2;
 	}
-
-	if (_mouse) {
-		USB_CloseDevice(&_mouse->fd);
-		free(_mouse);
-	} else {
-		_mouse = (struct umouse *) malloc(sizeof(struct umouse));
-
-		if (!_mouse)
-			return -1;
-	}
-
-	memset(_mouse, 0, sizeof(struct umouse));
 
 	for (i = 0; i < DEVLIST_MAXSIZE; i++)
 	{
@@ -271,7 +249,7 @@ static s32 USBMouse_Open()
 
 	//set boot protocol
 	USB_WriteCtrlMsg(_mouse->fd, USB_REQTYPE_SET, USB_REQ_SETPROTOCOL, 0, 0, 0, 0);
-	USB_ReadIntrMsgAsync(_mouse->fd, 0x81, 4, mousedata, _mouse_event_cb, 0);
+	USB_ReadIntrMsgAsync(_mouse->fd, 0x81, 4, _mousedata, _mouse_event_cb, 0);
 	_mouse->connected = true;
 	return 1;
 }
@@ -287,7 +265,11 @@ static void * _mouse_thread_func(void *arg)
 	while (!_mouse_thread_quit)
 	{
 		// scan for new attached mice
-		if (!MOUSE_IsConnected()) USBMouse_Open();
+		if (!MOUSE_IsConnected())
+		{
+			USBMouse_Close();
+			USBMouse_Open();
+		}
 		usleep(MOUSE_THREAD_UDELAY);
 	}
 	return NULL;
@@ -296,8 +278,10 @@ static void * _mouse_thread_func(void *arg)
 //Initialize USB and USB_MOUSE and the event queue
 s32 MOUSE_Init(void)
 {
-	if(mousedata) free(mousedata);
-	mousedata = (signed char*) iosAlloc(32, 20);
+	if(_mouse_is_inited) return 0;
+	_mousedata = (signed char*) iosAlloc(32, 20);
+	_mouse = (struct umouse *) malloc(sizeof(struct umouse));
+	memset(_mouse, 0, sizeof(struct umouse));
 
 	if (USB_Initialize() != IPC_OK)
 		return -1;
@@ -324,12 +308,10 @@ s32 MOUSE_Init(void)
 		if (res)
 		{
 			free(_mouse_stack);
-
 			USBMouse_Close();
 			MOUSE_FlushEvents();
 			USBMouse_Deinitialize();
 			_mouse_thread_running = false;
-
 			return -6;
 		}
 		_mouse_thread_running = true;
@@ -337,13 +319,15 @@ s32 MOUSE_Init(void)
 
 	__lwp_queue_initialize(&_queue, 0, 0, 0);
 	LWP_InitQueue(&_mouse_queue);
-
+	_mouse_is_inited = true;
 	return 0;
 }
 
 // Deinitialize USB_MOUSE and the event queue
 s32 MOUSE_Deinit(void)
 {
+	if(!_mouse_is_inited) return 1;
+
 	if (_mouse_thread_running) {
 		_mouse_thread_quit = true;
 
@@ -359,7 +343,9 @@ s32 MOUSE_Deinit(void)
 	USBMouse_Close();
 	MOUSE_FlushEvents();
 	USBMouse_Deinitialize();
-	if(mousedata) free(mousedata);
+	if(_mousedata) free(_mousedata);
+	if(_mouse) free(_mouse);
+	_mouse_is_inited = false;
 	return 1;
 }
 
