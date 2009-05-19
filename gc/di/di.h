@@ -42,10 +42,6 @@ All buffers in this document need to be 32-byte aligned!
 #include <ogc/ipc.h>
 #include <ogc/disc_io.h>
 
-#ifdef __cplusplus
-	extern "C" {
-#endif
-
 /*
 DEFINES GO HERE!
 */
@@ -76,10 +72,14 @@ DEFINES GO HERE!
 #define DVD_D0		0x20
 #define DVD_A8		0x40
 
-#define LIBDI_MAX_RETRY	16
+#define LIBDI_MAX_RETRIES	16
 #define DVD_COVER_DISC_INSERTED	0x02
 
 #define DEVICE_TYPE_WII_DVD		(('W'<<24)|('D'<<16)|('V'<<8)|'D')
+
+#ifdef __cplusplus
+	extern "C" {
+#endif
 
 /*
 TYPEDEFS GO HERE!
