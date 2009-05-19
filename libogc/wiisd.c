@@ -52,10 +52,10 @@
 
 #define	SDIOHCR_RESPONSE			0x10
 #define SDIOHCR_HOSTCONTROL			0x28
-#define	SDIOHCR_POWERCONTROL			0x29
-#define	SDIOHCR_CLOCKCONTROL			0x2c
-#define	SDIOHCR_TIMEOUTCONTROL			0x2e
-#define	SDIOHCR_SOFTWARERESET			0x2f
+#define	SDIOHCR_POWERCONTROL		0x29
+#define	SDIOHCR_CLOCKCONTROL		0x2c
+#define	SDIOHCR_TIMEOUTCONTROL		0x2e
+#define	SDIOHCR_SOFTWARERESET		0x2f
  
 #define SDIOHCR_HOSTCONTROL_4BIT	0x02
 
@@ -91,7 +91,7 @@
 #define SDIO_RESPONSE_R6			7
  
 #define SDIO_CMD_GOIDLE				0x00
-#define	SDIO_CMD_ALL_SENDCID			0x02
+#define	SDIO_CMD_ALL_SENDCID		0x02
 #define SDIO_CMD_SENDRCA			0x03
 #define SDIO_CMD_SELECT				0x07
 #define SDIO_CMD_DESELECT			0x07
@@ -110,9 +110,10 @@
 #define SDIO_ACMD_SENDSCR			0x33
 #define	SDIO_ACMD_SENDOPCOND		0x29
 
-#define	SDIO_STATUS_CARD_INSERTED	0x1
+#define	SDIO_STATUS_CARD_INSERTED		0x1
 #define	SDIO_STATUS_CARD_INITIALIZED	0x10000
- 
+#define SDIO_STATUS_CARD_SDHC			0x100000
+
 #define READ_BL_LEN					((u8)(__sd0_csd[5]&0x0f))
 #define WRITE_BL_LEN				((u8)(((__sd0_csd[12]&0x03)<<2)|((__sd0_csd[13]>>6)&0x03)))
  
@@ -455,6 +456,8 @@ static	bool __sd0_initio()
 		ret = __sd0_getrca();
 		if(ret < 0) goto fail;
 	}
+	else if(status&SDIO_STATUS_CARD_SDHC)
+		__sd0_sdhc = 1;
 	else
 		__sd0_sdhc = 0;
  
