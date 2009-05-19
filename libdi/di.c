@@ -1,11 +1,41 @@
-#include "di.h"
-#include <stdlib.h>
-#include <stdio.h>
+/*-------------------------------------------------------------
+
+di.c -- Drive Interface library
+
+Team Twiizers
+Copyright (C) 2008
+
+Erant
+marcan
+
+This software is provided 'as-is', without any express or implied
+warranty.  In no event will the authors be held liable for any
+damages arising from the use of this software.
+
+Permission is granted to anyone to use this software for any
+purpose, including commercial applications, and to alter it and
+redistribute it freely, subject to the following restrictions:
+
+1.	The origin of this software must not be misrepresented; you
+must not claim that you wrote the original software. If you use
+this software in a product, an acknowledgment in the product
+documentation would be appreciated but is not required.
+
+2.	Altered source versions must be plainly marked as such, and
+must not be misrepresented as being the original software.
+
+3.	This notice may not be removed or altered from any source
+distribution.
+
+-------------------------------------------------------------*/
+
+#include <errno.h>
 #include <string.h>
+
+#include <di/di.h>
 #include <ogc/ipc.h>
 #include <ogc/ios.h>
 #include <ogc/mutex.h>
-#include <errno.h>
 
 int di_fd = -1;
 
@@ -75,9 +105,9 @@ void DI_Mount(){
 }
 
 void DI_Close(){
-	if(di_fd > 0){
+	if(di_fd > 0)
 		IOS_Close(di_fd);
-	}
+
 	di_fd = -1;
 
 	DI_ReadDVDptr = NULL;
@@ -95,7 +125,7 @@ void DI_Close(){
 
 static int _cover_callback(int ret, void* usrdata){
 	static int cur_state = 0;
-	static int retry_count = LIBDI_MAX_RETRY;
+	static int retry_count = LIBDI_MAX_RETRIES;
 	const int callback_table[] = {
 		DVD_GETCOVER,
 		DVD_WAITFORCOVERCLOSE,
@@ -115,13 +145,13 @@ static int _cover_callback(int ret, void* usrdata){
 			else
 				cur_state++; // If the previous callback succeeded, moving on to the next
 
-			retry_count = LIBDI_MAX_RETRY;
+			retry_count = LIBDI_MAX_RETRIES;
 		}
 		else
 		{
 			retry_count--;
 			if(retry_count < 0){		// Drive init failed for unknown reasons.
-				retry_count = LIBDI_MAX_RETRY;
+				retry_count = LIBDI_MAX_RETRIES;
 				cur_state = 0;
 				state = DVD_UNKNOWN;
 				return 0;
@@ -148,7 +178,7 @@ static int _cover_callback(int ret, void* usrdata){
 		if(di_cb)
 			di_cb(state,0);
 
-		retry_count = LIBDI_MAX_RETRY;
+		retry_count = LIBDI_MAX_RETRIES;
 		cur_state = 0;
 	}
 	return 0;
@@ -165,7 +195,7 @@ void DI_SetInitCallback(di_callback cb){
 
 void _DI_SetCallback(int ioctl_nr, ipccallback ipc_cb){
 
-	if(!ipc_cb) return;
+	if(di_fd<0 || !ipc_cb) return;
 
 	// Wait for the lock
 	while(LWP_MutexLock(bufferMutex));
@@ -185,7 +215,10 @@ void _DI_SetCallback(int ioctl_nr, ipccallback ipc_cb){
 Request an identification from the drive, returned in a DI_DriveID struct
 */
 int DI_Identify(DI_DriveID* id){
-
+	if(di_fd < 0) {
+		errno = ENXIO;
+		return -1;
+	}
 
 	if(!id){
 		errno = EINVAL;
@@ -211,7 +244,10 @@ Returns the current error code on the drive.
 yagcd has a pretty comprehensive list of possible error codes
 */
 int DI_GetError(uint32_t* error){
-	
+	if(di_fd < 0){
+		errno = ENXIO;
+		return -1;
+	}
 
 	if(!error){
 		errno = EINVAL;
@@ -237,6 +273,9 @@ int DI_GetError(uint32_t* error){
 Reset the drive.
 */
 int DI_Reset(){
+	if(di_fd < 0)
+		return -1;
+
 	// Wait for the lock
 	while(LWP_MutexLock(bufferMutex));
 	
@@ -284,7 +323,11 @@ int DI_ReadDVDAsync(void* buf, uint32_t len, uint32_t lba,ipccallback ipc_cb){
 Unknown what this does as of now...
 */
 int DI_ReadDVDConfig(uint32_t* val, uint32_t flag){
-	
+	if(di_fd < 0){
+		errno = ENXIO;
+		return -1;
+	}
+
 	if(!val){
 		errno = EINVAL;
 		return -1;
@@ -310,6 +353,10 @@ int DI_ReadDVDConfig(uint32_t* val, uint32_t flag){
 Read the copyright information on a DVDVideo
 */
 int DI_ReadDVDCopyright(uint32_t* copyright){
+	if(di_fd < 0){
+		errno = ENXIO;
+		return -1;
+	}
 
 	if(!copyright){
 		errno = EINVAL;
@@ -336,7 +383,12 @@ Returns 0x800 bytes worth of Disc key
 int DI_ReadDVDDiscKey(void* buf){
 
 	int ret;
-	int retry_count = LIBDI_MAX_RETRY;
+	int retry_count = LIBDI_MAX_RETRIES;
+
+	if(di_fd < 0){
+		errno = ENXIO;
+		return -1;
+	}
 
 	if(!buf){
 		errno = EINVAL;
@@ -371,7 +423,12 @@ int DI_ReadDVDPhysical(void* buf){
 
 
 	int ret;
-	int retry_count = LIBDI_MAX_RETRY;
+	int retry_count = LIBDI_MAX_RETRIES;
+
+	if(di_fd < 0){
+		errno = ENXIO;
+		return -1;
+	}
 
 	if(!buf){
 		errno = EINVAL;
@@ -401,6 +458,10 @@ int DI_ReadDVDPhysical(void* buf){
 }
 
 int DI_ReportKey(int keytype, uint32_t lba, void* buf){
+	if(di_fd < 0){
+		errno = ENXIO;
+		return -1;
+	}
 
 	if(!buf){
 		errno = EINVAL;
@@ -427,6 +488,11 @@ int DI_ReportKey(int keytype, uint32_t lba, void* buf){
 }
 
 int DI_GetCoverRegister(uint32_t* status){
+	if(di_fd < 0){
+		errno = ENXIO;
+		return -1;
+	}
+
 	while(LWP_MutexLock(bufferMutex));
 
 	memset(dic, 0x00, 0x20);
@@ -442,6 +508,11 @@ int DI_GetCoverRegister(uint32_t* status){
 
 /* Internal function for controlling motor operations */
 int _DI_SetMotor(int flag){
+	if(di_fd < 0){
+		errno = ENXIO;
+		return -1;
+	}
+
 	// Wait for the lock
 	while(LWP_MutexLock(bufferMutex));
 
@@ -478,6 +549,11 @@ int DI_KillDrive(){
 }
 
 int DI_ClosePartition() {
+	if(di_fd < 0){
+		errno = ENXIO;
+		return -1;
+	}
+
 	while(LWP_MutexLock(bufferMutex));
 
 	dic[0] = DVD_CLOSE_PARTITION << 24;
@@ -492,6 +568,11 @@ int DI_ClosePartition() {
 
 int DI_OpenPartition(uint32_t offset)
 {
+	if(di_fd < 0){
+		errno = ENXIO;
+		return -1;
+	}
+
 	static ioctlv vectors[5] __attribute__((aligned(32)));
 	static char certs[0x49e4] __attribute__((aligned(32)));
 	while(LWP_MutexLock(bufferMutex));
@@ -522,6 +603,10 @@ int DI_OpenPartition(uint32_t offset)
 
 int DI_Read(void *buf, uint32_t size, uint32_t offset)
 {
+	if(di_fd < 0){
+		errno = ENXIO;
+		return -1;
+	}
 
 	if(!buf){
 		errno = EINVAL;
@@ -550,7 +635,12 @@ int DI_Read(void *buf, uint32_t size, uint32_t offset)
 
 int DI_UnencryptedRead(void *buf, uint32_t size, uint32_t offset)
 {
-	int ret, retry_count = LIBDI_MAX_RETRY;
+	int ret, retry_count = LIBDI_MAX_RETRIES;
+
+	if(di_fd < 0){
+		errno = ENXIO;
+		return -1;
+	}
 
 	if(!buf){
 		errno = EINVAL;
@@ -583,6 +673,11 @@ int DI_UnencryptedRead(void *buf, uint32_t size, uint32_t offset)
 
 int DI_ReadDiscID(uint64_t *id)
 {
+	if(di_fd < 0){
+		errno = ENXIO;
+		return -1;
+	}
+
 	// Wait for the lock
 	while(LWP_MutexLock(bufferMutex));
 
