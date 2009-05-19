@@ -118,19 +118,21 @@ typedef struct _tmd_content {
 }  __attribute__((packed)) tmd_content;
 
 typedef struct _tmd {
-	sig_issuer issuer;
-	u8 version;
-	u8 ca_crl_version;
-	u8 signer_crl_version;
-	u8 fill2;
-	u64 sys_version;
-	u64 title_id;
-	u32 title_type;
-	u16 group_id;
-	u16 zero; // part of u32 region, but always zero. split due to misalignment
-	u16 region;
-	u8 ratings[16];
-	u8 reserved[42];
+	sig_issuer issuer;              //0x140
+	u8 version;                             //0x180
+	u8 ca_crl_version;              //0x181
+	u8 signer_crl_version;  //0x182
+	u8 fill2;                               //0x183
+	u64 sys_version;                //0x184
+	u64 title_id;                   //0x18c
+	u32 title_type;                 //0x194
+	u16 group_id;                   //0x198
+	u16 zero;                               //0x19a
+	u16 region;                             //0x19c
+	u8 ratings[16];                 //0x19e
+	u8 reserved[12];                //0x1ae
+	u8 ipc_mask[12];
+	u8 reserved2[18];
 	u32 access_rights;
 	u16 title_version;
 	u16 num_contents;
