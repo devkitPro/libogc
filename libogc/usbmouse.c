@@ -105,7 +105,7 @@ static s32 _mouse_event_cb(s32 result,void *usrdata)
 //Callback when the mouse is disconnected
 static s32 _disconnect(s32 retval, void *data)
 {
-	_mouse->connected = false;
+	//_mouse->connected = false;
 	return 1;
 }
 
@@ -279,7 +279,7 @@ static void * _mouse_thread_func(void *arg)
 s32 MOUSE_Init(void)
 {
 	if(_mouse_is_inited) return 0;
-	_mousedata = (signed char*) iosAlloc(32, 20);
+	_mousedata = (signed char*) memalign(32, 20);
 	_mouse = (struct umouse *) malloc(sizeof(struct umouse));
 	memset(_mouse, 0, sizeof(struct umouse));
 
