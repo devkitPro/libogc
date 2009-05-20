@@ -237,7 +237,7 @@ s32 USBKeyboard_Open(const eventcallback cb)
 	usb_interfacedesc *uid;
 	usb_endpointdesc *ued;
 
-	buffer = memalign(32, DEVLIST_MAXSIZE << 3);
+	buffer = iosAlloc(hId, DEVLIST_MAXSIZE << 3);
 	if(buffer == NULL)
 		return -1;
 
@@ -245,7 +245,7 @@ s32 USBKeyboard_Open(const eventcallback cb)
 
 	if (USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, 0, &dummy) < 0)
 	{
-		free(buffer);
+		iosFree(hId, buffer);
 		return -2;
 	}
 
@@ -327,7 +327,7 @@ s32 USBKeyboard_Open(const eventcallback cb)
 			USB_CloseDevice(&fd);
 	}
 
-	free(buffer);
+	iosFree(hId, buffer);
 
 	if (!found)
 		return -3;
