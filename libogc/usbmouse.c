@@ -100,7 +100,7 @@ static s32 _mouse_event_cb(s32 result,void *usrdata)
 	}
 	else
 	{
-		//_mouse->connected = false;
+		_mouse->connected = false;
 	}
 	return 0;
 }
@@ -108,7 +108,7 @@ static s32 _mouse_event_cb(s32 result,void *usrdata)
 //Callback when the mouse is disconnected
 static s32 _disconnect(s32 retval, void *data)
 {
-	//_mouse->connected = false;
+	_mouse->connected = false;
 	return 1;
 }
 
