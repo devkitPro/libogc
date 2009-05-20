@@ -54,7 +54,7 @@ distribution.
 
 #define IPC_HEAP_SIZE			4096
 #define IPC_REQUESTSIZE			64
-#define IPC_NUMHEAPS			8
+#define IPC_NUMHEAPS			16
 
 #define IOS_MAXFMT_PARAMS		32
 
