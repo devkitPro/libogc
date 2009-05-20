@@ -34,25 +34,15 @@ distribution.
 
 #include <gccore.h>
 #include <ogc/usb.h>
+#include <ogc/lwp_queue.h>
 #include <ogc/usbmouse.h>
 
-#define MOUSE_THREAD_STACKSIZE (1024 * 4)
-#define MOUSE_THREAD_PRIO 65
-#define MOUSE_THREAD_UDELAY (1000 * 1000 * 3)
+#define MOUSE_THREAD_STACKSIZE		(1024 * 4)
+#define MOUSE_THREAD_PRIO			65
+#define MOUSE_THREAD_UDELAY			(1000 * 1000 * 3)
 
 #define	HEAP_SIZE					4096
 #define DEVLIST_MAXSIZE				8
-
-static bool _mouse_is_inited = false;
-static lwp_t _mouse_thread = LWP_THREAD_NULL;
-static u8 *_mouse_stack = NULL;
-static bool _mouse_thread_running = false;
-static bool _mouse_thread_quit = false;
-static lwp_queue _queue;
-static lwpq_t _mouse_queue;
-static s32 hId = -1;
-static struct umouse *_mouse = NULL;
-static signed char *_mousedata = NULL;
 
 typedef struct {
 	lwp_node node;
@@ -71,6 +61,19 @@ struct umouse {
 	u8 ep;
 	u32 ep_size;
 };
+
+static lwp_queue _queue;
+static lwpq_t _mouse_queue;
+
+static s32 hId = -1;
+static bool _mouse_is_inited = false;
+static lwp_t _mouse_thread = LWP_THREAD_NULL;
+static bool _mouse_thread_running = false;
+static bool _mouse_thread_quit = false;
+static struct umouse *_mouse = NULL;
+static s8 *_mousedata = NULL;
+
+static u8 _mouse_stack[MOUSE_THREAD_STACKSIZE] ATTRIBUTE_ALIGN(8);
 
 //Add an event to the event queue
 static s32 _mouse_addEvent(const mouse_event *event) {
@@ -158,7 +161,7 @@ static s32 USBMouse_Open()
 	usb_interfacedesc *uid;
 	usb_endpointdesc *ued;
 
-	buffer = memalign(32, DEVLIST_MAXSIZE << 3);
+	buffer = iosAlloc(hId, DEVLIST_MAXSIZE << 3);
 	if(buffer == NULL)
 		return -1;
 
@@ -166,7 +169,7 @@ static s32 USBMouse_Open()
 
 	if (USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, 0, &dummy) < 0)
 	{
-		free(buffer);
+		iosFree(hId,buffer);
 		return -2;
 	}
 
@@ -236,7 +239,7 @@ static s32 USBMouse_Open()
 			USB_CloseDevice(&fd);
 	}
 
-	free(buffer);
+	iosFree(hId,buffer);
 
 	if (!found)
 		return -3;
@@ -279,9 +282,6 @@ static void * _mouse_thread_func(void *arg)
 s32 MOUSE_Init(void)
 {
 	if(_mouse_is_inited) return 0;
-	_mousedata = (signed char*) memalign(32, 20);
-	_mouse = (struct umouse *) malloc(sizeof(struct umouse));
-	memset(_mouse, 0, sizeof(struct umouse));
 
 	if (USB_Initialize() != IPC_OK)
 		return -1;
@@ -290,16 +290,15 @@ s32 MOUSE_Init(void)
 		return -2;
 	}
 
+	_mousedata = (s8*)iosAlloc(hId,20);
+	_mouse = (struct umouse *) malloc(sizeof(struct umouse));
+	memset(_mouse, 0, sizeof(struct umouse));
+
 	if (!_mouse_thread_running)
 	{
 		// start the mouse thread
 		_mouse_thread_quit = false;
-
-		_mouse_stack = (u8 *) memalign(32, MOUSE_THREAD_STACKSIZE * 2);
-		if (!_mouse_stack)
-			return -5;
-
-		memset(_mouse_stack, 0, MOUSE_THREAD_STACKSIZE * 2);
+		memset(_mouse_stack, 0, MOUSE_THREAD_STACKSIZE);
 
 		s32 res = LWP_CreateThread(&_mouse_thread, _mouse_thread_func, NULL,
 									_mouse_stack, MOUSE_THREAD_STACKSIZE,
@@ -307,7 +306,6 @@ s32 MOUSE_Init(void)
 
 		if (res)
 		{
-			free(_mouse_stack);
 			USBMouse_Close();
 			MOUSE_FlushEvents();
 			USBMouse_Deinitialize();
@@ -317,7 +315,7 @@ s32 MOUSE_Init(void)
 		_mouse_thread_running = true;
 	}
 
-	__lwp_queue_initialize(&_queue, 0, 0, 0);
+	__lwp_queue_init_empty(&_queue);
 	LWP_InitQueue(&_mouse_queue);
 	_mouse_is_inited = true;
 	return 0;
@@ -330,10 +328,7 @@ s32 MOUSE_Deinit(void)
 
 	if (_mouse_thread_running) {
 		_mouse_thread_quit = true;
-
 		LWP_JoinThread(_mouse_thread, NULL);
-
-		free(_mouse_stack);
 		_mouse_thread_running = false;
 	}
 
@@ -343,8 +338,8 @@ s32 MOUSE_Deinit(void)
 	USBMouse_Close();
 	MOUSE_FlushEvents();
 	USBMouse_Deinitialize();
-	if(_mousedata) free(_mousedata);
-	if(_mouse) free(_mouse);
+	if(_mousedata!=NULL) iosFree(hId,_mousedata);
+	if(_mouse!=NULL) free(_mouse);
 	_mouse_is_inited = false;
 	return 1;
 }
