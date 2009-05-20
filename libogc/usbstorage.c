@@ -753,7 +753,7 @@ static bool __usbstorage_IsInserted(void)
 
    __mounted = 0;		//reset it here and check if device is still attached
 
-   buffer = memalign(32, DEVLIST_MAXSIZE << 3);
+   buffer = __lwp_heap_allocate(&__heap, DEVLIST_MAXSIZE << 3);
    if(buffer == NULL)
        return false;
    memset(buffer, 0, DEVLIST_MAXSIZE << 3);
@@ -766,7 +766,7 @@ static bool __usbstorage_IsInserted(void)
        __vid = 0;
        __pid = 0;
 
-       free(buffer);
+       __lwp_heap_free(&__heap,buffer);
        return false;
    }
 
@@ -782,7 +782,7 @@ static bool __usbstorage_IsInserted(void)
                if( (vid == __vid) && (pid == __pid))
                {
                    __mounted = 1;
-                   free(buffer);
+				   __lwp_heap_free(&__heap,buffer);
                    usleep(50); // I don't know why I have to wait but it's needed
                    return true;
                }
@@ -826,7 +826,7 @@ static bool __usbstorage_IsInserted(void)
            break;
        }
    }
-   free(buffer);
+   __lwp_heap_free(&__heap,buffer);
    if(__mounted == 1)
        return true;
    return false;
