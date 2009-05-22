@@ -56,7 +56,6 @@ static lwp_queue _queue;
 static lwpq_t _kbd_queue = LWP_TQUEUE_NULL;
 static lwp_t _kbd_thread = LWP_THREAD_NULL;
 static lwp_t _kbd_buf_thread = LWP_THREAD_NULL;
-static u8 *_kbd_stack = NULL;
 static bool _kbd_thread_running = false;
 static bool _kbd_thread_quit = false;
 
@@ -104,6 +103,9 @@ typedef struct {
 } _node;
 
 static keyPressCallback _readKey_cb = NULL;
+
+static u8 *_kbd_stack[KBD_THREAD_STACKSIZE] ATTRIBUTE_ALIGN(8);
+static u8 *_kbd_buf_stack[KBD_THREAD_STACKSIZE] ATTRIBUTE_ALIGN(8);
 
 static kbd_t _get_keymap_by_name(const char *identifier) {
 	char name[64];
@@ -553,17 +555,13 @@ s32 KEYBOARD_Init(keyPressCallback keypress_cb)
 		return -4;
 	}
 
-	__lwp_queue_initialize(&_queue, 0, 0, 0);
+	__lwp_queue_init_empty(&_queue);
 
 	if (!_kbd_thread_running) {
 		// start the keyboard thread
 		_kbd_thread_quit = false;
 
-		_kbd_stack = (u8 *) memalign(32, KBD_THREAD_STACKSIZE * 2);
-		if (!_kbd_stack)
-			return -5;
-
-		memset(_kbd_stack, 0, KBD_THREAD_STACKSIZE * 2);
+		memset(_kbd_stack, 0, KBD_THREAD_STACKSIZE);
 
 		LWP_InitQueue(&_kbd_queue);
 
@@ -573,7 +571,6 @@ s32 KEYBOARD_Init(keyPressCallback keypress_cb)
 
 		if (res) {
 			LWP_CloseQueue(_kbd_queue);
-			free(_kbd_stack);
 
 			USBKeyboard_Close();
 
@@ -586,7 +583,7 @@ s32 KEYBOARD_Init(keyPressCallback keypress_cb)
 			_keyBuffer.tail = 0;
 
 			res = LWP_CreateThread(&_kbd_buf_thread, _kbd_buf_thread_func, NULL,
-									_kbd_stack + KBD_THREAD_STACKSIZE, KBD_THREAD_STACKSIZE,
+									_kbd_buf_stack, KBD_THREAD_STACKSIZE,
 									KBD_THREAD_PRIO);
 			if(res) {
 				_kbd_thread_quit = true;
@@ -595,7 +592,6 @@ s32 KEYBOARD_Init(keyPressCallback keypress_cb)
 				LWP_JoinThread(_kbd_thread, NULL);
 				LWP_CloseQueue(_kbd_queue);
 
-				free(_kbd_stack);
 				USBKeyboard_Close();
 				KEYBOARD_FlushEvents();
 				USBKeyboard_Deinitialize();
