@@ -621,7 +621,6 @@ s32 KEYBOARD_Deinit(void)
 			LWP_JoinThread(_kbd_buf_thread, NULL);
 		LWP_CloseQueue(_kbd_queue);
 
-		free(_kbd_stack);
 		_kbd_thread_running = false;
 	}
 
