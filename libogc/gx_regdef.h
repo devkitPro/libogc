@@ -7,65 +7,65 @@
 
 struct __gx_regdef
 {
-	vu16 cpSRreg;
-	vu16 cpCRreg;
-	vu16 cpCLreg;
-	vu16 xfFlush;
-	vu16 xfFlushExp;
-	vu16 xfFlushSafe;
-	vu32 gxFifoInited;
-	vu32 vcdClear;
-	vu32 VATTable;
-	vu32 mtxIdxLo;
-	vu32 mtxIdxHi;
-	vu32 texCoordManually;
-	vu32 vcdLo;
-	vu32 vcdHi;
-	vu32 vcdNrms;
-	vu32 dirtyState;
-	vu32 perf0Mode;
-	vu32 perf1Mode;
-	vu32 cpPerfMode;
-	vu32 VAT0reg[8];
-	vu32 VAT1reg[8];
-	vu32 VAT2reg[8];
-	vu32 texMapSize[8];
-	vu32 texMapWrap[8];
-	vu32 sciTLcorner;
-	vu32 sciBRcorner;
-	vu32 lpWidth;
-	vu32 genMode;
-	vu32 suSsize[8];
-	vu32 suTsize[8];
-	vu32 tevTexMap[16];
-	vu32 tevColorEnv[16];
-	vu32 tevAlphaEnv[16];
-	vu32 tevSwapModeTable[8];
-	vu32 tevRasOrder[11];
-	vu32 tevTexCoordEnable;
-	vu32 tevIndMask;
-	vu32 texCoordGen[8];
-	vu32 texCoordGen2[8];
-	vu32 dispCopyCntrl;
-	vu32 dispCopyDst;
-	vu32 dispCopyTL;
-	vu32 dispCopyWH;
-	vu32 texCopyCntrl;
-	vu32 texCopyDst;
-	vu32 texCopyTL;
-	vu32 texCopyWH;
-	vu32 peZMode;
-	vu32 peCMode0;
-	vu32 peCMode1;
-	vu32 peCntrl;
-	vu32 chnAmbColor[2];
-	vu32 chnMatColor[2];
-	vu32 chnCntrl[4];
+	u16 cpSRreg;
+	u16 cpCRreg;
+	u16 cpCLreg;
+	u16 xfFlush;
+	u16 xfFlushExp;
+	u16 xfFlushSafe;
+	u32 gxFifoInited;
+	u32 vcdClear;
+	u32 VATTable;
+	u32 mtxIdxLo;
+	u32 mtxIdxHi;
+	u32 texCoordManually;
+	u32 vcdLo;
+	u32 vcdHi;
+	u32 vcdNrms;
+	u32 dirtyState;
+	u32 perf0Mode;
+	u32 perf1Mode;
+	u32 cpPerfMode;
+	u32 VAT0reg[8];
+	u32 VAT1reg[8];
+	u32 VAT2reg[8];
+	u32 texMapSize[8];
+	u32 texMapWrap[8];
+	u32 sciTLcorner;
+	u32 sciBRcorner;
+	u32 lpWidth;
+	u32 genMode;
+	u32 suSsize[8];
+	u32 suTsize[8];
+	u32 tevTexMap[16];
+	u32 tevColorEnv[16];
+	u32 tevAlphaEnv[16];
+	u32 tevSwapModeTable[8];
+	u32 tevRasOrder[11];
+	u32 tevTexCoordEnable;
+	u32 tevIndMask;
+	u32 texCoordGen[8];
+	u32 texCoordGen2[8];
+	u32 dispCopyCntrl;
+	u32 dispCopyDst;
+	u32 dispCopyTL;
+	u32 dispCopyWH;
+	u32 texCopyCntrl;
+	u32 texCopyDst;
+	u32 texCopyTL;
+	u32 texCopyWH;
+	u32 peZMode;
+	u32 peCMode0;
+	u32 peCMode1;
+	u32 peCntrl;
+	u32 chnAmbColor[2];
+	u32 chnMatColor[2];
+	u32 chnCntrl[4];
 	GXTexRegion texRegion[24];
 	GXTlutRegion tlutRegion[20];
-	vu8 saveDLctx;
-	vu8 gxFifoUnlinked;
-	vu8 texCopyZTex;
+	u8 saveDLctx;
+	u8 gxFifoUnlinked;
+	u8 texCopyZTex;
 	u8 _pad;
 } __attribute__((packed));
 
@@ -87,60 +87,60 @@ struct __gxfifo {
 struct __gx_litobj
 {
 	u32 _pad[3];
-	vu32 col;
-	vf32 a0;
-	vf32 a1;
-	vf32 a2;
-	vf32 k0;
-	vf32 k1;
-	vf32 k2;
-	vf32 px;
-	vf32 py;
-	vf32 pz;
-	vf32 nx;
-	vf32 ny;
-	vf32 nz;
+	u32 col;
+	f32 a0;
+	f32 a1;
+	f32 a2;
+	f32 k0;
+	f32 k1;
+	f32 k2;
+	f32 px;
+	f32 py;
+	f32 pz;
+	f32 nx;
+	f32 ny;
+	f32 nz;
 } __attribute__((packed));
 
 struct __gx_texobj
 {
-	vu32 tex_filt;
-	vu32 tex_lod;
-	vu32 tex_size;
-	vu32 tex_maddr;
+	u32 tex_filt;
+	u32 tex_lod;
+	u32 tex_size;
+	u32 tex_maddr;
 	u32 _pad;
-	vu32 tex_fmt;
-	vu32 tex_tlut;
-	vu16 tex_tile_cnt;
-	vu8 tex_tile_type;
-	vu8 tex_flag;
+	u32 tex_fmt;
+	u32 tex_tlut;
+	u16 tex_tile_cnt;
+	u8 tex_tile_type;
+	u8 tex_flag;
 } __attribute__((packed));
 
 struct __gx_tlutobj
 {
-	vu32 tlut_fmt;
-	vu32 tlut_maddr;
-	vu16 tlut_nentries;
+	u32 tlut_fmt;
+	u32 tlut_maddr;
+	u16 tlut_nentries;
 	u8 _pad[2];
 } __attribute__((packed));
 
 struct __gx_texregion
 {
-	vu32 tmem_even;
-	vu32 tmem_odd;
-	vu16 size_even;
-	vu16 size_odd;
-	vu8 ismipmap;
-	vu8 iscached;
+	u32 tmem_even;
+	u32 tmem_odd;
+	u16 size_even;
+	u16 size_odd;
+	u8 ismipmap;
+	u8 iscached;
 	u8 _pad[2];
 } __attribute__((packed));
 
 struct __gx_tlutregion
 {
-	vu32 tmem_addr_conf;
-	vu32 tmem_addr_base;
-	vu32 tlut_maddr;
-	vu16 tlut_nentries;
+	u32 tmem_addr_conf;
+	u32 tmem_addr_base;
+	u32 tlut_maddr;
+	u16 tlut_nentries;
 	u8 _pad[2];
 } __attribute__((packed));
 
