@@ -934,17 +934,7 @@
 #define GX_MAX_VTXATTRFMT_LISTSIZE		(GX_VA_MAXATTR+1)
 
 #define GX_MAX_Z24						0x00ffffff
-/*
-#define WGPIPE			(0xCC008000)
 
-#define FIFO_PUTU8(x)	*(vu8*)WGPIPE = (u8)(x)
-#define FIFO_PUTS8(x)	*(vs8*)WGPIPE = (s8)(x)
-#define FIFO_PUTU16(x)	*(vu16*)WGPIPE = (u16)(x)
-#define FIFO_PUTS16(x)	*(vs16*)WGPIPE = (s16)(x)
-#define FIFO_PUTU32(x)	*(vu32*)WGPIPE = (u32)(x)
-#define FIFO_PUTS32(x)	*(vs32*)WGPIPE = (s32)(x)
-#define FIFO_PUTF32(x)	*(vf32*)WGPIPE = (f32)(x)
-*/
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
