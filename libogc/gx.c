@@ -27,28 +27,28 @@
 
 #define GX_LOAD_BP_REG(x)				\
 	do {								\
-		FIFO_PUTU8(0x61);				\
-		FIFO_PUTU32((x));				\
+		_wgPipe->U8 = 0x61;				\
+		_wgPipe->U32 = (u32)(x);		\
 	} while(0)
 
 #define GX_LOAD_CP_REG(x, y)			\
 	do {								\
-		FIFO_PUTU8(0x08);				\
-		FIFO_PUTU8((x));				\
-		FIFO_PUTU32((y));				\
+		_wgPipe->U8 = 0x08;				\
+		_wgPipe->U8 = (u8)(x);			\
+		_wgPipe->U32 = (u32)(y);		\
 	} while(0)
 
 #define GX_LOAD_XF_REG(x, y)			\
 	do {								\
-		FIFO_PUTU8(0x10);				\
-		FIFO_PUTU32(((x)&0xffff));		\
-		FIFO_PUTU32((y));				\
+		_wgPipe->U8 = 0x10;				\
+		_wgPipe->U32 = (u32)((x)&0xffff);		\
+		_wgPipe->U32 = (u32)(y);		\
 	} while(0)
 
 #define GX_LOAD_XF_REGS(x, n)			\
 	do {								\
-		FIFO_PUTU8(0x10);				\
-		FIFO_PUTU32((((((n)&0xffff)-1)<<16)|((x)&0xffff)));				\
+		_wgPipe->U8 = 0x10;				\
+		_wgPipe->U32 = (u32)(((((n)&0xffff)-1)<<16)|((x)&0xffff));				\
 	} while(0)
 
 #define XY(x, y)   (((y) << 10) | (x))
@@ -56,6 +56,8 @@
 #define GX_DEFAULT_BG	{64,64,64,255}
 #define BLACK			{0,0,0,0}
 #define WHITE			{255,255,255,255}
+
+volatile WGPipe* const _wgPipe = (WGPipe*)0xCC008000;
 
 static GXFifoObj _gpfifo;
 static GXFifoObj _cpufifo;
@@ -773,27 +775,27 @@ static void __GX_SendFlushPrim()
 
 	tmp = (__gx->xfFlush*__gx->xfFlushExp);
 
-	FIFO_PUTU8(0x98);
-	FIFO_PUTU16(__gx->xfFlush);
+	_wgPipe->U8 = 0x98;
+	_wgPipe->U16 = __gx->xfFlush;
 
 	tmp2 = (tmp+3)/4;
 	if(tmp>0) {
 		cnt = tmp2/8;
 		while(cnt) {
-			FIFO_PUTU32(0);
-			FIFO_PUTU32(0);
-			FIFO_PUTU32(0);
-			FIFO_PUTU32(0);
-			FIFO_PUTU32(0);
-			FIFO_PUTU32(0);
-			FIFO_PUTU32(0);
-			FIFO_PUTU32(0);
+			_wgPipe->U32 = 0;
+			_wgPipe->U32 = 0;
+			_wgPipe->U32 = 0;
+			_wgPipe->U32 = 0;
+			_wgPipe->U32 = 0;
+			_wgPipe->U32 = 0;
+			_wgPipe->U32 = 0;
+			_wgPipe->U32 = 0;
 			cnt--;
 		}
 		tmp2 &= 0x0007;
 		if(tmp2) {
 			while(tmp2) {
-				FIFO_PUTU32(0);
+				_wgPipe->U32 = 0;
 				tmp2--;
 			}
 		}
@@ -1532,14 +1534,14 @@ void GX_RestoreWriteGatherPipe()
 
 	_CPU_ISR_Disable(level);
 	
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
 	
 	ppcsync();
 	while(!IsWriteGatherBufferEmpty());
@@ -1561,14 +1563,14 @@ void GX_Flush()
 	if(__gx->dirtyState) 
 		__GX_SetDirtyState();
 
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
 	
 	ppcsync();
 }
@@ -1756,12 +1758,12 @@ void GX_SetViewportJitter(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ,u
 	z = f-n;
 	
 	GX_LOAD_XF_REGS(0x101a,6);
-	FIFO_PUTF32(x0);
-	FIFO_PUTF32(y0);
-	FIFO_PUTF32(z);
-	FIFO_PUTF32(x1);
-	FIFO_PUTF32(y1);
-	FIFO_PUTF32(f);
+	_wgPipe->F32 = x0;
+	_wgPipe->F32 = y0;
+	_wgPipe->F32 = z;
+	_wgPipe->F32 = x1;
+	_wgPipe->F32 = y1;
+	_wgPipe->F32 = f;
 }
 
 void GX_SetViewport(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ)
@@ -1791,13 +1793,13 @@ void GX_LoadProjectionMtx(Mtx44 mt,u8 type)
 	}
 
 	GX_LOAD_XF_REGS(0x1020,7);
-	FIFO_PUTF32(tmp[0]);
-	FIFO_PUTF32(tmp[1]);
-	FIFO_PUTF32(tmp[2]);
-	FIFO_PUTF32(tmp[3]);
-	FIFO_PUTF32(tmp[4]);
-	FIFO_PUTF32(tmp[5]);
-	FIFO_PUTF32(tmp[6]);
+	_wgPipe->F32 = tmp[0];
+	_wgPipe->F32 = tmp[1];
+	_wgPipe->F32 = tmp[2];
+	_wgPipe->F32 = tmp[3];
+	_wgPipe->F32 = tmp[4];
+	_wgPipe->F32 = tmp[5];
+	_wgPipe->F32 = tmp[6];
 }
 
 static void __GetImageTileCount(u32 fmt,u16 wd,u16 ht,u32 *xtiles,u32 *ytiles,u32 *zplanes)
@@ -2155,9 +2157,9 @@ void GX_CallDispList(void *list,u32 nbytes)
 	if(!__gx->vcdClear)
 		__GX_SendFlushPrim();
 	
-	FIFO_PUTU8(0x40);			//call displaylist
-	FIFO_PUTU32(MEM_VIRTUAL_TO_PHYSICAL(list));
-	FIFO_PUTU32(nbytes);
+	_wgPipe->U8 = 0x40;		//call displaylist
+	_wgPipe->U32 = MEM_VIRTUAL_TO_PHYSICAL(list);
+	_wgPipe->U32 = nbytes;
 }
 
 void GX_SetChanCtrl(s32 channel,u8 enable,u8 ambsrc,u8 matsrc,u8 litmask,u8 diff_fn,u8 attn_fn)
@@ -2472,8 +2474,8 @@ void GX_Begin(u8 primitve,u8 vtxfmt,u16 vtxcnt)
 	if(__gx->dirtyState) 
 		__GX_SetDirtyState();
 
-	FIFO_PUTU8(reg);
-	FIFO_PUTU16(vtxcnt);
+	_wgPipe->U8 = reg;
+	_wgPipe->U16 = vtxcnt;
 }
 
 void GX_SetTexCoordGen(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc)
@@ -2698,31 +2700,31 @@ static inline void WriteMtxPS4x2(register Mtx mt,register void *wgpipe)
 void GX_LoadPosMtxImm(Mtx mt,u32 pnidx)
 {
 	GX_LOAD_XF_REGS((0x0000|(_SHIFTL(pnidx,2,8))),12);
-	WriteMtxPS4x3(mt,(void*)WGPIPE);
+	WriteMtxPS4x3(mt,(void*)_wgPipe);
 }
 
 void GX_LoadPosMtxIdx(u16 mtxidx,u32 pnidx)
 {
-	FIFO_PUTU8(0x20);
-	FIFO_PUTU32(((_SHIFTL(mtxidx,16,16))|0xb000|(_SHIFTL(pnidx,2,8))));
+	_wgPipe->U8 = 0x20;
+	_wgPipe->U32 = ((_SHIFTL(mtxidx,16,16))|0xb000|(_SHIFTL(pnidx,2,8)));
 }
 
 void GX_LoadNrmMtxImm(Mtx mt,u32 pnidx)
 {
 	GX_LOAD_XF_REGS((0x0400|(pnidx*3)),9);
-	WriteMtxPS3x3from4x3(mt,(void*)WGPIPE);
+	WriteMtxPS3x3from4x3(mt,(void*)_wgPipe);
 }
 
 void GX_LoadNrmMtxImm3x3(Mtx33 mt,u32 pnidx)
 {
 	GX_LOAD_XF_REGS((0x0400|(pnidx*3)),9);
-	WriteMtxPS3x3(mt,(void*)WGPIPE);
+	WriteMtxPS3x3(mt,(void*)_wgPipe);
 }
 
 void GX_LoadNrmMtxIdx3x3(u16 mtxidx,u32 pnidx)
 {
-	FIFO_PUTU8(0x28);
-	FIFO_PUTU32(((_SHIFTL(mtxidx,16,16))|0x8000|(0x0400|(pnidx*3))));
+	_wgPipe->U8 = 0x28;
+	_wgPipe->U32 = ((_SHIFTL(mtxidx,16,16))|0x8000|(0x0400|(pnidx*3)));
 }
 
 void GX_LoadTexMtxImm(Mtx mt,u32 texidx,u8 type)
@@ -2738,9 +2740,9 @@ void GX_LoadTexMtxImm(Mtx mt,u32 texidx,u8 type)
 
 	GX_LOAD_XF_REGS(addr,(rows*4));
 	if(type==GX_MTX2x4)
-		WriteMtxPS4x2(mt,(void*)WGPIPE);
+		WriteMtxPS4x2(mt,(void*)_wgPipe);
 	else
-		WriteMtxPS4x3(mt,(void*)WGPIPE);
+		WriteMtxPS4x3(mt,(void*)_wgPipe);
 }
 
 void GX_LoadTexMtxIdx(u16 mtxidx,u32 texidx,u8 type)
@@ -2750,8 +2752,8 @@ void GX_LoadTexMtxIdx(u16 mtxidx,u32 texidx,u8 type)
 	if(texidx<GX_DTTMTX0) addr = 0x0000|(_SHIFTL(texidx,2,8));
 	else addr = 0x0500|(_SHIFTL((texidx-GX_DTTMTX0),2,8));
 
-	FIFO_PUTU8(0x30);
-	FIFO_PUTU32(((_SHIFTL(mtxidx,16,16))|(_SHIFTL(size,12,4))|addr));
+	_wgPipe->U8 = 0x30;
+	_wgPipe->U32 = ((_SHIFTL(mtxidx,16,16))|(_SHIFTL(size,12,4))|addr);
 }
 
 void GX_SetCurrentMtx(u32 mtx)
@@ -2768,7 +2770,7 @@ void GX_SetNumTexGens(u32 nr)
 
 void GX_InvVtxCache()
 {
-	FIFO_PUTU8(0x48); // vertex cache weg
+	_wgPipe->U8 = 0x48; // vertex cache weg
 }
 
 void GX_SetZMode(u8 enable,u8 func,u8 update_enable)
@@ -4272,22 +4274,22 @@ void GX_LoadLightObj(GXLightObj *lit_obj,u8 lit_id)
 	
 	reg = 0x600|(_SHIFTL(id,4,8));
 	GX_LOAD_XF_REGS(reg,16);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(0);
-	FIFO_PUTU32(lit->col);
-	FIFO_PUTF32(lit->a0);
-	FIFO_PUTF32(lit->a1);
-	FIFO_PUTF32(lit->a2);
-	FIFO_PUTF32(lit->k0);
-	FIFO_PUTF32(lit->k1);
-	FIFO_PUTF32(lit->k2);
-	FIFO_PUTF32(lit->px);
-	FIFO_PUTF32(lit->py);
-	FIFO_PUTF32(lit->pz);
-	FIFO_PUTF32(lit->nx);
-	FIFO_PUTF32(lit->ny);
-	FIFO_PUTF32(lit->nz);
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = 0;
+	_wgPipe->U32 = lit->col;
+	_wgPipe->F32 = lit->a0;
+	_wgPipe->F32 = lit->a1;
+	_wgPipe->F32 = lit->a2;
+	_wgPipe->F32 = lit->k0;
+	_wgPipe->F32 = lit->k1;
+	_wgPipe->F32 = lit->k2;
+	_wgPipe->F32 = lit->px;
+	_wgPipe->F32 = lit->py;
+	_wgPipe->F32 = lit->pz;
+	_wgPipe->F32 = lit->nx;
+	_wgPipe->F32 = lit->ny;
+	_wgPipe->F32 = lit->nz;
 }
 
 void GX_LoadLightObjIdx(u32 litobjidx,u8 litid)
@@ -4329,8 +4331,8 @@ void GX_LoadLightObjIdx(u32 litobjidx,u8 litid)
 	reg = 0xf600|(_SHIFTL(idx,4,8));
 	reg = (reg&~0xffff0000)|(_SHIFTL(litobjidx,16,16));
 
-	FIFO_PUTU8(0x38);
-	FIFO_PUTU32(reg);
+	_wgPipe->U8 = 0x38;
+	_wgPipe->U32 = reg;
 }
 
 void GX_InitLightDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz)
