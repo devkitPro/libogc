@@ -89,8 +89,6 @@ static u32 tcp_timer_active = 0;
 
 static struct netbuf* netbuf_new();
 static void netbuf_delete(struct netbuf *);
-static void* netbuf_alloc(struct netbuf *,u32);
-static void netbuf_free(struct netbuf *);
 static void netbuf_copypartial(struct netbuf *,void *,u32,u32);
 static void netbuf_ref(struct netbuf *,const void *,u32);
 
@@ -251,23 +249,6 @@ static void netbuf_delete(struct netbuf *buf)
 		if(buf->p!=NULL) pbuf_free(buf->p);
 		memp_free(MEMP_NETBUF,buf);
 	}
-}
-
-static void* netbuf_alloc(struct netbuf *buf,u32 size)
-{
-	if(buf->p!=NULL) pbuf_free(buf->p);
-	
-	buf->p = pbuf_alloc(PBUF_TRANSPORT,size,PBUF_RAM);
-	if(buf->p==NULL) return NULL;
-
-	buf->ptr = buf->p;
-	return buf->p->payload;
-}
-
-static void netbuf_free(struct netbuf *buf)
-{
-	if(buf->p!=NULL) pbuf_free(buf->p);
-	buf->p = buf->ptr = NULL;
 }
 
 static void netbuf_ref(struct netbuf *buf, const void *dataptr,u32 size)
@@ -1365,6 +1346,7 @@ static void* net_thread(void *arg)
 		}
 		memp_free(MEMP_TCPIP_MSG,msg);
 	}
+	return NULL;
 }
 
 /* sockets part */
