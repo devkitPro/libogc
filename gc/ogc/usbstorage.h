@@ -5,7 +5,6 @@
 
 #include <gctypes.h>
 #include <ogc/mutex.h>
-#include <ogc/cond.h>
 #include <ogc/disc_io.h>
 
 #ifdef __cplusplus
