@@ -32,7 +32,6 @@ distribution.
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
-#include <ogc/cond.h>
 #include <errno.h>
 #include <lwp_heap.h>
 #include <malloc.h>
