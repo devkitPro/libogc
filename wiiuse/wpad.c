@@ -1045,6 +1045,7 @@ void WPAD_Shutdown()
 	SYS_RemoveAlarm(__wpad_timer);
 	for(i=0;i<WPAD_MAX_WIIMOTES;i++) {
 		wpdcb = &__wpdcb[i];
+		SYS_RemoveAlarm(wpdcb->sound_alarm);
 		__wpad_disconnect(wpdcb);
 	}
 
@@ -1054,9 +1055,6 @@ void WPAD_Shutdown()
 
 	while(__wpads_active)
 		usleep(50);
-
-	for(i=0;i<WPAD_MAX_WIIMOTES;i++) SYS_RemoveAlarm(__wpdcb[i].sound_alarm);
-	SYS_RemoveAlarm(__wpad_timer);
 
 	BTE_Shutdown();
 }
