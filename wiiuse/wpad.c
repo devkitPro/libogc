@@ -651,11 +651,15 @@ s32 WPAD_Init()
 			return WPAD_ERR_BADCONF;
 		}
 
-		if(__wpad_devs.num_registered == 0)
+		if(__wpad_devs.num_registered == 0) {
+			_CPU_ISR_Restore(level);
 			return WPAD_ERR_NONEREGISTERED;
+		}
 
-		if(__wpad_devs.num_registered > CONF_PAD_MAX_REGISTERED)
+		if(__wpad_devs.num_registered > CONF_PAD_MAX_REGISTERED) {
+			_CPU_ISR_Restore(level);
 			return WPAD_ERR_BADCONF;
+		}
 
 		__wpads = wiiuse_init(WPAD_MAX_WIIMOTES,__wpad_eventCB);
 		if(__wpads==NULL) {
