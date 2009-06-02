@@ -58,7 +58,7 @@ typedef struct _framerec {
 	void *lr;
 } frame_rec, *frame_rec_t;
 
-static void *exception_xfb = (void*)0xC1710000;			//we use a static address above ArenaHi.
+static void *exception_xfb = (void*)0xC1700000;			//we use a static address above ArenaHi.
 
 void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
 
