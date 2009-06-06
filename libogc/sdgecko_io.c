@@ -313,6 +313,7 @@ static void __exi_wait(s32 drv_no)
 
 static s32 __card_exthandler(s32 chn,s32 dev)
 {
+	_ioCardInserted[chn] = FALSE;
 	sdgecko_doUnmount(chn);
 	sdgecko_ejectedCB(chn);
 	return 1;
@@ -1721,19 +1722,10 @@ s32 sdgecko_eraseSector(s32 drv_no,u32 sector_no)
 s32 sdgecko_doUnmount(s32 drv_no)
 {
 	s32 ret;
-	boolean io_cardinserted;
-	u32 level,io_flag;;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
-	
-	_CPU_ISR_Disable(level);
-	io_flag = _ioFlag[drv_no];
-	io_cardinserted = _ioCardInserted[drv_no];
-	_ioFlag[drv_no] = NOT_INITIALIZED;
-	_ioCardInserted[drv_no] = FALSE;
-	_CPU_ISR_Restore(level);
-	
-	if(io_flag!=NOT_INITIALIZED) {
+		
+	if(__card_check(drv_no)==TRUE && _ioFlag[drv_no]!=NOT_INITIALIZED) {
 		if((ret=__card_sendappcmd(drv_no))!=0) goto exit;
 		if((ret=__card_sendcmd(drv_no,0x2a,NULL))!=0) goto exit;
 		ret = __card_response1(drv_no);
@@ -1741,13 +1733,19 @@ s32 sdgecko_doUnmount(s32 drv_no)
 		printf("sdgecko_doUnmount(%d) disconnected 50KOhm pull-up(%d)\n",drv_no,ret);
 #endif
 	}
+	_ioFlag[drv_no] = NOT_INITIALIZED;
+
 exit:
-	if(io_cardinserted==TRUE) EXI_Detach(drv_no);
+	if(_ioCardInserted[drv_no]==TRUE) {
+		_ioCardInserted[drv_no] = FALSE;
+		EXI_Detach(drv_no);
+	}
 	if(_ioRetryCB) 
 		return _ioRetryCB(drv_no);
 
 	return CARDIO_ERROR_READY;
 }
+
 static void (*pfCallbackIN[MAX_DRIVE])(s32) = {NULL, NULL};
 static void (*pfCallbackOUT[MAX_DRIVE])(s32) = {NULL, NULL};
 
