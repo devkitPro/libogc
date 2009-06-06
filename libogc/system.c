@@ -202,8 +202,6 @@ extern u32 __PADDisableRecalibration(s32 disable);
 
 extern void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_stride,int con_xres,int con_yres,int con_stride);
 
-extern unsigned int gettick();
-extern unsigned int diff_usec(long long start,long long end);
 extern int clock_gettime(struct timespec *tp);
 extern void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
 
@@ -214,6 +212,7 @@ extern int __libogc_lock_release(int *lock);
 extern int __libogc_lock_acquire(int *lock);
 extern void __libogc_exit(int status);
 extern void * __libogc_sbrk_r(struct _reent *ptr, ptrdiff_t incr);
+extern int __libogc_gettod_r(struct _reent *ptr, struct timeval *tp, struct timezone *tz);
 
 extern u8 __gxregs[];
 extern u8 __text_start[];
@@ -270,6 +269,7 @@ static void __init_syscall_array() {
 	__syscalls.malloc_lock = __libogc_malloc_lock;
 	__syscalls.malloc_unlock = __libogc_malloc_unlock;
 	__syscalls.exit = __libogc_exit;
+	//__syscalls.gettod_r = __libogc_gettod_r;
 
 }
 

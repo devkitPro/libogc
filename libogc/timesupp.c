@@ -11,6 +11,7 @@
 #include "conf.h"
 
 #include <stdio.h>
+#include <sys/time.h>
 
 /* time variables */
 static u32 exi_wait_inited = 0;
@@ -22,14 +23,14 @@ extern u32 __SYS_UnlockSram(u32 write);
 
 
 
-unsigned long _DEFUN(gettick,(),
+u32 _DEFUN(gettick,(),
 	_NOARGS)
 
 {
-	unsigned long result;
+	u32 result;
 	__asm__ __volatile__ (
 		"mftb	%0\n"
-		: "=r" (result)
+		: "=b" (result)
 	);
 	return result;
 }
@@ -50,7 +51,7 @@ u64 _DEFUN(gettime,(),
 		    mftbu	%2\n\
 			cmpw	%0,%2\n\
 			bne		1b\n"
-		: "=r" (v.ul[0]), "=r" (v.ul[1]), "=r" (tmp)
+		: "=b" (v.ul[0]), "=b" (v.ul[1]), "=b" (tmp)
 	);
 	return v.ull;
 }
@@ -71,11 +72,11 @@ void _DEFUN(settime,(t),
 		 mttbu  %1\n\
 		 mttbl  %2\n"
 		 : "=&r" (tmp)
-		 : "r" (v.ul[0]), "r" (v.ul[1])
+		 : "b" (v.ul[0]), "b" (v.ul[1])
 	);
 }
 
-u32 diff_sec(long long start,long long end)
+u32 diff_sec(u64 start,u64 end)
 {
 	u64 diff;
 
@@ -83,7 +84,7 @@ u32 diff_sec(long long start,long long end)
 	return ticks_to_secs(diff);
 }
 
-u32 diff_msec(long long start,long long end)
+u32 diff_msec(u64 start,u64 end)
 {
 	u64 diff;
 
@@ -91,7 +92,7 @@ u32 diff_msec(long long start,long long end)
 	return ticks_to_millisecs(diff);
 }
 
-u32 diff_usec(long long start,long long end)
+u32 diff_usec(u64 start,u64 end)
 {
 	u64 diff;
 
@@ -99,7 +100,7 @@ u32 diff_usec(long long start,long long end)
 	return ticks_to_microsecs(diff);
 }
 
-u32 diff_nsec(long long start,long long end)
+u32 diff_nsec(u64 start,u64 end)
 {
 	u64 diff;
 
@@ -313,5 +314,19 @@ unsigned int _DEFUN(usleep,(us),
 
 clock_t clock(void) {
 	return -1;
+}
+
+int __libogc_gettod_r(struct _reent *ptr, struct timeval *tp, struct timezone *tz) {
+
+	if (tp != NULL) {
+		tp->tv_sec = time(NULL);
+		tp->tv_usec = 0;
+	}
+	if (tz != NULL) {
+		tz->tz_minuteswest = 0;
+		tz->tz_dsttime = 0;
+		
+	}
+	return 0;
 }
 

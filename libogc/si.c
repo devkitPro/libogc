@@ -127,7 +127,6 @@ static u32 __si_transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICa
 
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
-extern u32 diff_usec(long long start,long long end);
 
 static __inline__ struct _xy* __si_getxy()
 {

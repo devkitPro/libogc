@@ -64,13 +64,14 @@ extern u32 _wd_ticks_since_boot;
 
 extern lwp_queue _wd_ticks_queue;
 
+extern u32 gettick();
 extern u64 gettime();
 extern void settime(u64);
 
-u32 diff_sec(long long start,long long end);
-u32 diff_msec(long long start,long long end);
-u32 diff_usec(long long start,long long end);
-u32 diff_nsec(long long start,long long end);
+u32 diff_sec(u64 start,u64 end);
+u32 diff_msec(u64 start,u64 end);
+u32 diff_usec(u64 start,u64 end);
+u32 diff_nsec(u64 start,u64 end);
 
 typedef void (*wd_service_routine)(void *);
 

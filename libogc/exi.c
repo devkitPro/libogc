@@ -108,8 +108,6 @@ static void __ext_irq_handler(u32,void *);
 extern void __UnmaskIrq(u32);
 extern void __MaskIrq(u32);
 
-extern u32 diff_usec(long long start,long long end);
-
 static __inline__ void __exi_clearirqs(s32 nChn,u32 nEXIIrq,u32 nTCIrq,u32 nEXTIrq)
 {
 	u32 d;
