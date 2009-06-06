@@ -105,7 +105,7 @@ ifeq ($(PLATFORM),cube)
 MACHDEP		+=	-DHW_DOL
 endif
 
-CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -g -O2 -save-temps -mregnames -Wall $(MACHDEP)  -fno-strict-aliasing $(INCLUDES)
+CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -O2 -mregnames -Wall $(MACHDEP)  -fno-strict-aliasing $(INCLUDES)
 
 
 #---------------------------------------------------------------------------------
