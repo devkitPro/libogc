@@ -69,6 +69,6 @@ void MakeTexture565(const void *src,void *dst,s32 width,s32 height)
 		"	subic.		%7,%7,1\n"
 		"	bne			2b"
 		//		0			 1			  2			   3		   4		  5		    6		    7
-		: "=&b"(tmp0), "=&b"(tmp1), "=&b"(tmp2), "=&b"(tmp3), "+b"(dst) : "b"(src), "b"(width), "b"(height)
+		: "=&r"(tmp0), "=&r"(tmp1), "=&r"(tmp2), "=&r"(tmp3), "+b"(dst) : "b"(src), "r"(width), "r"(height)
 	);
 }

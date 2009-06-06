@@ -30,7 +30,7 @@ u32 _DEFUN(gettick,(),
 	u32 result;
 	__asm__ __volatile__ (
 		"mftb	%0\n"
-		: "=b" (result)
+		: "=r" (result)
 	);
 	return result;
 }
@@ -51,7 +51,7 @@ u64 _DEFUN(gettime,(),
 		    mftbu	%2\n\
 			cmpw	%0,%2\n\
 			bne		1b\n"
-		: "=b" (v.ul[0]), "=b" (v.ul[1]), "=b" (tmp)
+		: "=r" (v.ul[0]), "=r" (v.ul[1]), "=&r" (tmp)
 	);
 	return v.ull;
 }
@@ -72,7 +72,7 @@ void _DEFUN(settime,(t),
 		 mttbu  %1\n\
 		 mttbl  %2\n"
 		 : "=&r" (tmp)
-		 : "b" (v.ul[0]), "b" (v.ul[1])
+		 : "r" (v.ul[0]), "r" (v.ul[1])
 	);
 }
 

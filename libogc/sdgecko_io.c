@@ -316,6 +316,7 @@ static s32 __card_exthandler(s32 chn,s32 dev)
 	_ioCardInserted[chn] = FALSE;
 	sdgecko_doUnmount(chn);
 	sdgecko_ejectedCB(chn);
+	EXI_Unlock(chn);
 	return 1;
 }
 
