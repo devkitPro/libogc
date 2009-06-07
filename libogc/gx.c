@@ -4179,13 +4179,37 @@ void GX_PokeARGB(u16 x,u16 y,GXColor color)
 	*(u32*)regval = _SHIFTL(color.a,24,8)|_SHIFTL(color.r,16,8)|_SHIFTL(color.g,8,8)|(color.b&0xff);
 }
 
+void GX_PeekARGB(u16 x,u16 y,GXColor *color)
+{
+	u32 regval,val;
+
+	regval = 0xc8000000|(_SHIFTL(x,2,10));
+	regval = (regval&~0x3FF000)|(_SHIFTL(y,12,10));
+	val = *(u32*)regval;
+	color->a = _SHIFTR(val,24,8);
+	color->r = _SHIFTR(val,16,8);
+	color->g = _SHIFTR(val,8,8);
+	color->b = val&0xff;
+}
+
 void GX_PokeZ(u16 x,u16 y,u32 z)
 {
 	u32 regval;
+
 	regval = 0xc8000000|(_SHIFTL(x,2,10));
 	regval = (regval&~0x3FF000)|(_SHIFTL(y,12,10));
 	regval = (regval&~0xC00000)|0x400000;
 	*(u32*)regval = z;
+}
+
+void GX_PeekZ(u16 x,u16 y,u32 *z)
+{
+	u32 regval;
+
+	regval = 0xc8000000|(_SHIFTL(x,2,10));
+	regval = (regval&~0x3FF000)|(_SHIFTL(y,12,10));
+	regval = (regval&~0xC00000)|0x400000;
+	*z = *(u32*)regval;
 }
 
 void GX_PokeZMode(u8 comp_enable,u8 func,u8 update_enable)
