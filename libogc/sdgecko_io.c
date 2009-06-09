@@ -1250,7 +1250,9 @@ s32 sdgecko_initIO(s32 drv_no)
 	if(_ioCardInserted[drv_no]==TRUE) {
 		_ioWPFlag = 0;
 		_ioCardFreq = EXI_SPEED16MHZ;
+		_initType[drv_no] = TYPE_SD;
 		_ioFlag[drv_no] = INITIALIZING;
+		_ioAddressingType[drv_no] = BYTE_ADDRESSING;
 		if(__card_softreset(drv_no)!=0) {
 			_ioWPFlag = 1;
 			if(__card_softreset(drv_no)!=0) goto exit;
