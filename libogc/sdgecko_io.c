@@ -773,50 +773,6 @@ static s32 __card_dataread(s32 drv_no,void *buf,u32 len)
 	return ret;
 }
 
-static s32 __card_datawrite(s32 drv_no,void *buf,u32 len)
-{
-	u8 dummy[32];
-	u16 crc;
-	u32 cnt;
-	s32 ret;
-
-	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
-
-	for(cnt=0;cnt<32;cnt++) dummy[cnt] = _ioClrFlag;
-	crc = __make_crc16(buf,len);
-
-	__exi_wait(drv_no);
-
-	if(EXI_Select(drv_no,EXI_DEVICE_0,_ioCardFreq)==0) {
-		EXI_Unlock(drv_no);
-		return CARDIO_ERROR_NOCARD;
-	}
-
-	dummy[0] = 0xfe;
-	if(EXI_ImmEx(drv_no,dummy,1,EXI_WRITE)==0) {
-		EXI_Deselect(drv_no);
-		EXI_Unlock(drv_no);
-		return CARDIO_ERROR_IOERROR;
-	}
-
-	if(EXI_ImmEx(drv_no,buf,len,EXI_WRITE)==0) {
-		EXI_Deselect(drv_no);
-		EXI_Unlock(drv_no);
-		return CARDIO_ERROR_IOERROR;
-	}
-
-	/* sleep 1us*/
-	usleep(1);
-
-	ret = CARDIO_ERROR_READY;
-	if(EXI_ImmEx(drv_no,&crc,2,EXI_WRITE)==0) ret = CARDIO_ERROR_IOERROR;
-
-	EXI_Deselect(drv_no);
-	EXI_Unlock(drv_no);
-
-	return ret;
-}
-
 static s32 __card_multidatawrite(s32 drv_no,void *buf,u32 len)
 {
 	u8 dummy[32];
@@ -1454,7 +1410,6 @@ s32 sdgecko_writeSectors(s32 drv_no,u32 sector_no,u32 num_sectors,const void *bu
 		if((ret=__card_setblocklen(drv_no,_ioPageSize[drv_no]))!=0) return ret;
 	}
 
-	/* testing purpose - as of spec it should speed up write operations
 	// send SET_WRITE_BLK_ERASE_CNT cmd
 	arg[0] = (num_sectors>>24)&0xff;
 	arg[1] = (num_sectors>>16)&0xff;
@@ -1463,7 +1418,6 @@ s32 sdgecko_writeSectors(s32 drv_no,u32 sector_no,u32 num_sectors,const void *bu
 	if((ret=__card_sendappcmd(drv_no))!=0) return ret;
 	if((ret=__card_sendcmd(drv_no,0x17,arg))!=0) return ret;
 	if((ret=__card_response1(drv_no))!=0) return ret;
-	*/
 
 	// SDHC support fix
 	__convert_sector(drv_no,sector_no,arg);
@@ -1482,37 +1436,6 @@ s32 sdgecko_writeSectors(s32 drv_no,u32 sector_no,u32 num_sectors,const void *bu
 
 	if((ret=__card_multiwritestop(drv_no))!=0) return ret;
 	if((ret=__card_sendcmd(drv_no,0x0D,NULL))!=0) return ret;
-	return __card_response2(drv_no);
-}
-
-s32 sdgecko_writeSector(s32 drv_no,u32 sector_no,const void *buf,u32 len)
-{
-	s32 ret;
-	u8 arg[4];
-	char *dbuf = (char*)buf;
-
-	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
-
-	ret = sdgecko_preIO(drv_no);
-	if(ret!=0) return ret;
-
-	if(len!=PAGE_SIZE512) return CARDIO_ERROR_INTERNAL;
-#ifdef _CARDIO_DEBUG
-	printf("sdgecko_writeSector(%d,%d,%d,%d)\n",drv_no,sector_no,len,_ioPageSize[drv_no]);
-#endif
-	if(len!=_ioPageSize[drv_no]) {
-		_ioPageSize[drv_no] = len;
-		if((ret=__card_setblocklen(drv_no,_ioPageSize[drv_no]))!=0) return ret;
-	}
-
-	// SDHC support fix
-	__convert_sector(drv_no,sector_no,arg);
-
-	if((ret=__card_sendcmd(drv_no,0x18,arg))!=0) return ret;
-	if((ret=__card_response1(drv_no))!=0) return ret;
-	if((ret=__card_datawrite(drv_no,dbuf,_ioPageSize[drv_no]))!=0) return ret;
-	if((ret=__card_dataresponse(drv_no))!=0) return ret;
-	if((ret=__card_sendcmd(drv_no,0x0d,NULL))!=0) return ret;
 	return __card_response2(drv_no);
 }
 
