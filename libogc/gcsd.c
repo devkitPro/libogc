@@ -60,27 +60,21 @@ static bool __gcsd_readSectors(int n, u32 sector, u32 numSectors, void *buffer)
 {
 	s32 ret;
 
-	ret = sdgecko_readSectors(n,sector,buffer,numSectors);
+	ret = sdgecko_readSectors(n,sector,numSectors,buffer);
 	if(ret == CARDIO_ERROR_READY)
 		return true;
 
 	return false;
 }
 
-static bool __gcsd_writeSectors(int n, u32 sector, u32 numSectors, void *buffer)
+static bool __gcsd_writeSectors(int n, u32 sector, u32 numSectors, const void *buffer)
 {
-	s32 i;
 	s32 ret;
 
-	for(i = 0; i < numSectors; i++)
-	{
-		ret = sdgecko_writeSector(n, sector + i, buffer + (i * 512), 512);
-		if(ret != CARDIO_ERROR_READY)
-			return false;
-	}
-
+	ret = sdgecko_writeSectors(n,sector,numSectors,buffer);
 	if(ret == CARDIO_ERROR_READY)
 		return true;
+
 	return false;
 }
 
