@@ -244,6 +244,39 @@ static u16 __make_crc16(void *buffer,u32 len)
 }
 */
 
+static s32 __card_readdata_fast(s32 drv_no,void *buffer,s32 len)
+{
+	s32 ret;
+	u32 roundlen;
+	s32 missalign;
+	u8 *ptr = buffer;
+
+	if(!ptr || len<=0) return 0;
+
+	missalign = ((u32)ptr+0x1f)&~0x1f;
+	missalign -= (u32)ptr;
+	if((len-missalign)<32) return EXI_ImmEx(drv_no,ptr,len,EXI_READWRITE);
+	if(missalign>0) {
+		if(EXI_ImmEx(drv_no,ptr,missalign,EXI_READWRITE)==0) return 0;
+
+		len -= missalign;
+		ptr += missalign;
+	}
+
+	ret = 0;
+	roundlen = (len&~0x1f);
+	DCInvalidateRange(ptr,roundlen);
+	if(EXI_Dma(drv_no,ptr,roundlen,EXI_READWRITE,NULL)==0) ret |= 0x01;
+	if(EXI_Sync(drv_no)==0) ret |= 0x02;
+	if(ret) return 0;
+
+	len -= roundlen;
+	ptr += roundlen;
+	if(len>0)  return EXI_ImmEx(drv_no,ptr,len,EXI_WRITE);
+
+	return 1;
+}
+
 static s32 __card_writedata_fast(s32 drv_no,void *buffer,s32 len)
 {
 	s32 ret;
