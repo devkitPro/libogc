@@ -244,73 +244,6 @@ static u16 __make_crc16(void *buffer,u32 len)
 }
 */
 
-static s32 __card_readdata_fast(s32 drv_no,void *buffer,s32 len)
-{
-	s32 ret;
-	u32 roundlen;
-	s32 missalign;
-	u8 *ptr = buffer;
-
-	if(!ptr || len<=0) return 0;
-
-	missalign = ((u32)ptr+0x1f)&~0x1f;
-	missalign -= (u32)ptr;
-	if((len-missalign)<32) return EXI_ImmEx(drv_no,ptr,len,EXI_READWRITE);
-	if(missalign>0) {
-		if(EXI_ImmEx(drv_no,ptr,missalign,EXI_READWRITE)==0) return 0;
-
-		len -= missalign;
-		ptr += missalign;
-	}
-
-	ret = 0;
-	roundlen = (len&~0x1f);
-	DCInvalidateRange(ptr,roundlen);
-	if(EXI_Dma(drv_no,ptr,roundlen,EXI_READWRITE,NULL)==0) ret |= 0x01;
-	if(EXI_Sync(drv_no)==0) ret |= 0x02;
-	if(ret) return 0;
-
-	len -= roundlen;
-	ptr += roundlen;
-	if(len>0)  return EXI_ImmEx(drv_no,ptr,len,EXI_WRITE);
-
-	return 1;
-}
-
-static s32 __card_writedata_fast(s32 drv_no,void *buffer,s32 len)
-{
-	s32 ret;
-	u32 roundlen;
-	s32 missalign;
-	u8 *ptr = buffer;
-
-	if(!ptr || len<=0) return 0;
-
-	missalign = ((u32)ptr+0x1f)&~0x1f;
-	missalign -= (u32)ptr;
-	if((len-missalign)<32) return EXI_ImmEx(drv_no,ptr,len,EXI_WRITE);
-
-	if(missalign>0) {
-		if(EXI_ImmEx(drv_no,ptr,missalign,EXI_WRITE)==0) return 0;
-
-		len -= missalign;
-		ptr += missalign;
-	}
-
-	ret = 0;
-	roundlen = (len&~0x1f);
-	DCStoreRange(ptr,roundlen);
-	if(EXI_Dma(drv_no,ptr,roundlen,EXI_WRITE,NULL)==0) ret |= 0x01;
-	if(EXI_Sync(drv_no)==0) ret |= 0x02;
-	if(ret) return 0;
-
-	len -= roundlen;
-	ptr += roundlen;
-	if(len>0)  return EXI_ImmEx(drv_no,ptr,len,EXI_WRITE);
-
-	return 1;
-}
-
 static u32 __card_checktimeout(s32 drv_no,u32 startT,u32 timeout)
 {
 	u32 endT,diff;
@@ -537,7 +470,7 @@ static s32 __card_readresponse(s32 drv_no,void *buf,s32 len)
 
 static s32 __card_stopreadresponse(s32 drv_no,void *buf,s32 len)
 {
-	u8 *ptr;
+	u8 *ptr,tmp;
 	s32 startT,ret;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
@@ -559,7 +492,7 @@ static s32 __card_stopreadresponse(s32 drv_no,void *buf,s32 len)
 		return CARDIO_ERROR_IOERROR;
 	}
 #ifdef _CARDIO_DEBUG
-	printf("sd response: %02x\n",((u8*)buf)[0]);
+	kprintf("sd response(%d): %02x\n",__LINE__,((u8*)buf)[0]);
 #endif
 
 	*ptr = _ioClrFlag;
@@ -569,7 +502,7 @@ static s32 __card_stopreadresponse(s32 drv_no,void *buf,s32 len)
 		return CARDIO_ERROR_IOERROR;
 	}
 #ifdef _CARDIO_DEBUG
-	printf("sd response: %02x\n",((u8*)buf)[0]);
+	kprintf("sd response1: %02x\n",((u8*)buf)[0]);
 #endif
 
 	startT = gettick();
@@ -581,7 +514,7 @@ static s32 __card_stopreadresponse(s32 drv_no,void *buf,s32 len)
 			return CARDIO_ERROR_IOERROR;
 		}
 #ifdef _CARDIO_DEBUG
-		printf("sd response: %02x\n",((u8*)buf)[0]);
+		kprintf("sd response2: %02x\n",((u8*)buf)[0]);
 #endif
 		if(!(*ptr&0x80)) break;
 		if(__card_checktimeout(drv_no,startT,1500)!=0) {
@@ -592,15 +525,15 @@ static s32 __card_stopreadresponse(s32 drv_no,void *buf,s32 len)
 				return CARDIO_ERROR_IOERROR;
 			}
 #ifdef _CARDIO_DEBUG
-			printf("sd response: %02x\n",((u8*)buf)[0]);
+			kprintf("sd response3: %02x\n",((u8*)buf)[0]);
 #endif
 			if(*ptr&0x80) ret = CARDIO_ERROR_IOTIMEOUT;
 			break;
 		}
 	}
 
+	tmp = *ptr;
 	while(*ptr!=0xff) {
-		ptr[1] = ptr[0];
 		*ptr = _ioClrFlag;
 		if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
 			EXI_Deselect(drv_no);
@@ -608,7 +541,7 @@ static s32 __card_stopreadresponse(s32 drv_no,void *buf,s32 len)
 			return CARDIO_ERROR_IOERROR;
 		}
 #ifdef _CARDIO_DEBUG
-		printf("sd response: %02x\n",((u8*)buf)[0]);
+		kprintf("sd response4: %02x\n",((u8*)buf)[0]);
 #endif
 		if(*ptr==0xff) break;
 		if(__card_checktimeout(drv_no,startT,1500)!=0) {
@@ -619,13 +552,13 @@ static s32 __card_stopreadresponse(s32 drv_no,void *buf,s32 len)
 				return CARDIO_ERROR_IOERROR;
 			}
 #ifdef _CARDIO_DEBUG
-			printf("sd response: %02x\n",((u8*)buf)[0]);
+			kprintf("sd response5: %02x\n",((u8*)buf)[0]);
 #endif
 			if(*ptr!=0xff) ret = CARDIO_ERROR_IOTIMEOUT;
 			break;
 		}
 	}
-	ptr[0] = ptr[1];
+	*ptr = tmp;
 
 	if(len>1 && ret==CARDIO_ERROR_READY) {
 		*(++ptr) = _ioClrFlag;
@@ -840,101 +773,6 @@ static s32 __card_dataread(s32 drv_no,void *buf,u32 len)
 	return ret;
 }
 
-static s32 __card_datareadfinal(s32 drv_no,void *buf,u32 len)
-{
-	s32 startT,ret;
-	u32 cnt;
-	u8 *ptr;
-	u16 crc_org,crc;
-	u8 cmd[6] = {0,0,0,0,0,0};
-
-	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
-
-	__exi_wait(drv_no);
-
-	if(EXI_Select(drv_no,EXI_DEVICE_0,_ioCardFreq)==0) {
-		EXI_Unlock(drv_no);
-		return CARDIO_ERROR_NOCARD;
-	}
-
-	ret = CARDIO_ERROR_READY;
-	ptr = buf;
-	for(cnt=0;cnt<len;cnt++) ptr[cnt] = _ioClrFlag;
-	
-	if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
-		EXI_Deselect(drv_no);
-		EXI_Unlock(drv_no);
-		return CARDIO_ERROR_IOERROR;
-	}
-#ifdef _CARDIO_DEBUG
-	printf("sd response: %02x\n",((u8*)buf)[0]);
-#endif
-
-	startT = gettick();
-	while(*ptr!=0xfe) {
-		*ptr = _ioClrFlag;
-		if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
-			EXI_Deselect(drv_no);
-			EXI_Unlock(drv_no);
-			return CARDIO_ERROR_IOERROR;
-		}
-#ifdef _CARDIO_DEBUG
-		printf("sd response: %02x\n",((u8*)buf)[0]);
-#endif
-		if(*ptr==0xfe) break;
-		if(__card_checktimeout(drv_no,startT,1500)!=0) {
-			*ptr = _ioClrFlag;
-			if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
-				EXI_Deselect(drv_no);
-				EXI_Unlock(drv_no);
-				return CARDIO_ERROR_IOERROR;
-			}
-#ifdef _CARDIO_DEBUG
-			printf("sd response: %02x\n",((u8*)buf)[0]);
-#endif
-			if(*ptr!=0xfe) ret = CARDIO_ERROR_IOTIMEOUT;
-			break;
-		}
-	}
-
-	*ptr = _ioClrFlag;
-	if(EXI_ImmEx(drv_no,ptr,(len-4),EXI_READWRITE)==0) {
-		EXI_Deselect(drv_no);
-		EXI_Unlock(drv_no);
-		return CARDIO_ERROR_IOERROR;
-	}
-
-	cmd[0] = 0x4C;
-	cmd[5] = __make_crc7(cmd,5);
-	cmd[5] |= 0x0001;
-	if(_ioWPFlag) {
-		for(cnt=0;cnt<6;cnt++) cmd[cnt] ^= -1;
-	}
-	if(EXI_ImmEx(drv_no,cmd,6,EXI_READWRITE)==0) {
-		EXI_Deselect(drv_no);
-		EXI_Unlock(drv_no);
-		return CARDIO_ERROR_IOERROR;
-	}
-	ptr[len-4] = cmd[0];
-	ptr[len-3] = cmd[1];
-	ptr[len-2] = cmd[2];
-	ptr[len-1] = cmd[3];
-	crc_org = ((cmd[4]<<8)&0xff00)|(cmd[5]&0xff);
-	
-	/* sleep 1us*/
-	usleep(1);
-
-	EXI_Deselect(drv_no);
-	EXI_Unlock(drv_no);
-
-	crc = __make_crc16(buf,len);
-	if(crc!=crc_org) ret = CARDIO_OP_IOERR_CRC;
-#ifdef _CARDIO_DEBUG
-	printf("crc ok: %04x : %04x\n",crc_org,crc);
-#endif
-	return ret;
-}
-
 static s32 __card_datawrite(s32 drv_no,void *buf,u32 len)
 {
 	u8 dummy[32];
@@ -961,7 +799,7 @@ static s32 __card_datawrite(s32 drv_no,void *buf,u32 len)
 		return CARDIO_ERROR_IOERROR;
 	}
 
-	if(__card_writedata_fast(drv_no,buf,len)==0) {
+	if(EXI_ImmEx(drv_no,buf,len,EXI_WRITE)==0) {
 		EXI_Deselect(drv_no);
 		EXI_Unlock(drv_no);
 		return CARDIO_ERROR_IOERROR;
@@ -1005,7 +843,7 @@ static s32 __card_multidatawrite(s32 drv_no,void *buf,u32 len)
 		return CARDIO_ERROR_IOERROR;
 	}
 
-	if(__card_writedata_fast(drv_no,buf,len)==0) {
+	if(EXI_ImmEx(drv_no,buf,len,EXI_WRITE)==0) {
 		EXI_Deselect(drv_no);
 		EXI_Unlock(drv_no);
 		return CARDIO_ERROR_IOERROR;
@@ -1110,96 +948,6 @@ static s32 __card_response1(s32 drv_no)
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 	
 	if((ret=__card_readresponse(drv_no,_ioResponse[drv_no],1))!=0) return ret;
-	return __check_response(drv_no,_ioResponse[drv_no][0]);
-}
-
-static s32 __card_response1b(s32 drv_no)
-{
-	s32 startT;
-	u8 *ptr = _ioResponse[drv_no];
-
-	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
-	
-	__exi_wait(drv_no);
-
-	if(EXI_Select(drv_no,EXI_DEVICE_0,_ioCardFreq)==0) {
-		EXI_Unlock(drv_no);
-		return CARDIO_ERROR_NOCARD;
-	}
-
-	*ptr = _ioClrFlag;
-	if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
-		EXI_Deselect(drv_no);
-		EXI_Unlock(drv_no);
-		return CARDIO_ERROR_IOERROR;
-	}
-#ifdef _CARDIO_DEBUG
-	printf("sd response: %02x\n",((u8*)ptr)[0]);
-#endif
-
-	startT = gettick();
-	while(*ptr&0x80) {
-		*ptr = _ioClrFlag;
-		if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
-			EXI_Deselect(drv_no);
-			EXI_Unlock(drv_no);
-			return CARDIO_ERROR_IOERROR;
-		}
-#ifdef _CARDIO_DEBUG
-		printf("sd response: %02x\n",((u8*)ptr)[0]);
-#endif
-		if(!(*ptr&0x80)) break;
-		if(__card_checktimeout(drv_no,startT,500)!=0) {
-			*ptr = _ioClrFlag;
-			if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
-				EXI_Deselect(drv_no);
-				EXI_Unlock(drv_no);
-				return CARDIO_ERROR_IOERROR;
-			}
-#ifdef _CARDIO_DEBUG
-			printf("sd response: %02x\n",((u8*)ptr)[0]);
-#endif
-			if(*ptr&0x80) {
-				EXI_Deselect(drv_no);
-				EXI_Unlock(drv_no);
-				return CARDIO_ERROR_IOTIMEOUT;
-			}
-		}
-	}
-
-	*(++ptr) = _ioClrFlag;
-	if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
-		EXI_Deselect(drv_no);
-		EXI_Unlock(drv_no);
-		return CARDIO_ERROR_IOERROR;
-	}
-	
-	startT = gettick();
-	while(!(*ptr)) {
-		*ptr = _ioClrFlag;	
-		if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
-			EXI_Deselect(drv_no);
-			EXI_Unlock(drv_no);
-			return CARDIO_ERROR_IOERROR;
-		}
-		if(*ptr) break;
-		if(__card_checktimeout(drv_no,startT,1500)!=0) {
-			*ptr = _ioClrFlag;	
-			if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
-				EXI_Deselect(drv_no);
-				EXI_Unlock(drv_no);
-				return CARDIO_ERROR_IOERROR;
-			}
-			if(!(*ptr)) {
-				EXI_Deselect(drv_no);
-				EXI_Unlock(drv_no);
-				return CARDIO_ERROR_IOTIMEOUT;
-			}
-		}
-	}
-
-	EXI_Deselect(drv_no);
-	EXI_Unlock(drv_no);
 	return __check_response(drv_no,_ioResponse[drv_no][0]);
 }
 
@@ -1659,7 +1407,7 @@ s32 sdgecko_readSectors(s32 drv_no,u32 sector_no,u32 num_sectors,void *buf)
 	if(num_sectors<1) return CARDIO_ERROR_INTERNAL;
 
 #ifdef _CARDIO_DEBUG
-	printf("sdgecko_readSectors(%d,%d,%d,%d)\n",drv_no,sector_no,num_sectors,_ioPageSize[drv_no]);
+	kprintf("sdgecko_readSectors(%d,%d,%d,%d)\n",drv_no,sector_no,num_sectors,_ioPageSize[drv_no]);
 #endif
 
 	// Must be 512b, otherwise fail!
@@ -1680,7 +1428,7 @@ s32 sdgecko_readSectors(s32 drv_no,u32 sector_no,u32 num_sectors,void *buf)
 	}
 
 	if((ret=__card_sendcmd(drv_no,0x0C,NULL))!=0) return ret;
-	return __card_response1b(drv_no);
+	return __card_stopresponse(drv_no);
 }
 
 s32 sdgecko_writeSectors(s32 drv_no,u32 sector_no,u32 num_sectors,const void *buf)
@@ -1727,7 +1475,7 @@ s32 sdgecko_writeSectors(s32 drv_no,u32 sector_no,u32 num_sectors,const void *bu
 		if((ret=__card_multidatawrite(drv_no,ptr,_ioPageSize[drv_no]))!=0) return ret;
 		if((ret=__card_dataresponse(drv_no))!=0) {
 			if((ret=__card_sendcmd(drv_no,0x0C,arg))!=0) return ret;
-			return __card_response1b(drv_no);
+			return __card_stopresponse(drv_no);
 		}
 		ptr += _ioPageSize[drv_no];
 	}
