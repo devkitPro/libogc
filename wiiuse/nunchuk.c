@@ -68,6 +68,16 @@ int nunchuk_handshake(struct wiimote_t *wm,struct nunchuk_t *nc,ubyte *data,uwor
 	wm->event = WIIUSE_NUNCHUK_INSERTED;
 	wm->exp.type = EXP_NUNCHUK;
 
+	/* if min and max are reported as 0, initialize them to usable values based on center, and fine tune in nunchuck_event() */
+	if (nc->js.center.x) {
+		if (nc->js.min.x == 0) nc->js.min.x = nc->js.center.x - 80;
+		if (nc->js.max.x == 0) nc->js.max.x = nc->js.center.x + 80;
+	}
+	if (nc->js.center.y) {
+		if (nc->js.min.y == 0) nc->js.min.y = nc->js.center.y - 80;
+		if (nc->js.max.y == 0) nc->js.max.y = nc->js.center.y + 80;
+	}
+
 	return 1;
 }
 
@@ -101,6 +111,17 @@ void nunchuk_event(struct nunchuk_t* nc, ubyte* msg) {
 
 	nc->js.pos.x = msg[0];
 	nc->js.pos.y = msg[1];
+
+	/* extend min and max values to physical range of motion */
+	if (nc->js.center.x) {
+		if (nc->js.min.x > nc->js.pos.x) nc->js.min.x = nc->js.pos.x;
+		if (nc->js.max.x < nc->js.pos.x) nc->js.max.x = nc->js.pos.x;
+	}
+	if (nc->js.center.y) {
+		if (nc->js.min.y > nc->js.pos.y) nc->js.min.y = nc->js.pos.y;
+		if (nc->js.max.y < nc->js.pos.y) nc->js.max.y = nc->js.pos.y;
+	}
+
 #ifndef GEKKO
 	/* calculate joystick state */
 	calc_joystick_state(&nc->js, nc->js.pos.x, nc->js.pos.y);
