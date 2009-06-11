@@ -13,7 +13,7 @@
 
 #define MAX_COMMANDS					0x100
 
-static vu32 *_ipcReg = (u32*)0xCD000000;
+static vu32* const _ipcReg = (u32*)0xCD000000;
 
 extern void parse_event(struct wiimote_t *wm);
 extern void idle_cycle(struct wiimote_t* wm);
