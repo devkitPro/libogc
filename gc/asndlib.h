@@ -3,25 +3,25 @@
 Copyright (c) 2008 Hermes <www.entuwii.net>
 All rights reserved.
 
-Redistribution and use in source and binary forms, with or without modification, are 
+Redistribution and use in source and binary forms, with or without modification, are
 permitted provided that the following conditions are met:
 
-- Redistributions of source code must retain the above copyright notice, this list of 
-  conditions and the following disclaimer. 
-- Redistributions in binary form must reproduce the above copyright notice, this list 
-  of conditions and the following disclaimer in the documentation and/or other 
-  materials provided with the distribution. 
-- The names of the contributors may not be used to endorse or promote products derived 
-  from this software without specific prior written permission. 
+- Redistributions of source code must retain the above copyright notice, this list of
+  conditions and the following disclaimer.
+- Redistributions in binary form must reproduce the above copyright notice, this list
+  of conditions and the following disclaimer in the documentation and/or other
+  materials provided with the distribution.
+- The names of the contributors may not be used to endorse or promote products derived
+  from this software without specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY 
-EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
-MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL 
-THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
-STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
@@ -36,6 +36,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SND_LIB  (ASND_LIB+2)
 
 #include <gctypes.h>
+#include <ogc/audio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -165,7 +166,7 @@ note: Note codified to play. For example: NOTE(C,4) for note C and octave 4
 
 freq_base: Frequency base of the sample. For example 8000Hz
 
-note_base: Note codified of the sample. For example: NOTE(L,3) for note L and octave 3 (LA 3) 
+note_base: Note codified of the sample. For example: NOTE(L,3) for note L and octave 3 (LA 3)
 
 return: frequency (in Hz)
 
@@ -189,6 +190,18 @@ return: nothing
 */
 
 void ASND_Init();
+
+/* void ASND_SetDMACallback();
+
+Resets the DMA callback to use ASND's and fix the hardware sample rate to 48000.
+
+-- Params ---
+
+return pointer to old callback function or NULL respectively.
+
+*/
+
+AIDCallback ASND_SetDMACallback();
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -343,7 +356,7 @@ voice: use one from 0 to (MAX_SND_VOICES-1)
 
 format: PCM format from VOICE_MONO_8BIT to VOICE_STEREO_16BIT
 
-pitch: pitch frequency (in Hz) 
+pitch: pitch frequency (in Hz)
 
 delay: delay time in milliseconds (ms). Time to wait before to play the voice
 
@@ -355,7 +368,7 @@ volume_l: volume to the left channel from 0 to 255
 
 volume_r: volume to the right channel from 0 to 255
 
-callback: can be NULL or one callback function is used to implement a double buffer use. When the second buffer is empty, the callback is called sending 
+callback: can be NULL or one callback function is used to implement a double buffer use. When the second buffer is empty, the callback is called sending
           the voice number as parameter. You can use "void callback(s32 voice)" function to call ASND_AddVoice() and add one voice to the second buffer.
 		  NOTE: When callback is fixed the voice never stops and it turn in SND_WAITING status if success one timeout condition.
 
@@ -370,8 +383,8 @@ s32 ASND_SetInfiniteVoice(s32 voice, s32 format, s32 pitch,s32 delay, void *snd,
 
 /* s32 ASND_AddVoice(s32 voice, void *snd, s32 size_snd);
 
-Add a PCM voice in the second buffer to play. This function requires one previously call to ASND_SetVoice() and one condition status different 
-        of 'SND_UNUSED' 
+Add a PCM voice in the second buffer to play. This function requires one previously call to ASND_SetVoice() and one condition status different
+        of 'SND_UNUSED'
 
 -- Params ---
 
@@ -392,7 +405,7 @@ s32 ASND_AddVoice(s32 voice, void *snd, s32 size_snd);
 
 /* s32 ASND_StopVoice(s32 voice);
 
-Stops the voice selected. 
+Stops the voice selected.
 
 If the voice is used in song mode, you need to assign the samples with ASND_SetSongSampleVoice() again. Use ASND_PauseSongVoice() in this case to stops
         the voice without lose the samples.
@@ -411,7 +424,7 @@ s32 ASND_StopVoice(s32 voice);
 
 /* s32 ASND_PauseVoice(s32 voice, s32 pause);
 
-Pause the voice selected. 
+Pause the voice selected.
 
 
 
@@ -435,7 +448,7 @@ Return the status of the voice selected
 
 voice: use one from 0 to (MAX_SND_VOICES-1)
 
-return: SND_INVALID 
+return: SND_INVALID
         SND_UNUSED   you can use this voice
         SND_WORKING  this voice is in progress
         SND_WAITING  this voice is in progress and waiting to one SND_AddVoice function (the voice handler is called continuously)
@@ -448,7 +461,7 @@ s32 ASND_StatusVoice(s32 voice);
 
 /* s32 ASND_GetFirstUnusedVoice();
 
-Get the first unused voice. The voice 0 is tried especially and it is the last possible result. The idea is to reserve that voice for a Mod/Ogg/MP3 
+Get the first unused voice. The voice 0 is tried especially and it is the last possible result. The idea is to reserve that voice for a Mod/Ogg/MP3
        Player or similar. So if the function return a value <1 you can be sure the rest of the voices are working.
 
 -- Params ---
@@ -505,7 +518,7 @@ Get the tick counter from the voice starts to play (without the delay time). Thi
        For example if the lib is initilized with INIT_RATE_48000 a return value of 24000 are equal to 0.5 seconds played
 
 USES: you can use this value to synchronize audio & video
-	   
+
 
 -- Params ---
 
@@ -521,9 +534,9 @@ u32 ASND_GetTickCounterVoice(s32 voice);
 
 /* u32 ASND_GetTimerVoice(s32 voice);
 
-Get the time (in milliseconds) from the voice starts to play (without the delay time). 
+Get the time (in milliseconds) from the voice starts to play (without the delay time).
 
-USES: you can use this value to synchronize audio & video 
+USES: you can use this value to synchronize audio & video
 
 -- Params ---
 
@@ -539,7 +552,7 @@ u32 ASND_GetTimerVoice(s32 voice);
 
 /* s32 SND_TestPointer(s32 voice, void *pointer);
 
-Test if the pointer is in use by the voice (as buffer). 
+Test if the pointer is in use by the voice (as buffer).
 
 -- Params ---
 

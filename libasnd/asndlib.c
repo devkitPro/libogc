@@ -3,25 +3,25 @@
 Copyright (c) 2008 Hermes <www.entuwii.net>
 All rights reserved.
 
-Redistribution and use in source and binary forms, with or without modification, are 
+Redistribution and use in source and binary forms, with or without modification, are
 permitted provided that the following conditions are met:
 
-- Redistributions of source code must retain the above copyright notice, this list of 
-conditions and the following disclaimer. 
-- Redistributions in binary form must reproduce the above copyright notice, this list 
-of conditions and the following disclaimer in the documentation and/or other 
-materials provided with the distribution. 
-- The names of the contributors may not be used to endorse or promote products derived 
-from this software without specific prior written permission. 
+- Redistributions of source code must retain the above copyright notice, this list of
+conditions and the following disclaimer.
+- Redistributions in binary form must reproduce the above copyright notice, this list
+of conditions and the following disclaimer in the documentation and/or other
+materials provided with the distribution.
+- The names of the contributors may not be used to endorse or promote products derived
+from this software without specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY 
-EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
-MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL 
-THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
-STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
@@ -47,7 +47,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define VOICE_PAUSE        32
 #define VOICE_SETLOOP       4
 
-typedef struct 
+typedef struct
 {
 	void *out_buf;	// output buffer 4096 bytes aligned to 32
 
@@ -212,7 +212,7 @@ static void __dsp_requestcallback(dsptask_t *task)
 
 	while(snd_chan<16 && !(sound_data[snd_chan].flags>>16)) snd_chan++;
 
-	if(snd_chan>=MAX_SND_VOICES) 
+	if(snd_chan>=MAX_SND_VOICES)
 	{
 		snd_chan++;
 		DCFlushRange(&sound_data_dma, sizeof(t_sound_data));
@@ -264,7 +264,7 @@ static void audio_dma_callback()
 	if(DSP_DI_HANDLER || global_pause) {
 		snd_set0w((s32 *)audio_buf[curr_audio_buf],SND_BUFFERSIZE/4);
 		DCFlushRange(audio_buf[curr_audio_buf],SND_BUFFERSIZE);
-	} 
+	}
 
 	AUDIO_StartDMA();
 
@@ -392,6 +392,20 @@ void ASND_Init()
 	}
 	_CPU_ISR_Restore(level);
 }
+
+/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
+AIDCallback ASND_SetDMACallback()
+{
+	AUDIO_StopDMA();
+	AUDIO_SetDSPSampleRate(AI_SAMPLERATE_48KHZ);
+	AIDCallback oldcb = AUDIO_RegisterDMACallback(audio_dma_callback);
+	AUDIO_InitDMA((u32)audio_buf[curr_audio_buf],SND_BUFFERSIZE);
+	AUDIO_StartDMA();
+	curr_audio_buf ^= 1;
+	return oldcb;
+}
+
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 void ASND_End()
@@ -464,7 +478,7 @@ s32 ASND_SetVoice(s32 voice, s32 format, s32 pitch,s32 delay, void *snd, s32 siz
 	sound_data[voice].end_addr=MEM_VIRTUAL_TO_PHYSICAL(snd)+(size_snd);
 
 	sound_data[voice].start_addr2=0;
-	sound_data[voice].end_addr2=0;	
+	sound_data[voice].end_addr2=0;
 
 	sound_data[voice].volume2_l= volume_l;
 	sound_data[voice].volume2_r= volume_r;
@@ -532,7 +546,7 @@ s32 ASND_SetInfiniteVoice(s32 voice, s32 format, s32 pitch,s32 delay, void *snd,
 	sound_data[voice].end_addr=MEM_VIRTUAL_TO_PHYSICAL(snd)+(size_snd);
 
 	sound_data[voice].start_addr2=sound_data[voice].start_addr;
-	sound_data[voice].end_addr2=sound_data[voice].end_addr;	
+	sound_data[voice].end_addr2=sound_data[voice].end_addr;
 
 	sound_data[voice].volume2_l= volume_l;
 	sound_data[voice].volume2_r= volume_r;
@@ -754,7 +768,7 @@ s32 ASND_GetAudioRate()
 s32 ASND_GetFirstUnusedVoice()
 {
 
-	s32 n;	
+	s32 n;
 
 	for(n=1;n<MAX_SND_VOICES;n++)
 		if(!(sound_data[n].flags>>16)) return n;
@@ -818,7 +832,7 @@ int ANote2Freq(int note, int freq_base,int note_base)
 
 	if(freq_base<=0x1ffff) // Math precision
 		n=(s32) (((u32)freq_base)*tab_piano_frac[(note % 12)]/tab_piano_frac[(note_base % 12)]);
-	else 
+	else
 		n=(s32) (((u64)freq_base)*((u64) tab_piano_frac[(note % 12)])/((u64) tab_piano_frac[(note_base % 12)]));
 
 
