@@ -36,7 +36,6 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SND_LIB  (ASND_LIB+2)
 
 #include <gctypes.h>
-#include <ogc/audio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -190,18 +189,6 @@ return: nothing
 */
 
 void ASND_Init();
-
-/* void ASND_SetDMACallback();
-
-Resets the DMA callback to use ASND's and fix the hardware sample rate to 48000.
-
--- Params ---
-
-return pointer to old callback function or NULL respectively.
-
-*/
-
-AIDCallback ASND_SetDMACallback();
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 

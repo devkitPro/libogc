@@ -355,6 +355,7 @@ void ASND_Init()
 
 	DSP_Init();
 	AUDIO_Init(NULL);
+	AUDIO_StopDMA(); // in case audio was previously inited and a DMA callback set
 	AUDIO_SetDSPSampleRate(AI_SAMPLERATE_48KHZ);
 
 	_CPU_ISR_Disable(level);
@@ -384,26 +385,13 @@ void ASND_Init()
 		dsp_task.init_cb =__dsp_initcallback;
 		dsp_task.done_cb =__dsp_donecallback;
 		DSP_AddTask(&dsp_task);
-
-		AUDIO_RegisterDMACallback(audio_dma_callback);
-		AUDIO_InitDMA((u32)audio_buf[curr_audio_buf],SND_BUFFERSIZE);
-		AUDIO_StartDMA();
-		curr_audio_buf ^= 1;
 	}
-	_CPU_ISR_Restore(level);
-}
-
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-AIDCallback ASND_SetDMACallback()
-{
-	AUDIO_StopDMA();
-	AUDIO_SetDSPSampleRate(AI_SAMPLERATE_48KHZ);
-	AIDCallback oldcb = AUDIO_RegisterDMACallback(audio_dma_callback);
+	AUDIO_RegisterDMACallback(audio_dma_callback);
 	AUDIO_InitDMA((u32)audio_buf[curr_audio_buf],SND_BUFFERSIZE);
 	AUDIO_StartDMA();
 	curr_audio_buf ^= 1;
-	return oldcb;
+
+	_CPU_ISR_Restore(level);
 }
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
