@@ -7,7 +7,7 @@
 #elif defined(GEKKO)
 	/* wii */
 	#include <bte/bte.h>
-#elif defined(unix)
+#elif defined(__unix__)
 	/* nix */
 	#include <bluetooth/bluetooth.h>
 #endif
