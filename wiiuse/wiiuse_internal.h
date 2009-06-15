@@ -44,7 +44,7 @@
 #ifndef WIIUSE_INTERNAL_H_INCLUDED
 #define WIIUSE_INTERNAL_H_INCLUDED
 
-#if defined(__unix__)
+#if defined(__linux__)
 	#include <arpa/inet.h>				/* htons() */
 	#include <bluetooth/bluetooth.h>
 #endif
