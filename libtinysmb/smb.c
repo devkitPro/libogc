@@ -830,10 +830,19 @@ static s32 do_smbconnect(SMBHANDLE *handle)
 /****************************************************************************
  * Primary setup, logon and connection all in one :)
  ****************************************************************************/
-s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const char *share, const char *IP)
+s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const char *share, const char *server)
 {
-	s32 ret;
+	s32 ret = 0;
 	SMBHANDLE *handle;
+	struct hostent *hp;
+	struct in_addr val;
+
+	if(!user || !password || !share || !server ||
+		strlen(user) > 20 || strlen(password) > 14 ||
+		strlen(share) > 80 || strlen(server) > 80)
+	{
+		return SMB_BAD_LOGINDATA;
+	}
 
 	*smbhndl = SMB_HANDLE_NULL;
 
@@ -849,23 +858,48 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 
 	handle->user = strdup(user);
 	handle->pwd = strdup(password);
-	handle->server_name = strdup(IP);
+	handle->server_name = strdup(server);
 	handle->share_name = strdup(share);
-
 	handle->server_addr.sin_family = AF_INET;
 	handle->server_addr.sin_port = htons(445);
-	handle->server_addr.sin_addr.s_addr = inet_addr(IP);
 
-	ret = do_netconnect(handle);
-	if(ret==0) ret = do_smbconnect(handle);
-	if(ret!=0) {
+	if(strlen(server) < 16 && inet_aton(server, &val))
+	{
+		handle->server_addr.sin_addr.s_addr = val.s_addr;
+	}
+	else // might be a hostname
+	{
+		hp = net_gethostbyname(server);
+		if (!hp || !(hp->h_addrtype == PF_INET))
+			ret = SMB_BAD_LOGINDATA;
+		else
+			memcpy((char *)&handle->server_addr.sin_addr.s_addr, hp->h_addr_list[0], hp->h_length);
+	}
+
+	if(ret==0)
+	{
+		ret = do_netconnect(handle);
+		if(ret==0) ret = do_smbconnect(handle);
+
+		if(ret!=0)
+		{
+			// try port 139
+			handle->server_addr.sin_port = htons(139);
+			ret = do_netconnect(handle);
+			if(ret==0) ret = do_smbconnect(handle);
+		}
+	}
+	if(ret!=0)
+	{
 		__smb_free_handle(handle);
 		return SMB_ERROR;
 	}
-	*smbhndl =(SMBCONN)(LWP_OBJMASKTYPE(SMB_OBJTYPE_HANDLE)|LWP_OBJMASKID(handle->object.id));
-	return SMB_SUCCESS;
+	else
+	{
+		*smbhndl =(SMBCONN)(LWP_OBJMASKTYPE(SMB_OBJTYPE_HANDLE)|LWP_OBJMASKID(handle->object.id));
+		return SMB_SUCCESS;
+	}
 }
-
 
 /****************************************************************************
  * SMB_Destroy
