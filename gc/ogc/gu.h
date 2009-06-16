@@ -88,14 +88,16 @@ f32 ps_guVecDotProduct(register Vector *a,register Vector *b);
 void c_guQuatAdd(Quaternion *a,Quaternion *b,Quaternion *ab);
 void c_guQuatSub(Quaternion *a,Quaternion *b,Quaternion *ab);
 void c_guQuatMultiply(Quaternion *a,Quaternion *b,Quaternion *ab);
+void c_guQuatNormalize(Quaternion *a,Quaternion *d);
+void c_guQuatInverse(Quaternion *a,Quaternion *d);
+void c_guQuatMtx(Quaternion *a,Mtx m);
 
 #ifdef GEKKO
 void ps_guQuatAdd(register Quaternion *a,register Quaternion *b,register Quaternion *ab);
 void ps_guQuatSub(register Quaternion *a,register Quaternion *b,register Quaternion *ab);
-void ps_guQuatMultiply(Quaternion *a,Quaternion *b,Quaternion *ab);
-void ps_guQuatScale(Quaternion *q,Quaternion *r,register f32 scale);
-void ps_guQuatNormalize(Quaternion *src,Quaternion *r,register Quaternion *unit);
-f32 ps_guQuatDotProduct(Quaternion *p,Quaternion *q);
+void ps_guQuatMultiply(register Quaternion *a,register Quaternion *b,register Quaternion *ab);
+void ps_guQuatNormalize(register Quaternion *a,register Quaternion *d);
+void ps_guQuatInverse(register Quaternion *a,register Quaternion *d);
 #endif
 
 void c_guMtxIdentity(Mtx mt);
@@ -113,6 +115,7 @@ void c_guMtxRotRad(Mtx mt,const char axis,f32 rad);
 void c_guMtxRotTrig(Mtx mt,const char axis,f32 sinA,f32 cosA);
 void c_guMtxRotAxisRad(Mtx mt,Vector *axis,f32 rad);
 void c_guMtxReflect(Mtx m,Vector *p,Vector *n);
+void c_guMtxQuat(Mtx m,Quaternion *a);
 
 #ifdef GEKKO
 void ps_guMtxIdentity(register Mtx mt);
@@ -147,6 +150,9 @@ void ps_guMtxReflect(register Mtx m,register Vector *p,register Vector *n);
 #define guQuatAdd				c_guQuatAdd
 #define guQuatSub				c_guQuatSub
 #define guQuatMultiply			c_guQuatMultiply
+#define guQuatNoramlize			c_guQuatNormalize
+#define guQuatInverse			c_guQuatInverse
+#define guQuatMtx				c_guQuatMtx
 
 #define guMtxIdentity			c_guMtxIdentity
 #define guMtxCopy				c_guMtxCopy
@@ -163,6 +169,7 @@ void ps_guMtxReflect(register Mtx m,register Vector *p,register Vector *n);
 #define guMtxRotTrig			c_guMtxRotTrig
 #define guMtxRotAxisRad			c_guMtxRotAxisRad
 #define guMtxReflect			c_guMtxReflect
+#define guMtxQuat				c_guMtxQuat
 
 #else //MTX_USE_C
 
@@ -177,6 +184,9 @@ void ps_guMtxReflect(register Mtx m,register Vector *p,register Vector *n);
 
 #define guQuatAdd				ps_guQuatAdd
 #define guQuatSub				ps_guQuatSub
+#define guQuatMultiply			ps_guQuatMultiply
+#define guQuatNormalize			ps_guQuatNormalize
+#define guQuatInverse			ps_guQuatInverse
 
 #define guMtxIdentity			ps_guMtxIdentity
 #define guMtxCopy				ps_guMtxCopy
