@@ -74,8 +74,8 @@ typedef struct _horVer {
 	u16 panPosY;
 	u16 panSizeX;
 	u16 panSizeY;
-	u32 fbMode;	
-	u32 nonInter;	
+	u32 fbMode;
+	u32 nonInter;
 	u32 tv;
 	u8 wordPerLine;
 	u8 std;
@@ -92,7 +92,7 @@ typedef struct _horVer {
 	const struct _timing *timing;
 } horVer;
 
-GXRModeObj TVNtsc240Ds = 
+GXRModeObj TVNtsc240Ds =
 {
     VI_TVMODE_NTSC_DS,      // viDisplayMode
     640,             // fbWidth
@@ -160,7 +160,7 @@ GXRModeObj TVNtsc240DsAa =
 	}
 };
 
-GXRModeObj TVNtsc240Int = 
+GXRModeObj TVNtsc240Int =
 {
     VI_TVMODE_NTSC_INT,     // viDisplayMode
     640,             // fbWidth
@@ -194,7 +194,7 @@ GXRModeObj TVNtsc240Int =
 	}
 };
 
-GXRModeObj TVNtsc240IntAa = 
+GXRModeObj TVNtsc240IntAa =
 {
     VI_TVMODE_NTSC_INT,     // viDisplayMode
     640,             // fbWidth
@@ -262,7 +262,7 @@ GXRModeObj TVNtsc480Int =
     }
 };
 
-GXRModeObj TVNtsc480IntDf = 
+GXRModeObj TVNtsc480IntDf =
 {
     VI_TVMODE_NTSC_INT,     // viDisplayMode
     640,             // fbWidth
@@ -296,7 +296,7 @@ GXRModeObj TVNtsc480IntDf =
 	}
 };
 
-GXRModeObj TVNtsc480IntAa = 
+GXRModeObj TVNtsc480IntAa =
 {
     VI_TVMODE_NTSC_INT,     // viDisplayMode
     640,             // fbWidth
@@ -433,7 +433,7 @@ GXRModeObj TVNtsc480ProgAa =
     }
 };
 
-GXRModeObj TVMpal480IntDf = 
+GXRModeObj TVMpal480IntDf =
 {
     VI_TVMODE_MPAL_INT,     // viDisplayMode
     640,             // fbWidth
@@ -467,7 +467,7 @@ GXRModeObj TVMpal480IntDf =
 	}
 };
 
-GXRModeObj TVPal264Ds = 
+GXRModeObj TVPal264Ds =
 {
     VI_TVMODE_PAL_DS,       // viDisplayMode
     640,             // fbWidth
@@ -501,7 +501,7 @@ GXRModeObj TVPal264Ds =
 	}
 };
 
-GXRModeObj TVPal264DsAa = 
+GXRModeObj TVPal264DsAa =
 {
     VI_TVMODE_PAL_DS,       // viDisplayMode
     640,             // fbWidth
@@ -535,7 +535,7 @@ GXRModeObj TVPal264DsAa =
 	}
 };
 
-GXRModeObj TVPal264Int = 
+GXRModeObj TVPal264Int =
 {
     VI_TVMODE_PAL_INT,      // viDisplayMode
     640,             // fbWidth
@@ -569,7 +569,7 @@ GXRModeObj TVPal264Int =
 	}
 };
 
-GXRModeObj TVPal264IntAa = 
+GXRModeObj TVPal264IntAa =
 {
     VI_TVMODE_PAL_INT,      // viDisplayMode
     640,             // fbWidth
@@ -603,7 +603,7 @@ GXRModeObj TVPal264IntAa =
 	}
 };
 
-GXRModeObj TVPal524IntAa = 
+GXRModeObj TVPal524IntAa =
 {
 	VI_TVMODE_PAL_INT,
 	640,
@@ -616,7 +616,7 @@ GXRModeObj TVPal524IntAa =
 	VI_XFBMODE_DF,
 	GX_FALSE,
 	GX_TRUE,
-	
+
     // sample points arranged in increasing Y order
 	{
 		{3,2},{9,6},{3,10},				// pix 0, 3 sample points, 1/12 units, 4 bits each
@@ -624,7 +624,7 @@ GXRModeObj TVPal524IntAa =
 		{9,2},{3,6},{9,10},				// pix 2
 		{9,2},{3,6},{9,10}				// pix 3
 	},
- 
+
 	 // vertical filter[7], 1/64 units, 6 bits each
 	{
 		4,         // line n-1
@@ -637,7 +637,7 @@ GXRModeObj TVPal524IntAa =
 	}
 };
 
-GXRModeObj TVPal528Int = 
+GXRModeObj TVPal528Int =
 {
     VI_TVMODE_PAL_INT,       // viDisplayMode
     640,             // fbWidth
@@ -671,7 +671,7 @@ GXRModeObj TVPal528Int =
 	}
 };
 
-GXRModeObj TVPal528IntDf = 
+GXRModeObj TVPal528IntDf =
 {
     VI_TVMODE_PAL_INT,      // viDisplayMode
     640,             // fbWidth
@@ -704,7 +704,7 @@ GXRModeObj TVPal528IntDf =
 	}
 };
 
-GXRModeObj TVPal574IntDfScale = 
+GXRModeObj TVPal574IntDfScale =
 {
     VI_TVMODE_PAL_INT,      // viDisplayMode
     640,             // fbWidth
@@ -737,7 +737,7 @@ GXRModeObj TVPal574IntDfScale =
 	}
 };
 
-GXRModeObj TVEurgb60Hz240Ds = 
+GXRModeObj TVEurgb60Hz240Ds =
 {
     VI_TVMODE_EURGB60_DS,      // viDisplayMode
     640,             // fbWidth
@@ -770,7 +770,7 @@ GXRModeObj TVEurgb60Hz240Ds =
 	}
 };
 
-GXRModeObj TVEurgb60Hz240DsAa = 
+GXRModeObj TVEurgb60Hz240DsAa =
 {
     VI_TVMODE_EURGB60_DS,      // viDisplayMode
     640,             // fbWidth
@@ -803,7 +803,7 @@ GXRModeObj TVEurgb60Hz240DsAa =
 	}
 };
 
-GXRModeObj TVEurgb60Hz240Int = 
+GXRModeObj TVEurgb60Hz240Int =
 {
     VI_TVMODE_EURGB60_INT,      // viDisplayMode
     640,             // fbWidth
@@ -836,7 +836,7 @@ GXRModeObj TVEurgb60Hz240Int =
 	}
 };
 
-GXRModeObj TVEurgb60Hz240IntAa = 
+GXRModeObj TVEurgb60Hz240IntAa =
 {
     VI_TVMODE_EURGB60_INT,      // viDisplayMode
     640,             // fbWidth
@@ -869,7 +869,7 @@ GXRModeObj TVEurgb60Hz240IntAa =
 	}
 };
 
-GXRModeObj TVEurgb60Hz480Int = 
+GXRModeObj TVEurgb60Hz480Int =
 {
     VI_TVMODE_EURGB60_INT,      // viDisplayMode
     640,             // fbWidth
@@ -902,7 +902,7 @@ GXRModeObj TVEurgb60Hz480Int =
 	}
 };
 
-GXRModeObj TVEurgb60Hz480IntDf = 
+GXRModeObj TVEurgb60Hz480IntDf =
 {
     VI_TVMODE_EURGB60_INT,      // viDisplayMode
     640,             // fbWidth
@@ -935,7 +935,7 @@ GXRModeObj TVEurgb60Hz480IntDf =
 	}
 };
 
-GXRModeObj TVEurgb60Hz480IntAa = 
+GXRModeObj TVEurgb60Hz480IntAa =
 {
     VI_TVMODE_EURGB60_INT,      // viDisplayMode
     640,             // fbWidth
@@ -968,7 +968,7 @@ GXRModeObj TVEurgb60Hz480IntAa =
 	}
 };
 
-GXRModeObj TVEurgb60Hz480Prog = 
+GXRModeObj TVEurgb60Hz480Prog =
 {
     VI_TVMODE_EURGB60_PROG,      // viDisplayMode
     640,             // fbWidth
@@ -1001,7 +1001,7 @@ GXRModeObj TVEurgb60Hz480Prog =
 	}
 };
 
-GXRModeObj TVEurgb60Hz480ProgSoft = 
+GXRModeObj TVEurgb60Hz480ProgSoft =
 {
     VI_TVMODE_EURGB60_PROG,      // viDisplayMode
     640,             // fbWidth
@@ -1034,7 +1034,7 @@ GXRModeObj TVEurgb60Hz480ProgSoft =
 	}
 };
 
-GXRModeObj TVEurgb60Hz480ProgAa = 
+GXRModeObj TVEurgb60Hz480ProgAa =
 {
     VI_TVMODE_EURGB60_PROG,      // viDisplayMode
     640,             // fbWidth
@@ -1073,7 +1073,7 @@ static const u16 taps[26] = {
 	0x008E,0x0046,0x000C,0x00E2,0x00CB,0x00C0,
 	0x00C4,0x00CF,0x00DE,0x00EC,0x00FC,0x0008,
 	0x000F,0x0013,0x0013,0x000F,0x000C,0x0008,
-	0x0001,0x0000                              
+	0x0001,0x0000
 };
 
 static const struct _timing {
@@ -1117,7 +1117,7 @@ static const struct _timing {
 		0x0271,0x01B0,
 		0x40,0x4B,0x6A,0xAC,
 		0x017C,
-		0x85,0x01A4	
+		0x85,0x01A4
 	},
 	{
 		0x05,0x011F,
@@ -1166,8 +1166,8 @@ static const struct _timing {
 		0x040e,0x040e,0x040e,0x040e,
 		0x041a,0x01ad,
 		0x40,0x47,0x69,0xa8,
-		0x017b,		
-		0x7a,0x019c	
+		0x017b,
+		0x7a,0x019c
 	},
 	{
 		0x06,0x00F1,
@@ -1449,7 +1449,7 @@ static inline void __setPicConfig(u16 fbSizeX,u32 xfbMode,u16 panPosX,u16 panSiz
 	*wordPerLine = (fbSizeX+15)/16;
 	*std = *wordPerLine;
 	if(xfbMode==VI_XFBMODE_DF) *std <<= 1;
-	
+
 	*xof = panPosX%16;
 	*wpl = (*xof+(panSizeX+15))/16;
 	regs[36] = (*wpl<<8)|*std;
@@ -1529,13 +1529,13 @@ static inline void __setFbbRegs(struct _horVer *horVer,u32 *tfbb,u32 *bfbb,u32 *
 	regs[19] = *bfbb&0xffff;
 	changed |= VI_REGCHANGE(18);
 	changed |= VI_REGCHANGE(19);
-	
+
 	if(horVer->threeD) {
 		regs[16] = _SHIFTR(*rtfbb,16,8);
 		regs[17] = *rtfbb&0xffff;
 		changed |= VI_REGCHANGE(16);
 		changed |= VI_REGCHANGE(17);
-	
+
 		regs[20] = _SHIFTR(*rbfbb,16,8);
 		regs[21] = *rbfbb&0xffff;
 		changed |= VI_REGCHANGE(20);
@@ -1574,7 +1574,7 @@ static inline void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u
 		div1 = 1;
 		div2 = 2;
 	}
-	
+
 	prb = div2*dispPosY;
 	psb = div2*(((acv*div1)-dispSizeY)-dispPosY);
 	if(dispPosY%2) {
@@ -1597,7 +1597,7 @@ static inline void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u
 		psbeven += 2;
 		tmp = 0;
 	}
-	
+
 	regs[0] = ((tmp<<4)&~0x0f)|equ;
 	changed |= VI_REGCHANGE(0);
 
@@ -1617,7 +1617,7 @@ static inline void __adjustPosition(u16 acv)
 	u32 fact,field;
 	s16 dispPosX,dispPosY;
 	s16 dispSizeY,maxDispSizeY;
-	
+
 	dispPosX = (HorVer.dispPosX+displayOffsetH);
 	if(dispPosX<=(720-HorVer.dispSizeX)) {
 		if(dispPosX>=0) HorVer.adjustedDispPosX = dispPosX;
@@ -1636,12 +1636,12 @@ static inline void __adjustPosition(u16 acv)
 	maxDispSizeY = ((acv<<1)-field);
 	if(dispSizeY>maxDispSizeY) dispSizeY -= (acv<<1)-field;
 	else dispSizeY = 0;
-	
+
 	dispPosY = HorVer.dispPosY+displayOffsetV;
 	if(dispPosY<field) dispPosY -= field;
 	else dispPosY = 0;
 	HorVer.adjustedDispSizeY = HorVer.dispSizeY+dispPosY-dispSizeY;
-	
+
 	dispPosY = HorVer.dispPosY+displayOffsetV;
 	if(dispPosY<field) dispPosY -= field;
 	else dispPosY = 0;
@@ -1650,7 +1650,7 @@ static inline void __adjustPosition(u16 acv)
 	dispSizeY = HorVer.dispPosY+HorVer.dispSizeY+displayOffsetV;
 	if(dispSizeY>maxDispSizeY) dispSizeY -= maxDispSizeY;
 	else dispSizeY = 0;
-	
+
 	dispPosY = HorVer.dispPosY+displayOffsetV;
 	if(dispPosY<field) dispPosY -= field;
 	else dispPosY = 0;
@@ -1685,7 +1685,7 @@ static void __VIInit(u32 vimode)
 	vi_mode = ((vimode>>2)&0x07);
 	interlace = (vimode&0x01);
 	progressive = (vimode&0x02);
-	
+
 	cur_timing = __gettiming(vimode);
 
 	//reset the interface
@@ -1700,7 +1700,7 @@ static void __VIInit(u32 vimode)
 
 	_viReg[4] = (cur_timing->hbs640<<1);					//set HBS640
 	_viReg[5] = ((cur_timing->hbe640<<7)|cur_timing->hsy);	//set HBE640 & HSY
-	
+
 	_viReg[0] = cur_timing->equ;
 
 	_viReg[6] = (cur_timing->psbOdd+2);							//set PSB odd field
@@ -1711,17 +1711,17 @@ static void __VIInit(u32 vimode)
 
 	_viReg[10] = ((cur_timing->be3<<5)|cur_timing->bs3);		//set BE3 & BS3
 	_viReg[11] = ((cur_timing->be1<<5)|cur_timing->bs1);		//set BE1 & BS1
-	
+
 	_viReg[12] = ((cur_timing->be4<<5)|cur_timing->bs4);		//set BE4 & BS4
 	_viReg[13] = ((cur_timing->be2<<5)|cur_timing->bs2);		//set BE2 & BS2
 
 	_viReg[24] = (0x1000|((cur_timing->nhlines/2)+1));
 	_viReg[25] = (cur_timing->hlw+1);
-	
+
 	_viReg[26] = 0x1001;		//set DI1
 	_viReg[27] = 0x0001;		//set DI1
 	_viReg[36] = 0x2828;		//set HSR
-	
+
 	if(vi_mode<VI_PAL && vi_mode>=VI_DEBUG_PAL) vi_mode = VI_NTSC;
 	if(progressive){
 		_viReg[1] = ((vi_mode<<8)|0x0005);		//set MODE & INT & enable
@@ -1932,7 +1932,7 @@ static inline void __getCurrentDisplayPosition(u32 *px,u32 *py)
 	u32 hpos = 0;
 	u32 vpos = 0;
 	u32 vpos_old;
-	
+
 	vpos = (_viReg[22]&0x7ff);
 	do {
 		vpos_old = vpos;
@@ -1949,12 +1949,12 @@ static inline u32 __getCurrentHalfLine()
 	u32 hpos = 0;
 
 	__getCurrentDisplayPosition(&hpos,&vpos);
-	
+
 	hpos--;
 	vpos--;
 	vpos <<= 1;
 
-	return vpos+(hpos/currTiming->hlw);	
+	return vpos+(hpos/currTiming->hlw);
 }
 
 static inline u32 __getCurrentFieldEvenOdd()
@@ -1985,7 +1985,7 @@ static inline u32 __VISetRegs()
 	shdw_changeMode = 0;
 	currTiming = HorVer.timing;
 	currTvMode = HorVer.tv;
-	
+
 	currentFb = nextFb;
 
 	return 1;
@@ -2164,7 +2164,7 @@ void VIDEO_Init()
 	shdw_changeMode = 0;
 	flushFlag = 0;
 	encoderType = 1;
-	
+
 	_viReg[38] = ((taps[1]>>6)|(taps[2]<<4));
 	_viReg[39] = (taps[0]|_SHIFTL(taps[1],10,6));
 	_viReg[40] = ((taps[4]>>6)|(taps[5]<<4));
@@ -2197,7 +2197,7 @@ void VIDEO_Init()
 	HorVer.dispSizeY = currTiming->acv<<1;
 	HorVer.dispPosX = (VI_MAX_WIDTH_NTSC-HorVer.dispSizeX)/2;
 	HorVer.dispPosY = 0;
-	
+
 	__adjustPosition(currTiming->acv);
 
 	HorVer.fbSizeX = 640;
@@ -2217,13 +2217,13 @@ void VIDEO_Init()
 	HorVer.tfbb = 0;
 	HorVer.rbfbb = 0;
 	HorVer.rtfbb = 0;
-	
+
 	_viReg[24] &= ~0x8000;
 	_viReg[26] &= ~0x8000;
 
 	preRetraceCB = NULL;
 	postRetraceCB = NULL;
-	
+
 	LWP_InitQueue(&video_queue);
 
 	IRQ_Request(IRQ_PI_VI,__VIRetraceHandler,NULL);
@@ -2241,9 +2241,9 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	const struct _timing *curtiming;
 #ifdef _VIDEO_DEBUG
 	if(rmode->viHeight&0x0001) printf("VIDEO_Configure(): Odd number(%d) is specified to viHeight\n",rmode->viHeight);
-	if((rmode->xfbMode==VI_XFBMODE_DF || rmode->viTVMode==VI_TVMODE_NTSC_PROG || rmode->viTVMode==VI_TVMODE_NTSC_PROG_DS) 
+	if((rmode->xfbMode==VI_XFBMODE_DF || rmode->viTVMode==VI_TVMODE_NTSC_PROG || rmode->viTVMode==VI_TVMODE_NTSC_PROG_DS)
 		&& rmode->xfbHeight!=rmode->viHeight) printf("VIDEO_Configure(): xfbHeight(%d) is not equal to viHeight(%d) when DF XFB mode or progressive mode is specified\n",rmode->xfbHeight,rmode->viHeight);
-	if(rmode->xfbMode==VI_XFBMODE_SF && !(rmode->viTVMode==VI_TVMODE_NTSC_PROG || rmode->viTVMode==VI_TVMODE_NTSC_PROG_DS) 
+	if(rmode->xfbMode==VI_XFBMODE_SF && !(rmode->viTVMode==VI_TVMODE_NTSC_PROG || rmode->viTVMode==VI_TVMODE_NTSC_PROG_DS)
 		&& (rmode->xfbHeight<<1)!=rmode->viHeight) printf("VIDEO_Configure(): xfbHeight(%d) is not as twice as viHeight(%d) when SF XFB mode is specified\n",rmode->xfbHeight,rmode->viHeight);
 #endif
 	_CPU_ISR_Disable(level);
@@ -2265,11 +2265,11 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	HorVer.panSizeY = HorVer.fbSizeY;
 	HorVer.panPosX = 0;
 	HorVer.panPosY = 0;
-	
+
 	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) HorVer.dispSizeY = HorVer.panSizeY;
 	else if(HorVer.fbMode==VI_XFBMODE_SF) HorVer.dispSizeY = HorVer.panSizeY<<1;
 	else HorVer.dispSizeY = HorVer.panSizeY;
-	
+
 	if(HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) HorVer.threeD = 1;
 	else HorVer.threeD = 0;
 
@@ -2283,9 +2283,9 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	if((rmode->viXOrigin+rmode->viWidth)<(680-curtiming->hbs640)) printf("VIDEO_Configure(): viXOrigin + viWidth(%d) cannot be less than %d in this TV mode\n",(rmode->viXOrigin+rmode->viWidth),(680-curtiming->hbs640));
 #endif
 	if(!encoderType) HorVer.tv = VI_DEBUG;
-	
+
 	__setInterruptRegs(curtiming);
-	
+
 	dcr = regs[1]&~0x030c;
 	dcr |= _SHIFTL(HorVer.threeD,3,1);
 	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) dcr |= 0x0004;
@@ -2316,7 +2316,7 @@ void VIDEO_WaitVSync(void)
 {
 	u32 level;
 	u32 retcnt;
-	
+
 	_CPU_ISR_Disable(level);
 	retcnt = retraceCount;
 	do {
@@ -2338,11 +2338,11 @@ void VIDEO_SetFramebuffer(void *fb)
 
 	_viReg[18] = regs[18];
 	_viReg[19] = regs[19];
-	
+
 	if(HorVer.threeD) {
 		_viReg[16] = regs[16];
 		_viReg[17] = regs[17];
-	
+
 		_viReg[20] = regs[20];
 		_viReg[21] = regs[21];
 	}
@@ -2402,7 +2402,7 @@ void VIDEO_SetBlack(boolean black)
 {
 	u32 level;
 	const struct _timing *curtiming;
-	
+
 	_CPU_ISR_Disable(level);
 	HorVer.black = black;
 	curtiming = HorVer.timing;
@@ -2417,7 +2417,7 @@ u32 VIDEO_GetNextField()
 	_CPU_ISR_Disable(level);
 	nextfield = __getCurrentFieldEvenOdd()^1;		//we've to swap the result because it shows us only the current field,so we've the next field either even or odd
 	_CPU_ISR_Restore(level);
-	
+
 	return nextfield^(HorVer.adjustedDispPosY&0x0001);	//if the YOrigin is at an odd position we've to swap it again, since the Fb registers are set swapped if this rule applies
 }
 
@@ -2429,7 +2429,7 @@ u32 VIDEO_GetCurrentTvMode()
 
 	_CPU_ISR_Disable(level);
 	mode = currTvMode;
-	
+
 	if(mode==VI_DEBUG) tv = VI_NTSC;
 	else if(mode==VI_EURGB60) tv = mode;
 	else if(mode==VI_MPAL) tv = VI_MPAL;
@@ -2452,7 +2452,7 @@ GXRModeObj *rmode;
 	} else {
 
 		u32 tvmode = CONF_GetVideo();
-		
+
 		switch ( tvmode ) {
 			case CONF_VIDEO_NTSC:
 				rmode = &TVNtsc480IntDf;
@@ -2495,7 +2495,7 @@ GXRModeObj *rmode;
 	} else {
 		mode = rmode;
 	}
-	
+
 	return mode;
 
 
