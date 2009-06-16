@@ -2459,7 +2459,7 @@ GXRModeObj *rmode;
 				break;
 			case CONF_VIDEO_PAL:
 				if ( CONF_GetEuRGB60() > 0 ) {
-					rmode = &TVEurgb60Hz480Int;
+					rmode = &TVEurgb60Hz480IntDf;
 				} else {
 					rmode = &TVPal528IntDf;
 				}
