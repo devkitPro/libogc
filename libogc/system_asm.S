@@ -9,6 +9,101 @@ __realmode:
 	mtsrr1	r3
 	rfi
 
+	// complete init sequence taken from bootmii's ppc skeleton. thanks to segher
+	// after a talk with dhewg we came to that point that it's good to wipe+setup BATS correctly
+	.globl __configBATS
+__configBATS:
+	// HID0 = 00110c64:
+	// bus checkstops off, sleep modes off,
+	// caches off, caches invalidate,
+	// store gathering off, enable data cache
+	// flush assist, enable branch target cache,
+	// enable branch history table
+	lis		r3,0x0011
+	ori		r3,r3,0x0c64
+	mtspr	HID0,r3
+	isync
+	
+	mfmsr	r4
+	ori		r4,r4,MSR_FP	// MSR = 00002000 (FP on)
+	mtmsr	r4
+	
+	ori		r3,r3,0xc000	// d-cache & i-cache enable
+	mtspr	HID0,r3
+	isync
+
+#if defined(HW_RVL)
+	lis		r3,0x8200		//bits set: H4A(HID4 access), SBE(2nd BAT enabled)
+	mtspr	HID4,r3
+	isync
+#endif
+
+	// clear all BATs
+	li		r0,0
+	mtspr	IBAT0U,r0; mtspr	IBAT1U,r0; mtspr	IBAT2U,r0; mtspr	IBAT3U,r0		// IBAT0...3
+	mtspr	DBAT0U,r0; mtspr	DBAT1U,r0; mtspr	DBAT2U,r0; mtspr	DBAT3U,r0		// DBAT0...3
+#if defined(HW_RVL)
+	mtspr	IBAT4U,r0; mtspr	IBAT5U,r0; mtspr	IBAT6U,r0; mtspr	IBAT7U,r0		// IBAT4...7
+	mtspr	DBAT4U,r0; mtspr	DBAT5U,r0; mtspr	DBAT6U,r0; mtspr	DBAT7U,r0		// DBAT4...7
+#endif
+	isync
+
+	// clear all SRs
+	lis		r0,0x8000
+	mtsr	0,r0; mtsr	1,r0; mtsr	2,r0; mtsr	3,r0; mtsr	4,r0; mtsr	5,r0; mtsr	6,r0
+	mtsr	7,r0; mtsr	8,r0; mtsr	9,r0; mtsr	10,r0; mtsr	11,r0; mtsr	12,r0; mtsr	13,r0
+	mtsr	14,r0; mtsr	15,r0
+	isync
+
+	// set [DI]BAT0 for 256MB@80000000,
+	// real 00000000, WIMG=0000, R/W
+	li		r3,2
+	lis		r4,0x8000
+	ori		r4,r4,0x1fff
+	mtspr	IBAT0L,r3
+	mtspr	IBAT0U,r4
+	mtspr	DBAT0L,r3
+	mtspr	DBAT0U,r4
+	isync
+	
+#if defined(HW_RVL)
+	// set [DI]BAT4 for 256MB@90000000,
+	// real 10000000, WIMG=0000, R/W
+	addis	r3,r3,0x1000
+	addis	r4,r4,0x1000
+	mtspr	IBAT4L,r3
+	mtspr	IBAT4U,r4
+	mtspr	DBAT4L,r3
+	mtspr	DBAT4U,r4
+	isync
+#endif
+	
+	// set DBAT1 for 256MB@c0000000,
+	// real 00000000, WIMG=0101, R/W
+	li		r3,0x2a
+	lis		r4,0xc000
+	ori		r4,r4,0x1fff
+	mtspr	DBAT1L,r3
+	mtspr	DBAT1U,r4
+	isync
+	
+#if defined(HW_RVL)
+	// set DBAT5 for 256MB@d0000000,
+	// real 10000000, WIMG=0101, R/W
+	addis	r3,r3,0x1000
+	addis	r4,r4,0x1000
+	mtspr	DBAT5L,r3
+	mtspr	DBAT5U,r4
+	isync
+#endif
+
+	mfmsr	r3
+	ori		r3,r3,MSR_DR|MSR_IR
+	mtsrr1	r3
+	mflr	r3
+	mtsrr0	r3
+	rfi
+	
 	.globl __configMEM1_24Mb
 __configMEM1_24Mb:
 	li		r7,0
@@ -438,3 +533,13 @@ SYS_SwitchFiber:
 	mtlr	r0
 	mr		sp,r5
 	blr
+
+	.globl InitBATS
+InitBATS:
+	mflr	r31
+	lis		r3,__configBATS@h
+	ori		r3,r3,__configBATS@l
+	bl		__realmode
+	mtlr	r31
+	blr
+	

@@ -43,6 +43,7 @@ distribution.
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#define __LINUX_ERRNO_EXTENSIONS__
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>

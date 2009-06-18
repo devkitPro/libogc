@@ -17,6 +17,7 @@
 
 	# Entry Point
 
+	.extern InitBATS
 	.extern __PSInit
 	.extern __CacheInit
 	.extern __SystemInit
@@ -34,6 +35,7 @@ __argv:
 	.long 0		# end address of argv
 
 startup:
+	bl		InitBATS			# Initialize BATs to a clear and known state
 	bl		InitGPRS			# Initialize the General Purpose Registers
 	bl		FPRInit			 	# Initialize the FPR's
 	bl		__PSInit 			# Initialize Paired Singles
