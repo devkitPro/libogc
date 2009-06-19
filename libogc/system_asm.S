@@ -106,32 +106,35 @@ __configBATS:
 	
 	.globl __configMEM1_24Mb
 __configMEM1_24Mb:
+	// set [DI]BAT0 for 16Mb@80000000
+	// real 00000000, WIMG=0000, R/W
 	li		r7,0
-	lis		r4,0
-	addi	r4,r4,2
+	li		r4,2
 	lis		r3,0x8000
 	addi	r3,r3,0x1ff
-	lis		r6,0x100
-	addi	r6,r6,2
-	lis		r5,0x8100
-	addi	r5,r5,0xff
+	mtspr	IBAT0U,r7
+	mtspr	IBAT0L,r4
+	mtspr	IBAT0U,r3
 	isync
 	mtspr	DBAT0U,r7
 	mtspr	DBAT0L,r4
 	mtspr	DBAT0U,r3
 	isync
-	mtspr	IBAT0U,r7
-	mtspr	IBAT0L,r4
-	mtspr	IBAT0U,r3
+	
+	// set [DI]BAT2 for 8Mb@81000000
+	// real 01000000, WIMG=0000, R/W
+	lis		r3,0x8100
+	addi	r3,r3,0x00ff
+	addis	r4,r4,0x0100
+	mtspr	IBAT2U,r7
+	mtspr	IBAT2L,r4
+	mtspr	IBAT2U,r3
 	isync
 	mtspr	DBAT2U,r7
-	mtspr	DBAT2L,r6
-	mtspr	DBAT2U,r5
+	mtspr	DBAT2L,r4
+	mtspr	DBAT2U,r3
 	isync
-	mtspr	IBAT2U,r7
-	mtspr	IBAT2L,r6
-	mtspr	IBAT2U,r5
-	isync
+	
 	mfmsr	r3
 	ori		r3,r3,MSR_DR|MSR_IR
 	mtsrr1	r3
@@ -141,32 +144,35 @@ __configMEM1_24Mb:
 
 	.globl __configMEM1_48Mb
 __configMEM1_48Mb:
+	// set [DI]BAT0 for 32Mb@80000000
+	// real 00000000, WIMG=0000, R/W
 	li		r7,0
-	lis		r4,0
-	addi	r4,r4,2
+	li		r4,2
 	lis		r3,0x8000
 	addi	r3,r3,0x3ff
-	lis		r6,0x200
-	addi	r6,r6,2
-	lis		r5,0x8200
-	addi	r5,r5,0x1ff
+	mtspr	IBAT0U,r7
+	mtspr	IBAT0L,r4
+	mtspr	IBAT0U,r3
 	isync
 	mtspr	DBAT0U,r7
 	mtspr	DBAT0L,r4
 	mtspr	DBAT0U,r3
 	isync
-	mtspr	IBAT0U,r7
-	mtspr	IBAT0L,r4
-	mtspr	IBAT0U,r3
+	
+	// set [DI]BAT2 for 16Mb@82000000
+	// real 02000000, WIMG=0000, R/W
+	lis		r3,0x8200
+	addi	r3,r3,0x01ff
+	addis	r4,r4,0x0200
+	mtspr	IBAT2U,r7
+	mtspr	IBAT2L,r4
+	mtspr	IBAT2U,r3
 	isync
 	mtspr	DBAT2U,r7
-	mtspr	DBAT2L,r6
-	mtspr	DBAT2U,r5
+	mtspr	DBAT2L,r4
+	mtspr	DBAT2U,r3
 	isync
-	mtspr	IBAT2U,r7
-	mtspr	IBAT2L,r6
-	mtspr	IBAT2U,r5
-	isync
+
 	mfmsr	r3
 	ori		r3,r3,MSR_DR|MSR_IR
 	mtsrr1	r3
@@ -175,92 +181,33 @@ __configMEM1_48Mb:
 	rfi
 
 #if defined(HW_RVL)
-	.globl __configMEM2_56Mb
-__configMEM2_56Mb:
-	li		r7,0
-	lis		r4,0x1000
-	addi	r4,r4,2
-	lis		r3,0x9000
-	addi	r3,r3,0x3ff
-	lis		r6,0x1000
-	addi	r6,r6,0x2a
-	lis		r5,0xd000
-	addi	r5,r5,0x7ff
-	isync
-	mtspr	DBAT4U,r7
-	mtspr	DBAT4L,r4
-	mtspr	DBAT4U,r3
-	isync
-	mtspr	IBAT4U,r7
-	mtspr	IBAT4L,r4
-	mtspr	IBAT4U,r3
-	isync
-	mtspr	DBAT5U,r7
-	mtspr	DBAT5L,r6
-	mtspr	DBAT5U,r5
-	isync
-	mtspr	IBAT5U,r7
-	mtspr	IBAT5L,r7
-	isync
-	lis		r4,0x1200
-	addi	r4,r4,2
-	lis		r3,0x9200
-	addi	r3,r3,0x1ff
-	lis		r6,0x1300
-	addi	r6,r6,2
-	lis		r5,0x9300
-	addi	r5,r5,0xff
-	isync
-	mtspr	DBAT6U,r7
-	mtspr	DBAT6L,r4
-	mtspr	DBAT6U,r3
-	isync
-	mtspr	IBAT6U,r7
-	mtspr	IBAT6L,r4
-	mtspr	IBAT6U,r3
-	isync
-	mtspr	DBAT7U,r7
-	mtspr	DBAT7L,r6
-	mtspr	DBAT7U,r5
-	isync
-	mtspr	IBAT7U,r7
-	mtspr	IBAT7L,r6
-	mtspr	IBAT7U,r5
-	isync
-	mfmsr	r3
-	ori		r3,r3,MSR_DR|MSR_IR
-	mtsrr1	r3
-	mflr	r3
-	mtsrr0	r3
-	rfi
-
 	.globl __configMEM2_64Mb
 __configMEM2_64Mb:
+	// set [DI]BAT4 for 64Mb@90000000
+	// real 10000000, WIMG=0000, R/W
 	li		r7,0
 	lis		r4,0x1000
-	addi	r4,r4,2
+	addi	r5,r4,2
 	lis		r3,0x9000
 	addi	r3,r3,0x7ff
-	lis		r6,0x1000
-	addi	r6,r6,0x2a
-	lis		r5,0xd000
-	addi	r5,r5,0x7ff
-	isync
-	mtspr	DBAT4U,r7
-	mtspr	DBAT4L,r4
-	mtspr	DBAT4U,r3
-	isync
 	mtspr	IBAT4U,r7
-	mtspr	IBAT4L,r4
+	mtspr	IBAT4L,r5
 	mtspr	IBAT4U,r3
 	isync
+	mtspr	DBAT4U,r7
+	mtspr	DBAT4L,r5
+	mtspr	DBAT4U,r3
+	isync
+
+	// set DBAT5 for 64Mb@d0000000
+	// real 10000000, WIMG=0101, R/W
+	addi	r5,r4,0x2a
+	addis	r3,r3,0x4000
 	mtspr	DBAT5U,r7
-	mtspr	DBAT5L,r6
-	mtspr	DBAT5U,r5
+	mtspr	DBAT5L,r5
+	mtspr	DBAT5U,r3
 	isync
-	mtspr	IBAT5U,r7
-	mtspr	IBAT5L,r7
-	isync
+
 	mfmsr	r3
 	ori		r3,r3,MSR_DR|MSR_IR
 	mtsrr1	r3
@@ -268,92 +215,33 @@ __configMEM2_64Mb:
 	mtsrr0	r3
 	rfi	
 
-	.globl __configMEM2_112Mb
-__configMEM2_112Mb:
-	li		r7,0
-	lis		r4,0x1000
-	addi	r4,r4,2
-	lis		r3,0x9000
-	addi	r3,r3,0x7ff
-	lis		r6,0x1000
-	addi	r6,r6,0x2a
-	lis		r5,0xd000
-	addi	r5,r5,0xfff
-	isync
-	mtspr	DBAT4U,r7
-	mtspr	DBAT4L,r4
-	mtspr	DBAT4U,r3
-	isync
-	mtspr	IBAT4U,r7
-	mtspr	IBAT4L,r4
-	mtspr	IBAT4U,r3
-	isync
-	mtspr	DBAT5U,r7
-	mtspr	DBAT5L,r6
-	mtspr	DBAT5U,r5
-	isync
-	mtspr	IBAT5U,r7
-	mtspr	IBAT5L,r7
-	isync
-	lis		r4,0x1400
-	addi	r4,r4,2
-	lis		r3,0x9400
-	addi	r3,r3,0x3ff
-	lis		r6,0x1600
-	addi	r6,r6,2
-	lis		r5,0x9600
-	addi	r5,r5,0x1ff
-	isync
-	mtspr	DBAT6U,r7
-	mtspr	DBAT6L,r4
-	mtspr	DBAT6U,r3
-	isync
-	mtspr	IBAT6U,r7
-	mtspr	IBAT6L,r4
-	mtspr	IBAT6U,r3
-	isync
-	mtspr	DBAT7U,r7
-	mtspr	DBAT7L,r6
-	mtspr	DBAT7U,r5
-	isync
-	mtspr	IBAT7U,r7
-	mtspr	IBAT7L,r6
-	mtspr	IBAT7U,r5
-	isync
-	mfmsr	r3
-	ori		r3,r3,MSR_DR|MSR_IR
-	mtsrr1	r3
-	mflr	r3
-	mtsrr0	r3
-	rfi
-
 	.globl __configMEM2_128Mb
 __configMEM2_128Mb:
+	// set [DI]BAT4 for 128Mb@90000000
+	// real 10000000, WIMG=0000, R/W
 	li		r7,0
 	lis		r4,0x1000
-	addi	r4,r4,2
+	addi	r5,r4,2
 	lis		r3,0x9000
 	addi	r3,r3,0xfff
-	lis		r6,0x1000
-	addi	r6,r6,0x2a
-	lis		r5,0xd000
-	addi	r5,r5,0xfff
-	isync
-	mtspr	DBAT4U,r7
-	mtspr	DBAT4L,r4
-	mtspr	DBAT4U,r3
-	isync
 	mtspr	IBAT4U,r7
-	mtspr	IBAT4L,r4
+	mtspr	IBAT4L,r5
 	mtspr	IBAT4U,r3
 	isync
+	mtspr	DBAT4U,r7
+	mtspr	DBAT4L,r5
+	mtspr	DBAT4U,r3
+	isync
+	
+	// set DBAT5 for 128Mb@d0000000
+	// real 10000000, WIMG=0101, R/W
+	addi	r5,r4,0x2a
+	addis	r3,r3,0x4000
 	mtspr	DBAT5U,r7
 	mtspr	DBAT5L,r6
 	mtspr	DBAT5U,r5
 	isync
-	mtspr	IBAT5U,r7
-	mtspr	IBAT5L,r7
-	isync
+
 	mfmsr	r3
 	ori		r3,r3,MSR_DR|MSR_IR
 	mtsrr1	r3
