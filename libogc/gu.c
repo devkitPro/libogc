@@ -1,7 +1,7 @@
 #include <gu.h>
 #include <math.h>
 
-extern void __ps_guMtxRotAxisRadInternal(register Mtx mt,const register Vector *axis,register f32 sT,register f32 cT);
+extern void __ps_guMtxRotAxisRadInternal(register Mtx mt,const register guVector *axis,register f32 sT,register f32 cT);
 
 void guFrustum(Mtx44 mt,f32 t,f32 b,f32 l,f32 r,f32 n,f32 f)
 {
@@ -160,9 +160,9 @@ void guLightFrustum(Mtx mt,f32 t,f32 b,f32 l,f32 r,f32 n,f32 scaleS,f32 scaleT,f
     mt[2][3] =  0.0f;
 }
 
-void guLookAt(Mtx mt,Vector *camPos,Vector *camUp,Vector *target)
+void guLookAt(Mtx mt,guVector *camPos,guVector *camUp,guVector *target)
 {
-	Vector vLook,vRight,vUp;
+	guVector vLook,vRight,vUp;
 
 	vLook.x = camPos->x - target->x;
 	vLook.y = camPos->y - target->y;
@@ -223,7 +223,7 @@ void ps_guMtxRotRad(register Mtx mt,const register char axis,register f32 rad)
 	ps_guMtxRotTrig(mt,axis,sinA,cosA);
 }
 
-void ps_guMtxRotAxisRad(Mtx mt,Vector *axis,f32 rad)
+void ps_guMtxRotAxisRad(Mtx mt,guVector *axis,f32 rad)
 {
 	f32 sinT,cosT;
  
@@ -261,7 +261,7 @@ void c_guMtxRotTrig(Mtx mt,const char axis,f32 sinA,f32 cosA)
 	}
 }
 
-void c_guMtxRotAxisRad(Mtx mt,Vector *axis,f32 rad)
+void c_guMtxRotAxisRad(Mtx mt,guVector *axis,f32 rad)
 {
 	f32 s,c;
 	f32 t;
@@ -478,7 +478,7 @@ void c_guMtxTranspose(Mtx src,Mtx xPose)
         c_guMtxCopy(mTmp,xPose);
 }
 
-void c_guMtxReflect(Mtx m,Vector *p,Vector *n)
+void c_guMtxReflect(Mtx m,guVector *p,guVector *n)
 {
     f32 vxy, vxz, vyz, pdotn;
 
@@ -504,21 +504,21 @@ void c_guMtxReflect(Mtx m,Vector *p,Vector *n)
 }
 
 
-void c_guVecAdd(Vector *a,Vector *b,Vector *ab)
+void c_guVecAdd(guVector *a,guVector *b,guVector *ab)
 {
     ab->x = a->x + b->x;
     ab->y = a->y + b->y;
     ab->z = a->z + b->z;
 }
 
-void c_guVecSub(Vector *a,Vector *b,Vector *ab)
+void c_guVecSub(guVector *a,guVector *b,guVector *ab)
 {
     ab->x = a->x - b->x;
     ab->y = a->y - b->y;
     ab->z = a->z - b->z;
 }
 
-void c_guVecScale(Vector *src,Vector *dst,f32 scale)
+void c_guVecScale(guVector *src,guVector *dst,f32 scale)
 {
     dst->x = src->x * scale;
     dst->y = src->y * scale;
@@ -526,7 +526,7 @@ void c_guVecScale(Vector *src,Vector *dst,f32 scale)
 }
 
 
-void c_guVecNormalize(Vector *v)
+void c_guVecNormalize(guVector *v)
 {
 	f32 m;
 
@@ -537,9 +537,9 @@ void c_guVecNormalize(Vector *v)
 	v->z *= m;
 }
 
-void c_guVecCross(Vector *a,Vector *b,Vector *axb)
+void c_guVecCross(guVector *a,guVector *b,guVector *axb)
 {
-	Vector vTmp;
+	guVector vTmp;
 
 	vTmp.x = (a->y*b->z)-(a->z*b->y);
 	vTmp.y = (a->z*b->x)-(a->x*b->z);
@@ -550,9 +550,9 @@ void c_guVecCross(Vector *a,Vector *b,Vector *axb)
 	axb->z = vTmp.z;
 }
 
-void c_guVecMultiply(Mtx mt,Vector *src,Vector *dst)
+void c_guVecMultiply(Mtx mt,guVector *src,guVector *dst)
 {
-	Vector tmp;
+	guVector tmp;
 	
     tmp.x = mt[0][0]*src->x + mt[0][1]*src->y + mt[0][2]*src->z + mt[0][3];
     tmp.y = mt[1][0]*src->x + mt[1][1]*src->y + mt[1][2]*src->z + mt[1][3];
@@ -563,9 +563,9 @@ void c_guVecMultiply(Mtx mt,Vector *src,Vector *dst)
     dst->z = tmp.z;
 }
 
-void c_guVecMultiplySR(Mtx mt,Vector *src,Vector *dst)
+void c_guVecMultiplySR(Mtx mt,guVector *src,guVector *dst)
 {
-	Vector tmp;
+	guVector tmp;
 	
     tmp.x = mt[0][0]*src->x + mt[0][1]*src->y + mt[0][2]*src->z;
     tmp.y = mt[1][0]*src->x + mt[1][1]*src->y + mt[1][2]*src->z;
@@ -577,7 +577,7 @@ void c_guVecMultiplySR(Mtx mt,Vector *src,Vector *dst)
     dst->z = tmp.z;
 }
 
-f32 c_guVecDotProduct(Vector *a,Vector *b)
+f32 c_guVecDotProduct(guVector *a,guVector *b)
 {
     f32 dot;
 
@@ -586,7 +586,7 @@ f32 c_guVecDotProduct(Vector *a,Vector *b)
     return dot;
 }
 
-void c_guQuatAdd(Quaternion *a,Quaternion *b,Quaternion *ab)
+void c_guQuatAdd(guQuaternion *a,guQuaternion *b,guQuaternion *ab)
 {
 	ab->x = a->x + b->x;
 	ab->y = a->x + b->y;
@@ -595,7 +595,7 @@ void c_guQuatAdd(Quaternion *a,Quaternion *b,Quaternion *ab)
 }
 
 #ifdef GEKKO
-void ps_guQuatAdd(register Quaternion *a,register Quaternion *b,register Quaternion *ab)
+void ps_guQuatAdd(register guQuaternion *a,register guQuaternion *b,register guQuaternion *ab)
 {
 	register f32 tmp0,tmp1;
 
@@ -615,7 +615,7 @@ void ps_guQuatAdd(register Quaternion *a,register Quaternion *b,register Quatern
 }
 #endif
 
-void c_guQuatSub(Quaternion *a,Quaternion *b,Quaternion *ab)
+void c_guQuatSub(guQuaternion *a,guQuaternion *b,guQuaternion *ab)
 {
 	ab->x = a->x - b->x;
 	ab->y = a->x - b->y;
@@ -624,7 +624,7 @@ void c_guQuatSub(Quaternion *a,Quaternion *b,Quaternion *ab)
 }
 
 #ifdef GEKKO
-void ps_guQuatSub(register Quaternion *a,register Quaternion *b,register Quaternion *ab)
+void ps_guQuatSub(register guQuaternion *a,register guQuaternion *b,register guQuaternion *ab)
 {
 	register f32 tmp0,tmp1;
 
@@ -644,10 +644,10 @@ void ps_guQuatSub(register Quaternion *a,register Quaternion *b,register Quatern
 }
 #endif
 
-void c_guQuatMultiply(Quaternion *a,Quaternion *b,Quaternion *ab)
+void c_guQuatMultiply(guQuaternion *a,guQuaternion *b,guQuaternion *ab)
 {
-	Quaternion *r;
-	Quaternion ab_tmp;
+	guQuaternion *r;
+	guQuaternion ab_tmp;
 	
 	if(a==ab || b==ab) r = &ab_tmp;
 	else r = ab;
@@ -661,7 +661,7 @@ void c_guQuatMultiply(Quaternion *a,Quaternion *b,Quaternion *ab)
 }
 
 #ifdef GEKKO
-void ps_guQuatMultiply(register Quaternion *a,register Quaternion *b,register Quaternion *ab)
+void ps_guQuatMultiply(register guQuaternion *a,register guQuaternion *b,register guQuaternion *ab)
 {
 	register f32 aXY,aZW,bXY,bZW;
 	register f32 tmp0,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7;
@@ -696,7 +696,7 @@ void ps_guQuatMultiply(register Quaternion *a,register Quaternion *b,register Qu
 }
 #endif
 
-void c_guQuatNormalize(Quaternion *a,Quaternion *d)
+void c_guQuatNormalize(guQuaternion *a,guQuaternion *d)
 {
 	f32 dot,scale;
 
@@ -712,7 +712,7 @@ void c_guQuatNormalize(Quaternion *a,Quaternion *d)
 }
 
 #ifdef GEKKO
-void ps_guQuatNormalize(register Quaternion *a,register Quaternion *d)
+void ps_guQuatNormalize(register guQuaternion *a,register guQuaternion *d)
 {
 	register f32 c_zero = 0.0f;
 	register f32 c_half = 0.5f;
@@ -743,7 +743,7 @@ void ps_guQuatNormalize(register Quaternion *a,register Quaternion *d)
 }
 #endif
 
-void c_guQuatInverse(Quaternion *a,Quaternion *d)
+void c_guQuatInverse(guQuaternion *a,guQuaternion *d)
 {
 	f32 mag,nrminv;
 
@@ -758,7 +758,7 @@ void c_guQuatInverse(Quaternion *a,Quaternion *d)
 }
 
 #ifdef GEKKO
-void ps_guQuatInverse(register Quaternion *a,register Quaternion *d)
+void ps_guQuatInverse(register guQuaternion *a,register guQuaternion *d)
 {
 	register f32 c_one = 1.0f;
 	register f32 axy,azw,tmp0,tmp1,tmp2,tmp3,tmp4,tmp5;
@@ -795,7 +795,7 @@ void ps_guQuatInverse(register Quaternion *a,register Quaternion *d)
 }
 #endif
 
-void c_guQuatMtx(Quaternion *a,Mtx m)
+void c_guQuatMtx(guQuaternion *a,Mtx m)
 {
 	const f32 diag = guMtxRowCol(m,0,0) + guMtxRowCol(m,1,1) + guMtxRowCol(m,2,2) + 1;
 
@@ -833,7 +833,7 @@ void c_guQuatMtx(Quaternion *a,Mtx m)
 	c_guQuatNormalize(a,a);
 }
 
-void c_guMtxQuat(Mtx m,Quaternion *a)
+void c_guMtxQuat(Mtx m,guQuaternion *a)
 {
 	guMtxRowCol(m,0,0) = 1.0f - 2.0f*a->y*a->y - 2.0f*a->z*a->z;
 	guMtxRowCol(m,1,0) = 2.0f*a->x*a->y - 2.0f*a->z*a->w;
@@ -848,9 +848,9 @@ void c_guMtxQuat(Mtx m,Quaternion *a)
 	guMtxRowCol(m,2,2) = 1.0f - 2.0f*a->x*a->x - 2.0f*a->y*a->y;
 }
 
-void guVecHalfAngle(Vector *a,Vector *b,Vector *half)
+void guVecHalfAngle(guVector *a,guVector *b,guVector *half)
 {
-	Vector tmp1,tmp2,tmp3;
+	guVector tmp1,tmp2,tmp3;
 
 	tmp1.x = -a->x;
 	tmp1.y = -a->y;
