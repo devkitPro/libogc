@@ -2,7 +2,7 @@
 #define __LWP_HEAP_H__
 
 #include <gctypes.h>
-#include <asm.h>
+#include "machine/asm.h"
 
 #define HEAP_BLOCK_USED					1
 #define HEAP_BLOCK_FREE					0
@@ -35,7 +35,7 @@ typedef struct _heap_iblock_st {
 typedef struct _heap_cntrl_st {
 	heap_block *start;
 	heap_block *final;
-	
+
 	heap_block *first;
 	heap_block *perm_null;
 	heap_block *last;
