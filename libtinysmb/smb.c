@@ -141,6 +141,16 @@
 		return NULL;				\
 }
 
+/* NBT Session Service Packet Type Codes
+ */
+
+#define SESS_MSG          0x00
+#define SESS_REQ          0x81
+#define SESS_POS_RESP     0x82
+#define SESS_NEG_RESP     0x83
+#define SESS_RETARGET     0x84
+#define SESS_KEEPALIVE    0x85
+
 struct _smbfile
 {
 	lwp_node node;
@@ -178,6 +188,7 @@ typedef struct _smbsession
   u16 sid;
   u16 count;
   u16 eos;
+  bool challengeUsed;
 } SMBSESSION;
 
 typedef struct _smbhandle
@@ -550,7 +561,8 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 
 	/*** The magic 'NTLM Response' ***/
 	strcpy(pwd, handle->pwd);
-	ntlm_smb_nt_encrypt((const char *) pwd, (const u8 *) sess->challenge, (u8*) ntRespData);
+	if (sess->challengeUsed)
+		ntlm_smb_nt_encrypt((const char *) pwd, (const u8 *) sess->challenge, (u8*) ntRespData);
 
 	/*** Build information ***/
 	memcpy(&ptr[pos],ntRespData,24);
@@ -703,7 +715,8 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 	if(ret<=0) return SMB_ERROR;
 
 	/*** Check response ***/
-	if((ret=SMBCheck(SMB_NEG_PROTOCOL,0,handle))==SMB_SUCCESS) {
+	if((ret=SMBCheck(SMB_NEG_PROTOCOL,0,handle))==SMB_SUCCESS)
+	{
 		pos = SMB_HEADER_SIZE;
 		ptr = handle->message.smb;
 
@@ -711,10 +724,17 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 		if(getUChar(ptr,pos)!=17) return SMB_PROTO_FAIL;	// UCHAR WordCount; Count of parameter words = 17
 
 		pos++;
-		if(getUShort(ptr,pos)) return SMB_PROTO_FAIL;	// USHORT DialectIndex; Index of selected dialect - should always be 0 since we only supplied 1!
+		if(getUShort(ptr,pos)!=0) return SMB_PROTO_FAIL;	// USHORT DialectIndex; Index of selected dialect - should always be 0 since we only supplied 1!
 
 		pos += 2;
-		if(getUChar(ptr,pos)!=3) return SMB_NOT_USER;	//UCHAR SecurityMode; Security mode:
+		if(getUChar(ptr,pos)!=3)
+		{
+			// user level security
+		}
+		else
+		{
+			// share level security
+		}
 
 		pos++;
 		sess->MaxMpx = getUShort(ptr, pos);	//USHORT MaxMpxCount; Max pending outstanding requests
@@ -736,14 +756,34 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 		pos += 4;	//ULONG SystemTimeLow; System (UTC) time of the server (low).
 		pos += 4;	//ULONG SystemTimeHigh; System (UTC) time of the server (high).
 		sess->timeOffset = getShort(ptr,pos) * 600000000LL; pos += 2; //SHORT ServerTimeZone; Time zone of server (minutes from UTC)
-		if(getUChar(ptr,pos)!=8) return SMB_BAD_KEYLEN;	//UCHAR EncryptionKeyLength - 0 or 8
+
+		//UCHAR EncryptionKeyLength - 0 or 8
+		if(getUChar(ptr,pos)!=8)
+		{
+			if (getUChar(ptr,pos)!=0)
+			{
+				return SMB_BAD_KEYLEN;
+			}
+			else
+			{
+				// Challenge key not used
+				sess->challengeUsed = false;
+			}
+		}
+		else
+		{
+			sess->challengeUsed = true;
+		}
 
 		pos++;
 		bytecount = getUShort(ptr,pos);
 
-		/*** Copy challenge key ***/
-		pos += 2;
-		memcpy(&sess->challenge,&ptr[pos],8);
+		if (sess->challengeUsed)
+		{
+			/*** Copy challenge key ***/
+			pos += 2;
+			memcpy(&sess->challenge,&ptr[pos],8);
+		}
 
 		/*** Primary domain ***/
 		pos += 8;
@@ -788,7 +828,7 @@ static s32 do_netconnect(SMBHANDLE *handle)
 		ret = net_connect(sock,(struct sockaddr*)&handle->server_addr,sizeof(handle->server_addr));
 		t2=ticks_to_millisecs(gettime());
 		usleep(1000);
-		if(t2-t1 > 3000) break; // 3 secs to try to connect to handle->server_addr
+		if(t2-t1 > 6000) break; // 6 secs to try to connect to handle->server_addr
 	} while(ret!=-127);
 
 	if(ret!=-127)
@@ -806,25 +846,163 @@ static s32 do_smbconnect(SMBHANDLE *handle)
 	s32 ret;
 
 	ret = SMB_NegotiateProtocol(smb_dialects,smb_dialectcnt,handle);
-	if(ret!=SMB_SUCCESS) {
+	if(ret!=SMB_SUCCESS)
+	{
 		net_close(handle->sck_server);
 		return -1;
 	}
 
 	ret = SMB_SetupAndX(handle);
-	if(ret!=SMB_SUCCESS) {
+	if(ret!=SMB_SUCCESS)
+	{
 		net_close(handle->sck_server);
 		return -1;
 	}
 
 	ret = SMB_TreeAndX(handle);
-	if(ret!=SMB_SUCCESS) {
+	if(ret!=SMB_SUCCESS)
+	{
 		net_close(handle->sck_server);
 		return -1;
 	}
 
 	handle->conn_valid = TRUE;
 	return 0;
+}
+
+/****************************************************************************
+ * Create an NBT SESSION REQUEST message.
+ ****************************************************************************/
+static int MakeSessReq(unsigned char *bufr, unsigned char *Called,	unsigned char *Calling)
+{
+	// Write the header.
+	bufr[0] = SESS_REQ;
+	bufr[1] = 0;
+	bufr[2] = 0;
+	bufr[3] = 68; // 2x34 bytes in length.
+
+	// Copy the Called and Calling names into the buffer.
+	(void) memcpy(&bufr[4], Called, 34);
+	(void) memcpy(&bufr[38], Calling, 34);
+
+	// Return the total message length.
+	return 72;
+}
+
+static unsigned char *L1_Encode(unsigned char *dst, const unsigned char *name,
+		const unsigned char pad, const unsigned char sfx)
+{
+	int i = 0;
+	int j = 0;
+	int k = 0;
+
+	while (('\0' != name[i]) && (i < 15))
+	{
+		k = toupper(name[i++]);
+		dst[j++] = 'A' + ((k & 0xF0) >> 4);
+		dst[j++] = 'A' + (k & 0x0F);
+	}
+
+	i = 'A' + ((pad & 0xF0) >> 4);
+	k = 'A' + (pad & 0x0F);
+	while (j < 30)
+	{
+		dst[j++] = i;
+		dst[j++] = k;
+	}
+
+	dst[30] = 'A' + ((sfx & 0xF0) >> 4);
+	dst[31] = 'A' + (sfx & 0x0F);
+	dst[32] = '\0';
+
+	return (dst);
+}
+
+static int L2_Encode(unsigned char *dst, const unsigned char *name,
+		const unsigned char pad, const unsigned char sfx,
+		const unsigned char *scope)
+{
+	int lenpos;
+	int i;
+	int j;
+
+	if (NULL == L1_Encode(&dst[1], name, pad, sfx))
+		return (-1);
+
+	dst[0] = 0x20;
+	lenpos = 33;
+
+	if ('\0' != *scope)
+	{
+		do
+		{
+			for (i = 0, j = (lenpos + 1); ('.' != scope[i]) && ('\0'
+					!= scope[i]); i++, j++)
+				dst[j] = toupper(scope[i]);
+
+			dst[lenpos] = (unsigned char) i;
+			lenpos += i + 1;
+			scope += i;
+		} while ('.' == *(scope++));
+
+		dst[lenpos] = '\0';
+	}
+
+	return (lenpos + 1);
+}
+
+/****************************************************************************
+ * Send an NBT SESSION REQUEST over the TCP connection, then wait for a reply.
+ ****************************************************************************/
+static s32 SMB_RequestNBTSession(SMBHANDLE *handle)
+{
+	unsigned char Called[34];
+	unsigned char Calling[34];
+	unsigned char bufr[128];
+	int result;
+
+	L2_Encode(Called, (const unsigned char*) "*SMBSERVER", 0x20, 0x20,
+			(const unsigned char*) "");
+	L2_Encode(Calling, (const unsigned char*) "SMBCLIENT", 0x20, 0x00,
+			(const unsigned char*) "");
+
+	// Create the NBT Session Request message.
+	result = MakeSessReq(bufr, Called, Calling);
+
+	//Send the NBT Session Request message.
+	result = smb_send(handle->sck_server, bufr, result);
+	if (result < 0)
+	{
+		// Error sending Session Request message
+		return -1;
+	}
+
+	// Now wait for and handle the reply (2 seconds).
+	result = smb_recv(handle->sck_server, bufr, 128);
+	if (result <= 0)
+	{
+		// Timeout waiting for NBT Session Response
+		return -1;
+	}
+
+	switch (*bufr)
+	{
+		case SESS_POS_RESP:
+			// Positive Session Response
+			return 0;
+
+		case SESS_NEG_RESP:
+			// Negative Session Response
+			return -1;
+
+		case SESS_RETARGET:
+			// Retarget Session Response
+			return -1;
+
+		default:
+			// Unexpected Session Response
+			return -1;
+	}
 }
 
 /****************************************************************************
@@ -846,7 +1024,8 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 
 	*smbhndl = SMB_HANDLE_NULL;
 
-	if(smb_inited==FALSE) {
+	if(smb_inited==FALSE)
+	{
 		u32 level;
 		_CPU_ISR_Disable(level);
 		__smb_init();
@@ -886,6 +1065,7 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 			// try port 139
 			handle->server_addr.sin_port = htons(139);
 			ret = do_netconnect(handle);
+			if(ret==0) ret = SMB_RequestNBTSession(handle);
 			if(ret==0) ret = do_smbconnect(handle);
 		}
 	}
@@ -934,15 +1114,15 @@ s32 SMB_Reconnect(SMBCONN *_smbhndl, BOOL test_conn)
 
 	if(!handle->conn_valid)
 	{
-		// save connection details
-		const char * user = strdup(handle->user);
-		const char * pwd = strdup(handle->pwd);
-		const char * ip = strdup(handle->server_name);
-		const char * share = strdup(handle->share_name);
+		// shut down connection
+		if(handle->sck_server!=INVALID_SOCKET)
+			net_close(handle->sck_server);
 
-		// shut down connection, and reopen
-		SMB_Close(smbhndl);
-		ret = SMB_Connect(_smbhndl, user, pwd, share, ip);
+		// reconnect
+		ret = do_netconnect(handle);
+		if(handle->server_addr.sin_port == htons(139))
+			if(ret==0) ret = SMB_RequestNBTSession(handle);
+		if(ret==0) ret = do_smbconnect(handle);
 	}
 	return ret;
 }
@@ -1058,7 +1238,7 @@ void SMB_CloseFile(SMBFILE sfid)
 /**
  * SMB_Read
  */
-s32 SMB_ReadFile(char *buffer, int size, int offset, SMBFILE sfid)
+s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 {
 	u8 *ptr,*dest;
 	s32 pos, ret, ofs;
@@ -1068,8 +1248,8 @@ s32 SMB_ReadFile(char *buffer, int size, int offset, SMBFILE sfid)
 
 	if(!fid) return 0;
 
-	/*** Don't let the size exceed! ***/
-	if(size>SMB_MAX_BUFFERSIZE) return 0;
+	// Check for invalid size
+	if(size == 0 || size > SMB_MAX_BUFFERSIZE) return 0;
 
 	handle = __smb_handle_open(fid->conn);
 	if(!handle) return 0;
@@ -1143,7 +1323,7 @@ failed:
 /**
  * SMB_Write
  */
-s32 SMB_WriteFile(const char *buffer, int size, int offset, SMBFILE sfid)
+s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 {
 	u8 *ptr,*src;
 	s32 pos, ret;
@@ -1409,8 +1589,6 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	SMBHANDLE *handle;
 	SMBSESSION *sess;
 
-	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return SMB_ERROR;
-
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return SMB_ERROR;
 
@@ -1492,8 +1670,6 @@ s32 SMB_FindClose(SMBCONN smbhndl)
 	s32 ret;
 	SMBHANDLE *handle;
 	SMBSESSION *sess;
-
-	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return SMB_ERROR;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return SMB_ERROR;

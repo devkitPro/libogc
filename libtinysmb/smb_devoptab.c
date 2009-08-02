@@ -19,6 +19,7 @@
 #include "smb.h"
 
 static mutex_t _SMB_mutex=LWP_MUTEX_NULL;
+static lwp_t cache_thread = LWP_THREAD_NULL;
 
 static inline void _SMB_lock()
 {
@@ -34,7 +35,7 @@ typedef struct
 {
 	SMBFILE handle;
 	off_t offset;
-	off_t len;
+	size_t len;
 	char filename[SMB_MAXPATH];
 	unsigned short access;
 	int env;
@@ -52,7 +53,6 @@ static bool FirstInit=true;
 ///////////////////////////////////////////
 //      CACHE FUNCTION DEFINITIONS       //
 ///////////////////////////////////////////
-#define SMB_CACHE_FREE 0xFFFFFFFF
 #define SMB_READ_BUFFERSIZE		7236
 #define SMB_WRITE_BUFFERSIZE	7236
 
@@ -67,17 +67,15 @@ typedef struct
 typedef struct
 {
 	off_t used;
-	off_t len;
+	size_t len;
 	SMBFILESTRUCT *file;
 	void *ptr;
 } smb_write_cache;
 
-void DestroySMBReadAheadCache(char *name);
-void SMBEnableReadAhead(char *name, u32 pages);
-int ReadSMBFromCache(void *buf, int len, SMBFILESTRUCT *file);
+static void DestroySMBReadAheadCache(char *name);
+static void SMBEnableReadAhead(char *name, u32 pages);
+static int ReadSMBFromCache(void *buf, size_t len, SMBFILESTRUCT *file);
 
-static lwp_t main_thread;
-static bool end_cache_thread = true;
 ///////////////////////////////////////////
 //    END CACHE FUNCTION DEFINITIONS     //
 ///////////////////////////////////////////
@@ -93,7 +91,7 @@ typedef struct
 	u8 SMBCONNECTED ;
 
 	char currentpath[SMB_MAXPATH];
-	bool first_item_dir ;
+	bool first_item_dir;
 	bool diropen_root;
 
 	smb_write_cache SMBWriteCache;
@@ -109,7 +107,7 @@ static smb_env SMBEnv[MAX_SMB_MOUNTED];
 //         CACHE FUNCTIONS              //
 ///////////////////////////////////////////
 
-smb_env* FindSMBEnv(const char *name)
+static smb_env* FindSMBEnv(const char *name)
 {
 	int i;
 
@@ -123,7 +121,7 @@ smb_env* FindSMBEnv(const char *name)
 	return NULL;
 }
 
-int FlushWriteSMBCache(char *name)
+static int FlushWriteSMBCache(char *name)
 {
 	smb_env *env;
 	env=FindSMBEnv(name);
@@ -158,7 +156,7 @@ int FlushWriteSMBCache(char *name)
 	return 0;
 }
 
-void DestroySMBReadAheadCache(char *name)
+static void DestroySMBReadAheadCache(char *name)
 {
 	smb_env *env;
 	env=FindSMBEnv(name);
@@ -175,8 +173,6 @@ void DestroySMBReadAheadCache(char *name)
 		free(env->SMBReadAheadCache);
 		env->SMBReadAheadCache = NULL;
 		env->SMB_RA_pages = 0;
-
-		//end_cache_thread = true;
 	}
 	FlushWriteSMBCache(env->name);
 
@@ -194,7 +190,6 @@ static void *process_cache_thread(void *ptr)
 	int i;
 	while (1)
 	{
-		//_SMB_lock();
 		for(i=0;i<MAX_SMB_MOUNTED ;i++)
 		{
 			if(SMBEnv[i].SMBCONNECTED)
@@ -208,16 +203,12 @@ static void *process_cache_thread(void *ptr)
 				}
 			}
 		}
-		//_SMB_unlock();
 		usleep(10000);
-		if (end_cache_thread) break;
 	}
-
-	LWP_JoinThread(main_thread, NULL);
 	return NULL;
 }
 
-void SMBEnableReadAhead(char *name, u32 pages)
+static void SMBEnableReadAhead(char *name, u32 pages)
 {
 	int i, j;
 
@@ -242,7 +233,7 @@ void SMBEnableReadAhead(char *name, u32 pages)
 		return;
 	for (i = 0; i < env->SMB_RA_pages; i++)
 	{
-		env->SMBReadAheadCache[i].offset = SMB_CACHE_FREE;
+		env->SMBReadAheadCache[i].offset = 0;
 		env->SMBReadAheadCache[i].last_used = 0;
 		env->SMBReadAheadCache[i].file = NULL;
 		env->SMBReadAheadCache[i].ptr = memalign(32, SMB_READ_BUFFERSIZE);
@@ -261,34 +252,35 @@ void SMBEnableReadAhead(char *name, u32 pages)
 
 }
 
-// clear cache from file (clear if you write to the file)
-void ClearSMBFileCache(SMBFILESTRUCT *file)
+// clear cache from file
+// called when file is closed
+static void ClearSMBFileCache(SMBFILESTRUCT *file)
 {
 	int i,j;
 	j=file->env;
+
 	for (i = 0; i < SMBEnv[j].SMB_RA_pages; i++)
 	{
-		if (SMBEnv[j].SMBReadAheadCache[i].offset != SMB_CACHE_FREE)
+		if (SMBEnv[j].SMBReadAheadCache[i].file == file)
 		{
-			if (strcmp(SMBEnv[j].SMBReadAheadCache[i].file->filename, file->filename)==0)
-			{
-				SMBEnv[j].SMBReadAheadCache[i].offset = SMB_CACHE_FREE;
-				SMBEnv[j].SMBReadAheadCache[i].last_used = 0;
-				SMBEnv[j].SMBReadAheadCache[i].file = NULL;
-
-				memset(SMBEnv[j].SMBReadAheadCache[i].ptr, 0, SMB_READ_BUFFERSIZE);
-			}
+			SMBEnv[j].SMBReadAheadCache[i].offset = 0;
+			SMBEnv[j].SMBReadAheadCache[i].last_used = 0;
+			SMBEnv[j].SMBReadAheadCache[i].file = NULL;
+			memset(SMBEnv[j].SMBReadAheadCache[i].ptr, 0, SMB_READ_BUFFERSIZE);
 		}
 	}
 }
 
-int ReadSMBFromCache(void *buf, int len, SMBFILESTRUCT *file)
+static int ReadSMBFromCache(void *buf, size_t len, SMBFILESTRUCT *file)
 {
-	int retval;
-	int i,j, leastUsed, rest;
-	u32 new_offset;
+	int i,j, leastUsed;
+	off_t new_offset, rest;
 	j=file->env;
+
+	if ( len == 0 ) return 0;
+
 	_SMB_lock();
+
 	if (SMBEnv[j].SMBReadAheadCache == NULL)
 	{
 		if (SMB_ReadFile(buf, len, file->offset, file->handle) <= 0)
@@ -299,68 +291,98 @@ int ReadSMBFromCache(void *buf, int len, SMBFILESTRUCT *file)
 		_SMB_unlock();
 		return 0;
 	}
+
 	new_offset = file->offset;
 	rest = len;
-	leastUsed = 0;
+
+continue_read:
+
 	for (i = 0; i < SMBEnv[j].SMB_RA_pages; i++)
 	{
 		if (SMBEnv[j].SMBReadAheadCache[i].file == file)
 		{
-			if ((file->offset >= SMBEnv[j].SMBReadAheadCache[i].offset) &&
-				(file->offset < (SMBEnv[j].SMBReadAheadCache[i].offset + SMB_READ_BUFFERSIZE)))
+			if ((new_offset >= SMBEnv[j].SMBReadAheadCache[i].offset) &&
+				(new_offset < (SMBEnv[j].SMBReadAheadCache[i].offset + SMB_READ_BUFFERSIZE)))
 			{
-				if ((file->offset + len) <= (SMBEnv[j].SMBReadAheadCache[i].offset + SMB_READ_BUFFERSIZE))
+				//we hit the page
+				//copy as much as we can
+				SMBEnv[j].SMBReadAheadCache[i].last_used = gettime();
+
+				off_t buffer_used = (SMBEnv[j].SMBReadAheadCache[i].offset + SMB_READ_BUFFERSIZE) - new_offset;
+				if (buffer_used > rest) buffer_used = rest;
+				memcpy(buf, SMBEnv[j].SMBReadAheadCache[i].ptr + (new_offset - SMBEnv[j].SMBReadAheadCache[i].offset), buffer_used);
+				buf += buffer_used;
+				rest -= buffer_used;
+				new_offset += buffer_used;
+
+				if (rest == 0)
 				{
-					SMBEnv[j].SMBReadAheadCache[i].last_used = gettime();
-					memcpy(buf, SMBEnv[j].SMBReadAheadCache[i].ptr + (file->offset - SMBEnv[j].SMBReadAheadCache[i].offset), len);
 					_SMB_unlock();
 					return 0;
 				}
-				else
-				{
-					int buffer_used;
-					SMBEnv[j].SMBReadAheadCache[i].last_used = gettime();
-					buffer_used = (SMBEnv[j].SMBReadAheadCache[i].offset + SMB_READ_BUFFERSIZE) - file->offset;
-					memcpy(buf, SMBEnv[j].SMBReadAheadCache[i].ptr + (file->offset - SMBEnv[j].SMBReadAheadCache[i].offset), buffer_used);
-					buf += buffer_used;
-					rest = len - buffer_used;
-					new_offset = SMBEnv[j].SMBReadAheadCache[i].offset + SMB_READ_BUFFERSIZE;
-					i++;
-					break;
-				}
-
 			}
 		}
-		if ((SMBEnv[j].SMBReadAheadCache[i].last_used < SMBEnv[j].SMBReadAheadCache[leastUsed].last_used))
-			leastUsed = i;
 	}
 
-	for (; i < SMBEnv[j].SMB_RA_pages; i++)
+	leastUsed = 0;
+	for ( i = 1; i < SMBEnv[j].SMB_RA_pages; i++)
 	{
 		if ((SMBEnv[j].SMBReadAheadCache[i].last_used < SMBEnv[j].SMBReadAheadCache[leastUsed].last_used))
 			leastUsed = i;
 	}
 
-	retval = SMB_ReadFile(SMBEnv[j].SMBReadAheadCache[leastUsed].ptr, SMB_READ_BUFFERSIZE, new_offset, file->handle);
+	//fill least used page with new data
 
-	if (retval <= 0)
+	off_t cache_offset = new_offset;
+
+	//do not interset with existing pages
+	for (i = 0; i < SMBEnv[j].SMB_RA_pages; i++)
 	{
-		SMBEnv[j].SMBReadAheadCache[leastUsed].offset = SMB_CACHE_FREE;
-		SMBEnv[j].SMBReadAheadCache[leastUsed].last_used = 0;
+		if ( i == leastUsed ) continue;
+		if ( SMBEnv[j].SMBReadAheadCache[i].file != file ) continue;
+
+		if ( (cache_offset < SMBEnv[j].SMBReadAheadCache[i].offset ) && (cache_offset + SMB_READ_BUFFERSIZE > SMBEnv[j].SMBReadAheadCache[i].offset) )
+		{
+			//tail of new page intersects with some cache block
+			if ( SMBEnv[j].SMBReadAheadCache[i].offset >= SMB_READ_BUFFERSIZE )
+			{
+				cache_offset = SMBEnv[j].SMBReadAheadCache[i].offset - SMB_READ_BUFFERSIZE;
+			}
+			else
+			{
+				cache_offset = 0;
+			}
+		}
+
+		if ( (cache_offset >= SMBEnv[j].SMBReadAheadCache[i].offset ) && (cache_offset < SMBEnv[j].SMBReadAheadCache[i].offset + SMB_READ_BUFFERSIZE ) )
+		{
+			//head of new page intersects with some cache block
+			cache_offset = SMBEnv[j].SMBReadAheadCache[i].offset + SMB_READ_BUFFERSIZE;
+		}
+	}
+
+	off_t cache_to_read = file->len - cache_offset;
+	if ( cache_to_read > SMB_READ_BUFFERSIZE )
+	{
+		cache_to_read = SMB_READ_BUFFERSIZE;
+	}
+
+	if ( SMB_ReadFile(SMBEnv[j].SMBReadAheadCache[leastUsed].ptr, cache_to_read, cache_offset, file->handle) <0 )
+	{
 		SMBEnv[j].SMBReadAheadCache[leastUsed].file = NULL;
 		_SMB_unlock();
-		return -1;
+		return false;
 	}
 
-	SMBEnv[j].SMBReadAheadCache[leastUsed].offset = new_offset;
 	SMBEnv[j].SMBReadAheadCache[leastUsed].last_used = gettime();
+
+	SMBEnv[j].SMBReadAheadCache[leastUsed].offset = cache_offset;
 	SMBEnv[j].SMBReadAheadCache[leastUsed].file = file;
-	memcpy(buf, SMBEnv[j].SMBReadAheadCache[leastUsed].ptr, rest);
-	_SMB_unlock();
-	return 0;
+
+	goto continue_read;
 }
 
-int WriteSMBUsingCache(const char *buf, int len, SMBFILESTRUCT *file)
+static int WriteSMBUsingCache(const char *buf, size_t len, SMBFILESTRUCT *file)
 {
 	if (file == NULL || buf == NULL)
 		return -1;
@@ -457,7 +479,7 @@ static char *smb_absolute_path_no_device(const char *srcpath, char *destpath, in
 	return destpath;
 }
 
-char *ExtractDevice(const char *path, char *device)
+static char *ExtractDevice(const char *path, char *device)
 {
 	int i,l;
 	l=strlen(path);
@@ -628,7 +650,7 @@ static ssize_t __smb_read(struct _reent *r, int fd, char *ptr, size_t len)
 	}
 
 	// Don't try to read if the read pointer is past the end of file
-	if (file->offset > file->len)
+	if (file->offset >= file->len)
 	{
 		r->_errno = EOVERFLOW;
 		return -1;
@@ -665,7 +687,7 @@ retry_read:
 		if(cnt_retry>=0)
 		{
 			_SMB_lock();
-			if(CheckSMBConnection(SMBEnv[file->env].name))
+			if(smbCheckConnection(SMBEnv[file->env].name))
 			{
 				ClearSMBFileCache(file);
 				file->handle = SMB_OpenFile(file->filename, file->access, SMB_OF_OPEN, SMBEnv[file->env].smbconn);
@@ -1053,7 +1075,7 @@ static int __smb_fstat(struct _reent *r, int fd, struct stat *st)
 	return 0;
 }
 
-void MountDevice(const char *name,SMBCONN smbconn, int env)
+static void MountDevice(const char *name,SMBCONN smbconn, int env)
 {
 	devoptab_t *dotab_smb;
 
@@ -1101,6 +1123,7 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 {
 	char myIP[16];
 	int i;
+
 	if(FirstInit)
 	{
 		for(i=0;i<MAX_SMB_MOUNTED;i++)
@@ -1128,20 +1151,14 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 	if (SMB_Connect(&smbconn, user, password, share, ip) != SMB_SUCCESS)
 	{
 		_SMB_unlock();
-		//LWP_MutexDestroy(_SMB_mutex);
 		return false;
 	}
 	_SMB_unlock();
 
 	MountDevice(name,smbconn,i);
 
-	if(end_cache_thread == true) // never close thread
-	{
-		lwp_t client_thread;
-		main_thread = LWP_GetSelf();
-		end_cache_thread = false;
-		LWP_CreateThread(&client_thread, process_cache_thread, NULL, NULL, 0, 80);
-	}
+	if(cache_thread == LWP_THREAD_NULL)
+		LWP_CreateThread(&cache_thread, process_cache_thread, NULL, NULL, 0, 80);
 	return true;
 }
 
@@ -1164,10 +1181,9 @@ void smbClose(const char* name)
 	}
 	env->SMBCONNECTED=false;
 	RemoveDevice(env->name);
-	//LWP_MutexDestroy(_SMB_mutex);
 }
 
-bool CheckSMBConnection(const char* name)
+bool smbCheckConnection(const char* name)
 {
 	char device[50];
 	int i;
