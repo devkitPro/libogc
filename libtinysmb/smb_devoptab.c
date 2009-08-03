@@ -495,10 +495,7 @@ static char *ExtractDevice(const char *path, char *device)
 static int __smb_open(struct _reent *r, void *fileStruct, const char *path, int flags, int mode)
 {
 	SMBFILESTRUCT *file = (SMBFILESTRUCT*) fileStruct;
-
-
 	char fixedpath[SMB_MAXPATH];
-
 	smb_env *env;
 
 	ExtractDevice(path,fixedpath);
@@ -1126,6 +1123,7 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 
 	if(FirstInit)
 	{
+		FirstInit=false;
 		for(i=0;i<MAX_SMB_MOUNTED;i++)
 		{
 			SMBEnv[i].SMBCONNECTED=false;
@@ -1135,16 +1133,23 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 			SMBEnv[i].pos=i;
 			SMBEnv[i].SMBReadAheadCache=NULL;
 		}
-		FirstInit=false;
 	}
+
+	if(cache_thread == LWP_THREAD_NULL)
+		if(!LWP_CreateThread(&cache_thread, process_cache_thread, NULL, NULL, 0, 80))
+			return false;
+	if(_SMB_mutex == LWP_MUTEX_NULL)
+		if(!LWP_MutexInit(&_SMB_mutex, false))
+			return false;
 
 	for(i=0;i<MAX_SMB_MOUNTED && SMBEnv[i].SMBCONNECTED;i++);
 	if(i==MAX_SMB_MOUNTED) return false; //all allowed samba connections reached
 
+	SMBCONN smbconn;
+	MountDevice(name,smbconn,i);
+
 	if (if_config(myIP, NULL, NULL, true) < 0)
 		return false;
-	SMBCONN smbconn;
-	if(_SMB_mutex==LWP_MUTEX_NULL)LWP_MutexInit(&_SMB_mutex, false);
 
 	//root connect
 	_SMB_lock();
@@ -1154,11 +1159,6 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 		return false;
 	}
 	_SMB_unlock();
-
-	MountDevice(name,smbconn,i);
-
-	if(cache_thread == LWP_THREAD_NULL)
-		LWP_CreateThread(&cache_thread, process_cache_thread, NULL, NULL, 0, 80);
 	return true;
 }
 
