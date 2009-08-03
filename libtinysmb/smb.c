@@ -1136,6 +1136,9 @@ SMBFILE SMB_OpenFile(const char *filename, u16 access, u16 creation,SMBCONN smbh
 	SMBHANDLE *handle;
 	char realfile[256];
 
+	if(filename == NULL)
+		return SMB_ERROR;
+
 	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return NULL;
 
 	handle = __smb_handle_open(smbhndl);
@@ -1415,6 +1418,9 @@ s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl)
 	SMBHANDLE *handle;
 	char realfile[256];
 
+	if(filename == NULL)
+		return SMB_ERROR;
+
 	handle = __smb_handle_open(smbhndl);
 	if (!handle) return SMB_ERROR;
 
@@ -1499,6 +1505,9 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 	s32 bpos;
 	SMBHANDLE *handle;
 	SMBSESSION *sess;
+
+	if(filename == NULL)
+		return SMB_ERROR;
 
 	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return SMB_ERROR;
 
