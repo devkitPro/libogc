@@ -505,6 +505,11 @@ static int __smb_open(struct _reent *r, void *fileStruct, const char *path, int 
 		ExtractDevice(fixedpath,fixedpath);
 	}
 	env=FindSMBEnv(fixedpath);
+	if(env==NULL)
+	{
+		r->_errno = ENODEV;
+		return -1;
+	}
 	file->env=env->pos;
 
 	if (!env->SMBCONNECTED)
@@ -516,6 +521,12 @@ static int __smb_open(struct _reent *r, void *fileStruct, const char *path, int 
 	if (smb_absolute_path_no_device(path, fixedpath, file->env) == NULL)
 	{
 		r->_errno = EINVAL;
+		return -1;
+	}
+
+	if(!smbCheckConnection(env->name))
+	{
+		r->_errno = ENODEV;
 		return -1;
 	}
 
@@ -780,9 +791,27 @@ static int __smb_chdir(struct _reent *r, const char *path)
 	smb_env* env;
 	env=FindSMBEnv(path_absolute);
 
+	if(env == NULL)
+	{
+		r->_errno = ENODEV;
+		return -1;
+	}
+
+	if (!env->SMBCONNECTED)
+	{
+		r->_errno = ENODEV;
+		return -1;
+	}
+
 	if (smb_absolute_path_no_device(path, path_absolute,env->pos) == NULL)
 	{
 		r->_errno = EINVAL;
+		return -1;
+	}
+
+	if(!smbCheckConnection(env->name))
+	{
+		r->_errno = ENODEV;
 		return -1;
 	}
 
@@ -869,6 +898,13 @@ static DIR_ITER* __smb_diropen(struct _reent *r, DIR_ITER *dirState, const char 
 
 	smb_env* env;
 	env=FindSMBEnv(path_absolute);
+
+	if(env == NULL)
+	{
+		r->_errno = ENODEV;
+		return -1;
+	}
+
 	if (smb_absolute_path_no_device(path, path_absolute, env->pos) == NULL)
 	{
 		r->_errno = EINVAL;
@@ -883,7 +919,6 @@ static DIR_ITER* __smb_diropen(struct _reent *r, DIR_ITER *dirState, const char 
 		env->diropen_root=false;
 
 	strcat(path_absolute, "*");
-
 
 	memset(&dentry, 0, sizeof(SMBDIRENTRY));
 	_SMB_lock();
@@ -1031,6 +1066,12 @@ static int __smb_stat(struct _reent *r, const char *path, struct stat *st)
 
 	smb_env* env;
 	env=FindSMBEnv(path_absolute);
+	
+	if(env == NULL)
+	{
+		r->_errno = ENODEV;
+		return -1;
+	}
 
 	if (smb_absolute_path_no_device(path, path_absolute, env->pos) == NULL)
 	{
