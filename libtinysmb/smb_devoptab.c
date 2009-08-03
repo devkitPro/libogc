@@ -902,7 +902,7 @@ static DIR_ITER* __smb_diropen(struct _reent *r, DIR_ITER *dirState, const char 
 	if(env == NULL)
 	{
 		r->_errno = ENODEV;
-		return -1;
+		return NULL;
 	}
 
 	if (smb_absolute_path_no_device(path, path_absolute, env->pos) == NULL)
@@ -1066,7 +1066,7 @@ static int __smb_stat(struct _reent *r, const char *path, struct stat *st)
 
 	smb_env* env;
 	env=FindSMBEnv(path_absolute);
-	
+
 	if(env == NULL)
 	{
 		r->_errno = ENODEV;
