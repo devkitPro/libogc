@@ -1177,10 +1177,10 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 	}
 
 	if(cache_thread == LWP_THREAD_NULL)
-		if(!LWP_CreateThread(&cache_thread, process_cache_thread, NULL, NULL, 0, 80))
+		if(LWP_CreateThread(&cache_thread, process_cache_thread, NULL, NULL, 0, 80) != 0)
 			return false;
 	if(_SMB_mutex == LWP_MUTEX_NULL)
-		if(!LWP_MutexInit(&_SMB_mutex, false))
+		if(LWP_MutexInit(&_SMB_mutex, false) != 0)
 			return false;
 
 	for(i=0;i<MAX_SMB_MOUNTED && SMBEnv[i].SMBCONNECTED;i++);
