@@ -320,6 +320,7 @@ continue_read:
 					_SMB_unlock();
 					return 0;
 				}
+				goto continue_read;
 			}
 		}
 	}
