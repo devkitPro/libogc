@@ -1186,21 +1186,18 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 	for(i=0;i<MAX_SMB_MOUNTED && SMBEnv[i].SMBCONNECTED;i++);
 	if(i==MAX_SMB_MOUNTED) return false; //all allowed samba connections reached
 
-	SMBCONN smbconn;
-	MountDevice(name,smbconn,i);
-
 	if (if_config(myIP, NULL, NULL, true) < 0)
 		return false;
 
 	//root connect
+	bool ret = true;
+	SMBCONN smbconn;
 	_SMB_lock();
-	if (SMB_Connect(&smbconn, user, password, share, ip) != SMB_SUCCESS)
-	{
-		_SMB_unlock();
-		return false;
-	}
+	if(SMB_Connect(&smbconn, user, password, share, ip) != SMB_SUCCESS)
+		ret = false;
 	_SMB_unlock();
-	return true;
+	MountDevice(name,smbconn,i);
+	return ret;
 }
 
 bool smbInit(const char *user, const char *password, const char *share, const char *ip)
