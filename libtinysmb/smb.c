@@ -1137,7 +1137,7 @@ SMBFILE SMB_OpenFile(const char *filename, u16 access, u16 creation,SMBCONN smbh
 	char realfile[256];
 
 	if(filename == NULL)
-		return SMB_ERROR;
+		return NULL;
 
 	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return NULL;
 
