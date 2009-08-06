@@ -1261,14 +1261,14 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
-	setUChar(ptr, pos, 10);
+	setUChar(ptr, pos, 12);
 	pos++;				      /*** Word count ***/
 	setUChar(ptr, pos, 0xff);
 	pos++;
 	pos += 3;	    /*** Reserved, Next AndX Offset ***/
 	setUShort(ptr, pos, fid->sfid);
 	pos += 2;					    /*** FID ***/
-	setUInt(ptr, pos, offset);
+	setUInt(ptr, pos, offset & 0xffffffff);
 	pos += 4;						 /*** Offset ***/
 
 	setUShort(ptr, pos, size & 0xffff);
@@ -1278,6 +1278,8 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	setUInt(ptr, pos, 0);
 	pos += 4;
 	pos += 2;	    /*** Remaining ***/
+	setUInt(ptr, pos, offset >> 32);  // offset high
+	pos += 4;
 	pos += 2;	    /*** Byte count ***/
 
 	handle->message.msg = NBT_SESSISON_MSG;
@@ -1344,7 +1346,7 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
-	setUChar(ptr, pos, 12);
+	setUChar(ptr, pos, 14);
 	pos++;				  /*** Word Count ***/
 	setUChar(ptr, pos, 0xff);
 	pos += 2;				   /*** Next AndX ***/
@@ -1352,10 +1354,12 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 
 	setUShort(ptr, pos, fid->sfid);
 	pos += 2;
-	setUInt(ptr, pos, offset);
+	setUInt(ptr, pos, offset & 0xffffffff);
 	pos += 4;
-	pos += 4; /*** Reserved ***/
-	pos += 2; /*** Write Mode ***/
+	setUInt(ptr, pos, 0);  /*** Reserved, must be 0 ***/
+	pos += 4;
+	setUShort(ptr, pos, 0);  /*** Write Mode ***/
+	pos += 2;
 	pos += 2; /*** Remaining ***/
 
 	blocks64 = size >> 16;
@@ -1366,6 +1370,8 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	pos += 2;					    /*** Length Low ***/
 	setUShort(ptr, pos, 59);
 	pos += 2;				 /*** Data Offset ***/
+	setUInt(ptr, pos, offset >> 32);  /*** OffsetHigh ***/
+	pos += 4;
 	setUShort(ptr, pos, size & 0xffff);
 	pos += 2;					    /*** Data Byte Count ***/
 
