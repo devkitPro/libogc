@@ -407,9 +407,8 @@ static int WriteSMBUsingCache(const char *buf, size_t len, SMBFILESTRUCT *file)
 
 	if (SMBEnv[j].SMBWriteCache.len + len >= SMB_WRITE_BUFFERSIZE)
 	{
-		void *send_buf;
+		void *send_buf = memalign(32, SMB_WRITE_BUFFERSIZE);
 		int rest = 0, written = 0;
-		send_buf = memalign(32, SMB_WRITE_BUFFERSIZE);
 		if (SMBEnv[j].SMBWriteCache.len > 0)
 			memcpy(send_buf, SMBEnv[j].SMBWriteCache.ptr, SMBEnv[j].SMBWriteCache.len);
 loop:
@@ -417,12 +416,12 @@ loop:
 		memcpy(send_buf + SMBEnv[j].SMBWriteCache.len, buf, rest);
 		written = SMB_WriteFile(send_buf, SMB_WRITE_BUFFERSIZE,
 				SMBEnv[j].SMBWriteCache.file->offset, SMBEnv[j].SMBWriteCache.file->handle);
-		free(send_buf);
 		if (written <= 0)
 		{
 			SMBEnv[j].SMBWriteCache.used = 0;
 			SMBEnv[j].SMBWriteCache.len = 0;
 			SMBEnv[j].SMBWriteCache.file = NULL;
+			free(send_buf);
 			_SMB_unlock();
 			return -1;
 		}
@@ -437,11 +436,13 @@ loop:
 		SMBEnv[j].SMBWriteCache.len = 0;
 
 		if(len>=SMB_WRITE_BUFFERSIZE) goto loop;
+		free(send_buf);
 	}
 	if (len > 0)
 	{
 		memcpy(SMBEnv[j].SMBWriteCache.ptr + SMBEnv[j].SMBWriteCache.len, buf, len);
 		SMBEnv[j].SMBWriteCache.len += len;
+		SMBEnv[j].SMBWriteCache.used = gettime();
 	}
 	_SMB_unlock();
 	return ret;
@@ -612,6 +613,14 @@ static off_t __smb_seek(struct _reent *r, int fd, off_t pos, int dir)
 		return -1;
 	}
 
+	//have to flush because SMBWriteCache.file->offset holds offset of cached block not yet written
+	_SMB_lock();
+	if (SMBEnv[file->env].SMBWriteCache.file == file)
+	{
+		FlushWriteSMBCache(SMBEnv[file->env].name);
+	}
+	_SMB_unlock();
+
 	switch (dir)
 	{
 	case SEEK_SET:
@@ -657,6 +666,15 @@ static ssize_t __smb_read(struct _reent *r, int fd, char *ptr, size_t len)
 		r->_errno = EBADF;
 		return -1;
 	}
+
+	//have to flush because SMBWriteCache.file->offset holds offset of cached block not yet writeln
+	//and file->len also may not have been updated yet
+	_SMB_lock();
+	if (SMBEnv[file->env].SMBWriteCache.file == file)
+	{
+		FlushWriteSMBCache(SMBEnv[file->env].name);
+	}
+	_SMB_unlock();
 
 	// Don't try to read if the read pointer is past the end of file
 	if (file->offset >= file->len)
