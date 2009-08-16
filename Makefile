@@ -13,23 +13,13 @@ endif
 export PATH	:=	$(DEVKITPPC)/bin:$(PATH)
 
 export LIBOGC_MAJOR	:= 1
-export LIBOGC_MINOR	:= 7
-export LIBOGC_PATCH	:= 2
+export LIBOGC_MINOR	:= 8
+export LIBOGC_PATCH	:= 0
 
-#---------------------------------------------------------------------------------
-PREFIX	:=	powerpc-gekko
-#---------------------------------------------------------------------------------
-
-CC		:=	$(PREFIX)-gcc
-CXX		:=	$(PREFIX)-g++
-AS		:=	$(PREFIX)-as
-AR		:=	$(PREFIX)-ar
-LD		:=	$(PREFIX)-ld
-OBJCOPY		:=	$(PREFIX)-objcopy
+include	$(DEVKITPPC)/base_rules
 
 BUILD		:=	build
 
-GCC_VERSION	:=	$(shell $(DEVKITPPC)/bin/$(CC) -dumpversion)
 DATESTRING	:=	$(shell date +%Y%m%d)
 VERSTRING	:=	$(LIBOGC_MAJOR).$(LIBOGC_MINOR).$(LIBOGC_PATCH)
 
@@ -105,8 +95,8 @@ ifeq ($(PLATFORM),cube)
 MACHDEP		+=	-DHW_DOL
 endif
 
-CFLAGS		:= -DLIBOGC_INTERNAL -DGAMECUBE -O2 -mregnames -Wall $(MACHDEP)  -fno-strict-aliasing $(INCLUDES)
-
+CFLAGS		:= -DLIBOGC_INTERNAL -O2 -mregnames -Wall $(MACHDEP)  -fno-strict-aliasing $(INCLUDES) -Wa,-mgekko
+ASFLAGS		:=	$(MACHDEP) -mregnames -D_LANGUAGE_ASSEMBLY -Wa,-mgekko $(INCLUDES)
 
 #---------------------------------------------------------------------------------
 VPATH :=	$(LWIPDIR)				\
