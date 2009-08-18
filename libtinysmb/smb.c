@@ -127,9 +127,11 @@
 
 #define SMB_PROTO					0x424d53ff
 #define SMB_HANDLE_NULL				0xffffffff
-#define SMB_MAX_BUFFERSIZE			(62*1024)	// cannot be larger than u16 (65536)
-#define SMB_MAX_TRANSMIT_SIZE		7236
-#define SMB_DEF_READOFFSET			59
+#define SMB_MAX_BUFFERSIZE			((1024*64)-64)	// cannot be larger than u16 (65536) - samba header (64)
+#define SMB_MAX_NET_READ_SIZE		7300 // see smb_recv
+#define SMB_MAX_NET_WRITE_SIZE		4096 // see smb_sendv
+#define SMB_MAX_TRANSMIT_SIZE		16384
+#define SMB_DEF_READOFFSET			63
 
 #define SMB_CONNHANDLES_MAX			8
 #define SMB_FILEHANDLES_MAX			(32*SMB_CONNHANDLES_MAX)
@@ -166,7 +168,7 @@ typedef struct _nbtsmb
   u8 msg;		 /*** NBT Message ***/
   u8 flags;		 /*** Not much here really ***/
   u16 length;	 /*** Length, excluding NBT ***/
-  u8 smb[SMB_MAX_TRANSMIT_SIZE];		 /*** Wii Actual is 7240 bytes ***/
+  u8 smb[SMB_MAX_TRANSMIT_SIZE];
 } NBTSMB;
 
 /**
@@ -386,25 +388,30 @@ static void MakeTRANS2Header(u8 subcommand,SMBHANDLE *handle)
 static inline s32 smb_send(s32 s,const void *data,s32 size)
 {
 	u64 t1,t2;
-	s32 ret, len = size;
+	s32 ret, len = size, nextsend;
 
 	t1=ticks_to_millisecs(gettime());
 	while(len>0)
 	{
-		ret=net_send(s,data,len,0);
+		nextsend=len;
+
+		if(nextsend>SMB_MAX_NET_WRITE_SIZE)
+			nextsend=SMB_MAX_NET_WRITE_SIZE; //optimized value
+
+		ret=net_send(s,data,nextsend,0);
 		if(ret==-EAGAIN)
 		{
 			t2=ticks_to_millisecs(gettime());
 			if( (t2 - t1) > RECV_TIMEOUT)
 			{
-				return -1;	/* timeout */
+				return -1; // timeout
 			}
-			usleep(100);	/* allow system to perform work. Stabilizes system */
+			usleep(100); // allow system to perform work. Stabilizes system
 			continue;
 		}
 		else if(ret<0)
 		{
-			return ret;	/* some error happened */
+			return ret;	// an error occurred
 		}
 		else
 		{
@@ -427,24 +434,32 @@ static inline s32 smb_send(s32 s,const void *data,s32 size)
  */
 static s32 smb_recv(s32 s,void *mem,s32 len)
 {
-	s32 ret;
+	s32 ret,read,readtotal=0;
 	u64 t1,t2;
 
 	t1=ticks_to_millisecs(gettime());
-	while(1)
+	while(len > 0)
 	{
-		ret=net_recv(s,mem,len,0);
-		if(ret>=0) return ret;
-		if(ret!=-EAGAIN) break;
-		t2=ticks_to_millisecs(gettime());
-		if( (t2 - t1) > RECV_TIMEOUT)
+		read=len;
+		if(read>SMB_MAX_NET_READ_SIZE)
+			read=SMB_MAX_NET_READ_SIZE; // optimized value
+
+		ret=net_recv(s,mem+readtotal,read,0);
+		if(ret>=0)
 		{
-			ret=-1;
-			break;
+			readtotal+=ret;
+			len-=ret;
+			if(len==0) return readtotal;
 		}
-		usleep(100);	/* allow system to perform work. Stabilizes system */
+		else
+		{
+			if(ret!=-EAGAIN) return ret;
+			t2=ticks_to_millisecs(gettime());
+			if( (t2 - t1) > RECV_TIMEOUT) return -1;
+			usleep(100); // allow system to perform work. Stabilizes system
+		}
 	}
-	return ret;
+	return readtotal;
 }
 
 /**
@@ -462,6 +477,8 @@ static s32 SMBCheck(u8 command, s32 readlen,SMBHANDLE *handle)
 	NBTSMB *nbt = &handle->message;
 	u8 *ptr2 = (u8*)nbt;
 	u8 tempLength = (readlen==0);
+
+	if(handle->sck_server == INVALID_SOCKET) return SMB_ERROR;
 
 	/* if length is not specified,*/
 	if(tempLength)
@@ -532,6 +549,8 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	u8 *ptr = handle->message.smb;
 	SMBSESSION *sess = &handle->session;
 	char pwd[200], ntRespData[24];
+
+	if(handle->sck_server == INVALID_SOCKET) return SMB_ERROR;
 
 	MakeSMBHeader(SMB_SETUP_ANDX,0x08,0x01,handle);
 	pos = SMB_HEADER_SIZE;
@@ -619,6 +638,8 @@ static s32 SMB_TreeAndX(SMBHANDLE *handle)
 	u8 *ptr = handle->message.smb;
 	SMBSESSION *sess = &handle->session;
 
+	if(handle->sck_server == INVALID_SOCKET) return SMB_ERROR;
+
 	MakeSMBHeader(SMB_TREEC_ANDX,0x08,0x01,handle);
 	pos = SMB_HEADER_SIZE;
 
@@ -686,6 +707,8 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 	if(!handle || !dialects || dialectc<=0)
 		return SMB_ERROR;
 
+	if(handle->sck_server == INVALID_SOCKET) return SMB_ERROR;
+
 	/*** Clear session variables ***/
 	sess = &handle->session;
 	memset(sess,0,sizeof(SMBSESSION));
@@ -744,6 +767,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 
 		pos += 2;
 		serverMaxBuffer = getUInt(ptr, pos);	//ULONG MaxBufferSize; Max transmit buffer size
+
 		if(serverMaxBuffer>SMB_MAX_TRANSMIT_SIZE)
 			sess->MaxBuffer = SMB_MAX_TRANSMIT_SIZE;
 		else
@@ -809,6 +833,7 @@ static s32 do_netconnect(SMBHANDLE *handle)
 	u32 flags=0;
 	u64 t1,t2;
 
+	handle->sck_server = INVALID_SOCKET;
 	/*** Create the global net_socket ***/
 	sock = net_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
 	if(sock==INVALID_SOCKET) return -1;
@@ -845,10 +870,13 @@ static s32 do_smbconnect(SMBHANDLE *handle)
 {
 	s32 ret;
 
+	if(handle->sck_server == INVALID_SOCKET) return -1;
+
 	ret = SMB_NegotiateProtocol(smb_dialects,smb_dialectcnt,handle);
 	if(ret!=SMB_SUCCESS)
 	{
 		net_close(handle->sck_server);
+		handle->sck_server = INVALID_SOCKET;
 		return -1;
 	}
 
@@ -856,6 +884,7 @@ static s32 do_smbconnect(SMBHANDLE *handle)
 	if(ret!=SMB_SUCCESS)
 	{
 		net_close(handle->sck_server);
+		handle->sck_server = INVALID_SOCKET;
 		return -1;
 	}
 
@@ -863,6 +892,7 @@ static s32 do_smbconnect(SMBHANDLE *handle)
 	if(ret!=SMB_SUCCESS)
 	{
 		net_close(handle->sck_server);
+		handle->sck_server = INVALID_SOCKET;
 		return -1;
 	}
 
@@ -961,6 +991,8 @@ static s32 SMB_RequestNBTSession(SMBHANDLE *handle)
 	unsigned char bufr[128];
 	int result;
 
+	if(handle->sck_server == INVALID_SOCKET) return -1;
+
 	L2_Encode(Called, (const unsigned char*) "*SMBSERVER", 0x20, 0x20,
 			(const unsigned char*) "");
 	L2_Encode(Calling, (const unsigned char*) "SMBCLIENT", 0x20, 0x00,
@@ -1022,8 +1054,6 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 		return SMB_BAD_LOGINDATA;
 	}
 
-	*smbhndl = SMB_HANDLE_NULL;
-
 	if(smb_inited==FALSE)
 	{
 		u32 level;
@@ -1032,8 +1062,11 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 		_CPU_ISR_Restore(level);
 	}
 
-	handle = __smb_allocate_handle();
+	handle = __smb_handle_open(*smbhndl);
+	if(!handle) handle = __smb_allocate_handle();
 	if(!handle) return SMB_ERROR;
+
+	*smbhndl = SMB_HANDLE_NULL;
 
 	handle->user = strdup(user);
 	handle->pwd = strdup(password);
@@ -1055,6 +1088,8 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 			memcpy((char *)&handle->server_addr.sin_addr.s_addr, hp->h_addr_list[0], hp->h_length);
 	}
 
+	*smbhndl =(SMBCONN)(LWP_OBJMASKTYPE(SMB_OBJTYPE_HANDLE)|LWP_OBJMASKID(handle->object.id));
+
 	if(ret==0)
 	{
 		ret = do_netconnect(handle);
@@ -1071,14 +1106,11 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 	}
 	if(ret!=0)
 	{
-		__smb_free_handle(handle);
+		handle->server_addr.sin_port = 0;
 		return SMB_ERROR;
 	}
-	else
-	{
-		*smbhndl =(SMBCONN)(LWP_OBJMASKTYPE(SMB_OBJTYPE_HANDLE)|LWP_OBJMASKID(handle->object.id));
-		return SMB_SUCCESS;
-	}
+
+	return SMB_SUCCESS;
 }
 
 /****************************************************************************
@@ -1111,18 +1143,42 @@ s32 SMB_Reconnect(SMBCONN *_smbhndl, BOOL test_conn)
 		if(SMB_PathInfo("\\", &dentry, smbhndl)==SMB_SUCCESS) return SMB_SUCCESS; // no need to reconnect
 		handle->conn_valid = FALSE; // else connection is invalid
 	}
-
 	if(!handle->conn_valid)
 	{
 		// shut down connection
 		if(handle->sck_server!=INVALID_SOCKET)
+		{
 			net_close(handle->sck_server);
+			handle->sck_server = INVALID_SOCKET;
+		}
 
 		// reconnect
-		ret = do_netconnect(handle);
-		if(handle->server_addr.sin_port == htons(139))
-			if(ret==0) ret = SMB_RequestNBTSession(handle);
-		if(ret==0) ret = do_smbconnect(handle);
+		if(handle->server_addr.sin_port > 0)
+		{
+			ret = do_netconnect(handle);
+			if(ret==0 && handle->server_addr.sin_port == htons(139))
+				ret = SMB_RequestNBTSession(handle);
+			if(ret==0)
+				ret = do_smbconnect(handle);
+		}
+		else // initial connection
+		{
+			handle->server_addr.sin_port = htons(445);
+			ret = do_netconnect(handle);
+			if(ret==0) ret = do_smbconnect(handle);
+
+			if(ret != 0)
+			{
+				// try port 139
+				handle->server_addr.sin_port = htons(139);
+				ret = do_netconnect(handle);
+				if(ret==0) ret = SMB_RequestNBTSession(handle);
+				if(ret==0) ret = do_smbconnect(handle);
+			}
+
+			if(ret != 0)
+				handle->server_addr.sin_port = 0;
+		}
 	}
 	return ret;
 }
@@ -1249,26 +1305,26 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	SMBHANDLE *handle;
 	struct _smbfile *fid = (struct _smbfile*)sfid;
 
-	if(!fid) return 0;
+	if(!fid) return -1;
 
 	// Check for invalid size
-	if(size == 0 || size > SMB_MAX_BUFFERSIZE) return 0;
+	if(size == 0 || size > SMB_MAX_BUFFERSIZE) return -1;
 
 	handle = __smb_handle_open(fid->conn);
-	if(!handle) return 0;
+	if(!handle) return -1;
 
 	MakeSMBHeader(SMB_READ_ANDX,0x08,0x01,handle);
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
-	setUChar(ptr, pos, 10);
+	setUChar(ptr, pos, 12);
 	pos++;				      /*** Word count ***/
 	setUChar(ptr, pos, 0xff);
 	pos++;
 	pos += 3;	    /*** Reserved, Next AndX Offset ***/
 	setUShort(ptr, pos, fid->sfid);
 	pos += 2;					    /*** FID ***/
-	setUInt(ptr, pos, offset);
+	setUInt(ptr, pos, offset & 0xffffffff);
 	pos += 4;						 /*** Offset ***/
 
 	setUShort(ptr, pos, size & 0xffff);
@@ -1278,12 +1334,15 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	setUInt(ptr, pos, 0);
 	pos += 4;
 	pos += 2;	    /*** Remaining ***/
+	setUInt(ptr, pos, offset >> 32);  // offset high
+	pos += 4;
 	pos += 2;	    /*** Byte count ***/
 
 	handle->message.msg = NBT_SESSISON_MSG;
 	handle->message.length = htons(pos);
 
 	pos += 4;
+
 	ret = smb_send(handle->sck_server,(char*)&handle->message, pos);
 	if(ret<0) goto  failed;
 
@@ -1295,11 +1354,11 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 		/*** Retrieve offset to data ***/
 		ofs = getUShort(ptr,(SMB_HEADER_SIZE+13));
 
-		/*** Default offset, with no padding is 59, so grab any outstanding padding ***/
+		/*** Default offset, with no padding is 63, so grab any outstanding padding ***/
 		while(ofs>SMB_DEF_READOFFSET) {
 			char pad[1024];
 			ret = smb_recv(handle->sck_server,pad,(ofs-SMB_DEF_READOFFSET));
-			if(ret<0) return ret;
+			if(ret<0) goto failed;
 			ofs-=ret;
 		}
 
@@ -1307,16 +1366,17 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 		ofs = 0;
 		dest = (u8*)buffer;
 		if(length>0) {
-			while ((ret=smb_recv(handle->sck_server,&dest[ofs],length-ofs))!=0) {
-				if(ret<0) return ret;
-
+			while (1)
+			{
+				ret=smb_recv(handle->sck_server,&dest[ofs],length-ofs);
+				if(ret<0) goto failed;
 				ofs += ret;
 				if (ofs>=length) break;
 			}
 		}
 		return ofs;
 	}
-	return 0;
+	return -1;
 
 failed:
 	handle->conn_valid = FALSE;
@@ -1335,16 +1395,16 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	SMBHANDLE *handle;
 	struct _smbfile *fid = (struct _smbfile*)sfid;
 
-	if(!fid) return 0;
+	if(!fid) return -1;
 
 	handle = __smb_handle_open(fid->conn);
-	if(!handle) return SMB_ERROR;
+	if(!handle) return -1;
 
 	MakeSMBHeader(SMB_WRITE_ANDX,0x08,0x01,handle);
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
-	setUChar(ptr, pos, 12);
+	setUChar(ptr, pos, 14);
 	pos++;				  /*** Word Count ***/
 	setUChar(ptr, pos, 0xff);
 	pos += 2;				   /*** Next AndX ***/
@@ -1352,10 +1412,12 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 
 	setUShort(ptr, pos, fid->sfid);
 	pos += 2;
-	setUInt(ptr, pos, offset);
+	setUInt(ptr, pos, offset & 0xffffffff);
 	pos += 4;
-	pos += 4; /*** Reserved ***/
-	pos += 2; /*** Write Mode ***/
+	setUInt(ptr, pos, 0);  /*** Reserved, must be 0 ***/
+	pos += 4;
+	setUShort(ptr, pos, 0);  /*** Write Mode ***/
+	pos += 2;
 	pos += 2; /*** Remaining ***/
 
 	blocks64 = size >> 16;
@@ -1364,8 +1426,10 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	pos += 2;				       /*** Length High ***/
 	setUShort(ptr, pos, size & 0xffff);
 	pos += 2;					    /*** Length Low ***/
-	setUShort(ptr, pos, 59);
+	setUShort(ptr, pos, 63);
 	pos += 2;				 /*** Data Offset ***/
+	setUInt(ptr, pos, offset >> 32);  /*** OffsetHigh ***/
+	pos += 4;
 	setUShort(ptr, pos, size & 0xffff);
 	pos += 2;					    /*** Data Byte Count ***/
 
