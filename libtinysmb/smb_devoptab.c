@@ -59,14 +59,14 @@ static bool FirstInit=true;
 typedef struct
 {
 	off_t offset;
-	u32 last_used;
+	u64 last_used;
 	SMBFILESTRUCT *file;
 	void *ptr;
 } smb_cache_page;
 
 typedef struct
 {
-	off_t used;
+	u64 used;
 	size_t len;
 	SMBFILESTRUCT *file;
 	void *ptr;
@@ -134,7 +134,7 @@ static int FlushWriteSMBCache(char *name)
 	}
 
 	int written = 0;
-	
+
 	while(env->SMBWriteCache.len>0)
 	{
 
@@ -149,7 +149,7 @@ static int FlushWriteSMBCache(char *name)
 		env->SMBWriteCache.file->offset += written;
 		if (env->SMBWriteCache.file->offset > env->SMBWriteCache.file->len)
 			env->SMBWriteCache.file->len = env->SMBWriteCache.file->offset;
-			
+
 		env->SMBWriteCache.len-=written;
 		if(env->SMBWriteCache.len==0) break;
 	}
@@ -419,16 +419,16 @@ static int WriteSMBUsingCache(const char *buf, size_t len, SMBFILESTRUCT *file)
 	while(len>0)
 	{
 		if(SMBEnv[j].SMBWriteCache.len+len>=SMB_WRITE_BUFFERSIZE)
-		{			
+		{
 			if(aux_send_buf == NULL) aux_send_buf = memalign(32, SMB_WRITE_BUFFERSIZE);
 			if(aux_send_buf == NULL) goto failed;
 			if (SMBEnv[j].SMBWriteCache.len > 0)
 				memcpy(aux_send_buf, SMBEnv[j].SMBWriteCache.ptr, SMBEnv[j].SMBWriteCache.len);
-	
+
 			rest = SMB_WRITE_BUFFERSIZE - SMBEnv[j].SMBWriteCache.len;
 			memcpy(aux_send_buf + SMBEnv[j].SMBWriteCache.len, buf, rest);
-		
-			written=SMB_WriteFile(aux_send_buf, SMB_WRITE_BUFFERSIZE, file->offset, file->handle);			
+
+			written=SMB_WriteFile(aux_send_buf, SMB_WRITE_BUFFERSIZE, file->offset, file->handle);
 			if(written<0)
 			{
 				goto failed;
@@ -438,12 +438,12 @@ static int WriteSMBUsingCache(const char *buf, size_t len, SMBFILESTRUCT *file)
 				file->len = file->offset;
 
 			buf = buf + rest;
-			len = len - rest;		
+			len = len - rest;
 			SMBEnv[j].SMBWriteCache.used = gettime();
-			SMBEnv[j].SMBWriteCache.len = 0;				
+			SMBEnv[j].SMBWriteCache.len = 0;
 		}
 		else
-		{		
+		{
 			memcpy(SMBEnv[j].SMBWriteCache.ptr + SMBEnv[j].SMBWriteCache.len, buf, len);
 			SMBEnv[j].SMBWriteCache.len += len;
 			SMBEnv[j].SMBWriteCache.used = gettime();
