@@ -218,7 +218,7 @@ static s32 fsize(s8 *fname)
 	return 0;
 }
 #else
-static s32 fsize ( s8 * fname )
+static s32 fsize ( const char * fname )
   {
     FILE * f;
     s32 s;
@@ -427,7 +427,7 @@ s32 MOD_SetMOD ( MOD * mod, u8 * mem )
     return 0;
   } 
 
-s32 MOD_Load ( MOD * mod, s8 * fname )
+s32 MOD_Load ( MOD * mod, const char * fname )
   {
 #if defined(GP32)
     F_HANDLE fh;

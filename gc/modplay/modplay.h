@@ -2,7 +2,7 @@
 Copyright (c) 2002,2003, Christian Nowak <chnowak@web.de>
 All rights reserved.
 
-Modified by Francisco Muñoz 'Hermes' MAY 2008
+Modified by Francisco MuÃ±oz 'Hermes' MAY 2008
 
 Redistribution and use in source and binary forms, with or without modification, are 
 permitted provided that the following conditions are met:
@@ -126,7 +126,7 @@ typedef struct _mod
   } MOD;
 
 s32 MOD_SetMOD ( MOD *, u8 * );
-s32 MOD_Load ( MOD *, s8 * );
+s32 MOD_Load ( MOD *, const char * );
 void MOD_Free ( MOD * );
 void MOD_Start ( MOD * );
 u32 MOD_Player ( MOD * );
