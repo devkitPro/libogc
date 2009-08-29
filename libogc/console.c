@@ -76,8 +76,6 @@ static u32 __gecko_safe = 0;
 
 extern u8 console_font_8x16[];
 
-extern void *VIDEO_GetCurrrentFramebuffer();
-
 void __console_vipostcb(u32 retraceCnt)
 {
 	u32 ycnt,xcnt, fb_stride;
@@ -180,18 +178,45 @@ static void __console_drawc(int c)
 #endif
 	}
 }
-
+static void __console_clear_line( int line, int from, int to ) {
+	console_data_s *con;
+	unsigned int c;
+	unsigned int *p;
+	unsigned int x_pixels;
+	unsigned int px_per_col = FONT_XSIZE/2;
+	unsigned int line_height = FONT_YSIZE;
+	unsigned int line_width;
+	
+	if( !(con = curr_con) ) return;
+	// For some reason there are xres/2 pixels per screen width
+  x_pixels = con->con_xres / 2;
+	
+	line_width = (to - from)*px_per_col;
+	p = (unsigned int*)con->destbuffer;
+	
+	// Move pointer to the current line and column offset
+	p += line*(FONT_YSIZE*x_pixels) + from*px_per_col;
+	
+	// Clears 1 line of pixels at a time, line_height times
+  while( line_height-- ) {
+  	c = line_width;
+    while( c-- )
+      *p++ = con->background;
+    p -= line_width;
+    p += x_pixels;
+  }
+}
 static void __console_clear(void)
 {
 	console_data_s *con;
 	unsigned int c;
 	unsigned int *p;
 
-	if(!curr_con) return;
-	con = curr_con;
+	if( !(con = curr_con) ) return;
 
 	c = (con->con_xres*con->con_yres)/2;
 	p = (unsigned int*)con->destbuffer;
+	
 	while(c--)
 		*p++ = con->background;
 
@@ -199,6 +224,31 @@ static void __console_clear(void)
 	con->cursor_col = 0;
 	con->saved_row = 0;
 	con->saved_col = 0;
+}
+static void __console_clear_from_cursor() {
+	console_data_s *con;
+	int cur_row;
+	
+  if( !(con = curr_con) ) return;
+	cur_row = con->cursor_row;
+	
+  __console_clear_line( cur_row, con->cursor_col, con->con_cols );
+  
+  while( cur_row++ < con->con_rows )
+    __console_clear_line( cur_row, 0, con->con_cols );
+  
+}
+static void __console_clear_to_cursor() {
+	console_data_s *con;
+	int cur_row;
+	
+  if( !(con = curr_con) ) return;
+	cur_row = con->cursor_row;
+	
+  __console_clear_line( cur_row, 0, con->cursor_col );
+  
+  while( cur_row-- )
+    __console_clear_line( cur_row, 0, con->con_cols );
 }
 
 void __console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stride)
@@ -366,8 +416,13 @@ static int __console_parse_escsequence(char *pchr)
 		/////////////////////////////////////////
 		case 'J':
 		{
-			/* different erase modes not yet supported, just clear all */
-			__console_clear();
+			if( parameters[0] == 0 )
+        __console_clear_from_cursor();
+			if( parameters[0] == 1 )
+        __console_clear_to_cursor();
+			if( parameters[0] == 2 )
+        __console_clear();
+        
 			break;
 		}
 		/////////////////////////////////////////
@@ -375,6 +430,13 @@ static int __console_parse_escsequence(char *pchr)
 		/////////////////////////////////////////
 		case 'K':
 		{
+			if( parameters[0] == 0 )
+        __console_clear_line( curr_con->cursor_row, curr_con->cursor_col, curr_con->con_cols );
+			if( parameters[0] == 1 )
+        __console_clear_line( curr_con->cursor_row, 0, curr_con->cursor_col );
+			if( parameters[0] == 2 )
+        __console_clear_line( curr_con->cursor_row, 0, curr_con->con_cols);
+        
 			break;
 		}
 		/////////////////////////////////////////
