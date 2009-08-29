@@ -33,6 +33,7 @@
 
 #include <asm.h>
 #include <unistd.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -548,7 +549,7 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	s32 i, ret;
 	u8 *ptr = handle->message.smb;
 	SMBSESSION *sess = &handle->session;
-	char pwd[200], ntRespData[24];
+	char pwd[PATH_MAX], ntRespData[24];
 
 	if(handle->sck_server == INVALID_SOCKET) return SMB_ERROR;
 
