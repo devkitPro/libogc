@@ -1066,7 +1066,7 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 		_CPU_ISR_Restore(level);
 	}
 
-	if(!handle) handle = __smb_allocate_handle();
+	handle = __smb_allocate_handle();
 	if(!handle) return SMB_ERROR;
 
 	handle->user = strdup(user);
