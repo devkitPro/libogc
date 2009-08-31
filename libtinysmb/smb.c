@@ -549,7 +549,7 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	s32 i, ret;
 	u8 *ptr = handle->message.smb;
 	SMBSESSION *sess = &handle->session;
-	char pwd[PATH_MAX], ntRespData[24];
+	char pwd[15], ntRespData[24];
 
 	if(handle->sck_server == INVALID_SOCKET) return SMB_ERROR;
 
