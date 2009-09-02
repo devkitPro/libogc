@@ -1068,11 +1068,11 @@ static int __smb_dirnext(struct _reent *r, DIR_ITER *dirState, char *filename,
 static int __smb_dirclose(struct _reent *r, DIR_ITER *dirState)
 {
 	SMBDIRSTATESTRUCT* state = (SMBDIRSTATESTRUCT*) (dirState->dirStruct);
-
+	int j = state->env;
 	_SMB_lock(state->env);
-	SMB_FindClose(SMBEnv[state->env].smbconn);
+	SMB_FindClose(SMBEnv[j].smbconn);
 	memset(state, 0, sizeof(SMBDIRSTATESTRUCT));
-	_SMB_unlock(state->env);
+	_SMB_unlock(j);
 	return 0;
 }
 
