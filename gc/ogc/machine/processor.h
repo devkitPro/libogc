@@ -163,6 +163,10 @@
 					"=&r" (_val) : "0" (_val));\
 }
 
+#ifdef __cplusplus
+   extern "C" {
+#endif /* __cplusplus */
+
 static inline u16 bswap16(u16 val)
 {
 	u16 tmp = val;
@@ -188,5 +192,57 @@ static inline u64 bswap64(u64 val)
 
 	return outv.ull;
 }
+
+// Basic I/O
+
+static inline u32 read32(u32 addr)
+{
+	u32 x;
+	asm volatile("lwz %0,0(%1) ; sync" : "=r"(x) : "b"(0xc0000000 | addr));
+	return x;
+}
+
+static inline void write32(u32 addr, u32 x)
+{
+	asm("stw %0,0(%1) ; eieio" : : "r"(x), "b"(0xc0000000 | addr));
+}
+
+static inline void mask32(u32 addr, u32 clear, u32 set)
+{
+	write32(addr, (read32(addr)&(~clear)) | set);
+}
+
+static inline u16 read16(u32 addr)
+{
+	u16 x;
+	asm volatile("lhz %0,0(%1) ; sync" : "=r"(x) : "b"(0xc0000000 | addr));
+	return x;
+}
+
+static inline void write16(u32 addr, u16 x)
+{
+	asm("sth %0,0(%1) ; eieio" : : "r"(x), "b"(0xc0000000 | addr));
+}
+
+static inline u8 read8(u32 addr)
+{
+	u8 x;
+	asm volatile("lbz %0,0(%1) ; sync" : "=r"(x) : "b"(0xc0000000 | addr));
+	return x;
+}
+
+static inline void write8(u32 addr, u8 x)
+{
+	asm("stb %0,0(%1) ; eieio" : : "r"(x), "b"(0xc0000000 | addr));
+}
+
+static inline void writef32(u32 addr, f32 x)
+{
+	asm("stfs %0,0(%1) ; eieio" : : "f"(x), "b"(0xc0000000 | addr));
+}
+
+#ifdef __cplusplus
+   }
+#endif /* __cplusplus */
 
 #endif
