@@ -499,6 +499,7 @@ bool sdio_Deinitialize()
 	if(__sd0_fd>=0)
 		IOS_Close(__sd0_fd);
  
+	__sd0_fd = -1;
 	__sdio_initialized = 0;
 	return true;
 }
