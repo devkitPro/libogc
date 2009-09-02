@@ -53,8 +53,9 @@ distribution.
 #include "processor.h"
 #include "network.h"
 #include "ogcsys.h"
+#include "lwp_heap.h"
 
-#define NET_HEAP_SIZE				8192
+#define NET_HEAP_SIZE				64*1024
 
 #define IOS_O_NONBLOCK				0x04			//(O_NONBLOCK >> 16) - it's in octal representation, so this shift leads to 0 and hence nonblocking sockets didn't work. changed it to the right value.
 
@@ -214,10 +215,51 @@ static u8 _net_error_code_map[] = {
 };
 
 static s32 net_ip_top_fd = -1;
-static s32 __net_hid = -1;
+static u8 __net_heap_inited = 0;
+static s32 __net_hid=-1;
+static heap_cntrl __net_heap;
+
 static char __manage_fs[] ATTRIBUTE_ALIGN(32) = "/dev/net/ncd/manage";
 static char __iptop_fs[] ATTRIBUTE_ALIGN(32) = "/dev/net/ip/top";
 static char __kd_fs[] ATTRIBUTE_ALIGN(32) = "/dev/net/kd/request";
+
+#define ROUNDDOWN32(v)				(((u32)(v)-0x1f)&~0x1f)
+
+static s32 NetCreateHeap()
+{
+	u32 level;
+	void *net_heap_ptr;	
+	
+	_CPU_ISR_Disable(level);
+
+	if(__net_heap_inited)
+	{
+		_CPU_ISR_Restore(level);
+		return IPC_OK;
+	}
+	
+	net_heap_ptr = (void *)ROUNDDOWN32(((u32)SYS_GetArena2Hi() - NET_HEAP_SIZE));
+	if((u32)net_heap_ptr < (u32)SYS_GetArena2Lo())
+	{
+		_CPU_ISR_Restore(level);
+		return IPC_ENOMEM;
+	}
+	SYS_SetArena2Hi(net_heap_ptr);
+	__lwp_heap_init(&__net_heap, net_heap_ptr, NET_HEAP_SIZE, 32);
+	__net_heap_inited=1;
+	_CPU_ISR_Restore(level);
+	return IPC_OK;
+}
+
+static void* net_malloc(u32 size)
+{
+	return __lwp_heap_allocate(&__net_heap, size);
+}
+
+static BOOL net_free(void *ptr)
+{
+	return __lwp_heap_free(&__net_heap, ptr);
+}
 
 static s32 _net_convert_error(s32 ios_retval)
 {
@@ -296,7 +338,9 @@ s32 net_init(void)
 
 	if (net_ip_top_fd >= 0) return 0;
 
-	if (__net_hid == -1) __net_hid = iosCreateHeap(NET_HEAP_SIZE);
+	ret=NetCreateHeap(); 
+	if (ret != IPC_OK) return ret;
+	if (__net_hid == -1) __net_hid = iosCreateHeap(1024); //only needed for ios calls
 	if (__net_hid < 0) return __net_hid;
 
 	ret = NCDGetLinkStatus();  // this must be called as part of initialization
@@ -364,7 +408,7 @@ struct hostent * net_gethostbyname(const char *addrString)
 	}
 
 	len = strlen(addrString) + 1;
-	params = iosAlloc(__net_hid, len);
+	params = net_malloc(len);
 	if (params==NULL) {
 		errno = IPC_ENOMEM;
 		return NULL;
@@ -374,7 +418,7 @@ struct hostent * net_gethostbyname(const char *addrString)
 
 	ret = _net_convert_error(IOS_Ioctl(net_ip_top_fd, IOCTL_SO_GETHOSTBYNAME, params, len, ipBuffer, 0x460));
 
-	if(params!=NULL) iosFree(__net_hid, params);
+	if(params!=NULL) net_free(params);
 
 	if (ret < 0) {
 		errno = ret;
@@ -540,7 +584,7 @@ s32 net_sendto(s32 s, const void *data, s32 len, u32 flags, struct sockaddr *to,
 	if (net_ip_top_fd < 0) return -ENXIO;
 	if (tolen > 28) return -EOVERFLOW;
 
-	message_buf = iosAlloc(__net_hid, len);
+	message_buf = net_malloc(len);
 	if (message_buf == NULL) {
 		debug_printf("net_send: failed to alloc %d bytes\n", len);
 		return IPC_ENOMEM;
@@ -568,7 +612,7 @@ s32 net_sendto(s32 s, const void *data, s32 len, u32 flags, struct sockaddr *to,
 	ret = _net_convert_error(IOS_IoctlvFormat(__net_hid, net_ip_top_fd, IOCTLV_SO_SENDTO, "dd:", message_buf, len, params, sizeof(struct sendto_params)));
 	debug_printf("net_send retuned %d\n", ret);
 
-	if(message_buf!=NULL) iosFree(__net_hid,message_buf);
+	if(message_buf!=NULL) net_free(message_buf);
 	return ret;
 }
 
@@ -591,7 +635,7 @@ s32 net_recvfrom(s32 s, void *mem, s32 len, u32 flags, struct sockaddr *from, so
 		from->sa_len = *fromlen;
 	}
 
-	message_buf = iosAlloc(__net_hid, len);
+	message_buf = net_malloc(len);
 	if (message_buf == NULL) {
     	debug_printf("SORecv: failed to alloc %d bytes\n", len);
 		return IPC_ENOMEM;
@@ -618,7 +662,7 @@ s32 net_recvfrom(s32 s, void *mem, s32 len, u32 flags, struct sockaddr *from, so
 	if (fromlen && from) *fromlen = from->sa_len;
 
 done:
-	if(message_buf!=NULL) iosFree(__net_hid, message_buf);
+	if(message_buf!=NULL) net_free(message_buf);
 	return ret;
 }
 
@@ -734,7 +778,7 @@ s32 net_poll(struct pollsd *sds,s32 nsds,s32 timeout)
 	if(net_ip_top_fd<0) return -ENXIO;
 	if(sds==NULL || nsds==0) return -EINVAL;
 
-	psds = iosAlloc(__net_hid,(nsds*sizeof(struct pollsd)));
+	psds = net_malloc((nsds*sizeof(struct pollsd)));
 	if(psds==NULL) {
 		debug_printf("net_poll: failed to alloc %d bytes\n", nsds * sizeof(struct pollsd));
 		return IPC_ENOMEM;
@@ -749,7 +793,7 @@ s32 net_poll(struct pollsd *sds,s32 nsds,s32 timeout)
 
 	memcpy(sds,psds,(nsds*sizeof(struct pollsd)));
 
-	iosFree(__net_hid,psds);
+	net_free(psds);
 
 	debug_printf("net_poll(sds, %d, %lld)=%d\n", nsds, params[0], ret);
 
