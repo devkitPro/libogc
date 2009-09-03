@@ -294,8 +294,6 @@ s32 __IOS_LaunchNewIOS(int version)
         udelay(1000);
 	}
 
-	version = *((u32*)0x80003140);
-
 	u32 ipc_counter;
 	// wait for IPC to start on the newly-loaded IOS
 	for (ipc_counter = 0; !(read32(0x0d000004) & 2); ipc_counter++)
