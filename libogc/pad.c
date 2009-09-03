@@ -79,14 +79,13 @@ static sys_resetinfo pad_resetinfo = {
 };
 
 extern void udelay(int);
-extern void __UnmaskIrq(u32);
 
 static s32 __pad_onreset(s32 final)
 {
 	u32 ret;
 
 	if(__pad_samplingcallback!=NULL) PAD_SetSamplingCallback(NULL);
-	
+
 	if(final==FALSE) {
 		ret = PAD_Sync();
 		if(__pad_recalibrated$207==0 && ret) {
@@ -186,7 +185,7 @@ static u8 __pad_clampU8(u8 var,u8 org)
 static void SPEC2_MakeStatus(u32 chan,u32 *data,PADStatus *status)
 {
 	u32 mode;
-	
+
 	status->button = _SHIFTR(data[0],16,14);
 
 	status->stickX = (s8)(data[0]>>8);
@@ -255,13 +254,13 @@ static void __pad_clampstick(s8 *px,s8 *py,s8 max,s8 xy,s8 min)
 
 	if(y>=0) signY = 1;
 	else { signY = -1; y = -(y); }
-	
+
 	if(x<=min) x = 0;
 	else x -= min;
 
 	if(y<=min) y = 0;
 	else y -= min;
-	
+
 	if(x!=0 || y!=0) {
 		s32 xx,yy,maxy;
 
@@ -367,12 +366,12 @@ static void __pad_typeandstatuscallback(s32 chan,u32 type)
 	mask = PAD_ENABLEDMASK(__pad_resettingchan);
 	recal_bits = __pad_recalibratebits&mask;
 	__pad_recalibratebits &= ~mask;
-	
+
 	if(type&0x0f) {
 		__pad_doreset();
 		return;
 	}
-	
+
 	__pad_type[__pad_resettingchan] = (type&~0xff);
 	if(((type&SI_TYPE_MASK)-SI_TYPE_GC)
 		|| !(type&SI_GC_STANDARD)) {
@@ -385,7 +384,7 @@ static void __pad_typeandstatuscallback(s32 chan,u32 type)
 		__pad_doreset();
 		return;
 	}
-	
+
 	if(!(type&SI_GC_WIRELESS) || type&SI_WIRELESS_IR) {
 		if(recal_bits) ret = SI_Transfer(__pad_resettingchan,&__pad_cmdcalibrate,3,__pad_origin[__pad_resettingchan],10,__pad_origincallback,0);
 		else ret = SI_Transfer(__pad_resettingchan,&__pad_cmdreadorigin,1,__pad_origin[__pad_resettingchan],10,__pad_origincallback,0);
@@ -411,8 +410,8 @@ static void __pad_receivecheckcallback(s32 chan,u32 type)
 		type &= ~0xff;
 		__pad_waitingbits &= ~mask;
 		__pad_checkingbits &= ~mask;
-		if(!(tmp&0x0f) 
-			&& (type&SI_GC_WIRELESS) && (type&SI_WIRELESS_RECEIVED) && (type&SI_WIRELESS_FIX_ID) 
+		if(!(tmp&0x0f)
+			&& (type&SI_GC_WIRELESS) && (type&SI_WIRELESS_RECEIVED) && (type&SI_WIRELESS_FIX_ID)
 			&& !(type&SI_WIRELESS_IR) && !(type&SI_WIRELESS_CONT_MASK) && !(type&SI_WIRELESS_LITE))  SI_Transfer(chan,&__pad_cmdreadorigin,1,__pad_origin[chan],10,__pad_originupdatecallback,0);
 		else __pad_disable(chan);
 	}
@@ -455,7 +454,7 @@ static void __pad_doreset()
 	printf("__pad_doreset(%d)\n",__pad_resettingchan);
 #endif
 	__pad_resettingbits &= ~PAD_ENABLEDMASK(__pad_resettingchan);
-	
+
 	memset(__pad_origin[__pad_resettingchan],0,12);
 	SI_GetTypeAsync(__pad_resettingchan,__pad_typeandstatuscallback);
 }
@@ -476,7 +475,7 @@ u32 __PADDisableRecalibration(s32 disable)
 
 	ram_recaldis[0] &= 0xbf;
 	if(disable) ram_recaldis[0] |= 0x40;
-	
+
 	_CPU_ISR_Restore(level);
 
 	return ret;
@@ -506,7 +505,7 @@ u32 PAD_Init()
 
 	SI_RefreshSamplingRate();
 	SYS_RegisterResetFunc(&pad_resetinfo);
-	
+
 	__pad_initialized = 1;
 	return PAD_Reset(0xf0000000);
 }
@@ -597,7 +596,7 @@ u32 PAD_Read(PADStatus *status)
 			}
 		}
 		chan++;
-		
+
 	}
 	_CPU_ISR_Restore(level);
 
@@ -612,19 +611,19 @@ u32 PAD_Reset(u32 mask)
 	_CPU_ISR_Disable(level);
 	pend_bits = (__pad_pendingbits|mask);
 	__pad_pendingbits = 0;
-	
+
 	pend_bits &= ~(__pad_waitingbits|__pad_checkingbits);
 	__pad_resettingbits |= pend_bits;
-	
+
 	en_bits = (__pad_resettingbits&__pad_enabledbits);
 	__pad_enabledbits &= ~pend_bits;
-	
+
 	if(__pad_spec==4) __pad_recalibratebits |= pend_bits;
-	
+
 	SI_DisablePolling(en_bits);
 	if(__pad_resettingchan==32) __pad_doreset();
 	_CPU_ISR_Restore(level);
-	
+
 	return 1;
 }
 
@@ -633,7 +632,7 @@ u32 PAD_Recalibrate(u32 mask)
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	
+
 	_CPU_ISR_Restore(level);
 	return 1;
 }
@@ -656,7 +655,7 @@ void PAD_SetSpec(u32 spec)
 	if(spec==0) __pad_makestatus = SPEC0_MakeStatus;
 	else if(spec==1) __pad_makestatus = SPEC1_MakeStatus;
 	else if(spec<6) __pad_makestatus = SPEC2_MakeStatus;
-	
+
 	__pad_spec = spec;
 }
 
@@ -666,7 +665,7 @@ void PAD_ControlMotor(s32 chan,u32 cmd)
 	u32 mask,type;
 
 	_CPU_ISR_Disable(level);
-	
+
 	mask = PAD_ENABLEDMASK(chan);
 	if(__pad_enabledbits&mask) {
 		type = SI_GetType(chan);
@@ -717,7 +716,7 @@ u32 PAD_ScanPads()
 	u32 padBit,connected;
 	u16 state,oldstate;
 	PADStatus padstatus[PAD_CHANMAX];
-	
+
 	resetBits = 0;
 	connected = 0;
 
@@ -728,7 +727,7 @@ u32 PAD_ScanPads()
 		if(padstatus[i].err==PAD_ERR_NONE
 			|| padstatus[i].err==PAD_ERR_TRANSFER) {
 			if(padstatus[i].err==PAD_ERR_NONE) {
-				oldstate				= __pad_keys[i].state; 
+				oldstate				= __pad_keys[i].state;
 				state					= padstatus[i].button;
 				__pad_keys[i].stickX	= padstatus[i].stickX;
 				__pad_keys[i].stickY	= padstatus[i].stickY;

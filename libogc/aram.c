@@ -71,12 +71,9 @@ static u32 __ARInternalSize = 0;
 static u32 __ARExpansionSize = 0;
 static u32 __ARSize = 0;
 
-static void __ARHandler();
-static void __ARCheckSize();
+static void __ARHandler(void);
+static void __ARCheckSize(void);
 static void __ARClearArea(u32 aramaddr,u32 len);
-
-extern void __UnmaskIrq(u32);
-extern void __MaskIrq(u32);
 
 ARCallback AR_RegisterCallback(ARCallback callback)
 {
@@ -115,7 +112,7 @@ u32 AR_Init(u32 *stack_idx_array,u32 num_entries)
 
 	IRQ_Request(IRQ_DSP_ARAM,__ARHandler,NULL);
 	__UnmaskIrq(IRQMASK(IRQ_DSP_ARAM));
-	
+
 	__ARStackPointer = aram_base;
 	__ARFreeBlocks = num_entries;
 	__ARBlockLen = stack_idx_array;
@@ -127,10 +124,10 @@ u32 AR_Init(u32 *stack_idx_array,u32 num_entries)
 	}
 #endif
 	_dspReg[13] = (_dspReg[13]&~0xff)|(_dspReg[13]&0xff);
-	
+
 	__ARCheckSize();
 	__ARInit_Flag = 1;
-	
+
 	_CPU_ISR_Restore(level);
 	return __ARStackPointer;
 }
@@ -144,11 +141,11 @@ void AR_StartDMA(u32 dir,u32 memaddr,u32 aramaddr,u32 len)
 	// set main memory address
 	_dspReg[16] = (_dspReg[16]&~0x03ff)|_SHIFTR(memaddr,16,16);
 	_dspReg[17] = (_dspReg[17]&~0xffe0)|_SHIFTR(memaddr, 0,16);
-	
+
 	// set aram address
 	_dspReg[18] = (_dspReg[18]&~0x03ff)|_SHIFTR(aramaddr,16,16);
 	_dspReg[19] = (_dspReg[19]&~0xffe0)|_SHIFTR(aramaddr, 0,16);
-	
+
 	// set cntrl bits
 	_dspReg[20] = (_dspReg[20]&~0x8000)|_SHIFTL(dir,15,1);
 	_dspReg[20] = (_dspReg[20]&~0x03ff)|_SHIFTR(len,16,16);
@@ -234,7 +231,7 @@ u32 AR_GetInternalSize()
 static __inline__ void __ARClearInterrupt()
 {
 	u16 cause;
-	
+
 	cause = _dspReg[5]&~(DSPCR_DSPINT|DSPCR_AIINT);
 #ifdef _AR_DEBUG
 	printf("__ARClearInterrupt(0x%04x)\n",cause);
@@ -255,11 +252,11 @@ static void __ARReadDMA(u32 memaddr,u32 aramaddr,u32 len)
 	// set main memory address
 	_dspReg[16] = (_dspReg[16]&~0x03ff)|_SHIFTR(memaddr,16,16);
 	_dspReg[17] = (_dspReg[17]&~0xffe0)|_SHIFTR(memaddr, 0,16);
-	
+
 	// set aram address
 	_dspReg[18] = (_dspReg[18]&~0x03ff)|_SHIFTR(aramaddr,16,16);
 	_dspReg[19] = (_dspReg[19]&~0xffe0)|_SHIFTR(aramaddr, 0,16);
-	
+
 	// set cntrl bits
 	_dspReg[20] = (_dspReg[20]&~0x8000)|0x8000;
 	_dspReg[20] = (_dspReg[20]&~0x03ff)|_SHIFTR(len,16,16);
@@ -267,7 +264,7 @@ static void __ARReadDMA(u32 memaddr,u32 aramaddr,u32 len)
 
 	__ARWaitDma();
 	__ARClearInterrupt();
-	
+
 }
 
 static void __ARWriteDMA(u32 memaddr,u32 aramaddr,u32 len)
@@ -278,11 +275,11 @@ static void __ARWriteDMA(u32 memaddr,u32 aramaddr,u32 len)
 	// set main memory address
 	_dspReg[16] = (_dspReg[16]&~0x03ff)|_SHIFTR(memaddr,16,16);
 	_dspReg[17] = (_dspReg[17]&~0xffe0)|_SHIFTR(memaddr, 0,16);
-	
+
 	// set aram address
 	_dspReg[18] = (_dspReg[18]&~0x03ff)|_SHIFTR(aramaddr,16,16);
 	_dspReg[19] = (_dspReg[19]&~0xffe0)|_SHIFTR(aramaddr, 0,16);
-	
+
 	// set cntrl bits
 	_dspReg[20] = (_dspReg[20]&~0x8000);
 	_dspReg[20] = (_dspReg[20]&~0x03ff)|_SHIFTR(len,16,16);
@@ -304,7 +301,7 @@ static void __ARClearArea(u32 aramaddr,u32 len)
 
 	curraddr = aramaddr;
 	endaddr = aramaddr+len;
-	
+
 	currlen = 2048;
 	while(curraddr<endaddr) {
 		if((endaddr-curraddr)<currlen) currlen = ((endaddr-curraddr)+31)&~31;
@@ -335,7 +332,7 @@ static void __ARCheckSize()
 	}
 	DCFlushRange(test_data,32);
 	DCFlushRange(dummy_data,32);
-	
+
 	__ARExpansionSize = 0;
 	__ARWriteDMA((u32)test_data,0x1000000,32);
 	__ARWriteDMA((u32)test_data,0x1200000,32);
@@ -363,7 +360,7 @@ static void __ARCheckSize()
 			arsize +=  0x200000;
 			goto end_check;				//not nice but fast
 		}
-		
+
 		memset(buffer,0,32);
 		DCFlushRange(buffer,32);
 		__ARReadDMA((u32)buffer,0x2000000,32);
@@ -374,7 +371,7 @@ static void __ARCheckSize()
 			arszflag |= 0x08;
 			goto end_check;				//not nice but fast
 		}
-		
+
 		memset(buffer,0,32);
 		DCFlushRange(buffer,32);
 		__ARReadDMA((u32)buffer,0x1400000,32);
@@ -405,7 +402,7 @@ static void __ARHandler()
 	printf("__ARHandler()\n");
 #endif
 	__ARClearInterrupt();
-	
+
 	if(__ARDmaCallback)
 		__ARDmaCallback();
 }

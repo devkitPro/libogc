@@ -1322,9 +1322,6 @@ static VIPositionCallback positionCB = NULL;
 
 static vu16* const _viReg = (u16*)0xCC002000;
 
-extern void __UnmaskIrq(u32);
-extern void __MaskIrq(u32);
-
 extern syssram* __SYS_LockSram();
 extern u32 __SYS_UnlockSram(u32 write);
 

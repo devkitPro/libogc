@@ -158,44 +158,41 @@ static vu16* const _dspReg = (u16*)0xCC005000;
 void __SYS_ReadROM(void *buf,u32 len,u32 offset);
 void* SYS_AllocArena1MemLo(u32 size,u32 align);
 
-static s32 __sram_sync();
+static s32 __sram_sync(void);
 static s32 __sram_writecallback(s32 chn,s32 dev);
 static s32 __mem_onreset(s32 final);
 
-extern void	__lwp_thread_coreinit();
-extern void	__lwp_sysinit();
-extern void __heap_init();
-extern void __exception_init();
-extern void __exception_closeall();
-extern void __systemcall_init();
-extern void __decrementer_init();
-extern void __lwp_mutex_init();
-extern void __lwp_cond_init();
-extern void __lwp_mqbox_init();
-extern void __lwp_sema_init();
-extern void __exi_init();
-extern void __si_init();
-extern void __irq_init();
-extern void __lwp_start_multitasking();
-extern void __timesystem_init();
-extern void __memlock_init();
+extern void	__lwp_thread_coreinit(void);
+extern void	__lwp_sysinit(void);
+extern void __heap_init(void);
+extern void __exception_init(void);
+extern void __exception_closeall(void);
+extern void __systemcall_init(void);
+extern void __decrementer_init(void);
+extern void __lwp_mutex_init(void);
+extern void __lwp_cond_init(void);
+extern void __lwp_mqbox_init(void);
+extern void __lwp_sema_init(void);
+extern void __exi_init(void);
+extern void __si_init(void);
+extern void __irq_init(void);
+extern void __lwp_start_multitasking(void);
+extern void __timesystem_init(void);
+extern void __memlock_init(void);
 extern void __libc_init(int);
 
 extern void __libogc_malloc_lock( struct _reent *ptr );
 extern void __libogc_malloc_unlock( struct _reent *ptr );
 
-extern void __exception_console();
+extern void __exception_console(void);
 extern void __exception_printf(const char *str, ...);
 
 extern void __realmode(void*);
-extern void __configMEM1_24Mb();
-extern void __configMEM1_48Mb();
-extern void __configMEM2_64Mb();
-extern void __configMEM2_128Mb();
+extern void __configMEM1_24Mb(void);
+extern void __configMEM1_48Mb(void);
+extern void __configMEM2_64Mb(void);
+extern void __configMEM2_128Mb(void);
 extern void __reset(u32 reset_code);
-
-extern void __UnmaskIrq(u32);
-extern void __MaskIrq(u32);
 
 extern u32 __IPC_ClntInit(void);
 extern u32 __PADDisableRecalibration(s32 disable);

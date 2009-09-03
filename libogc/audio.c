@@ -75,9 +75,6 @@ static u64 bound_32KHz,bound_48KHz,min_wait,max_wait,buffer;
 static AIDCallback __AID_Callback;
 static AISCallback __AIS_Callback;
 
-extern void __UnmaskIrq(u32);
-extern void __MaskIrq(u32);
-
 static void __AICallbackStackSwitch(AIDCallback handler)
 {
 	__asm__ __volatile__("mflr	%r0\n\
@@ -235,7 +232,7 @@ AIDCallback AUDIO_RegisterDMACallback(AIDCallback callback)
 {
 	u32 level;
 	AIDCallback old;
-	
+
 	_CPU_ISR_Disable(level);
 	old = __AID_Callback;
 	__AID_Callback = callback;

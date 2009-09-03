@@ -32,10 +32,10 @@ distribution.
 #ifndef __IRQ_H__
 #define __IRQ_H__
 
-/*! \file irq.h 
+/*! \file irq.h
 \brief Interrupt subsystem
 
-*/ 
+*/
 
 #include <gctypes.h>
 #include "context.h"
@@ -168,16 +168,19 @@ raw_irq_handler_t IRQ_GetHandler(u32 nIrq);
 
 \return Old state of the IRQ subsystem
 */
-u32 IRQ_Disable();
+u32 IRQ_Disable(void);
 
 
 /*! \fn u32 IRQ_Restore(u32 level)
 \brief Restore the IRQ subsystem with the given level. This is function should be used together with IRQ_Disable()
-\param[in] level IRQ level to restore to. 
+\param[in] level IRQ level to restore to.
 
 \return none
 */
 void IRQ_Restore(u32 level);
+
+void __MaskIrq(u32 nMask);
+void __UnmaskIrq(u32 nMask);
 
 #ifdef __cplusplus
    }

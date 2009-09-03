@@ -120,9 +120,6 @@ extern u8 __gxregs[];
 static struct __gx_regdef *__gx = (struct __gx_regdef*)__gxregs;
 static u8 _gx_saved_data[STRUCT_REGDEF_SIZE] ATTRIBUTE_ALIGN(32);
 
-extern void __UnmaskIrq(u32);
-extern void __MaskIrq(u32);
-
 static s32 __gx_onreset(s32 final);
 
 static sys_resetinfo __gx_resetinfo = {
@@ -226,7 +223,7 @@ static u32 __GX_CPGPLinkCheck()
 static void __GX_InitRevBits()
 {
 	s32 i;
-	
+
 	i=0;
 	while(i<8) {
 		__gx->VAT0reg[i] = 0x40000000;
@@ -234,10 +231,10 @@ static void __GX_InitRevBits()
 		GX_LOAD_CP_REG((0x0080|i),__gx->VAT1reg[i]);
 		i++;
 	}
-	
+
 	GX_LOAD_XF_REG(0x1000,0x3f);
 	GX_LOAD_XF_REG(0x1012,0x01);
-	
+
 	GX_LOAD_BP_REG(0x5800000f);
 
 }
@@ -267,7 +264,7 @@ static u32 __GX_ReadMemCounterU32(u32 reg)
 }
 
 static void __GX_WaitAbortPixelEngine()
-{ 
+{
 	u32 cnt,tmp;
 
 	cnt = __GX_ReadMemCounterU32(39);
@@ -282,10 +279,10 @@ static void __GX_Abort()
 {
 	if(__gx->gxFifoInited && __GX_IsGPFifoReady())
 		__GX_WaitAbortPixelEngine();
-	
+
 	_piReg[6] = 1;
 	__GX_WaitAbort(50);
-	
+
 	_piReg[6] = 0;
 	__GX_WaitAbort(5);
 }
@@ -298,7 +295,7 @@ static void __GX_SaveFifo()
 	struct __gxfifo *gpfifo = (struct __gxfifo*)&_gpfifo;
 
 	_CPU_ISR_Disable(level);
-	
+
 	if(_gxcpufifoready) {
 		val = _piReg[0x05];
 		cpufifo->wt_ptr = (u32)MEM_PHYSICAL_TO_K0((val&0x1FFFFFE0));
@@ -319,7 +316,7 @@ static void __GX_SaveFifo()
 		if(rdwt_dst<0) cpufifo->rdwt_dst = (cpufifo->rdwt_dst + cpufifo->size);
 		else cpufifo->rdwt_dst = rdwt_dst;
 	}
-	
+
 	_CPU_ISR_Restore(level);
 }
 
@@ -337,7 +334,7 @@ static void __GX_CleanGPFifo()
 
 	gpfifo->rd_ptr = gpfifo->wt_ptr;
 	gpfifo->rdwt_dst = 0;
-	
+
 	/* setup rd<->wd dist */
 	_cpReg[24] = _SHIFTL(gpfifo->rdwt_dst,0,16);
 	_cpReg[25] = _SHIFTR(gpfifo->rdwt_dst,16,16);
@@ -363,7 +360,7 @@ static void __GX_CleanGPFifo()
 	__gx->cpCRreg &= ~0x22;
 	_cpReg[1] = __gx->cpCRreg;
 	breakPtCB = NULL;
-	
+
 	__GX_WriteFifoIntReset(TRUE,TRUE);
 	__GX_FifoReadEnable();
 	_CPU_ISR_Restore(level);
@@ -381,7 +378,7 @@ static void __GXOverflowHandler()
 }
 
 static void __GXUnderflowHandler()
-{	
+{
 	if(_gxoverflowsuspend) {
 		_gxoverflowsuspend = 0;
 		LWP_ResumeThread(_gxcurrentlwp);
@@ -394,7 +391,7 @@ static void __GXCPInterruptHandler(u32 irq,void *ctx)
 {
 	__gx->cpSRreg = _cpReg[0];
 
-	if((__gx->cpCRreg&0x08) && (__gx->cpSRreg&0x02)) 
+	if((__gx->cpCRreg&0x08) && (__gx->cpSRreg&0x02))
 		__GXUnderflowHandler();
 
 	if((__gx->cpCRreg&0x04) && (__gx->cpSRreg&0x01))
@@ -411,11 +408,11 @@ static void __GXCPInterruptHandler(u32 irq,void *ctx)
 static void __GXTokenInterruptHandler(u32 irq,void *ctx)
 {
 	u16 token = _peReg[7];
-	
+
 	if(tokenCB)
 		tokenCB(token);
-	
-	_peReg[5] = (_peReg[5]&~0x04)|0x04;	
+
+	_peReg[5] = (_peReg[5]&~0x04)|0x04;
 }
 
 static void __GXFinishInterruptHandler(u32 irq,void *ctx)
@@ -423,12 +420,12 @@ static void __GXFinishInterruptHandler(u32 irq,void *ctx)
 #ifdef _GP_DEBUG
 	printf("__GXFinishInterruptHandler()\n");
 #endif
-	_peReg[5] = (_peReg[5]&~0x08)|0x08;	
+	_peReg[5] = (_peReg[5]&~0x08)|0x08;
 	_gxfinished = 1;
 
 	if(drawDoneCB)
 		drawDoneCB();
-	
+
 	LWP_ThreadBroadcast(_gxwaitfinish);
 }
 
@@ -528,7 +525,7 @@ static void __GX_SetTmemConfig(u8 nr)
 		GX_LOAD_BP_REG(0xb20dd400);
 		GX_LOAD_BP_REG(0xaf0db800);
 		GX_LOAD_BP_REG(0xb30ddc00);
-		
+
 		return;
 	}
 }
@@ -549,7 +546,7 @@ static GXTexRegion* __GXDefTexRegionCallback(GXTexObj *obj,u8 mapid)
 		ret = &__gx->texRegion[mapid+8];
 
 	if(mipmap) ret = &__gx->texRegion[mapid+16];
-	
+
 	return ret;
 }
 #else
@@ -583,13 +580,13 @@ static void __GX_InitGX()
 	s32 i;
 	u32 flag;
 	GXRModeObj *rmode;
-	Mtx identity_matrix = 
+	Mtx identity_matrix =
 	{
 		{1,0,0,0},
 		{0,1,0,0},
 		{0,0,1,0}
 	};
-	
+
 	rmode = VIDEO_GetPreferredMode(NULL);
 
 	GX_SetCopyClear((GXColor)BLACK,0xffffff);
@@ -604,7 +601,7 @@ static void __GX_InitGX()
 	GX_SetNumTexGens(1);
 	GX_ClearVtxDesc();
 	GX_InvVtxCache();
-	
+
 	GX_SetLineWidth(6,GX_TO_ZERO);
 	GX_SetPointSize(6,GX_TO_ZERO);
 
@@ -636,7 +633,7 @@ static void __GX_InitGX()
 	GX_SetChanCtrl(GX_COLOR0A0,GX_DISABLE,GX_SRC_REG,GX_SRC_VTX,GX_LIGHTNULL,GX_DF_NONE,GX_AF_NONE);
 	GX_SetChanAmbColor(GX_COLOR0A0,(GXColor)BLACK);
 	GX_SetChanMatColor(GX_COLOR0A0,(GXColor)WHITE);
-	
+
 	GX_SetChanCtrl(GX_COLOR1A1,GX_DISABLE,GX_SRC_REG,GX_SRC_VTX,GX_LIGHTNULL,GX_DF_NONE,GX_AF_NONE);
 	GX_SetChanAmbColor(GX_COLOR1A1,(GXColor)BLACK);
 	GX_SetChanMatColor(GX_COLOR1A1,(GXColor)WHITE);
@@ -698,7 +695,7 @@ static void __GX_InitGX()
 	GX_SetPixelFmt(GX_PF_RGB8_Z24,GX_ZC_LINEAR);
 
 	GX_SetFieldMask(GX_ENABLE,GX_ENABLE);
-	
+
 	flag = 0;
 	if(rmode->viHeight==(rmode->xfbHeight<<1)) flag = 1;
 	GX_SetFieldMode(rmode->field_rendering,flag);
@@ -712,7 +709,7 @@ static void __GX_InitGX()
 	GX_SetDispCopyGamma(GX_GM_1_0);
 	GX_SetDispCopyFrame2Field(GX_COPY_PROGRESSIVE);
 	GX_ClearBoundingBox();
-	
+
 	GX_PokeColorUpdate(GX_TRUE);
 	GX_PokeAlphaUpdate(GX_TRUE);
 	GX_PokeDither(GX_FALSE);
@@ -743,7 +740,7 @@ static void __GX_XfVtxSpecs()
 	nrms = 0;
 	if(__gx->vcdNrms==1) nrms = 1;
 	else if(__gx->vcdNrms==2) nrms = 2;
-	
+
 	texs = 0;
 	if(__gx->vcdHi&0x3) texs++;
 	if(__gx->vcdHi&0xc) texs++;
@@ -753,7 +750,7 @@ static void __GX_XfVtxSpecs()
 	if(__gx->vcdHi&0xc00) texs++;
 	if(__gx->vcdHi&0x3000) texs++;
 	if(__gx->vcdHi&0xc000) texs++;
-	
+
 	xfvtxspecs = (_SHIFTL(texs,4,4))|(_SHIFTL(nrms,2,2))|(cols&0x3);
 	GX_LOAD_XF_REG(0x1008,xfvtxspecs);
 }
@@ -836,7 +833,7 @@ static void __SetSURegs(u8 texmap,u8 texcoord)
 	ht = _SHIFTR(__gx->texMapSize[texmap],10,10);
 	wrap_s = __gx->texMapWrap[texmap]&3;
 	wrap_t = _SHIFTR(__gx->texMapWrap[texmap],2,2);
-	
+
 	reg = (texcoord&0x7);
 	__gx->suSsize[reg] = (__gx->suSsize[reg]&~0x0000ffff)|wd;
 	__gx->suTsize[reg] = (__gx->suTsize[reg]&~0x0000ffff)|ht;
@@ -882,7 +879,7 @@ static void __GX_SetSUTexRegs()
 				break;
 		}
 
-		texcm = _SHIFTL(1,texcoord,1); 
+		texcm = _SHIFTL(1,texcoord,1);
 		if(!(__gx->texCoordManually&texcm))
 			__SetSURegs(texmap,texcoord);
 	}
@@ -894,7 +891,7 @@ static void __GX_SetSUTexRegs()
 
 		if(i&1) texcoord = _SHIFTR(__gx->tevRasOrder[tevreg],15,3);
 		else texcoord = _SHIFTR(__gx->tevRasOrder[tevreg],3,3);
-		
+
 		tevm = _SHIFTL(1,i,1);
 		texcm = _SHIFTL(1,texcoord,1);
 		if(texmap!=0xff && (__gx->tevTexCoordEnable&tevm) && !(__gx->texCoordManually&texcm)) {
@@ -997,7 +994,7 @@ static void __GX_SetChanCntrl()
 	mask = _SHIFTR(__gx->dirtyState,12,4);
 	while(mask) {
 		if(mask&0x0001) GX_LOAD_XF_REG(chan,__gx->chnCntrl[i]);
-		
+
 		mask >>= 1;
 		chan++;
 		i++;
@@ -1050,7 +1047,7 @@ static u32 __GX_GetNumXfbLines(u16 efbHeight,u32 yscale)
 		if(!(efbHeight-tmp1)) tmp++;
 	}
 	if(tmp>1024) tmp = 1024;
-	
+
 	return tmp;
 }
 
@@ -1071,7 +1068,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	SYS_RegisterResetFunc(&__gx_resetinfo);
 
 	memset(__gxregs,0,STRUCT_REGDEF_SIZE);
-	
+
 	__GX_FifoInit();
 	GX_InitFifoBase(&_gxfifoobj,base,size);
 	GX_SetCPUFifo(&_gxfifoobj);
@@ -1092,13 +1089,13 @@ GXFifoObj* GX_Init(void *base,u32 size)
 		__gx->tevAlphaEnv[i] = (__gx->tevAlphaEnv[i]&~0xff000000)|(_SHIFTL(re1,24,8));
 		re0 += 2; re1 += 2; i++;
 	}
-	
+
 	__gx->texCoordManually = 0;
 	__gx->dirtyState = 0;
 
 	__gx->saveDLctx = 1;
 	__gx->gxFifoUnlinked = 0;
-	
+
 	__gx->sciTLcorner = (__gx->sciTLcorner&~0xff000000)|(_SHIFTL(0x20,24,8));
 	__gx->sciBRcorner = (__gx->sciBRcorner&~0xff000000)|(_SHIFTL(0x21,24,8));
 	__gx->lpWidth = (__gx->lpWidth&~0xff000000)|(_SHIFTL(0x22,24,8));
@@ -1112,7 +1109,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 		__gx->suTsize[i] = (__gx->suTsize[i]&~0xff000000)|(_SHIFTL(re1,24,8));
 		re0 += 2; re1 += 2; i++;
 	}
-	
+
 	__gx->peZMode = (__gx->peZMode&~0xff000000)|(_SHIFTL(0x40,24,8));
 	__gx->peCMode0 = (__gx->peCMode0&~0xff000000)|(_SHIFTL(0x41,24,8));
 	__gx->peCMode1 = (__gx->peCMode1&~0xff000000)|(_SHIFTL(0x42,24,8));
@@ -1129,7 +1126,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	res = (u32)(divid/divis);
 	__GX_FlushTextureState();
 	GX_LOAD_BP_REG(0x69000000|((_SHIFTR(res,11,24))|0x0400));
-	
+
 	divis = 4224;
 	res = (u32)(res/divis);
 	__GX_FlushTextureState();
@@ -1211,7 +1208,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	_cpReg[3] = 0;
 	GX_LOAD_CP_REG(0x20,0x00000000);
 	GX_LOAD_XF_REG(0x1006,0x0);
-	
+
 	GX_LOAD_BP_REG(0x23000000);
 	GX_LOAD_BP_REG(0x24000000);
 	GX_LOAD_BP_REG(0x67000000);
@@ -1223,7 +1220,7 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	__GX_SetTmemConfig(0);
 #endif
 	__GX_InitGX();
-	
+
 	return &_gxfifoobj;
 }
 
@@ -1245,7 +1242,7 @@ void GX_InitFifoBase(GXFifoObj *fifo,void *base,u32 size)
 void GX_InitFifoLimits(GXFifoObj *fifo,u32 hiwatermark,u32 lowatermark)
 {
 	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
-	
+
 	ptr->hi_mark = hiwatermark;
 	ptr->lo_mark = lowatermark;
 }
@@ -1293,7 +1290,7 @@ void GX_SetCPUFifo(GXFifoObj *fifo)
 	u32 level;
 	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
 	struct __gxfifo *cpufifo = (struct __gxfifo*)&_cpufifo;
-	
+
 	_CPU_ISR_Disable(level);
 	if(!fifo) {
 		_gxcpufifoready = 0;
@@ -1324,7 +1321,7 @@ void GX_SetCPUFifo(GXFifoObj *fifo)
 		_piReg[3] = MEM_VIRTUAL_TO_PHYSICAL(cpufifo->buf_start);
 		_piReg[4] = MEM_VIRTUAL_TO_PHYSICAL(cpufifo->buf_end);
 		_piReg[5] = (cpufifo->wt_ptr&0x1FFFFFE0);
-		
+
 		__GX_WriteFifoIntReset(GX_TRUE,GX_TRUE);
 		__GX_WriteFifoIntEnable(GX_ENABLE,GX_DISABLE);
 		__GX_FifoLink(GX_TRUE);
@@ -1403,31 +1400,31 @@ void GX_SetGPFifo(GXFifoObj *fifo)
 	gpfifo->cpufifo_ready = ptr->cpufifo_ready;
 	gpfifo->gpfifo_ready = 1;
 	_gxgpfifoready = 1;
-	
+
 	/* setup fifo base */
 	_cpReg[16] = _SHIFTL(MEM_VIRTUAL_TO_PHYSICAL(gpfifo->buf_start),0,16);
 	_cpReg[17] = _SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(gpfifo->buf_start),16,16);
-	
+
 	/* setup fifo end */
 	_cpReg[18] = _SHIFTL(MEM_VIRTUAL_TO_PHYSICAL(gpfifo->buf_end),0,16);
 	_cpReg[19] = _SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(gpfifo->buf_end),16,16);
-	
+
 	/* setup hiwater mark */
 	_cpReg[20] = _SHIFTL(gpfifo->hi_mark,0,16);
 	_cpReg[21] = _SHIFTR(gpfifo->hi_mark,16,16);
-	
+
 	/* setup lowater mark */
 	_cpReg[22] = _SHIFTL(gpfifo->lo_mark,0,16);
 	_cpReg[23] = _SHIFTR(gpfifo->lo_mark,16,16);
-	
+
 	/* setup rd<->wd dist */
 	_cpReg[24] = _SHIFTL(gpfifo->rdwt_dst,0,16);
 	_cpReg[25] = _SHIFTR(gpfifo->rdwt_dst,16,16);
-	
+
 	/* setup wt ptr */
 	_cpReg[26] = _SHIFTL(MEM_VIRTUAL_TO_PHYSICAL(gpfifo->wt_ptr),0,16);
 	_cpReg[27] = _SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(gpfifo->wt_ptr),16,16);
-	
+
 	/* setup rd ptr */
 	_cpReg[28] = _SHIFTL(MEM_VIRTUAL_TO_PHYSICAL(gpfifo->rd_ptr),0,16);
 	_cpReg[29] = _SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(gpfifo->rd_ptr),16,16);
@@ -1516,12 +1513,12 @@ volatile void* GX_RedirectWriteGatherPipe(void *ptr)
 		__GX_WriteFifoIntEnable(GX_DISABLE,GX_DISABLE);
 	}
 	cpufifo->wt_ptr = (u32)MEM_PHYSICAL_TO_K0(_piReg[5]&~0x04000000);
-	
+
 	_piReg[3] = 0;
 	_piReg[4] = 0x04000000;
 	_piReg[5] = (((u32)ptr&0x3FFFFFE0)&~0x04000000);
 	_sync();
-	
+
 	_CPU_ISR_Restore(level);
 
 	return (volatile void*)0x0C008000;
@@ -1533,7 +1530,7 @@ void GX_RestoreWriteGatherPipe()
 	struct __gxfifo *cpufifo = (struct __gxfifo*)&_cpufifo;
 
 	_CPU_ISR_Disable(level);
-	
+
 	wgPipe->U32 = 0;
 	wgPipe->U32 = 0;
 	wgPipe->U32 = 0;
@@ -1542,10 +1539,10 @@ void GX_RestoreWriteGatherPipe()
 	wgPipe->U32 = 0;
 	wgPipe->U32 = 0;
 	wgPipe->U32 = 0;
-	
+
 	ppcsync();
 	while(!IsWriteGatherBufferEmpty());
-	
+
 	mtwpar(0x0C008000);
 	_piReg[3] = MEM_VIRTUAL_TO_PHYSICAL(cpufifo->buf_start);
 	_piReg[4] = MEM_VIRTUAL_TO_PHYSICAL(cpufifo->buf_end);
@@ -1554,13 +1551,13 @@ void GX_RestoreWriteGatherPipe()
 		__GX_WriteFifoIntReset(GX_TRUE,GX_TRUE);
 		__GX_WriteFifoIntEnable(GX_ENABLE,GX_DISABLE);
 		__GX_FifoLink(GX_TRUE);
-	}	
+	}
 	_CPU_ISR_Restore(level);
 }
 
 void GX_Flush()
 {
-	if(__gx->dirtyState) 
+	if(__gx->dirtyState)
 		__GX_SetDirtyState();
 
 	wgPipe->U32 = 0;
@@ -1571,7 +1568,7 @@ void GX_Flush()
 	wgPipe->U32 = 0;
 	wgPipe->U32 = 0;
 	wgPipe->U32 = 0;
-	
+
 	ppcsync();
 }
 
@@ -1617,7 +1614,7 @@ void GX_AbortFrame()
 	if(__GX_IsGPFifoReady()) {
 		__GX_CleanGPFifo();
 		__GX_InitRevBits();
-		
+
 		__gx->dirtyState = 0;
 		GX_Flush();
 	}
@@ -1746,9 +1743,9 @@ void GX_SetViewportJitter(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ,u
 	static f32 Xfactor = 0.5;
 	static f32 Yfactor = 342.0;
 	static f32 Zfactor = 16777215.0;
-	
+
 	if(!field) yOrig -= Xfactor;
-	
+
 	x0 = wd*Xfactor;
 	y0 = (-ht)*Xfactor;
 	x1 = (xOrig+(wd*Xfactor))+Yfactor;
@@ -1756,7 +1753,7 @@ void GX_SetViewportJitter(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ,u
 	n = Zfactor*nearZ;
 	f = Zfactor*farZ;
 	z = f-n;
-	
+
 	GX_LOAD_XF_REGS(0x101a,6);
 	wgPipe->F32 = x0;
 	wgPipe->F32 = y0;
@@ -1780,7 +1777,7 @@ void GX_LoadProjectionMtx(Mtx44 mt,u8 type)
 	tmp[2] = mt[1][1];
 	tmp[4] = mt[2][2];
 	tmp[5] = mt[2][3];
-	
+
 	switch(type) {
 		case GX_PERSPECTIVE:
 			tmp[1] = mt[0][2];
@@ -1805,7 +1802,7 @@ void GX_LoadProjectionMtx(Mtx44 mt,u8 type)
 static void __GetImageTileCount(u32 fmt,u16 wd,u16 ht,u32 *xtiles,u32 *ytiles,u32 *zplanes)
 {
 	u32 xshift,yshift,tile;
-	
+
 	switch(fmt) {
 		case GX_TF_I4:
 		case GX_TF_IA4:
@@ -1844,7 +1841,7 @@ static void __GetImageTileCount(u32 fmt,u16 wd,u16 ht,u32 *xtiles,u32 *ytiles,u3
 			yshift = 0;
 			break;
 	}
-	
+
 	if(!(wd&0xffff)) wd = 1;
 	if(!(ht&0xffff)) ht = 1;
 
@@ -1913,7 +1910,7 @@ void GX_SetCopyFilter(u8 aa,u8 sample_pattern[12][2],u8 vf,u8 vfilter[7])
 		reg03 = (reg03&~0xf0000)|(_SHIFTL(sample_pattern[8][0],16,4));
 		reg03 = (reg03&~0xf00000)|(_SHIFTL(sample_pattern[8][1],20,4));
 		reg03 = (reg03&~0xff000000)|(_SHIFTL(0x03,24,8));
-	
+
 		reg04 = sample_pattern[9][0]&0xf;
 		reg04 = (reg04&~0xf0)|(_SHIFTL(sample_pattern[9][1],4,4));
 		reg04 = (reg04&~0xf00)|(_SHIFTL(sample_pattern[10][0],8,4));
@@ -1939,7 +1936,7 @@ void GX_SetCopyFilter(u8 aa,u8 sample_pattern[12][2],u8 vf,u8 vfilter[7])
 		reg53 = (reg53&~0xfc0)|(_SHIFTL(vfilter[1],6,6));
 		reg53 = (reg53&~0x3f000)|(_SHIFTL(vfilter[2],12,6));
 		reg53 = (reg53&~0xfc0000)|(_SHIFTL(vfilter[3],18,6));
-		
+
 		reg54 = 0x54000000|(vfilter[4]&0x3f);
 		reg54 = (reg54&~0xfc0)|(_SHIFTL(vfilter[5],6,6));
 		reg54 = (reg54&~0x3f000)|(_SHIFTL(vfilter[6],12,6));
@@ -1990,7 +1987,7 @@ void GX_CopyDisp(void *dest,u8 clear)
 		val = (__gx->peCMode0&~0x3);
 		GX_LOAD_BP_REG(val);
 	}
-	
+
 	clflag = 0;
 	if(clear || (__gx->peCntrl&0x7)==0x0003) {
 		if(__gx->peCntrl&0x40) {
@@ -1999,7 +1996,7 @@ void GX_CopyDisp(void *dest,u8 clear)
 			GX_LOAD_BP_REG(val);
 		}
 	}
-	
+
 	GX_LOAD_BP_REG(__gx->dispCopyTL);  // set source top
 	GX_LOAD_BP_REG(__gx->dispCopyWH);
 
@@ -2011,7 +2008,7 @@ void GX_CopyDisp(void *dest,u8 clear)
 	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~0x800)|(_SHIFTL(clear,11,1));
 	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~0x4000)|0x4000;
 	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~0xff000000)|(_SHIFTL(0x52,24,8));
-	
+
 	GX_LOAD_BP_REG(__gx->dispCopyCntrl);
 
 	if(clear) {
@@ -2048,7 +2045,7 @@ void GX_CopyTex(void *dest,u8 clear)
 	if(clflag) GX_LOAD_BP_REG(val);
 
 	val = 0x4b000000|(_SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(dest),5,24));
-	
+
 	GX_LOAD_BP_REG(__gx->texCopyTL);
 	GX_LOAD_BP_REG(__gx->texCopyWH);
 	GX_LOAD_BP_REG(__gx->texCopyDst);
@@ -2105,10 +2102,10 @@ void GX_BeginDispList(void *list,u32 size)
 {
 	struct __gxfifo *fifo;
 
-	if(__gx->dirtyState) 
+	if(__gx->dirtyState)
 		__GX_SetDirtyState();
 
-	if(__gx->saveDLctx) 
+	if(__gx->saveDLctx)
 		memcpy(_gx_saved_data,__gxregs,STRUCT_REGDEF_SIZE);
 
 	fifo = (struct __gxfifo*)&_gx_dl_fifoobj;
@@ -2119,7 +2116,7 @@ void GX_BeginDispList(void *list,u32 size)
 	fifo->rd_ptr = (u32)list;
 	fifo->wt_ptr = (u32)list;
 	fifo->rdwt_dst = 0;
-	
+
 	__gx->gxFifoUnlinked = 1;
 
 	GX_GetCPUFifo(&_gx_old_cpufifo);
@@ -2131,7 +2128,7 @@ u32 GX_EndDispList()
 {
 	u32 level,ret = 0;
 	struct __gxfifo *fifo;
-	
+
 	GX_GetCPUFifo(&_gx_dl_fifoobj);
 	GX_SetCPUFifo(&_gx_old_cpufifo);
 
@@ -2142,7 +2139,7 @@ u32 GX_EndDispList()
 	}
 
 	__gx->gxFifoUnlinked = 0;
-	
+
 	fifo = (struct __gxfifo*)&_gx_dl_fifoobj;
 	ret = fifo->rdwt_dst;
 
@@ -2151,12 +2148,12 @@ u32 GX_EndDispList()
 
 void GX_CallDispList(void *list,u32 nbytes)
 {
-	if(__gx->dirtyState) 
+	if(__gx->dirtyState)
 		__GX_SetDirtyState();
 
 	if(!__gx->vcdClear)
 		__GX_SendFlushPrim();
-	
+
 	wgPipe->U8 = 0x40;		//call displaylist
 	wgPipe->U32 = MEM_VIRTUAL_TO_PHYSICAL(list);
 	wgPipe->U32 = nbytes;
@@ -2186,7 +2183,7 @@ void GX_SetChanAmbColor(s32 channel,GXColor color)
 	switch(channel) {
 		case GX_COLOR0:
 			reg = 0;
-			val |= (__gx->chnAmbColor[0]&0xff); 
+			val |= (__gx->chnAmbColor[0]&0xff);
 			break;
 		case GX_COLOR1:
 			reg = 1;
@@ -2255,7 +2252,7 @@ void GX_SetChanMatColor(s32 channel,GXColor color)
 void GX_SetArray(u32 attr,void *ptr,u8 stride)
 {
 	u32 idx = 0;
-	
+
 	if(attr==GX_VA_NBT) attr = GX_VA_NRM;
 	if(attr>=GX_VA_POS && attr<=GX_LITMTXARRAY) {
 		idx = attr-GX_VA_POS;
@@ -2352,7 +2349,7 @@ void GX_SetVtxDescv(GXVtxDesc *attr_list)
 
 	for(i=0;i<GX_MAX_VTXDESC_LISTSIZE;i++){
 		if(attr_list[i].attr==GX_VA_NULL) break;
-		
+
 		__SETVCDATTR(attr_list[i].attr,attr_list[i].type);
 	}
 	__gx->dirtyState |= 0x0008;
@@ -2470,8 +2467,8 @@ void GX_SetVtxAttrFmtv(u8 vtxfmt,GXVtxAttrFmt *attr_list)
 void GX_Begin(u8 primitve,u8 vtxfmt,u16 vtxcnt)
 {
 	u8 reg = primitve|(vtxfmt&7);
-	
-	if(__gx->dirtyState) 
+
+	if(__gx->dirtyState)
 		__GX_SetDirtyState();
 
 	wgPipe->U8 = reg;
@@ -2490,7 +2487,7 @@ void GX_SetTexCoordGen2(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc,u32 no
 	u8 vtxrow,stq;
 
 	if(texcoord>=GX_MAXCOORD) return;
-	
+
 	stq = 0;
 	switch(tgen_src) {
 		case GX_TG_POS:
@@ -2549,10 +2546,10 @@ void GX_SetTexCoordGen2(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc,u32 no
 	if((tgen_typ==GX_TG_MTX3x4 || tgen_typ==GX_TG_MTX2x4))
 	{
 		if(tgen_typ==GX_TG_MTX3x4) texcoords = 0x02;
-		
+
 		texcoords |= (_SHIFTL(stq,2,1));
 		texcoords |= (_SHIFTL(vtxrow,7,5));
-	} else if((tgen_typ>=GX_TG_BUMP0 && tgen_typ<=GX_TG_BUMP7)) 
+	} else if((tgen_typ>=GX_TG_BUMP0 && tgen_typ<=GX_TG_BUMP7))
 	{
 		tgen_src -= GX_TG_TEXCOORD0;
 		tgen_typ -= GX_TG_BUMP0;
@@ -2601,15 +2598,15 @@ void GX_SetTexCoordGen2(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc,u32 no
 	}
 	__gx->dirtyState |= (0x04000000|(0x00010000<<texcoord));
 }
- 
+
 void GX_SetZTexture(u8 op,u8 fmt,u32 bias)
 {
 	u32 val = 0;
-	
+
 	if(fmt==GX_TF_Z8) fmt = 0;
 	else if(fmt==GX_TF_Z16) fmt = 1;
 	else fmt = 2;
-	
+
 	val = (u32)(_SHIFTL(op,2,2))|(fmt&3);
 	GX_LOAD_BP_REG(0xF4000000|(bias&0x00FFFFFF));
 	GX_LOAD_BP_REG(0xF5000000|(val&0x00FFFFFF));
@@ -2653,7 +2650,7 @@ static inline void WriteMtxPS3x3from4x3(register Mtx mt,register void *wgpipe)
 		  stfs	 %3,0(%7)\n\
 		  psq_st %4,0(%7),0,0\n\
 		  stfs	 %5,0(%7)"
-		  : "=&f"(tmp0),"=&f"(tmp1),"=&f"(tmp2),"=&f"(tmp3),"=&f"(tmp4),"=&f"(tmp5) 
+		  : "=&f"(tmp0),"=&f"(tmp1),"=&f"(tmp2),"=&f"(tmp3),"=&f"(tmp4),"=&f"(tmp5)
 		  : "b"(mt), "b"(wgpipe)
 		  : "memory"
 	);
@@ -2673,7 +2670,7 @@ static inline void WriteMtxPS3x3(register Mtx33 mt,register void *wgpipe)
 		  psq_st %2,0(%6),0,0\n\
 		  psq_st %3,0(%6),0,0\n\
 		  stfs	 %4,0(%6)"
-		  : "=&f"(tmp0),"=&f"(tmp1),"=&f"(tmp2),"=&f"(tmp3),"=&f"(tmp4) 
+		  : "=&f"(tmp0),"=&f"(tmp1),"=&f"(tmp2),"=&f"(tmp3),"=&f"(tmp4)
 		  : "b"(mt), "b"(wgpipe)
 		  : "memory"
 	);
@@ -2825,7 +2822,7 @@ static void __GetTexTileShift(u32 fmt,u32 *xshift,u32 *yshift)
 
 u32 GX_GetTexObjFmt(GXTexObj *obj)
 {
-	return ((struct __gx_texobj*)obj)->tex_fmt;	
+	return ((struct __gx_texobj*)obj)->tex_fmt;
 }
 
 u32 GX_GetTexObjMipMap(GXTexObj *obj)
@@ -2836,7 +2833,7 @@ u32 GX_GetTexObjMipMap(GXTexObj *obj)
 u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 {
 	u32 xshift,yshift,xtiles,ytiles,bitsize,size;
-	
+
 	switch(fmt) {
 		case GX_TF_I4:
 		case GX_TF_IA4:
@@ -2904,7 +2901,7 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 
 	wd &= 0xffff;
 	xtiles = (wd+((1<<xshift)-1))>>xshift;
-	
+
 	ht &= 0xffff;
 	ytiles = (ht+((1<<yshift)-1))>>yshift;
 
@@ -2967,7 +2964,7 @@ void GX_InitTexPreloadRegion(GXTexRegion *region,u32 tmem_even,u32 size_even,u32
 	ptr->tmem_even = 0;
 	ptr->tmem_even = (ptr->tmem_even&~0x7FFF)|(_SHIFTR(tmem_even,5,15));
 	ptr->tmem_even = (ptr->tmem_even&~0x200000)|0x200000;
-	
+
 	ptr->tmem_odd = 0;
 	ptr->tmem_odd = (ptr->tmem_odd&~0x7FFF)|(_SHIFTR(tmem_odd,5,15));
 
@@ -3003,16 +3000,16 @@ void GX_InitTexObj(GXTexObj *obj,void *img_ptr,u16 wd,u16 ht,u8 fmt,u8 wrap_s,u8
 	ptr->tex_filt = (ptr->tex_filt&~0x03)|(wrap_s&3);
 	ptr->tex_filt = (ptr->tex_filt&~0x0c)|(_SHIFTL(wrap_t,2,2));
 	ptr->tex_filt = (ptr->tex_filt&~0x10)|0x10;
-	
+
 	if(mipmap) {
 		ptr->tex_flag |= 0x01;
-		if(fmt==GX_TF_CI4 || fmt==GX_TF_CI8 || fmt==GX_TF_CI14) 
+		if(fmt==GX_TF_CI4 || fmt==GX_TF_CI8 || fmt==GX_TF_CI14)
 			ptr->tex_filt = (ptr->tex_filt&~0xe0)|0x00a0;
 		else
 			ptr->tex_filt = (ptr->tex_filt&~0xe0)|0x00c0;
-	} else 
+	} else
 		ptr->tex_filt= (ptr->tex_filt&~0xE0)|0x0080;
-	
+
 	ptr->tex_fmt = fmt;
 	ptr->tex_size = (ptr->tex_size&~0x3ff)|((wd-1)&0x3ff);
 	ptr->tex_size = (ptr->tex_size&~0xFFC00)|(_SHIFTL((ht-1),10,10));
@@ -3079,17 +3076,17 @@ void GX_InitTexObjLOD(GXTexObj *obj,u8 minfilt,u8 magfilt,f32 minlod,f32 maxlod,
 	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
 	static u8 GX2HWFiltConv[] = {0x00,0x04,0x01,0x05,0x02,0x06,0x00,0x00};
 	//static u8 HW2GXFiltConv[] = {0x00,0x02,0x04,0x00,0x01,0x03,0x05,0x00};
-	
+
 	if(lodbias<-4.0f) lodbias = -4.0f;
 	else if(lodbias==4.0f) lodbias = 3.99f;
-	
+
 	ptr->tex_filt = (ptr->tex_filt&~0x1fe00)|(_SHIFTL(((u32)(32.0f*lodbias)),9,8));
 	ptr->tex_filt = (ptr->tex_filt&~0x10)|(_SHIFTL((magfilt==GX_LINEAR?1:0),4,1));
 	ptr->tex_filt = (ptr->tex_filt&~0xe0)|(_SHIFTL(GX2HWFiltConv[minfilt],5,3));
 	ptr->tex_filt = (ptr->tex_filt&~0x100)|(_SHIFTL(!(edgelod&0xff),8,1));
 	ptr->tex_filt = (ptr->tex_filt&~0x180000)|(_SHIFTL(maxaniso,19,2));
 	ptr->tex_filt = (ptr->tex_filt&~0x200000)|(_SHIFTL(biasclamp,21,1));
-	
+
 	if(minlod<0.0f) minlod = 0.0f;
 	else if(minlod>10.0f) minlod = 10.0f;
 
@@ -3181,7 +3178,7 @@ void GX_InitTlutObj(GXTlutObj *obj,void *lut,u8 fmt,u16 entries)
 	struct __gx_tlutobj *ptr = (struct __gx_tlutobj*)obj;
 
 	memset(obj,0,sizeof(GXTlutObj));
-	
+
 	ptr->tlut_fmt = _SHIFTL(fmt,10,2);
 	ptr->tlut_maddr = (ptr->tlut_maddr&~0x00ffffff)|(_SHIFTR(MEM_VIRTUAL_TO_PHYSICAL(lut),5,24));
 	ptr->tlut_maddr = (ptr->tlut_maddr&~0xff000000)|(_SHIFTL(0x64,24,8));
@@ -3194,7 +3191,7 @@ void GX_LoadTexObj(GXTexObj *obj,u8 mapid)
 
 	if(regionCB)
 		region = regionCB(obj,mapid);
-	
+
 	GX_LoadTexObjPreloaded(obj,region,mapid);
 }
 
@@ -3209,7 +3206,7 @@ void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid)
 	ptr->tex_lod = (ptr->tex_lod&~0xff000000)|(_SHIFTL(_gxtexmode1ids[mapid],24,8));
 	ptr->tex_size = (ptr->tex_size&~0xff000000)|(_SHIFTL(_gxteximg0ids[mapid],24,8));
 	ptr->tex_maddr = (ptr->tex_maddr&~0xff000000)|(_SHIFTL(_gxteximg3ids[mapid],24,8));
-	
+
 	reg->tmem_even = (reg->tmem_even&~0xff000000)|(_SHIFTL(_gxteximg1ids[mapid],24,8));
 	reg->tmem_odd = (reg->tmem_odd&~0xff000000)|(_SHIFTL(_gxteximg2ids[mapid],24,8));
 
@@ -3229,10 +3226,10 @@ void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid)
 		tlut->tmem_addr_base = (tlut->tmem_addr_base&~0xff000000)|(_SHIFTL(_gxtextlutids[mapid],24,8));
 		GX_LOAD_BP_REG(tlut->tmem_addr_base);
 	}
-	
+
 	__gx->texMapSize[mapid] = ptr->tex_size;
 	__gx->texMapWrap[mapid] = ptr->tex_filt;
-	
+
 	__gx->dirtyState |= 0x0001;
 }
 
@@ -3292,7 +3289,7 @@ void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region)
 			u32 xshift,yshift;
 
 			if(fmt==GX_TF_RGBA8) {
-				tmem_even += tile_cnt;  
+				tmem_even += tile_cnt;
 				tmem_odd += tile_cnt;
 				maddr += (tile_cnt<<1);
 			} else {
@@ -3338,7 +3335,7 @@ void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region)
 
 			if(!w) w = 1;
 			if(!h) h = 1;
-			
+
 			regA = ((regA&~0x00ffffff)|(maddr&0x00ffffff));
 			GX_LOAD_BP_REG(regA);
 
@@ -3384,9 +3381,9 @@ void GX_InvalidateTexRegion(GXTexRegion *region)
 	if(ch_e<0) ch_e = 0;
 	if(cw_o<0) cw_o = 0;
 	if(ch_o<0) ch_o = 0;
-	
+
 	ismipmap = ptr->ismipmap;
-	
+
 	tmp = size = cw_e+ch_e;
 	if(ismipmap) size = tmp+(cw_o+ch_o-2);
 	regvalA = _SHIFTR((ptr->tmem_even&0x7fff),6,24)|(_SHIFTL(size,9,24))|(_SHIFTL(0x66,24,8));
@@ -3438,13 +3435,13 @@ void GX_SetTexCoorScaleManually(u8 texcoord,u8 enable,u16 ss,u16 ts)
 void GX_SetTexCoordCylWrap(u8 texcoord,u8 s_enable,u8 t_enable)
 {
 	u32 reg;
-	
+
 	reg = (texcoord&0x7);
 	__gx->suSsize[reg] = (__gx->suSsize[reg]&~0x20000)|(_SHIFTL(s_enable,17,1));
 	__gx->suTsize[reg] = (__gx->suTsize[reg]&~0x20000)|(_SHIFTL(t_enable,17,1));
 
 	if(!(__gx->texCoordManually&(_SHIFTL(1,texcoord,1)))) return;
-	
+
 	GX_LOAD_BP_REG(__gx->suSsize[reg]);
 	GX_LOAD_BP_REG(__gx->suTsize[reg]);
 }
@@ -3452,13 +3449,13 @@ void GX_SetTexCoordCylWrap(u8 texcoord,u8 s_enable,u8 t_enable)
 void GX_SetTexCoordBias(u8 texcoord,u8 s_enable,u8 t_enable)
 {
 	u32 reg;
-	
+
 	reg = (texcoord&0x7);
 	__gx->suSsize[reg] = (__gx->suSsize[reg]&~0x10000)|(_SHIFTL(s_enable,16,1));
 	__gx->suTsize[reg] = (__gx->suTsize[reg]&~0x10000)|(_SHIFTL(t_enable,16,1));
 
 	if(!(__gx->texCoordManually&(_SHIFTL(1,texcoord,1)))) return;
-	
+
 	GX_LOAD_BP_REG(__gx->suSsize[reg]);
 	GX_LOAD_BP_REG(__gx->suTsize[reg]);
 }
@@ -3493,13 +3490,13 @@ void GX_SetBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op)
 {
 	__gx->peCMode0 = (__gx->peCMode0&~0x1);
 	if(type==GX_BM_BLEND || type==GX_BM_SUBSTRACT) __gx->peCMode0 |= 0x1;
-	
+
 	__gx->peCMode0 = (__gx->peCMode0&~0x800);
 	if(type==GX_BM_SUBSTRACT) __gx->peCMode0 |= 0x800;
 
 	__gx->peCMode0 = (__gx->peCMode0&~0x2);
 	if(type==GX_BM_LOGIC) __gx->peCMode0 |= 0x2;
-	
+
 	__gx->peCMode0 = (__gx->peCMode0&~0xF000)|(_SHIFTL(op,12,4));
 	__gx->peCMode0 = (__gx->peCMode0&~0xE0)|(_SHIFTL(dst_fact,5,3));
 	__gx->peCMode0 = (__gx->peCMode0&~0x700)|(_SHIFTL(src_fact,8,3));
@@ -3538,7 +3535,7 @@ void GX_SetTevColor(u8 tev_regid,GXColor color)
 
 	reg = (_SHIFTL((0xe1+(tev_regid<<1)),24,8)|(_SHIFTL(color.g,12,8))|(color.b&0xff));
 	GX_LOAD_BP_REG(reg);
-	
+
 	//this two calls should obviously flush the Write Gather Pipe.
 	GX_LOAD_BP_REG(reg);
 	GX_LOAD_BP_REG(reg);
@@ -3553,7 +3550,7 @@ void GX_SetTevColorS10(u8 tev_regid,GXColorS10 color)
 
 	reg = (_SHIFTL((0xe1+(tev_regid<<1)),24,8)|(_SHIFTL(color.g,12,11))|(color.b&0x7ff));
 	GX_LOAD_BP_REG(reg);
-	
+
 	//this two calls should obviously flush the Write Gather Pipe.
 	GX_LOAD_BP_REG(reg);
 	GX_LOAD_BP_REG(reg);
@@ -3568,7 +3565,7 @@ void GX_SetTevKColor(u8 tev_kregid,GXColor color)
 
 	reg = (_SHIFTL((0xe1+(tev_kregid<<1)),24,8)|(_SHIFTL(1,23,1))|(_SHIFTL(color.g,12,8))|(color.b&0xff));
 	GX_LOAD_BP_REG(reg);
-	
+
 	//this two calls should obviously flush the Write Gather Pipe.
 	GX_LOAD_BP_REG(reg);
 	GX_LOAD_BP_REG(reg);
@@ -3583,7 +3580,7 @@ void GX_SetTevKColorS10(u8 tev_kregid,GXColorS10 color)
 
 	reg = (_SHIFTL((0xe1+(tev_kregid<<1)),24,8)|(_SHIFTL(1,23,1))|(_SHIFTL(color.g,12,11))|(color.b&0x7ff));
 	GX_LOAD_BP_REG(reg);
-	
+
 	//this two calls should obviously flush the Write Gather Pipe.
 	GX_LOAD_BP_REG(reg);
 	GX_LOAD_BP_REG(reg);
@@ -3598,7 +3595,7 @@ void GX_SetTevOp(u8 tevstage,u8 mode)
 		defcolor = GX_CC_CPREV;
 		defalpha = GX_CA_APREV;
 	}
-	
+
 	switch(mode) {
 		case GX_MODULATE:
 			GX_SetTevColorIn(tevstage,GX_CC_ZERO,GX_CC_TEXC,defcolor,GX_CC_ZERO);
@@ -3661,7 +3658,7 @@ void GX_SetTevColorOp(u8 tevstage,u8 tevop,u8 tevbias,u8 tevscale,u8 clamp,u8 te
 	}
 	__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0x80000)|(_SHIFTL(clamp,19,1));
 	__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0xC00000)|(_SHIFTL(tevregid,22,2));
-	
+
 	GX_LOAD_BP_REG(__gx->tevColorEnv[reg]);
 }
 
@@ -3679,14 +3676,14 @@ void GX_SetTevAlphaOp(u8 tevstage,u8 tevop,u8 tevbias,u8 tevscale,u8 clamp,u8 te
 	}
 	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0x80000)|(_SHIFTL(clamp,19,1));
 	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0xC00000)|(_SHIFTL(tevregid,22,2));
-	
+
 	GX_LOAD_BP_REG(__gx->tevAlphaEnv[reg]);
 }
 
 void GX_SetCullMode(u8 mode)
 {
     static u8 cm2hw[] = { 0, 2, 1, 3 };
-	
+
 	__gx->genMode = (__gx->genMode&~0xC000)|(_SHIFTL(cm2hw[mode],14,2));
 	__gx->dirtyState |= 0x0004;
 }
@@ -3705,7 +3702,7 @@ void GX_EnableTexOffsets(u8 coord,u8 line_enable,u8 point_enable)
 	__gx->suSsize[reg] = (__gx->suSsize[reg]&~0x80000)|(_SHIFTL(point_enable,19,1));
 	GX_LOAD_BP_REG(__gx->suSsize[reg]);
 }
- 
+
 void GX_SetClipMode(u8 mode)
 {
 	GX_LOAD_XF_REG(0x1005,(mode&1));
@@ -3717,7 +3714,7 @@ void GX_SetScissor(u32 xOrigin,u32 yOrigin,u32 wd,u32 ht)
 	u32 yo = yOrigin+0x156;
 	u32 nwd = xo+(wd-1);
 	u32 nht = yo+(ht-1);
-	
+
 	__gx->sciTLcorner = (__gx->sciTLcorner&~0x7ff)|(yo&0x7ff);
 	__gx->sciTLcorner = (__gx->sciTLcorner&~0x7FF000)|(_SHIFTL(xo,12,11));
 
@@ -3727,7 +3724,7 @@ void GX_SetScissor(u32 xOrigin,u32 yOrigin,u32 wd,u32 ht)
 	GX_LOAD_BP_REG(__gx->sciTLcorner);
 	GX_LOAD_BP_REG(__gx->sciBRcorner);
 }
- 
+
 void GX_SetScissorBoxOffset(s32 xoffset,s32 yoffset)
 {
 	s32 xoff = _SHIFTR((xoffset+0x156),1,24);
@@ -3747,7 +3744,7 @@ void GX_SetTevOrder(u8 tevstage,u8 texcoord,u32 texmap,u8 color)
 	u8 colid;
 	u32 texm,texc,tmp;
 	u32 reg = 3+(_SHIFTR(tevstage,1,3));
-	
+
 	__gx->tevTexMap[(tevstage&0xf)] = texmap;
 
 	texm = (texmap&~0x100);
@@ -3763,7 +3760,7 @@ void GX_SetTevOrder(u8 tevstage,u8 texcoord,u32 texmap,u8 color)
 	if(tevstage&1) {
 		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x7000)|(_SHIFTL(texm,12,3));
 		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x38000)|(_SHIFTL(texc,15,3));
-		
+
 		colid = GX_BUMP;
 		if(color!=GX_COLORNULL) colid = _gxtevcolid[color];
 		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x380000)|(_SHIFTL(colid,19,3));
@@ -3774,7 +3771,7 @@ void GX_SetTevOrder(u8 tevstage,u8 texcoord,u32 texmap,u8 color)
 	} else {
 		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x7)|(texm&0x7);
 		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x38)|(_SHIFTL(texc,3,3));
-		
+
 		colid = GX_BUMP;
 		if(color!=GX_COLORNULL) colid = _gxtevcolid[color];
 		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x380)|(_SHIFTL(colid,7,3));
@@ -4072,7 +4069,7 @@ void GX_SetPixelFmt(u8 pix_fmt,u8 z_fmt)
 {
 	u8 ms_en = 0;
 	u32 realfmt[8] = {0,1,2,3,4,4,4,5};
-	
+
 	__gx->peCntrl = (__gx->peCntrl&~0x7)|(realfmt[pix_fmt]&0x7);
 	__gx->peCntrl = (__gx->peCntrl&~0x38)|(_SHIFTL(z_fmt,3,3));
 	GX_LOAD_BP_REG(__gx->peCntrl);
@@ -4104,16 +4101,16 @@ void GX_SetDstAlpha(u8 enable,u8 a)
 void GX_SetFieldMask(u8 even_mask,u8 odd_mask)
 {
 	u32 val = 0;
-	
+
 	val = (_SHIFTL(even_mask,1,1))|(odd_mask&1);
-	GX_LOAD_BP_REG(0x44000000|val);	
+	GX_LOAD_BP_REG(0x44000000|val);
 }
 
 void GX_SetFieldMode(u8 field_mode,u8 half_aspect_ratio)
 {
 	__gx->lpWidth = (__gx->lpWidth&~0x400000)|(_SHIFTL(half_aspect_ratio,22,1));
 	GX_LOAD_BP_REG(__gx->lpWidth);
-	
+
 	__GX_FlushTextureState();
 	GX_LOAD_BP_REG(0x68000000|(field_mode&1));
 	__GX_FlushTextureState();
@@ -4155,13 +4152,13 @@ void GX_PokeBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op)
 
 	regval = (regval&~0x1);
 	if(type==GX_BM_BLEND || type==GX_BM_SUBSTRACT) regval |= 0x1;
-	
+
 	regval = (regval&~0x800);
 	if(type==GX_BM_SUBSTRACT) regval |= 0x800;
 
 	regval = (regval&~0x2);
 	if(type==GX_BM_LOGIC) regval |= 0x2;
-	
+
 	regval = (regval&~0xF000)|(_SHIFTL(op,12,4));
 	regval = (regval&~0xE0)|(_SHIFTL(dst_fact,5,3));
 	regval = (regval&~0x700)|(_SHIFTL(src_fact,8,3));
@@ -4295,7 +4292,7 @@ void GX_LoadLightObj(GXLightObj *lit_obj,u8 lit_id)
 			id = 0;
 			break;
 	}
-	
+
 	reg = 0x600|(_SHIFTL(id,4,8));
 	GX_LOAD_XF_REGS(reg,16);
 	wgPipe->U32 = 0;
@@ -4375,7 +4372,7 @@ void GX_InitLightDistAttn(GXLightObj *lit_obj,f32 ref_dist,f32 ref_brite,u8 dist
 
 	if(ref_dist<0.0f ||
 		ref_brite<0.0f || ref_brite>=1.0f) dist_fn = GX_DA_OFF;
-	
+
 	switch(dist_fn) {
 		case GX_DA_GENTLE:
 			k0 = 1.0f;
@@ -4400,39 +4397,39 @@ void GX_InitLightDistAttn(GXLightObj *lit_obj,f32 ref_dist,f32 ref_brite,u8 dist
 			break;
 	}
 
-	lit->k0 = k0;	
-	lit->k1 = k1;	
-	lit->k2 = k2;	
+	lit->k0 = k0;
+	lit->k1 = k1;
+	lit->k2 = k2;
 }
 
 void GX_InitLightAttn(GXLightObj *lit_obj,f32 a0,f32 a1,f32 a2,f32 k0,f32 k1,f32 k2)
 {
 	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
 
-	lit->a0 = a0;	
-	lit->a1 = a1;	
-	lit->a2 = a2;	
-	lit->k0 = k0;	
-	lit->k1 = k1;	
-	lit->k2 = k2;	
+	lit->a0 = a0;
+	lit->a1 = a1;
+	lit->a2 = a2;
+	lit->k0 = k0;
+	lit->k1 = k1;
+	lit->k2 = k2;
 }
 
 void GX_InitLightAttnA(GXLightObj *lit_obj,f32 a0,f32 a1,f32 a2)
 {
 	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
 
-	lit->a0 = a0;	
-	lit->a1 = a1;	
-	lit->a2 = a2;	
+	lit->a0 = a0;
+	lit->a1 = a1;
+	lit->a2 = a2;
 }
 
 void GX_InitLightAttnK(GXLightObj *lit_obj,f32 k0,f32 k1,f32 k2)
 {
 	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
 
-	lit->k0 = k0;	
-	lit->k1 = k1;	
-	lit->k2 = k2;	
+	lit->k0 = k0;
+	lit->k1 = k1;
+	lit->k2 = k2;
 }
 
 void GX_InitSpecularDirHA(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz,f32 hx,f32 hy,f32 hz)
@@ -4472,7 +4469,7 @@ void GX_InitSpecularDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz)
     px  = (nx * LARGE_NUMBER);
     py  = (ny * LARGE_NUMBER);
     pz  = (nz * LARGE_NUMBER);
-	
+
 	lit->px = px;
 	lit->py = py;
 	lit->pz = pz;
@@ -4487,7 +4484,7 @@ void GX_InitLightSpot(GXLightObj *lit_obj,f32 cut_off,u8 spotfn)
 	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
 
 	if(cut_off<0.0f ||	cut_off>90.0f) spotfn = GX_SP_OFF;
-	
+
 	r = (cut_off*M_PI)/180.0f;
 	cr = cosf(r);
 
@@ -4673,82 +4670,82 @@ void GX_SetGPMetric(u32 perf0,u32 perf1)
 	switch(__gx->perf1Mode) {
 		case GX_PERF1_CLOCKS:
 			GX_LOAD_BP_REG(0x67000042);
-			break;			
+			break;
 		case GX_PERF1_TEXELS:
 			GX_LOAD_BP_REG(0x67000084);
-			break;			
+			break;
 		case GX_PERF1_TX_IDLE:
 			GX_LOAD_BP_REG(0x67000063);
-			break;			
+			break;
 		case GX_PERF1_TX_REGS:
 			GX_LOAD_BP_REG(0x67000129);
-			break;			
+			break;
 		case GX_PERF1_TX_MEMSTALL:
 			GX_LOAD_BP_REG(0x67000252);
-			break;			
+			break;
 		case GX_PERF1_TC_CHECK1_2:
 			GX_LOAD_BP_REG(0x67000021);
-			break;			
+			break;
 		case GX_PERF1_TC_CHECK3_4:
 			GX_LOAD_BP_REG(0x6700014b);
-			break;			
+			break;
 		case GX_PERF1_TC_CHECK5_6:
 			GX_LOAD_BP_REG(0x6700018d);
-			break;			
+			break;
 		case GX_PERF1_TC_CHECK7_8:
 			GX_LOAD_BP_REG(0x670001cf);
-			break;			
+			break;
 		case GX_PERF1_TC_MISS:
 			GX_LOAD_BP_REG(0x67000211);
-			break;			
+			break;
 		case GX_PERF1_VC_ELEMQ_FULL:
 			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x20;
 			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
-			break;			
+			break;
 		case GX_PERF1_VC_MISSQ_FULL:
 			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x30;
 			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
-			break;			
+			break;
 		case GX_PERF1_VC_MEMREQ_FULL:
 			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x40;
 			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
-			break;			
+			break;
 		case GX_PERF1_VC_STATUS7:
 			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x50;
 			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
-			break;			
+			break;
 		case GX_PERF1_VC_MISSREP_FULL:
 			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x60;
 			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
-			break;			
+			break;
 		case GX_PERF1_VC_STREAMBUF_LOW:
 			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x70;
 			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
-			break;			
+			break;
 		case GX_PERF1_VC_ALL_STALLS:
 			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x90;
 			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
-			break;			
+			break;
 		case GX_PERF1_VERTICES:
 			__gx->cpPerfMode = (__gx->cpPerfMode&~0xf0)|0x80;
 			GX_LOAD_CP_REG(0x20,__gx->cpPerfMode);
-			break;			
+			break;
 		case GX_PERF1_FIFO_REQ:
 			_cpReg[3] = 2;
-			break;			
+			break;
 		case GX_PERF1_CALL_REQ:
 			_cpReg[3] = 3;
-			break;			
+			break;
 		case GX_PERF1_VC_MISS_REQ:
 			_cpReg[3] = 4;
-			break;			
+			break;
 		case GX_PERF1_CP_ALL_REQ:
 			_cpReg[3] = 5;
-			break;			
+			break;
 		case GX_PERF1_NONE:
-			break;			
+			break;
 	}
-	
+
 }
 
 void GX_ClearGPMetric()
@@ -4801,13 +4798,13 @@ void GX_GetGPStatus(u8 *overhi,u8 *underlow,u8 *readIdle,u8 *cmdIdle,u8 *brkpt)
 	*underlow = !!(_gxgpstatus&2);
 	*readIdle = !!(_gxgpstatus&4);
 	*cmdIdle = !!(_gxgpstatus&8);
-	*brkpt = !!(_gxgpstatus&16);	
+	*brkpt = !!(_gxgpstatus&16);
 }
 
 void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1)
 {
 	u32 tmp,reg1,reg2,reg3,reg4;
-	
+
 	reg1 = (_SHIFTL(_cpReg[33],16,16))|(_cpReg[32]&0xffff);
 	reg2 = (_SHIFTL(_cpReg[35],16,16))|(_cpReg[34]&0xffff);
 	reg3 = (_SHIFTL(_cpReg[37],16,16))|(_cpReg[36]&0xffff);

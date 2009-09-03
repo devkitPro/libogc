@@ -63,9 +63,6 @@ static dsptask_t *__dsp_currtask,*__dsp_lasttask,*__dsp_firsttask,*__dsp_rudetas
 
 static vu16* const _dspReg = (u16*)0xCC005000;
 
-extern void __MaskIrq(u32);
-extern void __UnmaskIrq(u32);
-
 static void __dsp_inserttask(dsptask_t *task)
 {
 	dsptask_t *t;
@@ -122,7 +119,7 @@ static void __dsp_removetask(dsptask_t *task)
 		__dsp_lasttask = task->prev;
 		__dsp_lasttask->next = NULL;
 		__dsp_currtask = __dsp_firsttask;
-		return;		
+		return;
 	}
 	__dsp_currtask = __dsp_currtask->next;
 }
@@ -200,7 +197,7 @@ static void __dsp_exectask(dsptask_t *exec,dsptask_t *hire)
 		while(DSP_CheckMailTo());
 		return;
 	}
-	
+
 	DSP_SendMailTo(hire->resume_vec);
 	while(DSP_CheckMailTo());
 
@@ -217,9 +214,9 @@ static void __dsp_def_taskcb()
 	u32 mail;
 #ifdef _DSP_DEBUG
 	printf("__dsp_def_taskcb()\n");
-#endif	
+#endif
 	while(!DSP_CheckMailFrom());
-	
+
 	mail = DSP_ReadMailFrom();
 #ifdef _DSP_DEBUG
 	printf("__dsp_def_taskcb(mail = 0x%08x)\n",mail);
@@ -242,14 +239,14 @@ static void __dsp_def_taskcb()
 				if(__dsp_rudetask==__dsp_currtask) {
 					DSP_SendMailTo(0xCDD10003);
 					while(DSP_CheckMailTo());
-					
+
 					__dsp_rudetask = NULL;
 					__dsp_rudetask_pend = FALSE;
 					if(__dsp_currtask->res_cb) __dsp_currtask->res_cb(__dsp_currtask);
 				} else {
 					DSP_SendMailTo(0xCDD10001);
 					while(DSP_CheckMailTo());
-					
+
 					__dsp_exectask(__dsp_currtask,__dsp_rudetask);
 					__dsp_currtask->flags = DSPTASK_YIELD;
 					__dsp_currtask = __dsp_rudetask;
@@ -273,7 +270,7 @@ static void __dsp_def_taskcb()
 			} else {
 				DSP_SendMailTo(0xCDD10001);
 				while(DSP_CheckMailTo());
-				
+
 				__dsp_exectask(__dsp_currtask,__dsp_currtask->next);
 				__dsp_currtask->state = DSPTASK_YIELD;
 				__dsp_currtask = __dsp_currtask->next;
@@ -284,10 +281,10 @@ static void __dsp_def_taskcb()
 				if(__dsp_currtask->done_cb) __dsp_currtask->done_cb(__dsp_currtask);
 				DSP_SendMailTo(0xCDD10001);
 				while(DSP_CheckMailTo());
-				
+
 				__dsp_exectask(NULL,__dsp_rudetask);
 				__dsp_removetask(__dsp_currtask);
-				
+
 				__dsp_currtask = __dsp_rudetask;
 				__dsp_rudetask_pend = FALSE;
 				__dsp_rudetask = NULL;
@@ -302,7 +299,7 @@ static void __dsp_def_taskcb()
 				}
 			} else {
 				if(__dsp_currtask->done_cb) __dsp_currtask->done_cb(__dsp_currtask);
-				
+
 				DSP_SendMailTo(0xCDD10001);
 				while(DSP_CheckMailTo());
 
@@ -331,7 +328,7 @@ void DSP_Init()
 #ifdef _DSP_DEBUG
 	printf("DSP_Init()\n");
 #endif
-	_CPU_ISR_Disable(level);	
+	_CPU_ISR_Disable(level);
 	if(__dsp_inited==FALSE) {
 		__dsp_intcb= __dsp_def_taskcb;
 
@@ -340,14 +337,14 @@ void DSP_Init()
 
 		_dspReg[5] = (_dspReg[5]&~(DSPCR_AIINT|DSPCR_ARINT|DSPCR_DSPINT))|DSPCR_DSPRESET;
 		_dspReg[5] = (_dspReg[5]&~(DSPCR_HALT|DSPCR_AIINT|DSPCR_ARINT|DSPCR_DSPINT));
-		
+
 		__dsp_currtask = NULL;
 		__dsp_firsttask = NULL;
 		__dsp_lasttask = NULL;
 		tmp_task = NULL;
 		__dsp_inited = TRUE;
 	}
-	_CPU_ISR_Restore(level);	
+	_CPU_ISR_Restore(level);
 }
 
 DSPCallback DSP_RegisterCallback(DSPCallback usr_cb)
@@ -363,7 +360,7 @@ DSPCallback DSP_RegisterCallback(DSPCallback usr_cb)
 		__dsp_intcb = usr_cb;
 	else
 		__dsp_intcb = __dsp_def_taskcb;
-	_CPU_ISR_Restore(level);	
+	_CPU_ISR_Restore(level);
 
 	return ret;
 }
@@ -474,7 +471,7 @@ dsptask_t* DSP_AddTask(dsptask_t *task)
 	task->state = DSPTASK_INIT;
 	task->flags = DSPTASK_ATTACH;
 	_CPU_ISR_Restore(level);
-	
+
 	if(__dsp_firsttask==task) __dsp_boottask(task);
 	return task;
 }

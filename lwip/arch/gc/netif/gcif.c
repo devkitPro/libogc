@@ -30,7 +30,7 @@
 #define BBA_MINPKTSIZE			60
 
 #define BBA_CID					0x04020200
-	
+
 #define BBA_CMD_IRMASKALL		0x00
 #define BBA_CMD_IRMASKNONE		0xF8
 
@@ -209,9 +209,6 @@ static const struct eth_addr ethbroadcast = {{0xffU,0xffU,0xffU,0xffU,0xffU,0xff
 static err_t __bba_link_tx(struct netif *dev,struct pbuf *p);
 static u32 __bba_rx_err(u8 status,struct bba_priv *priv);
 
-extern void __UnmaskIrq(u32);
-extern void __MaskIrq(u32);
-
 extern void udelay(int us);
 
 /* new functions */
@@ -308,7 +305,7 @@ static void bba_insdata_fast(void *val,s32 len)
 	DCInvalidateRange(ptr,roundlen);
 	bba_insdmadata(ptr,roundlen,NULL);
 	bba_sync();
-	
+
 	len -= roundlen;
 	ptr += roundlen;
 	if(len>0) bba_insdata(ptr,len);
@@ -356,7 +353,7 @@ static void bba_outsdata_fast(void *val,s32 len)
 	DCStoreRange(ptr,roundlen);
 	bba_outsdmadata(ptr,roundlen,NULL);
 	bba_sync();
-	
+
 	len -= roundlen;
 	ptr += roundlen;
 	if(len>0) bba_outsdata(ptr,len);
@@ -493,14 +490,14 @@ static boolean __bba_get_linkstateasync(struct bba_priv *priv)
 
 		if(ret&0xf0 && ret&0x08) break;
 	}
-	
+
 	// only sleep for additional 2 seconds if linkstate is ok
 	if(cnt<10000) {
 		sec = 1;
 		if(!(ret&0x04)) sec = 2;
 		udelay(sec*TB_USPERSEC);
 	}
-	
+
 	return (cnt<10000);
 }
 
@@ -561,7 +558,7 @@ static u32 __bba_tx_err(u8 status,struct bba_priv *priv)
 
 		if(status&BBA_TX_STATUS_CRSLOST)
 			priv->txrx_stats.tx_carriererrors++;
-		
+
 		if(status&BBA_TX_STATUS_UF)
 			priv->txrx_stats.tx_fifoerrors++;
 
@@ -577,7 +574,7 @@ static u32 __bba_tx_err(u8 status,struct bba_priv *priv)
 static u32 __bba_rx_err(u8 status,struct bba_priv *priv)
 {
 	u32 last_errors = priv->txrx_stats.tx_errors;
-	
+
 	if(status&0xff) {
 		priv->txrx_stats.rx_overerrors++;
 		priv->txrx_stats.rx_errors++;
@@ -595,7 +592,7 @@ static u32 __bba_rx_err(u8 status,struct bba_priv *priv)
 
 			if(status&BBA_RX_STATUS_RW)
 				priv->txrx_stats.rx_lengtherrors++;
-				
+
 			if(status&BBA_RX_STATUS_RF)
 				priv->txrx_stats.rx_lengtherrors++;
 
@@ -669,7 +666,7 @@ static err_t __bba_link_tx(struct netif *dev,struct pbuf *p)
 	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_tx(%d,%p)\n",p->tot_len,LWP_GetSelf()));
 
 	bba_out12(BBA_TXFIFOCNT,p->tot_len);
-	
+
 	bba_select();
 	bba_outsregister(BBA_WRTXFIFOD);
 	for(tmp=p;tmp!=NULL;tmp=tmp->next) {
@@ -696,7 +693,7 @@ static err_t bba_start_rx(struct netif *dev,u32 budget)
 	u32 pkt_status,recvd;
 	struct pbuf *tmp,*p = NULL;
 	struct bba_priv *priv = (struct bba_priv*)dev->state;
-	
+
 	LWIP_DEBUGF(NETIF_DEBUG,("bba_start_rx()\n"));
 
 	recvd = 0;
@@ -706,7 +703,7 @@ static err_t bba_start_rx(struct netif *dev,u32 budget)
 		LWIP_DEBUGF(NETIF_DEBUG,("bba_start_rx(%04x,%04x)\n",rrp,rwp));
 		bba_ins(rrp<<8,(void*)(&cur_descr),sizeof(struct bba_descr));
 		le32_to_cpus((u32*)((void*)(&cur_descr)));
-		
+
 		size = (cur_descr.packet_len-4);
 		pkt_status = cur_descr.status;
 		if(size>(BBA_RX_MAX_PACKET_SIZE+4)) {
@@ -770,7 +767,7 @@ static inline void bba_interrupt(struct netif *dev)
 {
 	u8 ir,imr,status,lrps,ltps;
 	struct bba_priv *priv = (struct bba_priv*)dev->state;
-	
+
 	ir = bba_in8(BBA_IR);
 	imr = bba_in8(BBA_IMR);
 	status = ir&imr;
@@ -822,11 +819,11 @@ static err_t __bba_init(struct netif *dev)
 
 	LWIP_DEBUGF(NETIF_DEBUG,("initializing BBA...\n"));
 	bba_cmd_out8(0x02,BBA_CMD_IRMASKALL);
-	
+
 	__bba_reset();
-	
+
 	priv->revid = bba_cmd_in8(0x01);
-	
+
 	bba_cmd_outs(0x04,&priv->devid,2);
 	bba_cmd_out8(0x05,priv->acstart);
 
@@ -839,7 +836,7 @@ static err_t __bba_init(struct netif *dev)
 	bba_out8(0x5c, 0x32);
 	bba_out8(0x5d, 0xfe);
 	bba_out8(0x5e, 0x1f);
-	bba_out8(0x5f, 0x1f);	
+	bba_out8(0x5f, 0x1f);
 	udelay(100);
 
 	__bba_recv_init();
@@ -854,10 +851,10 @@ static err_t __bba_init(struct netif *dev)
 	nwayc |= 0x08;
 	bba_out8(BBA_NWAYC,nwayc);
 	udelay(100);
-	
+
 	bba_ins(BBA_NAFR_PAR0,priv->ethaddr->addr, 6);
-	LWIP_DEBUGF(NETIF_DEBUG,("MAC ADDRESS %02x:%02x:%02x:%02x:%02x:%02x\n", 
-		priv->ethaddr->addr[0], priv->ethaddr->addr[1], priv->ethaddr->addr[2], 
+	LWIP_DEBUGF(NETIF_DEBUG,("MAC ADDRESS %02x:%02x:%02x:%02x:%02x:%02x\n",
+		priv->ethaddr->addr[0], priv->ethaddr->addr[1], priv->ethaddr->addr[2],
 		priv->ethaddr->addr[3], priv->ethaddr->addr[4], priv->ethaddr->addr[5]));
 
 	bba_out8(BBA_IR,0xFF);
@@ -871,15 +868,15 @@ static err_t __bba_init(struct netif *dev)
 static err_t bba_init_one(struct netif *dev)
 {
 	struct bba_priv *priv = (struct bba_priv*)dev->state;
-	
+
 	if(!priv) return ERR_IF;
 
 	priv->revid = 0xf0;
 	priv->devid = 0xD107;
 	priv->acstart = 0x4E;
-	
+
 	__bba_init(dev);
-	
+
 	return ERR_OK;
 }
 
@@ -890,7 +887,7 @@ static err_t bba_probe(struct netif *dev)
 
 	cid = __bba_read_cid();
 	if(cid!=BBA_CID) return ERR_NODEV;
-	
+
 	ret = bba_init_one(dev);
 	return ret;
 }

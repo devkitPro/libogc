@@ -125,9 +125,6 @@ static vu16* const _viReg = (u16*)0xCC002000;
 
 static u32 __si_transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb);
 
-extern void __UnmaskIrq(u32);
-extern void __MaskIrq(u32);
-
 static __inline__ struct _xy* __si_getxy()
 {
 	switch(VIDEO_GetCurrentTvMode()) {
@@ -176,11 +173,11 @@ static u32 __si_completetransfer()
 #endif
 	sisr = _siReg[14];
 	__si_cleartcinterrupt();
-	
+
 	if(sicntrl.chan==-1) return sisr;
 
 	xferTime[sicntrl.chan] = gettime();
-	
+
 	in = (u32*)sicntrl.in;
 	cnt = (sicntrl.in_bytes/4);
 	for(i=0;i<cnt;i++) in[i] = _siReg[32+i];
@@ -199,9 +196,9 @@ static u32 __si_completetransfer()
 		typeTime[sicntrl.chan] = gettime();
 		sisr = 0;
 	}
-	
+
 	sicntrl.chan = -1;
-	return sisr;	
+	return sisr;
 }
 
 static u32 __si_transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb)
@@ -238,7 +235,7 @@ static u32 __si_transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICa
 
 	if(out_len==128) out_len = 0;
 	csr.csrmap.outlen = out_len&0x7f;
-	
+
 	if(in_len==128) in_len = 0;
 	csr.csrmap.inlen = in_len&0x7f;
 
@@ -282,7 +279,7 @@ static void __si_gettypecallback(s32 chan,u32 type)
 #endif
 	sipad_en = __PADFixBits&SI_CHAN_BIT(chan);
 	__PADFixBits &= ~SI_CHAN_BIT(chan);
-	
+
 	if(type&0x0f || ((si_type[chan]&SI_TYPE_MASK)-SI_TYPE_GC)
 		|| !(si_type[chan]&SI_GC_WIRELESS) || si_type[chan]&SI_WIRELESS_IR) {
 		SYS_SetWirelessID(chan,0);
@@ -312,7 +309,7 @@ static void __si_gettypecallback(s32 chan,u32 type)
 		SI_Transfer(chan,&cmdfixdevice[chan],3,&si_type[chan],3,__si_gettypecallback,0);
 		return;
 	}
-	
+
 	if(si_type[chan]&SI_WIRELESS_RECEIVED) {
 		id = SI_WIRELESS_FIX_ID|(si_type[chan]&0x00CFFF00);
 		SYS_SetWirelessID(chan,_SHIFTR(id,8,16));
@@ -375,7 +372,7 @@ static void __si_interrupthandler(u32 irq,void *ctx)
 		__si_transfernext(chn);
 
 		if(cb) cb(chn,ret);
-		
+
 		_siReg[14] &= SISR_ERRORMASK(chn);
 
 		if(si_type[chn]==SI_ERR_BUSY && !SI_IsChanBusy(chn)) SI_Transfer(chn,&cmdtypeandstatus$47,1,&si_type[chn],3,__si_gettypecallback,65);
@@ -385,10 +382,10 @@ static void __si_interrupthandler(u32 irq,void *ctx)
 		curr_line = VIDEO_GetCurrentLine();
 		curr_line++;
 		line = _SHIFTR(sicntrl.poll,16,10);
-		
+
 		chn = 0;
 		while(chn<4) {
-			if(SI_GetResponseRaw(chn)) inputBufferVCount[chn] = curr_line;	
+			if(SI_GetResponseRaw(chn)) inputBufferVCount[chn] = curr_line;
 			chn++;
 		}
 
@@ -427,7 +424,7 @@ u32 SI_Sync()
 
 u32 SI_Busy()
 {
-	return (sicntrl.chan==-1)?0:1;	
+	return (sicntrl.chan==-1)?0:1;
 }
 
 u32 SI_IsChanBusy(s32 chan)
@@ -435,7 +432,7 @@ u32 SI_IsChanBusy(s32 chan)
 	u32 ret = 0;
 
 	if(sipacket[chan].chan!=-1 || sicntrl.chan==chan) ret = 1;
-	
+
 	return ret;
 }
 
@@ -461,9 +458,9 @@ void SI_EnablePolling(u32 poll)
 	poll >>= 24;
 	mask = (poll>>4)&0x0f;
 	sicntrl.poll &= ~mask;
-	
+
 	poll &= (0x03fffff0|mask);
-	
+
 	sicntrl.poll |= (poll&~0x03ffff00);
 	SI_TransferCommands();
 #ifdef _SI_DEBUG
@@ -490,13 +487,13 @@ void SI_SetSamplingRate(u32 samplingrate)
 {
 	u32 div,level;
 	struct _xy *xy = NULL;
-	
+
 	if(samplingrate>11) samplingrate = 11;
 
 	_CPU_ISR_Disable(level);
 	sampling_rate = samplingrate;
 	xy = __si_getxy();
-	
+
 	div = 1;
 	if(_viReg[54]&0x0001) div = 2;
 
@@ -532,7 +529,7 @@ u32 SI_GetResponseRaw(s32 chan)
 		inputBuffer[chan][0] = _siReg[(chan*3)+1];
 		inputBuffer[chan][1] = _siReg[(chan*3)+2];
 		inputBufferValid[chan] = 1;
-		ret = 1;		
+		ret = 1;
 	}
 	return ret;
 }
@@ -630,7 +627,7 @@ u32 SI_GetType(s32 chan)
 	else si_type[chan] = type = SI_ERR_BUSY;
 
 	typeTime[chan] = gettime();
-	
+
 	SI_Transfer(chan,&cmdtypeandstatus$223,1,&si_type[chan],3,__si_gettypecallback,65);
 	_CPU_ISR_Restore(level);
 
@@ -678,7 +675,7 @@ u32 SI_RegisterPollingHandler(RDSTHandler handler)
 	for(i=0;i<4;i++) {
 		if(rdstHandlers[i]==handler) {
 			_CPU_ISR_Restore(level);
-			return 1;		
+			return 1;
 		}
 	}
 
@@ -687,7 +684,7 @@ u32 SI_RegisterPollingHandler(RDSTHandler handler)
 			rdstHandlers[i] = handler;
 			SI_EnablePollingInterrupt(TRUE);
 			_CPU_ISR_Restore(level);
-			return 1;		
+			return 1;
 		}
 	}
 
@@ -732,7 +729,7 @@ u32 SI_EnablePollingInterrupt(s32 enable)
 		for(i=0;i<4;i++) inputBufferVCount[i] = 0;
 	} else
 		csr.csrmap.rdstintmsk = 0;
-	
+
 	csr.val &= 0x7ffffffe;
 	_siReg[13] = csr.val;
 
@@ -751,7 +748,7 @@ void __si_init()
 		SYS_CreateAlarm(&si_alarm[i]);
 	}
 	sicntrl.poll = 0;
-	
+
 	SI_SetSamplingRate(0);
 	while(_siReg[13]&0x0001);
 	_siReg[13] = 0x80000000;

@@ -27,7 +27,7 @@ distribution.
 
 -------------------------------------------------------------*/
 
- 
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -102,11 +102,8 @@ static void __ext_irq_handler(u32,void *);
 #elif defined(HW_RVL)
 	static vu32* const _exiReg = (u32*)0xCD006800;
 #else
-	#error HW model unknown. 
+	#error HW model unknown.
 #endif
-
-extern void __UnmaskIrq(u32);
-extern void __MaskIrq(u32);
 
 static __inline__ void __exi_clearirqs(s32 nChn,u32 nEXIIrq,u32 nTCIrq,u32 nEXTIrq)
 {
@@ -146,7 +143,7 @@ static void __exi_initmap(exibus_priv *exim)
 	exibus_priv *m;
 
 	__lwp_queue_initialize(&_lckdev_queue,lckdevs,EXI_LOCK_DEVS,sizeof(struct _lck_dev));
-	
+
 	for(i=0;i<EXI_MAX_CHANNELS;i++) {
 		m = &exim[i];
 		m->CallbackEXI = NULL;
@@ -229,7 +226,7 @@ static s32 __exi_attach(s32 nChn,EXICallback ext_cb)
 		}
 	}
 	_CPU_ISR_Restore(level);
-	return ret;	
+	return ret;
 }
 
 s32 EXI_Lock(s32 nChn,s32 nDev,EXICallback unlockCB)
@@ -281,7 +278,7 @@ s32 EXI_Unlock(s32 nChn)
 
 	exi->flags &= ~EXI_FLAG_LOCKED;
 	__exi_setinterrupts(nChn,exi);
-	
+
 	if(!exi->lck_cnt) {
 		_CPU_ISR_Restore(level);
 		return 1;
@@ -343,7 +340,7 @@ s32 EXI_Select(s32 nChn,s32 nDev,s32 nFrq)
 		if(nChn==EXI_CHANNEL_0) __MaskIrq(IRQMASK(IRQ_EXI0_EXT));
 		else if(nChn==EXI_CHANNEL_1) __MaskIrq(IRQMASK(IRQ_EXI1_EXT));
 	}
-	
+
 	_CPU_ISR_Restore(level);
 	return 1;
 }
@@ -395,7 +392,7 @@ s32 EXI_SelectSD(s32 nChn,s32 nDev,s32 nFrq)
 		if(nChn==EXI_CHANNEL_0) __MaskIrq(IRQMASK(IRQ_EXI0_EXT));
 		else if(nChn==EXI_CHANNEL_1) __MaskIrq(IRQMASK(IRQ_EXI1_EXT));
 	}
-	
+
 	_CPU_ISR_Restore(level);
 	return 1;
 }
@@ -414,11 +411,11 @@ s32 EXI_Deselect(s32 nChn)
 		_CPU_ISR_Restore(level);
 		return 0;
 	}
-	
+
 	exi->flags &= ~EXI_FLAG_SELECT;
 	val = _exiReg[nChn*5];
 	_exiReg[nChn*5] = (val&0x405);
-	
+
 	if(exi->flags&EXI_FLAG_ATTACH) {
 		if(nChn==EXI_CHANNEL_0) __UnmaskIrq(IRQMASK(IRQ_EXI0_EXT));
 		else if(nChn==EXI_CHANNEL_1) __UnmaskIrq(IRQMASK(IRQ_EXI1_EXT));
@@ -444,7 +441,7 @@ s32 EXI_Sync(s32 nChn)
 	printf("EXI_Sync(%d)\n",nChn);
 #endif
 	while(_exiReg[nChn*5+3]&0x0001);
-	
+
 	_CPU_ISR_Disable(level);
 
 	ret = 0;
@@ -485,7 +482,7 @@ s32 EXI_Imm(s32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 		__UnmaskIrq(IRQMASK((IRQ_EXI0_TC+(nChn*3))));
 	}
 	exi->flags |= EXI_FLAG_IMM;
-	
+
 	exi->imm_buff = pData;
 	exi->imm_len = nLen;
 	if(nMode!=EXI_READ) {
@@ -495,7 +492,7 @@ s32 EXI_Imm(s32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 	if(nMode==EXI_WRITE) exi->imm_len = 0;
 
 	_exiReg[nChn*5+3] = (((nLen-1)&0x03)<<4)|((nMode&0x03)<<2)|0x01;
-	
+
 	_CPU_ISR_Restore(level);
 	return 1;
 }
@@ -512,7 +509,7 @@ s32 EXI_ImmEx(s32 nChn,void *pData,u32 nLen,u32 nMode)
 		ret = 0;
 		tc = nLen;
 		if(tc>4) tc = 4;
-		
+
 		if(!EXI_Imm(nChn,buf,tc,nMode,NULL)) break;
 		if(!EXI_Sync(nChn)) break;
 		nLen -= tc;
@@ -531,7 +528,7 @@ s32 EXI_Dma(s32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 	printf("EXI_Dma(%d,%p,%d,%d,%p)\n",nChn,pData,nLen,nMode,tc_cb);
 #endif
 	_CPU_ISR_Disable(level);
-	
+
 	if(exi->flags&(EXI_FLAG_DMA|EXI_FLAG_IMM) || !(exi->flags&EXI_FLAG_SELECT)) {
 #ifdef _EXI_DEBUG
 		printf("EXI_Dma(%04x): abort\n",exi->flags);
@@ -555,7 +552,7 @@ s32 EXI_Dma(s32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 	_exiReg[nChn*5+1] = (u32)pData&0x03FFFFE0;
 	_exiReg[nChn*5+2] = nLen;
 	_exiReg[nChn*5+3] = ((nMode&0x03)<<2)|0x03;
-	
+
 	_CPU_ISR_Restore(level);
 	return 1;
 }
@@ -621,11 +618,11 @@ s32 EXI_GetID(s32 nChn,s32 nDev,u32 *nId)
 			EXI_Unlock(nChn);
 		}
 	}
-	
+
 	if(nChn<EXI_CHANNEL_2 && nDev==EXI_DEVICE_0) {
 		ret = 0;
 		EXI_Detach(nChn);
-		
+
 		_CPU_ISR_Disable(level);
 		if(idtime==last_exi_idtime[nChn]) {
 			exi->exi_idtime = idtime;
@@ -656,7 +653,7 @@ s32 EXI_Attach(s32 nChn,EXICallback ext_cb)
 	} else
 		ret = 0;
 	_CPU_ISR_Restore(level);
-	return ret;	
+	return ret;
 }
 
 s32 EXI_Detach(s32 nChn)
@@ -726,7 +723,7 @@ void EXI_ProbeReset()
 
 	eximap[0].exi_idtime = 0;
 	eximap[1].exi_idtime = 0;
-	
+
 	__exi_probe(0);
 	__exi_probe(1);
 	EXI_GetID(EXI_CHANNEL_0,EXI_DEVICE_2,&exi_id_serport1);
@@ -744,7 +741,7 @@ void __exi_init()
 	_exiReg[10] = 0;
 
 	_exiReg[0] = 0x2000;
-	
+
 	__exi_initmap(eximap);
 
 	IRQ_Request(IRQ_EXI0_EXI,__exi_irq_handler,NULL);
@@ -805,7 +802,7 @@ void __tc_irq_handler(u32 nIrq,void *pCtx)
 			len = exi->imm_len;
 			buf = exi->imm_buff;
 			if(len>0 && buf) {
-				d = _exiReg[chan*5+4]; 
+				d = _exiReg[chan*5+4];
 				if(d>0) {
 					for(cnt=0;cnt<len;cnt++) ((u8*)buf)[cnt] = (d>>((3-cnt)*8))&0xFF;
 				}
@@ -829,7 +826,7 @@ void __ext_irq_handler(u32 nIrq,void *pCtx)
 	exi = &eximap[chan];
 	__MaskIrq(IRQMASK(nIrq));
 	__exi_clearirqs(chan,0,0,1);
-	
+
 	exi->flags &= ~EXI_FLAG_ATTACH;
 	if(exi->CallbackEXT) exi->CallbackEXT(chan,dev);
 #ifdef _EXI_DEBUG
@@ -856,16 +853,16 @@ static s32 __probebarnacle(s32 chn,u32 dev,u32 *rev)
 			if(EXI_Imm(chn,rev,sizeof(u32),EXI_READ,NULL)==0) ret |= 0x0004;
 			if(EXI_Sync(chn)==0) ret |= 0x0008;
 			if(EXI_Deselect(chn)==0) ret |= 0x0010;
-			
+
 		}
 		EXI_Unlock(chn);
 	}
-	
+
 	if(chn!=EXI_CHANNEL_2 && dev==EXI_DEVICE_0) EXI_Detach(chn);
 
 	if(ret) return 0;
 	if((*rev+0x00010000)==0xffff) return 0;
-	
+
 	return 1;
 }
 
@@ -896,13 +893,13 @@ void __SYS_EnableBarnacle(s32 chn,u32 dev)
 	if(id==0x01020000 || id==0x0004 || id==0x80000010 || id==0x80000008
 		|| id==0x80000004 || id==0xffff || id==0x80000020 || id==0x0020
 		|| id==0x0010 || id==0x0008 || id==0x01010000 || id==0x04040404
-		|| id==0x04021000 || id==0x03010000 || id==0x02020000 
+		|| id==0x04021000 || id==0x03010000 || id==0x02020000
 		|| id==0x04020300 || id==0x04020200 || id==0x04130000
 		|| id==0x04120000 || id==0x04060000 || id==0x04220000) return;
 
 	if(__probebarnacle(chn,dev,&rev)==0) return;
 
-	
+
 	exi_uart_chan = chn;
 	exi_uart_dev = dev;
 	exi_uart_barnacle_enabled = 0xa5ff005a;
@@ -946,7 +943,7 @@ s32 WriteUARTN(void *buf,u32 len)
 				ret = 3;
 				break;
 			}
-			
+
 			reg = 0xa0010000;
 			EXI_Imm(exi_uart_chan,&reg,sizeof(u32),EXI_WRITE,NULL);
 			EXI_Sync(exi_uart_chan);
@@ -956,14 +953,14 @@ s32 WriteUARTN(void *buf,u32 len)
 				if(qlen>=0x0004) {
 					if(len<4) cnt = len;
 					if(qlen<len) break;
-					
+
 					EXI_Imm(exi_uart_chan,ptr,cnt,EXI_WRITE,NULL);
 					EXI_Sync(exi_uart_chan);
 					qlen -= cnt;
 					len -= cnt;
 				}
 			}
-			
+
 		}
 		EXI_Deselect(exi_uart_chan);
 	}

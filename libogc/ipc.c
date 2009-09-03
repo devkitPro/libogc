@@ -161,7 +161,7 @@ static void *_ipc_currbufferhi = NULL;
 
 static struct _ipcreqres _ipc_responses;
 
-static struct _ipcheap _ipc_heaps[IPC_NUMHEAPS] = 
+static struct _ipcheap _ipc_heaps[IPC_NUMHEAPS] =
 {
 	{NULL, 0, {}} // all other elements should be inited to zero, says C standard, so this should do
 };
@@ -170,10 +170,10 @@ static vu32* const _ipcReg = (u32*)0xCD000000;
 
 extern void __MaskIrq(u32 nMask);
 extern void __UnmaskIrq(u32 nMask);
-extern void* __SYS_GetIPCBufferLo();
-extern void* __SYS_GetIPCBufferHi();
+extern void* __SYS_GetIPCBufferLo(void);
+extern void* __SYS_GetIPCBufferHi(void);
 
-static __inline__ u32 IPC_ReadReg(u32 reg)
+static u32 IPC_ReadReg(u32 reg)
 {
 	return _ipcReg[reg];
 }
@@ -230,9 +230,9 @@ static s32 __ioctlvfmtCB(s32 result,void *userdata)
 
 	// free callback data
 	__lwp_wkspace_free(cbdata);
-	
+
 	// call the user callback
-	if(user_cb) 
+	if(user_cb)
 		return user_cb(result, user_data);
 
 	return result;
