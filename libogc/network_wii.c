@@ -390,6 +390,10 @@ error:
 	return ret;
 }
 
+void net_deinit() {
+	if (net_ip_top_fd >= 0) IOS_Close(net_ip_top_fd);
+	net_ip_top_fd = -1;
+}
 
 /* Returned value is a static buffer -- this function is not threadsafe! */
 struct hostent * net_gethostbyname(const char *addrString)
