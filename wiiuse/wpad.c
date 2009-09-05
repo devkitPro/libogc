@@ -364,6 +364,28 @@ static void __wpad_calc_data(WPADData *data,WPADData *lstate,struct accel_t *acc
 			{
 				struct guitar_hero_3_t *gh3 = &data->exp.gh3;
 
+				gh3->touch_bar = 0;
+				if (gh3->tb_raw > 0x1B)
+					gh3->touch_bar = GUITAR_HERO_3_TOUCH_ORANGE;
+				else if (gh3->tb_raw > 0x18)
+					gh3->touch_bar = GUITAR_HERO_3_TOUCH_ORANGE | GUITAR_HERO_3_TOUCH_BLUE;
+				else if (gh3->tb_raw > 0x15)
+					gh3->touch_bar = GUITAR_HERO_3_TOUCH_BLUE;
+				else if (gh3->tb_raw > 0x13)
+					gh3->touch_bar = GUITAR_HERO_3_TOUCH_BLUE | GUITAR_HERO_3_TOUCH_YELLOW;
+				else if (gh3->tb_raw > 0x10)
+					gh3->touch_bar = GUITAR_HERO_3_TOUCH_YELLOW;
+				else if (gh3->tb_raw > 0x0D)
+					gh3->touch_bar = GUITAR_HERO_3_TOUCH_AVAILABLE;
+				else if (gh3->tb_raw > 0x0B)
+					gh3->touch_bar = GUITAR_HERO_3_TOUCH_YELLOW | GUITAR_HERO_3_TOUCH_RED;
+				else if (gh3->tb_raw > 0x08)
+					gh3->touch_bar = GUITAR_HERO_3_TOUCH_RED;
+				else if (gh3->tb_raw > 0x05)
+					gh3->touch_bar = GUITAR_HERO_3_TOUCH_RED | GUITAR_HERO_3_TOUCH_GREEN;
+				else if (gh3->tb_raw > 0x02)
+					gh3->touch_bar = GUITAR_HERO_3_TOUCH_GREEN;
+
 				gh3->whammy_bar = (gh3->wb_raw - GUITAR_HERO_3_WHAMMY_BAR_MIN) / (float)(GUITAR_HERO_3_WHAMMY_BAR_MAX - GUITAR_HERO_3_WHAMMY_BAR_MIN);
 				calc_joystick_state(&gh3->js, gh3->js.pos.x, gh3->js.pos.y);
 				data->btns_h |= (data->exp.gh3.btns<<16);

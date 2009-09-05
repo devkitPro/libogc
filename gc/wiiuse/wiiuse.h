@@ -79,6 +79,13 @@
 #define GUITAR_HERO_3_BUTTON_STRUM_DOWN	0x4000
 #define GUITAR_HERO_3_BUTTON_ALL		0xFEFF
 
+/* guitar hero world tour touch bar codes */
+#define GUITAR_HERO_3_TOUCH_AVAILABLE	0x1000
+#define GUITAR_HERO_3_TOUCH_GREEN		0x1001
+#define GUITAR_HERO_3_TOUCH_RED			0x1002
+#define GUITAR_HERO_3_TOUCH_YELLOW		0x1004
+#define GUITAR_HERO_3_TOUCH_BLUE		0x1008
+#define GUITAR_HERO_3_TOUCH_ORANGE		0x1010
 
 /* wiimote option flags */
 #define WIIUSE_SMOOTHING				0x01
@@ -477,6 +484,9 @@ typedef struct guitar_hero_3_t {
 
 	ubyte wb_raw;
 	float whammy_bar;				/**< whammy bar (range 0-1)					*/
+
+	ubyte tb_raw;
+	int touch_bar;					/**< touch bar								*/
 
 	struct joystick_t js;			/**< joystick calibration					*/
 } guitar_hero_3_t;

@@ -59,9 +59,6 @@ static void guitar_hero_3_pressed_buttons(struct guitar_hero_3_t* gh3, short now
  *	@return	Returns 1 if handshake was successful, 0 if not.
  */
 int guitar_hero_3_handshake(struct wiimote_t* wm, struct guitar_hero_3_t* gh3, ubyte* data, uword len) {
-	//int i;
-	int offset = 0;
-
 	/*
 	 *	The good fellows that made the Guitar Hero 3 controller
 	 *	failed to factory calibrate the devices.  There is no
@@ -71,32 +68,10 @@ int guitar_hero_3_handshake(struct wiimote_t* wm, struct guitar_hero_3_t* gh3, u
 	gh3->btns = 0;
 	gh3->btns_held = 0;
 	gh3->btns_released = 0;
+	gh3->wb_raw = 0;
 	gh3->whammy_bar = 0.0f;
-
-	/* decrypt data */
-	/*
-	for (i = 0; i < len; ++i)
-		data[i] = (data[i] ^ 0x17) + 0x17;
-	*/
-	if (data[offset] == 0xFF) {
-		/*
-		 *	Sometimes the data returned here is not correct.
-		 *	This might happen because the wiimote is lagging
-		 *	behind our initialization sequence.
-		 *	To fix this just request the handshake again.
-		 *
-		 *	Other times it's just the first 16 bytes are 0xFF,
-		 *	but since the next 16 bytes are the same, just use
-		 *	those.
-		 */
-		if (data[offset + 16] == 0xFF) {
-			/* get the calibration data */
-			WIIUSE_DEBUG("Guitar Hero 3 handshake appears invalid, trying again.");
-			wiiuse_read_data(wm, data, WM_EXP_MEM_CALIBR, EXP_HANDSHAKE_LEN, wiiuse_handshake_expansion);
-			return 0;
-		} else
-			offset += 16;
-	}
+	gh3->tb_raw = 0;
+	gh3->touch_bar = -1;
 
 	/* joystick stuff */
 	gh3->js.max.x = GUITAR_HERO_3_JS_MAX_X;
@@ -146,10 +121,34 @@ void guitar_hero_3_event(struct guitar_hero_3_t* gh3, ubyte* msg) {
 	*/
 	guitar_hero_3_pressed_buttons(gh3, BIG_ENDIAN_SHORT(*(short*)(msg + 4)));
 
-	gh3->js.pos.x = msg[0];
-	gh3->js.pos.y = msg[1];
-	gh3->wb_raw = msg[3];
-#ifndef GEKKO
+	gh3->js.pos.x = (msg[0] & GUITAR_HERO_3_JS_MASK);
+	gh3->js.pos.y = (msg[1] & GUITAR_HERO_3_JS_MASK);
+	gh3->tb_raw = (msg[2] & GUITAR_HERO_3_TOUCH_MASK);
+	gh3->wb_raw = (msg[3] & GUITAR_HERO_3_WHAMMY_MASK);
+#ifndef GEKKO	/* Done in wpad.c for GEKKO */
+	/* touch bar */
+	gh3->touch_bar = 0;
+	if (gh3->tb_raw > 0x1B)
+		gh3->touch_bar = GUITAR_HERO_3_TOUCH_ORANGE;
+	else if (gh3->tb_raw > 0x18)
+		gh3->touch_bar = GUITAR_HERO_3_TOUCH_ORANGE | GUITAR_HERO_3_TOUCH_BLUE;
+	else if (gh3->tb_raw > 0x15)
+		gh3->touch_bar = GUITAR_HERO_3_TOUCH_BLUE;
+	else if (gh3->tb_raw > 0x13)
+		gh3->touch_bar = GUITAR_HERO_3_TOUCH_BLUE | GUITAR_HERO_3_TOUCH_YELLOW;
+	else if (gh3->tb_raw > 0x10)
+		gh3->touch_bar = GUITAR_HERO_3_TOUCH_YELLOW;
+	else if (gh3->tb_raw > 0x0D)
+		gh3->touch_bar = GUITAR_HERO_3_TOUCH_AVAILABLE;
+	else if (gh3->tb_raw > 0x0B)
+		gh3->touch_bar = GUITAR_HERO_3_TOUCH_YELLOW | GUITAR_HERO_3_TOUCH_RED;
+	else if (gh3->tb_raw > 0x08)
+		gh3->touch_bar = GUITAR_HERO_3_TOUCH_RED;
+	else if (gh3->tb_raw > 0x05)
+		gh3->touch_bar = GUITAR_HERO_3_TOUCH_RED | GUITAR_HERO_3_TOUCH_GREEN;
+	else if (gh3->tb_raw > 0x02)
+		gh3->touch_bar = GUITAR_HERO_3_TOUCH_GREEN;
+	
 	/* whammy bar */
 	gh3->whammy_bar = (gh3->wb_raw - GUITAR_HERO_3_WHAMMY_BAR_MIN) / (float)(GUITAR_HERO_3_WHAMMY_BAR_MAX - GUITAR_HERO_3_WHAMMY_BAR_MIN);
 
