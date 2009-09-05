@@ -103,6 +103,7 @@
 #define EXP_CLASSIC						2
 #define EXP_GUITAR_HERO_3				3
 #define EXP_WII_BOARD					4
+#define EXP_MOTION_PLUS					5
 
 /* IR correction types */
 typedef enum ir_position_t {
@@ -179,8 +180,8 @@ typedef enum ir_position_t {
  *	be a useful feature to keep so it wasn't removed.
  */
 #ifdef WIN32
-	#define WIIMOTE_DEFAULT_TIMEOUT		10
-	#define WIIMOTE_EXP_TIMEOUT			10
+	#define WIIMOTE_DEFAULT_TIMEOUT		100
+	#define WIIMOTE_EXP_TIMEOUT			100
 #endif
 
 typedef unsigned char ubyte;
@@ -512,6 +513,13 @@ typedef struct wii_board_t {
 	float y;
 } wii_board_t;
 
+typedef struct motion_plus_t
+{
+	short rx, ry, rz;
+	ubyte status;
+	ubyte ext;
+} motion_plus_t;
+
 /**
  *	@struct expansion_t
  *	@brief Generic expansion device plugged into wiimote.
@@ -524,6 +532,7 @@ typedef struct expansion_t {
 		struct classic_ctrl_t classic;
 		struct guitar_hero_3_t gh3;
  		struct wii_board_t wb;
+		struct motion_plus_t mp;
 	};
 } expansion_t;
 
@@ -572,7 +581,9 @@ typedef enum WIIUSE_EVENT_TYPE {
 	WIIUSE_GUITAR_HERO_3_CTRL_INSERTED,
  	WIIUSE_GUITAR_HERO_3_CTRL_REMOVED,
  	WIIUSE_WII_BOARD_INSERTED,
- 	WIIUSE_WII_BOARD_REMOVED
+ 	WIIUSE_WII_BOARD_REMOVED,
+ 	WIIUSE_MOTION_PLUS_ACTIVATED,
+ 	WIIUSE_MOTION_PLUS_REMOVED
 } WIIUSE_EVENT_TYPE;
 
 /**
@@ -638,6 +649,8 @@ typedef struct wiimote_t {
 
 	WCONST WIIUSE_EVENT_TYPE event;			/**< type of event that occured				*/
 	WCONST ubyte event_buf[MAX_PAYLOAD];		/**< event buffer							*/
+
+	WCONST ubyte motion_plus_id[6];
 } wiimote;
 
 #if defined(GEKKO)
@@ -720,6 +733,9 @@ WIIUSE_EXPORT extern void wiiuse_set_ir_vres(struct wiimote_t* wm, unsigned int 
 WIIUSE_EXPORT extern void wiiuse_set_ir_position(struct wiimote_t* wm, enum ir_position_t pos);
 WIIUSE_EXPORT extern void wiiuse_set_aspect_ratio(struct wiimote_t* wm, enum aspect_t aspect);
 WIIUSE_EXPORT extern void wiiuse_set_ir_sensitivity(struct wiimote_t* wm, int level);
+
+/* motion_plus.c */
+WIIUSE_EXPORT extern void wiiuse_set_motion_plus(struct wiimote_t *wm, int status);
 
 /* speaker.c */
 WIIUSE_EXPORT extern void wiiuse_set_speaker(struct wiimote_t *wm, int status);

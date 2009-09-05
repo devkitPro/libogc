@@ -21,6 +21,7 @@
 #include "classic.h"
 #include "guitar_hero_3.h"
 #include "wiiboard.h"
+#include "motion_plus.h"
 #include "ir.h"
 #include "io.h"
 
@@ -173,6 +174,9 @@ static void handle_expansion(struct wiimote_t *wm,ubyte *msg)
 			break;
  		case EXP_WII_BOARD:
  			wii_board_event(&wm->exp.wb, msg);
+ 			break;
+ 		case EXP_MOTION_PLUS:
+ 			motion_plus_event(&wm->exp.mp, msg);
  			break;
 		default:
 			break;

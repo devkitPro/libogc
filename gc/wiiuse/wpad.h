@@ -134,6 +134,7 @@ enum {
 #define WPAD_THRESH_DEFAULT_ACCEL				20
 #define WPAD_THRESH_DEFAULT_JOYSTICK			2
 #define WPAD_THRESH_DEFAULT_BALANCEBOARD		60
+#define WPAD_THRESH_DEFAULT_MOTION_PLUS			100
 
 #ifdef __cplusplus
    extern "C" {
@@ -173,6 +174,7 @@ s32 WPAD_DroppedEvents(s32 chan);
 s32 WPAD_Flush(s32 chan);
 s32 WPAD_ReadPending(s32 chan, WPADDataCallback datacb);
 s32 WPAD_SetDataFormat(s32 chan, s32 fmt);
+s32 WPAD_SetMotionPlus(s32 chan, u8 enable);
 s32 WPAD_SetVRes(s32 chan,u32 xres,u32 yres);
 s32 WPAD_GetStatus();
 s32 WPAD_Probe(s32 chan,u32 *type);
@@ -186,7 +188,7 @@ void WPAD_SetPowerButtonCallback(WPADShutdownCallback cb);
 void WPAD_SetBatteryDeadCallback(WPADShutdownCallback cb);
 s32 WPAD_ScanPads();
 s32 WPAD_Rumble(s32 chan, int status);
-s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb);
+s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb, s32 mp);
 void WPAD_EncodeData(WPADEncStatus *info,u32 flag,const s16 *pcmSamples,s32 numSamples,u8 *encData);
 WPADData *WPAD_Data(int chan);
 u8 WPAD_BatteryLevel(int chan);

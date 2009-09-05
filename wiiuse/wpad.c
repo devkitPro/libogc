@@ -60,6 +60,7 @@ struct _wpad_thresh{
 	s32 js;
 	s32 acc;
 	s32 wb;
+	s32 mp;
 };
 
 struct _wpad_cb {
@@ -430,6 +431,9 @@ static void __save_state(struct wiimote_t* wm) {
 		case EXP_WII_BOARD:
 			wm->lstate.exp.wb = wm->exp.wb;
 			break;
+		case EXP_MOTION_PLUS:
+			wm->lstate.exp.mp = wm->exp.mp;
+			break;
 	}
 }
 
@@ -480,6 +484,12 @@ static u32 __wpad_read_expansion(struct wiimote_t *wm,WPADData *data, struct _wp
 			STATE_CHECK(thresh->wb,wm->exp.wb.rbl,wm->lstate.exp.wb.rbl);
 			STATE_CHECK(thresh->wb,wm->exp.wb.rbr,wm->lstate.exp.wb.rbr);
  			break;
+		case EXP_MOTION_PLUS:
+			data->exp.mp = wm->exp.mp;
+			STATE_CHECK(thresh->mp,wm->exp.mp.rx,wm->lstate.exp.mp.rx);
+			STATE_CHECK(thresh->mp,wm->exp.mp.ry,wm->lstate.exp.mp.ry);
+			STATE_CHECK(thresh->mp,wm->exp.mp.rz,wm->lstate.exp.mp.rz);
+			break;
 	}
 	return state_changed;
 }
@@ -664,6 +674,7 @@ s32 WPAD_Init()
 			__wpdcb[i].thresh.acc = WPAD_THRESH_DEFAULT_ACCEL;
 			__wpdcb[i].thresh.js = WPAD_THRESH_DEFAULT_JOYSTICK;
 			__wpdcb[i].thresh.wb = WPAD_THRESH_DEFAULT_BALANCEBOARD;
+			__wpdcb[i].thresh.mp = WPAD_THRESH_DEFAULT_MOTION_PLUS;
 
 			SYS_CreateAlarm(&__wpdcb[i].sound_alarm);
 		}
@@ -913,6 +924,34 @@ s32 WPAD_SetDataFormat(s32 chan, s32 fmt)
 	return WPAD_ERR_NONE;
 }
 
+s32 WPAD_SetMotionPlus(s32 chan, u8 enable)
+{
+	u32 level;
+	s32 ret;
+	int i;
+	
+	if(chan == WPAD_CHAN_ALL) {
+		for(i=WPAD_CHAN_0; i<WPAD_MAX_WIIMOTES; i++)
+			if((ret = WPAD_SetMotionPlus(i, enable)) < WPAD_ERR_NONE)
+				return ret;
+		return WPAD_ERR_NONE;
+	}
+
+	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
+
+	_CPU_ISR_Disable(level);
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
+		_CPU_ISR_Restore(level);
+		return WPAD_ERR_NOT_READY;
+	}
+
+	if(__wpads[chan]!=NULL) {
+		wiiuse_set_motion_plus(__wpads[chan], enable);
+	}
+	_CPU_ISR_Restore(level);
+	return WPAD_ERR_NONE;
+}
+
 s32 WPAD_SetVRes(s32 chan,u32 xres,u32 yres)
 {
 	u32 level;
@@ -1123,7 +1162,7 @@ s32 WPAD_Rumble(s32 chan, int status)
 	return WPAD_ERR_NONE;
 }
 
-s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb)
+s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb, s32 mp)
 {
 	int i;
 	s32 ret;
@@ -1131,7 +1170,7 @@ s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb
 
 	if(chan == WPAD_CHAN_ALL) {
 		for(i=WPAD_CHAN_0; i<WPAD_MAX_WIIMOTES; i++)
-			if((ret = WPAD_SetIdleThresholds(i,btns,ir,accel,js,wb)) < WPAD_ERR_NONE)
+			if((ret = WPAD_SetIdleThresholds(i,btns,ir,accel,js,wb,mp)) < WPAD_ERR_NONE)
 				return ret;
 		return WPAD_ERR_NONE;
 	}
@@ -1149,6 +1188,8 @@ s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb
 	__wpdcb[chan].thresh.acc = accel;
 	__wpdcb[chan].thresh.js = js;
 	__wpdcb[chan].thresh.wb = wb;
+	__wpdcb[chan].thresh.mp = mp;
+	
 
 	_CPU_ISR_Restore(level);
 	return WPAD_ERR_NONE;

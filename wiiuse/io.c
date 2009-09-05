@@ -7,6 +7,7 @@
 #include "classic.h"
 #include "guitar_hero_3.h"
 #include "wiiboard.h"
+#include "motion_plus.h"
 #include "io.h"
 #include "lwp_wkspace.h"
 
@@ -138,6 +139,11 @@ void wiiuse_disable_expansion(struct wiimote_t *wm)
  			wii_board_disconnected(&wm->exp.wb);
  			wm->event = WIIUSE_WII_BOARD_REMOVED;
  			break;
+		case EXP_MOTION_PLUS:
+ 			motion_plus_disconnected(&wm->exp.mp);
+ 			wm->event = WIIUSE_MOTION_PLUS_REMOVED;
+ 			break;
+
 		default:
 			break;
 	}

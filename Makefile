@@ -167,7 +167,7 @@ BTEOBJ		:=	bte.o hci.o l2cap.o btmemb.o btmemr.o btpbuf.o physbusif.o
 
 #---------------------------------------------------------------------------------
 WIIUSEOBJ	:=	classic.o dynamics.o events.o guitar_hero_3.o io.o io_wii.o ir.o \
-				nunchuk.o wiiboard.o wiiuse.o speaker.o wpad.o
+				nunchuk.o wiiboard.o wiiuse.o speaker.o wpad.o motion_plus.o
 
 #---------------------------------------------------------------------------------
 TINYSMBOBJ	:=	des.o md4.o ntlm.o smb.o smb_devoptab.o
