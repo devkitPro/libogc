@@ -136,10 +136,10 @@ struct setsockopt_params {
 // I sense a pattern here...
 static u8 _net_error_code_map[] = {
 	0, // 0
- 	E2BIG, 
- 	EACCES, 
+ 	E2BIG,
+ 	EACCES,
  	EADDRINUSE,
- 	EADDRNOTAVAIL, 
+ 	EADDRNOTAVAIL,
  	EAFNOSUPPORT, // 5
 	EAGAIN,
 	EALREADY,
@@ -228,8 +228,8 @@ static char __kd_fs[] ATTRIBUTE_ALIGN(32) = "/dev/net/kd/request";
 static s32 NetCreateHeap()
 {
 	u32 level;
-	void *net_heap_ptr;	
-	
+	void *net_heap_ptr;
+
 	_CPU_ISR_Disable(level);
 
 	if(__net_heap_inited)
@@ -237,7 +237,7 @@ static s32 NetCreateHeap()
 		_CPU_ISR_Restore(level);
 		return IPC_OK;
 	}
-	
+
 	net_heap_ptr = (void *)ROUNDDOWN32(((u32)SYS_GetArena2Hi() - NET_HEAP_SIZE));
 	if((u32)net_heap_ptr < (u32)SYS_GetArena2Lo())
 	{
@@ -338,7 +338,7 @@ s32 net_init(void)
 
 	if (net_ip_top_fd >= 0) return 0;
 
-	ret=NetCreateHeap(); 
+	ret=NetCreateHeap();
 	if (ret != IPC_OK) return ret;
 	if (__net_hid == -1) __net_hid = iosCreateHeap(1024); //only needed for ios calls
 	if (__net_hid < 0) return __net_hid;
@@ -817,9 +817,10 @@ s32 if_config(char *local_ip, char *netmask, char *gateway,boolean use_dhcp)
 	hostip.s_addr = net_gethostip();
 	if ( local_ip!=NULL && hostip.s_addr ) {
 		strcpy(local_ip, inet_ntoa(hostip));
+		return 0;
 	}
 
-	return 0;
+	return -1;
 }
 
 s32 if_configex(struct in_addr *local_ip, struct in_addr *netmask, struct in_addr *gateway,boolean use_dhcp)
@@ -833,9 +834,13 @@ s32 if_configex(struct in_addr *local_ip, struct in_addr *netmask, struct in_add
 	if(ret<0) return ret;
 
 	hostip.s_addr = net_gethostip();
-	if ( local_ip!=NULL && hostip.s_addr ) *local_ip = hostip;
+	if ( local_ip!=NULL && hostip.s_addr )
+	{
+		*local_ip = hostip;
+		return 0;
+	}
 
-	return 0;
+	return -1;
 }
 
 #endif /* defined(HW_RVL) */
