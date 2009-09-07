@@ -62,8 +62,8 @@ typedef struct
 	void *ptr;
 } smb_write_cache;
 
-static void DestroySMBReadAheadCache(char *name);
-static void SMBEnableReadAhead(char *name, u32 pages);
+static void DestroySMBReadAheadCache(const char *name);
+static void SMBEnableReadAhead(const char *name, u32 pages);
 static int ReadSMBFromCache(void *buf, size_t len, SMBFILESTRUCT *file);
 
 ///////////////////////////////////////////
@@ -110,14 +110,20 @@ static inline void _SMB_unlock(int i)
 static smb_env* FindSMBEnv(const char *name)
 {
 	int i;
+	char *aux;
 
+	aux=strdup(name);
+	i=strlen(aux);
+	if(aux[i-1]==':')aux[i-1]='\0';
 	for(i=0;i<MAX_SMB_MOUNTED ;i++)
 	{
-		if(SMBEnv[i].SMBCONNECTED && strcmp(name,SMBEnv[i].name)==0)
+		if(SMBEnv[i].SMBCONNECTED && strcmp(aux,SMBEnv[i].name)==0)
 		{
+			free(aux);
 			return &SMBEnv[i];
 		}
 	}
+	free(aux);
 	return NULL;
 }
 
@@ -157,7 +163,7 @@ static int FlushWriteSMBCache(char *name)
 	return 0;
 }
 
-static void DestroySMBReadAheadCache(char *name)
+static void DestroySMBReadAheadCache(const char *name)
 {
 	smb_env *env;
 	env=FindSMBEnv(name);
@@ -211,7 +217,7 @@ static void *process_cache_thread(void *ptr)
 	return NULL;
 }
 
-static void SMBEnableReadAhead(char *name, u32 pages)
+static void SMBEnableReadAhead(const char *name, u32 pages)
 {
 	int i, j;
 
@@ -1141,10 +1147,16 @@ static int __smb_fstat(struct _reent *r, int fd, struct stat *st)
 static void MountDevice(const char *name,SMBCONN smbconn, int env)
 {
 	devoptab_t *dotab_smb;
+	char *aux;
+	int l;
+
+	aux=strdup(name);
+	l=strlen(aux);
+	if(aux[l-1]==':')aux[l-1]='\0';
 
 	dotab_smb=(devoptab_t*)malloc(sizeof(devoptab_t));
 
-	dotab_smb->name=strdup(name);
+	dotab_smb->name=strdup(aux);
 	dotab_smb->structSize=sizeof(SMBFILESTRUCT); // size of file structure
 	dotab_smb->open_r=__smb_open; // device open
 	dotab_smb->close_r=__smb_close; // device close
@@ -1173,13 +1185,15 @@ static void MountDevice(const char *name,SMBCONN smbconn, int env)
 
 	SMBEnv[env].pos=env;
 	SMBEnv[env].smbconn=smbconn;
-	SMBEnv[env].name=strdup(name);
-	SMBEnv[env].SMBCONNECTED=true;
 	SMBEnv[env].first_item_dir=false;
 	SMBEnv[env].diropen_root=false;
 	SMBEnv[env].devoptab=dotab_smb;
+	SMBEnv[env].SMBCONNECTED=true;
+	SMBEnv[env].name=strdup(aux);
 
-	SMBEnableReadAhead(SMBEnv[env].name,32);
+	SMBEnableReadAhead(aux,8);
+
+	free(aux);
 }
 
 bool smbInitDevice(const char* name, const char *user, const char *password, const char *share, const char *ip)
@@ -1222,7 +1236,7 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 		ret = false;
 
 	for(i=0;i<MAX_SMB_MOUNTED && SMBEnv[i].SMBCONNECTED;i++);
-	SMBEnv[i].SMBCONNECTED=true;
+	SMBEnv[i].SMBCONNECTED=true; // reserved
 	MountDevice(name,smbconn,i);
 	return ret;
 }
@@ -1243,8 +1257,8 @@ void smbClose(const char* name)
 	{
 		SMB_Close(env->smbconn);
 	}
-	env->SMBCONNECTED=false;
 	RemoveDevice(env->name);
+	env->SMBCONNECTED=false;
 	_SMB_unlock(env->pos);
 }
 

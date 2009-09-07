@@ -78,8 +78,8 @@
 #define SMB_TREEC_ANDX				0x75
 
 
-#define NBT_KEEPALIVE_MSG		  	0x85
-#define KEEPALIVE_SIZE        		4
+#define NBT_KEEPALIVE_MSG			0x85
+#define KEEPALIVE_SIZE				4
 
 /**
  * SMBTrans2
@@ -851,13 +851,13 @@ static s32 do_netconnect(SMBHANDLE *handle)
 	while(1)
 	{
 		ret = net_connect(sock,(struct sockaddr*)&handle->server_addr,sizeof(handle->server_addr));
-		if(ret==-127) break;
+		if(ret==-EISCONN) break;
 		t2=ticks_to_millisecs(gettime());
-		usleep(1000);
-		if(t2-t1 > 3000) break; // 3 secs to try to connect to handle->server_addr
+		usleep(3000);
+		if(t2-t1 > 2000) break; // 2 secs to try to connect to handle->server_addr (usually not more than 90ms)
 	}
 
-	if(ret!=-127)
+	if(ret!=-EISCONN)
 	{
 		net_close(sock);
 		return -1;
