@@ -41,6 +41,8 @@ distribution.
 #include "irq.h"
 
 #define IOS_HEAP_SIZE 0x1000
+#define MAX_IOS_RETRIES 2000
+#define MAX_IPC_RETRIES 2000
 
 //#define DEBUG_IOS
 
@@ -48,6 +50,7 @@ distribution.
 #define IOS_MIN_VERSION 3
 
 static s32 __ios_hid = -1;
+extern void udelay(int us);
 
 s32 __IOS_InitHeap(void)
 {
@@ -195,42 +198,13 @@ s32 IOS_GetRevisionMinor()
 	return rev&0xFF;
 }
 
-static void sync_before_read(void *p, u32 len)
-{
-	u32 a, b;
-
-	a = (u32)p & ~0x1f;
-	b = ((u32)p + len + 0x1f) & ~0x1f;
-
-	for ( ; a < b; a += 32)
-		asm("dcbi 0,%0" : : "b"(a));
-
-	asm("sync ; isync");
-}
-
-static void sync_after_write(const void *p, u32 len)
-{
-	u32 a, b;
-
-	a = (u32)p & ~0x1f;
-	b = ((u32)p + len + 0x1f) & ~0x1f;
-
-	for ( ; a < b; a += 32)
-		asm("dcbst 0,%0" : : "b"(a));
-
-	asm("sync ; isync");
-}
-void __MaskIrq(u32);
-void __UnmaskIrq(u32);
-void udelay(int us);
-void __IPC_Reinitialize(void);
-
 s32 __IOS_LaunchNewIOS(int version)
 {
 	u32 numviews;
-	s32 res;
+	s32 res, retries;
 	u64 titleID = 0x100000000LL;
-	static raw_irq_handler_t prolog_ios_irq = NULL;
+	raw_irq_handler_t irq_handler;
+
 	STACK_ALIGN(tikview,views,4,32);
 #ifdef DEBUG_IOS
 	s32 oldversion;
@@ -270,9 +244,6 @@ s32 __IOS_LaunchNewIOS(int version)
 		return res;
 	}
 
-	*((u32*)0x80003140) = 0;  // clear old version number
-	sync_after_write((u32 *)0x80003140, 4);
-
 	res = ES_LaunchTitleBackground(titleID, &views[0]);
 	if(res < 0) {
 #ifdef DEBUG_IOS
@@ -280,45 +251,42 @@ s32 __IOS_LaunchNewIOS(int version)
 #endif
 		return res;
 	}
+		__ES_Reset();
 
-    __MaskIrq(IRQ_PI_ACR);
-    prolog_ios_irq = IRQ_Free(IRQ_PI_ACR);
+	// Mask IPC IRQ while we're busy reloading
+	__MaskIrq(IRQ_PI_ACR);
+	irq_handler = IRQ_Free(IRQ_PI_ACR);
 
-	u32 ios_counter;
-	// wait for IOS version number to be set
-	for (ios_counter = 0; (*((u32*)0x80003140) >> 16) == 0; ios_counter++)
+	// Wait for old IOS to change version number before reloading
+	for (retries = 0; retries < MAX_IOS_RETRIES; retries++)
 	{
-		if(ios_counter>10000) return -1;
-
-		sync_before_read((u32*)0x80003140, 4);
-        udelay(1000);
-	}
-
-	u32 ipc_counter;
-	// wait for IPC to start on the newly-loaded IOS
-	for (ipc_counter = 0; !(read32(0x0d000004) & 2); ipc_counter++)
-	{
-		if(ipc_counter>10000) return -1;
-		udelay(1000);
-	}
-
-	IRQ_Request(IRQ_PI_ACR, prolog_ios_irq, NULL);
-    prolog_ios_irq = NULL;
-    __UnmaskIrq(IRQ_PI_ACR);
-
-   __IPC_Reinitialize();
-   __ES_Reset();
-
-	newversion = IOS_GetVersion();
+		newversion = IOS_GetVersion();
 #ifdef DEBUG_IOS
-	printf(" IOS Version: IOS%d %d.%d\n",newversion,IOS_GetRevisionMajor(),IOS_GetRevisionMinor());
+		printf(" IOS Version: IOS%d %d.%d\n",newversion,IOS_GetRevisionMajor(),IOS_GetRevisionMinor());
 #endif
-	if(newversion != version) {
+		if (newversion != version) udelay(1000);
+	}
+
+	if(newversion != version)
+	{
 #ifdef DEBUG_IOS
 		printf(" Version mismatch!\n");
 #endif
 		return IOS_EMISMATCH;
 	}
+
+	// Wait for new IOS to signal IPC is ready
+	for (retries = 0; retries < MAX_IPC_RETRIES; retries++)
+	{
+		if(IPC_ReadReg(1) & 2) break;
+		udelay(1000);
+	}
+
+	IRQ_Request(IRQ_PI_ACR, irq_handler, NULL);
+    __UnmaskIrq(IRQ_PI_ACR);
+
+	__IPC_Reinitialize();
+
 	return version;
 }
 

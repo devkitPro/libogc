@@ -71,7 +71,7 @@ static u32 __ARInternalSize = 0;
 static u32 __ARExpansionSize = 0;
 static u32 __ARSize = 0;
 
-static void __ARHandler(void);
+static void __ARHandler(u32 irq,void *ctx);
 static void __ARCheckSize(void);
 static void __ARClearArea(u32 aramaddr,u32 len);
 
@@ -396,7 +396,7 @@ end_check:
 	__ARSize = arsize;
 }
 
-static void __ARHandler()
+static void __ARHandler(u32 irq,void *ctx)
 {
 #ifdef _AR_DEBUG
 	printf("__ARHandler()\n");
