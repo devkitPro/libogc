@@ -37,7 +37,6 @@ export DIDIR		:= $(BASEDIR)/libdi
 export BTEDIR		:= $(BASEDIR)/lwbt
 export WIIUSEDIR	:= $(BASEDIR)/wiiuse
 export TINYSMBDIR	:= $(BASEDIR)/libtinysmb
-export TINYFTPDIR	:= $(BASEDIR)/libtinyftp
 export LIBZDIR		:= $(BASEDIR)/libz
 export LIBASNDDIR	:= $(BASEDIR)/libasnd
 export LIBISODIR	:= $(BASEDIR)/libiso9660
@@ -70,7 +69,6 @@ DILIB		:= $(LIBDIR)/libdi
 BTELIB		:= $(LIBDIR)/libbte
 WIIUSELIB	:= $(LIBDIR)/libwiiuse
 TINYSMBLIB	:= $(LIBDIR)/libtinysmb
-TINYFTPLIB	:= $(LIBDIR)/libtinyftp
 ZLIB		:= $(LIBDIR)/libz
 ASNDLIB		:= $(LIBDIR)/libasnd
 ISOLIB		:= $(LIBDIR)/libiso9660
@@ -118,7 +116,6 @@ VPATH :=	$(LWIPDIR)				\
 			$(WIIUSEDIR)		\
 			$(SDCARDDIR)			\
 			$(TINYSMBDIR)		\
-			$(TINYFTPDIR)		\
 			$(LIBZDIR)		\
 			$(LIBASNDDIR)		\
 			$(LIBISODIR)		\
@@ -174,9 +171,6 @@ WIIUSEOBJ	:=	classic.o dynamics.o events.o guitar_hero_3.o io.o io_wii.o ir.o \
 
 #---------------------------------------------------------------------------------
 TINYSMBOBJ	:=	des.o md4.o ntlm.o smb.o smb_devoptab.o
-
-#---------------------------------------------------------------------------------
-TINYFTPOBJ	:=	ftp_devoptab.o
 
 #---------------------------------------------------------------------------------
 ZLIBOBJ		:=	adler32.o compress.o crc32.o gzio.o uncompr.o \
@@ -249,8 +243,6 @@ $(DILIB).a: $(DIOBJ)
 #---------------------------------------------------------------------------------
 $(TINYSMBLIB).a: $(TINYSMBOBJ)
 #---------------------------------------------------------------------------------
-$(TINYFTPLIB).a: $(TINYFTPOBJ)
-#---------------------------------------------------------------------------------
 $(ZLIB).a: $(ZLIBOBJ)
 #---------------------------------------------------------------------------------
 $(ASNDLIB).a: $(ASNDLIBOBJ)
@@ -306,7 +298,7 @@ dist: install-headers
 
 
 LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(MADLIB).a $(DBLIB).a $(ZLIB).a \
-				$(TINYSMBLIB).a $(TINYFTPLIB).a $(ASNDLIB).a $(ISOLIB).a
+				$(TINYSMBLIB).a $(ASNDLIB).a $(ISOLIB).a
 
 ifeq ($(PLATFORM),cube)
 LIBRARIES	+=	$(BBALIB).a 
