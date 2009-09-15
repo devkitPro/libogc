@@ -641,7 +641,7 @@ static off_t __smb_seek(struct _reent *r, int fd, off_t pos, int dir)
 		return -1;
 	}
 
-	if (((pos > 0) && (position < 0)) || (position > file->len))
+	if (pos > 0 && position < 0)
 	{
 		r->_errno = EOVERFLOW;
 		_SMB_unlock(file->env);
@@ -687,12 +687,13 @@ static ssize_t __smb_read(struct _reent *r, int fd, char *ptr, size_t len)
 	{
 		r->_errno = EOVERFLOW;
 		_SMB_unlock(file->env);
-		return -1;
+		return 0;
 	}
 
 	// Don't read past end of file
 	if (len + file->offset > file->len)
 	{
+		r->_errno = EOVERFLOW;
 		len = file->len - file->offset;
 	}
 
