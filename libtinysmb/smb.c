@@ -420,6 +420,7 @@ static inline s32 smb_send(s32 s,const void *data,s32 size)
 			if(len==0) return size;
 			t1=ticks_to_millisecs(gettime());
 		}
+		usleep(100);
 	}
 	return size;
 }
@@ -456,8 +457,8 @@ static s32 smb_recv(s32 s,void *mem,s32 len)
 			if(ret!=-EAGAIN) return ret;
 			t2=ticks_to_millisecs(gettime());
 			if( (t2 - t1) > RECV_TIMEOUT) return -1;
-			usleep(100); // allow system to perform work. Stabilizes system
 		}
+		usleep(100);
 	}
 	return readtotal;
 }
@@ -477,6 +478,7 @@ static s32 SMBCheck(u8 command, s32 readlen,SMBHANDLE *handle)
 	NBTSMB *nbt = &handle->message;
 	u8 *ptr2 = (u8*)nbt;
 	u8 tempLength = (readlen==0);
+	u64 t1,t2;
 
 	if(handle->sck_server == INVALID_SOCKET) return SMB_ERROR;
 
@@ -489,7 +491,7 @@ static s32 SMBCheck(u8 command, s32 readlen,SMBHANDLE *handle)
 
 	memset(nbt,0,sizeof(NBTSMB));
 
-
+	t1=ticks_to_millisecs(gettime());
 	/*keep going till we get all the data we wanted*/
 	while(recvd<readlen)
 	{
@@ -498,6 +500,15 @@ static s32 SMBCheck(u8 command, s32 readlen,SMBHANDLE *handle)
 		{
 			return SMB_ERROR;
 		}
+		else if(ret==0)
+		{
+			// strange smb_recv return 0
+		}
+		else
+		{
+			t1=ticks_to_millisecs(gettime());
+		}
+
 		recvd+=ret;
 		/* discard any and all keepalive packets */
 		while( (nbt->msg==NBT_KEEPALIVE_MSG) && (recvd>=KEEPALIVE_SIZE) )
@@ -519,6 +530,12 @@ static s32 SMBCheck(u8 command, s32 readlen,SMBHANDLE *handle)
 				readlen = nbt->length+KEEPALIVE_SIZE;
 				tempLength = 0;
 			}
+		}
+		t2=ticks_to_millisecs(gettime());
+		if(t2-t1 > RECV_TIMEOUT) 
+		{
+			// SMBCheck timeout, very strange
+			return SMB_ERROR;
 		}
 	}
 
@@ -853,7 +870,7 @@ static s32 do_netconnect(SMBHANDLE *handle)
 		ret = net_connect(sock,(struct sockaddr*)&handle->server_addr,sizeof(handle->server_addr));
 		if(ret==-EISCONN) break;
 		t2=ticks_to_millisecs(gettime());
-		usleep(3000);
+		usleep(2000);
 		if(t2-t1 > 2000) break; // 2 secs to try to connect to handle->server_addr (usually not more than 90ms)
 	}
 
