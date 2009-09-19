@@ -257,6 +257,18 @@ static __inline__ void __lwp_syswd_free(alarm_st *alarm)
 	__lwp_objmgr_free(&sys_alarm_objects,&alarm->object);
 }
 
+void __reload()
+{
+	void (*reload)() = (void(*)())0x80001800;
+	reload();
+}
+
+void __libogc_exit(int status)
+{
+	SYS_ResetSystem(SYS_SHUTDOWN,0,0);
+	__lwp_thread_stopmultitasking(__reload);
+}
+
 static void __init_syscall_array() {
 	__syscalls.sbrk_r = __libogc_sbrk_r;
 	__syscalls.lock_init = __libogc_lock_init;
@@ -1003,12 +1015,6 @@ void* __SYS_GetIPCBufferHi()
 
 void _V_EXPORTNAME(void)
 { __sys_versionbuild = _V_STRING; __sys_versiondate = _V_DATE_; }
-
-void __sdloader_boot()
-{
-	void (*reload)() = (void(*)())0x80001800;
-	reload();
-}
 
 #if defined(HW_RVL)
 void __SYS_DoPowerCB(void)

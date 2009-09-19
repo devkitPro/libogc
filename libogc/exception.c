@@ -68,6 +68,7 @@ extern void irq_exceptionhandler();
 extern void dec_exceptionhandler();
 extern void default_exceptionhandler();
 extern void VIDEO_SetFramebuffer(void *);
+extern void __reload();
 
 extern s8 exceptionhandler_start[],exceptionhandler_end[],exceptionhandler_patch[];
 extern s8 systemcallhandler_start[],systemcallhandler_end[];
@@ -97,7 +98,6 @@ void __exception_load(u32 nExc,void *data,u32 len,void *patch)
 	ICInvalidateRange(pAddr,len);
 	_sync();
 }
-
 
 void __systemcall_init()
 {
@@ -148,7 +148,6 @@ void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*))
 	_exceptionhandlertable[nExcept] = pHndl;
 }
 
-
 static void _cpu_print_stack(void *pc,void *lr,void *r1)
 {
 	register u32 i = 0;
@@ -182,14 +181,12 @@ static void _cpu_print_stack(void *pc,void *lr,void *r1)
 	}
 }
 
-static void ( * Reload ) () = ( void ( * ) () ) 0x80001800;
-
 static void waitForReload() {
-
 	u32 level;
 
-	while ( 1 ) {
+	PAD_Init();
 
+	while ( 1 ) {
 		PAD_ScanPads();
 
 		int buttonsDown = PAD_ButtonsDown(0);
@@ -197,23 +194,27 @@ static void waitForReload() {
 		if( (buttonsDown & PAD_TRIGGER_Z) || SYS_ResetButtonDown() ) {
 			kprintf("\n\tReload\n\n\n");
 			_CPU_ISR_Disable(level);
-			Reload ();
+			__reload ();
 		}
 
 		if ( buttonsDown & PAD_BUTTON_A )
 		{
 			kprintf("\n\tReset\n\n\n");
+#if defined(HW_DOL)
 			SYS_ResetSystem(SYS_HOTRESET,0,FALSE);
+#else
+			__reload ();
+#endif
 		}
 
 		udelay(20000);
 	}
 }
 
-
 //just implement core for unrecoverable exceptions.
 void c_default_exceptionhandler(frame_context *pCtx)
 {
+	GX_AbortFrame();
 	VIDEO_SetFramebuffer(exception_xfb);
 	__console_init(exception_xfb,20,20,640,574,1280);
 
@@ -242,12 +243,5 @@ void c_default_exceptionhandler(frame_context *pCtx)
 	}
 
 	waitForReload();
-}
-
-
-void __libogc_exit(int status)
-{
-	SYS_ResetSystem(SYS_SHUTDOWN,0,0);
-	__lwp_thread_stopmultitasking(Reload);
 }
 
