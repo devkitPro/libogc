@@ -2635,10 +2635,21 @@ VIRetraceCallback VIDEO_SetPostRetraceCallback(VIRetraceCallback callback)
 	return ret;
 }
 
+u32 VIDEO_GetFrameBufferSize(GXRModeObj *rmode) {
+	u16 w, h;
+
+	w = VIDEO_PadFramebufferWidth(rmode->fbWidth);
+	h = rmode->xfbHeight;
+
+	if (rmode->aa)
+		h += 4;
+
+	return w * h * VI_DISPLAY_PIX_SZ;
+}
+
 void VIDEO_ClearFrameBuffer(GXRModeObj *rmode,void *fb,u32 color)
 {
-	u32 size = VIDEO_PadFramebufferWidth(rmode->fbWidth)*rmode->xfbHeight*VI_DISPLAY_PIX_SZ;
-	__VIClearFramebuffer(fb,size,color);
+	__VIClearFramebuffer(fb, VIDEO_GetFrameBufferSize(rmode), color);
 }
 
 u32 VIDEO_HaveComponentCable(void)

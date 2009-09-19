@@ -125,6 +125,7 @@ u32 VIDEO_GetCurrentTvMode();
  */
 void VIDEO_Configure(GXRModeObj *rmode);
 
+u32 VIDEO_GetFrameBufferSize(GXRModeObj *rmode);
 
 /*! 
  * \fn void VIDEO_ClearFrameBuffer(GXRModeObj *rmode,void *fb,u32 color)

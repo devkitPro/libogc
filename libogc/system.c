@@ -1396,16 +1396,8 @@ void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)
 
 void* SYS_AllocateFramebuffer(GXRModeObj *rmode)
 {
-	u16 w, h;
-	w = VIDEO_PadFramebufferWidth(rmode->fbWidth);
-	h = rmode->xfbHeight;
-
-	if (rmode->aa)
-		h += 4;
-
-	return memalign(32, w * h * VI_DISPLAY_PIX_SZ);
+	return memalign(32, VIDEO_GetFrameBufferSize(rmode));
 }
-
 
 u32 SYS_GetFontEncoding()
 {
