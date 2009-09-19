@@ -1238,6 +1238,20 @@ void SYS_RegisterResetFunc(sys_resetinfo *info)
 	_CPU_ISR_Restore(level);
 }
 
+void SYS_UnregisterResetFunc(sys_resetinfo *info) {
+	u32 level;
+	lwp_node *n;
+
+	_CPU_ISR_Disable(level);
+	for (n = sys_reset_func_queue.first; n->next; n = n->next) {
+		if (n == &info->node) {
+			__lwp_queue_extractI(n);
+			break;
+		}
+	}
+	_CPU_ISR_Restore(level);
+}
+
 void SYS_SetArena1Lo(void *newLo)
 {
 	u32 level;
