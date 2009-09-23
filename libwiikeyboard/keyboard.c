@@ -501,7 +501,7 @@ s32 KEYBOARD_Init(keyPressCallback keypress_cb)
 				(st.st_size == read(fd, keymap, st.st_size))) {
 				keymap[63] = 0;
 				for (i = 0; i < 64; ++i) {
-					if ((keymap[i] != '-') && (isalpha(keymap[i]) == 0)) {
+					if ((keymap[i] != '-') && (isalpha((int)keymap[i]) == 0)) {
 						keymap[i] = 0;
 						break;
 					}
