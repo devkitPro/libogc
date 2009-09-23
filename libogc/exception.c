@@ -59,6 +59,7 @@ typedef struct _framerec {
 } frame_rec, *frame_rec_t;
 
 static void *exception_xfb = (void*)0xC1700000;			//we use a static address above ArenaHi.
+static int reload_timer = -1;
 
 void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
 
@@ -181,17 +182,29 @@ static void _cpu_print_stack(void *pc,void *lr,void *r1)
 	}
 }
 
-static void waitForReload() {
+void __exception_setreload(int t)
+{
+	reload_timer = t*50;
+}
+
+static void waitForReload()
+{
 	u32 level;
 
 	PAD_Init();
+	
+	if(reload_timer)
+		kprintf("\n\tReloading in %d seconds\n", reload_timer/50);
 
-	while ( 1 ) {
+	while ( 1 )
+	{
 		PAD_ScanPads();
 
 		int buttonsDown = PAD_ButtonsDown(0);
 
-		if( (buttonsDown & PAD_TRIGGER_Z) || SYS_ResetButtonDown() ) {
+		if( (buttonsDown & PAD_TRIGGER_Z) || SYS_ResetButtonDown() || 
+			reload_timer == 0 )
+		{
 			kprintf("\n\tReload\n\n\n");
 			_CPU_ISR_Disable(level);
 			__reload ();
@@ -208,6 +221,8 @@ static void waitForReload() {
 		}
 
 		udelay(20000);
+		if(reload_timer > 0)
+			reload_timer--;
 	}
 }
 
