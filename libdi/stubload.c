@@ -19,7 +19,7 @@
 #include <ogc/lwp_threads.h>
 #include <ogc/machine/processor.h>
 
-context_storage di_ctx;
+static context_storage di_ctx;
 
 #define DVD_TITLEID 0x0001000844564458LL
 //#define DVD_TITLEID 0x1000148415858LL
@@ -64,7 +64,7 @@ void dumpregs(void)
 	*/
 }
 
-register_storage di_regs;
+static register_storage di_regs;
 
 void __distub_saveregs(void)
 {

@@ -51,16 +51,16 @@ int _DI_ReadDVD_D0_Async(void* buf, uint32_t len, uint32_t lba,ipccallback ipc_c
 void _DI_SetCallback(int di_command, ipccallback);
 static int _cover_callback(int ret, void* usrdata);
 
-int state = DVD_INIT | DVD_NO_DISC;
+static int state = DVD_INIT | DVD_NO_DISC;
 
 static unsigned int bufferMutex = 0;
 static uint32_t outbuf[8] __attribute__((aligned(32)));
 static uint32_t dic[8] __attribute__((aligned(32)));
 static char di_path[] ATTRIBUTE_ALIGN(32) = "/dev/di";
 
-read_func DI_ReadDVDptr = NULL;
-read_func_async DI_ReadDVDAsyncptr = NULL;
-di_callback di_cb = NULL;
+static read_func DI_ReadDVDptr = NULL;
+static read_func_async DI_ReadDVDAsyncptr = NULL;
+static di_callback di_cb = NULL;
 
 /*
 Initialize the DI interface, should always be called first!
