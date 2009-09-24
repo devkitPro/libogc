@@ -747,12 +747,12 @@ static bool __usbstorage_Startup(void)
 
 static bool __usbstorage_IsInserted(void)
 {
-   u8 *buffer;
-   u8 dummy;
-   u8 i, j;
-   u16 vid, pid;
-   s32 maxLun;
-   s32 retval;
+	u8 *buffer;
+	u8 dummy;
+	u8 i, j;
+	u16 vid, pid;
+	s32 maxLun;
+	s32 retval;
 
 	if(!usb_inited)
 	{
@@ -761,150 +761,149 @@ static bool __usbstorage_IsInserted(void)
 		USBStorage_Initialize();
 	}
 
-   __mounted = 0;		//reset it here and check if device is still attached
+	__mounted = 0; //reset it here and check if device is still attached
 
-   buffer = __lwp_heap_allocate(&__heap, DEVLIST_MAXSIZE << 3);
-   if(buffer == NULL)
-       return false;
-   memset(buffer, 0, DEVLIST_MAXSIZE << 3);
+	buffer = __lwp_heap_allocate(&__heap, DEVLIST_MAXSIZE << 3);
+	if(buffer == NULL)
+		return false;
+	memset(buffer, 0, DEVLIST_MAXSIZE << 3);
 
-   if(USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, 0, &dummy) < 0)
-   {
-       if(__vid!=0 || __pid!=0) USBStorage_Close(&__usbfd);
-       memset(&__usbfd, 0, sizeof(__usbfd));
-       __lun = 0;
-       __vid = 0;
-       __pid = 0;
+	if(USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, 0, &dummy) < 0)
+	{
+		if(__vid!=0 || __pid!=0)
+			USBStorage_Close(&__usbfd);
+		memset(&__usbfd, 0, sizeof(__usbfd));
+		__lun = 0;
+		__vid = 0;
+		__pid = 0;
 
-       __lwp_heap_free(&__heap,buffer);
-       return false;
-   }
+		__lwp_heap_free(&__heap,buffer);
+		return false;
+	}
 
-   j=0;
-   for(i = 0; i < DEVLIST_MAXSIZE; i++)
-   {
-       memcpy(&vid, (buffer + (i << 3) + 4), 2);
-       memcpy(&pid, (buffer + (i << 3) + 6), 2);
-       if(vid != 0 && pid != 0) j++;
-   }   
+	j=0;
+	for(i = 0; i < DEVLIST_MAXSIZE; i++)
+	{
+		memcpy(&vid, (buffer + (i << 3) + 4), 2);
+		memcpy(&pid, (buffer + (i << 3) + 6), 2);
+		if(vid != 0 && pid != 0) j++;
+	}
 
-   if(__vid!=0 || __pid!=0)
-   {
-       for(i = 0; i < DEVLIST_MAXSIZE; i++)
-       {
-           memcpy(&vid, (buffer + (i << 3) + 4), 2);
-           memcpy(&pid, (buffer + (i << 3) + 6), 2);
-           if(vid != 0 || pid != 0)
-           {
+	if(__vid!=0 || __pid!=0)
+	{
+		for(i = 0; i < DEVLIST_MAXSIZE; i++)
+		{
+			memcpy(&vid, (buffer + (i << 3) + 4), 2);
+			memcpy(&pid, (buffer + (i << 3) + 6), 2);
+			if(vid != 0 || pid != 0)
+			{
+				if( (vid == __vid) && (pid == __pid))
+				{
+					void *buf;
+					bool read;
+					buf=__lwp_heap_allocate(&__heap, 1024);
+					read=__usbstorage_ReadSectors(1, 1, buf); //to be sure device is available
+					__lwp_heap_free(&__heap,buf);
+					if(read)
+					{
+						__mounted = 1;
+						__lwp_heap_free(&__heap,buffer);
+						return true;
+					}
+					else
+						break;
+				}
+			}
+		}
+		USBStorage_Close(&__usbfd);
+	}
 
-               if( (vid == __vid) && (pid == __pid))
-               {
-                   void *buf;
-                   bool read;
-                   buf=__lwp_heap_allocate(&__heap, 1024);
-                   read=__usbstorage_ReadSectors(1, 1, buf); //to be sure device is available
-                   __lwp_heap_free(&__heap,buf);
-                   if(read)
-                   {
-                     __mounted = 1;
-                     __lwp_heap_free(&__heap,buffer);
-                   	 return true;
-                   }
-                   else break;
-               }
-           }
-       }
-       USBStorage_Close(&__usbfd);
-   }
+	if(j==0)
+		USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, 0, &dummy);
 
-   if(j==0) USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, 0, &dummy);
+	memset(&__usbfd, 0, sizeof(__usbfd));
+	__lun = 0;
+	__vid = 0;
+	__pid = 0;
+	__mounted = 0;
 
-   memset(&__usbfd, 0, sizeof(__usbfd));
-   __lun = 0;
-   __vid = 0;
-   __pid = 0;
-   __mounted = 0;
+	for(i = 0; i < DEVLIST_MAXSIZE; i++)
+	{
+		memcpy(&vid, (buffer + (i << 3) + 4), 2);
+		memcpy(&pid, (buffer + (i << 3) + 6), 2);
+		if(vid == 0 || pid == 0)
+			continue;
 
-   for(i = 0; i < DEVLIST_MAXSIZE; i++)
-   {
-       memcpy(&vid, (buffer + (i << 3) + 4), 2);
-       memcpy(&pid, (buffer + (i << 3) + 6), 2);
-       if(vid == 0 || pid == 0)
-           continue;
+		if(USBStorage_Open(&__usbfd, "oh0", vid, pid) < 0)
+			continue;
 
-       if(USBStorage_Open(&__usbfd, "oh0", vid, pid) < 0)
-           continue;
+		maxLun = USBStorage_GetMaxLUN(&__usbfd);
+		for(j = 0; j < maxLun; j++)
+		{
+			retval = USBStorage_MountLUN(&__usbfd, j);
 
-       maxLun = USBStorage_GetMaxLUN(&__usbfd);
-       for(j = 0; j < maxLun; j++)
-       {
-           retval = USBStorage_MountLUN(&__usbfd, j);
-           if(retval == USBSTORAGE_ETIMEDOUT)
-           {
-               break;
-           }
+			if(retval == USBSTORAGE_ETIMEDOUT)
+				break;
+			if(retval < 0)
+				continue;
 
-           if(retval < 0)
-               continue;
-
-           __mounted = 1;
-           __lun = j;
-           __vid = vid;
-           __pid = pid;
-           i = DEVLIST_MAXSIZE;
-           break;
-       }
-   }
-   __lwp_heap_free(&__heap,buffer);
-   if(__mounted == 1)
-       return true;
-   return false;
+			__mounted = 1;
+			__lun = j;
+			__vid = vid;
+			__pid = pid;
+			i = DEVLIST_MAXSIZE;
+			break;
+		}
+	}
+	__lwp_heap_free(&__heap,buffer);
+	if(__mounted == 1)
+		return true;
+	return false;
 }
 
 static bool __usbstorage_ReadSectors(u32 sector, u32 numSectors, void *buffer)
 {
-   s32 retval;
+	s32 retval;
 
-   if(__mounted != 1)
-       return false;
+	if(__mounted != 1)
+		return false;
 
-   retval = USBStorage_Read(&__usbfd, __lun, sector, numSectors, buffer);
-   if(retval == USBSTORAGE_ETIMEDOUT)
-   {
-       __mounted = 0;
-   }
-   if(retval < 0)
-       return false;
-   return true;
+	retval = USBStorage_Read(&__usbfd, __lun, sector, numSectors, buffer);
+
+	if(retval == USBSTORAGE_ETIMEDOUT)
+		__mounted = 0;
+
+	if(retval < 0)
+		return false;
+	return true;
 }
 
 static bool __usbstorage_WriteSectors(u32 sector, u32 numSectors, const void *buffer)
 {
-   s32 retval;
+	s32 retval;
+	
+	if(__mounted != 1)
+		return false;
+	
+	retval = USBStorage_Write(&__usbfd, __lun, sector, numSectors, buffer);
 
-   if(__mounted != 1)
-       return false;
+	if(retval == USBSTORAGE_ETIMEDOUT)
+		__mounted = 0;
 
-   retval = USBStorage_Write(&__usbfd, __lun, sector, numSectors, buffer);
-   if(retval == USBSTORAGE_ETIMEDOUT)
-   {
-       __mounted = 0;
-   }
-   if(retval < 0)
-       return false;
-   return true;
+	if(retval < 0)
+		return false;
+	return true;
 }
 
 static bool __usbstorage_ClearStatus(void)
 {
-   return true;
+	return true;
 }
 
 static bool __usbstorage_Shutdown(void)
 {
-   //if(__mounted == 1) USBStorage_Close(&__usbfd);
-   __mounted = 0;
-   return true;
+	__mounted = 0;
+	return true;
 }
 
 DISC_INTERFACE __io_usbstorage = {
