@@ -781,14 +781,6 @@ static bool __usbstorage_IsInserted(void)
 		return false;
 	}
 
-	j=0;
-	for(i = 0; i < DEVLIST_MAXSIZE; i++)
-	{
-		memcpy(&vid, (buffer + (i << 3) + 4), 2);
-		memcpy(&pid, (buffer + (i << 3) + 6), 2);
-		if(vid != 0 && pid != 0) j++;
-	}
-
 	if(__vid!=0 || __pid!=0)
 	{
 		for(i = 0; i < DEVLIST_MAXSIZE; i++)
@@ -799,33 +791,20 @@ static bool __usbstorage_IsInserted(void)
 			{
 				if( (vid == __vid) && (pid == __pid))
 				{
-					void *buf;
-					bool read;
-					buf=__lwp_heap_allocate(&__heap, 1024);
-					read=__usbstorage_ReadSectors(1, 1, buf); //to be sure device is available
-					__lwp_heap_free(&__heap,buf);
-					if(read)
-					{
-						__mounted = 1;
-						__lwp_heap_free(&__heap,buffer);
-						return true;
-					}
-					else
-						break;
+					__mounted = 1;
+					__lwp_heap_free(&__heap,buffer);
+					usleep(50); // I don't know why I have to wait but it's needed
+					return true;
 				}
 			}
 		}
 		USBStorage_Close(&__usbfd);
 	}
 
-	if(j==0)
-		USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, 0, &dummy);
-
 	memset(&__usbfd, 0, sizeof(__usbfd));
 	__lun = 0;
 	__vid = 0;
 	__pid = 0;
-	__mounted = 0;
 
 	for(i = 0; i < DEVLIST_MAXSIZE; i++)
 	{
