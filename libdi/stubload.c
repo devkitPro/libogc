@@ -19,10 +19,9 @@
 #include <ogc/lwp_threads.h>
 #include <ogc/machine/processor.h>
 
-static context_storage di_ctx;
+context_storage di_ctx;
 
-#define DVD_TITLEID 0x0001000844564458LL
-//#define DVD_TITLEID 0x1000148415858LL
+#define IOS_HEAP_SIZE 0x1000
 
 void __IPC_Reinitialize(void);
 extern void __exi_init();
@@ -64,7 +63,7 @@ void dumpregs(void)
 	*/
 }
 
-static register_storage di_regs;
+register_storage di_regs;
 
 void __distub_saveregs(void)
 {
@@ -83,53 +82,156 @@ void __distub_restregs(void)
 	settime(di_regs.timebase);
 }
 
+static u32 __di_find_stub(u64 *title_id) {
+	s32 ios_hid, res;
+	u32 count, i, tmd_view_size;
+	u64 *titles;
+	u16 rev_highest, rev_this;
+	STACK_ALIGN(u8, tmdbuf, 1024, 32);
+
+	*title_id = 0;
+	rev_highest = 0;
+
+	ios_hid = iosCreateHeap(IOS_HEAP_SIZE);
+	if (ios_hid < 0) {
+		dprintf("iosCreateHeap() failed: %d\n", ios_hid);
+		return ios_hid;
+	}
+
+	dprintf("Initializing ES\n");
+	__ES_Init();
+
+	res = ES_GetNumTitles(&count);
+	if (res < 0) {
+		iosDestroyHeap(ios_hid);
+		dprintf("ES_GetNumTitles() failed: %d\n", res);
+		return res;
+	}
+
+	dprintf("%u titles are installed\n", count);
+
+	titles = iosAlloc(ios_hid, sizeof(u64) * count);
+	if (!titles) {
+		iosDestroyHeap(ios_hid);
+		dprintf("iosAlloc() failed\n");
+		return -1;
+	}
+
+	res = ES_GetTitles(titles, count);
+	if (res < 0) {
+		iosFree(ios_hid, titles);
+		iosDestroyHeap(ios_hid);
+		dprintf("ES_GetTitles() failed: %d\n", res);
+		return res;
+	}
+
+	for (i = 0; i < count; i++) {
+		if ((titles[i] >> 32) != 0x00010008)
+			continue;
+
+		dprintf("found hidden title 0x%llx\n", titles[i]);
+
+		res  = ES_GetTMDViewSize(titles[i], &tmd_view_size);
+		if (res < 0) {
+			dprintf("ES_GetTMDViewSize() failed: %d\n", res);
+			continue;
+		}
+
+		if (tmd_view_size < 90) {
+			dprintf("TMD too small: %d\n", tmd_view_size);
+			continue;
+		}
+
+		if (tmd_view_size > 1024) {
+			dprintf("TMD too big: %d\n", tmd_view_size);
+			continue;
+		}
+
+		res = ES_GetTMDView(titles[i], tmdbuf, tmd_view_size);
+		if (res < 0) {
+			dprintf("ES_GetTMDView() failed: %d\n", res);
+			continue;
+		}
+
+		// check the gid
+		if ((tmdbuf[0x18] == 'D') && (tmdbuf[0x19] == 'V')) {
+			rev_this = (tmdbuf[88] << 8) | tmdbuf[89];
+			dprintf("found stub with revision 0x%x\n", rev_this);
+
+			if (rev_this > rev_highest) {
+				*title_id = titles[i];
+				rev_highest = rev_this;
+			}
+		}
+	}
+
+	iosFree(ios_hid, titles);
+	iosDestroyHeap(ios_hid);
+
+	if (*title_id) {
+		dprintf("we have a winner: 0x%llx\n", *title_id);
+		return 0;
+	}
+
+	return -1;
+}
 
 s32 __DI_StubLaunch(void)
 {
-	u64 titleID = DVD_TITLEID;
+	u64 titleID = 0;
 	static tikview views[4] ATTRIBUTE_ALIGN(32);
 	u32 numviews;
 	s32 res;
-	
 	u32 ints;
-	
+
+	res =__di_find_stub(&titleID);
+	if (res < 0) {
+		dprintf("stub not installed\n");
+		return res;
+	}
+
 	dprintf("Stopping thread timeslice ticker\n");
 	__lwp_thread_stoptimeslice();
 
 	dprintf("Shutting down IOS subsystems\n");
 	res = __IOS_ShutdownSubsystems();
-	if(res < 0) {
+	if (res < 0)
 		dprintf("Shutdown failed: %d\n",res);
-	}
+
 	dprintf("Initializing ES\n");
-	res = __ES_Init();
-	if(res < 0) {
-		dprintf("ES init failed: %d\n",res);
-		return res;
-	}
-	
+	__ES_Init();
+
 	dprintf("Launching TitleID: %016llx\n",titleID);
-	
+
 	res = ES_GetNumTicketViews(titleID, &numviews);
 	if(res < 0) {
 		dprintf(" GetNumTicketViews failed: %d\n",res);
+		__IOS_InitializeSubsystems();
+		__lwp_thread_starttimeslice();
 		return res;
 	}
 	if(numviews > 4) {
 		dprintf(" GetNumTicketViews too many views: %u\n",numviews);
+		__IOS_InitializeSubsystems();
+		__lwp_thread_starttimeslice();
 		return IOS_ETOOMANYVIEWS;
 	}
 	res = ES_GetTicketViews(titleID, views, numviews);
 	if(res < 0) {
 		dprintf(" GetTicketViews failed: %d\n",res);
+		__IOS_InitializeSubsystems();
+		__lwp_thread_starttimeslice();
 		return res;
 	}
 	dprintf("Ready to launch channel\n");
 	res = ES_LaunchTitleBackground(titleID, &views[0]);
 	if(res<0) {
 		dprintf("Launch failed: %d\n",res);
+		__IOS_InitializeSubsystems();
+		__lwp_thread_starttimeslice();
 		return res;
 	}
+
 	dprintf("Channel launching in the background\n");
 	dprintf("Pre-stub status:\n");
 	dumpregs();
@@ -139,33 +241,32 @@ s32 __DI_StubLaunch(void)
 	__distub_saveregs();
 	dprintf("Taking the plunge...\n");
 	__distub_take_plunge(&di_ctx);
-	
+
 	dprintf("We're back!\n");
 	dprintf("Restoring regs...\n");
 	__distub_restregs();
 	dprintf("ISR Enable...\n");
 	_CPU_ISR_Restore( ints );
-	
+
 	dprintf("Post-stub status:\n");
 	dumpregs();
-	
+
 	__IPC_Reinitialize();
 	__ES_Reset();
-	
+
 	dprintf("IPC reinitialized\n");
 	sleep(1);
 	dprintf("Restarting IOS subsystems\n");
-	
+
 	res = __IOS_InitializeSubsystems();
-	
+
 	dprintf("Subsystems running!\n");
-	
+
 	res = ES_GetNumTicketViews(titleID, &numviews);
-	if(res < 0) {
+	if(res < 0)
 		dprintf(" GetNumTicketViews failed: %d\n",res);
-		return res;
-	}
-	dprintf(" GetNumTicketViews: %d",numviews);
+	else
+		dprintf(" GetNumTicketViews: %d",numviews);
 
 	dprintf("Restarting threads timeslice ticker\n");
 	__lwp_thread_starttimeslice();
@@ -178,9 +279,7 @@ s32 __DI_LoadStub(void)
 {
 	int ret = 0;
 	int res;
-#ifdef DEBUG_IOS
-	dprintf("Reloading to IOS%d\n",version);
-#endif
+
 	res = __IOS_ShutdownSubsystems();
 	if(res < 0) ret = res;
 	res = __ES_Init();
