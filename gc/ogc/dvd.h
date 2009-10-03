@@ -39,6 +39,7 @@ distribution.
 
 #include <gctypes.h>
 #include <ogc/lwp_queue.h>
+#include <ogc/disc_io.h>
 
 /*! 
  * \addtogroup dvd_statecodes DVD state codes
@@ -357,6 +358,9 @@ dvddrvinfo* DVD_GetDriveInfo();
 
 #define DVD_SetUserData(block, data) ((block)->usrdata = (data))
 #define DVD_GetUserData(block)       ((block)->usrdata)
+
+#define DEVICE_TYPE_GAMECUBE_DVD		(('G'<<24)|('D'<<16)|('V'<<8)|'D')
+extern const DISC_INTERFACE __io_gcdvd;
 
 #ifdef __cplusplus
    }

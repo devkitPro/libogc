@@ -36,6 +36,10 @@ distribution.
 #include <ogc/ipc.h>
 #include <ogc/ios.h>
 #include <ogc/mutex.h>
+#include <ogc/lwp_watchdog.h>
+#include <unistd.h>
+
+#define MOUNT_TIMEOUT		15000 // 15 seconds
 
 int di_fd = -1;
 
@@ -693,37 +697,56 @@ int DI_ReadDiscID(uint64_t *id)
 	return(ret == 1)? 0 : -ret;
 }
 
-bool diio_Startup()
+static bool diio_Startup()
+{
+	u64 t1,t2;
+	
+	DI_Init();
+	DI_Mount();
+
+	t1=ticks_to_millisecs(gettime());
+
+	while(state & DVD_INIT)
+	{
+		usleep(500);
+		t2=ticks_to_millisecs(gettime());
+		if( (t2 - t1) > MOUNT_TIMEOUT)
+			return false; // timeout
+	}
+
+	if(state & DVD_READY)
+		return true;
+	return false;
+}
+
+static bool diio_IsInserted()
+{
+	u32 val;
+	DI_GetCoverRegister(&val);
+	if(val & 0x2)
+		return true;
+
+	return false;
+}
+
+static bool diio_ReadSectors(sec_t sector,sec_t numSectors,void *buffer)
+{
+	if(DI_ReadDVD(buffer, numSectors, sector) == 0)
+		return true;
+	return false;
+}
+
+static bool diio_WriteSectors(sec_t sector,sec_t numSectors,const void *buffer)
 {
 	return true;
 }
 
-bool diio_Shutdown()
+static bool diio_ClearStatus()
 {
 	return true;
 }
 
-bool diio_ReadSectors(sec_t sector,sec_t numSectors,void *buffer)
-{
-	return true;
-}
-
-bool diio_WriteSectors(sec_t sector,sec_t numSectors,const void *buffer)
-{
-	return true;
-}
-
-bool diio_ClearStatus()
-{
-	return true;
-}
-
-bool diio_IsInserted()
-{
-	return true;
-}
-
-bool diio_IsInitialized()
+static bool diio_Shutdown()
 {
 	return true;
 }

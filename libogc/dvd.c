@@ -2631,3 +2631,47 @@ u32 DVD_SetAutoInvalidation(u32 auto_inv)
 	__dvd_autoinvalidation= auto_inv;
 	return ret;
 }
+
+static bool dvdio_Startup()
+{
+	DVD_Init();
+	DVD_Mount();
+	return true;
+}
+
+static bool dvdio_IsInserted()
+{
+	return true;
+}
+
+static bool dvdio_ReadSectors(sec_t sector,sec_t numSectors,void *buffer)
+{
+	DVD_LowRead(buffer, numSectors << 11, sector, NULL);
+	return true;
+}
+
+static bool dvdio_WriteSectors(sec_t sector,sec_t numSectors,const void *buffer)
+{
+	return true;
+}
+
+static bool dvdio_ClearStatus()
+{
+	return true;
+}
+
+static bool dvdio_Shutdown()
+{
+	return true;
+}
+
+const DISC_INTERFACE __io_gcdvd = {
+	DEVICE_TYPE_GAMECUBE_DVD,
+	FEATURE_MEDIUM_CANREAD | FEATURE_GAMECUBE_DVD,
+	(FN_MEDIUM_STARTUP)&dvdio_Startup,
+	(FN_MEDIUM_ISINSERTED)&dvdio_IsInserted,
+	(FN_MEDIUM_READSECTORS)&dvdio_ReadSectors,
+	(FN_MEDIUM_WRITESECTORS)&dvdio_WriteSectors,
+	(FN_MEDIUM_CLEARSTATUS)&dvdio_ClearStatus,
+	(FN_MEDIUM_SHUTDOWN)&dvdio_Shutdown
+};
