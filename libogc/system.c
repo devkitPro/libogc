@@ -260,7 +260,16 @@ static __inline__ void __lwp_syswd_free(alarm_st *alarm)
 void __reload()
 {
 	void (*reload)() = (void(*)())0x80001800;
-	reload();
+	u64 sig = ((u64)(*(u32*)0x80001804) << 32) + *(u32*)0x80001808;
+	if ( sig == 0x5354554248415858ULL) { // 'STUBHAXX'
+		reload();
+	}
+#ifdef HW_RVL
+	SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
+#else
+#	define SOFTRESET_ADR *((vu32*)0xCC003024)
+	SOFTRESET_ADR=0;
+#endif
 }
 
 void __libogc_exit(int status)
