@@ -56,7 +56,6 @@ distribution.
 #include "lwp_wkspace.h"
 #include "lwp_objmgr.h"
 #include "lwp_config.h"
-#include "system.h"
 #include "libversion.h"
 
 #define SYSMEM1_SIZE				0x01800000
