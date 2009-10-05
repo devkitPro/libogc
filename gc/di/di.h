@@ -2,7 +2,6 @@
 
 di.h -- Drive Interface library
 
-Team Twiizers
 Copyright (C) 2008
 
 Erant
