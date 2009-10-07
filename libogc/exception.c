@@ -193,7 +193,7 @@ static void waitForReload()
 
 	PAD_Init();
 	
-	if(reload_timer)
+	if(reload_timer > 0)
 		kprintf("\n\tReloading in %d seconds\n", reload_timer/50);
 
 	while ( 1 )
