@@ -114,8 +114,7 @@ int __CONF_GetTxt(const char *name, char *buf, int length)
 		}
 		
 		// skip to line end
-		while(line < (__conf_txt_buffer+0x100) && *line++ != '\r');
-		line++; //skip \n
+		while(line < (__conf_txt_buffer+0x100) && *line++ != '\n');
 	}
 	return CONF_ENOENT;
 }
