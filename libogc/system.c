@@ -286,7 +286,7 @@ static void __init_syscall_array() {
 	__syscalls.malloc_lock = __libogc_malloc_lock;
 	__syscalls.malloc_unlock = __libogc_malloc_unlock;
 	__syscalls.exit = __libogc_exit;
-	//__syscalls.gettod_r = __libogc_gettod_r;
+	__syscalls.gettod_r = __libogc_gettod_r;
 
 }
 
