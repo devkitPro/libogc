@@ -458,7 +458,7 @@ static s32 smb_recv(s32 s,void *mem,s32 len)
 			t2=ticks_to_millisecs(gettime());
 			if( (t2 - t1) > RECV_TIMEOUT) return -1;
 		}
-		usleep(100);
+		usleep(4000);
 	}
 	return readtotal;
 }
