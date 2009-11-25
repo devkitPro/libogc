@@ -50,6 +50,7 @@
 
 #define IOS_O_NONBLOCK				0x04
 #define RECV_TIMEOUT				3000  // in ms
+#define CONN_TIMEOUT				6000
 
 /**
  * Field offsets.
@@ -131,7 +132,7 @@
 #define SMB_MAX_NET_READ_SIZE		7300 // see smb_recv
 #define SMB_MAX_NET_WRITE_SIZE		4096 // see smb_sendv
 #define SMB_MAX_TRANSMIT_SIZE		16384
-#define SMB_DEF_READOFFSET			59
+#define SMB_DEF_READOFFSET			63
 
 #define SMB_CONNHANDLES_MAX			8
 #define SMB_FILEHANDLES_MAX			(32*SMB_CONNHANDLES_MAX)
@@ -532,7 +533,7 @@ static s32 SMBCheck(u8 command, s32 readlen,SMBHANDLE *handle)
 			}
 		}
 		t2=ticks_to_millisecs(gettime());
-		if(t2-t1 > RECV_TIMEOUT) 
+		if((t2-t1) > RECV_TIMEOUT) 
 		{
 			// SMBCheck timeout, very strange
 			return SMB_ERROR;
@@ -870,8 +871,8 @@ static s32 do_netconnect(SMBHANDLE *handle)
 		ret = net_connect(sock,(struct sockaddr*)&handle->server_addr,sizeof(handle->server_addr));
 		if(ret==-EISCONN) break;
 		t2=ticks_to_millisecs(gettime());
-		usleep(2000);
-		if(t2-t1 > 2000) break; // 2 secs to try to connect to handle->server_addr (usually not more than 90ms)
+		usleep(1000);
+		if((t2-t1) > CONN_TIMEOUT) break; // usually not more than 90ms
 	}
 
 	if(ret!=-EISCONN)
@@ -1334,14 +1335,14 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
-	setUChar(ptr, pos, 10);
+	setUChar(ptr, pos, 12);
 	pos++;				      /*** Word count ***/
 	setUChar(ptr, pos, 0xff);
 	pos++;
 	pos += 3;	    /*** Reserved, Next AndX Offset ***/
 	setUShort(ptr, pos, fid->sfid);
 	pos += 2;					    /*** FID ***/
-	setUInt(ptr, pos, offset);
+	setUInt(ptr, pos, offset & 0xffffffff);
 	pos += 4;						 /*** Offset ***/
 
 	setUShort(ptr, pos, size & 0xffff);
@@ -1351,6 +1352,8 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	setUInt(ptr, pos, 0);
 	pos += 4;
 	pos += 2;	    /*** Remaining ***/
+	setUInt(ptr, pos, offset >> 32);  // offset high
+	pos += 4;
 	pos += 2;	    /*** Byte count ***/
 
 	handle->message.msg = NBT_SESSISON_MSG;
@@ -1369,7 +1372,7 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 		/*** Retrieve offset to data ***/
 		ofs = getUShort(ptr,(SMB_HEADER_SIZE+13));
 
-		/*** Default offset, with no padding is 59, so grab any outstanding padding ***/
+		/*** Default offset, with no padding is 63, so grab any outstanding padding ***/
 		while(ofs>SMB_DEF_READOFFSET) {
 			char pad[1024];
 			ret = smb_recv(handle->sck_server,pad,(ofs-SMB_DEF_READOFFSET));
@@ -1419,7 +1422,7 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
-	setUChar(ptr, pos, 12);
+	setUChar(ptr, pos, 14);
 	pos++;				  /*** Word Count ***/
 	setUChar(ptr, pos, 0xff);
 	pos += 2;				   /*** Next AndX ***/
@@ -1427,10 +1430,12 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 
 	setUShort(ptr, pos, fid->sfid);
 	pos += 2;
-	setUInt(ptr, pos, offset);
+	setUInt(ptr, pos, offset & 0xffffffff);
 	pos += 4;
-	pos += 4; /*** Reserved ***/
-	pos += 2; /*** Write Mode ***/
+	setUInt(ptr, pos, 0);  /*** Reserved, must be 0 ***/
+	pos += 4;
+	setUShort(ptr, pos, 0);  /*** Write Mode ***/
+	pos += 2;
 	pos += 2; /*** Remaining ***/
 
 	blocks64 = size >> 16;
@@ -1439,8 +1444,10 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	pos += 2;				       /*** Length High ***/
 	setUShort(ptr, pos, size & 0xffff);
 	pos += 2;					    /*** Length Low ***/
-	setUShort(ptr, pos, 59);
+	setUShort(ptr, pos, 63);
 	pos += 2;				 /*** Data Offset ***/
+	setUInt(ptr, pos, offset >> 32);  /*** OffsetHigh ***/
+	pos += 4;
 	setUShort(ptr, pos, size & 0xffff);
 	pos += 2;					    /*** Data Byte Count ***/
 
