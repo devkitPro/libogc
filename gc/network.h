@@ -53,7 +53,7 @@ struct linger {
 /*
  * Level number for (get/set)sockopt() to apply to socket itself.
  */
-#define  SOL_SOCKET			0xfff    /* options for socket level */
+#define  SOL_SOCKET			0xffff    /* options for socket level */
 
 #define AF_UNSPEC			0
 #define AF_INET				2
