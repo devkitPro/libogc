@@ -392,7 +392,6 @@ static void __POWDefaultHandler()
 static void __RSWHandler()
 {
 	s64 now;
-	resetcallback cb;
 	static u32 down = 0;
 	static u32 last_state = 0;
 	static s64 hold_down = 0;
@@ -410,9 +409,7 @@ static void __RSWHandler()
 
 
 		if(__RSWCallback) {
-			cb = __RSWCallback;
-			__RSWCallback = NULL;
-			cb();
+			__RSWCallback();
 		}
 	}
 	_piReg[0] = 2;
@@ -424,26 +421,20 @@ static void __STMEventHandler(u32 event)
 {
 	s32 ret;
 	u32 level;
-	powercallback powcb;
-	resetcallback rswcb;
 
 	if(event==STM_EVENT_RESET) {
 		ret = SYS_ResetButtonDown();
 		if(ret) {
 			_CPU_ISR_Disable(level);
 			__sys_resetdown = 1;
-			rswcb = __RSWCallback;
-			__RSWCallback = __RSWDefaultHandler;
-			rswcb();
+			__RSWCallback();
 			_CPU_ISR_Restore(level);
 		}
 	}
 
 	if(event==STM_EVENT_POWER) {
 		_CPU_ISR_Disable(level);
-		powcb = __POWCallback;
-		__POWCallback = __POWDefaultHandler;
-		powcb();
+		__POWCallback();
 		_CPU_ISR_Restore(level);
 	}
 }
