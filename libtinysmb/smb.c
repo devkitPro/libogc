@@ -132,7 +132,9 @@
 #define SMB_MAX_NET_READ_SIZE		7300 // see smb_recv
 #define SMB_MAX_NET_WRITE_SIZE		4096 // see smb_sendv
 #define SMB_MAX_TRANSMIT_SIZE		16384
-#define SMB_DEF_READOFFSET			63
+
+#define CAP_LARGE_FILES				0x00000008  // 64-bit file sizes and offsets supported
+#define CAP_UNICODE					0x00000004  // Unicode supported
 
 #define SMB_CONNHANDLES_MAX			8
 #define SMB_FILEHANDLES_MAX			(32*SMB_CONNHANDLES_MAX)
@@ -182,6 +184,7 @@ typedef struct _smbsession
   u16 UID;
   u16 MID;
   u32 sKey;
+  u32 capabilities;
   u16 MaxBuffer;
   u16 MaxMpx;
   u16 MaxVCS;
@@ -591,7 +594,9 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	pos += 2;
 	setUShort(ptr,pos,24);	/*** Password length (case-sensitive) ***/
 	pos += 2;
+	setUInt(ptr,pos,0);
 	pos += 4; /*** Reserved ***/
+	setUInt(ptr,pos,sess->capabilities);
 	pos += 4; /*** Capabilities ***/
 	bcpos = pos;
 	pos += 2; /*** Byte count ***/
@@ -732,6 +737,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 	memset(sess,0,sizeof(SMBSESSION));
 	sess->PID = 0xdead;
 	sess->MID = 1;
+	sess->capabilities = 0;
 
 	MakeSMBHeader(SMB_NEG_PROTOCOL,0x08,0x01,handle);
 
@@ -794,7 +800,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 		pos += 4;
 		pos += 4;	//ULONG MaxRawSize; Maximum raw buffer size
 		sess->sKey = getUInt(ptr,pos); pos += 4;
-		pos += 4;	//ULONG Capabilities; Server capabilities
+		u32 servcap = getUInt(ptr,pos); pos += 4; //ULONG Capabilities; Server capabilities
 		pos += 4;	//ULONG SystemTimeLow; System (UTC) time of the server (low).
 		pos += 4;	//ULONG SystemTimeHigh; System (UTC) time of the server (high).
 		sess->timeOffset = getShort(ptr,pos) * 600000000LL; pos += 2; //SHORT ServerTimeZone; Time zone of server (minutes from UTC)
@@ -836,6 +842,12 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 			i++;
 		}
 		sess->p_domain[i] = '\0';
+
+		// setup capabilities
+		//if(servcap & CAP_LARGE_FILES)
+		//	sess->capabilities |= CAP_LARGE_FILES;
+		if(servcap & CAP_UNICODE)
+			sess->capabilities |= CAP_UNICODE;
 
 		return SMB_SUCCESS;
 	}
@@ -1335,14 +1347,14 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
-	setUChar(ptr, pos, 12);
+	setUChar(ptr, pos, 10);
 	pos++;				      /*** Word count ***/
 	setUChar(ptr, pos, 0xff);
 	pos++;
 	pos += 3;	    /*** Reserved, Next AndX Offset ***/
 	setUShort(ptr, pos, fid->sfid);
 	pos += 2;					    /*** FID ***/
-	setUInt(ptr, pos, offset & 0xffffffff);
+	setUInt(ptr, pos, offset);
 	pos += 4;						 /*** Offset ***/
 
 	setUShort(ptr, pos, size & 0xffff);
@@ -1352,8 +1364,6 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	setUInt(ptr, pos, 0);
 	pos += 4;
 	pos += 2;	    /*** Remaining ***/
-	setUInt(ptr, pos, offset >> 32);  // offset high
-	pos += 4;
 	pos += 2;	    /*** Byte count ***/
 
 	handle->message.msg = NBT_SESSISON_MSG;
@@ -1372,10 +1382,10 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 		/*** Retrieve offset to data ***/
 		ofs = getUShort(ptr,(SMB_HEADER_SIZE+13));
 
-		/*** Default offset, with no padding is 63, so grab any outstanding padding ***/
-		while(ofs>SMB_DEF_READOFFSET) {
+		/*** Default offset, with no padding is 59, so grab any outstanding padding ***/
+		while(ofs>59) {
 			char pad[1024];
-			ret = smb_recv(handle->sck_server,pad,(ofs-SMB_DEF_READOFFSET));
+			ret = smb_recv(handle->sck_server,pad,(ofs-59));
 			if(ret<0) goto failed;
 			ofs-=ret;
 		}
