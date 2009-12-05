@@ -771,8 +771,11 @@ static bool __usbstorage_IsInserted(void)
 	if(USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, 0, &dummy) < 0)
 	{
 		if(__vid!=0 || __pid!=0)
+		{
 			USBStorage_Close(&__usbfd);
-		memset(&__usbfd, 0, sizeof(__usbfd));
+			memset(&__usbfd, 0, sizeof(__usbfd));
+		}
+
 		__lun = 0;
 		__vid = 0;
 		__pid = 0;
@@ -780,6 +783,8 @@ static bool __usbstorage_IsInserted(void)
 		__lwp_heap_free(&__heap,buffer);
 		return false;
 	}
+	
+	usleep(100);
 
 	if(__vid!=0 || __pid!=0)
 	{
@@ -799,9 +804,9 @@ static bool __usbstorage_IsInserted(void)
 			}
 		}
 		USBStorage_Close(&__usbfd);
+		memset(&__usbfd, 0, sizeof(__usbfd));
 	}
 
-	memset(&__usbfd, 0, sizeof(__usbfd));
 	__lun = 0;
 	__vid = 0;
 	__pid = 0;
