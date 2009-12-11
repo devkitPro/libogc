@@ -129,7 +129,7 @@
 #define SMB_PROTO					0x424d53ff
 #define SMB_HANDLE_NULL				0xffffffff
 #define SMB_MAX_BUFFERSIZE			((1024*64)-64)	// cannot be larger than u16 (65536) - samba header (64)
-#define SMB_MAX_NET_READ_SIZE		7300 // see smb_recv
+#define SMB_MAX_NET_READ_SIZE		8192 // see smb_recv
 #define SMB_MAX_NET_WRITE_SIZE		4096 // see smb_sendv
 #define SMB_MAX_TRANSMIT_SIZE		16384
 
@@ -465,7 +465,7 @@ static s32 smb_recv(s32 s,void *mem,s32 len)
 			t2=ticks_to_millisecs(gettime());
 			if( (t2 - t1) > RECV_TIMEOUT) return -1;
 		}
-		usleep(4000);
+		usleep(100);
 	}
 	return readtotal;
 }
