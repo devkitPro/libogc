@@ -135,6 +135,8 @@
 
 #define CAP_LARGE_FILES				0x00000008  // 64-bit file sizes and offsets supported
 #define CAP_UNICODE					0x00000004  // Unicode supported
+#define	CIFS_FLAGS1					0x08 // Paths are caseless
+#define CIFS_FLAGS2					0x0001 // Server may return long components in paths in the response - use 0x8001 for Unicode support
 
 #define SMB_CONNHANDLES_MAX			8
 #define SMB_FILEHANDLES_MAX			(32*SMB_CONNHANDLES_MAX)
@@ -195,6 +197,7 @@ typedef struct _smbsession
   u16 count;
   u16 eos;
   bool challengeUsed;
+  u8 securityLevel;
 } SMBSESSION;
 
 typedef struct _smbhandle
@@ -573,13 +576,14 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 
 	if(handle->sck_server == INVALID_SOCKET) return SMB_ERROR;
 
-	MakeSMBHeader(SMB_SETUP_ANDX,0x08,0x01,handle);
+	MakeSMBHeader(SMB_SETUP_ANDX,CIFS_FLAGS1,CIFS_FLAGS2,handle);
 	pos = SMB_HEADER_SIZE;
 
 	setUChar(ptr,pos,13);
 	pos++;				    /*** Word Count ***/
 	setUChar(ptr,pos,0xff);
 	pos++;				      /*** Next AndX ***/
+	setUChar(ptr,pos,0);
 	pos++;   /*** Reserved ***/
 	pos += 2; /*** Next AndX Offset ***/
 	setUShort(ptr,pos,sess->MaxBuffer);
@@ -590,7 +594,7 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	pos += 2;
 	setUInt(ptr,pos,sess->sKey);
 	pos += 4;
-	setUShort(ptr,pos,0);	/*** Password length (case-insensitive) ***/
+	setUShort(ptr,pos,24);	/*** Password length (case-insensitive) ***/
 	pos += 2;
 	setUShort(ptr,pos,24);	/*** Password length (case-sensitive) ***/
 	pos += 2;
@@ -607,6 +611,8 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 		ntlm_smb_nt_encrypt((const char *) pwd, (const u8 *) sess->challenge, (u8*) ntRespData);
 
 	/*** Build information ***/
+	memset(&ptr[pos],0,24);
+	pos += 24;
 	memcpy(&ptr[pos],ntRespData,24);
 	pos += 24;
 
@@ -663,7 +669,7 @@ static s32 SMB_TreeAndX(SMBHANDLE *handle)
 
 	if(handle->sck_server == INVALID_SOCKET) return SMB_ERROR;
 
-	MakeSMBHeader(SMB_TREEC_ANDX,0x08,0x01,handle);
+	MakeSMBHeader(SMB_TREEC_ANDX,CIFS_FLAGS1,CIFS_FLAGS2,handle);
 	pos = SMB_HEADER_SIZE;
 
 	setUChar(ptr,pos,4);
@@ -739,7 +745,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 	sess->MID = 1;
 	sess->capabilities = 0;
 
-	MakeSMBHeader(SMB_NEG_PROTOCOL,0x08,0x01,handle);
+	MakeSMBHeader(SMB_NEG_PROTOCOL,CIFS_FLAGS1,CIFS_FLAGS2,handle);
 
 	pos = SMB_HEADER_SIZE+3;
 	ptr = handle->message.smb;
@@ -774,13 +780,15 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 		if(getUShort(ptr,pos)!=0) return SMB_PROTO_FAIL;	// USHORT DialectIndex; Index of selected dialect - should always be 0 since we only supplied 1!
 
 		pos += 2;
-		if(getUChar(ptr,pos)!=3)
+		if(getUChar(ptr,pos) & 1)
 		{
 			// user level security
+			sess->securityLevel = 1;
 		}
 		else
 		{
-			// share level security
+			// share level security - can we skip SetupAndX? If so, we would need to specify the password in TreeAndX
+			sess->securityLevel = 0;
 		}
 
 		pos++;
@@ -1230,7 +1238,7 @@ SMBFILE SMB_OpenFile(const char *filename, u16 access, u16 creation,SMBCONN smbh
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return NULL;
 
-	MakeSMBHeader(SMB_OPEN_ANDX,0x08,0x01,handle);
+	MakeSMBHeader(SMB_OPEN_ANDX,CIFS_FLAGS1,CIFS_FLAGS2,handle);
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
@@ -1302,7 +1310,7 @@ void SMB_CloseFile(SMBFILE sfid)
 	handle = __smb_handle_open(fid->conn);
 	if(!handle) return;
 
-	MakeSMBHeader(SMB_CLOSE,0x08,0x01,handle);
+	MakeSMBHeader(SMB_CLOSE,CIFS_FLAGS1,CIFS_FLAGS2,handle);
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
@@ -1343,7 +1351,7 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	handle = __smb_handle_open(fid->conn);
 	if(!handle) return -1;
 
-	MakeSMBHeader(SMB_READ_ANDX,0x08,0x01,handle);
+	MakeSMBHeader(SMB_READ_ANDX,CIFS_FLAGS1,CIFS_FLAGS2,handle);
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
@@ -1428,7 +1436,7 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	handle = __smb_handle_open(fid->conn);
 	if(!handle) return -1;
 
-	MakeSMBHeader(SMB_WRITE_ANDX,0x08,0x01,handle);
+	MakeSMBHeader(SMB_WRITE_ANDX,CIFS_FLAGS1,CIFS_FLAGS2,handle);
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
@@ -1516,7 +1524,7 @@ s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl)
 	handle = __smb_handle_open(smbhndl);
 	if (!handle) return SMB_ERROR;
 
-	MakeSMBHeader(SMB_TRANS2, 0x08, 0x01, handle);
+	MakeSMBHeader(SMB_TRANS2, CIFS_FLAGS1, CIFS_FLAGS2, handle);
 	MakeTRANS2Header(SMB_QUERY_PATH_INFO, handle);
 
 	bpos = pos = (T2_BYTE_CNT + 2);
@@ -1607,7 +1615,7 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 	if(!handle) return SMB_ERROR;
 
 	sess = &handle->session;
-	MakeSMBHeader(SMB_TRANS2,0x08,0x01,handle);
+	MakeSMBHeader(SMB_TRANS2,CIFS_FLAGS1,CIFS_FLAGS2,handle);
 	MakeTRANS2Header(SMB_FIND_FIRST2,handle);
 
 	bpos = pos = (T2_BYTE_CNT+2);
@@ -1696,7 +1704,7 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	sess = &handle->session;
 	if(sess->eos || sess->sid==0) return SMB_ERROR;
 
-	MakeSMBHeader(SMB_TRANS2,0x08,0x01,handle);
+	MakeSMBHeader(SMB_TRANS2,CIFS_FLAGS1,CIFS_FLAGS2,handle);
 	MakeTRANS2Header(SMB_FIND_NEXT2,handle);
 
 	bpos = pos = (T2_BYTE_CNT+2);
@@ -1778,7 +1786,7 @@ s32 SMB_FindClose(SMBCONN smbhndl)
 	sess = &handle->session;
 	if(sess->sid==0) return SMB_ERROR;
 
-	MakeSMBHeader(SMB_FIND_CLOSE2,0x08,0x01,handle);
+	MakeSMBHeader(SMB_FIND_CLOSE2,CIFS_FLAGS1,CIFS_FLAGS2,handle);
 
 	pos  = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
