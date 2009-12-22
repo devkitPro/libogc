@@ -107,6 +107,13 @@
 #define SMB_READ_ANDX				0x2e
 #define SMB_CLOSE					0x04
 
+/**
+ * SMB_COM
+ */
+#define SMB_COM_CREATE_DIRECTORY    0x00
+#define SMB_COM_DELETE_DIRECTORY    0x01
+#define SMB_COM_DELETE              0x06
+#define SMB_COM_RENAME              0x07
 
 /**
  * TRANS2 Offsets
@@ -1330,6 +1337,241 @@ void SMB_CloseFile(SMBFILE sfid)
 	if(ret<0) handle->conn_valid = FALSE;
 	else SMBCheck(SMB_CLOSE,0,handle);
 	__lwp_queue_append(&smb_filehandle_queue,&fid->node);
+}
+
+/**
+ * SMB_CreateDirectory
+ */
+s32 SMB_CreateDirectory(const char *dirname, SMBCONN smbhndl)
+{
+	s32 pos;
+	s32 bpos,ret;
+	u8 *ptr;
+	SMBHANDLE *handle;
+	char realfile[256];
+
+	if(dirname == NULL)
+		return -1;
+
+	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return -1;
+
+	handle = __smb_handle_open(smbhndl);
+	if(!handle) return -1;
+
+	MakeSMBHeader(SMB_COM_CREATE_DIRECTORY,CIFS_FLAGS1, CIFS_FLAGS2,handle);
+
+	pos = SMB_HEADER_SIZE;
+	ptr = handle->message.smb;
+	setUChar(ptr, pos, 0);
+	pos++;			       /*** Word Count ***/
+	pos += 2;              /*** Byte Count ***/
+	bpos = pos;
+
+	if (dirname[0] != '\\') {
+		strcpy(realfile, "\\");
+		strcat(realfile,dirname);
+	} else
+		strcpy(realfile,dirname);
+
+	memcpy(&ptr[pos],realfile,strlen(realfile));
+	pos += strlen(realfile)+1;
+
+	setUShort(ptr,(bpos-2),(pos-bpos));
+
+	handle->message.msg = NBT_SESSISON_MSG;
+	handle->message.length = htons(pos);
+
+	pos += 4;
+	ret = smb_send(handle->sck_server,(char*)&handle->message,pos);
+	if(ret < 0) goto failed;
+
+    ret = SMBCheck(SMB_COM_CREATE_DIRECTORY,0,handle);
+
+    return ret;
+
+failed:
+	return ret;
+}
+
+/**
+ * SMB_DeleteDirectory
+ */
+s32 SMB_DeleteDirectory(const char *dirname, SMBCONN smbhndl)
+{
+	s32 pos;
+	s32 bpos,ret;
+	u8 *ptr;
+	SMBHANDLE *handle;
+	char realfile[256];
+
+	if(dirname == NULL)
+		return -1;
+
+	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return -1;
+
+	handle = __smb_handle_open(smbhndl);
+	if(!handle) return -1;
+
+	MakeSMBHeader(SMB_COM_DELETE_DIRECTORY,CIFS_FLAGS1, CIFS_FLAGS2,handle);
+
+	pos = SMB_HEADER_SIZE;
+	ptr = handle->message.smb;
+	setUChar(ptr, pos, 0);
+	pos++;			       /*** Word Count ***/
+	pos += 2;              /*** Byte Count ***/
+	bpos = pos;
+
+	if (dirname[0] != '\\') {
+		strcpy(realfile, "\\");
+		strcat(realfile,dirname);
+	} else
+		strcpy(realfile,dirname);
+
+	memcpy(&ptr[pos],realfile,strlen(realfile));
+	pos += strlen(realfile)+1;
+
+	setUShort(ptr,(bpos-2),(pos-bpos));
+
+	handle->message.msg = NBT_SESSISON_MSG;
+	handle->message.length = htons(pos);
+
+	pos += 4;
+	ret = smb_send(handle->sck_server,(char*)&handle->message,pos);
+	if(ret < 0) goto failed;
+
+    ret = SMBCheck(SMB_COM_DELETE_DIRECTORY,0,handle);
+
+    return ret;
+
+failed:
+	return ret;
+}
+
+/**
+ * SMB_DeleteFile
+ */
+s32 SMB_DeleteFile(const char *filename, SMBCONN smbhndl)
+{
+	s32 pos;
+	s32 bpos,ret;
+	u8 *ptr;
+	SMBHANDLE *handle;
+	char realfile[256];
+
+	if(filename == NULL)
+		return -1;
+
+	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return -1;
+
+	handle = __smb_handle_open(smbhndl);
+	if(!handle) return -1;
+
+	MakeSMBHeader(SMB_COM_DELETE,CIFS_FLAGS1, CIFS_FLAGS2,handle);
+
+	pos = SMB_HEADER_SIZE;
+	ptr = handle->message.smb;
+	setUChar(ptr, pos, 1);
+	pos++;			       /*** Word Count ***/
+	setUChar(ptr, pos, SMB_SRCH_HIDDEN);
+	pos += 2;			   /*** SearchAttributes ***/
+	pos += 2;              /*** Byte Count ***/
+	bpos = pos;
+
+	if (filename[0] != '\\') {
+		strcpy(realfile, "\\");
+		strcat(realfile,filename);
+	} else
+		strcpy(realfile,filename);
+
+	memcpy(&ptr[pos],realfile,strlen(realfile));
+	pos += strlen(realfile)+1;
+
+	setUShort(ptr,(bpos-2),(pos-bpos));
+
+	handle->message.msg = NBT_SESSISON_MSG;
+	handle->message.length = htons(pos);
+
+	pos += 4;
+	ret = smb_send(handle->sck_server,(char*)&handle->message,pos);
+	if(ret < 0) goto failed;
+
+    ret = SMBCheck(SMB_COM_DELETE,0,handle);
+
+    return ret;
+
+failed:
+	return ret;
+}
+
+/**
+ * SMB_Rename
+ */
+s32 SMB_Rename(const char *filename, const char * newfilename, SMBCONN smbhndl)
+{
+	s32 pos;
+	s32 bpos,ret;
+	u8 *ptr;
+	SMBHANDLE *handle;
+	char realfile[256];
+	char newrealfile[256];
+
+	if(filename == NULL || newfilename == NULL)
+        return -1;
+
+	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS)
+        return -1;
+
+	handle = __smb_handle_open(smbhndl);
+	if(!handle) return -1;
+
+	MakeSMBHeader(SMB_COM_RENAME,CIFS_FLAGS1, CIFS_FLAGS2,handle);
+
+	pos = SMB_HEADER_SIZE;
+	ptr = handle->message.smb;
+	setUChar(ptr, pos, 1);
+	pos++;			       /*** Word Count ***/
+	setUChar(ptr, pos, SMB_SRCH_HIDDEN);
+	pos += 2;			   /*** SearchAttributes ***/
+	pos += 2;              /*** Byte Count ***/
+	bpos = pos;
+
+	if (filename[0] != '\\') {
+		strcpy(realfile, "\\");
+		strcat(realfile,filename);
+	} else
+		strcpy(realfile,filename);
+
+	memcpy(&ptr[pos],realfile,strlen(realfile));
+	pos += strlen(realfile)+1;
+
+    pos++;
+	ptr[pos] = 0x04;
+	pos++;
+
+	if (newfilename[0] != '\\') {
+		strcpy(newrealfile, "\\");
+		strcat(newrealfile, newfilename);
+	} else
+		strcpy(newrealfile,newfilename);
+
+	memcpy(&ptr[pos],newrealfile,strlen(newrealfile));
+	pos += strlen(newrealfile)+1;
+
+	setUShort(ptr,(bpos-2),(pos-bpos));
+
+	handle->message.msg = NBT_SESSISON_MSG;
+	handle->message.length = htons(pos);
+
+	pos += 4;
+	ret = smb_send(handle->sck_server,(char*)&handle->message,pos);
+	if(ret < 0) goto failed;
+
+    ret = SMBCheck(SMB_COM_RENAME,0,handle);
+
+    return ret;
+
+failed:
+	return ret;
 }
 
 /**

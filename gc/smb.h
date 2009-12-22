@@ -134,6 +134,10 @@ SMBFILE SMB_OpenFile(const char *filename, unsigned short access, unsigned short
 void SMB_CloseFile(SMBFILE sfid);
 s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid);
 s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid);
+s32 SMB_CreateDirectory(const char *dirname, SMBCONN smbhndl);
+s32 SMB_DeleteDirectory(const char *dirname, SMBCONN smbhndl);
+s32 SMB_DeleteFile(const char *filename, SMBCONN smbhndl);
+s32 SMB_Rename(const char *filename, const char * newname, SMBCONN smbhndl);
 
 #ifdef __cplusplus
 	}
