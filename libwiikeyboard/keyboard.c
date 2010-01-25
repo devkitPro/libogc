@@ -487,7 +487,6 @@ s32 KEYBOARD_Init(keyPressCallback keypress_cb)
 		return -1;
 
 	if (USBKeyboard_Initialize() != IPC_OK) {
-		USB_Deinitialize();
 		return -2;
 	}
 
@@ -618,7 +617,6 @@ s32 KEYBOARD_Deinit(void)
 	USBKeyboard_Close();
 	KEYBOARD_FlushEvents();
 	USBKeyboard_Deinitialize();
-	USB_Deinitialize();
 
 	if (_sc_map) {
 		free(_sc_map);
