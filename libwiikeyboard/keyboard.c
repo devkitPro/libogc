@@ -53,7 +53,6 @@ distribution.
 #define KBD_THREAD_KBD_SCAN_INTERVAL (3 * 100)
 
 static lwp_queue _queue;
-static lwpq_t _kbd_queue = LWP_TQUEUE_NULL;
 static lwp_t _kbd_thread = LWP_THREAD_NULL;
 static lwp_t _kbd_buf_thread = LWP_THREAD_NULL;
 static bool _kbd_thread_running = false;
@@ -563,15 +562,11 @@ s32 KEYBOARD_Init(keyPressCallback keypress_cb)
 
 		memset(_kbd_stack, 0, KBD_THREAD_STACKSIZE);
 
-		LWP_InitQueue(&_kbd_queue);
-
 		s32 res = LWP_CreateThread(&_kbd_thread, _kbd_thread_func, NULL,
 									_kbd_stack, KBD_THREAD_STACKSIZE,
 									KBD_THREAD_PRIO);
 
 		if (res) {
-			LWP_CloseQueue(_kbd_queue);
-
 			USBKeyboard_Close();
 
 			return -6;
@@ -587,10 +582,8 @@ s32 KEYBOARD_Init(keyPressCallback keypress_cb)
 									KBD_THREAD_PRIO);
 			if(res) {
 				_kbd_thread_quit = true;
-				LWP_ThreadBroadcast(_kbd_queue);
 
 				LWP_JoinThread(_kbd_thread, NULL);
-				LWP_CloseQueue(_kbd_queue);
 
 				USBKeyboard_Close();
 				KEYBOARD_FlushEvents();
@@ -613,13 +606,11 @@ s32 KEYBOARD_Deinit(void)
 {
 	if (_kbd_thread_running) {
 		_kbd_thread_quit = true;
-		LWP_ThreadBroadcast(_kbd_queue);
 
 		if(_kbd_thread != LWP_THREAD_NULL)
 			LWP_JoinThread(_kbd_thread, NULL);
 		if(_kbd_buf_thread != LWP_THREAD_NULL)
 			LWP_JoinThread(_kbd_buf_thread, NULL);
-		LWP_CloseQueue(_kbd_queue);
 
 		_kbd_thread_running = false;
 	}

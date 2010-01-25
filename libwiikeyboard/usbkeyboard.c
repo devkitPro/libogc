@@ -75,7 +75,7 @@ struct ukbd {
 };
 
 static s32 hId = -1;
-static struct ukbd *_kbd;
+static struct ukbd *_kbd = NULL;
 
 static u8 _ukbd_mod_map[][2] = {
 	{ USB_MOD_CTRL_L, 224 },
@@ -120,6 +120,8 @@ static s32 _get_protocol(void)
 	s32 protocol;
 	u8 *buffer = 0;
 
+	if(!_kbd || _kbd->fd==0) return -1;
+
 	buffer = iosAlloc(hId, 1);
 
 	if (buffer == NULL)
@@ -136,6 +138,7 @@ static s32 _get_protocol(void)
 //Modify the protocol, 0=bout protocol and 1=report protocol
 static s32 _set_protocol(u8 protocol)
 {
+	if(!_kbd || _kbd->fd==0) return -1;
 	return USB_WriteCtrlMsg(_kbd->fd, USB_REQTYPE_SET, USB_REQ_SETPROTOCOL, protocol, 0, 0, 0);
 }
 
@@ -144,6 +147,7 @@ static s32 _get_input_report(void)
 {
 	u8 *buffer = 0;
 
+	if(!_kbd || _kbd->fd==0) return -1;
 	buffer = iosAlloc(hId, 8);
 
 	if (buffer == NULL)
@@ -164,7 +168,7 @@ static s32 _get_input_report(void)
 static s32 _get_output_report(u8 *leds)
 {
 	u8 *buffer = 0;
-
+	if(!_kbd || _kbd->fd==0) return -1;
 	buffer = iosAlloc(hId, 1);
 
 	if (buffer == NULL)
@@ -183,6 +187,7 @@ static s32 _get_output_report(u8 *leds)
 static s32 _set_output_report(void)
 {
 	u8 *buffer = 0;
+	if(!_kbd || _kbd->fd==0) return -1;
 	buffer = iosAlloc(hId, 1);
 
 	if (buffer == NULL)
@@ -250,7 +255,7 @@ s32 USBKeyboard_Open(const eventcallback cb)
 	}
 
 	if (_kbd) {
-		USB_CloseDevice(&_kbd->fd);
+		if (_kbd->fd > 0) USB_CloseDevice(&_kbd->fd);
 	} else {
 		_kbd = (struct ukbd *) malloc(sizeof(struct ukbd));
 
@@ -384,7 +389,8 @@ void USBKeyboard_Close(void)
 	if (!_kbd)
 		return;
 
-	USB_CloseDevice(&_kbd->fd);
+	if(_kbd->fd > 0)
+		USB_CloseDevice(&_kbd->fd);
 
 	free(_kbd);
 	_kbd = NULL;
