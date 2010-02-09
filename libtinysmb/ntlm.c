@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <processor.h>
+#include <ogc/machine/processor.h>
 #include <stdint.h>
 
 typedef struct

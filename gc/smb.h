@@ -138,6 +138,7 @@ s32 SMB_CreateDirectory(const char *dirname, SMBCONN smbhndl);
 s32 SMB_DeleteDirectory(const char *dirname, SMBCONN smbhndl);
 s32 SMB_DeleteFile(const char *filename, SMBCONN smbhndl);
 s32 SMB_Rename(const char *filename, const char * newname, SMBCONN smbhndl);
+s32 SMB_DiskInformation(struct statvfs *buf, SMBCONN smbhndl);
 
 #ifdef __cplusplus
 	}
