@@ -886,9 +886,15 @@ static bool __usbstorage_ClearStatus(void)
 
 static bool __usbstorage_Shutdown(void)
 {
-	if(__mounted)
+	if(__vid!=0 || __pid!=0)
+	{
 		USBStorage_Close(&__usbfd);
+		memset(&__usbfd, 0, sizeof(__usbfd));
+	}
 
+	__lun = 0;
+	__vid = 0;
+	__pid = 0;
 	__mounted = 0;
 	return true;
 }
