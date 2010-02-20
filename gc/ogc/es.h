@@ -143,6 +143,28 @@ typedef struct _tmd {
 	tmd_content contents[];
 } __attribute__((packed)) tmd;
 
+typedef struct _tmd_view_content
+{
+  u32 cid;
+  u16 index;
+  u16 type;
+  u64 size;
+} __attribute__((packed)) tmd_view_content;
+
+typedef struct _tmdview
+{
+	u8 version; // 0x0000;
+	u8 filler[3];
+	u64 sys_version; //0x0004
+	u64 title_id; // 0x00c
+	u32 title_type; //0x0014
+	u16 group_id; //0x0018
+	u8 reserved[0x3e]; //0x001a this is the same reserved 0x3e bytes from the tmd
+	u16 title_version; //0x0058
+	u16 num_contents; //0x005a
+	tmd_view_content contents[]; //0x005c
+}__attribute__((packed)) tmd_view;
+
 typedef struct _cert_header {
 	sig_issuer issuer;
 	u32 cert_type;
