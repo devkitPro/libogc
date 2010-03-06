@@ -663,10 +663,11 @@ s32 ES_OpenContent(u16 index)
 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_OPENCONTENT, "i:", index);
 }
 
-s32 ES_OpenTitleContent(u64 titleID, u16 index)
+s32 ES_OpenTitleContent(u64 titleID, tikview *views, u16 index)
 {
 	if(__es_fd<0) return ES_ENOTINIT;
-	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_OPENTITLECONTENT, "qi:", titleID, index);
+	if(!ISALIGNED(views)) return ES_EALIGN;
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_OPENTITLECONTENT, "qdi:", titleID, views, sizeof(tikview), index);
 }
 
 s32 ES_ReadContent(s32 cfd, u8 *data, u32 data_size)
@@ -909,7 +910,18 @@ static int _ES_open_r (struct _reent *r, void *fileStruct, const char *path, int
 	if(file->titleID == 0)
 		file->cfd = ES_OpenContent(file->content.index);
 	else
-		file->cfd = ES_OpenTitleContent(file->titleID, file->content.index);
+	{
+		u32 cnt ATTRIBUTE_ALIGN(32);
+		ES_GetNumTicketViews(file->titleID, &cnt);
+		tikview *views = (tikview *)memalign( 32, sizeof(tikview)*cnt );
+		if(views == NULL)
+		{
+			return -1;
+		}
+		ES_GetTicketViews(file->titleID, views, cnt);
+		file->cfd = ES_OpenTitleContent(file->titleID, views, file->content.index);
+		free(views);
+	}
 
 	if(file->cfd<0) {
 		r->_errno = EIO;
