@@ -31,6 +31,9 @@ struct uip_stats uip_stat;
 #define UIP_STAT(s)
 #endif /* UIP_STATISTICS == 1 */
 
+const char *tcp_localip __attribute__ ((weak)) = "";
+const char *tcp_netmask __attribute__ ((weak)) = "";
+const char *tcp_gateway __attribute__ ((weak)) = "";
 
 struct tcpip_sock {
 	struct tcpip_sock *next;
