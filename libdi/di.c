@@ -41,6 +41,7 @@ distribution.
 #define MOUNT_TIMEOUT		15000 // 15 seconds
 
 int di_fd = -1;
+static bool load_dvdx = true;
 
 int _DI_ReadDVD_ReadID(void* buf, uint32_t len, uint32_t lba);
 int _DI_ReadDVD_ReadID_Async(void* buf, uint32_t len, uint32_t lba,ipccallback ipc_cb);
@@ -76,7 +77,7 @@ int DI_Init(){
 
 	state = DVD_INIT | DVD_NO_DISC;
 
-	if(!init){
+	if(!init && load_dvdx){
 		__DI_LoadStub();	// Marcan's 1337 magics happen here!
 		init = 1;
 	}
@@ -88,6 +89,10 @@ int DI_Init(){
 		LWP_MutexInit(&bufferMutex, false);
 
 	return (di_fd >= 0)? di_fd : -1;
+}
+
+void DI_LoadDVDX(bool load){
+	load_dvdx = load;
 }
 
 void DI_Mount(){

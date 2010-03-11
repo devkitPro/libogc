@@ -100,6 +100,7 @@ FUNCTION PROTOTYPES GO HERE!
 */
 
 int DI_Init();
+void DI_LoadDVDX(bool load);
 void DI_Mount();
 void DI_Close();
 int DI_GetStatus();
