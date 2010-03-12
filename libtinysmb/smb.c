@@ -201,7 +201,6 @@ typedef struct _smbsession
   u8 challenge[10];
   u8 p_domain[64];
   s64 timeOffset;
-  u16 sid;
   u16 count;
   u16 eos;
   bool challengeUsed;
@@ -461,7 +460,7 @@ static s32 smb_recv(s32 s,void *mem,s32 len)
 			read=SMB_MAX_NET_READ_SIZE; // optimized value
 
 		ret=net_recv(s,mem+readtotal,read,0);
-		if(ret>=0)
+		if(ret>0)
 		{
 			readtotal+=ret;
 			len-=ret;
@@ -503,7 +502,7 @@ static s32 SMBCheck(u8 command,SMBHANDLE *handle)
 		if(ret<0) return SMB_ERROR;
 		
 		if(nbt->msg!=NBT_SESSISON_MSG && nbt->length>0)
-			smb_recv(handle->sck_server, ptr, nbt->length); //clear unspected NBT message		
+			smb_recv(handle->sck_server, ptr, nbt->length); //clear unexpected NBT message		
 	}while(nbt->msg!=NBT_SESSISON_MSG);
 
 	/* obtain required length from NBT header if readlen==0*/
@@ -1915,14 +1914,13 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 	if(ret<0) goto failed;
 
 	sess->eos = 1;
-	sess->sid = 0;
 	sess->count = 0;
 	ret = SMB_ERROR;
 	if(SMBCheck(SMB_TRANS2,handle)==SMB_SUCCESS) {
 		ptr = handle->message.smb;
 		/*** Get parameter offset ***/
 		pos = getUShort(ptr,(SMB_HEADER_SIZE+9));
-		sess->sid = getUShort(ptr, pos); pos += 2;
+		sdir->sid = getUShort(ptr, pos); pos += 2;
 		sess->count = getUShort(ptr, pos); pos += 2;
 		sess->eos = getUShort(ptr, pos); pos += 2;
 		pos += 2; // USHORT EaErrorOffset;
@@ -1969,7 +1967,7 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	if(!handle) return SMB_ERROR;
 
 	sess = &handle->session;
-	if(sess->eos || sess->sid==0) return SMB_ERROR;
+	if(sess->eos || sdir->sid==0) return SMB_ERROR;
 
 	MakeSMBHeader(SMB_TRANS2,CIFS_FLAGS1,CIFS_FLAGS2,handle);
 	MakeTRANS2Header(SMB_FIND_NEXT2,handle);
@@ -1977,7 +1975,7 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	bpos = pos = (T2_BYTE_CNT+2);
 	pos += 3;	     /*** Padding ***/
 	ptr = handle->message.smb;
-	setUShort(ptr, pos, sess->sid);
+	setUShort(ptr, pos, sdir->sid);
 	pos += 2;						    /*** Search ID ***/
 	setUShort(ptr, pos, 1);
 	pos += 2;					  /*** Count ***/
@@ -2039,7 +2037,7 @@ failed:
 /**
  * SMB_FindClose
  */
-s32 SMB_FindClose(SMBCONN smbhndl)
+s32 SMB_FindClose(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 {
 	u8 *ptr;
 	s32 pos;
@@ -2051,7 +2049,7 @@ s32 SMB_FindClose(SMBCONN smbhndl)
 	if(!handle) return SMB_ERROR;
 
 	sess = &handle->session;
-	if(sess->sid==0) return SMB_ERROR;
+	if(sdir->sid==0) return SMB_ERROR;
 
 	MakeSMBHeader(SMB_FIND_CLOSE2,CIFS_FLAGS1,CIFS_FLAGS2,handle);
 
@@ -2059,7 +2057,7 @@ s32 SMB_FindClose(SMBCONN smbhndl)
 	ptr = handle->message.smb;
 	setUChar(ptr, pos, 1);
 	pos++;					   /*** Word Count ***/
-	setUShort(ptr, pos, sess->sid);
+	setUShort(ptr, pos, sdir->sid);
 	pos += 2;
 	pos += 2;  /*** Byte Count ***/
 

@@ -79,7 +79,7 @@ typedef struct
 	devoptab_t *devoptab;
 
 	SMBCONN smbconn;
-	u8 SMBCONNECTED ;
+	u8 SMBCONNECTED;
 
 	char currentpath[SMB_MAXPATH];
 	bool first_item_dir;
@@ -881,7 +881,7 @@ static int __smb_dirreset(struct _reent *r, DIR_ITER *dirState)
 	memset(&dentry, 0, sizeof(SMBDIRENTRY));
 
 	_SMB_lock(state->env);
-	SMB_FindClose(SMBEnv[state->env].smbconn);
+	SMB_FindClose(&state->smbdir, SMBEnv[state->env].smbconn);
 
 	strcpy(path_abs,SMBEnv[state->env].currentpath);
 	strcat(path_abs,"*");
@@ -906,6 +906,7 @@ static int __smb_dirreset(struct _reent *r, DIR_ITER *dirState)
 	state->smbdir.atime = dentry.atime;
 	state->smbdir.mtime = dentry.mtime;
 	state->smbdir.attributes = dentry.attributes;
+	state->smbdir.sid = dentry.sid;
 	strcpy(state->smbdir.name, dentry.name);
 
 	SMBEnv[state->env].first_item_dir = true;
@@ -975,6 +976,7 @@ static DIR_ITER* __smb_diropen(struct _reent *r, DIR_ITER *dirState, const char 
 	state->smbdir.atime = dentry.atime;
 	state->smbdir.mtime = dentry.mtime;
 	state->smbdir.attributes = dentry.attributes;
+	state->smbdir.sid = dentry.sid;
 	strcpy(state->smbdir.name, dentry.name);
 	env->first_item_dir = true;
 	_SMB_unlock(env->pos);
@@ -1046,6 +1048,8 @@ static int __smb_dirnext(struct _reent *r, DIR_ITER *dirState, char *filename,
 		return 0;
 	}
 
+	dentry.sid = state->smbdir.sid;
+
 	ret = SMB_FindNext(&dentry, SMBEnv[state->env].smbconn);
 	if(ret==SMB_SUCCESS && SMBEnv[state->env].diropen_root && !strcmp(dentry.name,".."))
 		ret = SMB_FindNext(&dentry, SMBEnv[state->env].smbconn);
@@ -1076,9 +1080,10 @@ static int __smb_dirnext(struct _reent *r, DIR_ITER *dirState, char *filename,
 static int __smb_dirclose(struct _reent *r, DIR_ITER *dirState)
 {
 	SMBDIRSTATESTRUCT* state = (SMBDIRSTATESTRUCT*) (dirState->dirStruct);
+
 	int j = state->env;
-	_SMB_lock(state->env);
-	SMB_FindClose(SMBEnv[j].smbconn);
+	_SMB_lock(j);
+	SMB_FindClose(&state->smbdir, SMBEnv[j].smbconn);
 	memset(state, 0, sizeof(SMBDIRSTATESTRUCT));
 	_SMB_unlock(j);
 	return 0;

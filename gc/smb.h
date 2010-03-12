@@ -105,6 +105,7 @@ typedef void* SMBFILE;
   u64 atime;
   u64 mtime;
   u32 attributes;
+  u16 sid;
   char name[256];
 } SMBDIRENTRY;
 
@@ -127,7 +128,7 @@ s32 SMB_Reconnect(SMBCONN *_smbhndl, BOOL test_conn);
 s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl);
 s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,SMBCONN smbhndl);
 s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl);
-s32 SMB_FindClose(SMBCONN smbhndl);
+s32 SMB_FindClose(SMBDIRENTRY *sdir,SMBCONN smbhndl);
 
 /*** File I/O ***/
 SMBFILE SMB_OpenFile(const char *filename, unsigned short access, unsigned short creation,SMBCONN smbhndl);
