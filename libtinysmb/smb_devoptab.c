@@ -1407,7 +1407,7 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 	bool ret = true;
 	SMBCONN smbconn;
 	if(SMB_Connect(&smbconn, user, password, share, ip) != SMB_SUCCESS)
-		ret = false;
+		return false;
 
 	for(i=0;i<MAX_SMB_MOUNTED && SMBEnv[i].SMBCONNECTED;i++);
 
@@ -1429,15 +1429,13 @@ bool smbInit(const char *user, const char *password, const char *share, const ch
 
 void smbClose(const char* name)
 {
-	smb_env *env;
-	env=FindSMBEnv(name);
+	smb_env *env = FindSMBEnv(name);
 	if(env==NULL) return;
 
 	_SMB_lock(env->pos);
 	if(env->SMBCONNECTED)
-	{
 		SMB_Close(env->smbconn);
-	}
+
 	RemoveDevice(env->name);
 	env->SMBCONNECTED=false;
 	_SMB_unlock(env->pos);
