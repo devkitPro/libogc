@@ -1050,10 +1050,15 @@ GXFifoObj* GX_Init(void *base,u32 size);
 void GX_InitFifoBase(GXFifoObj *fifo,void *base,u32 size);
 void GX_InitFifoLimits(GXFifoObj *fifo,u32 hiwatermark,u32 lowatermark);
 void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr);
+void GX_GetFifoPtrs(GXFifoObj *fifo,void **rd_ptr,void **wt_ptr);
 void GX_SetCPUFifo(GXFifoObj *fifo);
 void GX_SetGPFifo(GXFifoObj *fifo);
 void GX_GetCPUFifo(GXFifoObj *fifo);
 void GX_GetGPFifo(GXFifoObj *fifo);
+void* GX_GetFifoBase(GXFifoObj *fifo);
+u32 GX_GetFifoCount(GXFifoObj *fifo);
+u32 GX_GetFifoSize(GXFifoObj *fifo);
+u8 GX_GetFifoWrap(GXFifoObj *fifo);
 GXDrawDoneCallback GX_SetDrawDoneCallback(GXDrawDoneCallback cb);
 GXBreakPtCallback GX_SetBreakPtCallback(GXBreakPtCallback cb);
 
@@ -1783,7 +1788,6 @@ void GX_ReadVCacheMetric(u32 *check,u32 *miss,u32 *stall);
 void GX_SetVCacheMetric(u32 attr);
 void GX_GetGPStatus(u8 *overhi,u8 *underlow,u8 *readIdle,u8 *cmdIdle,u8 *brkpt);
 void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1);
-void GX_GetFifoPtrs(GXFifoObj *fifo,void **rd_ptr,void **wt_ptr);
 volatile void* GX_RedirectWriteGatherPipe(void *ptr);
 
 #define GX_InitLightPosv(lo,vec) \
