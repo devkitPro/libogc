@@ -1267,20 +1267,7 @@ void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr)
 
 void GX_GetFifoPtrs(GXFifoObj *fifo,void **rd_ptr,void **wt_ptr)
 {
-	s32 rdwt_dst;
 	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
-	struct __gxfifo *gpfifo = (struct __gxfifo*)&_gpfifo;
-	struct __gxfifo *cpufifo = (struct __gxfifo*)&_cpufifo;
-
-	if(cpufifo->cpufifo_ready) ptr->wt_ptr = (u32)MEM_PHYSICAL_TO_K0((_piReg[5]&~0x04000000));
-	if(gpfifo->gpfifo_ready) {
-		ptr->rd_ptr = MEM_VIRTUAL_TO_PHYSICAL(_SHIFTL(_cpReg[29],16,16)|(_cpReg[28]&0xffff));
-		ptr->rdwt_dst = (_SHIFTL(_cpReg[25],16,16)|(_cpReg[24]&0xffff));
-	} else {
-		rdwt_dst = (ptr->wt_ptr - ptr->rd_ptr);
-		if(rdwt_dst<0) ptr->rdwt_dst += ptr->size;
-		else ptr->rdwt_dst = rdwt_dst;
-	}
 	*rd_ptr = (void*)ptr->rd_ptr;
 	*wt_ptr = (void*)ptr->wt_ptr;
 }
@@ -1467,6 +1454,26 @@ void GX_GetGPFifo(GXFifoObj *fifo)
 	ptr->fifo_wrap = gpfifo->fifo_wrap;
 	ptr->gpfifo_ready = gpfifo->gpfifo_ready;
 	ptr->cpufifo_ready = gpfifo->cpufifo_ready;
+}
+
+void* GX_GetFifoBase(GXFifoObj *fifo)
+{
+	return (void*)((struct __gxfifo*)fifo)->buf_start;
+}
+
+u32 GX_GetFifoSize(GXFifoObj *fifo)
+{
+	return ((struct __gxfifo*)fifo)->size;
+}
+
+u32 GX_GetFifoCount(GXFifoObj *fifo)
+{
+	return ((struct __gxfifo*)fifo)->rdwt_dst;
+}
+
+u8 GX_GetFifoWrap(GXFifoObj *fifo)
+{
+	return ((struct __gxfifo*)fifo)->fifo_wrap;
 }
 
 u32 GX_GetOverflowCount()
@@ -2126,8 +2133,8 @@ void GX_BeginDispList(void *list,u32 size)
 
 u32 GX_EndDispList()
 {
-	u32 level,ret = 0;
-	struct __gxfifo *fifo;
+	u32 level;
+	u8 wrap = 0;
 
 	GX_GetCPUFifo(&_gx_dl_fifoobj);
 	GX_SetCPUFifo(&_gx_old_cpufifo);
@@ -2140,10 +2147,10 @@ u32 GX_EndDispList()
 
 	__gx->gxFifoUnlinked = 0;
 
-	fifo = (struct __gxfifo*)&_gx_dl_fifoobj;
-	ret = fifo->rdwt_dst;
+	wrap = GX_GetFifoWrap(&_gx_dl_fifoobj);
+	if(wrap) return 0;
 
-	return ret;
+	return GX_GetFifoCount(&_gx_dl_fifoobj);
 }
 
 void GX_CallDispList(void *list,u32 nbytes)
