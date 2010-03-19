@@ -1554,6 +1554,7 @@ void GX_SetIndTexMatrix(u8 indtexmtx,f32 offset_mtx[2][3],s8 scale_exp);
 void GX_SetTevIndBumpST(u8 tevstage,u8 indstage,u8 mtx_sel);
 void GX_SetTevIndBumpXYZ(u8 tevstage,u8 indstage,u8 mtx_sel);
 void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 tilespacing_x,u16 tilespacing_y,u8 indtexfmt,u8 indtexmtx,u8 bias_sel,u8 alpha_sel);
+void GX_SetTevIndRepeat(u8 tevstage);
 
 void GX_SetColorUpdate(u8 enable);
 void GX_SetAlphaUpdate(u8 enable);
