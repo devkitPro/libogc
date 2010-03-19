@@ -3927,6 +3927,11 @@ void GX_SetTevIndBumpXYZ(u8 tevstage,u8 indstage,u8 mtx_sel)
 	GX_SetTevIndirect(tevstage,indstage,GX_ITF_8,GX_ITB_STU,mtx_sel,GX_ITW_OFF,GX_ITW_OFF,GX_FALSE,GX_FALSE,GX_ITBA_OFF);
 }
 
+void GX_SetTevIndRepeat(u8 tevstage)
+{
+	GX_SetTevIndirect(tevstage,GX_INDTEXSTAGE0,GX_ITF_8,GX_ITB_NONE,GX_ITM_OFF,GX_ITW_0,GX_ITW_0,GX_TRUE,GX_FALSE,GX_ITBA_OFF);
+}
+
 void GX_SetIndTexCoordScale(u8 indtexid,u8 scale_s,u8 scale_t)
 {
 	switch(indtexid) {
