@@ -1451,7 +1451,7 @@ static void evt_callback(struct netconn *conn,enum netconn_evt evt,u32 len)
 
 extern const devoptab_t dotab_stdnet;
 
-s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr *gateway,boolean use_dhcp)
+s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr *gateway,bool use_dhcp)
 {
 	s32 ret = 0;
 	struct ip_addr loc_ip, mask, gw;
@@ -1549,7 +1549,7 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 	return ret;
 }
 
-s32 if_config(char *local_ip, char *netmask, char *gateway,boolean use_dhcp)
+s32 if_config(char *local_ip, char *netmask, char *gateway,bool use_dhcp)
 {
 	s32 ret = 0;
 	struct in_addr loc_ip, mask, gw;
