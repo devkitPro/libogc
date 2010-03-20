@@ -543,6 +543,10 @@
 
 
 /*! \addtogroup tevstage TEV stage
+ * \details The GameCube's Graphics Processor (GP) can use up to 16 stages to compute a texel for a particular surface.
+ * By default, each texture will use two stages, but it can be configured through various functions calls.
+ *
+ * \note This is different from \ref texmapid s, where textures are loaded into.
  * @{
  */
 
@@ -649,6 +653,12 @@
 /*! @} */
 
 /*! \addtogroup texmapid texture map slot
+ * \brief Texture map slots to hold textures in.
+ *
+ * \details The GameCube's Graphics Processor (GP) can apply up to eight textures to a single surface. Those textures
+ * are assigned one of these slots.
+ *
+ * \note This is different from \ref tevstage s, which are the actual quanta for work with textures.
  * @{
  */
 #define GX_TEXMAP0				0			/*!< Texture map slot 0 */
@@ -3312,6 +3322,17 @@ void GX_SetTevIndBumpXYZ(u8 tevstage,u8 indstage,u8 mtx_sel);
  * \return none
  */
 void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 tilespacing_x,u16 tilespacing_y,u8 indtexfmt,u8 indtexmtx,u8 bias_sel,u8 alpha_sel);
+
+/*!
+ * \fn void GX_SetTevIndRepeat(u8 tevstage)
+ * \brief Set a given TEV stage to use the same texture coordinates as were computed in the previous stage.
+ *
+ * \note This is only useful when the previous stage texture coordinates took more than one stage to compute, as is the case for GX_SetTevIndBumpST().
+ *
+ * \param[in] tevstage \ref tevstage to modify
+ *
+ * \return none
+ */
 void GX_SetTevIndRepeat(u8 tevstage);
 /*!
  * \fn void GX_SetColorUpdate(u8 enable)
