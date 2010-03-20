@@ -1,6 +1,33 @@
 #ifndef __GU_H__
 #define __GU_H__
 
+/*!
+ * \file gu.h
+ * \brief GU/Matrix subsystem
+ *
+ * \details The GU/Matrix subsystem is used for many matrix- , vector- and quaternion-related operations.
+ *
+ * The matrix functions are coupled tightly with GX (GX will take Mtx for many of its own matrix-related functions, for example).
+ * This library supports 3x3, 3x4, 4x3 and 4x4 matrices.
+ *
+ * This library has functions for manipulating vectors as well; some of its functions are for transforming matrices using vectors.
+ *
+ * It also includes functions for using and converting between quaternions. Although quaternions are not used natively in libogc,
+ * they work well with rotation functions as they aren't susceptible to "gimbal lock". You can use the appropriate functions to
+ * freely convert between quaternions and matrices.
+ *
+ * \note Many of the functions come in two flavors: C and "paired single". Both perform the same exact operations, but with a key
+ * difference: the C versions are written in pure C and are slightly more accurate, while the PS versions are hand-written
+ * assembly routines utilizing the Gekko's "paired-single" extension, which is much faster for almost every operation but slightly
+ * less accurate. When building for the GameCube or Wii (which is probably always), the library is configured to automatically use
+ * the paired-single tuned versions, as the speed difference is worth the accuracy hit. If you want to use the C routine and take
+ * the performance hit instead, prefix the function with "c_". You are not limited to using only one or the other collection; you
+ * can use both in your code if you wish.
+ *
+ * \warning Some functions (notably guFrustum() and related) take a 4x4 matrix, while the rest work only on 4x3 matrices. Make sure
+ * you are passing the correct matrix type to each function, as passing the wrong one can create subtle bugs.
+ */
+
 #include <gctypes.h>
 
 #ifdef GEKKO
@@ -30,39 +57,292 @@
 #define DegToRad(a)   ( (a) *  0.01745329252f )
 #define RadToDeg(a)   ( (a) * 57.29577951f )
 
+/*!
+ * \def guMtxRowCol(mt,row,col)
+ * \brief Provides storage-safe access to elements of Mtx and Mtx44.
+ *
+ * \details This macro provides storage-safe access to elements of Mtx and Mtx44. Matrix storage format is transparent to the
+ * programmer as long as matrices are initialized and manipulated exclusively with the matrix API. Do not initialize matrices
+ * when they are first declared and do not set values by hand. To insulate code from changes to matrix storage format, you should
+ * use this macro instead of directly accessing individual matrix elements.
+ *
+ * \note When using this function, think of the matrix in row-major format.
+ *
+ * \param[in] mt Matrix to be accessed.
+ * \param[in] r Row index of element to access.
+ * \param[in] c Column index of element to access.
+ *
+ * \return none
+ */
 #define guMtxRowCol(mt,row,col)		(mt[row][col])
 
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
 
+/*! \struct guVector
+ * \brief 3-element vector with x, y and z components.
+ *
+ * \details When used in 3D transformations, it is treated as a column vector with an implied fourth 'w' coordinate of 1.
+ * For example, to multiply a vector <i>vOld</i> by a matrix <i>m</i>: <i>vNew</i> = <i>m</i> x <i>vOld</i>. In code:
+ *
+ * \code guVecMultiply( m, &vOld, &vNew ); \endcode
+ *
+ * \note This is a generic structure which can be used in any situation or function that accepts an array or struct with
+ * three f32 values.
+ */
 typedef struct _vecf {
 	f32 x,y,z;
 } guVector;
 
+/*! \struct guQuaternion
+ * \brief Quaternion type consisting of an (x,y,z) vector component and a (w) scalar component.
+ *
+ * \details This struct is used by gu library function such as guQuatMtx(), which generates a rotation matrix from a
+ * quaternion.
+ *
+ * \note This is a generic structure which can be used in any situation or function that accepts an array or struct with
+ * four f32 values.
+ */
 typedef struct _qrtn {
 	f32 x,y,z,w;
 } guQuaternion;
 
+/*! \typedef f32 Mtx[3][4]
+ * \brief Standard 3x4 matrix.
+ * \warning Some functions take the 4x4 matrix type rather than this one, so make sure you don't mix up the two.
+ */
 typedef f32	Mtx[3][4];
 typedef f32 (*MtxP)[4];
+
+/*! typedef f32 ROMtx[4][3]
+ * \brief Column-major representation of the standard Mtx structure.
+ *
+ * \details It is not a true transpose, as it is a 4x3 matrix. These structures are only accepted by functions that explicitly
+ * require reordered matrices.
+ */
 typedef f32 ROMtx[4][3];
 typedef f32 (*ROMtxP)[3];
+
+/*! \typedef f32 Mtx33[3][3]
+ * \brief 3x3 matrix.
+ */
 typedef f32 Mtx33[3][3];
 typedef f32 (*Mtx33P)[3];
+
+/*! \typedef f32 Mtx44[4][4]
+ * \brief 4x4 matrix.
+ * \warning Some functions take this instead of the 3x4 matrix, so make sure you don't mix up the two.
+ */
 typedef f32 Mtx44[4][4];
 typedef f32 (*Mtx44P)[4];
 
+/*!
+ * \fn void guFrustum(Mtx44 mt,f32 t,f32 b,f32 l,f32 r,f32 n,f32 f)
+ * \brief Sets a 4x4 perspective projection matrix from viewing volume dimensions.
+ *
+ * \details This matrix is used by the GX API to transform points to screen space.
+ *
+ * For normal perspective projection, the axis of projection is the -z axis, so \a t = positive, \a b = -\a t, \a r  =
+ * positive, \a l = -\a r. \a n and \a f must both be given as positive distances.
+ *
+ * \note \a m negates a point's 'z' values, so pre-transformed points should have negative 'z' values in eye space in
+ * order to be visible after projection.
+ *
+ * \param[out] mt New projection matrix.
+ * \param[in] t Top edge of view volume at the near clipping plane.
+ * \param[in] b Bottom edge of view volume at the near clipping plane.
+ * \param[in] l Left edge of view volume at the near clipping plane.
+ * \param[in] r Right edge of view volume at the near clipping plane.
+ * \param[in] n Positive distance to the near clipping plane.
+ * \param[in] f Positive distance to the far clipping plane.
+ *
+ * \return none
+ */
 void guFrustum(Mtx44 mt,f32 t,f32 b,f32 l,f32 r,f32 n,f32 f);
+
+/*!
+ * \fn void guPerspective(Mtx44 mt,f32 fovy,f32 aspect,f32 n,f32 f)
+ * \brief Sets a 4x4 perspective projection matrix from field of view and aspect ratio parameters.
+ *
+ * \details This matrix is used by the GX API to transform points to screen space.
+ *
+ * This function generates a projection matrix equivalent to that created by guFrustum() with the axis of projection
+ * centered around Z. It is included to provide an alternative method of specifying view volume dimensions.
+ *
+ * The field of view (\a fovy) is the total field of view in degrees in the Y-Z plane. \a aspect is the ratio
+ * (width/height) of the view window in screen space. \a n and \a f must both be given as positive distances.
+ *
+ * \note \a m negates a point's 'z' values, so pre-transformed points should have negative 'z' values in eye space in order to
+ * be visible after projection.
+ *
+ * \param[out] mt New perspective projection matrix.
+ * \param[in] fovy Total field of view in the Y-Z plane measured in degrees.
+ * \param[in] aspect View window aspect ratio (width/height)
+ * \param[in] n Positive distance to near clipping plane.
+ * \param[in] f Positive distance to far clipping plane.
+ *
+ * \return none
+ */
 void guPerspective(Mtx44 mt,f32 fovy,f32 aspect,f32 n,f32 f);
+
+/*!
+ * \fn void guOrtho(Mtx44 mt,f32 t,f32 b,f32 l,f32 r,f32 n,f32 f)
+ * \brief Sets a 4x4 matrix for orthographic projection.
+ *
+ * \details This matrix is used by the GX API to transform points from eye space to screen space.
+ *
+ * For normal parallel projections, the axis of projection is the -z axis, so \a t = positive, \a b = -\a t, \a r =
+ * positive, \a l = -\a r. \a n and \a f must both be given as positive distances.
+ *
+ * \note \a m negates \a a point's 'z' values, so pre-transformed points should have negative 'z' values in eye space in order
+ * to be visible after projection.
+ *
+ * \param[out] mt New parallel projection matrix.
+ * \param[in] t Top edge of view volume.
+ * \param[in] b Bottom edge of view volume.
+ * \param[in] l Left edge of view volume.
+ * \param[in] r Right edge of view volume.
+ * \param[in] n Positive distance to the near clipping plane.
+ * \param[in] f Positive distance to the far clipping plane.
+ *
+ * \return none
+ */
 void guOrtho(Mtx44 mt,f32 t,f32 b,f32 l,f32 r,f32 n,f32 f);
 
+
+/*!
+ * \fn void guLightPerspective(Mtx mt,f32 fovY,f32 aspect,f32 scaleS,f32 scaleT,f32 transS,f32 transT)
+ * \brief Sets a 3x4 perspective projection matrix from field of view and aspect ratio parameters, two scale values, and two
+ * translation values.
+ *
+ * \details This matrix is used to project points into texture space and yield texture coordinates.
+ *
+ * This function generates a projection matrix, equivalent to that created by guLightFrustum(), with the axis of projection
+ * centered around Z. This function is included to provide an alternative method of specifying texture projection volume
+ * dimensions.
+ *
+ * The field of view (\a fovy) is the total field of view in degrees in the YZ plane. \a aspect is the ratio (width / height)
+ * of the view window in screen space.
+ *
+ * Standard projection yields values ranging from -1.0 to 1.0 in both dimensions of the front clipping plane. Since texture
+ * coordinates should usually be within the range of 0.0 to 1.0, we have added a scale and translation value for both S and T.
+ * The most common way to use these values is to set all of them to 0.5 (so that points in the range of -1.0 to 1.0 are first
+ * scaled by 0.5) to be in the range of -0.5 to 0.5. Then they are translated by 0.5 to be in the range of 0.0 to 1.0. Other
+ * values can be used for translation and scale to yield different effects.
+ *
+ * \param[out] mt New projection matrix.
+ * \param[in] fovy Total field of view in the YZ plane measured in degrees.
+ * \param[in] aspect View window aspect ratio (width / height)
+ * \param[in] scaleS Scale in the S direction for projected coordinates (usually 0.5).
+ * \param[in] scaleT Scale in the T direction for projected coordinates (usually 0.5).
+ * \param[in] transS Translate in the S direction for projected coordinates (usually 0.5).
+ * \param[in] transT Translate in the T direction for projected coordinates (usually 0.5).
+ *
+ * \return none
+ */
 void guLightPerspective(Mtx mt,f32 fovY,f32 aspect,f32 scaleS,f32 scaleT,f32 transS,f32 transT);
+
+/*!
+ * \fn void guLightOrtho(Mtx mt,f32 t,f32 b,f32 l,f32 r,f32 scaleS,f32 scaleT,f32 transS,f32 transT)
+ * \brief Sets a 3x4 matrix for orthographic projection.
+ *
+ * \details Use this matrix to project points into texture space and yield texture coordinates.
+ *
+ * For normal parallel projections, the axis of projection is the -z axis, so \a t = positive, \a b = -\a t, \a r = positive,
+ * \a l = -\a r.
+ *
+ * Standard projection yields values ranging from -1.0 to 1.0 in both dimensions of the front clipping plane. Since texture
+ * coordinates should usually be within the range of 0.0 to 1.0, we have added a scale and translation value for both S and T.
+ * The most common way to use these values is to set all of them to 0.5 so that points in the range of -1.0 to 1.0 are first
+ * scaled by 0.5 (to be in the range of -0.5 to 0.5). Then they are translated by 0.5 to be in the range of 0.0 to 1.0. Other
+ * values can be used for translation and scale to yield different effects.
+ *
+ * \param[out] mt New parallel projection matrix.
+ * \param[in] t Top edge of view volume.
+ * \param[in] b Bottom edge of view volume.
+ * \param[in] l Left edge of view volume.
+ * \param[in] r Right edge of view volume.
+ * \param[in] scaleS Scale in the S direction for projected coordinates (usually 0.5).
+ * \param[in] scaleT Scale in the T direction for projected coordinates (usually 0.5).
+ * \param[in] transS Translate in the S direction for projected coordinates (usually 0.5).
+ * \param[in] transT Translate in the T direction for projected coordinates (usually 0.5).
+ *
+ * \return none
+ */
 void guLightOrtho(Mtx mt,f32 t,f32 b,f32 l,f32 r,f32 scaleS,f32 scaleT,f32 transS,f32 transT);
+
+/*!
+ * \fn void guLightFrustum(Mtx mt,f32 t,f32 b,f32 l,f32 r,f32 n,f32 scaleS,f32 scaleT,f32 transS,f32 transT)
+ * \brief Sets a 3x4 perspective projection matrix from viewing volume dimensions, two scale values, and two translation values.
+ *
+ * \details This matrix is used to project points into texture space and yield texture coordinates.
+ *
+ * For normal perspective projection, the axis of projection is the -z axis, so \a t = positive, \a b = -\a t, \a r = positive,
+ * \a l = -\a r. \a n must be given as a positive distance.
+ *
+ * Standard projection yields values ranging from -1.0 to 1.0 in both dimensions of the front clipping plane.  Since texture
+ * coordinates usually should be within the range of 0.0 to 1.0, we have added a scale and translation value for both S and T.
+ * The most common usage of these values is to set all of them to 0.5 so that points in the range of -1.0 to 1.0 are first
+ * scaled by 0.5 to be in the range of -0.5 to 0.5, and are then translated by 0.5 to be in the range of 0.0 to 1.0.  Other
+ * values can be used for translation and scale to yield different effects.
+ *
+ * \param[out] mt New projection matrix.
+ * \param[in] t Top edge of view volume at the near clipping plane.
+ * \param[in] b Bottom edge of view volume at the near clipping plane.
+ * \param[in] l Left edge of view volume at the near clipping plane.
+ * \param[in] r Right edge of view volume at the near clipping plane.
+ * \param[in] n Positive distance to the near clipping plane.
+ * \param[in] scaleS Scale in the S direction for projected coordinates (usually 0.5).
+ * \param[in] scaleT Scale in the T direction for projected coordinates (usually 0.5).
+ * \param[in] transS Translate in the S direction for projected coordinates (usually 0.5).
+ * \param[in] transT Translate in the T direction for projected coordinates (usually 0.5).
+ *
+ * \return none
+ */
 void guLightFrustum(Mtx mt,f32 t,f32 b,f32 l,f32 r,f32 n,f32 scaleS,f32 scaleT,f32 transS,f32 transT);
 
+
+/*!
+ * \fn void guLookAt(Mtx mt,guVector *camPos,guVector *camUp,guVector *target)
+ * \brief Sets a world-space to camera-space transformation matrix.
+ *
+ * \details Create the matrix \a m by specifying a camera position (\a camPos), a camera "up" direction (\a camUp), and a target
+ * position (\a target).
+ *
+ * The camera's reference viewing direction is the -z axis. The camera's reference 'up' direction is the +y axis.
+ *
+ * This function is especially convenient for creating a tethered camera, aiming at an object, panning, or specifying an
+ * arbitrary view.
+ *
+ * \param[out] mt New viewing matrix.
+ * \param[in] camPos Vector giving 3D camera position in world space.
+ * \param[in] camUp Vector containing camera "up" vector; does not have to be a unit vector.
+ * \param[in] target Vector giving 3D target position in world space.
+ *
+ * \return none
+ */
 void guLookAt(Mtx mt,guVector *camPos,guVector *camUp,guVector *target);
 
+
+/*!
+ * \fn void guVecHalfAngle(guVector *a,guVector *b,guVector *half)
+ * \brief Computes a vector that lies halfway between \a a and \a b.
+ *
+ * \details The halfway vector is useful in specular reflection calculations. It is interpreted as pointing from the reflecting
+ * surface to the general viewing direction.
+ *
+ * \a a and \a b do not have to be unit vectors. Both of these vectors are assumed to be pointing towards the surface from the
+ * light or viewer, respectively. Local copies of these vectors are negated, normalized and added head to tail. 
+ *
+ * \a half is computed as a unit vector that points from the surface to halfway between the light and the viewing direction.
+ *
+ * \param[in] a Pointer to incident vector. Must point from the light source to the surface.
+ * \param[in] b Pointer to viewing vector. Must point from the viewer to the surface.
+ * \param[out] half Pointer to resultant half-angle unit vector; points from the surface to halfway between the light and the viewing direction.
+ *
+ * \return none
+ */
 void guVecHalfAngle(guVector *a,guVector *b,guVector *half);
 
 void c_guVecAdd(guVector *a,guVector *b,guVector *ab);

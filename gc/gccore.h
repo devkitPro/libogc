@@ -123,6 +123,7 @@ distribution.
  * - \ref dsp.h "DSP subsystem"
  * - \ref dvd.h "DVD subsystem"
  * - \ref gx.h "GX subsystem"
+ * - \ref gu.h "gu/Matrix subsystem"
  * - \ref video.h "VIDEO subsystem"
  * - \ref cache.h "Cache subsystem"
  * - \ref card.h "Memory card subsystem"
