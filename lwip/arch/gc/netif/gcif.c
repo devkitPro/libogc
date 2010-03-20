@@ -480,7 +480,7 @@ static __inline__ u8 __linkstate(struct bba_priv *priv)
 	return 0;
 }
 
-static boolean __bba_get_linkstateasync(struct bba_priv *priv)
+static bool __bba_get_linkstateasync(struct bba_priv *priv)
 {
 	u32 ret,cnt,sec;
 
