@@ -656,7 +656,8 @@
  * \brief Texture map slots to hold textures in.
  *
  * \details The GameCube's Graphics Processor (GP) can apply up to eight textures to a single surface. Those textures
- * are assigned one of these slots.
+ * are assigned one of these slots. Various operations used on or with a particular texture will also take one of these
+ * items, including operations regarding texture coordinate generation (although not necessarily on the same slot).
  *
  * \note This is different from \ref tevstage s, which are the actual quanta for work with textures.
  * @{
@@ -732,7 +733,7 @@
  */
 #define GX_TEV_KASEL_1					0x00			/*!< constant 1.0 */
 #define GX_TEV_KASEL_7_8				0x01			/*!< constant 7/8 */
-#define GX_TEV_KASEL_3_4				0x02			/*!< constant 3/3 */
+#define GX_TEV_KASEL_3_4				0x02			/*!< constant 3/4 */
 #define GX_TEV_KASEL_5_8				0x03			/*!< constant 5/8 */
 #define GX_TEV_KASEL_1_2				0x04			/*!< constant 1/2 */
 #define GX_TEV_KASEL_3_8				0x05			/*!< constant 3/8 */
