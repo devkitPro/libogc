@@ -180,7 +180,7 @@ s32 LWP_CondBroadcast(cond_t cond)
 s32 LWP_CondTimedWait(cond_t cond,mutex_t mutex,const struct timespec *abstime)
 {
 	u64 timeout = LWP_THREADQ_NOTIMEOUT;
-	boolean timedout = FALSE;
+	bool timedout = FALSE;
 
 	if(abstime) timeout = __lwp_wd_calc_ticks(abstime);
 	return __lwp_cond_waitsupp(cond,mutex,timeout,timedout);

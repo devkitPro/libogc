@@ -572,7 +572,7 @@ void __lwp_thread_ready(lwp_cntrl *thethread)
 	_CPU_ISR_Restore(level);
 }
 
-u32 __lwp_thread_init(lwp_cntrl *thethread,void *stack_area,u32 stack_size,u32 prio,u32 isr_level,boolean is_preemtible)
+u32 __lwp_thread_init(lwp_cntrl *thethread,void *stack_area,u32 stack_size,u32 prio,u32 isr_level,bool is_preemtible)
 {
 	u32 act_stack_size = 0;
 

@@ -810,7 +810,7 @@ s32 net_poll(struct pollsd *sds,s32 nsds,s32 timeout)
 	return ret;
 }
 
-s32 if_config(char *local_ip, char *netmask, char *gateway,boolean use_dhcp)
+s32 if_config(char *local_ip, char *netmask, char *gateway,bool use_dhcp)
 {
 	s32 i,ret;
 	struct in_addr hostip;
@@ -829,7 +829,7 @@ s32 if_config(char *local_ip, char *netmask, char *gateway,boolean use_dhcp)
 	return -1;
 }
 
-s32 if_configex(struct in_addr *local_ip, struct in_addr *netmask, struct in_addr *gateway,boolean use_dhcp)
+s32 if_configex(struct in_addr *local_ip, struct in_addr *netmask, struct in_addr *gateway,bool use_dhcp)
 {
 	s32 i,ret;
 	struct in_addr hostip;

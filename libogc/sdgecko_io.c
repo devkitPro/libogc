@@ -78,7 +78,7 @@ static lwpq_t _ioEXILock[MAX_DRIVE];
 static u32 _ioPageSize[MAX_DRIVE];
 static u32 _ioFlag[MAX_DRIVE];
 static u32 _ioError[MAX_DRIVE];
-static boolean _ioCardInserted[MAX_DRIVE];
+static bool _ioCardInserted[MAX_DRIVE];
 
 static u8 _ioResponse[MAX_DRIVE][128];
 static u8 _ioCrc7Table[256];
@@ -1167,7 +1167,7 @@ static s32 __card_softreset(s32 drv_no)
 	return __check_response(drv_no,_ioResponse[drv_no][0]);
 }
 
-static boolean __card_check(s32 drv_no)
+static bool __card_check(s32 drv_no)
 {
 	s32 ret;
 	

@@ -98,7 +98,7 @@ static mutex_st* __lwp_mutex_allocate()
 	return NULL;
 }
 
-s32 LWP_MutexInit(mutex_t *mutex,boolean use_recursive)
+s32 LWP_MutexInit(mutex_t *mutex,bool use_recursive)
 {
 	lwp_mutex_attr attr;
 	mutex_st *ret;

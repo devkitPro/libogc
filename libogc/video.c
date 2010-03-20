@@ -2497,7 +2497,7 @@ void VIDEO_Flush()
 	_CPU_ISR_Restore(level);
 }
 
-void VIDEO_SetBlack(boolean black)
+void VIDEO_SetBlack(bool black)
 {
 	u32 level;
 	const struct _timing *curtiming;

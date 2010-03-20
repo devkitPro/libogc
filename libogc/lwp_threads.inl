@@ -65,13 +65,13 @@ static __inline__ void __lwp_thread_setlibcreent(void **libc_reent)
 	__lwp_thr_libc_reent = libc_reent;
 }
 
-static __inline__ boolean __lwp_thread_isswitchwant()
+static __inline__ bool __lwp_thread_isswitchwant()
 {
 
 	return _context_switch_want;
 }
 
-static __inline__ boolean __lwp_thread_isdispatchenabled()
+static __inline__ bool __lwp_thread_isdispatchenabled()
 {
 	return (_thread_dispatch_disable_level==0);
 }

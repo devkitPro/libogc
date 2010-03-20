@@ -32,17 +32,17 @@ static __inline__ heap_block* __lwp_heap_usrblockat(void *ptr)
 	return __lwp_heap_blockat(ptr,-offset+-HEAP_BLOCK_USED_OVERHEAD);
 }
 
-static __inline__ boolean __lwp_heap_prev_blockfree(heap_block *block)
+static __inline__ bool __lwp_heap_prev_blockfree(heap_block *block)
 {
 	return !(block->back_flag&HEAP_BLOCK_USED);
 }
 
-static __inline__ boolean __lwp_heap_blockfree(heap_block *block)
+static __inline__ bool __lwp_heap_blockfree(heap_block *block)
 {
 	return !(block->front_flag&HEAP_BLOCK_USED);
 }
 
-static __inline__ boolean __lwp_heap_blockused(heap_block *block)
+static __inline__ bool __lwp_heap_blockused(heap_block *block)
 {
 	return (block->front_flag&HEAP_BLOCK_USED);
 }
@@ -57,12 +57,12 @@ static __inline__ void* __lwp_heap_startuser(heap_block *block)
 	return (void*)&block->next;
 }
 
-static __inline__ boolean __lwp_heap_blockin(heap_cntrl *heap,heap_block *block)
+static __inline__ bool __lwp_heap_blockin(heap_cntrl *heap,heap_block *block)
 {
 	return ((u32)block>=(u32)heap->start && (u32)block<=(u32)heap->final);
 }
 
-static __inline__ boolean __lwp_heap_pgsize_valid(u32 pgsize)
+static __inline__ bool __lwp_heap_pgsize_valid(u32 pgsize)
 {
 	return (pgsize!=0 && ((pgsize%PPC_ALIGNMENT)==0));
 }
