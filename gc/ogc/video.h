@@ -78,14 +78,14 @@ void VIDEO_Flush();
 
 
 /*!
- * \fn void VIDEO_SetBlack(boolean black)
+ * \fn void VIDEO_SetBlack(bool black)
  * \brief Blackout the VIDEO interface.
  *
  * \param[in] black Boolean flag to determine whether to blackout the VI or not.
  *
  * \return none
  */
-void VIDEO_SetBlack(boolean black);
+void VIDEO_SetBlack(bool black);
 
 
 /*! 

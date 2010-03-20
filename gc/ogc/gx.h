@@ -968,7 +968,7 @@
 #define GX_DA_GENTLE					1
 #define GX_DA_MEDIUM					2
 #define GX_DA_STEEP						3
-/*! @} 8/
+/*! @} */
 
 /*! \addtogroup spotfn Spot illumination distribution function
  * @{

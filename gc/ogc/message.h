@@ -90,7 +90,7 @@ void MQ_Close(mqbox_t mqbox);
 \param[in] msg message to send
 \param[in] flags message flags (MQ_MSG_BLOCK, MQ_MSG_NOBLOCK)
 
-\return boolean result
+\return bool result
 */
 BOOL MQ_Send(mqbox_t mqbox,mqmsg_t msg,u32 flags);
 
@@ -101,7 +101,7 @@ BOOL MQ_Send(mqbox_t mqbox,mqmsg_t msg,u32 flags);
 \param[in] msg message to send
 \param[in] flags message flags (MQ_MSG_BLOCK, MQ_MSG_NOBLOCK)
 
-\return boolean result
+\return bool result
 */
 BOOL MQ_Jam(mqbox_t mqbox,mqmsg_t msg,u32 flags);
 
@@ -112,7 +112,7 @@ BOOL MQ_Jam(mqbox_t mqbox,mqmsg_t msg,u32 flags);
 \param[in] msg pointer to a mqmsg_t_t-type message to receive.
 \param[in] flags message flags (MQ_MSG_BLOCK, MQ_MSG_NOBLOCK)
 
-\return boolean result
+\return bool result
 */
 BOOL MQ_Receive(mqbox_t mqbox,mqmsg_t *msg,u32 flags);
 
