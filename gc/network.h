@@ -250,8 +250,8 @@ u32 inet_addr(const char *cp);
 s8 inet_aton(const char *cp, struct in_addr *addr);
 char *inet_ntoa(struct in_addr addr); /* returns ptr to static buffer; not reentrant! */
 
-s32 if_config( char *local_ip, char *netmask, char *gateway,boolean use_dhcp);
-s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr *gateway,boolean use_dhcp);
+s32 if_config( char *local_ip, char *netmask, char *gateway,bool use_dhcp);
+s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr *gateway,bool use_dhcp);
 
 s32 net_init();
 void net_deinit();

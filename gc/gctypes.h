@@ -53,11 +53,6 @@ typedef unsigned int BOOL;
 // alias type typedefs
 #define FIXED s32					///< Alias type for sfp32
 /*+----------------------------------------------------------------------------------------------+*/
-// boolean defines
-#ifndef boolean
-#define boolean  u8
-#endif
-/*+----------------------------------------------------------------------------------------------+*/
 #ifndef TRUE
 #define TRUE	1					///< True
 #endif
