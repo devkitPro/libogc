@@ -3312,7 +3312,7 @@ void GX_SetTevIndBumpXYZ(u8 tevstage,u8 indstage,u8 mtx_sel);
  * \return none
  */
 void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 tilespacing_x,u16 tilespacing_y,u8 indtexfmt,u8 indtexmtx,u8 bias_sel,u8 alpha_sel);
-
+void GX_SetTevIndRepeat(u8 tevstage);
 /*!
  * \fn void GX_SetColorUpdate(u8 enable)
  * \brief Enables or disables color-buffer updates when rendering into the Embedded Frame Buffer (EFB).
