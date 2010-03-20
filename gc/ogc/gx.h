@@ -151,15 +151,22 @@
 /*! @} */
 
 /*! \addtogroup primtype Primitive type
+ * \brief Collection of primitive types that can be drawn by the GP.
+ *
+ * \note Which type you use depends on your needs; however, performance can increase by using triangle strips or fans instead of discrete triangles.
  * @{
  */
-#define GX_POINTS				0xB8			/*!< Points */
-#define GX_LINES				0xA8			/*!< Line segments */
-#define GX_LINESTRIP			0xB0			/*!< Line strip */
-#define GX_TRIANGLES			0x90			/*!< Triangles */
-#define GX_TRIANGLESTRIP		0x98			/*!< Triangle strip */
-#define GX_TRIANGLEFAN			0xA0			/*!< Triangle fan */
-#define GX_QUADS				0x80			/*!< Quads */
+#define GX_POINTS				0xB8			/*!< Draws a series of points. Each vertex is a single point. */
+#define GX_LINES				0xA8			/*!< Draws a series of unconnected line segments. Each pair of vertices makes a line. */
+#define GX_LINESTRIP			0xB0			/*!< Draws a series of lines. Each vertex (besides the first) makes a line between it and the previous. */
+#define GX_TRIANGLES			0x90			/*!< Draws a series of unconnected triangles. Three vertices make a single triangle. */
+#define GX_TRIANGLESTRIP		0x98			/*!< Draws a series of triangles. Each triangle (besides the first) shares a side with the previous triangle.
+												* Each vertex (besides the first two) completes a triangle. */
+#define GX_TRIANGLEFAN			0xA0			/*!< Draws a single triangle fan. The first vertex is the "centerpoint". The second and third vertex complete
+												* the first triangle. Each subsequent vertex completes another triangle which shares a side with the previous
+												* triangle (except the first triangle) and has the centerpoint vertex as one of the vertices. */
+#define GX_QUADS				0x80			/*!< Draws a series of unconnected quads. Every four vertices completes a quad. Internally, each quad is
+												* translated into a pair of triangles. */
 /*! @} */
 
 #define GX_SRC_REG			0
@@ -180,9 +187,13 @@
 #define GX_LIGHTNULL		0x000			/*!< No lights */
 /*! @} */
 
+/*! \addtogroup difffn Diffuse function
+ * @{
+ */
 #define GX_DF_NONE			0
 #define GX_DF_SIGNED		1
 #define GX_DF_CLAMP			2
+/*! @} */
 
 /*! \addtogroup attenfunc Attenuation function
  * @{
@@ -1337,7 +1348,7 @@ extern WGPipe* const wgPipe;
  * (GP). This function will initialize a FIFO and attach it to both the CPU and GP. The CPU will write commands to the FIFO
  * and the GP will read the commands. This function returns a pointer to the initialized FIFO. The application must allocate
  * the memory for the FIFO. The parameter \a base is a pointer to the allocated main memory and must be aligned to 32B. \a size
- * is the size of the FIFO in bytes and must be a multiple of 32B. Refer to additional notes in GX_InitFIFOBase() concerning
+ * is the size of the FIFO in bytes and must be a multiple of 32B. Refer to additional notes in GX_InitFifoBase() concerning
  * the FIFO memory.
  *
  * \note It is also possible to override the default immediate-mode style and instead buffer the graphics for frame <i>n+1</i>
@@ -1632,11 +1643,11 @@ void GX_SetDrawSync(u16 token);
  * \fn GXDrawSyncCallback GX_SetDrawSyncCallback(GXDrawSyncCallback cb)
  * \brief Installs a callback that is invoked whenever a DrawSync token is encountered by the graphics pipeline.
  *
- * \details The callback'ss argument is the value of the token most recently encountered. Since it is possible to
+ * \details The callback's argument is the value of the token most recently encountered. Since it is possible to
  *          miss tokens (graphics processing does not stop while the callback is running), your code should be
  *          capable of deducing if any tokens have been missed.
  *
- * \param[in] cb callback to be invoked when the DrawSnyc tokens are encountered in the graphics pipeline.
+ * \param[in] cb callback to be invoked when the DrawSync tokens are encountered in the graphics pipeline.
  *
  * \return pointer to the previously set callback function.
  */
@@ -1668,7 +1679,7 @@ void GX_DisableBreakPt();
  * is reached. The application can then decide when to disable the break point, using GX_DisableBreakPt(), which will allow the FIFO
  * to resume reading graphics commands.<br><br>
  *
- * \note FIFO reads will stall when the GP FIFO read pointer is equal to the break point address \a break_ptr. To re-enable reads of
+ * \note FIFO reads will stall when the GP FIFO read pointer is equal to the break point address \a break_pt. To re-enable reads of
  * the GP FIFO, use GX_DisableBreakPt().<br><br>
  *
  * \note Use GX_SetBreakPtCallback() to set what function runs when the breakpoint is encountered.
@@ -1814,9 +1825,9 @@ void GX_SetViewportJitter(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ,u
  * \param[in] enable whether or not to enable lighting for this channel
  * \param[in] ambsrc source for the ambient color
  * \param[in] matsrc source for the material color
- * \param[in] litmask \ref lightid
- * \param[in] diff_fn diffuse function to use
- * \param[in] attn_fn attentuation function to use
+ * \param[in] litmask \ref lightid or IDs to associate with this channel
+ * \param[in] diff_fn \ref difffn to use
+ * \param[in] attn_fn \ref attenfunc to use
  *
  * \return none
  */
@@ -1839,7 +1850,7 @@ void GX_SetChanAmbColor(s32 channel,GXColor color);
  * \fn void GX_SetChanMatColor(s32 channel,GXColor color)
  * \brief Sets the material color register for color channel \a chan.
  *
- * \details This color will be used by the channel as the material color if the material source, set by GX_SetChanCtrl(), is GX_SRC_REG.
+ * \details This color will be used by the channel as the material color if the material source, set by GX_SetChanCtrl(), is <tt>GX_SRC_REG</tt>.
  *
  * \param[in] channel channel to set
  * \param[in] color color to set it to
@@ -1853,7 +1864,8 @@ void GX_SetChanMatColor(s32 channel,GXColor color);
  * \brief Sets the array base pointer and stride for a single attribute.
  *
  * \details The array base and stride are used to compute the address of indexed attribute data using the equation:<br><br>
- * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>attr_addr</i> = \a ptr + <i>attr_idx</i> * \a stride<br><br>
+ *
+ * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>attr_addr</i> = \a ptr + <i>attr_idx</i> * \a stride
  *
  * When drawing a graphics primitive that has been enabled to use indexed attributes (see GX_SetVtxDesc()), <i>attr_idx</i> is supplied in the vertex
  * data. The format and size of the data in the array must also be described using GX_SetVtxAttrFmt(). You can also index other data, such as
@@ -2004,12 +2016,12 @@ void GX_Begin(u8 primitve,u8 vtxfmt,u16 vtxcnt);
  *
  * \note The application is expected to allocate the memory for the display list buffer. If the display list exceeds the maximum size
  * of the buffer, GX_EndDispList() will return 0. The address of the buffer must be 32-byte aligned; memalign() can return 32-byte-aligned
- * pointers. You can use the macro ATTRIBUTE_ALIGN(32)to align statically allocated buffers.<br><br>
+ * pointers. You can use the macro ATTRIBUTE_ALIGN(32) to align statically allocated buffers.<br><br>
  *
  * \note The CPU's write-gather pipe is used to write graphics commands to the display list. Therefore, the display list buffer must be
  * forced out of the CPU cache prior to being filled. DCInvalidateRange() may be used for this purpose. In addition, due to the mechanics
  * of flushing the write-gather pipe, the display list buffer should be at least 63 bytes larger than the maximum expected amount of data
- * stored. If GX_ResetWriteGatherPipe() is called immediately after calling this function, then you only need 32 bytes of extra space.<br><br>
+ * stored.<br><br>
  *
  * \note A display list cannot be nested; i.e., no display list functions (GX_BeginDispList(), GX_EndDispList() and GX_CallDispList()) can
  * be called between a GX_BeginDispList() and GX_EndDispList() pair.<br><br>
@@ -2342,7 +2354,7 @@ void GX_LoadPosMtxIdx(u16 mtxidx,u32 pnidx);
 
 /*!
  * \fn void GX_LoadNrmMtxImm(Mtx mt,u32 pnidx)
- * \brief Used to load a 3x3 normal transform matrix into matrix memory at location \a pnidx from the 4x3 matrix \a mt.
+ * \brief Used to load a normal transform matrix into matrix memory at location \a pnidx from the 4x3 matrix \a mt.
  *
  * \details This matrix is used to transform normals in model space to view space, either by making it the current matrix (see GX_SetCurrentMtx()),
  * or by setting a matrix pnidx for each vertex. The parameter \a mt is a pointer to a 3x4 (row x column) matrix. The translation terms
@@ -2355,8 +2367,6 @@ void GX_LoadPosMtxIdx(u16 mtxidx,u32 pnidx);
  *
  * \note The matrix data is copied from main memory or the CPU cache into the Graphics FIFO, so matrices loaded by this function are always coherent
  * with the CPU cache.<br><br>
- *
- * \note To load a normal matrix from a 3x3 matrix, use GX_LoadNrmMtxImm3x3().
  *
  * \param[in] mt the matrix to load
  * \param[in] pnidx \ref pnmtx to load into
@@ -2428,7 +2438,7 @@ void GX_LoadTexMtxImm(Mtx mt,u32 texidx,u8 type);
  * \note The matrix is loaded directly from main memory into the matrix memory through the vertex cache, so it is incoherent with the CPU's
  * cache. It is the application's responsibility to flush any matrix data from the CPU cache (see DCStoreRange()) before calling this function.<br><br>
  *
- * \note This function allows one to load post-transform texture matrices as well. Specifying a texidx in the range of \ref dttmtx will load a
+ * \note This function allows one to load post-transform texture matrices as well. Specifying a \a texidx in the range of \ref dttmtx will load a
  * post-transform texture matrix instead of a regular, first-pass texture matrix. Note that post-transform matrices are always 3x4. Refer to
  * GX_SetTexCoordGen2() for information about how to use post-transform texture matrices.
  *
@@ -2478,7 +2488,7 @@ void GX_SetTevOp(u8 tevstage,u8 mode);
  * \details These registers are available to all TEV stages. At least one of these registers is used to pass the output of one TEV stage to
  * the next in a multi-texture configuration. The application is responsible for allocating these registers so that no collisions in usage occur.
  *
- * \note This function can only set unsigned 8-bit colors. To set signed, 10-bit colors use GX_SetTexColorS10().
+ * \note This function can only set unsigned 8-bit colors. To set signed, 10-bit colors use GX_SetTevColorS10().
  *
  * \param[in] tev_regid \ref tevcoloutreg.
  * \param[in] color Constant color value.
@@ -2621,7 +2631,7 @@ void GX_SetNumTexGens(u32 nr);
  *
  * \ref texmtx defines a default set of texture matrix names that can be supplied as mtxsrc. The matrix names are actually row addresses (4 floats per
  * row) in the matrix memory that indicate the first row of a loaded matrix. The user may define another memory map of matrix memory to suit their
- * needs. Keep in mind, however, that modelview matrices (see GX_LoadPosMtxImm() and GX_PosNrmMtx()) and texture matrices share matrix memory.
+ * needs. Keep in mind, however, that modelview matrices (see GX_LoadPosMtxImm() and \ref pnmtx) and texture matrices share matrix memory.
  *
  * \note Input texture coordinates must always go through the texture coordinate generation hardware. GX_Init() initializes the hardware (by calling
  * this function) so that all texture coordinates are transformed by the <tt>GX_IDENTITY</tt> matrix in order to appear as if input coordinates are passed
@@ -2643,7 +2653,7 @@ void GX_SetTexCoordGen(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc);
  * \brief An extension of GX_SetTexCoordGen(). It allows one to specify additional texgen options.
  *
  * \details The first four arguments are identical to those for GX_SetTexCoordGen() and function in the same way. All requirements for the first
- * four arguments are the same as they are for GC_SetTexCoordGen2(). The new options only apply for "ordinary" texgens, where the texgen type is
+ * four arguments are the same as they are for that function as well. The new options only apply for "ordinary" texgens, where the texgen type is
  * <tt>GX_TG_MTX2x4</tt> or <tt>GX_TG_MTX3x4</tt>. They do not work for light-based texgens or emboss texgens.
  *
  * The \a normalize argument allows the computed texcoord to be normalized after the multiplication by \a mtxsrc (the first-pass transformation).
@@ -2679,7 +2689,7 @@ void GX_SetTexCoordGen2(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc,u32 no
  * Normally, the Z for a quad (2x2) of pixels is computed as a reference Z and two slopes. Once Z texturing is enabled, the Z is computed by adding
  * a Z texel to the reference Z (\a op = <tt>GX_ZT_ADD</tt>) or by replacing the reference Z with the Z texel value (\a op = <tt>GX_ZT_REPLACE</tt>).
  *
- * Z textures are always the output from the last active Texture Environment (TEV) stage (see GX_SetTevStages()) when enabled. When Z texturing is
+ * Z textures are always the output from the last active Texture Environment (TEV) stage (see GX_SetNumTevStages()) when enabled. When Z texturing is
  * enabled, the texture color of the last TEV stage is not available, but all other color inputs and operations are available. The pixel color is
  * always output from the last active TEV stage. You cannot use the TEV to operate on the Z texture, it is fed directly into the Z texture logic.
  *
@@ -2768,9 +2778,9 @@ void GX_SetPointSize(u8 width,u8 fmt);
  * \brief Determines how the source image, generated by the graphics processor, is blended with the Embedded Frame Buffer (EFB).
  *
  * \details When \a type is set to <tt>GX_BM_NONE</tt>, the source data is written directly to the EFB. When \a type is set to <tt>GX_BM_BLEND</tt>, the source color and EFB
- * pixels are blended using the following equation:<br><br>
+ * pixels are blended using the following equation:
  *
- * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>dst_pix_clr</i> = <i>src_pix_clr</i> * \a src_fact + <i>dst_pix_clr</i> * \a dst_fact<br><br>
+ * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>dst_pix_clr</i> = <i>src_pix_clr</i> * \a src_fact + <i>dst_pix_clr</i> * \a dst_fact
  *
  * The <tt>GX_BL_DSTALPHA</tt> / <tt>GX_BL_INVDSTALPHA</tt> can be used only when the EFB has <tt>GX_PF_RGBA6_Z24</tt> as the pixel format (see GX_SetPixelFmt()). If the pixel
  * format is <tt>GX_PF_RGBA6_Z24</tt> then the \a src_fact and \a dst_fact are also applied to the alpha channel. To write the alpha channel to the EFB you must
@@ -2820,7 +2830,7 @@ void GX_SetCullMode(u8 mode);
  *
  * \note GX_Init() disables coplanar mode.
  *
- * \param[in] enable when GX_ENABLE, coplanar mode is enabled; GX_DISABLE disables this mode
+ * \param[in] enable when <tt>GX_ENABLE</tt>, coplanar mode is enabled; <tt>GX_DISABLE</tt> disables this mode
  *
  * \return none
  */
@@ -2850,7 +2860,7 @@ void GX_EnableTexOffsets(u8 coord,u8 line_enable,u8 point_enable);
  *
  * \details This may help performance issues that occur when objects are far-clipped; however, any near-clipped objects will be rendered incorrectly.
  *
- * \note GX_Init() sets this to GX_CLIP_ENABLE.
+ * \note GX_Init() sets this to <tt>GX_CLIP_ENABLE</tt>.
  *
  * \param[in] mode \ref clipmode
  *
@@ -2914,7 +2924,7 @@ void GX_SetScissorBoxOffset(s32 xoffset,s32 yoffset);
  * Color channels are linked to specific TEV stages using GX_SetTevOrder().
  *
  * This function basically defines the number of per-vertex colors that get rasterized. If \a num is set to 0, then at least one texture coordinate
- * must be generated (see GX_SetNumTexGens()). If \a num is set to 1, then channel GX_COLOR0A0 will be rasterized. If \a num is set to 2 (the maximum
+ * must be generated (see GX_SetNumTexGens()). If \a num is set to 1, then channel <tt>GX_COLOR0A0</tt> will be rasterized. If \a num is set to 2 (the maximum
  * value), then <tt>GX_COLOR0A0</tt> and <tt>GX_COLOR1A1</tt> will be rasterized.
  *
  * \param[in] num number of color channels to rasterize; number must be 0, 1 or 2
@@ -2934,7 +2944,7 @@ void GX_SetNumChans(u8 num);
  * This function will scale the normalized texture coordinates produced by GX_SetTexCoordGen() according to the size of the texture map in the
  * function call. For this reason, texture coordinates can only be broadcast to multiple texture maps if and only if the maps are the same size. In
  * some cases, you may want to generate a texture coordinate having a certain scale, but disable the texture lookup (this comes up when generating
- * texture coordinates for indirect bump mapping). To accomplish this, use the GX_TEXMAP_DISABLE flag:
+ * texture coordinates for indirect bump mapping). To accomplish this, use the <tt>GX_TEXMAP_DISABLE</tt> flag:
  *
  * \code GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD0, GX_TEXMAP3 | GX_TEXMAP_DISABLE, GX_COLORNULL); \endcode
  *
@@ -2992,10 +3002,11 @@ void GX_SetNumTevStages(u8 num);
  *
  * where <i>alpha_src</i> is the alpha from the last active TEV stage. As an example, you can implement these equations:<br><br>
  *
- * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>alpha_pass</i> = (<i>alpha_src<i> > \a ref0) <b>AND</b> (<i>alpha_src</i> < \a ref1)<br><br>
+ * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>alpha_pass</i> = (<i>alpha_src</i> \> \a ref0) <b>AND</b> (<i>alpha_src</i> \< \a ref1)
  *
- * or<br><br>
- * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>alpha_pass</i> = (<i>alpha_src</i> > \a ref0) <b>OR</b> (<i>alpha_src</i> < \a ref1)
+ * or
+ *
+ * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>alpha_pass</i> = (<i>alpha_src</i> \> \a ref0) <b>OR</b> (<i>alpha_src</i> \< \a ref1)
  *
  * \note The output alpha can be used in the blending equation (see GX_SetBlendMode()) to control how source and destination (frame buffer)
  * pixels are combined.<br><br>
@@ -3005,11 +3016,11 @@ void GX_SetNumTevStages(u8 num);
  * and Z are written if both the Z test and alpha test pass. When using texture to make cutout shapes (like billboard trees) that need to be correctly Z
  * buffered, you should configure the pipeline to Z buffer after texturing.<br><br>
  *
- * \note The number of active TEV stages is specified using GX_SetTevStages().
+ * \note The number of active TEV stages is specified using GX_SetNumTevStages().
  *
  * \param[in] comp0 \ref compare subfunction 0
  * \param[in] ref0 reference val for subfunction 0
- * \param[in] aop \ref alphaop for combining subfunctions 0 and 1; must not be GX_MAX_ALPHAOP
+ * \param[in] aop \ref alphaop for combining subfunctions 0 and 1; must not be <tt>GX_MAX_ALPHAOP</tt>
  * \param[in] comp1 \ref compare subfunction 1
  * \param[in] ref1 reference val for subfunction 1
  *
@@ -3048,7 +3059,7 @@ void GX_SetTevKColorSel(u8 tevstage,u8 sel);
  * \fn void GX_SetTevKAlphaSel(u8 tevstage,u8 sel)
  * \brief Selects a "konstant" alpha input to be used in a given TEV stage.
  *
- * \details The constant alpha input is used only if GX_CA_KONST is selected for an input for that TEV stage. Only one constant alpha selection is
+ * \details The constant alpha input is used only if <tt>GX_CA_KONST</tt> is selected for an input for that TEV stage. Only one constant alpha selection is
  * available for a given TEV stage, though it may be used for more than one input.
  *
  * \param[in] tevstage \ref tevstage
@@ -3117,7 +3128,7 @@ void GX_SetTevSwapModeTable(u8 swapid,u8 r,u8 g,u8 b,u8 a);
  * \param[in] indtexid \ref indtexstage results to use with this TEV stage
  * \param[in] format \ref indtexformat, i.e. how many bits to extract from the indirect result color to use in indirect offsets and the indirect "bump" alpha
  * \param[in] bias \ref indtexbias to be applied to each component of the indirect offset
- * \param[in] mtxid \ref which indtexmtx and scale value to multiply the offsets with
+ * \param[in] mtxid which \ref indtexmtx and scale value to multiply the offsets with
  * \param[in] wrap_s \ref indtexwrap to use with the S component of the regular texture coordinate
  * \param[in] wrap_t \ref indtexwrap to use with the T component of the regular texture coordinate
  * \param[in] addprev whether the tex coords results from the previous TEV stage should be added in
@@ -3210,7 +3221,7 @@ void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col);
  *
  * \note GX_Init() disables range adjustment.
  *
- * \param[in] enable enables adjustment when GX_ENABLE is passed; disabled with GX_DISABLE
+ * \param[in] enable enables adjustment when <tt>GX_ENABLE</tt> is passed; disabled with <tt>GX_DISABLE</tt>
  * \param[in] center centers the range adjust function; normally corresponds with the center of the viewport
  * \param[in] table range adjustment parameter table
  *
@@ -3284,7 +3295,7 @@ void GX_SetTevIndBumpXYZ(u8 tevstage,u8 indstage,u8 mtx_sel);
  * \details It will set up the correct values in the given indirect matrix; you only need to specify which matrix slot to use.
  *
  * \note The regular texture map contains only the tile definitions. The actual texture size to be applied to the polygon being drawn is the product of the base tile
- * size and the size of the indirect map. In order to set the proper texture coordinate scale, one must call GX_SetTexCoordScaleManually(). One can also use
+ * size and the size of the indirect map. In order to set the proper texture coordinate scale, one must call GX_SetTexCoorScaleManually(). One can also use
  * GX_SetIndTexCoordScale() in order to use the same texcoord for the indirect stage as the regular TEV stage.
  *
  * \param[in] tevstage \ref tevstage that is being affected
@@ -3293,7 +3304,7 @@ void GX_SetTevIndBumpXYZ(u8 tevstage,u8 indstage,u8 mtx_sel);
  * \param[in] tilesize_y size of the tile in the Y dimension
  * \param[in] tilespacing_x spacing of the tiles (in the tile-definition map) in the X dimension
  * \param[in] tilespacing_y spacing of the tiles (in the tile-definition map) in the Y dimension
- * \param[in] indtexfmt \ref indtexfmt to use
+ * \param[in] indtexfmt \ref indtexformat to use
  * \param[in] indtexmtx \ref indtexmtx to multiply the offsets with
  * \param[in] bias_sel \ref indtexbias to indicate tile stacking direction for pseudo-3D textures
  * \param[in] alpha_sel \ref which indtexalphasel will supply the indirect "bump" alpha, if any (for pseudo-3D textures).
@@ -3320,7 +3331,7 @@ void GX_SetColorUpdate(u8 enable);
  *
  * \note This function also affects whether the alpha buffer is cleared during copy operations; see GX_CopyDisp() and GX_CopyTex().<br><br>
  *
- * \note The only EFB pixel format supporting an alpha buffer is GX_PF_RGBA6_Z24; see GX_SetPixelFmt(). The alpha update_enable is ignored for non-alpha
+ * \note The only EFB pixel format supporting an alpha buffer is <tt>GX_PF_RGBA6_Z24</tt>; see GX_SetPixelFmt(). The alpha \a enable is ignored for non-alpha
  * pixel formats.
  *
  * \param[in] enable enables alpha-buffer updates with <tt>GX_TRUE</tt>
@@ -3438,7 +3449,7 @@ void GX_SetFieldMode(u8 field_mode,u8 half_aspect_ratio);
  *        the height of the XFB.
  *
  * \param[in] efbHeight Height of embedded framebuffer. Range from 2 to 528. Should be a multiple of 2.
- * \param[in] xfbHeight Height of external framebuffer. Range from 2 to 1024. Should be equal or greater than efbHeight.
+ * \param[in] xfbHeight Height of external framebuffer. Range from 2 to 1024. Should be equal or greater than \a efbHeight.
  *
  * \return Y scale factor which can be used as argument of GX_SetDispCopyYScale().
  */
@@ -3449,8 +3460,7 @@ f32 GX_GetYScaleFactor(u16 efbHeight,u16 xfbHeight);
  * \brief Sets the vertical scale factor for the EFB to XFB copy operation.
  *
  * \details The number of actual lines copied is returned, based on the current EFB height. You can use this number to allocate the proper XFB size. You
- * have to call GX_SetDispCopySrc() prior to this function call if you want to get the number of lines by using this function. There is also another way
- * (GX_GetNumXfbLines()) to calculate this number.
+ * have to call GX_SetDispCopySrc() prior to this function call if you want to get the number of lines by using this function.
  *
  * \param[in] yscale Vertical scale value. Range from 1.0 to 256.0.
  *
@@ -3475,7 +3485,7 @@ void GX_SetDispCopySrc(u16 left,u16 top,u16 wd,u16 ht);
  * \fn void GX_SetDispCopyDst(u16 wd,u16 ht)
  * \brief Sets the witdth and height of the display buffer in pixels.
  *
- * \details The application typical renders an image into the EFB(source) and then copies it into the XFB(destination) in main memory. The \a wd
+ * \details The application typical renders an image into the EFB(source) and then copies it into the XFB(destination) in main memory. \a wd
  * specifies the number of pixels between adjacent lines in the destination buffer and can be different than the width of the EFB.
  *
  * \param[in] wd Distance between successive lines in the XFB, in pixels. Must be a multiple of 16.
@@ -3489,7 +3499,7 @@ void GX_SetDispCopyDst(u16 wd,u16 ht);
  * \fn void GX_SetCopyClamp(u8 clamp)
  * \brief Sets the vertical clamping mode to use during the EFB to XFB or texture copy.
  *
- * \param[in] clamp clamp mode. bit-wise OR of \ref xfbclamp. Use GX_CLAMP_NONE for no clamping.
+ * \param[in] clamp bit-wise OR of desired \ref xfbclamp. Use <tt>GX_CLAMP_NONE</tt> for no clamping.
  *
  * \return none
  */
@@ -3515,7 +3525,7 @@ void GX_SetDispCopyGamma(u8 gamma);
  * GX_SetCopyFilter(rmode->aa,rmode->sample_pattern,GX_TRUE,rmode->vfilter); \endcode
  *
  * \note In order to make use of the \a sample_pattern, antialiasing must be enabled by setting the Embedded Frame Buffer (EFB) format to
- * GX_PF_RGB565_Z16; see GX_SetPixelFmt().<br><br>
+ * <tt>GX_PF_RGB565_Z16</tt>; see GX_SetPixelFmt().
  *
  * \param[in] aa utilizes \a sample_pattern if <tt>GX_TRUE</tt>, otherwise all sample points are centered
  * \param[in] sample_pattern array of coordinates for sample points; valid range is 1 - 11 inclusive
@@ -3706,7 +3716,7 @@ void GX_PokeDither(u8 dither);
  *
  * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>dst_pix_clr</i> = <i>src_pix_clr</i> * \a src_fact + <i>dst_pix_clr</i> * \a dst_fact<br><br>
  *
- * When type is set to GX_BM_SUBTRACT, the destination pixel is computed as follows:<br><br>
+ * When type is set to <tt>GX_BM_SUBTRACT</tt>, the destination pixel is computed as follows:<br><br>
  *
  * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>dst_pix_clr</i> = <i>dst_pix_clr</i> - <i>src_pix_clr [clamped to zero]</i><br><br>
  *
@@ -3794,7 +3804,7 @@ void GX_PeekARGB(u16 x,u16 y,GXColor *color);
  *
  * \note The \a z value should be in the range of 0x00000000 <= \a z < 0x00FFFFFF in the case of non-antialiased frame buffer. For an antialiased
  * frame buffer, the \a z value should be in the compressed 16-bit format (0x00000000 <= \a z <= 0x0000FFFF), and the poke will affect all 3
- * subsamples of a pixel. To convert a 24-bit integer value into compressed 16-bit form, you can use GX_CompressZ16().
+ * subsamples of a pixel.
  *
  * \param[in] x coordinate, in pixels; must be 0 - 639 inclusive
  * \param[in] y coordinate, in lines; must be 0 - 527 inclusive
@@ -3811,8 +3821,7 @@ void GX_PokeZ(u16 x,u16 y,u32 z);
  * \details The z value is raw integer value from the Z buffer.
  *
  * \note The value range is 24-bit when reading from non-antialiased frame buffer. When reading from an antialiased frame buffer, subsample
- * 0 is read and returned. The value will be compressed 16-bit form. To convert the compressed value to a plain 24-bit integer, you can use
- * GX_DecompressZ16().
+ * 0 is read and returned. The value will be compressed 16-bit form in this case.
  *
  * \param[in] x coordinate, in pixels; must be 0 - 639 inclusive
  * \param[in] y coordinate, in lines; must be 0 - 527 inclusive
@@ -3879,8 +3888,8 @@ u8 GX_GetTexFmt(GXTexObj *obj);
  * \details If the \a mipmap flag is <tt>GX_TRUE</tt>, then the size of buffer needed for the mipmap pyramid up to \a maxlod will be returned.
  * \a maxlod will be clamped to the number of LODs possible given the map \a wd and \a ht. For mipmaps, \a wd and \a ht must be a power of two.
  *
- * \note This function takes into account the tiling and padding requirements of the Dolphin texture format. The resulting size can be used along with memalign() to
- * allocate texture buffers (see GX_CopyTex()).
+ * \note This function takes into account the tiling and padding requirements of the GameCube's native texture format. The resulting size can be used
+ * along with memalign() to allocate texture buffers (see GX_CopyTex()).
  *
  * \param[in] wd width of the texture in texels
  * \param[in] ht height of the texture in texels
@@ -3931,7 +3940,7 @@ void GX_InvalidateTexRegion(GXTexRegion *region);
  *
  * The possible sizes of a TMEM cache region are 32K, 128K or 512K.
  *
- * \note For pre-loaded textures, the region must be defined by using GX_InitTexPreLoadRegion().<br><br>
+ * \note For pre-loaded textures, the region must be defined by using GX_InitTexPreloadRegion().<br><br>
  *
  * \note GX_Init() creates default texture regions, so it is not necessary for the application to use this function unless a different Texture Memory
  * configuration is desired. In that case, the application should also define a region allocator using GX_SetTexRegionCallback().<br><br>
@@ -4085,7 +4094,7 @@ void GX_InitTexObjMaxAniso(GXTexObj *obj,u8 maxaniso);
  * \details Before this happens, the texture object \a obj should be initialized using GX_InitTexObj() or GX_InitTexObjCI(). The \a id parameter refers to
  * the texture state register set. Once loaded, the texture can be used in any Texture Environment (TEV) stage using GX_SetTevOrder().
  *
- * \note This function will call the functions set by GX_SetTexRegionCallback() (and GX_SetTlutRegionCallBack() if the texture is color-index
+ * \note This function will call the functions set by GX_SetTexRegionCallback() (and GX_SetTlutRegionCallback() if the texture is color-index
  * format) to obtain the texture regions associated with this texture object. These callbacks are set to default functions by GX_Init().
  *
  * \warning If the texture is a color-index texture, you <b>must</b> load the associated TLUT (using GX_LoadTlut()) before calling GX_LoadTexObj().
@@ -4101,13 +4110,13 @@ void GX_LoadTexObj(GXTexObj *obj,u8 mapid);
  * \fn void GX_LoadTlut(GXTlutObj *obj,u32 tlut_name)
  * \brief Copies a Texture Look-Up Table (TLUT) from main memory to Texture Memory (TMEM).
  *
- * \details The \a tlut_name parameter is the name of a pre-allocated area of TMEM. The callback function set by GX_SetTlutRegionCallBack() converts
- * the \a tlut_name into a GXTlutRegion pointer. The TLUT is loaded in the TMEM region described by this pointer. The TLUT object \a obj describes the
+ * \details The \a tlut_name parameter is the name of a pre-allocated area of TMEM. The callback function set by GX_SetTlutRegionCallback() converts
+ * the \a tlut_name into a \ref GXTlutRegion pointer. The TLUT is loaded in the TMEM region described by this pointer. The TLUT object \a obj describes the
  * location of the TLUT in main memory, the TLUT format, and the TLUT size. \a obj should have been previously initialized using GX_InitTlutObj().
  *
- * \note GX_Init() sets a default callback to convert \a tlut_names from GXTlut to GXTlutRegion pointers. The default configuration of
+ * \note GX_Init() sets a default callback to convert \a tlut_names from \ref tlutname to \ref GXTlutRegion pointers. The default configuration of
  * TMEM has 20 TLUTs, 16 each 256 entries by 16 bits, and 4 each 1k entries by 16 bits. This configuration can be overriden by calling
- * GX_InitTlutRegion() and GX_InitTexCacheRegion() to allocate TMEM. Then you can define your own region allocation scheme using GX_SetTlutRegionCallBack()
+ * GX_InitTlutRegion() and GX_InitTexCacheRegion() to allocate TMEM. Then you can define your own region allocation scheme using GX_SetTlutRegionCallback()
  * and GX_SetTexRegionCallback().
  *
  * \param[in] obj ptr to a TLUT object; application must allocate this
@@ -4121,14 +4130,14 @@ void GX_LoadTlut(GXTlutObj *obj,u32 tlut_name);
  * \fn void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid)
  * \brief Loads the state describing a preloaded texture into one of eight hardware register sets.
  *
- * \details Before this happens, the texture object \a obj should be initialized using GX_InitTexObj() or GX_InitTexObjCI(). The id parameter refers to
+ * \details Before this happens, the texture object \a obj should be initialized using GX_InitTexObj() or GX_InitTexObjCI(). The \a mapid parameter refers to
  * the texture state register set. The texture should be loaded beforehand using GX_PreloadEntireTex(). Once loaded, the texture can be used in any Texture Environment
  * (TEV) stage using GX_SetTevOrder().
  *
  * \note GX_Init() initially calls GX_SetTevOrder() to make a simple texture pipeline that associates <tt>GX_TEXMAP0</tt> with <tt>GX_TEVSTAGE0</tt>,
  * <tt>GX_TEXMAP1</tt> with <tt>GX_TEVSTAGE1</tt>, etc.<br><br>
  *
- * \note GX_LoadTexObjPreLoaded() will not call the functions set by GX_SetTexRegionCallback() (and GX_SetTlutRegionCallBack() if the texture is color
+ * \note GX_LoadTexObjPreloaded() will not call the functions set by GX_SetTexRegionCallback() (and GX_SetTlutRegionCallback() if the texture is color
  * index format) because the region is set explicitly; however, these callback functions must be aware of all regions that are preloaded. The default
  * callbacks set by GX_Init() assume there are no preloaded regions.
  *
@@ -4145,11 +4154,11 @@ void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid);
  * \brief Loads a given texture from DRAM into the texture memory.
  *
  * \details Accesses to this texture will bypass the texture cache tag look-up and instead read the texels directly from texture memory. The
- * texture region must be the same size as the texture (see GX_InitTexPreLoadRegion()).
+ * texture region must be the same size as the texture (see GX_InitTexPreloadRegion()).
  *
  * \note This function loads the texture into texture memory, but to use it as a source for the Texture Environment (TEV) unit, you must first
- * call GX_LoadTexObjPreLoaded(). The default configuration (as set by GX_Init()) of texture memory has no preloaded regions, so you must install
- * your own region allocator callbacks using GX_SetTexRegionCallback() and GX_SetTlutRegionCallBack().
+ * call GX_LoadTexObjPreloaded(). The default configuration (as set by GX_Init()) of texture memory has no preloaded regions, so you must install
+ * your own region allocator callbacks using GX_SetTexRegionCallback() and GX_SetTlutRegionCallback().
  *
  * \param[in] obj ptr to object describing the texture to laod
  * \param[in] region TMEM texture region to load the texture into
@@ -4179,7 +4188,7 @@ void GX_InitTlutObj(GXTlutObj *obj,void *lut,u8 fmt,u16 entries);
  * \brief Initializes a Texture Look-Up Table (TLUT) region object.
  *
  * \note GX_Init() creates default TLUT regions, so the application does not need to call this function unless a new configuration
- * of Texture Memory is desired. In that case, the application should also set a new TLUT region allocator using GX_SetTlutRegionCallBack().
+ * of Texture Memory is desired. In that case, the application should also set a new TLUT region allocator using GX_SetTlutRegionCallback().
  *
  * \param[in] region obj ptr to a TLUT region struct; application must allocate this
  * \param[in] tmem_addr location of the TLU in TMEM; ptr must be aligned to table size
@@ -4268,11 +4277,11 @@ void GX_SetTexCoordBias(u8 texcoord,u8 s_enable,u8 t_enable);
  * \fn GXTexRegionCallback GX_SetTexRegionCallback(GXTexRegionCallback cb)
  * \brief Sets the callback function called by GX_LoadTexObj() to obtain an available texture region.
  *
- * \details GX_Init() calls GXSetTexRegionCallback to set a default region-assignment policy. A programmer can override this default
- * region assignment by implementing his own callback function. A pointer to the texture object and the texture map ID that are passed
+ * \details GX_Init() calls this function to set a default region-assignment policy. A programmer can override this default region assignment
+ * by implementing his own callback function. A pointer to the texture object and the texture map ID that are passed
  * to GX_LoadTexObj() are provided to the callback function.
  *
- * \param[in] cb ptr to a function that takes a pointer to a GXTexObj and a \ref texmapid as a parameter and returns a pointer to a GXTexRegion.
+ * \param[in] cb ptr to a function that takes a pointer to a GXTexObj and a \ref texmapid as a parameter and returns a pointer to a \ref GXTexRegion.
  *
  * \return pointer to the previously set callback
  */
@@ -4286,12 +4295,12 @@ GXTexRegionCallback GX_SetTexRegionCallback(GXTexRegionCallback cb);
  * is color-index.
  *
  * GX_Init() calls GX_SetTlutRegionCallback() to set a default TLUT index-to-region mapping. The name for the TLUT from the texture
- * object is provided as an argument to the callback. The callback should return a pointer to the <tt>GXTlutRegion</tt> for this TLUT index.
+ * object is provided as an argument to the callback. The callback should return a pointer to the \ref GXTlutRegion for this TLUT index.
  *
- * \note For a given \a tlut_name (in the <tt>GXTlutRegionCallback</tt> struct), \a cb must always return the same <tt>GXTlutRegion</tt>; this is because
- * GX_LoadTlut() will initialize data into the <tt>GXTlutRegion</tt> which GX_LoadTexObj() will subsequently use.
+ * \note For a given \a tlut_name (in the \ref GXTlutRegionCallback struct), \a cb must always return the same \ref GXTlutRegion; this is because
+ * GX_LoadTlut() will initialize data into the \ref GXTlutRegion which GX_LoadTexObj() will subsequently use.
  *
- * \param[in] cb ptr to a function that takes a u32 TLUT name as a parameter and returns a pointer to a <tt>GXTlutRegion</tt>.
+ * \param[in] cb ptr to a function that takes a u32 TLUT name as a parameter and returns a pointer to a \ref GXTlutRegion.
  *
  * \return pointer to the previously set callback
  */
@@ -4380,10 +4389,10 @@ void GX_LoadLightObj(GXLightObj *lit_obj,u8 lit_id);
  * \fn void GX_LoadLightObjIdx(u32 litobjidx,u8 litid)
  * \brief Instructs the GP to fetch the light object at \a ltobjindx from an array.
  *
- * \details The light object is retrieved from the array to which <tt>GXSetArray(GX_VA_LIGHTARRAY, ...)</tt> points. Then it loads the object into
+ * \details The light object is retrieved from the array to which <tt>GX_SetArray(GX_VA_LIGHTARRAY, ...)</tt> points. Then it loads the object into
  * the hardware register associated with \ref lightid.
  *
- * \note data flows directly from the array in DRAM to the GP; therefore, the light object data may not be coherent with the CPU's cache. The
+ * \note Data flows directly from the array in DRAM to the GP; therefore, the light object data may not be coherent with the CPU's cache. The
  * application is responsible for storing the light object data from the CPU cache (using DCStoreRange()) before calling GX_LoadLightObjIdx().
  *
  * \param[in] litobjidx index to a light object
@@ -4399,10 +4408,10 @@ void GX_LoadLightObjIdx(u32 litobjidx,u8 litid);
  *
  * \details This function uses three easy-to-control parameters instead of <i>k0</i>, <i>k1</i>, and <i>k2</i> in GX_InitLightAttn().
  *
- * In this function, you can specify the brightness on an assumed reference point. The parameter ref_distance is distance between the light
- * and the reference point. The parameter ref_brite specifies ratio of the brightness on the reference point. The value for ref_dist should
- * be greater than 0 and that for ref_brite should be within 0 < ref_brite < 1, otherwise distance attenuation feature is turned off. The
- * parameter dist_fn defines type of the brightness decreasing curve by distance; <tt>GX_DA_OFF</tt> turns distance attenuation feature off.
+ * In this function, you can specify the brightness on an assumed reference point. The parameter \a ref_distance is distance between the light
+ * and the reference point. The parameter \a ref_brite specifies ratio of the brightness on the reference point. The value for \a ref_dist should
+ * be greater than 0 and that for \a ref_brite should be within 0 < \a ref_brite < 1, otherwise distance attenuation feature is turned off. The
+ * parameter \a dist_fn defines type of the brightness decreasing curve by distance; <tt>GX_DA_OFF</tt> turns distance attenuation feature off.
  *
  * \note If you want more flexible control, it is better to use GX_InitLightAttn() and calculate appropriate coefficients.<br><br>
  *
@@ -4436,7 +4445,7 @@ void GX_InitLightDistAttn(GXLightObj *lit_obj,f32 ref_dist,f32 ref_brite,u8 dist
  * (see GX_SetChanCtrl()).
  *
  * \note The convenience function GX_InitLightSpot() can be used to set the angle attenuation coefficents based on several spot light
- * types. The convenience function GX_InitLightDistAtten() can be used to set the distance attenuation coefficients using one of several
+ * types. The convenience function GX_InitLightDistAttn() can be used to set the distance attenuation coefficients using one of several
  * common attenuation functions.<br><br>
  *
  * \note The convenience macro GX_InitLightShininess() can be used to set the attenuation parameters for specular lights.<br><br>
@@ -4474,9 +4483,9 @@ void GX_InitLightAttn(GXLightObj *lit_obj,f32 a0,f32 a1,f32 a2,f32 k0,f32 k1,f32
  * referencing this light is set to <tt>GX_AF_SPOT</tt> (see GX_SetChanCtrl()).
  *
  * \note The convenience function GX_InitLightSpot() can be used to set the angle attenuation coefficents based on several spot light types. The
- * convenience function GX_InitLightDistAtten() can be used to set the distance attenuation coefficients using one of several common attenuation functions.<br><br>
+ * convenience function GX_InitLightDistAttn() can be used to set the distance attenuation coefficients using one of several common attenuation functions.<br><br>
  *
- * \note This function does not load any hardware registers directly. To load a light object into a hardware light, use GX_LoadLightObj or GX_LoadLightObjIdx().
+ * \note This function does not load any hardware registers directly. To load a light object into a hardware light, use GX_LoadLightObj() or GX_LoadLightObjIdx().
  *
  * \param[in] lit_obj ptr to a light object
  * \param[in] a0 angle attenuation coefficient
@@ -4501,7 +4510,7 @@ void GX_InitLightAttnA(GXLightObj *lit_obj,f32 a0,f32 a1,f32 a2);
  * referencing this light is set to <tt>GX_AF_SPOT</tt> (see GX_SetChanCtrl()).
  *
  * \note The convenience function GX_InitLightSpot() can be used to set the angle attenuation coefficents based on several spot light types. The convenience
- * function GX_InitLightDistAtten() can be used to set the distance attenuation coefficients using one of several common attenuation functions.<br><br>
+ * function GX_InitLightDistAttn() can be used to set the distance attenuation coefficients using one of several common attenuation functions.<br><br>
  *
  * \note Note that this function does not load any hardware registers directly. To load a light object into a hardware light, use GX_LoadLightObj() or
  * GX_LoadLightObjIdx().
@@ -4606,7 +4615,7 @@ u32 GX_ResetOverflowCount();
  * \details The current GX thread should be the thread that is currently responsible for generating graphics data. By default,
  * the GX thread is the thread that invoked GX_Init(); however, it may be changed by calling GX_SetCurrentGXThread().
  *
- * \note When graphics data is being generated in immediate mode (that is, the CPU fifo = GP fifo, and the GP is actively consuming
+ * \note When graphics data is being generated in immediate mode (that is, the CPU FIFO = GP FIFO, and the GP is actively consuming
  * data), the high watermark may be triggered. When this happens, the high watermark interrupt handler will suspend the GX thread, thus
  * preventing any further graphics data from being generated. The low watermark interrupt handler will resume the thread.
  *
@@ -4624,11 +4633,11 @@ lwp_t GX_GetCurrentGXThread();
  * \note It is a programming error to change GX thread while the current GX thread is suspended by a high water mark interrupt. This
  * indicates that you have two threads about to generate GX data.<br><br>
  *
- * \note When graphics data is being generated in immediate mode (that is, the CPU fifo = GP fifo, and the GP is actively consuming
+ * \note When graphics data is being generated in immediate mode (that is, the CPU FIFO = GP FIFO, and the GP is actively consuming
  * data), the high watermark may be triggered. When this happens, the high watermark interrupt handler will suspend the GX thread, thus
  * preventing any further graphics data from being generated. The low watermark interrupt handler will resume the thread.
  *
- * \return the previous GX thread
+ * \return the previous GX thread ID
  */
 lwp_t GX_SetCurrentGXThread();
 
@@ -4658,11 +4667,7 @@ void GX_RestoreWriteGatherPipe();
  * 1000 (1000 = all misses/clips, etc., 0 = no misses/clips, etc.).
  *
  * \note GX_ReadGPMetric() and GX_ClearGPMetric() can be used in the callback associated with the draw sync interrupt (see GX_SetDrawSyncCallback()).
- * This function should not be used in the draw sync callback because it will insert tokens in the GP command stream at random times.<br><br>
- *
- * \note The functions GX_SetGP0Metric()/GX_ReadGP0Metric() and GX_SetGP1Metric()/GX_ReadGP1Metric() can be used when it is desired to read only one
- * counter. Note that you should not call GX_SetGP0Metric()/GX_ReadGP0Metric() and GX_SetGP1Metric()/GX_ReadGP1Metric() at the same time. Instead, call
- * GX_ReadGPMetric().
+ * This function should not be used in the draw sync callback because it will insert tokens in the GP command stream at random times.
  *
  * \warning This function reads results from CPU-accessible registers in the GP, therefore, this command <i>must not</i> be used in a display list. In
  * addition, the performance counters in some cases are triggered by sending tokens through the Graphics FIFO to the GP.  This implies that
@@ -4681,8 +4686,7 @@ void GX_SetGPMetric(u32 perf0,u32 perf1);
  * \fn void GX_ClearGPMetric()
  * \brief Clears the two virtual GP performance counters to zero.
  *
- * \note The counter's function is set using GX_SetGPMetric(), GX_SetGP0Metric() or GX_SetGP1Metric. The counter's value is read using
- * GX_ReadGPMetric(), GX_ReadGP0Metric() or GX_ReadGP1Metric(); consult these for more details.
+ * \note The counter's function is set using GX_SetGPMetric(); the counter's value is read using GX_ReadGPMetric(). Consult these for more details.
  *
  * \warning This function resets CPU accessible counters, so it should <b>not</b> be used in a display list.
  *
@@ -4704,7 +4708,7 @@ void GX_InitXfRasMetric();
  * \fn void GX_ReadXfRasMetric(u32 *xfwaitin,u32 *xfwaitout,u32 *rasbusy,u32 *clks)
  * \brief Read performance metric values from the XF and RAS units.
  *
- * \warning This function should be avoided; use the GP performance metric functions instead.
+ * \warning This function should be avoided; use the GP performance metric functions instead.<br><br>
  *
  * \warning The parameters for this function are a best guess based on names and existing code.
  *
@@ -4754,7 +4758,7 @@ void GX_ReadVCacheMetric(u32 *check,u32 *miss,u32 *stall);
  *
  * \note To clear the counter, call GX_ClearVCacheMetric(); to read the counter value, call GX_ReadVCacheMetric().
  *
- * \param[in] attr \ref vcachemtrics to measure
+ * \param[in] attr \ref vcachemetrics to measure
  *
  * \return none
  */
@@ -4784,14 +4788,10 @@ void GX_GetGPStatus(u8 *overhi,u8 *underlow,u8 *readIdle,u8 *cmdIdle,u8 *brkpt);
  * \fn void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1)
  * \brief Returns the count of the previously set performance metrics.
  *
- * \note The performance metrics can be set using GX_SetGPMetric(), GX_SetGP0Metric() or GX_SetGP1Metric(); the counters
- * can be cleared using GX_ClearGPMetric(), GX_ClearGP0Metric() or GX_ClearGP1Metric().<br><br>
+ * \note The performance metrics can be set using GX_SetGPMetric(); the counters can be cleared using GX_ClearGPMetric().<br><br>
  *
  * \note GX_ReadGPMetric() and GX_ClearGPMetric() can be used in the callback associated with the draw sync interrupt (see GX_SetDrawSyncCallback()).
  * The function GX_SetGPMetric() should <b>not</b> be used in the draw sync callback because it will insert tokens in the GP command stream at random times.<br><br>
- *
- * \note The functions GX_ReadGP0Metric() and GX_ReadGP1Metric() can be used when it is desired to read only one counter. Note that you should not call
- * GX_ReadGP0Metric() and GX_ReadGP1Metric() at the same time; instead, call GX_ReadGPMetric().
  *
  * \warning This function reads results from CPU-accessible registers in the GP, therefore, this command <i>must not</i> be used in a display list. It
  * may also be necessary to send a draw sync token using GX_SetDrawSync() or GX_SetDrawDone() before GX_ReadGPMetric() is called to ensure that the
@@ -4821,10 +4821,10 @@ void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1);
  * In general, you are compute-bound when sending data from the CPU.<br><br>
  *
  * \note This function is cheaper than trying to create a fake CPU fifo around a destination buffer, which requires calls to
- * GX_SaveCPUFifo(), GX_SetCPUFifo(), GX_InitFifoBase(), etc. This function performs very light weight state saves by assuming
- * that the CPU and GP FIFOs never change.
+ * GX_SetCPUFifo(), GX_InitFifoBase(), etc. This function performs very light weight state saves by assuming that the CPU and
+ * GP FIFOs never change.
  *
- * \warning <b>No GX commands can be called until the write gather pipe is restored. You <u>must</u> call
+ * \warning <b>No GX commands can be called until the write gather pipe is restored. You MUST call
  * GX_RestoreWriteGatherPipe() before calling this function again, or else the final call to restore the pipe will fail.</b>
  *
  * \param[in] ptr to destination buffer, 32-byte aligned
@@ -4839,7 +4839,7 @@ volatile void* GX_RedirectWriteGatherPipe(void *ptr);
  * \brief Sets the position of the light in the light object using a vector structure.
  *
  * \note The GameCube graphics hardware supports local diffuse lights. The position of the light should be in the same space as a
- * transformed vertex position (i.e., view space).<br><br>
+ * transformed vertex position (i.e. view space).<br><br>
  *
  * \note The memory for the light object must be allocated by the application; this function does not load any hardware registers directly. To
  * load a light object into a hardware light, use GX_LoadLightObj() or GX_LoadLightObjIdx().
@@ -4860,7 +4860,7 @@ volatile void* GX_RedirectWriteGatherPipe(void *ptr);
  * GX_SetChanCtrl().
  *
  * \note The memory for the light object must be allocated by the application; this function does not load any hardware registers. To load a
- * light object into a hardware light, use GX_LoadLightObj()  or GXLoadLightObjIdx().<br><br>
+ * light object into a hardware light, use GX_LoadLightObj() or GX_LoadLightObjIdx().<br><br>
  *
  * \note The coordinate space of the light normal should be consistent with a vertex normal transformed by a normal matrix; i.e., it should be
  * transformed to view space.<br><br>
@@ -4888,7 +4888,7 @@ volatile void* GX_RedirectWriteGatherPipe(void *ptr);
  * be transformed to view space.
  *
  * \warning This function should be used if and only if the light object is used as specular light. One specifies a specular light in
- * GX_SetChanCtrl() by setting \a GXAttnFn to <tt>GX_AF_SPEC</tt>. Furthermore, one must not use GX_InitLightDir() or GX_InitLightPos() to
+ * GX_SetChanCtrl() by setting \a attn_fn to <tt>GX_AF_SPEC</tt>. Furthermore, one must not use GX_InitLightDir() or GX_InitLightPos() to
  * set up a light object which will be used as a specular light since these functions will destroy the information set by GX_InitSpecularDir().
  * In contrast to diffuse lights (including spotlights) that are considered <i>local</i> lights, a specular light is a <i>parallel</i> light (i.e. the
  * specular light is infinitely far away such that all the rays of the light are parallel), and thus one can only specify directional
