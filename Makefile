@@ -37,7 +37,6 @@ export DIDIR		:= $(BASEDIR)/libdi
 export BTEDIR		:= $(BASEDIR)/lwbt
 export WIIUSEDIR	:= $(BASEDIR)/wiiuse
 export TINYSMBDIR	:= $(BASEDIR)/libtinysmb
-export LIBZDIR		:= $(BASEDIR)/libz
 export LIBASNDDIR	:= $(BASEDIR)/libasnd
 export LIBISODIR	:= $(BASEDIR)/libiso9660
 export LIBWIIKEYB	:= $(BASEDIR)/libwiikeyboard
@@ -69,7 +68,6 @@ DILIB		:= $(LIBDIR)/libdi
 BTELIB		:= $(LIBDIR)/libbte
 WIIUSELIB	:= $(LIBDIR)/libwiiuse
 TINYSMBLIB	:= $(LIBDIR)/libtinysmb
-ZLIB		:= $(LIBDIR)/libz
 ASNDLIB		:= $(LIBDIR)/libasnd
 ISOLIB		:= $(LIBDIR)/libiso9660
 WIIKEYBLIB	:= $(LIBDIR)/libwiikeyboard
@@ -116,7 +114,6 @@ VPATH :=	$(LWIPDIR)				\
 			$(WIIUSEDIR)		\
 			$(SDCARDDIR)			\
 			$(TINYSMBDIR)		\
-			$(LIBZDIR)		\
 			$(LIBASNDDIR)		\
 			$(LIBISODIR)		\
 			$(LIBWIIKEYB)		\
@@ -171,11 +168,6 @@ WIIUSEOBJ	:=	classic.o dynamics.o events.o guitar_hero_3.o io.o io_wii.o ir.o \
 
 #---------------------------------------------------------------------------------
 TINYSMBOBJ	:=	des.o md4.o ntlm.o smb.o smb_devoptab.o
-
-#---------------------------------------------------------------------------------
-ZLIBOBJ		:=	adler32.o compress.o crc32.o gzio.o uncompr.o \
-			deflate.o trees.o zutil.o inflate.o infback.o \
-			inftrees.o inffast.o
 
 #---------------------------------------------------------------------------------
 ASNDLIBOBJ	:=	asndlib.o
@@ -242,8 +234,6 @@ $(DBLIB).a: $(DBOBJ)
 $(DILIB).a: $(DIOBJ)
 #---------------------------------------------------------------------------------
 $(TINYSMBLIB).a: $(TINYSMBOBJ)
-#---------------------------------------------------------------------------------
-$(ZLIB).a: $(ZLIBOBJ)
 #---------------------------------------------------------------------------------
 $(ASNDLIB).a: $(ASNDLIBOBJ)
 #---------------------------------------------------------------------------------
