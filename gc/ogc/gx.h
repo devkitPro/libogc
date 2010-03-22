@@ -3589,7 +3589,7 @@ void GX_SetCopyClear(GXColor color,u32 zvalue);
 
 /*!
  * \fn void GX_CopyDisp(void *dest,u8 clear)
- * \brief Copies the embedded framebuffer(XFB) to the external framebuffer(XFB) in main memory.
+ * \brief Copies the embedded framebuffer (EFB) to the external framebuffer(XFB) in main memory.
  *
  * \note The stride of the XFB is set using GX_SetDispCopyDst(). The source image in the EFB is described using GX_SetDispCopySrc().<br><br>
  *
@@ -3636,7 +3636,7 @@ void GX_SetTexCopyDst(u16 wd,u16 ht,u32 fmt,u8 mipmap);
 
 /*!
  * \fn void GX_CopyTex(void *dest,u8 clear)
- * \brief Copies the embedded framebuffer(XFB) to the texture image buffer \a dest in main memory.
+ * \brief Copies the embedded framebuffer (EFB) to the texture image buffer \a dest in main memory.
  *
  * \details This is useful when creating textures using the Graphics Processor (GP). If the \a clear flag is set to <tt>GX_TRUE</tt>, the EFB will be cleared
  * to the current color(see GX_SetCopyClear()) during the copy operation.
