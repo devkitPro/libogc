@@ -87,7 +87,7 @@
 /*! @} */
 
 
-/*! \addtogroup comptype Attribute component type
+/*! \addtogroup compsize Number of components in an attribute
  * @{
  */
 #define GX_U8				0			/*!< Unsigned 8-bit integer */
@@ -103,7 +103,7 @@
 #define GX_RGBA8			5			/*!< 32-bit RGBA */
 /*! @} */
 
-/*! \addtogroup compsize Number of components in an attribute
+/*! \addtogroup comptype Attribute component type
  * @{
  */
 #define GX_POS_XY			0			/*!< X,Y position */

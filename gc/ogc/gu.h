@@ -115,7 +115,7 @@ typedef struct _qrtn {
 typedef f32	Mtx[3][4];
 typedef f32 (*MtxP)[4];
 
-/*! typedef f32 ROMtx[4][3]
+/*! \typedef f32 ROMtx[4][3]
  * \brief Column-major representation of the standard Mtx structure.
  *
  * \details It is not a true transpose, as it is a 4x3 matrix. These structures are only accepted by functions that explicitly
