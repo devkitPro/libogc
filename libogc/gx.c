@@ -18,7 +18,12 @@
 
 
 #define GX_FINISH		2
-#define LARGE_NUMBER	(1024*1024)
+
+#if defined(HW_DOL)
+	#define LARGE_NUMBER	(1024*1024)
+#elif defined(HW_RVL)
+	#define LARGE_NUMBER	(1.0e+18f)
+#endif
 
 #define _SHIFTL(v, s, w)	\
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
