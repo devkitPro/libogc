@@ -256,27 +256,42 @@ static __inline__ void __lwp_syswd_free(alarm_st *alarm)
 	__lwp_objmgr_free(&sys_alarm_objects,&alarm->object);
 }
 
-
 #ifdef HW_DOL
 #define SOFTRESET_ADR *((vu32*)0xCC003024)
-#endif
+void __reload() { SOFTRESET_ADR=0; }
 
 void __libogc_exit(int status)
 {
-	void (*reload)() = (void(*)())0x80001800;
+	SYS_ResetSystem(SYS_SHUTDOWN,0,0);
+	__lwp_thread_stopmultitasking(__reload);
+}
+#else
+static void (*reload)() = (void(*)())0x80001800;
 
+static bool __stub_found()
+{
 	u64 sig = ((u64)(*(u32*)0x80001804) << 32) + *(u32*)0x80001808;
-	if ( sig == 0x5354554248415858ULL) { // 'STUBHAXX'
+	if (sig == 0x5354554248415858ULL) // 'STUBHAXX'
+		return true;
+	return false;
+}
+
+void __reload()
+{
+	if(__stub_found())
+		reload();
+	SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
+}
+
+void __libogc_exit(int status)
+{
+	if(__stub_found()) {
 		SYS_ResetSystem(SYS_SHUTDOWN,0,0);
 		__lwp_thread_stopmultitasking(reload);
-	} else {
-#ifdef HW_RVL
-		SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
-#else
-		SOFTRESET_ADR=0;
-#endif
-	} 
+	}
+	SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
 }
+#endif
 
 static void __init_syscall_array() {
 	__syscalls.sbrk_r = __libogc_sbrk_r;
