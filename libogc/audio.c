@@ -278,7 +278,7 @@ u32 AUDIO_GetDMAStartAddr()
 
 u32 AUDIO_GetDMALength()
 {
-	return ((_dspReg[26]&0x7fff)<<5);
+	return ((_dspReg[27]&0x7fff)<<5);
 }
 
 void AUDIO_SetStreamTrigger(u32 cnt)
