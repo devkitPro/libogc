@@ -2641,12 +2641,22 @@ static bool dvdio_Startup()
 
 static bool dvdio_IsInserted()
 {
-	return true;
+	s32 status = 0;
+	DVD_LowGetStatus(&status, NULL);
+
+	if(DVD_STATUS(status) == DVD_STATUS_READY) 
+		return true;
+
+	return false;
 }
 
 static bool dvdio_ReadSectors(sec_t sector,sec_t numSectors,void *buffer)
 {
-	DVD_LowRead(buffer, numSectors << 11, sector, NULL);
+	dvdcmdblk blk;
+
+	if(DVD_ReadPrio(&blk, buffer, numSectors<<11, sector << 11, 2) <= 0)
+		return false;
+
 	return true;
 }
 
