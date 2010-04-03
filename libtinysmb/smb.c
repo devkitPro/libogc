@@ -491,18 +491,31 @@ static s32 SMBCheck(u8 command,SMBHANDLE *handle)
 	u8 *ptr = handle->message.smb;
 	NBTSMB *nbt = &handle->message;
 	u32 readlen;
+	u64 t1,t2;
 
 	if(handle->sck_server == INVALID_SOCKET) return SMB_ERROR;
 
-	memset(nbt,0,sizeof(NBTSMB));
+	memset(nbt,0xFF,sizeof(NBTSMB)); //NBT_SESSISON_MSG is 0x00 so fill mem with 0xFF
+
+	t1=ticks_to_millisecs(gettime());
 
 	/*keep going till we get a NBT session message*/
 	do{
 		ret=smb_recv(handle->sck_server, (u8*)nbt, 4);
 		if(ret<0) return SMB_ERROR;
 		
-		if(nbt->msg!=NBT_SESSISON_MSG && nbt->length>0)
-			smb_recv(handle->sck_server, ptr, nbt->length); //clear unexpected NBT message		
+		if((ret>0) && nbt->msg!=NBT_SESSISON_MSG)
+		{
+			readlen=(u32)((nbt->length_high<<16)|nbt->length);
+			if(readlen>0)
+			{
+				t1=ticks_to_millisecs(gettime());
+				smb_recv(handle->sck_server, ptr, readlen); //clear unexpected NBT message
+			}
+		}
+		t2=ticks_to_millisecs(gettime());
+		if( (t2 - t1) > RECV_TIMEOUT * 2) return SMB_ERROR;
+
 	}while(nbt->msg!=NBT_SESSISON_MSG);
 
 	/* obtain required length from NBT header if readlen==0*/
@@ -766,11 +779,11 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 		pos += 2;
 		serverMaxBuffer = getUInt(ptr, pos);	//ULONG MaxBufferSize; Max transmit buffer size
 
+
 		if(serverMaxBuffer>SMB_MAX_TRANSMIT_SIZE)
 			sess->MaxBuffer = SMB_MAX_TRANSMIT_SIZE;
 		else
 			sess->MaxBuffer = serverMaxBuffer;
-
 		pos += 4;
 		pos += 4;	//ULONG MaxRawSize; Maximum raw buffer size
 		sess->sKey = getUInt(ptr,pos); pos += 4;
@@ -1703,6 +1716,7 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	if(!handle) return -1;
 
 	MakeSMBHeader(SMB_WRITE_ANDX,CIFS_FLAGS1,CIFS_FLAGS2,handle);
+
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;

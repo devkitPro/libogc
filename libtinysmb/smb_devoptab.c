@@ -44,8 +44,8 @@ static int smbInited = 0;
 ///////////////////////////////////////////
 //      CACHE FUNCTION DEFINITIONS       //
 ///////////////////////////////////////////
-#define SMB_READ_BUFFERSIZE				65535
-#define SMB_WRITE_BUFFERSIZE			(16*1024)
+#define SMB_READ_BUFFERSIZE				(32*1024)
+#define SMB_WRITE_BUFFERSIZE			(60*1024)
 
 typedef struct
 {
@@ -458,6 +458,38 @@ failed:
 //         END CACHE FUNCTIONS           //
 ///////////////////////////////////////////
 
+void str_replace(char *str, char *old, char *new)
+{
+	int i, count = 0;
+	int newlen = strlen(new);
+	int oldlen = strlen(old);
+
+	for (i = 0; str[i]; ++i)
+		if (strstr(&str[i], old) == &str[i])
+			++count, i += oldlen - 1;
+
+	char *ret =	(char *) calloc(i + 1 + count * (newlen - oldlen), sizeof(char));
+	if (!ret) return;
+
+	i = 0;
+	while (*str)
+	{
+		if (strstr(str, old) == str)
+		{
+			strcpy(&ret[i], new);
+			i += newlen;
+			str += oldlen;
+		}
+		else
+		{
+			ret[i++] = *str++;
+		}
+	}
+	ret[i] = '\0';
+	strcpy(str, ret);
+	free(ret);
+}
+
 static char *smb_absolute_path_no_device(const char *srcpath, char *destpath, int env)
 {
 	if (strchr(srcpath, ':') != NULL)
@@ -478,11 +510,10 @@ static char *smb_absolute_path_no_device(const char *srcpath, char *destpath, in
 	{
 		strcpy(destpath, srcpath);
 	}
-	int i, l;
-	l = strlen(destpath);
-	for (i = 0; i < l; i++)
-		if (destpath[i] == '/')
-			destpath[i] = '\\';
+
+	str_replace(destpath,"//","\\");
+	str_replace(destpath,"/","\\");
+	str_replace(destpath,"\\\\","\\");
 
 	return destpath;
 }
