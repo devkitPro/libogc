@@ -44,7 +44,7 @@ static int smbInited = 0;
 ///////////////////////////////////////////
 //      CACHE FUNCTION DEFINITIONS       //
 ///////////////////////////////////////////
-#define SMB_READ_BUFFERSIZE				(32*1024)
+#define SMB_READ_BUFFERSIZE				65535
 #define SMB_WRITE_BUFFERSIZE			(60*1024)
 
 typedef struct
