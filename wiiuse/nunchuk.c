@@ -46,10 +46,10 @@ int nunchuk_handshake(struct wiimote_t *wm,struct nunchuk_t *nc,ubyte *data,uwor
 	//for(i=0;i<len;i++) data[i] = (data[i]^0x17)+0x17;
 	if(data[offset]==0xff) {
 		if(data[offset+16]==0xff) {
+			// try to read the calibration data again
 			wiiuse_read_data(wm,data,WM_EXP_MEM_CALIBR,EXP_HANDSHAKE_LEN,wiiuse_handshake_expansion);
-			return 0;
-		}
-		offset += 16;
+		} else
+			offset += 16;
 	}
 
 	nc->accel_calib.cal_zero.x = (data[offset + 0]<<2)|((data[offset + 3]>>4)&3);
@@ -65,18 +65,34 @@ int nunchuk_handshake(struct wiimote_t *wm,struct nunchuk_t *nc,ubyte *data,uwor
 	nc->js.min.y = data[offset + 12];
 	nc->js.center.y = data[offset + 13];
 
+	// set to defaults (averages from 5 nunchuks) if calibration data is invalid
+	if(nc->accel_calib.cal_zero.x == 0)
+		nc->accel_calib.cal_zero.x = 499;
+	if(nc->accel_calib.cal_zero.y == 0)
+		nc->accel_calib.cal_zero.y = 509;
+	if(nc->accel_calib.cal_zero.z == 0)
+		nc->accel_calib.cal_zero.z = 507;
+	if(nc->accel_calib.cal_g.x == 0)
+		nc->accel_calib.cal_g.x = 703;
+	if(nc->accel_calib.cal_g.y == 0)
+		nc->accel_calib.cal_g.y = 709;
+	if(nc->accel_calib.cal_g.z == 0)
+		nc->accel_calib.cal_g.z = 709;
+	if(nc->js.max.x == 0)
+		nc->js.max.x = 223;
+	if(nc->js.min.x == 0)
+		nc->js.min.x = 27;
+	if(nc->js.center.x == 0)
+		nc->js.center.x = 126;
+	if(nc->js.max.y == 0)
+		nc->js.max.y = 222;
+	if(nc->js.min.y == 0)
+		nc->js.min.y = 30;
+	if(nc->js.center.y == 0)
+		nc->js.center.y = 131;
+
 	wm->event = WIIUSE_NUNCHUK_INSERTED;
 	wm->exp.type = EXP_NUNCHUK;
-
-	/* if min and max are reported as 0, initialize them to usable values based on center, and fine tune in nunchuck_event() */
-	if (nc->js.center.x) {
-		if (nc->js.min.x == 0) nc->js.min.x = nc->js.center.x - 80;
-		if (nc->js.max.x == 0) nc->js.max.x = nc->js.center.x + 80;
-	}
-	if (nc->js.center.y) {
-		if (nc->js.min.y == 0) nc->js.min.y = nc->js.center.y - 80;
-		if (nc->js.max.y == 0) nc->js.max.y = nc->js.center.y + 80;
-	}
 
 	return 1;
 }

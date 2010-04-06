@@ -87,11 +87,15 @@ void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
 		case 3:
 			if(!data || !len) return;
 			id = BIG_ENDIAN_LONG(*(int*)(&data[220]));
+
 			switch(id) {
 				case EXP_ID_CODE_NUNCHUK:
 					if(!nunchuk_handshake(wm,&wm->exp.nunchuk,data,len)) return;
 					break;
 				case EXP_ID_CODE_CLASSIC_CONTROLLER:
+				case EXP_ID_CODE_CLASSIC_CONTROLLER_NYKOWING:
+				case EXP_ID_CODE_CLASSIC_CONTROLLER_GENERIC:
+				case EXP_ID_CODE_CLASSIC_CONTROLLER_GENERIC2:
 					if(!classic_ctrl_handshake(wm,&wm->exp.classic,data,len)) return;
 					break;
 				case EXP_ID_CODE_GUITAR:
