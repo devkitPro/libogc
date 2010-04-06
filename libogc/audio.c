@@ -67,13 +67,16 @@ distribution.
 static vu16* const _dspReg = (u16*)0xCC005000;
 
 static u32 __AIInitFlag = 0;
+static u32 __AIActive = 0;
 static u8 *__CallbackStack = NULL;
 static u8 *__OldStack = NULL;
 
 static u64 bound_32KHz,bound_48KHz,min_wait,max_wait,buffer;
 
-static AIDCallback __AID_Callback;
+#if defined(HW_DOL)
 static AISCallback __AIS_Callback;
+#endif
+static AIDCallback __AID_Callback;
 
 static void __AICallbackStackSwitch(AIDCallback handler)
 {
@@ -101,28 +104,72 @@ static void __AICallbackStackSwitch(AIDCallback handler)
 						 );
 }
 
+#if defined(HW_DOL)
 static void __AISHandler(u32 nIrq,void *pCtx)
 {
 	if(__AIS_Callback)
 		__AIS_Callback(_aiReg[2]);
 	_aiReg[0] |= 0x0008;
 }
+#endif
 
 static void __AIDHandler(u32 nIrq,void *pCtx)
 {
-	if(__AID_Callback) {
-		if(__CallbackStack)
-			__AICallbackStackSwitch(__AID_Callback);
-		else
-			__AID_Callback();
-	}
 	_dspReg[5] = (_dspReg[5]&~(DSPCR_DSPINT|DSPCR_ARINT))|DSPCR_AIINT;
+	if(__AID_Callback) {
+		if(!__AIActive) {
+			__AIActive = 1;
+			if(__CallbackStack)
+				__AICallbackStackSwitch(__AID_Callback);
+			else
+				__AID_Callback();
+			__AIActive = 0;
+		}
+	}
 }
 
 static void __AISRCINIT()
 {
+	u64 tdiff;
+	u32 scnt,done = 0;
+	u64 time1,time2,wait;
+
+	while(!done) {
+		_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
+		_aiReg[0] = (_aiReg[0]&~0x02);
+		_aiReg[0] = (_aiReg[0]&~0x01)|0x01;
+
+		scnt = _aiReg[2]&0x7fffffff;
+		while(scnt!=(_aiReg[2]&0x7fffffff));
+
+		time1 = gettime();
+		_aiReg[0] = (_aiReg[0]&~0x02)|0x02;
+		_aiReg[0] = (_aiReg[0]&~0x01)|0x01;
+
+		scnt = _aiReg[2]&0x7fffffff;
+		while(scnt!=(_aiReg[2]&0x7fffffff));
+		
+		time2 = gettime();
+		_aiReg[0] = (_aiReg[0]&~0x02);
+		_aiReg[0] = (_aiReg[0]&~0x01);
+
+		tdiff = time2 - time1;
+		if(tdiff==(bound_32KHz - buffer) || tdiff==(bound_32KHz + buffer)) {
+			if(tdiff!=(bound_48KHz - buffer)) {
+				wait = max_wait;
+				done = 1;
+			}
+		} else {
+			wait = min_wait;
+			done = 1;
+		}
+	}
+
+	time2 += wait;
+	while(diff_ticks(time2,gettime())!=0);
 }
 
+#if defined(HW_DOL)
 static void __AISetStreamSampleRate(u32 rate)
 {
 	u32 currrate,level;
@@ -161,43 +208,53 @@ AISCallback AUDIO_RegisterStreamCallback(AISCallback callback)
 	_CPU_ISR_Restore(level);
 	return old;
 }
+#endif
 
 void AUDIO_Init(u8 *stack)
 {
-	u32 busfreq = TB_BUS_CLOCK;
+	u32 rate,level;
 
 	if(!__AIInitFlag) {
-		bound_32KHz = (u64)((((busfreq>>2)/125000)*31524)/8000)<<32;
-		bound_48KHz = (u64)((((busfreq>>2)/125000)*42024)/8000)<<32;
-		min_wait = (u64)((((busfreq>>2)/125000)*42000)/8000)<<32;
-		max_wait = (u64)((((busfreq>>2)/125000)*63000)/8000)<<32;
-		buffer = (u64)((((busfreq>>2)/125000)*3000)/8000)<<32;
+		bound_32KHz = nanosecs_to_ticks(31524);
+		bound_48KHz = nanosecs_to_ticks(42024);
+		min_wait = nanosecs_to_ticks(42000);
+		max_wait = nanosecs_to_ticks(63000);
+		buffer = nanosecs_to_ticks(3000);
 
-		_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
-		_aiReg[1] = _aiReg[1]&~0x000000ff;
-		_aiReg[1] = _aiReg[1]&~0x0000ff00;
+		_aiReg[0] &= ~0x15;
+		_aiReg[1] = 0;
 		_aiReg[3] = 0;
 
-		__AISetStreamSampleRate(AI_SAMPLERATE_48KHZ);
-		AUDIO_SetDSPSampleRate(AI_SAMPLERATE_32KHZ);
+		_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
 
-		__AIS_Callback = NULL;
+		rate = (_SHIFTR(_aiReg[0],6,1))^1;
+		if(rate==AI_SAMPLERATE_48KHZ) {
+			_aiReg[0] &= ~0x40;
+			_CPU_ISR_Disable(level);
+			__AISRCINIT();
+			_aiReg[0] |= 0x40;
+			_CPU_ISR_Restore(level);
+		}
+
 		__AID_Callback = NULL;
 
 		__OldStack = NULL;	// davem - use it or lose it
 							// looks like 3.4 isn't picking up the use from the asm below
 		__CallbackStack = stack;
 
-		IRQ_Request(IRQ_AI,__AISHandler,NULL);
-		__UnmaskIrq(IRQMASK(IRQ_AI));
-
 		IRQ_Request(IRQ_DSP_AI,__AIDHandler,NULL);
 		__UnmaskIrq(IRQMASK(IRQ_DSP_AI));
+#if defined(HW_DOL)
+		__AIS_Callback = NULL;
 
+		IRQ_Request(IRQ_AI,__AISHandler,NULL);
+		__UnmaskIrq(IRQMASK(IRQ_AI));
+#endif
 		__AIInitFlag = 1;
 	}
 }
 
+#if defined(HW_DOL)
 void AUDIO_SetStreamVolLeft(u8 vol)
 {
 	_aiReg[1] = (_aiReg[1]&~0x000000ff)|(vol&0xff);
@@ -227,6 +284,47 @@ u32 AUDIO_GetStreamSampleRate()
 {
 	return _SHIFTR(_aiReg[0],1,1);
 }
+
+void AUDIO_SetStreamTrigger(u32 cnt)
+{
+	_aiReg[3] = cnt;
+}
+
+void AUDIO_ResetStreamSampleCnt()
+{
+	_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
+}
+
+void AUDIO_SetStreamPlayState(u32 state)
+{
+	u32 playstate,streamrate;
+	u32 volright,volleft,level;
+
+	playstate = AUDIO_GetStreamPlayState();
+	streamrate = AUDIO_GetStreamSampleRate();
+	if(playstate!=state && state==AI_STREAM_START && streamrate==AI_SAMPLERATE_32KHZ ) {
+		volright = AUDIO_GetStreamVolRight();
+		AUDIO_SetStreamVolRight(0);
+		volleft = AUDIO_GetStreamVolLeft();
+		AUDIO_SetStreamVolLeft(0);
+
+		_CPU_ISR_Disable(level);
+		__AISRCINIT();
+		_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
+		_aiReg[0] = (_aiReg[0]&~0x01)|0x01;
+		_CPU_ISR_Restore(level);
+		AUDIO_SetStreamVolRight(volright);
+		AUDIO_SetStreamVolLeft(volleft);
+	} else {
+		_aiReg[0] = (_aiReg[0]&~0x01)|(state&0x01);
+	}
+}
+
+u32 AUDIO_GetStreamPlayState()
+{
+	return (_aiReg[0]&0x01);
+}
+#endif
 
 AIDCallback AUDIO_RegisterDMACallback(AIDCallback callback)
 {
@@ -281,40 +379,17 @@ u32 AUDIO_GetDMALength()
 	return ((_dspReg[27]&0x7fff)<<5);
 }
 
-void AUDIO_SetStreamTrigger(u32 cnt)
-{
-	_aiReg[3] = cnt;
-}
-
-void AUDIO_ResetStreamSampleCnt()
-{
-	_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
-}
-
 void AUDIO_SetDSPSampleRate(u8 rate)
 {
-	u32 currate,level;
-	u32 playstate,volright,volleft;
+	u32 level;
 
 	if(AUDIO_GetDSPSampleRate()!=rate) {
-		_aiReg[0] = (_aiReg[0]&~0x40);
+		_aiReg[0] &= ~0x40;
 		if(rate==AI_SAMPLERATE_32KHZ) {
-			volright = AUDIO_GetStreamVolRight();
-			AUDIO_SetStreamVolRight(0);
-			volleft = AUDIO_GetStreamVolLeft();
-			AUDIO_SetStreamVolLeft(0);
-			playstate = _aiReg[0]&0x01;
-			currate = AUDIO_GetStreamSampleRate();
-
 			_CPU_ISR_Disable(level);
 			__AISRCINIT();
-			_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
-			_aiReg[0] = (_aiReg[0]&~0x02)|(_SHIFTL(currate,1,1));
-			_aiReg[0] = (_aiReg[0]&~0x01)|(playstate&0x01);
 			_aiReg[0] |= 0x40;
 			_CPU_ISR_Restore(level);
-			AUDIO_SetStreamVolRight(volright);
-			AUDIO_SetStreamVolLeft(volleft);
 		}
 	}
 }
@@ -322,34 +397,4 @@ void AUDIO_SetDSPSampleRate(u8 rate)
 u32 AUDIO_GetDSPSampleRate()
 {
 	return (_SHIFTR(_aiReg[0],6,1))^1;		//0^1(1) = 48Khz, 1^1(0) = 32Khz
-}
-
-void AUDIO_SetStreamPlayState(u32 state)
-{
-	u32 playstate,streamrate;
-	u32 volright,volleft,level;
-
-	playstate = AUDIO_GetStreamPlayState();
-	streamrate = AUDIO_GetStreamSampleRate();
-	if(playstate!=state && state==AI_STREAM_START && streamrate==AI_SAMPLERATE_32KHZ ) {
-		volright = AUDIO_GetStreamVolRight();
-		AUDIO_SetStreamVolRight(0);
-		volleft = AUDIO_GetStreamVolLeft();
-		AUDIO_SetStreamVolLeft(0);
-
-		_CPU_ISR_Disable(level);
-		__AISRCINIT();
-		_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
-		_aiReg[0] = (_aiReg[0]&~0x01)|0x01;
-		_CPU_ISR_Restore(level);
-		AUDIO_SetStreamVolRight(volright);
-		AUDIO_SetStreamVolLeft(volleft);
-	} else {
-		_aiReg[0] = (_aiReg[0]&~0x01)|(state&0x01);
-	}
-}
-
-u32 AUDIO_GetStreamPlayState()
-{
-	return (_aiReg[0]&0x01);
 }
