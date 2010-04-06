@@ -147,7 +147,7 @@ typedef struct _card_block {
 	cardcallback card_unlock_cb;
 } card_block;
 
-#ifdef HW_RVL
+#if defined(HW_RVL)
 
 static u32 _cardunlockdata[0x160] ATTRIBUTE_ALIGN(32) =
 {
@@ -175,7 +175,7 @@ static u32 _cardunlockdata[0x160] ATTRIBUTE_ALIGN(32) =
 	0x00000000,0x00000000,0x00000000,0x00000000
 };
 
-#elif HW_DOL
+#elif defined(HW_DOL)
 
 static u32 _cardunlockdata[0x160] ATTRIBUTE_ALIGN(32) =
 {
