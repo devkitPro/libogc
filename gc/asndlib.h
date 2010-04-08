@@ -64,7 +64,7 @@ extern "C" {
 #define SND_WAITING  2   /*!< This voice is currently in progress and waiting to one SND_AddVoice() function (the voice handler is called continuously) */
 /*! @} */
 
-/*! \addtogroup sndsetvoiceformats Voice formats
+/*! \addtogroup sndsetvoiceformats Voice format
  * @{
  */
 #define VOICE_MONO_8BIT    0
@@ -73,7 +73,7 @@ extern "C" {
 #define VOICE_STEREO_16BIT 3
 /*! @} */
 
-/*! \addtogroup voicevolrange Voice volume Range
+/*! \addtogroup voicevol Voice volume
  * @{
  */
 #define MIN_VOLUME 0
@@ -90,7 +90,7 @@ extern "C" {
 #define INIT_RATE_48000
 /*! @} */
 
-/*! \addtogroup notecode note codification
+/*! \addtogroup notecode Note codification
  * @{
  */
 enum
@@ -177,9 +177,9 @@ typedef void (*ASNDVoiceCallback)(s32 voice);
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 /** \brief Initializes the SND lib and fixes the hardware sample rate.
- * \param[in] note Note codified to play. for example: NOTE(C,4) for note C and octave 4.
+ * \param[in] note \ref notecode to play. for example: NOTE(C,4) for note C and octave 4.
  * \param[in] freq_base Frequency base of the sample. For example 8000Hz.
- * \param[in] note_base Note codified of the sample. For example: NOTE(L, 3) for note L and octave 3 (LA 3).
+ * \param[in] note_base \ref notecode of the sample. For example: NOTE(L, 3) for note L and octave 3 (LA 3).
  * \return Frequency, in Hz. */
 int ANote2Freq(int note, int freq_base,int note_base);
 
@@ -265,8 +265,8 @@ s32 ASND_GetAudioRate();
  * \param[in] delay Delay to wait before playing this voice; value is in milliseconds.
  * \param[in] snd Buffer containing samples to play back; the buffer <b>must</b> be aligned and padded to 32 bytes!
  * \param[in] size_snd Size of the buffer samples, in bytes.
- * \param[in] volume_l Volume of the left channel; value can be 0 - 255 inclusive.
- * \param[in] volume_r Volume of the right channel; value can be 0 - 255 inclusive.
+ * \param[in] volume_l \ref voicevol of the left channel; value can be 0 - 255 inclusive.
+ * \param[in] volume_r \ref voicevol of the right channel; value can be 0 - 255 inclusive.
  * \param[in] callback Optional callback function to use; set to NULL for no callback. See the note above for details.
  * \return SND_OK or SND_INVALID. */
 s32 ASND_SetVoice(s32 voice, s32 format, s32 pitch,s32 delay, void *snd, s32 size_snd, s32 volume_l, s32 volume_r, ASNDVoiceCallback callback);
@@ -315,8 +315,8 @@ s32 ASND_ChangePitchVoice(s32 voice, s32 pitch);
 /*! \brief Changes the voice volume in real-time.
  * \details This function can be used to create audio effects like distance attenuation.
  * \param[in] voice Voice to change the volume of, from 0 to (MAX_SND_VOICES-1).
- * \param[in] volume_l Volume to set the left channel to, from 0 to 255.
- * \param[in] volume_r Volume to set the right channel to, from 0 to 255.
+ * \param[in] volume_l \ref voicevol to set the left channel to, from 0 to 255.
+ * \param[in] volume_r \ref voicevol to set the right channel to, from 0 to 255.
  * \return SND_OK or SND_INVALID. */
 s32 ASND_ChangeVolumeVoice(s32 voice, s32 volume_l, s32 volume_r);
 
