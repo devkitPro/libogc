@@ -32,6 +32,12 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define __SNDLIB_H__
 
+/*!
+ * \file asndlib.h
+ * \brief ASND library
+ *
+ */
+
 #define ASND_LIB 0x100
 #define SND_LIB  (ASND_LIB+2)
 
@@ -41,44 +47,52 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 extern "C" {
 #endif
 
-// SND return values
-
+/*! \addtogroup sndretvals SND return values
+ * @{
+ */
 #define SND_OK               0
 #define SND_INVALID         -1
 #define SND_ISNOTASONGVOICE -2
 #define SND_BUSY             1
+/*! @} */
 
-// SND_IsActiveVoice additional return values
+/*! \addtogroup sndiavretvals SND_IsActiveVoice additional return values
+ * @{
+ */
+#define SND_UNUSED   0   /*!< This voice is available for use. */
+#define SND_WORKING  1   /*!< This voice is currently in progress. */
+#define SND_WAITING  2   /*!< This voice is currently in progress and waiting to one SND_AddVoice() function (the voice handler is called continuously) */
+/*! @} */
 
-#define SND_UNUSED   0   // you can use this voice
-#define SND_WORKING  1   // this voice is in progress
-#define SND_WAITING  2   // this voice is in progress and waiting to one SND_AddVoice function (the voice handler is called continuously)
-
-// SND_SetVoice format
+/*! \addtogroup sndsetvoiceformats Voice formats
+ * @{
+ */
 #define VOICE_MONO_8BIT    0
 #define VOICE_MONO_16BIT   1
 #define VOICE_STEREO_8BIT  2
 #define VOICE_STEREO_16BIT 3
+/*! @} */
 
-
-// Voice volume Range
-
+/*! \addtogroup voicevolrange Voice volume Range
+ * @{
+ */
 #define MIN_VOLUME 0
 #define MID_VOLUME 127
 #define MAX_VOLUME 255
+/*! @} */
 
-// Pitch Range
-
-#define MIN_PITCH      1      // 1 Hz
-
-#define F44100HZ_PITCH 44100  // 44100Hz
-
-#define MAX_PITCH      144000 // 144000Hz (more process time for pitch>48000)
-
+/*! \addtogroup pitchrange Pitch Range
+ * @{
+ */
+#define MIN_PITCH      1      /*!< 1Hz */
+#define F44100HZ_PITCH 44100  /*!< 44100Hz */
+#define MAX_PITCH      144000 /*!< 144000Hz (more process time for pitch>48000) */
 #define INIT_RATE_48000
+/*! @} */
 
-// note codification
-
+/*! \addtogroup notecode note codification
+ * @{
+ */
 enum
 {
 NOTE_DO=0,
@@ -121,12 +135,15 @@ NOTE_Bb=NOTE_As,
 NOTE_B
 };
 
-#define NOTE(note,octave) (note+(octave<<3)+(octave<<2)) // final note codification. Used in Note2Freq()
+#define NOTE(note,octave) (note+(octave<<3)+(octave<<2)) /*!< Final note codification. Used in Note2Freq(). */
+/*! @} */
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-// compat with SNDLIB
-
+/*! \addtogroup sndlibcompat SNDLIB compatibility macros
+ * \details These defines are for compatability with SNDLIB functions.
+ * @{
+ */
 #define Note2Freq               ANote2Freq
 #define SND_Init                ASND_Init
 #define SND_End                 ASND_End
@@ -150,448 +167,205 @@ NOTE_B
 #define SND_GetTickCounterVoice ASND_GetTickCounterVoice
 #define SND_GetTimerVoice       ASND_GetTimerVoice
 #define SND_TestPointer         ASND_TestPointer
+/*! @} */
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
+/** \brief Callback type for ASND_SetVoice(). */
 typedef void (*ASNDVoiceCallback)(s32 voice);
 
-/* int ANote2Freq(int note, int freq_base,int note_base);
+/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-Initializes the SND lib and fix the hardware sample rate.
-
--- Params ---
-
-note: Note codified to play. For example: NOTE(C,4) for note C and octave 4
-
-freq_base: Frequency base of the sample. For example 8000Hz
-
-note_base: Note codified of the sample. For example: NOTE(L,3) for note L and octave 3 (LA 3)
-
-return: frequency (in Hz)
-
-*/
-
+/** \brief Initializes the SND lib and fixes the hardware sample rate.
+ * \param[in] note Note codified to play. for example: NOTE(C,4) for note C and octave 4.
+ * \param[in] freq_base Frequency base of the sample. For example 8000Hz.
+ * \param[in] note_base Note codified of the sample. For example: NOTE(L, 3) for note L and octave 3 (LA 3).
+ * \return Frequency, in Hz. */
 int ANote2Freq(int note, int freq_base,int note_base);
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-/* General Sound Functions                                                                                                                              */
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-/* void ASND_Init();
+/*! \addtogroup General sound functions
+ * @{
+ */
 
-Initializes the ASND lib and fix the hardware sample rate to 48000.
-
--- Params ---
-
-
-return: nothing
-
-*/
-
+/*! \brief Initializes the ASND lib and fixes the hardware sample rate to 48000.
+ * \return None. */
 void ASND_Init();
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* void ASND_End();
-
-De-initializes the ASND lib.
-
-return: nothing
-
-*/
-
+/*! \brief De-initializes the ASND lib.
+ * \return None. */
 void ASND_End();
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* void ASND_Pause(s32 paused);
-
-Used to pause (or not) the sound. When you call to the ASND_Init() function, the sound is paused.
-
-
--- Params ---
-
-paused: use 0 to run or 1 to pause
-
-return: nothing
-
-*/
-
+/*! \brief Used to pause (or unpause) the sound.
+ * \note The sound starts paused when ASND_Init() is called.
+ * \param[in] paused If 1, sound is paused; sound can be unpaused with 0.
+ * \return None. */
 void ASND_Pause(s32 paused);
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* s32 ASND_Is_Paused();
-
-Return if the sound is paused or not
-
--- Params ---
-
-return: 0-> running 1-> paused
-
-*/
-
-
+/*! \brief Returns sound paused status.
+ * \return 1 if paused, 0 if unpaused. */
 s32 ASND_Is_Paused();
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* u32 ASND_GetTime();
-
-Get the global time (in milliseconds). This time is updated from the IRQ
-
--- Params ---
-
-
-return: current time (in ms)
-
-*/
-
+/*! \brief Returns the global time.
+ * \details The time is updated from the IRQ.
+ * \return The current time, in milliseconds. */
 u32 ASND_GetTime();
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* u32 ASND_GetSampleCounter();
-
-Get the global sample counter. This counter is updated from the IRQ in steps of ASND_GetSamplesPerTick()
-
-NOTE: you can use this to implement one timer with high precision
-
--- Params ---
-
-
-return: current sample
-
-*/
-
-
+/*! \brief Retrieves the global sample counter.
+ * \details This counter is updated from the IRQ in steps of ASND_GetSamplesPerTick().
+ * \note You can use this to implement one timer with high precision.
+ * \return Current sample. */
 u32 ASND_GetSampleCounter();
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* u32 ASND_GetSamplesPerTick();
-
-Get the samples sended from the IRQ in one tick
-
--- Params ---
-
-
-return: samples per tick
-
-*/
-
-
+/*! \brief Retrieves the samples sent from the IRQ in one tick.
+ * \return Samples per tick. */
 u32 ASND_GetSamplesPerTick();
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* void ASND_SetTime(u32 time);
-
-Set the global time (in milliseconds). This time is updated from the IRQ
-
--- Params ---
-
-time: fix the current time (in ms)
-
-return: nothing
-
-*/
-
+/*! \brief Set the global time.
+ * \details This time is updated from the IRQ.
+ * \param[in] time Fix the current time, in milliseconds.
+ * \return None. */
 void ASND_SetTime(u32 time);
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* void ASND_SetCallback(void (*callback)());
-
-Set a global callback for general pourpose. This callback is called from the IRQ
-
--- Params ---
-
-callback: function callback
-
-return: nothing
-
-*/
-
+/*! \brief Sets a global callback for general purposes.
+ * \details This callback is called from the IRQ.
+ * \param[in] callback Callback function to assign.
+ * \return None. */
 void ASND_SetCallback(void (*callback)());
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* s32 ASND_GetAudioRate();
-
-return: Audio rate (48000)
-
-Note: for compatibility with SND_lib
-
-*/
-
+/*! \brief Returns the current audio rate.
+ * \note This function is implemented for compatibility with SNDLIB.
+ * \return Audio rate (48000). */
 s32 ASND_GetAudioRate();
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-/* Voice Functions                                                                                                                                      */
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
+/*! @} */
 
-/* s32 ASND_SetVoice(s32 voice, s32 format, s32 pitch,s32 delay, void *snd, s32 size_snd, s32 volume_l, s32 volume_r, void (*callback) (s32 voice));
+/*! \addtogroup voicefuncs Voice functions
+ * @{
+ */
 
-Set a PCM voice to play. This function stops one previously voice. Use the ASND_StatusVoice() to test the status condition
-
-NOTE: The voices are played in stereo and 16 bits independently of the source format.
-
--- Params ---
-
-voice: use one from 0 to (MAX_SND_VOICES-1)
-
-format: PCM format from VOICE_MONO_8BIT to VOICE_STEREO_16BIT
-
-pitch: pitch frequency (in Hz)
-
-delay: delay time in milliseconds (ms). Time to wait before to play the voice
-
-snd: buffer containing the samples (aligned and padded to 32 bytes!!!)
-
-size_snd: size (in bytes) of the buffer samples
-
-volume_l: volume to the left channel from 0 to 255
-
-volume_r: volume to the right channel from 0 to 255
-
-callback: can be NULL or one callback function is used to implement a double buffer use. When the second buffer is empty, the callback is called sending
+// NOTE: I'm keeping this description around because I couldn't fully understand it; if someone else knows exactly what it's doing, they can come around
+// and make sure the description is correct.
+/* callback: can be NULL or one callback function is used to implement a double buffer use. When the second buffer is empty, the callback is called sending
           the voice number as parameter. You can use "void callback(s32 voice)" function to call ASND_AddVoice() and add one voice to the second buffer.
 		  NOTE: When callback is fixed the voice never stops and it turn in SND_WAITING status if success one timeout condition.
-
-return: SND_OK or SND_INVALID
-
 */
 
+/*! \brief Sets a PCM voice to play.
+ * \details This function stops one previous voice. Use ASND_StatusVoice() to test the status condition.
+ * \note The voices are played in 16-bit stereo, regardless of the source format.<br><br>
+ *
+ * \note \a callback is used to implement a double buffer. When the second buffer is empty, the callback function is called with the voice number
+ * as an argument. You can use <tt>void <i>callback</i> (s32 voice)</tt> to call ASND_AddVoice() and add one voice to the second buffer. When the callback
+ * is non-NULL the, the voice never stops and returns SND_WAITING if successful on timeout condition.
+ * \param[in] voice Voice slot to use for this sound; valid values are 0 to (MAX_SND_VOICES-1).
+ * \param[in] format \ref sndsetvoiceformats to use for this sound.
+ * \param[in] pitch Frequency to use, in Hz.
+ * \param[in] delay Delay to wait before playing this voice; value is in milliseconds.
+ * \param[in] snd Buffer containing samples to play back; the buffer <b>must</b> be aligned and padded to 32 bytes!
+ * \param[in] size_snd Size of the buffer samples, in bytes.
+ * \param[in] volume_l Volume of the left channel; value can be 0 - 255 inclusive.
+ * \param[in] volume_r Volume of the right channel; value can be 0 - 255 inclusive.
+ * \param[in] callback Optional callback function to use; set to NULL for no callback. See the note above for details.
+ * \return SND_OK or SND_INVALID. */
 s32 ASND_SetVoice(s32 voice, s32 format, s32 pitch,s32 delay, void *snd, s32 size_snd, s32 volume_l, s32 volume_r, ASNDVoiceCallback callback);
+
+/*! \brief Sets a PCM voice to play infinitely.
+ * \note See ASND_SetVoice() for a detailed description, as it is largely identical. */
 s32 ASND_SetInfiniteVoice(s32 voice, s32 format, s32 pitch,s32 delay, void *snd, s32 size_snd, s32 volume_l, s32 volume_r);
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* s32 ASND_AddVoice(s32 voice, void *snd, s32 size_snd);
-
-Add a PCM voice in the second buffer to play. This function requires one previously call to ASND_SetVoice() and one condition status different
-        of 'SND_UNUSED'
-
--- Params ---
-
-voice: use one from 0 to (MAX_SND_VOICES-1)
-
-snd: buffer containing the samples (aligned and padded to 32 bytes!) in the same format of the previously ASND_SetVoice() use
-
-size_snd: size (in bytes) of the buffer samples
-
-return: SND_OK, SND_INVALID or SND_BUSY if the second buffer is not empty and de voice cannot be add
-
-*/
-
+/*! \brief Adds a PCM voice to play from the second buffer.
+ * \note This function requires a call to ASND_SetVoice() and its subsequent return value to be a status other than SND_UNUSED prior to calling this one.
+ * \param[in] voice Voice slot to attach this buffer to; value must be 0 to (MAX_SND_VOICES-1).
+ * \param[in] snd Buffer containing the samples; it <b>must</b> be aligned and padded to 32 bytes AND have the same sample format as the first buffer.
+ * \param[in] size_snd Size of the buffer samples, in bytes.
+ * \return SND_OK or SND_INVALID; it may also return SND_BUSY if the second buffer is not empty and the voice cannot be added. */
 s32 ASND_AddVoice(s32 voice, void *snd, s32 size_snd);
 
-
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* s32 ASND_StopVoice(s32 voice);
-
-Stops the voice selected.
-
-If the voice is used in song mode, you need to assign the samples with ASND_SetSongSampleVoice() again. Use ASND_PauseSongVoice() in this case to stops
-        the voice without lose the samples.
-
--- Params ---
-
-voice: use one from 0 to (MAX_SND_VOICES-1)
-
-return: SND_OK, SND_INVALID
-
-*/
-
+/*! \brief Stops the selected voice.
+ * \details If the voice is used in song mode, you need to assign the samples with ASND_SetSongSampleVoice() again. In this case, use ANS_PauseSongVoice()
+ * to stop the voice without loss of samples.
+ * \param[in] voice Voice to stop, from 0 to (MAX_SND_VOICES-1).
+ * \return SND_OK or SND_INVALID. */
 s32 ASND_StopVoice(s32 voice);
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* s32 ASND_PauseVoice(s32 voice, s32 pause);
-
-Pause the voice selected.
-
-
-
--- Params ---
-
-voice: use one from 0 to (MAX_SND_VOICES-1)
-
-return: SND_OK, SND_INVALID
-
-*/
-
+/*! \brief Pauses the selected voice.
+ * \param[in] voice Voice to pause, from 0 to (MAX_SND_VOICES-1).
+ * \return SND_OK or SND_INVALID. */
 s32 ASND_PauseVoice(s32 voice, s32 pause);
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* s32 ASND_StatusVoice(s32 voice);
-
-Return the status of the voice selected
-
--- Params ---
-
-voice: use one from 0 to (MAX_SND_VOICES-1)
-
-return: SND_INVALID
-        SND_UNUSED   you can use this voice
-        SND_WORKING  this voice is in progress
-        SND_WAITING  this voice is in progress and waiting to one SND_AddVoice function (the voice handler is called continuously)
-
-*/
-
+/*! \brief Returns the status of the selected voice.
+ * \param[in] voice Voice slot to get the status from, from 0 to (MAX_SND_VOICES-1).
+ * \return SND_INVALID if invalid, else a value from \ref sndiavretvals. */
 s32 ASND_StatusVoice(s32 voice);
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* s32 ASND_GetFirstUnusedVoice();
-
-Get the first unused voice. The voice 0 is tried especially and it is the last possible result. The idea is to reserve that voice for a Mod/Ogg/MP3
-       Player or similar. So if the function return a value <1 you can be sure the rest of the voices are working.
-
--- Params ---
-
-None
-
-return: SND_INVALID or the first free voice (from 0 to (MAX_SND_VOICES-1))
-
-*/
-
+/*! \brief Returns the first unused voice.
+ * \note Voice 0 is the last possible voice that can be returned. The idea is that this voice is reserved for a MOD/OGG/MP3/etc. player. With this in mind,
+ * you can use this function to determine that the rest of the voices are working if the return value is < 1.
+ * \return SND_INVALID or the first free voice from 0 to (MAX_SND_VOICES-1). */
 s32 ASND_GetFirstUnusedVoice();
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* s32 ASND_ChangePitchVoice(s32 voice, s32 pitch);
-
-Use this function to change the voice pitch in real-time. You can use this to create audio effects.
-
--- Params ---
-
-voice: use one from 0 to (MAX_SND_VOICES-1)
-
-return: SND_OK, SND_INVALID
-
-*/
-
+/*! \brief Changes the voice pitch in real-time.
+ * \details This function can be used to create audio effects such as Doppler effect emulation.
+ * \param[in] voice Voice to change the pitch of, from 0 to (MAX_SND_VOICES-1).
+ * \return SND_OK or SND_INVALID. */
 s32 ASND_ChangePitchVoice(s32 voice, s32 pitch);
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* s32 SND_ChangeVolumeVoice(s32 voice, s32 volume_l, s32 volume_r);
-
-Use this function to change the voice volume in real-time. You can use this to create audio effects.
-
--- Params ---
-
-voice: use one from 0 to (MAX_SND_VOICES-1)
-
-volume_l: volume to the left channel from 0 to 255
-
-volume_r: volume to the right channel from 0 to 255
-
-return: SND_OK, SND_INVALID
-
-*/
-
+/*! \brief Changes the voice volume in real-time.
+ * \details This function can be used to create audio effects like distance attenuation.
+ * \param[in] voice Voice to change the volume of, from 0 to (MAX_SND_VOICES-1).
+ * \param[in] volume_l Volume to set the left channel to, from 0 to 255.
+ * \param[in] volume_r Volume to set the right channel to, from 0 to 255.
+ * \return SND_OK or SND_INVALID. */
 s32 ASND_ChangeVolumeVoice(s32 voice, s32 volume_l, s32 volume_r);
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* u32 SND_GetTickCounterVoice(s32 voice);
-
-Get the tick counter from the voice starts to play (without the delay time). This counter uses the same resolution of the internal sound buffer.
-       For example if the lib is initilized with INIT_RATE_48000 a return value of 24000 are equal to 0.5 seconds played
-
-USES: you can use this value to synchronize audio & video
-
-
--- Params ---
-
-voice: use one from 0 to (MAX_SND_VOICES-1)
-
-return: Number of ticks. No error condition for this function
-
-*/
-
+/*! \brief Returns the voice tick counter.
+ * \details This value represents the number of ticks since this voice started to play, sans delay time. It uses the same resolution as the internal
+ * sound buffer. For example, if the lib is initialized with INIT_RATE_48000, a return value of 24000 is equal to 0.5 seconds. This value can be used, for
+ * example, to synchronize audio and video.
+ * \note This function does not return error codes.
+ * \param[in] voice Voice to retrieve the counter value from, from 0 to (MAX_SND_VOICES-1).
+ * \return Number of ticks since this voice started playing. */
 u32 ASND_GetTickCounterVoice(s32 voice);
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* u32 ASND_GetTimerVoice(s32 voice);
-
-Get the time (in milliseconds) from the voice starts to play (without the delay time).
-
-USES: you can use this value to synchronize audio & video
-
--- Params ---
-
-voice: use one from 0 to (MAX_SND_VOICES-1)
-
-return: time (in ms). No error condition for this function
-
-*/
-
+/*! \brief Returns the voice playback time.
+ * \details This value represents the time, in milliseconds, since this voice started playing, sans delay time. This value can be used, for example, to
+ * synchronize audio and video.
+ * \note This function does not return error codes.
+ * \param[in] voice Voice to retrieve the time value from, from 0 to (MAX_SND_VOICES-1).
+ * \return Amount of time since this voice has started playing. */
 u32 ASND_GetTimerVoice(s32 voice);
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* s32 SND_TestPointer(s32 voice, void *pointer);
-
-Test if the pointer is in use by the voice (as buffer).
-
--- Params ---
-
-voice: use one from 0 to (MAX_SND_VOICES-1)
-
-pointer: address to test It must be the same pointer passed to the ASND_AddVoice() or ASND_SetVoice() functions
-
-return: SND_INVALID, 0-> Unused, 1-> Used as buffer
-
-*/
-
-
+/*! \brief Tests if \a pointer is in use by \a voice as a buffer.
+ * \param[in] voice Voice to test, from 0 to (MAX_SND_VOICES-1).
+ * \param[in] pointer Address to test. This must be the same pointer sent to ASND_AddVoice() or ASND_SetVoice().
+ * \return SND_INVALID if invalid
+ * \return 0 if the pointer is unused
+ * \return 1 if the pointer used as a buffer. */
 s32 ASND_TestPointer(s32 voice, void *pointer);
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/* s32 ASND_TestVoiceBufferReady(s32 voice);
-
-Test if the Voice is Ready to receive a new buffer sample with ASND_AddVoice(). You can use this function to block a reader when you use double buffering
-as similar form of the ASND_TestPointer() function without passing one address to test
-
--- Params ---
-
-voice: use one from 0 to (MAX_SND_VOICES-1)
-
-return: SND_INVALID, 0-> not ready to receive a new AddVoice(), 1->ready to receive a new AddVoice()
-
-*/
-
+/*! \brief Tests to determine if the \a voice is ready to receive a new buffer sample with ASND_AddVoice().
+ * \details You can use this function to block a reader when double buffering is used. It works similarly to ASND_TestPointer() without needing to pass a
+ * pointer.
+ * \param[in] voice Voice to test, from 0 to (MAX_SND_VOICES-1).
+ * \return SND_INVALID
+ * \return 0 if voice is NOT ready to receive a new voice.
+ * \return 1 if voice is ready to receive a new voice with ASND_AddVoice(). */
 s32 ASND_TestVoiceBufferReady(s32 voice);
 
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-/* DSP FUNCTIONS			                                                                                                                            */
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
+/*! @} */
 
-/* u32 ASND_GetDSP_PercentUse();
+/*! \addtogroup dspfuncs DSP functions
+ * @{
+ */
 
-Get the Percent use of the DSP
-
--- Params ---
-
-None
-
-return: percent use
-
-*/
-
+/*! \brief Returns the DSP usage.
+ * \details The value is a percentage of DSP usage.
+ * \return DSP usage, in percent. */
 u32 ASND_GetDSP_PercentUse();
 
-
-/*------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
+/*! @} */
 
 #ifdef __cplusplus
   }
