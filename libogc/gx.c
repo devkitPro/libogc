@@ -2266,7 +2266,7 @@ void GX_SetArray(u32 attr,void *ptr,u8 stride)
 	u32 idx = 0;
 
 	if(attr==GX_VA_NBT) attr = GX_VA_NRM;
-	if(attr>=GX_VA_POS && attr<=GX_LITMTXARRAY) {
+	if(attr>=GX_VA_POS && attr<=GX_LIGHTARRAY) {
 		idx = attr-GX_VA_POS;
 		GX_LOAD_CP_REG((0xA0+idx),(u32)MEM_VIRTUAL_TO_PHYSICAL(ptr));
 		GX_LOAD_CP_REG((0xB0+idx),(u32)stride);
