@@ -154,8 +154,8 @@ static void __AISRCINIT()
 		_aiReg[0] = (_aiReg[0]&~0x01);
 
 		tdiff = time2 - time1;
-		if(tdiff==(bound_32KHz - buffer) || tdiff==(bound_32KHz + buffer)) {
-			if(tdiff!=(bound_48KHz - buffer)) {
+		if(tdiff>(bound_32KHz - buffer) && tdiff<(bound_32KHz + buffer)) {
+			if(tdiff<(bound_48KHz - buffer)) {
 				wait = max_wait;
 				done = 1;
 			}
