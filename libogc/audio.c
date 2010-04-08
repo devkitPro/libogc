@@ -165,8 +165,7 @@ static void __AISRCINIT()
 		}
 	}
 
-	time2 += wait;
-	while(diff_ticks(time2,gettime())!=0);
+	while(diff_ticks(time2,gettime()) < wait);
 }
 
 #if defined(HW_DOL)
