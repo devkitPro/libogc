@@ -144,7 +144,7 @@
 #define GX_POSMTXARRAY			21
 #define GX_NRMMTXARRAY			22
 #define GX_TEXMTXARRAY			23
-#define GX_LITMTXARRAY			24
+#define GX_LIGHTARRAY			24
 #define GX_VA_NBT				25
 #define GX_VA_MAXATTR			26
 #define GX_VA_NULL				0xff
