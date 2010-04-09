@@ -139,7 +139,7 @@
 #define SMB_HANDLE_NULL				0xffffffff
 #define SMB_MAX_NET_READ_SIZE		(16*1024) // see smb_recv
 #define SMB_MAX_NET_WRITE_SIZE		4096 // see smb_sendv
-#define SMB_MAX_TRANSMIT_SIZE		65535
+#define SMB_MAX_TRANSMIT_SIZE		65472
 
 #define CAP_LARGE_FILES				0x00000008  // 64-bit file sizes and offsets supported
 #define CAP_UNICODE					0x00000004  // Unicode supported

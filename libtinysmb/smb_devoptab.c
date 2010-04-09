@@ -44,7 +44,7 @@ static int smbInited = 0;
 ///////////////////////////////////////////
 //      CACHE FUNCTION DEFINITIONS       //
 ///////////////////////////////////////////
-#define SMB_READ_BUFFERSIZE				65535
+#define SMB_READ_BUFFERSIZE				65472
 #define SMB_WRITE_BUFFERSIZE			(60*1024)
 
 typedef struct
@@ -460,6 +460,9 @@ failed:
 
 static char *smb_absolute_path_no_device(const char *srcpath, char *destpath, int env)
 {
+	char temp[SMB_MAXPATH];
+	int i=0,j=0;
+
 	if (strchr(srcpath, ':') != NULL)
 	{
 		srcpath = strchr(srcpath, ':') + 1;
@@ -471,18 +474,32 @@ static char *smb_absolute_path_no_device(const char *srcpath, char *destpath, in
 
 	if (srcpath[0] != '\\' && srcpath[0] != '/')
 	{
-		strcpy(destpath, SMBEnv[env].currentpath);
-		strcat(destpath, srcpath);
+		strcpy(temp, SMBEnv[env].currentpath);
+		strcat(temp, srcpath);
 	}
 	else
 	{
-		strcpy(destpath, srcpath);
+		strcpy(temp, srcpath);
 	}
-	int i, l;
-	l = strlen(destpath);
-	for (i = 0; i < l; i++)
-		if (destpath[i] == '/')
-			destpath[i] = '\\';
+
+	while(temp[i]!='\0')
+	{
+		if(temp[i]=='/') 
+		{
+			destpath[j++]='\\';
+			while(temp[i]!='\0' && (temp[i]=='/' || temp[i]=='\\'))i++;
+		}
+		else if(srcpath[i]=='\\')
+		{
+			destpath[j++]=temp[i++];
+			while(temp[i]!='\0' && (temp[i]=='/' || temp[i]=='\\'))i++;
+		}
+		else
+		{
+			destpath[j++]=temp[i++];
+		}
+	}
+	destpath[j]='\0';
 
 	return destpath;
 }
