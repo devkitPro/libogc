@@ -10,7 +10,7 @@
 //#define _GCMOD_DEBUG
 
 #define STACKSIZE		8192
-#define SNDBUFFERSIZE	(3840<<2)			//that's the maximum buffer size for one VBlank we need.
+#define SNDBUFFERSIZE	(4096<<2)			//that's the maximum buffer size for one VBlank we need.
 
 static BOOL thr_running = FALSE;
 static BOOL sndPlaying = FALSE;
@@ -21,7 +21,6 @@ static s32 mod_freq = 48000;
 
 static u32 shiftVal = 0;
 static vu32 curr_audio = 0;
-static u32 curr_datalen[2] = {0,0};
 static u8 audioBuf[2][SNDBUFFERSIZE] ATTRIBUTE_ALIGN(32);
 
 static lwpq_t player_queue;
@@ -44,13 +43,12 @@ static void* player(void *arg)
 	thr_running = TRUE;
 	while(sndPlaying==TRUE) {
 		LWP_ThreadSleep(player_queue);
-
-		if(curr_datalen[curr_audio]>0 && sndPlaying==TRUE) {
+		if(sndPlaying==TRUE) {
 #ifdef _GCMOD_DEBUG
 			printf("player(run callback)\n\n");
 			start = gettime();
 #endif
-			sndBuffer.callback(sndBuffer.usr_data,((u8*)audioBuf[curr_audio]),curr_datalen[curr_audio]);
+			sndBuffer.callback(sndBuffer.usr_data,((u8*)audioBuf[curr_audio]),SNDBUFFERSIZE);
 			have_samples = 2;
 #ifdef _GCMOD_DEBUG
 			end = gettime();
@@ -76,16 +74,15 @@ static void dmaCallback()
 	static long long start = 0,end = 0;
 
 	end = gettime();
-	if(start) printf("dmaCallback(%p,%d,%d - after %d ms)\n",(void*)audioBuf[curr_audio],curr_datalen,curr_audio,diff_msec(start,end));
+	if(start) printf("dmaCallback(%p,%d,%d - after %d ms)\n",(void*)audioBuf[curr_audio],SNDBUFFERSIZE,curr_audio,diff_msec(start,end));
 #endif
 
 #ifndef __SNDLIB_H__
 	AUDIO_StopDMA();
-	AUDIO_InitDMA((u32)audioBuf[curr_audio],curr_datalen[curr_audio]);
+	AUDIO_InitDMA((u32)audioBuf[curr_audio],SNDBUFFERSIZE);
 	AUDIO_StartDMA();
 
 	curr_audio ^= 1;
-	curr_datalen[curr_audio] = (mod->samplespertick<<shiftVal);
 	LWP_ThreadSignal(player_queue);
 #else
 	if(have_samples==0) {
@@ -94,19 +91,18 @@ static void dmaCallback()
 		return;
 	}
 	if(have_samples==1) return;
+	
 	if(have_samples==2) {
-		if(SND_AddVoice(0,audioBuf[curr_audio], curr_datalen[curr_audio])!=0) return; // Sorry I am busy: try again
+		if(SND_AddVoice(0,audioBuf[curr_audio], SNDBUFFERSIZE)!=0) return; // Sorry I am busy: try again
 
-		curr_datalen[curr_audio]=0;
 		have_samples=0;
 		curr_audio ^= 1;
-		curr_datalen[curr_audio]=SNDBUFFERSIZE;
 	}
 #endif
 
 #ifdef _GCMOD_DEBUG
 	start = gettime();
-	printf("dmaCallback(%p,%d,%d,%d us) leave\n",(void*)audioBuf[curr_audio],curr_datalen,curr_audio,diff_usec(end,start));
+	printf("dmaCallback(%p,%d,%d,%d us) leave\n",(void*)audioBuf[curr_audio],SNDBUFFERSIZE,curr_audio,diff_usec(end,start));
 #endif
 }
 
@@ -162,16 +158,14 @@ static s32 SndBufStart(MODSNDBUF *sndbuf)
 
 	curr_audio = 0;
 	sndPlaying = TRUE;
-	curr_datalen[0] = SNDBUFFERSIZE;
-	curr_datalen[1] = SNDBUFFERSIZE;
 	if(LWP_CreateThread(&hplayer,player,NULL,player_stack,STACKSIZE,80)!=-1) {
 #ifndef __SNDLIB_H__
 		AUDIO_RegisterDMACallback(dmaCallback);
-		AUDIO_InitDMA((u32)audioBuf[curr_audio],curr_datalen[curr_audio]);
+		AUDIO_InitDMA((u32)audioBuf[curr_audio],SNDBUFFERSIZE);
 		AUDIO_StartDMA();
 		curr_audio ^= 1;
 #else
-		SND_SetVoice(0, VOICE_STEREO_16BIT, mod_freq,0, audioBuf[curr_audio], curr_datalen[curr_audio], 255, 255, dmaCallback);
+		SND_SetVoice(0, VOICE_STEREO_16BIT, mod_freq,0, audioBuf[curr_audio], SNDBUFFERSIZE, 255, 255, dmaCallback);
 		have_samples=0;
 
 		curr_audio ^= 1;
@@ -195,8 +189,6 @@ static void SndBufStop()
 #endif
 	curr_audio = 0;
 	sndPlaying = FALSE;
-	curr_datalen[0] = 0;
-	curr_datalen[1] = 0;
 	LWP_ThreadSignal(player_queue);
 	LWP_JoinThread(hplayer,NULL);
 }
