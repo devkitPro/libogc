@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <stdio.h>
 #include <sys/iosupport.h>
 #include <network.h>
 #include <ogcsys.h>
