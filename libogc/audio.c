@@ -342,7 +342,7 @@ void AUDIO_InitDMA(u32 startaddr,u32 len)
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	_dspReg[24] = (_dspReg[24]&~0x03ff)|(_SHIFTR(startaddr,16,10));
+	_dspReg[24] = (_dspReg[24]&~0x1fff)|(_SHIFTR(startaddr,16,13));
 	_dspReg[25] = (_dspReg[25]&~0xffe0)|(startaddr&0xffff);
 	_dspReg[27] = (_dspReg[27]&~0x7fff)|(_SHIFTR(len,5,15));
 	_CPU_ISR_Restore(level);
@@ -370,7 +370,7 @@ u32 AUDIO_GetDMABytesLeft()
 
 u32 AUDIO_GetDMAStartAddr()
 {
-	return (_SHIFTL((_dspReg[24]&0x3ff),16,10)|(_dspReg[25]&0xffe0));
+	return (_SHIFTL((_dspReg[24]&0x1fff),16,13)|(_dspReg[25]&0xffe0));
 }
 
 u32 AUDIO_GetDMALength()
