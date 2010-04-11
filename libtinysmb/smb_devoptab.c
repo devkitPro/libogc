@@ -1389,6 +1389,9 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 	char myIP[16];
 	int i;
 
+	if(!name || strlen(name) > 9)
+		return false;
+
 	while(smbInited == 2)
 		usleep(1000);
 
@@ -1453,19 +1456,21 @@ void smbClose(const char* name)
 	if(env->SMBCONNECTED)
 		SMB_Close(env->smbconn);
 
-	RemoveDevice(env->name);
+	char device[11];
+	sprintf(device, "%s:", env->name);
+	RemoveDevice(device);
 	env->SMBCONNECTED=false;
 	_SMB_unlock(env->pos);
 }
 
 bool smbCheckConnection(const char* name)
 {
-	char device[50];
+	char device[10];
 	int i;
 	bool ret;
 	smb_env *env;
 
-	for(i=0;i<50 && name[i]!='\0' && name[i]!=':';i++) device[i]=name[i];
+	for(i=0; i < 10 && name[i]!='\0' && name[i]!=':'; i++) device[i]=name[i];
 	device[i]='\0';
 
 	env=FindSMBEnv(device);

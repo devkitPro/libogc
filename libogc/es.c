@@ -1116,7 +1116,7 @@ static void __ES_InitFS(void) {
 }
 
 static void __ES_DeinitFS(void) {
-	RemoveDevice("es");
+	RemoveDevice("es:");
 }
 
 #endif /* defined(HW_RVL) */
