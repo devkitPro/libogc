@@ -115,6 +115,7 @@ static void __AISHandler(u32 nIrq,void *pCtx)
 
 static void __AIDHandler(u32 nIrq,void *pCtx)
 {
+	_dspReg[5] = (_dspReg[5]&~(DSPCR_DSPINT|DSPCR_ARINT))|DSPCR_AIINT;
 	if(__AID_Callback) {
 		if(!__AIActive) {
 			__AIActive = 1;
@@ -125,7 +126,6 @@ static void __AIDHandler(u32 nIrq,void *pCtx)
 			__AIActive = 0;
 		}
 	}
-	_dspReg[5] = (_dspReg[5]&~(DSPCR_DSPINT|DSPCR_ARINT))|DSPCR_AIINT;
 }
 
 static void __AISRCINIT()
