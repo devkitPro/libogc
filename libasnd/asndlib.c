@@ -100,7 +100,7 @@ static t_sound_data sound_data[MAX_SND_VOICES];
 
 static t_sound_data sound_data_dma ATTRIBUTE_ALIGN(32);
 static s16 mute_buf[SND_BUFFERSIZE] ATTRIBUTE_ALIGN(32);
-static s16 audio_buf[2][SND_BUFFERSIZE] ATTRIBUTE_ALIGN(32);
+static s16 audio_buf[3][SND_BUFFERSIZE] ATTRIBUTE_ALIGN(32);
 
 extern u32 gettick();
 
@@ -260,17 +260,16 @@ static void audio_dma_callback()
 {
 	u32 n;
 
-	AUDIO_StopDMA();
+	curr_audio_buf = (curr_audio_buf+1)%3;
+
 	if(DSP_DI_HANDLER || global_pause)
 		AUDIO_InitDMA((u32)mute_buf,SND_BUFFERSIZE);
 	else
 		AUDIO_InitDMA((u32)audio_buf[curr_audio_buf],SND_BUFFERSIZE);
-	AUDIO_StartDMA();
 
 	if(DSP_DI_HANDLER || global_pause) return;
 	if(dsp_complete==0) return;
 
-	curr_audio_buf ^= 1;
 	dsp_complete = 0;
 
 	for(n=0;n<MAX_SND_VOICES;n++) sound_data[n].out_buf = (void *)MEM_VIRTUAL_TO_PHYSICAL((void *)audio_buf[curr_audio_buf]);
@@ -369,9 +368,11 @@ void ASND_Init()
 		snd_set0w((s32*)mute_buf, SND_BUFFERSIZE>>2);
 		snd_set0w((s32*)audio_buf[0], SND_BUFFERSIZE>>2);
 		snd_set0w((s32*)audio_buf[1], SND_BUFFERSIZE>>2);
+		snd_set0w((s32*)audio_buf[2], SND_BUFFERSIZE>>2);
 		DCFlushRange(mute_buf,SND_BUFFERSIZE);
 		DCFlushRange(audio_buf[0],SND_BUFFERSIZE);
 		DCFlushRange(audio_buf[1],SND_BUFFERSIZE);
+		DCFlushRange(audio_buf[2],SND_BUFFERSIZE);
 
 		for(i=0;i<MAX_SND_VOICES;i++)
 			snd_set0w((s32*)&sound_data[i],sizeof(t_sound_data)/4);
@@ -390,7 +391,6 @@ void ASND_Init()
 	AUDIO_RegisterDMACallback(audio_dma_callback);
 	AUDIO_InitDMA((u32)audio_buf[curr_audio_buf],SND_BUFFERSIZE);
 	AUDIO_StartDMA();
-	curr_audio_buf ^= 1;
 
 	_CPU_ISR_Restore(level);
 }
