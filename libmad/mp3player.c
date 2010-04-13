@@ -65,7 +65,7 @@ struct _outbuffer_s
 };
 
 static u8 InputBuffer[DATABUFFER_SIZE+MAD_BUFFER_GUARD];
-static u8 OutputBuffer[2][ADMA_BUFFERSIZE] ATTRIBUTE_ALIGN(32);
+static u8 OutputBuffer[3][ADMA_BUFFERSIZE] ATTRIBUTE_ALIGN(32);
 static struct _outbuffer_s OutputRingBuffer;
 	
 static u32 init_done = 0;
@@ -149,10 +149,13 @@ static __inline__ s32 buf_get(struct _outbuffer_s *buf,void *data,s32 len)
 			*p++ = *buf->get++;
 	}
 
+#ifndef __SNDLIB_H__
 	DCFlushRangeNoSync(data,len);
+#endif
 	LWP_ThreadSignal(thQueue);
+#ifndef __SNDLIB_H__
 	_sync();
-	
+#endif
 	return len;
 }
 
@@ -190,7 +193,7 @@ static __inline__ s32 buf_put(struct _outbuffer_s *buf,void *data,s32 len)
 		SND_SetVoice(0,VOICE_STEREO_16BIT,48000,0,(void*)OutputBuffer[CurrentBuffer],ADMA_BUFFERSIZE,mp3_volume,mp3_volume,DataTransferCallback);
 #endif
 
-		CurrentBuffer ^= 1;
+		CurrentBuffer = (CurrentBuffer+1)%3;
 	}
 
 	return len;
@@ -284,6 +287,7 @@ static void *StreamPlay(void *arg)
 	CurrentBuffer = 0;
 	memset(OutputBuffer[0],0,ADMA_BUFFERSIZE);
 	memset(OutputBuffer[1],0,ADMA_BUFFERSIZE);
+	memset(OutputBuffer[2],0,ADMA_BUFFERSIZE);
 
 	buf_init(&OutputRingBuffer);
 	LWP_InitQueue(&thQueue);
@@ -442,11 +446,9 @@ static s16 Do3Band(EQState *es,s16 sample)
 static void DataTransferCallback()
 {
 #ifndef __SNDLIB_H__
-	AUDIO_StopDMA();
 	AUDIO_InitDMA((u32)OutputBuffer[CurrentBuffer],ADMA_BUFFERSIZE);
-	AUDIO_StartDMA();
 
-	CurrentBuffer ^= 1;
+	CurrentBuffer = (CurrentBuffer+1)%3;
 	MP3Playing = (buf_get(&OutputRingBuffer,OutputBuffer[CurrentBuffer],ADMA_BUFFERSIZE)>0);
 #else
 	if(thr_running!=TRUE) {
@@ -456,7 +458,7 @@ static void DataTransferCallback()
 	if(have_samples==1) {
 		if(SND_AddVoice(0,(void*)OutputBuffer[CurrentBuffer],ADMA_BUFFERSIZE)==SND_OK) {
 			have_samples = 0;
-			CurrentBuffer ^= 1;
+			CurrentBuffer = (CurrentBuffer+1)%3;
 		}
 	}
 	if(!(SND_TestPointer(0,(void*)OutputBuffer[CurrentBuffer]) && SND_StatusVoice(0)!=SND_UNUSED)) {
