@@ -21,7 +21,7 @@ static s32 mod_freq = 48000;
 
 static u32 shiftVal = 0;
 static vu32 curr_audio = 0;
-static u8 audioBuf[3][SNDBUFFERSIZE] ATTRIBUTE_ALIGN(32);
+static u8 audioBuf[2][SNDBUFFERSIZE] ATTRIBUTE_ALIGN(32);
 
 static lwpq_t player_queue;
 static lwp_t hplayer;
@@ -73,13 +73,12 @@ static void dmaCallback()
 #endif
 
 #ifndef __SNDLIB_H__
-	curr_audio = (curr_audio+1)%3;
+	curr_audio ^= 1;
 	AUDIO_InitDMA((u32)audioBuf[curr_audio],SNDBUFFERSIZE);
 	LWP_ThreadSignal(player_queue);
 #else
 	if(have_samples==0) {
 		have_samples = 1;
-		curr_audio = (curr_audio+1)%3;
 		LWP_ThreadSignal(player_queue);
 		return;
 	}
@@ -88,6 +87,7 @@ static void dmaCallback()
 	if(have_samples==2) {
 		if(SND_AddVoice(0,audioBuf[curr_audio], SNDBUFFERSIZE)!=0) return; // Sorry I am busy: try again
 		have_samples=0;
+		curr_audio ^= 1;
 	}
 #endif
 
@@ -144,11 +144,9 @@ static s32 SndBufStart(MODSNDBUF *sndbuf)
 
 	memset(audioBuf[0],0,SNDBUFFERSIZE);
 	memset(audioBuf[1],0,SNDBUFFERSIZE);
-	memset(audioBuf[2],0,SNDBUFFERSIZE);
 
 	DCFlushRange(audioBuf[0],SNDBUFFERSIZE);
 	DCFlushRange(audioBuf[1],SNDBUFFERSIZE);
-	DCFlushRange(audioBuf[2],SNDBUFFERSIZE);
 
 	while(thr_running);
 
