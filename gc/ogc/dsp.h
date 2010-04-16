@@ -117,16 +117,16 @@ struct _dsp_task {
 	vu32 prio;
 	vu32 flags;
 	
+	void *iram_maddr;
+	u32 iram_len;
+	u32 iram_addr;
+
+	void *dram_maddr;
+	u32 dram_len;
+	u32 dram_addr;
+	
 	u16 init_vec;
 	u16 resume_vec;
-	
-	u16 *iram_maddr;
-	u32 iram_len;
-	u16 iram_addr;
-
-	u16 *dram_maddr;
-	u32 dram_len;
-	u16 dram_addr;
 	
 	DSPTaskCallback init_cb;
 	DSPTaskCallback res_cb;
