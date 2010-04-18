@@ -717,7 +717,7 @@ s32 USB_GetDeviceList(const char *devpath,void *descr_buffer,u8 num_descr,u8 b0,
 	}
 
 	cntdevs = 0;
-	ret = IOS_IoctlvFormat(hId,fd,USB_IOCTL_GETDEVLIST,"bb:bd",num_descr,b0,&cntdevs,descr_buffer,(num_descr<<3));
+	ret = IOS_IoctlvFormat(hId,fd,USB_IOCTL_GETDEVLIST,"bb:dd",num_descr,b0,&cntdevs,sizeof(cntdevs),descr_buffer,(num_descr<<3));
 	if(ret>=0) *cnt_descr = cntdevs;
 	
 	iosFree(hId,path);
