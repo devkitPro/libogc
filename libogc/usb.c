@@ -702,7 +702,7 @@ s32 USB_GetDeviceList(const char *devpath,void *descr_buffer,u8 num_descr,u8 b0,
 {
 	s32 fd,ret;
 	char *path;
-	u32 cntdevs;
+	u8 cntdevs;
 
 	if(devpath==NULL || *devpath=='\0') return IPC_EINVAL;
 
