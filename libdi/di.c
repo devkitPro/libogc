@@ -172,7 +172,7 @@ static int _cover_callback(int ret, void* usrdata){
 	{
 		state = DVD_READY;
 		u8 tmpbuf[2048] __attribute__((aligned(32)));
-		if(!_DI_ReadDVD_D0(tmpbuf, 1, 0)){
+		if(_DI_ReadDVD_D0(tmpbuf, 1, 0) == 0){
 			state |= DVD_D0;
 			DI_ReadDVDptr = _DI_ReadDVD_D0;
 			DI_ReadDVDAsyncptr = _DI_ReadDVD_D0_Async;
