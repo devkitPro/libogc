@@ -127,7 +127,52 @@ void DI_Close(){
 		bufferMutex = 0;
 	}
 }
-	
+
+static int _DI_ReadDVD_Check(void* buf, uint32_t len, uint32_t lba)
+{
+	int ret;
+
+	ret = _DI_ReadDVD_D0(buf, len, lba);
+	if (ret == 0)
+	{
+		state = state | DVD_D0;
+		DI_ReadDVDptr = _DI_ReadDVD_D0;
+		DI_ReadDVDAsyncptr = _DI_ReadDVD_D0_Async;
+		return ret;
+	}
+	ret = _DI_ReadDVD_A8(buf, len, lba);
+	if (ret == 0)
+	{
+		state = state | DVD_A8;
+		DI_ReadDVDptr = _DI_ReadDVD_A8;
+		DI_ReadDVDAsyncptr = _DI_ReadDVD_A8_Async;
+		return ret;
+	}
+	return ret;
+}
+
+static int _DI_ReadDVD_Check_Async(void* buf, uint32_t len, uint32_t lba,	ipccallback ipc_cb)
+{
+	int ret;
+
+	ret = _DI_ReadDVD_D0_Async(buf, len, lba, ipc_cb);
+	if (ret == 0)
+	{
+		state = state | DVD_D0;
+		DI_ReadDVDptr = _DI_ReadDVD_D0;
+		DI_ReadDVDAsyncptr = _DI_ReadDVD_D0_Async;
+		return ret;
+	}
+	ret = _DI_ReadDVD_A8_Async(buf, len, lba, ipc_cb);
+	if (ret == 0)
+	{
+		state = state | DVD_A8;
+		DI_ReadDVDptr = _DI_ReadDVD_A8;
+		DI_ReadDVDAsyncptr = _DI_ReadDVD_A8_Async;
+		return ret;
+	}
+	return ret;
+}
 
 #define COVER_CLOSED (*((uint32_t*)usrdata) & DVD_COVER_DISC_INSERTED)
 
@@ -171,18 +216,8 @@ static int _cover_callback(int ret, void* usrdata){
 	else		// Callback chain has completed OK. The drive is ready.
 	{
 		state = DVD_READY;
-		u8 tmpbuf[2048] __attribute__((aligned(32)));
-		if(_DI_ReadDVD_D0(tmpbuf, 1, 0) == 0){
-			state |= DVD_D0;
-			DI_ReadDVDptr = _DI_ReadDVD_D0;
-			DI_ReadDVDAsyncptr = _DI_ReadDVD_D0_Async;
-		}
-		else
-		{
-			state |= DVD_A8;
-			DI_ReadDVDptr = _DI_ReadDVD_A8;
-			DI_ReadDVDAsyncptr = _DI_ReadDVD_A8_Async;
-		}
+		DI_ReadDVDptr = _DI_ReadDVD_Check;
+		DI_ReadDVDAsyncptr = _DI_ReadDVD_Check_Async;
 
 		if(di_cb)
 			di_cb(state,0);
