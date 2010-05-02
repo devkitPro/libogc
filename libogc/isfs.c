@@ -195,6 +195,7 @@ s32 ISFS_Deinitialize()
 	_fs_fd = -1;
 
 	iosDestroyHeap(hId);
+	_fs_initialized = 0;
 
 	return 0;
 }
