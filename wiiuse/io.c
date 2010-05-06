@@ -97,6 +97,7 @@ void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
 				case EXP_ID_CODE_CLASSIC_CONTROLLER_NYKOWING2:
 				case EXP_ID_CODE_CLASSIC_CONTROLLER_GENERIC:
 				case EXP_ID_CODE_CLASSIC_CONTROLLER_GENERIC2:
+				case EXP_ID_CODE_CLASSIC_CONTROLLER_GENERIC3:
 					if(!classic_ctrl_handshake(wm,&wm->exp.classic,data,len)) return;
 					break;
 				case EXP_ID_CODE_GUITAR:
