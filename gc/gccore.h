@@ -117,6 +117,7 @@ distribution.
  * \page api_doc Detailed API description
  *
  * - \ref aram.h "ARAM subsystem"
+ * - \ref arqmgr.h "ARAM queue management subsystem"
  * - \ref audio.h "AUDIO subsystem"
  * - \ref asndlib.h "ASND library"
  * - \ref exi.h "EXI subsystem"
