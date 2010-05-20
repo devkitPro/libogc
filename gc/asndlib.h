@@ -365,6 +365,8 @@ s32 ASND_TestVoiceBufferReady(s32 voice);
  * \return DSP usage, in percent. */
 u32 ASND_GetDSP_PercentUse();
 
+u32 ASND_GetDSP_ProcessTime();
+
 /*! @} */
 
 #ifdef __cplusplus
