@@ -31,6 +31,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <ogcsys.h>
 #include <gccore.h>
+#include <ogc/lwp_watchdog.h>
 #include <ogc/machine/processor.h>
 
 #include "asndlib.h"
@@ -82,9 +83,9 @@ typedef struct
 
 static dsptask_t dsp_task;
 
-static vu32 time_of_process;
+static vu64 time_of_process;
 static vu32 dsp_complete = 1;
-static vu32 dsp_task_starttime = 0;
+static vu64 dsp_task_starttime = 0;
 static vu32 curr_audio_buf = 0;
 static vu32 dsp_done = 0;
 
@@ -137,8 +138,8 @@ static void __dsp_requestcallback(dsptask_t *task)
 	DCInvalidateRange(&sound_data_dma, sizeof(t_sound_data));
 
 	if(snd_chan>=MAX_SND_VOICES) {
+		if(!dsp_complete) time_of_process = (gettime() - dsp_task_starttime);
 		if(!global_pause) global_counter++;
-		if(!dsp_complete) time_of_process = (gettick()-dsp_task_starttime)*1000/TB_TIMER_CLOCK;
 
 		dsp_complete = 1;
 		return;
@@ -320,7 +321,7 @@ static void audio_dma_callback()
 	sound_data_dma=sound_data[snd_chan];
 	DCFlushRange(&sound_data_dma, sizeof(t_sound_data));
 
-	dsp_task_starttime = gettick();
+	dsp_task_starttime = gettime();
 	DSP_SendMailTo(0x111); // send the first voice and clear the buffer
 	while(DSP_CheckMailTo());
 
@@ -789,6 +790,17 @@ s32 ASND_ChangePitchVoice(s32 voice, s32 pitch)
 u32 ASND_GetDSP_PercentUse()
 {
 	return (time_of_process)*100/21333; // time_of_process = nanoseconds , 1024 samples= 21333 nanoseconds
+}
+
+u32 ASND_GetDSP_ProcessTime()
+{
+	u32 level,ret;
+
+	_CPU_ISR_Disable(level);
+	ret = time_of_process;
+	_CPU_ISR_Restore(level);
+
+	return ticks_to_nanosecs(ret);
 }
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
