@@ -2641,7 +2641,7 @@ static bool dvdio_Startup()
 
 static bool dvdio_IsInserted()
 {
-	s32 status = 0;
+	u32 status = 0;
 	DVD_LowGetStatus(&status, NULL);
 
 	if(DVD_STATUS(status) == DVD_STATUS_READY) 
