@@ -187,6 +187,27 @@ s32 TPL_OpenTPLFromMemory(TPLFile* tdf, const void *memory,u32 len)
 	return 1;
 }
 
+s32 TPL_GetTextureInfo(TPLFile *tdf,s32 id,u32 *fmt,u16 *width,u16 *height)
+{
+	TPLDescHeader *deschead = NULL;
+	TPLImgHeader *imghead = NULL;
+
+	if(!tdf) return -1;
+	if(id<0 || id>=tdf->ntextures) return -1;
+
+	deschead = (TPLDescHeader*)tdf->texdesc;
+	if(!deschead) return -1;
+
+	imghead = deschead[id].imghead;
+	if(!imghead) return -1;
+
+	if(fmt) *fmt = imghead->fmt;
+	if(width) *width = imghead->width;
+	if(height) *height = imghead->height;
+
+	return 0;
+}
+
 s32 TPL_GetTexture(TPLFile *tdf,s32 id,GXTexObj *texObj)
 {
 	s32 pos;
