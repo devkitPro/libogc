@@ -98,6 +98,10 @@ distribution.
  *@}
  */
 
+#define SYS_FONTSIZE_ANSI				(288 + 131072)
+#define SYS_FONTSIZE_SJIS				(3840 + 1179648)
+
+
 
 /*!
  * \addtogroup sys_mcastmacros OS memory casting macros
@@ -303,7 +307,7 @@ s32 SYS_CancelAlarm(syswd_t thealarm);
 void SYS_SetWirelessID(u32 chan,u32 id);
 u32 SYS_GetWirelessID(u32 chan);
 u32 SYS_GetFontEncoding();
-u32 SYS_InitFont(sys_fontheader **font_header);
+u32 SYS_InitFont(sys_fontheader *font_data);
 void SYS_GetFontTexture(s32 c,void **image,s32 *xpos,s32 *ypos,s32 *width);
 void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width);
 void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu);
