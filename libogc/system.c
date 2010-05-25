@@ -77,9 +77,6 @@ distribution.
 #define DSPCR_PIINT				    0x0002        // assert DSP PI interrupt
 #define DSPCR_RES				    0x0001        // reset DSP
 
-#define FONT_SIZE_ANSI				(288 + 131072)
-#define FONT_SIZE_SJIS				(3840 + 1179648)
-
 #define LWP_OBJTYPE_SYSWD			7
 
 #define LWP_CHECK_SYSWD(hndl)		\
@@ -123,7 +120,6 @@ static u16 sys_fontenc = 0xffff;
 static u32 sys_fontcharsinsheet = 0;
 static u8 *sys_fontwidthtab = NULL;
 static u8 *sys_fontimage = NULL;
-static void *sys_fontarea = NULL;
 static sys_fontheader *sys_fontdata = NULL;
 
 static lwp_queue sys_reset_func_queue;
@@ -1447,27 +1443,23 @@ u32 SYS_GetFontEncoding()
 	return ret;
 }
 
-u32 SYS_InitFont(sys_fontheader **font_header)
+u32 SYS_InitFont(sys_fontheader *font_data)
 {
 	void *packed_data = NULL;
 
-	if(!font_header) return 0;
+	if(!font_data) return 0;
 
-	*font_header = NULL;
 	if(SYS_GetFontEncoding()==1) {
-		sys_fontarea = memalign(32,FONT_SIZE_SJIS);
-		memset(sys_fontarea,0,FONT_SIZE_SJIS);
-		packed_data = (void*)((u32)sys_fontarea+868096);
+		memset(font_data,0,SYS_FONTSIZE_SJIS);
+		packed_data = (void*)((u32)font_data+868096);
 	} else {
-		sys_fontarea = memalign(32,FONT_SIZE_ANSI);
-		memset(sys_fontarea,0,FONT_SIZE_ANSI);
-		packed_data = (void*)((u32)sys_fontarea+119072);
+		memset(font_data,0,SYS_FONTSIZE_ANSI);
+		packed_data = (void*)((u32)font_data+119072);
 	}
 
-	if(__SYS_LoadFont(packed_data,sys_fontarea)==1) {
-		sys_fontimage = (u8*)((((u32)sys_fontarea+sys_fontdata->sheet_image)+31)&~31);
-		__expand_font((u8*)sys_fontarea+sys_fontdata->sheet_image,sys_fontimage);
-		*font_header = sys_fontdata;
+	if(__SYS_LoadFont(packed_data,font_data)==1) {
+		sys_fontimage = (u8*)((((u32)font_data+font_data->sheet_image)+31)&~31);
+		__expand_font((u8*)font_data+font_data->sheet_image,sys_fontimage);
 		return 1;
 	}
 
