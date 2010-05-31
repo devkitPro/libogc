@@ -38,6 +38,7 @@ export BTEDIR		:= $(BASEDIR)/lwbt
 export WIIUSEDIR	:= $(BASEDIR)/wiiuse
 export TINYSMBDIR	:= $(BASEDIR)/libtinysmb
 export LIBASNDDIR	:= $(BASEDIR)/libasnd
+export LIBAESNDDIR	:= $(BASEDIR)/libaesnd
 export LIBISODIR	:= $(BASEDIR)/libiso9660
 export LIBWIIKEYB	:= $(BASEDIR)/libwiikeyboard
 export STUBSDIR		:= $(BASEDIR)/lockstubs
@@ -69,6 +70,7 @@ BTELIB		:= $(LIBDIR)/libbte
 WIIUSELIB	:= $(LIBDIR)/libwiiuse
 TINYSMBLIB	:= $(LIBDIR)/libtinysmb
 ASNDLIB		:= $(LIBDIR)/libasnd
+AESNDLIB	:= $(LIBDIR)/libaesnd
 ISOLIB		:= $(LIBDIR)/libiso9660
 WIIKEYBLIB	:= $(LIBDIR)/libwiikeyboard
 STUBSLIB	:= $(LIBDIR)/libgclibstubs
@@ -115,6 +117,7 @@ VPATH :=	$(LWIPDIR)				\
 			$(SDCARDDIR)			\
 			$(TINYSMBDIR)		\
 			$(LIBASNDDIR)		\
+			$(LIBAESNDDIR)		\
 			$(LIBISODIR)		\
 			$(LIBWIIKEYB)		\
 			$(STUBSDIR)
@@ -171,6 +174,9 @@ TINYSMBOBJ	:=	des.o md4.o ntlm.o smb.o smb_devoptab.o
 
 #---------------------------------------------------------------------------------
 ASNDLIBOBJ	:=	asndlib.o
+
+#---------------------------------------------------------------------------------
+AESNDLIBOBJ	:=	aesndlib.o
 
 #---------------------------------------------------------------------------------
 ISOLIBOBJ	:=	iso9660.o
@@ -237,6 +243,8 @@ $(TINYSMBLIB).a: $(TINYSMBOBJ)
 #---------------------------------------------------------------------------------
 $(ASNDLIB).a: $(ASNDLIBOBJ)
 #---------------------------------------------------------------------------------
+$(AESNDLIB).a: $(AESNDLIBOBJ)
+#---------------------------------------------------------------------------------
 $(ISOLIB).a: $(ISOLIBOBJ)
 #---------------------------------------------------------------------------------
 $(WIIKEYBLIB).a: $(WIIKEYBLIBOBJ)
@@ -288,7 +296,7 @@ dist: install-headers
 
 
 LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(MADLIB).a $(DBLIB).a $(ZLIB).a \
-				$(TINYSMBLIB).a $(ASNDLIB).a $(ISOLIB).a
+				$(TINYSMBLIB).a $(ASNDLIB).a $(AESNDLIB).a $(ISOLIB).a
 
 ifeq ($(PLATFORM),cube)
 LIBRARIES	+=	$(BBALIB).a 
