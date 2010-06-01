@@ -1481,8 +1481,8 @@ void SYS_GetFontTexture(s32 c,void **image,s32 *xpos,s32 *ypos,s32 *width)
 	*image = NULL;
 	if(!sys_fontwidthtab || ! sys_fontimage) return;
 
-	if(c>0x20 && c<0xff) c -= 0x20;
-	else c = 0;
+	if(c<sys_fontdata->first_char || c>sys_fontdata->last_char) c = sys_fontdata->inval_char;
+	else c -= sys_fontdata->first_char;
 
 	sheets = c/sys_fontcharsinsheet;
 	rem = c%sys_fontcharsinsheet;
