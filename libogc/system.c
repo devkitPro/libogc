@@ -452,6 +452,9 @@ static void __STMEventHandler(u32 event)
 }
 #endif
 
+void * __attribute__ ((weak)) __myArena1Lo = 0;
+void * __attribute__ ((weak)) __myArena1Hi = 0;
+
 static void __lowmem_init()
 {
 	u32 *_gx = (u32*)__gxregs;
@@ -467,6 +470,9 @@ static void __lowmem_init()
 	memset(_gx,0,2048);
 	memset(arena_start,0,0x100);
 	if ( __argvArena1Lo == (u8*)0xdeadbeef ) __argvArena1Lo = __Arena1Lo;
+	if (__myArena1Lo == 0) __myArena1Lo = __argvArena1Lo;
+	if (__myArena1Hi == 0) __myArena1Hi = __Arena1Hi;
+
 #if defined(HW_DOL)
 	memset(ram_start,0,0x100);
 	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"
@@ -474,8 +480,8 @@ static void __lowmem_init()
 	*((u32*)(ram_start+0x28))	= SYSMEM1_SIZE;	// physical memory size
 	*((u32*)(ram_start+0x2C))	= 1 + ((*(u32*)0xCC00302c)>>28);
 
-	*((u32*)(ram_start+0x30))	= (u32)__argvArena1Lo;
-	*((u32*)(ram_start+0x34))	= (u32)__Arena1Hi;
+	*((u32*)(ram_start+0x30))	= (u32)__myArena1Lo;
+	*((u32*)(ram_start+0x34))	= (u32)__myArena1Hi;
 
 	*((u32*)(ram_start+0xEC))	= (u32)ram_end;	// ram_end (??)
 	*((u32*)(ram_start+0xF0))	= SYSMEM1_SIZE;	// simulated memory size
@@ -491,9 +497,9 @@ static void __lowmem_init()
 	DCFlushRangeNoSync(arena_start, 0x100);
 	DCFlushRangeNoSync(_gx, 2048);
 	_sync();
-
-	SYS_SetArenaLo((void*)__argvArena1Lo);
-	SYS_SetArenaHi((void*)__Arena1Hi);
+	
+	SYS_SetArenaLo((void*)__myArena1Lo);
+	SYS_SetArenaHi((void*)__myArena1Hi);
 #if defined(HW_RVL)
 	SYS_SetArena2Lo((void*)__Arena2Lo);
 	SYS_SetArena2Hi((void*)__Arena2Hi);
