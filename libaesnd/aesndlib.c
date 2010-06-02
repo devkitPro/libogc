@@ -500,6 +500,18 @@ u32 AESND_GetDSPProcessTime()
 	return time;
 }
 
+f32 AESND_GetDSPProcessUsage()
+{
+	u32 level;
+	f32 usage = 0.0f;
+
+	_CPU_ISR_Disable(level);
+	usage = (ticks_to_microsecs(__aesnddspprocesstime)*100)/2000.0f;
+	_CPU_ISR_Restore(level);
+	
+	return usage;
+}
+
 AESNDAudioCallback AESND_RegisterAudioCallback(AESNDAudioCallback cb)
 {
 	u32 level;
