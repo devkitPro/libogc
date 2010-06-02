@@ -552,18 +552,12 @@ exception5:		// Accelerator address overflow
 	mrr		$st1,$acc0.l
 	mrr		$st1,$acc0.m
 
-	clr		$acc0
-
 	lrs		$acc0.m,@ACYN1
 	srs		@ACYN1,$acc0.m
 	lrs		$acc0.m,@ACYN2
 	srs		@ACYN2,$acc0.m
 	lrs		$acc0.m,@ACPDS
 	srs		@ACPDS,$acc0.m
-
-	lr		$acc0.m,@FLAGS_SMPH
-	ori		$acc0.m,#VOICE_FLAGH_CB
-	sr		@FLAGS_SMPH,$acc0.m
 
 	mrr		$acc0.m,$st1
 	mrr		$acc0.l,$st1
