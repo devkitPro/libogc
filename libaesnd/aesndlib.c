@@ -47,12 +47,10 @@ struct aesndpb_t
 
 	u8 _pad[20];
 
-#if defined(HW_DOL)
 	u32 mram_start;
 	u32 mram_curr;
 	u32 mram_end;
-	u32 aram_last;
-#endif
+	u32 stream_last;
 
 	u32 voiceno;
 	u32 shift;
@@ -78,7 +76,6 @@ static volatile bool __aesndvoicesstopped = true;
 static u32 __aesndarambase = 0;
 static u32 __aesndaramblocks[MAX_VOICES];
 static u32 __aesndarammemory[MAX_VOICES];
-static u8 aram_buffer[SND_BUFFERSIZE*2] ATTRIBUTE_ALIGN(32);
 #endif
 
 static AESNDPB __aesndvoicepb[MAX_VOICES];
@@ -120,12 +117,10 @@ static __inline__ void __aesndcopycommand(AESNDPB *dst,AESNDPB *src)
 	dst->flags = src->flags;
 	dst->delay = src->delay;
 
-#if defined(HW_DOL)
 	dst->mram_start = src->mram_start;
 	dst->mram_curr = src->mram_curr;
 	dst->mram_end = src->mram_end;
-	dst->aram_last = src->aram_last;
-#endif
+	dst->stream_last = src->stream_last;
 
 	dst->voiceno = src->voiceno;
 	dst->shift = src->shift;
@@ -149,17 +144,9 @@ static __inline__ void __aesndsetvoiceformat(AESNDPB *pb,u32 format)
 
 static __inline__ void __aesndsetvoicebuffer(AESNDPB *pb,void* buffer,u32 len)
 {
-#if defined(HW_RVL)
-	register u32 buf_addr;
-	buf_addr = (u32)MEM_VIRTUAL_TO_PHYSICAL(buffer);
-	pb->buf_start = buf_addr>>pb->shift;
-	pb->buf_end = (buf_addr + len - (1<<pb->shift))>>pb->shift;
-	pb->buf_curr = pb->buf_start;
-#elif defined(HW_DOL)
 	pb->mram_start = (u32)buffer;
 	pb->mram_curr = (u32)buffer;
 	pb->mram_end = (u32)buffer + len;
-#endif
 }
 
 static __inline__ void __aesndsetvoicefreq(AESNDPB *pb,u32 freq)
@@ -170,12 +157,35 @@ static __inline__ void __aesndsetvoicefreq(AESNDPB *pb,u32 freq)
 }
 
 #if defined(HW_DOL)
+static u8 stream_buffer[SND_BUFFERSIZE*2] ATTRIBUTE_ALIGN(32);
+
+static void __aesndfillbuffer(AESNDPB *pb,u32 buffer)
+{
+	register u32 copy_len;
+	register u32 rem_len;
+	register u32 buf_addr;
+
+	buf_addr = __aesndaramblocks[pb->voiceno];
+	if(buffer) buf_addr += SND_BUFFERSIZE;
+
+	rem_len = (pb->mram_end - pb->mram_curr);
+	copy_len = (rem_len<SND_BUFFERSIZE) ? rem_len : SND_BUFFERSIZE;
+
+	memcpy(stream_buffer,(void*)pb->mram_curr,copy_len);
+	if(copy_len<SND_BUFFERSIZE) memset(stream_buffer + copy_len,0,SND_BUFFERSIZE - copy_len);
+
+	DCFlushRange(stream_buffer,SND_BUFFERSIZE);
+
+	AR_StartDMA(AR_MRAMTOARAM,(u32)MEM_VIRTUAL_TO_PHYSICAL(stream_buffer),buf_addr,SND_BUFFERSIZE);
+
+	pb->mram_curr += copy_len;
+}
+
 static __inline__ void __aesndhandlerequest(AESNDPB *pb)
 {
 	register u32 buf_addr;
 	register u32 copy_len;
 	register u32 rem_len;
-	register u32 buf_size;
 
 	if(pb->mram_curr>=pb->mram_end) {
 		if(pb->flags&VOICE_ONCE) {
@@ -185,45 +195,99 @@ static __inline__ void __aesndhandlerequest(AESNDPB *pb)
 		else if(pb->cb) pb->cb(pb,VOICE_STATE_STREAM);
 	}
 
-	buf_addr = __aesndaramblocks[pb->voiceno];
 	if(pb->buf_start) {
-		u32 curr_pos = pb->buf_curr;
-		if(curr_pos>=pb->buf_start &&
-		   curr_pos<(pb->buf_start + (SND_BUFFERSIZE>>pb->shift)) &&
-		   pb->flags&VOICE_REQCALLBACK) buf_addr += SND_BUFFERSIZE;
-		else if(curr_pos<(pb->buf_start + (SND_BUFFERSIZE>>pb->shift))) return;
-		else if(curr_pos>pb->aram_last && pb->aram_last>=(pb->buf_start + (SND_BUFFERSIZE>>pb->shift))) return;
+		register u32 curr_pos = pb->buf_curr;
+		if(curr_pos<pb->stream_last)
+			__aesndfillbuffer(pb,1);
+		if(curr_pos>=(pb->buf_start + (SND_BUFFERSIZE>>pb->shift)) &&
+		   pb->stream_last<(pb->buf_start + (SND_BUFFERSIZE>>pb->shift)))
+			__aesndfillbuffer(pb,0);
 
-		pb->aram_last = curr_pos;
-		buf_size = SND_BUFFERSIZE;
-	} else {
-		pb->buf_start = buf_addr>>pb->shift;
-		pb->buf_end = (buf_addr + (SND_BUFFERSIZE*2) - (1<<pb->shift))>>pb->shift;
-		pb->buf_curr = pb->buf_start;
-		buf_size = (SND_BUFFERSIZE*2);
+		pb->stream_last = curr_pos;
+		return;
 	}
 
+	buf_addr = __aesndaramblocks[pb->voiceno];
+	pb->buf_start = buf_addr>>pb->shift;
+	pb->buf_end = (buf_addr + (SND_BUFFERSIZE*2) - (1<<pb->shift))>>pb->shift;
+	pb->buf_curr = pb->buf_start;
+
 	rem_len = (pb->mram_end - pb->mram_curr);
-	copy_len = (rem_len<buf_size) ? rem_len : buf_size;
+	copy_len = (rem_len<(SND_BUFFERSIZE*2)) ? rem_len : (SND_BUFFERSIZE*2);
 
-	memcpy(aram_buffer,(void*)pb->mram_curr,copy_len);
-	if(copy_len<buf_size) memset(aram_buffer + copy_len,0,buf_size - copy_len);
+	memcpy(stream_buffer,(void*)pb->mram_curr,copy_len);
+	if(copy_len<(SND_BUFFERSIZE*2)) memset(stream_buffer + copy_len,0,(SND_BUFFERSIZE*2) - copy_len);
 
-	DCFlushRange(aram_buffer,buf_size);
+	DCFlushRange(stream_buffer,(SND_BUFFERSIZE*2));
 
-	AR_StartDMA(AR_MRAMTOARAM,(u32)MEM_VIRTUAL_TO_PHYSICAL(aram_buffer),buf_addr,buf_size);
+	AR_StartDMA(AR_MRAMTOARAM,(u32)MEM_VIRTUAL_TO_PHYSICAL(stream_buffer),buf_addr,(SND_BUFFERSIZE*2));
 	while(AR_GetDMAStatus());
 
 	pb->mram_curr += copy_len;
-	pb->flags &= ~VOICE_REQCALLBACK;
 }
 #elif defined(HW_RVL)
+static u8 stream_buffer[MAX_VOICES][SND_BUFFERSIZE*2] ATTRIBUTE_ALIGN(32);
+
+static void __aesndfillbuffer(AESNDPB *pb,u32 buffer)
+{
+	register u32 copy_len;
+	register u32 rem_len;
+	register u32 buf_addr;
+
+	buf_addr = (u32)stream_buffer[pb->voiceno];
+	if(buffer) buf_addr += SND_BUFFERSIZE;
+
+	rem_len = (pb->mram_end - pb->mram_curr);
+	copy_len = (rem_len<SND_BUFFERSIZE) ? rem_len : SND_BUFFERSIZE;
+
+	memcpy((void*)buf_addr,(void*)pb->mram_curr,copy_len);
+	if(copy_len<SND_BUFFERSIZE) memset((void*)(buf_addr + copy_len),0,SND_BUFFERSIZE - copy_len);
+
+	DCFlushRange((void*)buf_addr,SND_BUFFERSIZE);
+
+	pb->mram_curr += copy_len;
+}
+
 static __inline__ void __aesndhandlerequest(AESNDPB *pb)
 {
-	if(!(pb->flags&VOICE_LOOP) && !(pb->flags&VOICE_ONCE) && pb->cb) pb->cb(pb,VOICE_STATE_STREAM);
-	else if(pb->flags&VOICE_ONCE) pb->flags |= VOICE_STOPPED;
+	register u32 buf_addr;
+	register u32 copy_len;
+	register u32 rem_len;
 
-	pb->flags &= ~VOICE_REQCALLBACK;
+	if(pb->mram_curr>=pb->mram_end) {
+		if(pb->flags&VOICE_ONCE) {
+			pb->flags |= VOICE_STOPPED;
+			return;
+		} else if(pb->flags&VOICE_LOOP) pb->mram_curr = pb->mram_start;
+		else if(pb->cb) pb->cb(pb,VOICE_STATE_STREAM);
+	}
+
+	if(pb->buf_start) {
+		register u32 curr_pos = pb->buf_curr;
+		if(curr_pos<pb->stream_last)
+			__aesndfillbuffer(pb,1);
+		if(curr_pos>=(pb->buf_start + (SND_BUFFERSIZE>>pb->shift)) &&
+		   pb->stream_last<(pb->buf_start + (SND_BUFFERSIZE>>pb->shift)))
+			__aesndfillbuffer(pb,0);
+
+		pb->stream_last = curr_pos;
+		return;
+	}
+
+	buf_addr = (u32)MEM_VIRTUAL_TO_PHYSICAL(stream_buffer[pb->voiceno]);
+	pb->buf_start = buf_addr>>pb->shift;
+	pb->buf_end = (buf_addr + (SND_BUFFERSIZE*2) - (1<<pb->shift))>>pb->shift;
+	pb->buf_curr = pb->buf_start;
+
+	rem_len = (pb->mram_end - pb->mram_curr);
+	copy_len = (rem_len<(SND_BUFFERSIZE*2)) ? rem_len : (SND_BUFFERSIZE*2);
+
+	memcpy(stream_buffer,(void*)pb->mram_curr,copy_len);
+	if(copy_len<(SND_BUFFERSIZE*2)) memset(stream_buffer + copy_len,0,(SND_BUFFERSIZE*2) - copy_len);
+
+	DCFlushRange(stream_buffer,(SND_BUFFERSIZE*2));
+
+	pb->mram_curr += copy_len;
 }
 #endif
 
@@ -254,17 +318,11 @@ static void __dsp_requestcallback(dsptask_t *task)
 
 	DCInvalidateRange(&__aesndcommand,PB_STRUCT_SIZE);
 
-	if(__aesndcommand.flags&VOICE_REQCALLBACK) {
-#if defined(HW_RVL)
-		__aesndhandlerequest(&__aesndcommand);
-#endif
-	}
-
 	if(__aesndcommand.flags&VOICE_FINISHED) {
 		__aesndcommand.flags &= ~VOICE_FINISHED;
-#if defined(HW_DOL)
+
 		__aesndhandlerequest(&__aesndcommand);
-#endif
+
 		if(__aesndcommand.flags&VOICE_STOPPED && __aesndcommand.cb) __aesndcommand.cb(&__aesndcommand,VOICE_STATE_STOPPED);
 
 		__aesndcopycommand(&__aesndvoicepb[__aesndcurrvoice],&__aesndcommand);
@@ -376,10 +434,10 @@ void AESND_Init()
 		__aesndvoicesstopped = true;
 
 #if defined(HW_DOL)
-		snd_set0w((int*)aram_buffer,SND_BUFFERSIZE>>1);
 		for(i=0;i<MAX_VOICES;i++) __aesndaramblocks[i] = AR_Alloc(SND_BUFFERSIZE*2);
 #endif
 		snd_set0w((int*)mute_buffer,SND_BUFFERSIZE>>2);
+		snd_set0w((int*)stream_buffer,SND_BUFFERSIZE>>1);
 		snd_set0w((int*)audio_buffer[0],SND_BUFFERSIZE>>2);
 		snd_set0w((int*)audio_buffer[1],SND_BUFFERSIZE>>2);
 		DCFlushRange(mute_buffer,SND_BUFFERSIZE);
@@ -499,9 +557,6 @@ void AESND_PlayVoice(AESNDPB *pb,u32 format,const void *buffer,u32 len,u32 freq,
 	void *ptr = (void*)buffer;
 
 	_CPU_ISR_Disable(level);
-#if defined(HW_RVL)
-	DCFlushRange(ptr,len);
-#endif
 	__aesndsetvoiceformat(pb,format);
 	__aesndsetvoicefreq(pb,freq);
 	__aesndsetvoicebuffer(pb,ptr,len);
@@ -512,9 +567,7 @@ void AESND_PlayVoice(AESNDPB *pb,u32 format,const void *buffer,u32 len,u32 freq,
 	else
 		pb->flags |= VOICE_ONCE;
 
-#if defined(HW_DOL)
-	pb->buf_start = pb->buf_curr = pb->buf_end = pb->aram_last = 0;
-#endif
+	pb->buf_start = pb->buf_curr = pb->buf_end = pb->stream_last = 0;
 	pb->delay = (delay*48);
 	pb->pds = pb->yn1 = pb->yn2 = 0;
 	pb->counter = 0;
@@ -527,9 +580,6 @@ void AESND_SetVoiceBuffer(AESNDPB *pb,const void *buffer,u32 len)
 	void *ptr = (void*)buffer;
 
 	_CPU_ISR_Disable(level);
-#if defined(HW_RVL)
-	DCFlushRange(ptr,len);
-#endif
 	__aesndsetvoicebuffer(pb,ptr,len);
 	_CPU_ISR_Restore(level);
 }
