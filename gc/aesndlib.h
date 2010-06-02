@@ -33,6 +33,7 @@ void AESND_Init();
 void AESND_Reset();
 void AESND_Pause(bool pause);
 u32 AESND_GetDSPProcessTime();
+f32 AESND_GetDSPProcessUsage();
 AESNDAudioCallback AESND_RegisterAudioCallback(AESNDAudioCallback cb);
 
 AESNDPB* AESND_AllocateVoice(AESNDVoiceCallback cb);
