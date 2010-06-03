@@ -20,7 +20,7 @@
 
 #include "smb.h"
 
-#define MAX_SMB_MOUNTED 5
+#define MAX_SMB_MOUNTED 10
 
 static lwp_t cache_thread = LWP_THREAD_NULL;
 
