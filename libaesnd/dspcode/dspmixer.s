@@ -86,7 +86,6 @@ VOICE_FLAGL_PAUSE:	equ		0x0004
 VOICE_FLAGL_LOOP:	equ		0x0008
 VOICE_FLAGL_ONCE:	equ		0x0010
 
-VOICE_FLAGH_CB:		equ		0x0008
 VOICE_FLAGH_END:	equ		0x0010
 VOICE_FLAGH_STOP:	equ		0x0020
 
@@ -160,6 +159,7 @@ recv_cmd:
 	cmpi	$acc1.m,#0xdead
 	jeq		task_terminate
 	
+wait_commands:
 	jmp		recv_cmd
 	
 sys_commands:
@@ -171,9 +171,6 @@ sys_commands:
 	cmpi	$acc1.m,#0x0002
 	jeq		0x8000
 	halt
-	
-wait_commands:
-	jmp		recv_cmd
 	
 run_nexttask:
 	s16
@@ -254,6 +251,12 @@ get_pb_address:
 
 	jmp		recv_cmd
 	
+process_next_voice:
+	si		@DMACR,#DMA_TO_DSP
+	call	dma_pb_block
+	
+	jmp		dsp_mixer
+
 process_first_voice:
 	si		@DMACR,#DMA_TO_DSP
 	call	dma_pb_block
@@ -265,12 +268,6 @@ process_first_voice:
 	loop	$acx0.l
 	srri	@$ar0,$acc1.l
 
-	jmp		dsp_mixer
-
-process_next_voice:
-	si		@DMACR,#DMA_TO_DSP
-	call	dma_pb_block
-	
 dsp_mixer:
 	clr		$acc0
 
@@ -283,13 +280,7 @@ dsp_mixer:
 	lrrd	$acc0.l,@$ar1
 	
 	tst		$acc0
-	jne		no_change_buffer
-
-	lr		$acc1.m,@FLAGS_SMPH
-	ori		$acc1.m,#VOICE_FLAGH_CB
-	sr		@FLAGS_SMPH,$acc1.m
-
-	jmp		finish_voice
+	jeq		finish_voice
 
 no_change_buffer:
 	lr		$acc1.l,@FLAGS_SMPL
@@ -359,9 +350,9 @@ no_delay:
 	mrr		$acx0.l,$acc0.m
 	srri	@$ar1,$acc0.l
 	cmpis	$acc0.m,#DEF_FREQ_INT
-	jlt		no_mix
-	
-	jmpr	$ar3
+	jrge	$ar3;
+
+	jmp		no_mix
 		
 mono_8bits:
 	bloop	$acx0.l,mono_8bits_end
@@ -414,21 +405,21 @@ mixer_end:
 	lri		$wr1,#0xffff
 	
 	lri		$ar1,#PDS
-	lrs		$acc1.m,@ACPDS
-	srrd	@$ar1,$acc1.m
-	lrs		$acc1.m,@ACYN2
-	srrd	@$ar1,$acc1.m
-	lrs		$acc1.m,@ACYN1
-	srrd	@$ar1,$acc1.m
-	lrs		$acc1.m,@ACCAL
-	srrd	@$ar1,$acc1.m
-	lrs		$acc1.m,@ACCAH
-	srrd	@$ar1,$acc1.m
+	lrs		$acc0.m,@ACPDS
+	srrd	@$ar1,$acc0.m
+	lrs		$acc0.m,@ACYN2
+	srrd	@$ar1,$acc0.m
+	lrs		$acc0.m,@ACYN1
+	srrd	@$ar1,$acc0.m
+	lrs		$acc0.m,@ACCAL
+	srrd	@$ar1,$acc0.m
+	lrs		$acc0.m,@ACCAH
+	srrd	@$ar1,$acc0.m
 
 finish_voice:
-	lr		$acc1.m,@FLAGS_SMPH
-	ori		$acc1.m,#VOICE_FLAGH_END
-	sr		@FLAGS_SMPH,$acc1.m
+	lr		$acc0.m,@FLAGS_SMPH
+	ori		$acc0.m,#VOICE_FLAGH_END
+	sr		@FLAGS_SMPH,$acc0.m
 	
 	si		@DMACR,#DMA_TO_CPU
 	call	dma_pb_block
@@ -440,7 +431,6 @@ finish_voice:
 	jmp		recv_cmd
 	
 dma_pb_block:
-	clr		$acc0
 	lr		$acc0.m,@PB_MADDRH
 	lr		$acc0.l,@PB_MADDRL
 	srs		@DMAMMEMH,$acc0.m
@@ -462,8 +452,8 @@ dma_data:
 	sr		@DMABLEN,$acx0.l
 	
 wait_dma:
-	lrs		$acc1.m,@DMACR
-	andf	$acc1.m,#0x04
+	lrs		$acc0.m,@DMACR
+	andf	$acc0.m,#0x04
 	jlnz	wait_dma
 	ret
 		
@@ -549,7 +539,6 @@ exception4:
 
 exception5:		// Accelerator address overflow
 	s16
-	mrr		$st1,$acc0.l
 	mrr		$st1,$acc0.m
 
 	lrs		$acc0.m,@ACYN1
@@ -560,7 +549,6 @@ exception5:		// Accelerator address overflow
 	srs		@ACPDS,$acc0.m
 
 	mrr		$acc0.m,$st1
-	mrr		$acc0.l,$st1
 	rti
 	
 exception6:
