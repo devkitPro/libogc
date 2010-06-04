@@ -65,6 +65,10 @@ static __inline__ void __ARQPopTaskQueueHi()
 	__ARQReqPendingHi = req;
 }
 
+static void __ARQCallbackDummy(ARQRequest *req)
+{
+}
+
 static void __ARQCallbackSync(ARQRequest *req)
 {
 	LWP_ThreadBroadcast(__ARQSyncQueue);
@@ -188,7 +192,7 @@ void ARQ_PostRequestAsync(ARQRequest *req,u32 owner,u32 dir,u32 prio,u32 aram_ad
 	req->mram_addr = mram_addr;
 	req->len = len;
 	req->prio = prio;
-	req->callback = cb;
+	req->callback = (cb==NULL) ? __ARQCallbackDummy : cb;
 	
 	_CPU_ISR_Disable(level);
 
