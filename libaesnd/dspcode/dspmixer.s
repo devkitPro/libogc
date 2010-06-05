@@ -88,6 +88,7 @@ VOICE_FLAGL_ONCE:	equ		0x0010
 
 VOICE_FLAGH_END:	equ		0x0010
 VOICE_FLAGH_STOP:	equ		0x0020
+VOICE_FLAGH_RUN:	equ		0x4000
 
 ACCL_FMT_8BIT:		equ		0x0019
 ACCL_FMT_16BIT:		equ		0x000a
@@ -274,6 +275,10 @@ dsp_mixer:
 	lr		$acc1.m,@FLAGS_SMPL
 	andcf	$acc1.m,#VOICE_FLAGL_PAUSE
 	jlz		finish_voice
+	
+	lr		$acc1.m,@FLAGS_SMPH
+	andcf	$acc1.m,#VOICE_FLAGH_RUN
+	jlnz	finish_voice
 	
 	lri		$ar1,#SNDBUF_SADDRH
 	lrri	$acc0.m,@$ar1
