@@ -355,7 +355,7 @@ no_delay:
 	mrr		$acx0.l,$acc0.m
 	srri	@$ar1,$acc0.l
 	cmpis	$acc0.m,#DEF_FREQ_INT
-	jrge	$ar3;
+	jrge	$ar3
 
 	jmp		no_mix
 		
