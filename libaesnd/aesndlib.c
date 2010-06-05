@@ -19,6 +19,7 @@
 
 #define VOICE_FINISHED			0x00100000
 #define VOICE_STOPPED			0x00200000
+#define VOICE_RUNNING			0x40000000
 #define VOICE_USED				0x80000000
 
 struct aesndpb_t
@@ -156,7 +157,13 @@ static __inline__ void __aesndsetvoicefreq(AESNDPB *pb,u32 freq)
 }
 
 #if defined(HW_DOL)
+static ARQRequest arq_request[MAX_VOICES];
 static u8 stream_buffer[SND_BUFFERSIZE*2] ATTRIBUTE_ALIGN(32);
+
+static void __aesndarqcallback(ARQRequest *req)
+{
+	__aesndvoicepb[req->owner].flags |= VOICE_RUNNING;
+}
 
 static void __aesndfillbuffer(AESNDPB *pb,u32 buffer)
 {
@@ -174,8 +181,7 @@ static void __aesndfillbuffer(AESNDPB *pb,u32 buffer)
 	if(copy_len<SND_BUFFERSIZE) memset(stream_buffer + copy_len,0,SND_BUFFERSIZE - copy_len);
 
 	DCFlushRange(stream_buffer,SND_BUFFERSIZE);
-
-	AR_StartDMA(AR_MRAMTOARAM,(u32)MEM_VIRTUAL_TO_PHYSICAL(stream_buffer),buf_addr,SND_BUFFERSIZE);
+	ARQ_PostRequestAsync(&arq_request[pb->voiceno],pb->voiceno,ARQ_MRAMTOARAM,ARQ_PRIO_HI,buf_addr,(u32)MEM_VIRTUAL_TO_PHYSICAL(stream_buffer),SND_BUFFERSIZE,NULL);
 
 	pb->mram_curr += copy_len;
 }
@@ -218,9 +224,7 @@ static __inline__ void __aesndhandlerequest(AESNDPB *pb)
 	if(copy_len<(SND_BUFFERSIZE*2)) memset(stream_buffer + copy_len,0,(SND_BUFFERSIZE*2) - copy_len);
 
 	DCFlushRange(stream_buffer,(SND_BUFFERSIZE*2));
-
-	AR_StartDMA(AR_MRAMTOARAM,(u32)MEM_VIRTUAL_TO_PHYSICAL(stream_buffer),buf_addr,(SND_BUFFERSIZE*2));
-	while(AR_GetDMAStatus());
+	ARQ_PostRequestAsync(&arq_request[pb->voiceno],pb->voiceno,ARQ_MRAMTOARAM,ARQ_PRIO_HI,buf_addr,(u32)MEM_VIRTUAL_TO_PHYSICAL(stream_buffer),(SND_BUFFERSIZE*2),__aesndarqcallback);
 
 	pb->mram_curr += copy_len;
 }
@@ -287,6 +291,7 @@ static __inline__ void __aesndhandlerequest(AESNDPB *pb)
 	DCFlushRange(stream_buffer,(SND_BUFFERSIZE*2));
 
 	pb->mram_curr += copy_len;
+	pb->flags |= VOICE_RUNNING;
 }
 #endif
 
@@ -417,6 +422,7 @@ void AESND_Init()
 
 #if defined(HW_DOL)
 	__aesndarambase = AR_Init(__aesndarammemory,MAX_VOICES);
+	ARQ_Init();
 #endif
 	DSP_Init();
 	AUDIO_Init(NULL);
@@ -572,7 +578,7 @@ void AESND_PlayVoice(AESNDPB *pb,u32 format,const void *buffer,u32 len,u32 freq,
 	__aesndsetvoicefreq(pb,freq);
 	__aesndsetvoicebuffer(pb,ptr,len);
 
-	pb->flags &= ~(VOICE_STOPPED|VOICE_LOOP|VOICE_ONCE);
+	pb->flags &= ~(VOICE_RUNNING|VOICE_STOPPED|VOICE_LOOP|VOICE_ONCE);
 	if(looped==true) 
 		pb->flags |= VOICE_LOOP;
 	else
