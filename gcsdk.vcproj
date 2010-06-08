@@ -3751,11 +3751,27 @@
 					>
 				</File>
 			</Filter>
+			<Filter
+				Name="libaesnd"
+				>
+				<File
+					RelativePath=".\libaesnd\aesndlib.c"
+					>
+				</File>
+				<File
+					RelativePath=".\libaesnd\dspmixer.h"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl"
 			>
+			<File
+				RelativePath=".\gc\aesndlib.h"
+				>
+			</File>
 			<File
 				RelativePath=".\gc\asndlib.h"
 				>
