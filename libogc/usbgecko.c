@@ -119,12 +119,15 @@ void usb_flush(s32 chn)
 
 int usb_isgeckoalive(s32 chn)
 {
+	u32 id = 0;
 	s32 ret;
 	u16 val;
-	u32 id = 0;
 
-	if(EXI_GetID(chn,EXI_DEVICE_0,&id)==0) return 0;
-	if(id!=0) return 0;
+	if (EXI_GetID(chn, EXI_DEVICE_0, &id) == 0)
+		return 0;
+
+	if (id != 0)
+		return 0;
 
 	__usbgecko_exi_wait(chn);
 
@@ -137,7 +140,7 @@ int usb_isgeckoalive(s32 chn)
 	return ret;
 }
 
-int usb_recvbuffer(s32 chn,void *buffer,int size)
+int usb_recvbuffer_ex(s32 chn,void *buffer,int size, int retries)
 {
 	s32 ret;
 	s32 left = size;
@@ -150,13 +153,23 @@ int usb_recvbuffer(s32 chn,void *buffer,int size)
 
 		ptr++;
 		left--;
+
+		if (retries >= 0) {
+			retries--;
+			if (retries == 0)
+				break;
+		}
 	}
 	EXI_Unlock(chn);
 
 	return (size - left);
 }
 
-int usb_sendbuffer(s32 chn,const void *buffer,int size)
+int usb_recvbuffer(s32 chn,void *buffer,int size) {
+	return usb_recvbuffer_ex(chn, buffer, size, -1);
+}
+
+int usb_sendbuffer_ex(s32 chn,const void *buffer,int size, int retries)
 {
 	s32 ret;
 	s32 left = size;
@@ -169,13 +182,23 @@ int usb_sendbuffer(s32 chn,const void *buffer,int size)
 
 		ptr++;
 		left--;
+
+		if (retries >= 0) {
+			retries--;
+			if (retries == 0)
+				break;
+		}
 	}
 	EXI_Unlock(chn);
 
 	return (size - left);
 }
 
-int usb_recvbuffer_safe(s32 chn,void *buffer,int size)
+int usb_sendbuffer(s32 chn,const void *buffer,int size) {
+	return usb_sendbuffer_ex(chn, buffer, size, -1);
+}
+
+int usb_recvbuffer_safe_ex(s32 chn,void *buffer,int size, int retries)
 {
 	s32 ret;
 	s32 left = size;
@@ -190,13 +213,23 @@ int usb_recvbuffer_safe(s32 chn,void *buffer,int size)
 			ptr++;
 			left--;
 		}
+
+		if (retries >= 0) {
+			retries--;
+			if (retries == 0)
+				break;
+		}
 	}
 	EXI_Unlock(chn);
 
 	return (size - left);
 }
 
-int usb_sendbuffer_safe(s32 chn,const void *buffer,int size)
+int usb_recvbuffer_safe(s32 chn,void *buffer,int size) {
+	return usb_recvbuffer_safe_ex(chn, buffer, size, -1);
+}
+
+int usb_sendbuffer_safe_ex(s32 chn,const void *buffer,int size, int retries)
 {
 	s32 ret;
 	s32 left = size;
@@ -211,8 +244,18 @@ int usb_sendbuffer_safe(s32 chn,const void *buffer,int size)
 			ptr++;
 			left--;
 		}
+
+		if (retries >= 0) {
+			retries--;
+			if (retries == 0)
+				break;
+		}
 	}
 	EXI_Unlock(chn);
 
 	return (size - left);
+}
+
+int usb_sendbuffer_safe(s32 chn,const void *buffer,int size) {
+	return usb_sendbuffer_safe_ex(chn, buffer, size, -1);
 }
