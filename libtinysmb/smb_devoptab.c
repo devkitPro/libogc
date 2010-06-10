@@ -41,6 +41,7 @@ typedef struct
 } SMBDIRSTATESTRUCT;
 
 static int smbInited = 0;
+static unsigned short smbFlags = SMB_SRCH_DIRECTORY | SMB_SRCH_READONLY;
 
 ///////////////////////////////////////////
 //      CACHE FUNCTION DEFINITIONS       //
@@ -473,14 +474,18 @@ static char *smb_absolute_path_no_device(const char *srcpath, char *destpath, in
 		return NULL;
 	}
 
+	temp[0]='\0';
+
 	if (srcpath[0] != '\\' && srcpath[0] != '/')
 	{
 		strcpy(temp, SMBEnv[env].currentpath);
-		strcat(temp, srcpath);
 	}
-	else
+	if(srcpath[0]!='\0') //strlen(srcpath) > 0
 	{
-		strcpy(temp, srcpath);
+		if(srcpath[0]=='.' && (srcpath[1]=='\\' || srcpath[1]=='\\' || srcpath[1]=='\0')) // to fix opendir(".") or chdir(".")
+			strcat(temp, &srcpath[1]);
+		else
+			strcat(temp, srcpath);
 	}
 
 	while(temp[i]!='\0')
@@ -903,7 +908,7 @@ static int __smb_dirreset(struct _reent *r, DIR_ITER *dirState)
 
 	strcpy(path_abs,SMBEnv[state->env].currentpath);
 	strcat(path_abs,"*");
-	int found = SMB_FindFirst(path_abs, SMB_SRCH_DIRECTORY | SMB_SRCH_SYSTEM | SMB_SRCH_HIDDEN | SMB_SRCH_READONLY | SMB_SRCH_ARCHIVE, &dentry, SMBEnv[state->env].smbconn);
+	int found = SMB_FindFirst(path_abs, smbFlags, &dentry, SMBEnv[state->env].smbconn);
 
 	if (found != SMB_SUCCESS)
 	{
@@ -960,7 +965,7 @@ static DIR_ITER* __smb_diropen(struct _reent *r, DIR_ITER *dirState, const char 
 		r->_errno = EINVAL;
 		return NULL;
 	}
-	if (path_absolute[strlen(path_absolute) - 1] != '\\')
+	if (strlen(path_absolute) > 0 && path_absolute[strlen(path_absolute) - 1] != '\\')
 		strcat(path_absolute, "\\");
 
 	if(!strcmp(path_absolute,"\\"))
@@ -972,7 +977,7 @@ static DIR_ITER* __smb_diropen(struct _reent *r, DIR_ITER *dirState, const char 
 
 	memset(&dentry, 0, sizeof(SMBDIRENTRY));
 	_SMB_lock(env->pos);
-	found = SMB_FindFirst(path_absolute, SMB_SRCH_DIRECTORY | SMB_SRCH_SYSTEM | SMB_SRCH_HIDDEN | SMB_SRCH_READONLY | SMB_SRCH_ARCHIVE, &dentry, env->smbconn);
+	found = SMB_FindFirst(path_absolute, smbFlags, &dentry, env->smbconn);
 
 	if (found != SMB_SUCCESS)
 	{
@@ -1050,16 +1055,12 @@ static int __smb_dirnext(struct _reent *r, DIR_ITER *dirState, char *filename,
 	if (SMBEnv[state->env].first_item_dir)
 	{
 		SMBEnv[state->env].first_item_dir = false;
-		dentry.size = 0;
-		dentry.attributes = SMB_SRCH_DIRECTORY;
-		strcpy(dentry.name, ".");
-
-		state->smbdir.size = dentry.size;
-		state->smbdir.ctime = dentry.ctime;
-		state->smbdir.atime = dentry.atime;
-		state->smbdir.mtime = dentry.mtime;
-		state->smbdir.attributes = dentry.attributes;
-		strcpy(state->smbdir.name, dentry.name);
+		dentry.size = state->smbdir.size;
+		dentry.ctime = state->smbdir.ctime;
+		dentry.atime = state->smbdir.atime;
+		dentry.mtime = state->smbdir.mtime;
+		dentry.attributes = state->smbdir.attributes;
+		strcpy(dentry.name, state->smbdir.name);
 		strcpy(filename, dentry.name);
 		dentry_to_stat(&dentry, filestat);
 		_SMB_unlock(state->env);
@@ -1069,9 +1070,11 @@ static int __smb_dirnext(struct _reent *r, DIR_ITER *dirState, char *filename,
 	dentry.sid = state->smbdir.sid;
 
 	ret = SMB_FindNext(&dentry, SMBEnv[state->env].smbconn);
-	if(ret==SMB_SUCCESS && SMBEnv[state->env].diropen_root && !strcmp(dentry.name,".."))
-		ret = SMB_FindNext(&dentry, SMBEnv[state->env].smbconn);
-
+	if(ret==SMB_SUCCESS && SMBEnv[state->env].diropen_root)
+	{
+		if(strlen(dentry.name) == 2 && strcmp(dentry.name,"..") == 0)
+			ret = SMB_FindNext(&dentry, SMBEnv[state->env].smbconn);
+	}
 	if (ret == SMB_SUCCESS)
 	{
 		state->smbdir.size = dentry.size;
@@ -1080,6 +1083,7 @@ static int __smb_dirnext(struct _reent *r, DIR_ITER *dirState, char *filename,
 		state->smbdir.mtime = dentry.mtime;
 		state->smbdir.attributes = dentry.attributes;
 		strcpy(state->smbdir.name, dentry.name);
+		strcpy(filename, dentry.name);
 	}
 	else
 	{
@@ -1087,8 +1091,6 @@ static int __smb_dirnext(struct _reent *r, DIR_ITER *dirState, char *filename,
 		_SMB_unlock(state->env);
 		return -1;
 	}
-
-	strcpy(filename, dentry.name);
 
 	dentry_to_stat(&dentry, filestat);
 	_SMB_unlock(state->env);
@@ -1480,4 +1482,9 @@ bool smbCheckConnection(const char* name)
 	ret=(SMB_Reconnect(&env->smbconn,true)==SMB_SUCCESS);
 	_SMB_unlock(env->pos);
 	return ret;
+}
+
+void smbSetSearchFlags(unsigned short flags)
+{
+	smbFlags = flags;
 }

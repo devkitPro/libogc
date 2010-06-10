@@ -118,6 +118,7 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 bool smbInit(const char *user, const char *password, const char *share,	const char *ip);
 void smbClose(const char* name);
 bool smbCheckConnection(const char* name);
+void smbSetSearchFlags(unsigned short flags);
 
 /*** Session ***/
 s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const char *share, const char *IP);

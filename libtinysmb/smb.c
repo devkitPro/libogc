@@ -30,7 +30,7 @@
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  ****************************************************************************/
-
+ 
 #include <asm.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -38,6 +38,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <ctype.h>
+#include <wchar.h>
 #include <gccore.h>
 #include <network.h>
 #include <processor.h>
@@ -144,7 +145,8 @@
 #define CAP_LARGE_FILES				0x00000008  // 64-bit file sizes and offsets supported
 #define CAP_UNICODE					0x00000004  // Unicode supported
 #define	CIFS_FLAGS1					0x08 // Paths are caseless
-#define CIFS_FLAGS2					0x0001 // Server may return long components in paths in the response - use 0x8001 for Unicode support
+#define CIFS_FLAGS2_UNICODE			0x8001 // Server may return long components in paths in the response - use 0x8001 for Unicode support
+#define CIFS_FLAGS2					0x0001 // Server may return long components in paths in the response - use 0x0001 for ASCII support
 
 #define SMB_CONNHANDLES_MAX			8
 #define SMB_FILEHANDLES_MAX			(32*SMB_CONNHANDLES_MAX)
@@ -219,6 +221,7 @@ typedef struct _smbhandle
 	BOOL conn_valid;
 	SMBSESSION session;
 	NBTSMB message;
+	bool unicode;
 } SMBHANDLE;
 
 static u32 smb_dialectcnt = 1;
@@ -229,6 +232,86 @@ static struct _smbfile smb_filehandles[SMB_FILEHANDLES_MAX];
 static const char *smb_dialects[] = {"NT LM 0.12",NULL};
 
 extern void ntlm_smb_nt_encrypt(const char *passwd, const u8 * challenge, u8 * answer);
+
+// UTF conversion functions
+size_t utf16_to_utf8(char* dst, char* src, size_t len)
+{
+	mbstate_t ps;
+	size_t count = 0;
+	int bytes;
+	char buff[MB_CUR_MAX];
+	int i;
+	unsigned short c;
+	memset(&ps, 0, sizeof(mbstate_t));
+
+	while (count < len && *src != '\0')
+	{
+		c = *(src + 1) << 8 | *src; // little endian
+		if (c == 0)
+			break;
+		bytes = wcrtomb(buff, c, &ps);
+		if (bytes < 0)
+		{
+			*dst = '\0';
+			return -1;
+		}
+		if (bytes > 0)
+		{
+			for (i = 0; i < bytes; i++)
+			{
+				*dst++ = buff[i];
+			}
+			src += 2;
+			count += 2;
+		}
+		else
+		{
+			break;
+		}
+	}
+	*dst = '\0';
+	return count;
+}
+
+size_t utf8_to_utf16(char* dst, char* src, size_t len)
+{
+	mbstate_t ps;
+	wchar_t tempWChar;
+	char *tempChar;
+	int bytes;
+	size_t count = 0;
+	tempChar = (char*) &tempWChar;
+	memset(&ps, 0, sizeof(mbstate_t));
+
+	while (count < len - 1 && src != '\0')
+	{
+		bytes = mbrtowc(&tempWChar, src, MB_CUR_MAX, &ps);
+		if (bytes > 0)
+		{
+			*dst = tempChar[3];
+			dst++;
+			*dst = tempChar[2];
+			dst++;
+			src += bytes;
+			count += 2;
+		}
+		else if (bytes == 0)
+		{
+			break;
+		}
+		else
+		{
+			*dst = '\0';
+			dst++;
+			*dst = '\0';
+			return -1;
+		}
+	}
+	*dst = '\0';
+	dst++;
+	*dst = '\0';
+	return count;
+}
 
 /**
  * SMB Endian aware supporting functions
@@ -382,11 +465,10 @@ static void MakeSMBHeader(u8 command,u8 flags,u16 flags2,SMBHANDLE *handle)
 static void MakeTRANS2Header(u8 subcommand,SMBHANDLE *handle)
 {
 	u8 *ptr = handle->message.smb;
-	SMBSESSION *sess = &handle->session;
 
 	setUChar(ptr, T2_WORD_CNT, 15);
 	setUShort(ptr, T2_MAXPRM_CNT, 10);
-	setUShort(ptr, T2_MAXBUFFER, sess->MaxBuffer);
+	setUShort(ptr, T2_MAXBUFFER, 16384);
 	setUChar(ptr, T2_SSETUP_CNT, 1);
 	setUShort(ptr, T2_SUB_CMD, subcommand);
 }
@@ -503,7 +585,7 @@ static s32 SMBCheck(u8 command,SMBHANDLE *handle)
 	do{
 		ret=smb_recv(handle->sck_server, (u8*)nbt, 4);
 		if(ret<0) return SMB_ERROR;
-		
+
 		if((ret>0) && nbt->msg!=NBT_SESSISON_MSG)
 		{
 			readlen=(u32)((nbt->length_high<<16)|nbt->length);
@@ -520,7 +602,7 @@ static s32 SMBCheck(u8 command,SMBHANDLE *handle)
 
 	/* obtain required length from NBT header if readlen==0*/
 	readlen=(u32)((nbt->length_high<<16)|nbt->length);
-	
+
 	// Get server message block
 	ret=smb_recv(handle->sck_server, ptr, readlen);
 	if(ret<0) return SMB_ERROR;
@@ -551,11 +633,11 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	s32 i, ret;
 	u8 *ptr = handle->message.smb;
 	SMBSESSION *sess = &handle->session;
-	char pwd[15], ntRespData[24];
+	char pwd[30], ntRespData[24];
 
 	if(handle->sck_server == INVALID_SOCKET) return SMB_ERROR;
 
-	MakeSMBHeader(SMB_SETUP_ANDX,CIFS_FLAGS1,CIFS_FLAGS2,handle);
+	MakeSMBHeader(SMB_SETUP_ANDX,CIFS_FLAGS1,handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 	pos = SMB_HEADER_SIZE;
 
 	setUChar(ptr,pos,13);
@@ -594,27 +676,60 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 	pos += 24;
 	memcpy(&ptr[pos],ntRespData,24);
 	pos += 24;
-
+	pos++;
 	/*** Account ***/
 	strcpy(pwd, handle->user);
-	for(i=0;i<strlen(pwd);i++) pwd[i] = toupper((int)pwd[i]);
-	memcpy(&ptr[pos],pwd,strlen(pwd));
-	pos += strlen(pwd)+1;
+	for(i=0;i<strlen(pwd);i++)
+        pwd[i] = toupper((int)pwd[i]);
+	if(handle->unicode)
+	{
+        pos += utf8_to_utf16((char*)&ptr[pos],pwd,SMB_MAXPATH-2);
+        pos += 2;
+	}
+	else
+	{
+        memcpy(&ptr[pos],pwd,strlen(pwd));
+        pos += strlen(pwd)+1;
+	}
 
 	/*** Primary Domain ***/
 	if(handle->user[0]=='\0') sess->p_domain[0] = '\0';
-	memcpy(&ptr[pos],sess->p_domain,strlen((const char*)sess->p_domain));
-	pos += strlen((const char*)sess->p_domain)+1;
+	if(handle->unicode)
+	{
+        pos += utf8_to_utf16((char*)&ptr[pos],(char*)sess->p_domain,SMB_MAXPATH-2);
+        pos += 2;
+	}
+	else
+	{
+        memcpy(&ptr[pos],sess->p_domain,strlen((const char*)sess->p_domain));
+        pos += strlen((const char*)sess->p_domain)+1;
+	}
 
 	/*** Native OS ***/
-	strcpy(pwd,"Unix (libOGC)");
-	memcpy(&ptr[pos],pwd,strlen(pwd));
-	pos += strlen(pwd)+1;
+    strcpy(pwd,"Unix (libOGC)");
+	if(handle->unicode)
+	{
+        pos += utf8_to_utf16((char*)&ptr[pos],pwd,SMB_MAXPATH-2);
+        pos += 2;
+	}
+	else
+	{
+        memcpy(&ptr[pos],pwd,strlen(pwd));
+        pos += strlen(pwd)+1;
+	}
 
 	/*** Native LAN Manager ***/
 	strcpy(pwd,"Nintendo Wii");
-	memcpy(&ptr[pos],pwd,strlen(pwd));
-	pos += strlen (pwd)+1;
+	if(handle->unicode)
+	{
+        pos += utf8_to_utf16((char*)&ptr[pos],pwd,SMB_MAXPATH-2);
+        pos += 2;
+	}
+	else
+	{
+        memcpy(&ptr[pos],pwd,strlen(pwd));
+        pos += strlen (pwd)+1;
+	}
 
 	/*** Update byte count ***/
 	setUShort(ptr,bcpos,((pos-bcpos)-2));
@@ -642,13 +757,13 @@ static s32 SMB_SetupAndX(SMBHANDLE *handle)
 static s32 SMB_TreeAndX(SMBHANDLE *handle)
 {
 	s32 pos, bcpos, ret;
-	u8 path[256];
+	char path[512];
 	u8 *ptr = handle->message.smb;
 	SMBSESSION *sess = &handle->session;
 
 	if(handle->sck_server == INVALID_SOCKET) return SMB_ERROR;
 
-	MakeSMBHeader(SMB_TREEC_ANDX,CIFS_FLAGS1,CIFS_FLAGS2,handle);
+	MakeSMBHeader(SMB_TREEC_ANDX,CIFS_FLAGS1,handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 	pos = SMB_HEADER_SIZE;
 
 	setUChar(ptr,pos,4);
@@ -669,15 +784,26 @@ static s32 SMB_TreeAndX(SMBHANDLE *handle)
 	strcat ((char*)path, handle->server_name);
 	strcat ((char*)path, "\\");
 	strcat ((char*)path, handle->share_name);
-	for(ret=0;ret<strlen((const char*)path);ret++) path[ret] = toupper(path[ret]);
 
-	memcpy(&ptr[pos],path,strlen((const char*)path));
-	pos += strlen((const char*)path)+1;
+	for(ret=0;ret<strlen((const char*)path);ret++)
+        path[ret] = (char)toupper((int)path[ret]);
+
+	if(handle->unicode)
+	{
+        pos += utf8_to_utf16((char*)&ptr[pos],path,SMB_MAXPATH-2);
+        pos += 2;
+	}
+	else
+	{
+        memcpy(&ptr[pos],path,strlen((const char*)path));
+        pos += strlen((const char*)path)+1;
+	}
 
 	/*** Service ***/
 	strcpy((char*)path,"?????");
 	memcpy(&ptr[pos],path,strlen((const char*)path));
 	pos += strlen((const char*)path)+1;
+
 
 	/*** Update byte count ***/
 	setUShort(ptr,bcpos,(pos-bcpos)-2);
@@ -724,7 +850,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 	sess->MID = 1;
 	sess->capabilities = 0;
 
-	MakeSMBHeader(SMB_NEG_PROTOCOL,CIFS_FLAGS1,CIFS_FLAGS2,handle);
+	MakeSMBHeader(SMB_NEG_PROTOCOL,CIFS_FLAGS1,handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 
 	pos = SMB_HEADER_SIZE+3;
 	ptr = handle->message.smb;
@@ -833,12 +959,15 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 		// setup capabilities
 		//if(servcap & CAP_LARGE_FILES)
 		//	sess->capabilities |= CAP_LARGE_FILES;
+
 		if(servcap & CAP_UNICODE)
+		{
 			sess->capabilities |= CAP_UNICODE;
+			handle->unicode = true;
+		}
 
 		return SMB_SUCCESS;
 	}
-
 	return ret;
 }
 
@@ -1091,6 +1220,7 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 	handle->share_name = strdup(share);
 	handle->server_addr.sin_family = AF_INET;
 	handle->server_addr.sin_port = htons(445);
+	handle->unicode = false;
 
 	if(strlen(server) < 16 && inet_aton(server, &val))
 	{
@@ -1207,7 +1337,7 @@ SMBFILE SMB_OpenFile(const char *filename, u16 access, u16 creation,SMBCONN smbh
 	u8 *ptr;
 	struct _smbfile *fid = NULL;
 	SMBHANDLE *handle;
-	char realfile[256];
+	char realfile[512];
 
 	if(filename == NULL)
 		return NULL;
@@ -1217,38 +1347,51 @@ SMBFILE SMB_OpenFile(const char *filename, u16 access, u16 creation,SMBCONN smbh
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return NULL;
 
-	MakeSMBHeader(SMB_OPEN_ANDX,CIFS_FLAGS1,CIFS_FLAGS2,handle);
+	MakeSMBHeader(SMB_OPEN_ANDX,CIFS_FLAGS1,handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
 	setUChar(ptr, pos, 15);
 	pos++;			       /*** Word Count ***/
 	setUChar(ptr, pos, 0xff);
-	pos++;				 /*** Next AndX ***/
-	pos += 3;  /*** Next AndX Offset ***/
-
+	pos++;				 /*** AndXCommand 0xFF = None ***/
+	setUChar(ptr, pos, 0);
+	pos++;				 /*** AndX Reserved must be 0 ***/
+	pos += 2;  /*** Next AndX Offset to next Command ***/
 	pos += 2;  /*** Flags ***/
 	setUShort(ptr, pos, access);
 	pos += 2;					 /*** Access mode ***/
 	setUShort(ptr, pos, 0x6);
 	pos += 2;  /*** Type of file ***/
-	pos += 2;  /*** Attributes ***/
+	pos += 2;  /*** File Attributes ***/
 	pos += 4;  /*** File time - don't care - let server decide ***/
 	setUShort(ptr, pos, creation);
 	pos += 2;  /*** Creation flags ***/
 	pos += 4;  /*** Allocation size ***/
-	pos += 8;  /*** Reserved ***/
+	setUInt(ptr, pos, 0);
+	pos += 4;  /*** Reserved[0] must be 0 ***/
+	setUInt(ptr, pos, 0);
+	pos += 4;  /*** Reserved[1] must be 0 ***/
 	pos += 2;  /*** Byte Count ***/
 	bpos = pos;
+	setUChar(ptr, pos, 0x04); /** Bufferformat **/
+	pos++;
 
-	if (filename[0] != '\\') {
-		strcpy(realfile, "\\");
-		strcat(realfile,filename);
-	} else
-		strcpy(realfile,filename);
+	realfile[0]='\0';
+	if (filename[0] != '\\')
+		strcpy(realfile,"\\");
+	strcat(realfile,filename);
 
-	memcpy(&ptr[pos],realfile,strlen(realfile));
-	pos += strlen(realfile)+1;
+	if(handle->unicode)
+	{
+		pos += utf8_to_utf16((char*)&ptr[pos],realfile,SMB_MAXPATH-2);
+		pos += 2;
+	}
+	else
+	{
+		memcpy(&ptr[pos],realfile,strlen(realfile));
+		pos += strlen(realfile)+1;
+	}
 
 	setUShort(ptr,(bpos-2),(pos-bpos));
 
@@ -1289,7 +1432,7 @@ void SMB_CloseFile(SMBFILE sfid)
 	handle = __smb_handle_open(fid->conn);
 	if(!handle) return;
 
-	MakeSMBHeader(SMB_CLOSE,CIFS_FLAGS1,CIFS_FLAGS2,handle);
+	MakeSMBHeader(SMB_CLOSE,CIFS_FLAGS1,handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
@@ -1320,7 +1463,7 @@ s32 SMB_CreateDirectory(const char *dirname, SMBCONN smbhndl)
 	s32 bpos,ret;
 	u8 *ptr;
 	SMBHANDLE *handle;
-	char realfile[256];
+	char realfile[512];
 
 	if(dirname == NULL)
 		return -1;
@@ -1330,7 +1473,7 @@ s32 SMB_CreateDirectory(const char *dirname, SMBCONN smbhndl)
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return -1;
 
-	MakeSMBHeader(SMB_COM_CREATE_DIRECTORY,CIFS_FLAGS1, CIFS_FLAGS2,handle);
+	MakeSMBHeader(SMB_COM_CREATE_DIRECTORY,CIFS_FLAGS1, handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
@@ -1338,15 +1481,24 @@ s32 SMB_CreateDirectory(const char *dirname, SMBCONN smbhndl)
 	pos++;			       /*** Word Count ***/
 	pos += 2;              /*** Byte Count ***/
 	bpos = pos;
+    setUChar(ptr, pos, 0x04); /*** Buffer format ***/
+	pos++;
 
-	if (dirname[0] != '\\') {
-		strcpy(realfile, "\\");
-		strcat(realfile,dirname);
-	} else
-		strcpy(realfile,dirname);
+	realfile[0]='\0';
+	if (dirname[0] != '\\')
+		strcpy(realfile,"\\");
+	strcat(realfile,dirname);
 
-	memcpy(&ptr[pos],realfile,strlen(realfile));
-	pos += strlen(realfile)+1;
+	if(handle->unicode)
+	{
+		pos += utf8_to_utf16((char*)&ptr[pos],realfile,SMB_MAXPATH-2);
+		pos += 2;
+	}
+	else
+	{
+		memcpy(&ptr[pos],realfile,strlen(realfile));
+		pos += strlen(realfile)+1;
+	}
 
 	setUShort(ptr,(bpos-2),(pos-bpos));
 
@@ -1374,7 +1526,7 @@ s32 SMB_DeleteDirectory(const char *dirname, SMBCONN smbhndl)
 	s32 bpos,ret;
 	u8 *ptr;
 	SMBHANDLE *handle;
-	char realfile[256];
+	char realfile[512];
 
 	if(dirname == NULL)
 		return -1;
@@ -1384,7 +1536,7 @@ s32 SMB_DeleteDirectory(const char *dirname, SMBCONN smbhndl)
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return -1;
 
-	MakeSMBHeader(SMB_COM_DELETE_DIRECTORY,CIFS_FLAGS1, CIFS_FLAGS2,handle);
+	MakeSMBHeader(SMB_COM_DELETE_DIRECTORY,CIFS_FLAGS1, handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
@@ -1392,15 +1544,24 @@ s32 SMB_DeleteDirectory(const char *dirname, SMBCONN smbhndl)
 	pos++;			       /*** Word Count ***/
 	pos += 2;              /*** Byte Count ***/
 	bpos = pos;
+	setUChar(ptr, pos, 0x04); /** Bufferformat **/
+	pos++;
 
-	if (dirname[0] != '\\') {
-		strcpy(realfile, "\\");
-		strcat(realfile,dirname);
-	} else
-		strcpy(realfile,dirname);
+	realfile[0]='\0';
+	if (dirname[0] != '\\')
+		strcpy(realfile,"\\");
+	strcat(realfile,dirname);
 
-	memcpy(&ptr[pos],realfile,strlen(realfile));
-	pos += strlen(realfile)+1;
+	if(handle->unicode)
+	{
+		pos += utf8_to_utf16((char*)&ptr[pos],realfile,SMB_MAXPATH-2);
+		pos += 2;
+	}
+	else
+	{
+		memcpy(&ptr[pos],realfile,strlen(realfile));
+		pos += strlen(realfile)+1;
+	}
 
 	setUShort(ptr,(bpos-2),(pos-bpos));
 
@@ -1428,7 +1589,7 @@ s32 SMB_DeleteFile(const char *filename, SMBCONN smbhndl)
 	s32 bpos,ret;
 	u8 *ptr;
 	SMBHANDLE *handle;
-	char realfile[256];
+	char realfile[512];
 
 	if(filename == NULL)
 		return -1;
@@ -1438,25 +1599,34 @@ s32 SMB_DeleteFile(const char *filename, SMBCONN smbhndl)
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return -1;
 
-	MakeSMBHeader(SMB_COM_DELETE,CIFS_FLAGS1, CIFS_FLAGS2,handle);
+	MakeSMBHeader(SMB_COM_DELETE,CIFS_FLAGS1, handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
 	setUChar(ptr, pos, 1);
 	pos++;			       /*** Word Count ***/
-	setUChar(ptr, pos, SMB_SRCH_HIDDEN);
+	setUShort(ptr, pos, SMB_SRCH_HIDDEN);
 	pos += 2;			   /*** SearchAttributes ***/
 	pos += 2;              /*** Byte Count ***/
 	bpos = pos;
+	setUChar(ptr, pos, 0x04); /** Bufferformat **/
+	pos++;
 
-	if (filename[0] != '\\') {
-		strcpy(realfile, "\\");
-		strcat(realfile,filename);
-	} else
-		strcpy(realfile,filename);
+	realfile[0]='\0';
+	if (filename[0] != '\\')
+		strcpy(realfile,"\\");
+	strcat(realfile,filename);
 
-	memcpy(&ptr[pos],realfile,strlen(realfile));
-	pos += strlen(realfile)+1;
+	if(handle->unicode)
+	{
+		pos += utf8_to_utf16((char*)&ptr[pos],realfile,SMB_MAXPATH-2);
+		pos += 2;
+	}
+	else
+	{
+		memcpy(&ptr[pos],realfile,strlen(realfile));
+		pos += strlen(realfile)+1;
+	}
 
 	setUShort(ptr,(bpos-2),(pos-bpos));
 
@@ -1484,8 +1654,8 @@ s32 SMB_Rename(const char *filename, const char * newfilename, SMBCONN smbhndl)
 	s32 bpos,ret;
 	u8 *ptr;
 	SMBHANDLE *handle;
-	char realfile[256];
-	char newrealfile[256];
+	char realfile[512];
+	char newrealfile[512];
 
 	if(filename == NULL || newfilename == NULL)
         return -1;
@@ -1496,38 +1666,54 @@ s32 SMB_Rename(const char *filename, const char * newfilename, SMBCONN smbhndl)
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return -1;
 
-	MakeSMBHeader(SMB_COM_RENAME,CIFS_FLAGS1, CIFS_FLAGS2,handle);
+	MakeSMBHeader(SMB_COM_RENAME,CIFS_FLAGS1, handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
 	setUChar(ptr, pos, 1);
 	pos++;			       /*** Word Count ***/
-	setUChar(ptr, pos, SMB_SRCH_HIDDEN);
+	setUShort(ptr, pos, SMB_SRCH_HIDDEN);
 	pos += 2;			   /*** SearchAttributes ***/
 	pos += 2;              /*** Byte Count ***/
 	bpos = pos;
-
-	if (filename[0] != '\\') {
-		strcpy(realfile, "\\");
-		strcat(realfile,filename);
-	} else
-		strcpy(realfile,filename);
-
-	memcpy(&ptr[pos],realfile,strlen(realfile));
-	pos += strlen(realfile)+1;
-
-    pos++;
-	ptr[pos] = 0x04;
+	setUChar(ptr, pos, 0x04); /** Bufferformat **/
 	pos++;
 
-	if (newfilename[0] != '\\') {
-		strcpy(newrealfile, "\\");
-		strcat(newrealfile, newfilename);
-	} else
-		strcpy(newrealfile,newfilename);
+	realfile[0]='\0';
+	if (filename[0] != '\\')
+		strcpy(realfile,"\\");
+	strcat(realfile,filename);
 
-	memcpy(&ptr[pos],newrealfile,strlen(newrealfile));
-	pos += strlen(newrealfile)+1;
+	if(handle->unicode)
+	{
+		pos += utf8_to_utf16((char*)&ptr[pos],realfile,SMB_MAXPATH-2);
+		pos += 2;
+	}
+	else
+	{
+		memcpy(&ptr[pos],realfile,strlen(realfile));
+		pos += strlen(realfile)+1;
+	}
+
+	pos++;
+	setUChar(ptr, pos, 0x04); /** Bufferformat **/
+	pos++;
+
+	newrealfile[0]='\0';
+	if (newfilename[0] != '\\')
+		strcpy(newrealfile,"\\");
+	strcat(newrealfile,newfilename);
+
+	if(handle->unicode)
+	{
+		pos += utf8_to_utf16((char*)&ptr[pos],newrealfile,SMB_MAXPATH-2);
+		pos += 2;
+	}
+	else
+	{
+		memcpy(&ptr[pos],newrealfile,strlen(newrealfile));
+		pos += strlen(newrealfile)+1;
+	}
 
 	setUShort(ptr,(bpos-2),(pos-bpos));
 
@@ -1562,7 +1748,7 @@ s32 SMB_DiskInformation(struct statvfs *buf, SMBCONN smbhndl)
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return -1;
 
-	MakeSMBHeader(SMB_COM_QUERY_INFORMATION_DISK,CIFS_FLAGS1, CIFS_FLAGS2,handle);
+	MakeSMBHeader(SMB_COM_QUERY_INFORMATION_DISK,CIFS_FLAGS1, handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 
 	pos = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
@@ -1643,7 +1829,7 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 		handle = __smb_handle_open(fid->conn);
 		if(!handle) return -1;
 
-		MakeSMBHeader(SMB_READ_ANDX,CIFS_FLAGS1,CIFS_FLAGS2,handle);
+		MakeSMBHeader(SMB_READ_ANDX,CIFS_FLAGS1,handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 
 		pos = SMB_HEADER_SIZE;
 		ptr = handle->message.smb;
@@ -1651,7 +1837,9 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 		pos++;				      /*** Word count ***/
 		setUChar(ptr, pos, 0xff);
 		pos++;
-		pos += 3;	    /*** Reserved, Next AndX Offset ***/
+		setUChar(ptr, pos, 0);
+		pos++;          /*** Reserved must be 0 ***/
+		pos += 2;	    /*** Next AndX Offset ***/
 		setUShort(ptr, pos, fid->sfid);
 		pos += 2;					    /*** FID ***/
 		setUInt(ptr, pos, offset+readed);
@@ -1662,7 +1850,7 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 		setUShort(ptr, pos, read & 0xffff);
 		pos += 2;
 		setUInt(ptr, pos, 0);
-		pos += 4;
+		pos += 4;       /*** Reserved must be 0 ***/
 		setUShort(ptr, pos, read & 0xffff);
 		pos += 2;	    /*** Remaining ***/
 		setUInt(ptr, pos, (offset+readed) >> 32);  // offset high
@@ -1715,7 +1903,7 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	handle = __smb_handle_open(fid->conn);
 	if(!handle) return -1;
 
-	MakeSMBHeader(SMB_WRITE_ANDX,CIFS_FLAGS1,CIFS_FLAGS2,handle);
+	MakeSMBHeader(SMB_WRITE_ANDX,CIFS_FLAGS1,handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 
 
 	pos = SMB_HEADER_SIZE;
@@ -1795,8 +1983,9 @@ s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl)
 	s32 pos;
 	s32 ret;
 	s32 bpos;
+	int len;
 	SMBHANDLE *handle;
-	char realfile[256];
+	char realfile[512];
 
 	if(filename == NULL)
 		return SMB_ERROR;
@@ -1804,32 +1993,39 @@ s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl)
 	handle = __smb_handle_open(smbhndl);
 	if (!handle) return SMB_ERROR;
 
-	MakeSMBHeader(SMB_TRANS2, CIFS_FLAGS1, CIFS_FLAGS2, handle);
+	MakeSMBHeader(SMB_TRANS2, CIFS_FLAGS1, handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2, handle);
 	MakeTRANS2Header(SMB_QUERY_PATH_INFO, handle);
 
 	bpos = pos = (T2_BYTE_CNT + 2);
 	pos += 3; /*** Padding ***/
 	ptr = handle->message.smb;
 	setUShort(ptr, pos, SMB_QUERY_FILE_ALL_INFO);
-
-	pos += 2;
+	pos += 2; /*** Level of information requested ***/
 	setUInt(ptr, pos, 0);
 	pos += 4; /*** reserved ***/
 
-	if (filename[0] != '\\') {
-		strcpy(realfile, "\\");
-		strcat(realfile, filename);
-	} else
-		strcpy(realfile, filename);
+    realfile[0] = '\0';
+	if (filename[0] != '\\')
+		strcpy(realfile,"\\");
+	strcat(realfile,filename);
 
-	memcpy(&ptr[pos], realfile, strlen(realfile));
-	pos += strlen(realfile) + 1; /*** Include padding ***/
+	if(handle->unicode)
+	{
+		len = utf8_to_utf16((char*)&ptr[pos],realfile,SMB_MAXPATH-2);
+		pos += len+2;
+		len+=1;
+	}
+	else
+	{
+		len = strlen(realfile);
+		memcpy(&ptr[pos],realfile,len);
+		pos += len+1;
+	}
 
 	/*** Update counts ***/
-	setUShort(ptr, T2_PRM_CNT, (7 + strlen(realfile)));
-	setUShort(ptr, T2_SPRM_CNT, (7 + strlen(realfile)));
+	setUShort(ptr, T2_PRM_CNT, (7 + len));
+	setUShort(ptr, T2_SPRM_CNT, (7 + len));
 	setUShort(ptr, T2_SPRM_OFS, 68);
-	setUShort(ptr, T2_SDATA_OFS, (75 + strlen(realfile)));
 	setUShort(ptr, T2_BYTE_CNT, (pos - bpos));
 
 	handle->message.msg = NBT_SESSISON_MSG;
@@ -1883,6 +2079,7 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 	s32 pos;
 	s32 ret;
 	s32 bpos;
+	unsigned int len;
 	SMBHANDLE *handle;
 	SMBSESSION *sess;
 
@@ -1895,12 +2092,13 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 	if(!handle) return SMB_ERROR;
 
 	sess = &handle->session;
-	MakeSMBHeader(SMB_TRANS2,CIFS_FLAGS1,CIFS_FLAGS2,handle);
+	MakeSMBHeader(SMB_TRANS2,CIFS_FLAGS1,handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 	MakeTRANS2Header(SMB_FIND_FIRST2,handle);
+
+	ptr = handle->message.smb;
 
 	bpos = pos = (T2_BYTE_CNT+2);
 	pos += 3;	     /*** Padding ***/
-	ptr = handle->message.smb;
 	setUShort(ptr, pos, flags);
 	pos += 2;					  /*** Flags ***/
 	setUShort(ptr, pos, 1);
@@ -1910,14 +2108,24 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 	setUShort(ptr, pos, 260); // SMB_FIND_FILE_BOTH_DIRECTORY_INFO
 	pos += 2;					  /*** Level of Interest ***/
 	pos += 4;    /*** Storage Type == 0 ***/
-	memcpy(&ptr[pos], filename, strlen(filename));
-	pos += strlen(filename)+1;			   /*** Include padding ***/
+
+	if(handle->unicode)
+	{
+		len = utf8_to_utf16((char*)&ptr[pos], (char*)filename,SMB_MAXPATH-2);
+		pos += len+2;
+		len++;
+	}
+	else
+	{
+		len = strlen(filename);
+		memcpy(&ptr[pos],filename,len);
+		pos += len+1;
+	}
 
 	/*** Update counts ***/
-	setUShort(ptr, T2_PRM_CNT, (13+strlen(filename)));
-	setUShort(ptr, T2_SPRM_CNT, (13+strlen(filename)));
+	setUShort(ptr, T2_PRM_CNT, (13+len));
+	setUShort(ptr, T2_SPRM_CNT, (13+len));
 	setUShort(ptr, T2_SPRM_OFS, 68);
-	setUShort(ptr, T2_SDATA_OFS,(81+strlen(filename)));
 	setUShort(ptr, T2_BYTE_CNT,(pos-bpos));
 
 	handle->message.msg = NBT_SESSISON_MSG;
@@ -1952,8 +2160,12 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 			sdir->size = getULongLong(ptr, pos); pos += 8;
 			pos += 8;
 			sdir->attributes = getUInt(ptr, pos); pos += 4;
+			len=getUInt(ptr, pos);
 			pos += 34;
-			strcpy(sdir->name, (const char*)&ptr[pos]);
+			if(handle->unicode)
+                utf16_to_utf8(sdir->name,(char*)&ptr[pos],len);
+			else
+                strcpy(sdir->name,(const char*)&ptr[pos]);
 
 			ret = SMB_SUCCESS;
 		}
@@ -1983,7 +2195,7 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	sess = &handle->session;
 	if(sess->eos || sdir->sid==0) return SMB_ERROR;
 
-	MakeSMBHeader(SMB_TRANS2,CIFS_FLAGS1,CIFS_FLAGS2,handle);
+	MakeSMBHeader(SMB_TRANS2,CIFS_FLAGS1,handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 	MakeTRANS2Header(SMB_FIND_NEXT2,handle);
 
 	bpos = pos = (T2_BYTE_CNT+2);
@@ -2004,7 +2216,6 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	setUShort(ptr, T2_PRM_CNT, 13);
 	setUShort(ptr, T2_SPRM_CNT, 13);
 	setUShort(ptr, T2_SPRM_OFS, 68);
-	setUShort(ptr, T2_SDATA_OFS, 81);
 	setUShort(ptr, T2_BYTE_CNT, (pos-bpos));
 
 	handle->message.msg = NBT_SESSISON_MSG;
@@ -2026,6 +2237,7 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 
 		if (sess->count)
 		{
+			int len;
 			pos += 4; // ULONG NextEntryOffset;
 			pos += 4; // ULONG FileIndex;
 			sdir->ctime = getULongLong(ptr, pos) - handle->session.timeOffset; pos += 8; // ULONGLONG - creation time
@@ -2035,8 +2247,12 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 			sdir->size = getULongLong(ptr, pos); pos += 8;
 			pos += 8;
 			sdir->attributes = getUInt(ptr, pos); pos += 4;
+			len=getUInt(ptr, pos);
 			pos += 34;
-			strcpy (sdir->name, (const char*)&ptr[pos]);
+			if(handle->unicode)
+				utf16_to_utf8(sdir->name, (char*)&ptr[pos],len);
+			else
+				strcpy (sdir->name, (const char*)&ptr[pos]);
 
 			ret = SMB_SUCCESS;
 		}
@@ -2065,7 +2281,7 @@ s32 SMB_FindClose(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	sess = &handle->session;
 	if(sdir->sid==0) return SMB_ERROR;
 
-	MakeSMBHeader(SMB_FIND_CLOSE2,CIFS_FLAGS1,CIFS_FLAGS2,handle);
+	MakeSMBHeader(SMB_FIND_CLOSE2,CIFS_FLAGS1,handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);
 
 	pos  = SMB_HEADER_SIZE;
 	ptr = handle->message.smb;
