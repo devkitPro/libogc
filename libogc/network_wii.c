@@ -29,15 +29,17 @@ distribution.
 
 
 #define MAX_IP_RETRIES		100
-#define MAX_INIT_RETRIES	20
+#define MAX_INIT_RETRIES	32
 
 //#define DEBUG_NET
 
 #ifdef DEBUG_NET
 #define debug_printf(fmt, args...) \
-	fprintf(stderr, "%s:%d:" fmt, __FUNCTION__, __LINE__, ##args)
+	do { \
+		fprintf(stderr, "%s:%d:" fmt, __FUNCTION__, __LINE__, ##args); \
+	} while (0)
 #else
-#define debug_printf(fmt, args...)
+#define debug_printf(fmt, args...) do { } while (0)
 #endif // DEBUG_NET
 
 #include <stdio.h>
@@ -105,6 +107,23 @@ enum {
 	IOCTL_SO_ICMPCLOSE          // todo
 };
 
+struct init_data {
+	u32 state;
+	s32 fd;
+	s32 prevres;
+	s32 result;
+	syswd_t alarm;
+	u32 retries;
+	netcallback cb;
+	void *usrdata;
+	u8 *buf;
+};
+
+struct init_default_cb {
+	lwpq_t queue;
+	s32 result;
+};
+
 struct bind_params {
 	u32 socket;
 	u32 has_name;
@@ -136,10 +155,10 @@ struct setsockopt_params {
 // I sense a pattern here...
 static u8 _net_error_code_map[] = {
 	0, // 0
- 	E2BIG,
- 	EACCES,
+ 	E2BIG, 
+ 	EACCES, 
  	EADDRINUSE,
- 	EADDRNOTAVAIL,
+ 	EADDRNOTAVAIL, 
  	EAFNOSUPPORT, // 5
 	EAGAIN,
 	EALREADY,
@@ -214,6 +233,9 @@ static u8 _net_error_code_map[] = {
  	ETIMEDOUT,
 };
 
+static bool _init_busy = false;
+static bool _init_abort = false;
+static s32 _last_init_result = -ENETDOWN;
 static s32 net_ip_top_fd = -1;
 static u8 __net_heap_inited = 0;
 static s32 __net_hid=-1;
@@ -228,8 +250,8 @@ static char __kd_fs[] ATTRIBUTE_ALIGN(32) = "/dev/net/kd/request";
 static s32 NetCreateHeap()
 {
 	u32 level;
-	void *net_heap_ptr;
-
+	void *net_heap_ptr;	
+	
 	_CPU_ISR_Disable(level);
 
 	if(__net_heap_inited)
@@ -237,7 +259,7 @@ static s32 NetCreateHeap()
 		_CPU_ISR_Restore(level);
 		return IPC_OK;
 	}
-
+	
 	net_heap_ptr = (void *)ROUNDDOWN32(((u32)SYS_GetArena2Hi() - NET_HEAP_SIZE));
 	if((u32)net_heap_ptr < (u32)SYS_GetArena2Lo())
 	{
@@ -271,51 +293,6 @@ static s32 _net_convert_error(s32 ios_retval)
 	return -_net_error_code_map[-ios_retval];
 }
 
-static s32 _open_manage_fd(void)
-{
-	s32 ncd_fd;
-
-	do {
-		ncd_fd = _net_convert_error(IOS_Open(__manage_fs, 0));
-		if (ncd_fd < 0) usleep(100000);
-	} while(ncd_fd == IPC_ENOENT);
-
-	return ncd_fd;
-}
-
-s32 NCDGetLinkStatus(void)
-{
-	s32 ret, ncd_fd;
-	STACK_ALIGN(u8, linkinfo, 0x20, 32);
-
-	ncd_fd = _open_manage_fd();
-	if (ncd_fd < 0) return ncd_fd;
-
-	ret = _net_convert_error(IOS_IoctlvFormat(__net_hid, ncd_fd, IOCTL_NCD_GETLINKSTATUS, ":d", linkinfo, 0x20));
-	IOS_Close(ncd_fd);
-
-  	if (ret < 0) debug_printf("NCDGetLinkStatus returned error %d\n", ret);
-
-	return ret;
-}
-
-static s32 NWC24iStartupSocket(void)
-{
-	s32 kd_fd, ret;
-	STACK_ALIGN(u8, kd_buf, 0x20, 32);
-
-	kd_fd = _net_convert_error(IOS_Open(__kd_fs, 0));
-	if (kd_fd < 0) {
-		debug_printf("IOS_Open(%s) failed with code %d\n", __kd_fs, kd_fd);
-		return kd_fd;
-	}
-
-	ret = _net_convert_error(IOS_Ioctl(kd_fd, IOCTL_NWC24_STARTUP, NULL, 0, kd_buf, 0x20));
-	if (ret < 0) debug_printf("IOS_Ioctl(6)=%d\n", ret);
-  	IOS_Close(kd_fd);
-  	return ret;
-}
-
 u32 net_gethostip(void)
 {
 	u32 ip_addr=0;
@@ -324,75 +301,332 @@ u32 net_gethostip(void)
 	if (net_ip_top_fd < 0) return 0;
 	for (retries=0, ip_addr=0; !ip_addr && retries < MAX_IP_RETRIES; retries++) {
 		ip_addr = IOS_Ioctl(net_ip_top_fd, IOCTL_SO_GETHOSTID, 0, 0, 0, 0);
-		debug_printf("."); fflush(stdout);
-		if (!ip_addr) usleep(100000);
+#ifdef DEBUG_NET
+		debug_printf(".");
+		fflush(stdout);
+#endif
+		if (!ip_addr)
+			usleep(100000);
 	}
 
 	return ip_addr;
 }
 
-s32 net_init(void)
-{
-	s32 ret;
-	u32 ip_addr = 0;
+static s32 net_init_chain(s32 result, void *usrdata);
 
-	if (net_ip_top_fd >= 0) return 0;
+static void net_init_alarm(syswd_t alarm, void *cb_arg) {
+	debug_printf("net_init alarm\n");
+	net_init_chain(0, cb_arg);
+}
 
-	ret=NetCreateHeap();
-	if (ret != IPC_OK) return ret;
-	if (__net_hid == -1) __net_hid = iosCreateHeap(1024); //only needed for ios calls
-	if (__net_hid < 0) return __net_hid;
+static s32 net_init_chain(s32 result, void *usrdata) {
+	struct init_data *data = (struct init_data *) usrdata;
+	struct timespec tb;
 
-	ret = NCDGetLinkStatus();  // this must be called as part of initialization
-	if (ret < 0) {
-		debug_printf("NCDGetLinkStatus returned %d\n", ret);
-		return ret;
-	}
+	debug_printf("net_init chain entered: %u %d\n", data->state, result);
 
-	net_ip_top_fd = _net_convert_error(IOS_Open(__iptop_fs, 0));
-	if (net_ip_top_fd < 0) {
-		debug_printf("IOS_Open(/dev/net/ip/top)=%d\n", net_ip_top_fd);
-		return net_ip_top_fd;
-	}
-
-	ret = NWC24iStartupSocket(); // this must also be called during init
-	if (ret < 0) {
-		debug_printf("NWC24iStartupSocket returned %d\n", ret);
+	if (_init_abort) {
+		data->state = 0xff;
 		goto error;
 	}
 
-	ret = _net_convert_error(IOS_Ioctl(net_ip_top_fd, IOCTL_SO_STARTUP, 0, 0, 0, 0));
-	if (ret < 0) {
-		debug_printf("IOCTL_SO_STARTUP returned %d\n", ret);
-		goto error;
-	}
+	switch (data->state) {
+	case 0: // open manage fd
+		data->state = 1;
+		data->result = IOS_OpenAsync(__manage_fs, 0, net_init_chain, data);
+		if (data->result < 0) {
+			data->result = _net_convert_error(data->result);
+			goto done;
+		}
+		return 0;
 
-#ifdef DEBUG_NET
-	u8 *octets = (u8 *) &ip_addr;
-#endif
-	debug_printf("Getting IP Address"); fflush(stdout);
+	case 1: // get link status
+		if (result == IPC_ENOENT) {
+			debug_printf("IPC_ENOENT, retrying...\n");
+			data->state = 0;
+			tb.tv_sec = 0;
+			tb.tv_nsec = 100000000;
+			data->result = SYS_SetAlarm(data->alarm, &tb, net_init_alarm, data);
+			if (data->result) {
+				debug_printf("error setting the alarm: %d\n", data->result);
+				goto done;
+			}
+			return 0;
+		}
 
-	ip_addr=net_gethostip();
+		if (result < 0) {
+			data->result = _net_convert_error(result);
+			debug_printf("error opening the manage fd: %d\n", data->result);
+			goto done;
+		}
 
-	if (!ip_addr) {
-		debug_printf("Unable to obtain IP address\n");
-		ret = -ETIMEDOUT;
-		goto error;
-	}
+		data->fd = result;
+		data->state = 2;
+		data->result = IOS_IoctlvFormatAsync(__net_hid, data->fd, IOCTL_NCD_GETLINKSTATUS, net_init_chain, data, ":d", data->buf, 0x20);
+		if (data->result < 0) {
+			data->result = _net_convert_error(data->result);
+			data->state = 0xff;
+			if (IOS_CloseAsync(data->fd, net_init_chain, data) < 0)
+				goto done;
+		}
+		return 0;
 
-	debug_printf(" %d.%d.%d.%d\n", octets[0], octets[1], octets[2], octets[3]);
+	case 2: // close manage fd
+		data->prevres = result;
+		data->state = 3;
+		data->result = IOS_CloseAsync(data->fd, net_init_chain, data);
+		if (data->result < 0) {
+			data->result = _net_convert_error(data->result);
+			goto done;
+		}
+		return 0;
 
-	return 0;
+	case 3: // open top fd
+		if (data->prevres < 0) {
+			data->result = _net_convert_error(data->prevres);
+			debug_printf("invalid link status %d\n", data->result);
+			goto done;
+		}
+
+		data->state = 4;
+		data->result = IOS_OpenAsync(__iptop_fs, 0, net_init_chain, data);
+		if (data->result < 0) {
+			data->result = _net_convert_error(data->result);
+			goto done;
+		}
+		return 0;
+
+	case 4: // open request fd
+		if (result < 0) {
+			data->result = _net_convert_error(result);
+			debug_printf("error opening the top fd: %d\n", data->result);
+			goto done;
+		}
+
+		net_ip_top_fd = result;
+		data->state = 5;
+		data->result = IOS_OpenAsync(__kd_fs, 0, net_init_chain, data);
+		if (data->result < 0) {
+			data->result = _net_convert_error(data->result);
+			data->state = 0xff;
+			goto error;
+		}
+		return 0;
+
+	case 5: // NWC24 startup
+		if (result < 0) {
+			data->result = _net_convert_error(result);
+			debug_printf("error opening the request fd: %d\n", data->result);
+			data->state = 0xff;
+			goto error;
+		}
+
+		data->fd = result;
+		data->state = 6;
+		data->result = IOS_IoctlAsync(data->fd, IOCTL_NWC24_STARTUP, NULL, 0, data->buf, 0x20, net_init_chain, data);
+		if (data->result < 0) {
+			data->result = _net_convert_error(data->result);
+			data->state = 0xff;
+			if (IOS_CloseAsync(data->fd, net_init_chain, data) < 0)
+				goto done;
+		}
+		return 0;
+
+	case 6: // close request fd
+		data->prevres = result;
+		data->state = 7;
+		data->result = IOS_CloseAsync(data->fd, net_init_chain, data);
+		if (data->result < 0) {
+			data->result = _net_convert_error(data->result);
+			data->state = 0xff;
+			goto error;
+		}
+		return 0;
+
+	case 7: // socket startup
+		if (data->prevres < 0) {
+			data->result = _net_convert_error(data->prevres);
+			debug_printf("NWC24 startup failed: %d\n", data->result);
+			data->state = 0xff;
+			goto error;
+		}
+
+		data->state = 8;
+		data->retries = MAX_IP_RETRIES;
+		data->result = IOS_IoctlAsync(net_ip_top_fd, IOCTL_SO_STARTUP, 0, 0, 0, 0, net_init_chain, data);
+		if (data->result < 0) {
+			data->result = _net_convert_error(data->result);
+			data->state = 0xff;
+			goto error;
+		}
+		return 0;
+
+	case 8: // check ip
+		if (result < 0) {
+			data->result = _net_convert_error(result);
+			debug_printf("socket startup failed: %d\n", data->result);
+			data->state = 0xff;
+			goto error;
+		}
+
+		data->state = 9;
+		data->result = IOS_IoctlAsync(net_ip_top_fd, IOCTL_SO_GETHOSTID, 0, 0, 0, 0, net_init_chain, data);
+		if (data->result < 0) {
+			data->result = _net_convert_error(data->result);
+			data->state = 0xff;
+			goto error;
+		}
+		return 0;
+
+	case 9: // done, check result
+		if (result == 0) {
+			if (!data->retries) {
+				data->result = -ETIMEDOUT;
+				debug_printf("unable to obtain ip\n");
+				data->state = 0xff;
+				goto error;
+			}
+
+			debug_printf("unable to obtain ip, retrying...\n");
+			data->state = 8;
+			data->retries--;
+			tb.tv_sec = 0;
+			tb.tv_nsec = 100000000;
+			data->result = SYS_SetAlarm(data->alarm, &tb, net_init_alarm, data);
+			if (data->result) {
+				data->state = 0xff;
+				debug_printf("error setting the alarm: %d\n", data->result);
+				goto error;
+			}
+			return 0;
+		}
+
+		data->result = 0;
+		goto done;
 
 error:
-	IOS_Close(net_ip_top_fd);
-	net_ip_top_fd = -1;
-	return ret;
+	case 0xff: // error occured before, last async call finished
+		if (net_ip_top_fd >= 0) {
+			data->fd = net_ip_top_fd;
+			net_ip_top_fd = -1;
+			if (IOS_CloseAsync(data->fd, net_init_chain, data) < 0)
+				goto done;
+			return 0;
+		}
+		goto done;
+
+	default:
+		debug_printf("unknown state in chain %d\n", data->state);
+		data->result = -1;
+
+		break;
+	}
+
+done:
+	SYS_RemoveAlarm(data->alarm);
+
+	_last_init_result = data->result;
+
+	if (data->cb)
+		data->cb(data->result, data->usrdata);
+
+	free(data->buf);
+	free(data);
+
+	_init_busy = false;
+
+	return 0;
+}
+
+s32 net_init_async(netcallback cb, void *usrdata) {
+	s32 ret;
+	struct init_data *data;
+
+	if (net_ip_top_fd >= 0)
+		return 0;
+
+	if (_init_busy)
+		return -EBUSY;
+
+	ret = NetCreateHeap(); 
+	if (ret != IPC_OK)
+		return ret;
+
+	if (__net_hid == -1)
+		__net_hid = iosCreateHeap(1024); //only needed for ios calls
+
+	if (__net_hid < 0)
+		return __net_hid;
+
+	data = malloc(sizeof(struct init_data));
+	if (!data)
+		return -1;
+
+	memset(data, 0, sizeof(struct init_data));
+
+	if (SYS_CreateAlarm(&data->alarm)) {
+		debug_printf("error creating alarm\n");
+		free(data);
+		return -1;
+	}
+
+	data->buf = memalign(32, 0x20);
+	if (!data->buf) {
+		free(data);
+		return -1;
+	}
+
+	data->cb = cb;
+	data->usrdata = usrdata;
+
+	// kick off the callback chain
+	_init_busy = true;
+	_init_abort = false;
+	_last_init_result = -EBUSY;
+	net_init_chain(IPC_ENOENT, data);
+
+	return 0;
+}
+
+static void net_init_callback(s32 result, void *usrdata) {
+	struct init_default_cb *data = (struct init_default_cb *) usrdata;
+
+	data->result = result;
+	LWP_ThreadBroadcast(data->queue);
+
+	return;
+}
+
+s32 net_init(void) {
+	struct init_default_cb data;
+
+	if (net_ip_top_fd >= 0)
+		return 0;
+
+	LWP_InitQueue(&data.queue);
+	net_init_async((netcallback)net_init_callback, &data);
+	LWP_ThreadSleep(data.queue);
+	LWP_CloseQueue(data.queue);
+
+	return data.result;
+}
+
+s32 net_get_status(void) {
+	return _last_init_result;
 }
 
 void net_deinit() {
+	if (_init_busy) {
+		debug_printf("aborting net_init_async\n");
+		_init_abort = true;
+		while (_init_busy)
+			usleep(50);
+		debug_printf("net_init_async done\n");
+	}
+
 	if (net_ip_top_fd >= 0) IOS_Close(net_ip_top_fd);
 	net_ip_top_fd = -1;
+	_last_init_result = -ENETDOWN;
 }
 
 /* Returned value is a static buffer -- this function is not threadsafe! */
@@ -568,9 +802,8 @@ s32 net_connect(s32 s, struct sockaddr *addr, socklen_t addrlen)
 	memcpy(&params->addr, addr, addrlen);
 
 	ret = _net_convert_error(IOS_Ioctl(net_ip_top_fd, IOCTL_SO_CONNECT, params, sizeof(struct connect_params), NULL, 0));
-	if (ret < 0) {
+	if (ret < 0)
     	debug_printf("SOConnect(%d, %p)=%d\n", s, addr, ret);
-	}
 
   	return ret;
 }
@@ -691,7 +924,8 @@ s32 net_close(s32 s)
 	*_socket = s;
 	ret = _net_convert_error(IOS_Ioctl(net_ip_top_fd, IOCTL_SO_CLOSE, _socket, 4, NULL, 0));
 
-	if (ret < 0) debug_printf("net_close(%d)=%d\n", s, ret);
+	if (ret < 0)
+		debug_printf("net_close(%d)=%d\n", s, ret);
 
 	return ret;
 }
@@ -815,13 +1049,23 @@ s32 if_config(char *local_ip, char *netmask, char *gateway,bool use_dhcp)
 	s32 i,ret;
 	struct in_addr hostip;
 
-	if ( use_dhcp != true ) return -EINVAL;
+	if (!use_dhcp)
+		return -EINVAL;
 
-	for(i=0;i<MAX_INIT_RETRIES && (ret=net_init())==-EAGAIN;i++);
-	if(ret<0) return ret;
+	for (i = 0; i < MAX_INIT_RETRIES; ++i) {
+		ret = net_init();
+
+		if ((ret != -EAGAIN) && (ret != -ETIMEDOUT))
+			break;
+
+		usleep(50 * 1000);
+	}
+
+	if (ret < 0)
+		return ret;
 
 	hostip.s_addr = net_gethostip();
-	if ( local_ip!=NULL && hostip.s_addr ) {
+	if (local_ip && hostip.s_addr) {
 		strcpy(local_ip, inet_ntoa(hostip));
 		return 0;
 	}
@@ -834,14 +1078,23 @@ s32 if_configex(struct in_addr *local_ip, struct in_addr *netmask, struct in_add
 	s32 i,ret;
 	struct in_addr hostip;
 
-	if ( use_dhcp != true ) return -EINVAL;
+	if (!use_dhcp)
+		return -EINVAL;
 
-	for(i=0;i<MAX_INIT_RETRIES && (ret=net_init())==-EAGAIN;i++);
-	if(ret<0) return ret;
+	for (i = 0; i < MAX_INIT_RETRIES; ++i) {
+		ret = net_init();
+
+		if ((ret != -EAGAIN) && (ret != -ETIMEDOUT))
+			break;
+
+		usleep(50 * 1000);
+	}
+
+	if (ret < 0)
+		return ret;
 
 	hostip.s_addr = net_gethostip();
-	if ( local_ip!=NULL && hostip.s_addr )
-	{
+	if (local_ip && hostip.s_addr) {
 		*local_ip = hostip;
 		return 0;
 	}

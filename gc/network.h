@@ -254,7 +254,13 @@ s32 if_config( char *local_ip, char *netmask, char *gateway,bool use_dhcp);
 s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr *gateway,bool use_dhcp);
 
 s32 net_init();
+#ifdef HW_RVL
+typedef s32 (*netcallback)(s32 result, void *usrdata);
+s32 net_init_async(netcallback cb, void *usrdata);
+s32 net_get_status(void);
+#endif
 void net_deinit();
+
 u32 net_gethostip();
 s32 net_socket(u32 domain,u32 type,u32 protocol);
 s32 net_bind(s32 s,struct sockaddr *name,socklen_t namelen);
