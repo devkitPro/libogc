@@ -22,8 +22,11 @@
 	}									\
 })
 
-#define mfpvr()   ({unsigned int rval; \
-		asm volatile("mfpvr %0" : "=r" (rval)); rval;})
+static inline unsigned int mfpvr() {
+	unsigned int rval;
+	asm volatile("mfpvr %0" : "=r" (rval));
+	return rval;
+}
 
 #define mfdcr(_rn) ({register u32 _rval; \
 		asm volatile("mfdcr %0," __stringify(_rn) \
