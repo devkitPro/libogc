@@ -2580,6 +2580,7 @@ s32 DVD_Mount()
 #ifdef _DVD_DEBUG
 	printf("DVD_Mount()\n");
 #endif
+
 	ret = DVD_MountAsync(&__dvd_block$15,__dvd_mountsynccb);
 	if(!ret) return -1;
 
@@ -2635,7 +2636,16 @@ u32 DVD_SetAutoInvalidation(u32 auto_inv)
 static bool dvdio_Startup()
 {
 	DVD_Init();
-	DVD_Mount();
+
+	if (mfpvr() == 0x00083214) // GameCube
+	{
+		DVD_Mount();
+	}
+	else
+	{
+		DVD_Reset(DVD_RESETHARD);
+		DVD_ReadDiskID(&__dvd_block$15, &__dvd_tmpid0, callback);
+	}
 	return true;
 }
 

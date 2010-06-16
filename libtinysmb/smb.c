@@ -1191,7 +1191,6 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 {
 	s32 ret = 0;
 	SMBHANDLE *handle;
-	struct hostent *hp;
 	struct in_addr val;
 
 	*smbhndl = SMB_HANDLE_NULL;
@@ -1228,11 +1227,15 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 	}
 	else // might be a hostname
 	{
-		hp = net_gethostbyname(server);
+#ifdef HW_RVL
+		struct hostent *hp = net_gethostbyname(server);
 		if (!hp || !(hp->h_addrtype == PF_INET))
 			ret = SMB_BAD_LOGINDATA;
 		else
 			memcpy((char *)&handle->server_addr.sin_addr.s_addr, hp->h_addr_list[0], hp->h_length);
+#else
+		return SMB_ERROR;
+#endif
 	}
 
 	*smbhndl =(SMBCONN)(LWP_OBJMASKTYPE(SMB_OBJTYPE_HANDLE)|LWP_OBJMASKID(handle->object.id));
