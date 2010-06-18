@@ -1395,6 +1395,11 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 	if(!name || strlen(name) > 9)
 		return false;
 
+	char devname[10];
+	sprintf(devname, "%s:", name);
+	if(FindDevice(devname))
+		return false;
+
 	while(smbInited == 2)
 		usleep(1000);
 
