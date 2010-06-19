@@ -1397,7 +1397,7 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 
 	char devname[10];
 	sprintf(devname, "%s:", name);
-	if(FindDevice(devname))
+	if(FindDevice(devname) >= 0)
 		return false;
 
 	while(smbInited == 2)
