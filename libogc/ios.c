@@ -46,7 +46,7 @@ distribution.
 
 //#define DEBUG_IOS
 
-#define IOS_MAX_VERSION 36
+#define IOS_MAX_VERSION 61
 #define IOS_MIN_VERSION 3
 
 static s32 __ios_hid = -1;
