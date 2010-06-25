@@ -584,9 +584,9 @@ static s32 SMBCheck(u8 command,SMBHANDLE *handle)
 	/*keep going till we get a NBT session message*/
 	do{
 		ret=smb_recv(handle->sck_server, (u8*)nbt, 4);
-		if(ret<0) return SMB_ERROR;
+		if(ret!=4) return SMB_ERROR;
 
-		if((ret>0) && nbt->msg!=NBT_SESSISON_MSG)
+		if(nbt->msg!=NBT_SESSISON_MSG)
 		{
 			readlen=(u32)((nbt->length_high<<16)|nbt->length);
 			if(readlen>0)
@@ -598,14 +598,14 @@ static s32 SMBCheck(u8 command,SMBHANDLE *handle)
 		t2=ticks_to_millisecs(gettime());
 		if( (t2 - t1) > RECV_TIMEOUT * 2) return SMB_ERROR;
 
-	}while(nbt->msg!=NBT_SESSISON_MSG);
+	} while(nbt->msg!=NBT_SESSISON_MSG);
 
 	/* obtain required length from NBT header if readlen==0*/
 	readlen=(u32)((nbt->length_high<<16)|nbt->length);
 
 	// Get server message block
 	ret=smb_recv(handle->sck_server, ptr, readlen);
-	if(ret<0) return SMB_ERROR;
+	if(readlen!=ret) return SMB_ERROR;
 
 	/*** Do basic SMB Header checks ***/
 	ret = getUInt(ptr,SMB_OFFSET_PROTO);
