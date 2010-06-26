@@ -976,7 +976,6 @@ static s32 do_netconnect(SMBHANDLE *handle)
 	u32 nodelay;
 	s32 ret;
 	s32 sock;
-	u32 flags=0;
 	u64 t1,t2;
 
 	handle->sck_server = INVALID_SOCKET;
@@ -984,14 +983,24 @@ static s32 do_netconnect(SMBHANDLE *handle)
 	sock = net_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
 	if(sock==INVALID_SOCKET) return -1;
 
-	/*** Switch off Nagle, ON TCP_NODELAY ***/
+	// Switch off Nagle with TCP_NODELAY
 	nodelay = 1;
-	ret = net_setsockopt(sock,IPPROTO_TCP,TCP_NODELAY,&nodelay,sizeof(nodelay));
+	net_setsockopt(sock,IPPROTO_TCP,TCP_NODELAY,&nodelay,sizeof(nodelay));
 
-	//create non blocking socket
-	flags = net_fcntl(sock, F_GETFL, 0);
-	flags |= IOS_O_NONBLOCK;
-	ret=net_fcntl(sock, F_SETFL, flags);
+	// create non blocking socket
+	ret = net_fcntl(sock, F_GETFL, 0);
+	if (ret < 0)
+	{
+		net_close(sock);
+		return ret;
+	}
+
+	ret = net_fcntl(sock, F_SETFL, ret | IOS_O_NONBLOCK);
+	if (ret < 0)
+	{
+		net_close(sock);
+		return ret;
+	}
 
 	t1=ticks_to_millisecs(gettime());
 	while(1)
