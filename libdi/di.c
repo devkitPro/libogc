@@ -41,10 +41,7 @@ distribution.
 
 #define MOUNT_TIMEOUT		15000 // 15 seconds
 
-typedef int(*read_func)(void*,uint32_t,uint32_t);
-typedef int(*read_func_async)(void*,uint32_t,uint32_t,ipccallback);
-
-static int di_fd = -1;
+int di_fd = -1;
 static bool load_dvdx = true;
 static int state = DVD_INIT | DVD_NO_DISC;
 
