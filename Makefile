@@ -160,7 +160,7 @@ DBOBJ		:=	uip_ip.o uip_tcp.o uip_pbuf.o uip_netif.o uip_arp.o uip_arch.o \
 				uip_icmp.o memb.o memr.o bba.o tcpip.o debug.o debug_handler.o \
 				debug_supp.o geckousb.o
 #---------------------------------------------------------------------------------
-DIOBJ		:=	di.o di_read.o stubasm.o stubload.o 
+DIOBJ		:=	di.o stubasm.o stubload.o 
 
 #---------------------------------------------------------------------------------
 BTEOBJ		:=	bte.o hci.o l2cap.o btmemb.o btmemr.o btpbuf.o physbusif.o

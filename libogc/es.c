@@ -122,14 +122,18 @@ s32 __ES_Init(void)
 	printf("ES Init\n");
 #endif
 
-	if(__es_hid <0 ) {
+	if(__es_hid < 0 ) {
 		__es_hid = iosCreateHeap(ES_HEAP_SIZE);
-		if(__es_hid < 0) return __es_hid;
+		if(__es_hid < 0)
+			return __es_hid;
 	}
 
-	ret = IOS_Open(__es_fs,0);
-	if(ret<0) return ret;
-	__es_fd = ret;
+	if (__es_fd < 0) {
+		ret = IOS_Open(__es_fs,0);
+		if(ret<0)
+			return ret;
+		__es_fd = ret;
+	}
 
 #ifdef DEBUG_ES
 	printf("ES FD %d\n",__es_fd);
@@ -150,15 +154,11 @@ s32 __ES_Close(void)
 
 	ret = IOS_Close(__es_fd);
 
-	// If close fails, I'd rather return error but still reset the fd.
-	// Otherwise you're stuck with an uncloseable ES, and you can't open again either
-	//if(ret<0) return ret;
-	if(ret<0) {
-		__es_fd = -1;
-		return ret;
-	}
-
 	__es_fd = -1;
+
+	if(ret<0)
+		return ret;
+
 	return 0;
 }
 

@@ -2,6 +2,7 @@
 
 di.h -- Drive Interface library
 
+Team Twiizers
 Copyright (C) 2008
 
 Erant
@@ -28,8 +29,6 @@ distribution.
 
 -------------------------------------------------------------*/
 
-
-
 /*
 All buffers in this document need to be 32-byte aligned!
 */
@@ -40,10 +39,6 @@ All buffers in this document need to be 32-byte aligned!
 #include <stdint.h>
 #include <ogc/ipc.h>
 #include <ogc/disc_io.h>
-
-/*
-DEFINES GO HERE!
-*/
 
 #define DVD_IDENTIFY			0x12
 #define DVD_READ_DISCID			0x70
@@ -71,18 +66,15 @@ DEFINES GO HERE!
 #define DVD_D0		0x20
 #define DVD_A8		0x40
 
-#define LIBDI_MAX_RETRIES	16
-#define DVD_COVER_DISC_INSERTED	0x02
+#define DVD_COVER_DISC_INSERTED 0x02
+
+#define LIBDI_MAX_RETRIES 16
 
 #define DEVICE_TYPE_WII_DVD		(('W'<<24)|('D'<<16)|('V'<<8)|'D')
 
 #ifdef __cplusplus
-	extern "C" {
+extern "C" {
 #endif
-
-/*
-TYPEDEFS GO HERE!
-*/
 
 typedef struct{
 	uint16_t	rev;
@@ -91,16 +83,12 @@ typedef struct{
 }DI_DriveID;
 
 typedef int(*di_callback)(uint32_t status, uint32_t error);
-typedef int(*read_func)(void*,uint32_t,uint32_t);
-typedef int(*read_func_async)(void*,uint32_t,uint32_t,ipccallback);
 
 extern const DISC_INTERFACE __io_wiidvd;
-/*
-FUNCTION PROTOTYPES GO HERE!
-*/
 
 int DI_Init();
 void DI_LoadDVDX(bool load);
+void DI_SetInitCallback(di_callback cb);
 void DI_Mount();
 void DI_Close();
 int DI_GetStatus();
@@ -131,7 +119,8 @@ int DI_OpenPartition(u32 offset);
 int DI_ClosePartition(void);
 
 #ifdef __cplusplus
-	}
+}
 #endif
 
 #endif
+

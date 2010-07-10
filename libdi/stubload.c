@@ -1,4 +1,4 @@
-
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,17 +19,14 @@
 #include <ogc/lwp_threads.h>
 #include <ogc/machine/processor.h>
 
-context_storage di_ctx;
+static context_storage di_ctx;
 
 #define IOS_HEAP_SIZE 0x1000
 
 void __IPC_Reinitialize(void);
-extern void __exi_init();
 
-static vu16* const _viReg = (u16*)0xCC002000;
 static vu32* const _piReg = (u32*)0xCC003000;
 static vu16* const _memReg = (u16*)0xCC004000;
-static vu16* const _dspReg = (u16*)0xCC005000;
 
 //#define DEBUG_DVD_STUB
 
@@ -39,7 +36,7 @@ static vu16* const _dspReg = (u16*)0xCC005000;
 #define dprintf(...)
 #endif
 
-void dumpregs(void)
+static void dumpregs(void)
 {
 	dprintf(" MSR:     %08x\n",mfmsr());
 	dprintf(" SPRGx:   %08x %08x %08x %08x\n", mfspr(SPRG0), mfspr(SPRG1), mfspr(SPRG2), mfspr(SPRG3));
@@ -63,9 +60,9 @@ void dumpregs(void)
 	*/
 }
 
-register_storage di_regs;
+static register_storage di_regs;
 
-void __distub_saveregs(void)
+static void __distub_saveregs(void)
 {
 	int i;
 	di_regs.timebase = gettime();
@@ -73,13 +70,51 @@ void __distub_saveregs(void)
 		di_regs.piReg[i] = _piReg[i];
 }
 
-void __distub_restregs(void)
+static void __distub_restregs(void)
 {
 	int i;
 	for(i=1;i<6;i++)
 		_piReg[i] = di_regs.piReg[i];
 	//i = _piReg[0]; //clear all interrupts
 	settime(di_regs.timebase);
+}
+
+static u32 __di_check_ahbprot(void) {
+	s32 res;
+	u64 title_id;
+	u32 tmd_size;
+	STACK_ALIGN(u32, tmdbuf, 1024, 32);
+
+	res = ES_GetTitleID(&title_id);
+	if (res < 0) {
+		dprintf("ES_GetTitleID() failed: %d\n", res);
+		return res;
+	}
+
+	res  = ES_GetStoredTMDSize(title_id, &tmd_size);
+	if (res < 0) {
+		dprintf("ES_GetStoredTMDSize() failed: %d\n", res);
+		return res;
+	}
+
+	if (tmd_size > 4096) {
+		dprintf("TMD too big: %d\n", tmd_size);
+		return -EINVAL;
+	}
+
+	res = ES_GetStoredTMD(title_id, tmdbuf, tmd_size);
+	if (res < 0) {
+		dprintf("ES_GetStoredTMD() failed: %d\n", res);
+		return -EINVAL;
+	}
+
+	if ((tmdbuf[0x76] & 3) == 3) {
+		dprintf("ahbprot flags are set!\n");
+		return 1;
+	}
+
+	dprintf("ahbprot flags are not set!\n");
+	return 0;
 }
 
 static u32 __di_find_stub(u64 *title_id) {
@@ -97,9 +132,6 @@ static u32 __di_find_stub(u64 *title_id) {
 		dprintf("iosCreateHeap() failed: %d\n", ios_hid);
 		return ios_hid;
 	}
-
-	dprintf("Initializing ES\n");
-	__ES_Init();
 
 	res = ES_GetNumTitles(&count);
 	if (res < 0) {
@@ -153,7 +185,6 @@ static u32 __di_find_stub(u64 *title_id) {
 			continue;
 		}
 
-		// check the gid
 		if ((tmdbuf[0x18] == 'D') && (tmdbuf[0x19] == 'V')) {
 			rev_this = (tmdbuf[88] << 8) | tmdbuf[89];
 			dprintf("found stub with revision 0x%x\n", rev_this);
@@ -184,7 +215,19 @@ s32 __DI_StubLaunch(void)
 	s32 res;
 	u32 ints;
 
-	res =__di_find_stub(&titleID);
+	res = __ES_Init();
+
+	if (res < 0) {
+		dprintf("ES failed to initialize\n");
+		return res;
+	}
+
+	if (__di_check_ahbprot() == 1) {
+		dprintf("we already have full hw access\n");
+		return 1;
+	}
+
+	res = __di_find_stub(&titleID);
 	if (res < 0) {
 		dprintf("stub not installed\n");
 		return res;
@@ -266,7 +309,7 @@ s32 __DI_StubLaunch(void)
 	if(res < 0)
 		dprintf(" GetNumTicketViews failed: %d\n",res);
 	else
-		dprintf(" GetNumTicketViews: %d",numviews);
+		dprintf(" GetNumTicketViews: %d\n",numviews);
 
 	dprintf("Restarting threads timeslice ticker\n");
 	__lwp_thread_starttimeslice();
@@ -274,24 +317,3 @@ s32 __DI_StubLaunch(void)
 	return 0;
 }
 
-
-s32 __DI_LoadStub(void)
-{
-	int ret = 0;
-	int res;
-
-	res = __IOS_ShutdownSubsystems();
-	if(res < 0) ret = res;
-	res = __ES_Init();
-	if(res < 0) ret = res;
-	else {
-		res = __DI_StubLaunch();
-		if(res < 0) {
-			ret = res;
-			__ES_Close();
-		}
-	}
-	res = __IOS_InitializeSubsystems();
-	if(res < 0) ret = res;
-	return ret;
-}

@@ -2,6 +2,7 @@
 
 di.c -- Drive Interface library
 
+Team Twiizers
 Copyright (C) 2008
 
 Erant
@@ -40,70 +41,165 @@ distribution.
 
 #define MOUNT_TIMEOUT		15000 // 15 seconds
 
-int di_fd = -1;
+typedef int(*read_func)(void*,uint32_t,uint32_t);
+typedef int(*read_func_async)(void*,uint32_t,uint32_t,ipccallback);
+
+static int di_fd = -1;
 static bool load_dvdx = true;
-
-int _DI_ReadDVD_ReadID(void* buf, uint32_t len, uint32_t lba);
-int _DI_ReadDVD_ReadID_Async(void* buf, uint32_t len, uint32_t lba,ipccallback ipc_cb);
-
-int _DI_ReadDVD_A8(void* buf, uint32_t len, uint32_t lba);
-int _DI_ReadDVD_D0(void* buf, uint32_t len, uint32_t lba);
-
-int _DI_ReadDVD_A8_Async(void* buf, uint32_t len, uint32_t lba,ipccallback ipc_cb);
-int _DI_ReadDVD_D0_Async(void* buf, uint32_t len, uint32_t lba,ipccallback ipc_cb);
-
-void _DI_SetCallback(int di_command, ipccallback);
-static int _cover_callback(int ret, void* usrdata);
-
 static int state = DVD_INIT | DVD_NO_DISC;
+
+static int _cover_callback(int ret, void* usrdata);
 
 static unsigned int bufferMutex = 0;
 static uint32_t outbuf[8] __attribute__((aligned(32)));
 static uint32_t dic[8] __attribute__((aligned(32)));
-static char di_path[] ATTRIBUTE_ALIGN(32) = "/dev/di";
+static const char di_path[] ATTRIBUTE_ALIGN(32) = "/dev/di";
 
 static read_func DI_ReadDVDptr = NULL;
 static read_func_async DI_ReadDVDAsyncptr = NULL;
 static di_callback di_cb = NULL;
 
+static int _DI_ReadDVD_A8_Async(void* buf, uint32_t len, uint32_t lba, ipccallback ipc_cb){
+	int ret;
+	
+	if(!buf)
+		return -EINVAL;
+
+	if((uint32_t)buf & 0x1F) // This only works with 32 byte aligned addresses!
+		return -EFAULT;
+	
+	dic[0] = DVD_READ_UNENCRYPTED << 24;
+	dic[1] = len << 11; // 1 LB is 2048 bytes
+	dic[2] = lba << 9; // Nintendo's read function uses byteOffset >> 2, so we only shift 9 left, not 11.
+
+	ret = IOS_IoctlAsync(di_fd, DVD_READ_UNENCRYPTED, dic, 0x20, buf, len << 11,ipc_cb, buf);
+
+	if(ret == 2)
+		ret = EIO;
+
+	return (ret == 1)? 0 : -ret;
+}
+
+static int _DI_ReadDVD_D0_Async(void* buf, uint32_t len, uint32_t lba, ipccallback ipc_cb){
+	int ret;
+
+	if(!buf)
+		return -EINVAL;
+	
+	if((uint32_t)buf & 0x1F)
+		return -EFAULT;
+
+	dic[0] = DVD_READ << 24;
+	dic[1] = 0;		// Unknown what this does as of now. (Sets some value to 0x10 in the drive if set).
+	dic[2] = 0;		// USE_DEFAULT_CONFIG flag. Drive will use default config if this bit is set.
+	dic[3] = len;
+	dic[4] = lba;
+	
+	ret = IOS_IoctlAsync(di_fd, DVD_READ, dic, 0x20, buf, len << 11,ipc_cb, buf);
+
+	if(ret == 2)
+		ret = EIO;
+
+	return (ret == 1)? 0 : -ret;
+}
+
+static int _DI_ReadDVD_A8(void* buf, uint32_t len, uint32_t lba){
+	int ret, retry_count = LIBDI_MAX_RETRIES;
+	
+	if(!buf)
+		return -EINVAL;
+
+	if((uint32_t)buf & 0x1F) // This only works with 32 byte aligned addresses!
+		return -EFAULT;
+	
+	dic[0] = DVD_READ_UNENCRYPTED << 24;
+	dic[1] = len << 11; // 1 LB is 2048 bytes
+	dic[2] = lba << 9; // Nintendo's read function uses byteOffset >> 2, so we only shift 9 left, not 11.
+
+	do{	
+		ret = IOS_Ioctl(di_fd, DVD_READ_UNENCRYPTED, dic, 0x20, buf, len << 11);
+		retry_count--;
+	}while(ret != 1 && retry_count > 0);
+
+	if(ret == 2)
+		ret = EIO;
+
+	return (ret == 1)? 0 : -ret;
+}
+
+static int _DI_ReadDVD_D0(void* buf, uint32_t len, uint32_t lba){
+	int ret, retry_count = LIBDI_MAX_RETRIES;
+	
+	if(!buf)
+		return -EINVAL;
+	
+	if((uint32_t)buf & 0x1F)
+		return -EFAULT;
+
+	dic[0] = DVD_READ << 24;
+	dic[1] = 0; // Unknown what this does as of now. (Sets some value to 0x10 in the drive if set).
+	dic[2] = 0; // USE_DEFAULT_CONFIG flag. Drive will use default config if this bit is set.
+	dic[3] = len;
+	dic[4] = lba;
+
+	do{	
+		ret = IOS_Ioctl(di_fd, DVD_READ, dic, 0x20, buf, len << 11);
+		retry_count--;
+	}while(ret != 1 && retry_count > 0);
+
+	if(ret == 2)
+		ret = EIO;
+
+	return (ret == 1)? 0 : -ret;
+}
+
 /*
 Initialize the DI interface, should always be called first!
 */
 
-s32 __DI_LoadStub();
+s32 __DI_StubLaunch(void);
 
-int DI_Init(){
-	static int init = 0;
+int DI_Init() {
+	if(di_fd >= 0)
+		return 1;
 
 	state = DVD_INIT | DVD_NO_DISC;
 
-	if(!init && load_dvdx){
-		__DI_LoadStub();	// Marcan's 1337 magics happen here!
-		init = 1;
+	if(load_dvdx){
+		int res = __DI_StubLaunch(); // Marcan's 1337 magics happen here!
+
+		if (res < 0)
+			return res;
 	}
 
-	if(di_fd < 0)
+	if (di_fd < 0)
 		di_fd = IOS_Open(di_path, 2);
 
-	if(!bufferMutex)
+	if (di_fd < 0)
+		return di_fd;
+
+	if (!bufferMutex)
 		LWP_MutexInit(&bufferMutex, false);
 
-	return (di_fd >= 0)? di_fd : -1;
+	return 0;
 }
 
 void DI_LoadDVDX(bool load){
 	load_dvdx = load;
 }
 
-void DI_Mount(){
+void DI_Mount() {
+	if(di_fd < 0)
+		return;
+
 	uint32_t status;
 
-	if(DI_GetCoverRegister(&status)!=0) {
+	if (DI_GetCoverRegister(&status) != 0) {
 		state = DVD_NO_DISC;
 		return;
 	}
 
-	if((status&DVD_COVER_DISC_INSERTED)==0) {
+	if ((status & DVD_COVER_DISC_INSERTED) == 0) {
 		state = DVD_NO_DISC;
 		return;
 	}
@@ -113,7 +209,10 @@ void DI_Mount(){
 }
 
 void DI_Close(){
-	if(di_fd > 0)
+	if(di_fd < 0)
+		return;
+
+	if (di_fd > 0)
 		IOS_Close(di_fd);
 
 	di_fd = -1;
@@ -122,7 +221,7 @@ void DI_Close(){
 	DI_ReadDVDAsyncptr = NULL;
 	state = DVD_INIT | DVD_NO_DISC;
 
-	if(bufferMutex) {
+	if (bufferMutex) {
 		LWP_MutexDestroy(bufferMutex);
 		bufferMutex = 0;
 	}
@@ -173,6 +272,22 @@ static int _DI_ReadDVD_Check_Async(void* buf, uint32_t len, uint32_t lba,	ipccal
 	}
 	return ret;
 }
+	
+static void _DI_SetCallback(int ioctl_nr, ipccallback ipc_cb){
+	if ((di_fd < 0) || !ipc_cb)
+		return;
+
+	while(LWP_MutexLock(bufferMutex));
+
+	memset(dic, 0x00, sizeof(dic));
+
+	dic[0] = ioctl_nr << 24;
+	dic[1] = (ioctl_nr == DVD_RESET)? 1 : 0;	// For reset callback. Dirty, I know...
+
+	IOS_IoctlAsync(di_fd,ioctl_nr, dic, 0x20, outbuf, 0x20, ipc_cb, outbuf);
+
+	LWP_MutexUnlock(bufferMutex);
+}
 
 #define COVER_CLOSED (*((uint32_t*)usrdata) & DVD_COVER_DISC_INSERTED)
 
@@ -219,6 +334,7 @@ static int _cover_callback(int ret, void* usrdata){
 		DI_ReadDVDptr = _DI_ReadDVD_Check;
 		DI_ReadDVDAsyncptr = _DI_ReadDVD_Check_Async;
 
+
 		if(di_cb)
 			di_cb(state,0);
 
@@ -237,37 +353,15 @@ void DI_SetInitCallback(di_callback cb){
 	di_cb = cb;
 }
 
-void _DI_SetCallback(int ioctl_nr, ipccallback ipc_cb){
-
-	if(di_fd<0 || !ipc_cb) return;
-
-	// Wait for the lock
-	while(LWP_MutexLock(bufferMutex));
-
-	memset(dic, 0x00, sizeof(dic));
-
-	dic[0] = ioctl_nr << 24;
-	dic[1] = (ioctl_nr == DVD_RESET)? 1 : 0;	// For reset callback. Dirty, I know...
-
-	IOS_IoctlAsync(di_fd,ioctl_nr, dic, 0x20, outbuf, 0x20, ipc_cb, outbuf);
-
-	//We're done with the buffer now.
-	LWP_MutexUnlock(bufferMutex);
-}
-
 /*
 Request an identification from the drive, returned in a DI_DriveID struct
 */
 int DI_Identify(DI_DriveID* id){
-	if(di_fd < 0) {
-		errno = ENXIO;
-		return -1;
-	}
+	if(di_fd < 0)
+		return -ENXIO;
 
-	if(!id){
-		errno = EINVAL;
-		return -1;
-	}
+	if(!id)
+		return -EINVAL;
 
 	while(LWP_MutexLock(bufferMutex));
 	
@@ -275,7 +369,8 @@ int DI_Identify(DI_DriveID* id){
 	
 	int ret = IOS_Ioctl(di_fd, DVD_IDENTIFY, dic, 0x20, outbuf, 0x20);
 
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
 
 	memcpy(id,outbuf,sizeof(DI_DriveID));
 
@@ -288,24 +383,20 @@ Returns the current error code on the drive.
 yagcd has a pretty comprehensive list of possible error codes
 */
 int DI_GetError(uint32_t* error){
-	if(di_fd < 0){
-		errno = ENXIO;
-		return -1;
-	}
+	if(di_fd < 0)
+		return -ENXIO;
 
-	if(!error){
-		errno = EINVAL;
-		return -1;
-	}
+	if(!error)
+		return -EINVAL;
 
-	// Wait for the lock
 	while(LWP_MutexLock(bufferMutex));
 	
 	dic[0] = DVD_GET_ERROR << 24;
 	
 	int ret = IOS_Ioctl(di_fd, DVD_GET_ERROR, dic, 0x20, outbuf, 0x20);
 
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
 
 	*error = outbuf[0];		// Error code is returned as an int in the first four bytes of outbuf.
 
@@ -318,9 +409,8 @@ Reset the drive.
 */
 int DI_Reset(){
 	if(di_fd < 0)
-		return -1;
+		return -ENXIO;
 
-	// Wait for the lock
 	while(LWP_MutexLock(bufferMutex));
 	
 	dic[0] = DVD_RESET << 24;
@@ -328,7 +418,8 @@ int DI_Reset(){
 	
 	int ret = IOS_Ioctl(di_fd, DVD_RESET, dic, 0x20, outbuf, 0x20);
 
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
 
 	LWP_MutexUnlock(bufferMutex);
 	return (ret == 1)? 0 : -ret;
@@ -339,10 +430,11 @@ Main read function, basically just a wrapper to the function pointer.
 Nicer then just exposing the pointer itself
 */
 int DI_ReadDVD(void* buf, uint32_t len, uint32_t lba){
+	if(di_fd < 0)
+		return -ENXIO;
 
 	int ret;
 	if(DI_ReadDVDptr){
-		// Wait for the lock. Doing it here saves me from doing it in all the read functions.
 		while(LWP_MutexLock(bufferMutex));
 		ret = DI_ReadDVDptr(buf,len,lba);
 		LWP_MutexUnlock(bufferMutex);
@@ -352,6 +444,8 @@ int DI_ReadDVD(void* buf, uint32_t len, uint32_t lba){
 }
 
 int DI_ReadDVDAsync(void* buf, uint32_t len, uint32_t lba,ipccallback ipc_cb){
+	if(di_fd < 0)
+		return -ENXIO;
 
 	int ret;
 	if(DI_ReadDVDAsyncptr){
@@ -367,15 +461,11 @@ int DI_ReadDVDAsync(void* buf, uint32_t len, uint32_t lba,ipccallback ipc_cb){
 Unknown what this does as of now...
 */
 int DI_ReadDVDConfig(uint32_t* val, uint32_t flag){
-	if(di_fd < 0){
-		errno = ENXIO;
-		return -1;
-	}
+	if(di_fd < 0)
+		return -ENXIO;
 
-	if(!val){
-		errno = EINVAL;
-		return -1;
-	}
+	if(!val)
+		return -EINVAL;
 
 	while(LWP_MutexLock(bufferMutex));
 	
@@ -386,7 +476,8 @@ int DI_ReadDVDConfig(uint32_t* val, uint32_t flag){
 	
 	int ret = IOS_Ioctl(di_fd, DVD_READ_CONFIG, dic, 0x20, outbuf, 0x20);
 
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
 
 	*val = outbuf[0];
 	LWP_MutexUnlock(bufferMutex);
@@ -397,17 +488,12 @@ int DI_ReadDVDConfig(uint32_t* val, uint32_t flag){
 Read the copyright information on a DVDVideo
 */
 int DI_ReadDVDCopyright(uint32_t* copyright){
-	if(di_fd < 0){
-		errno = ENXIO;
-		return -1;
-	}
+	if(di_fd < 0)
+		return -ENXIO;
 
-	if(!copyright){
-		errno = EINVAL;
-		return -1;
-	}
+	if(!copyright)
+		return -EINVAL;
 
-	// Wait for the lock
 	while(LWP_MutexLock(bufferMutex));
 	
 	dic[0] = DVD_READ_COPYRIGHT << 24;
@@ -416,7 +502,9 @@ int DI_ReadDVDCopyright(uint32_t* copyright){
 	int ret = IOS_Ioctl(di_fd, DVD_READ_COPYRIGHT, dic, 0x20, outbuf, 0x20);
 	*copyright = *((uint32_t*)outbuf);		// Copyright information is returned as an int in the first four bytes of outbuf.
 
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
+
 	LWP_MutexUnlock(bufferMutex);
 	return (ret == 1)? 0 : -ret;
 }
@@ -425,26 +513,18 @@ int DI_ReadDVDCopyright(uint32_t* copyright){
 Returns 0x800 bytes worth of Disc key
 */
 int DI_ReadDVDDiscKey(void* buf){
-
 	int ret;
 	int retry_count = LIBDI_MAX_RETRIES;
 
-	if(di_fd < 0){
-		errno = ENXIO;
-		return -1;
-	}
+	if(di_fd < 0)
+		return -ENXIO;
 
-	if(!buf){
-		errno = EINVAL;
-		return -1;
-	}
+	if(!buf)
+		return -EINVAL;
 
-	if((uint32_t)buf & 0x1F){
-		errno = EFAULT;
-		return -1;
-	}
+	if((uint32_t)buf & 0x1F)
+		return -EFAULT;
 	
-	// Wait for the lock
 	while(LWP_MutexLock(bufferMutex));
 
 	dic[0] = DVD_READ_DISCKEY << 24;
@@ -454,7 +534,8 @@ int DI_ReadDVDDiscKey(void* buf){
 		retry_count--;
 	}while(ret != 1 && retry_count > 0);
 
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
 
 	LWP_MutexUnlock(bufferMutex);
 	return (ret == 1)? 0 : -ret;
@@ -464,27 +545,18 @@ int DI_ReadDVDDiscKey(void* buf){
 This function will read the initial sector on the DVD, which contains stuff like the booktype
 */
 int DI_ReadDVDPhysical(void* buf){
-
-
 	int ret;
 	int retry_count = LIBDI_MAX_RETRIES;
 
-	if(di_fd < 0){
-		errno = ENXIO;
-		return -1;
-	}
+	if(di_fd < 0)
+		return -ENXIO;
 
-	if(!buf){
-		errno = EINVAL;
-		return -1;
-	}
+	if(!buf)
+		return -EINVAL;
 
-	if((uint32_t)buf & 0x1F){
-		errno = EFAULT;
-		return -1;
-	}
+	if((uint32_t)buf & 0x1F)
+		return -EFAULT;
 
-	// Wait for the lock
 	while(LWP_MutexLock(bufferMutex));
 
 	dic[0] = DVD_READ_PHYSICAL << 24;
@@ -495,27 +567,22 @@ int DI_ReadDVDPhysical(void* buf){
 		retry_count--;
 	}while(ret != 1 && retry_count > 0);
 
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
 
 	LWP_MutexUnlock(bufferMutex);
 	return (ret == 1)? 0 : -ret;
 }
 
 int DI_ReportKey(int keytype, uint32_t lba, void* buf){
-	if(di_fd < 0){
-		errno = ENXIO;
-		return -1;
-	}
+	if(di_fd < 0)
+		return -ENXIO;
 
-	if(!buf){
-		errno = EINVAL;
-		return -1;
-	}
+	if(!buf)
+		return -EINVAL;
 	
-	if((uint32_t)buf & 0x1F){
-		errno = EFAULT;
-		return -1;
-	}
+	if((uint32_t)buf & 0x1F)
+		return -EFAULT;
 
 	while(LWP_MutexLock(bufferMutex));
 	
@@ -525,24 +592,24 @@ int DI_ReportKey(int keytype, uint32_t lba, void* buf){
 	
 	int ret = IOS_Ioctl(di_fd, DVD_REPORTKEY, dic, 0x20, buf, 0x20);
 
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
 
 	LWP_MutexUnlock(bufferMutex);
 	return (ret == 1)? 0 : -ret;
 }
 
 int DI_GetCoverRegister(uint32_t* status){
-	if(di_fd < 0){
-		errno = ENXIO;
-		return -1;
-	}
+	if(di_fd < 0)
+		return -ENXIO;
 
 	while(LWP_MutexLock(bufferMutex));
 
 	memset(dic, 0x00, 0x20);
 
 	int ret = IOS_Ioctl(di_fd, DVD_GETCOVER, dic, 0x20, outbuf, 0x20);
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
 
 	*status = outbuf[0];
 
@@ -551,13 +618,10 @@ int DI_GetCoverRegister(uint32_t* status){
 }
 
 /* Internal function for controlling motor operations */
-int _DI_SetMotor(int flag){
-	if(di_fd < 0){
-		errno = ENXIO;
-		return -1;
-	}
+static int _DI_SetMotor(int flag){
+	if(di_fd < 0)
+		return -ENXIO;
 
-	// Wait for the lock
 	while(LWP_MutexLock(bufferMutex));
 
 	dic[0] = DVD_SET_MOTOR << 24;
@@ -566,13 +630,14 @@ int _DI_SetMotor(int flag){
 
 	int ret = IOS_Ioctl(di_fd, DVD_SET_MOTOR, dic, 0x20, outbuf, 0x20);
 
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
 
 	LWP_MutexUnlock(bufferMutex);
 	return(ret == 1)? 0 : -ret;
 }
 
-/* Stop the drives motor, needs a reset afterwards for normal operation */
+/* Stop the drives motor */
 int DI_StopMotor(){
 	return _DI_SetMotor(0);
 }
@@ -593,10 +658,8 @@ int DI_KillDrive(){
 }
 
 int DI_ClosePartition() {
-	if(di_fd < 0){
-		errno = ENXIO;
-		return -1;
-	}
+	if(di_fd < 0)
+		return -ENXIO;
 
 	while(LWP_MutexLock(bufferMutex));
 
@@ -604,7 +667,8 @@ int DI_ClosePartition() {
 
 	int ret = IOS_Ioctl(di_fd, DVD_CLOSE_PARTITION, dic, 0x20, outbuf, 0x20);
 
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
 
 	LWP_MutexUnlock(bufferMutex);
 	return(ret == 1)? 0 : -ret;
@@ -612,10 +676,8 @@ int DI_ClosePartition() {
 
 int DI_OpenPartition(uint32_t offset)
 {
-	if(di_fd < 0){
-		errno = ENXIO;
-		return -1;
-	}
+	if(di_fd < 0)
+		return -ENXIO;
 
 	static ioctlv vectors[5] __attribute__((aligned(32)));
 	static char certs[0x49e4] __attribute__((aligned(32)));
@@ -638,7 +700,8 @@ int DI_OpenPartition(uint32_t offset)
 
 	int ret = IOS_Ioctlv(di_fd, DVD_OPEN_PARTITION, 3, 2, vectors);
 
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
 
 	LWP_MutexUnlock(bufferMutex);
 	return(ret == 1)? 0 : -ret;
@@ -647,22 +710,15 @@ int DI_OpenPartition(uint32_t offset)
 
 int DI_Read(void *buf, uint32_t size, uint32_t offset)
 {
-	if(di_fd < 0){
-		errno = ENXIO;
-		return -1;
-	}
+	if(di_fd < 0)
+		return -ENXIO;
 
-	if(!buf){
-		errno = EINVAL;
-		return -1;
-	}
+	if(!buf)
+		return -EINVAL;
 
-	if((uint32_t)buf & 0x1F){
-		errno = EFAULT;
-		return -1;
-	}
+	if((uint32_t)buf & 0x1F)
+		return -EFAULT;
 
-	// Wait for the lock
 	while(LWP_MutexLock(bufferMutex));
 
 	dic[0] = DVD_LOW_READ << 24;
@@ -671,7 +727,8 @@ int DI_Read(void *buf, uint32_t size, uint32_t offset)
 
 	int ret = IOS_Ioctl(di_fd, DVD_LOW_READ, dic, 0x20, buf, size);
 
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
 
 	LWP_MutexUnlock(bufferMutex);
 	return(ret == 1)? 0 : -ret;
@@ -681,22 +738,15 @@ int DI_UnencryptedRead(void *buf, uint32_t size, uint32_t offset)
 {
 	int ret, retry_count = LIBDI_MAX_RETRIES;
 
-	if(di_fd < 0){
-		errno = ENXIO;
-		return -1;
-	}
+	if(di_fd < 0)
+		return -ENXIO;
 
-	if(!buf){
-		errno = EINVAL;
-		return -1;
-	}
+	if(!buf)
+		return -EINVAL;
 
-	if((uint32_t)buf & 0x1F){		// This only works with 32 byte aligned addresses!
-		errno = EFAULT;
-		return -1;
-	}
+	if((uint32_t)buf & 0x1F) // This only works with 32 byte aligned addresses!
+		return -EFAULT;
 
-	// Wait for the lock
 	while(LWP_MutexLock(bufferMutex));
 
 	dic[0] = DVD_READ_UNENCRYPTED << 24;
@@ -708,7 +758,8 @@ int DI_UnencryptedRead(void *buf, uint32_t size, uint32_t offset)
 		retry_count--;
 	}while(ret != 1 && retry_count > 0);
 
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
 
 	LWP_MutexUnlock(bufferMutex);
 
@@ -717,19 +768,17 @@ int DI_UnencryptedRead(void *buf, uint32_t size, uint32_t offset)
 
 int DI_ReadDiscID(uint64_t *id)
 {
-	if(di_fd < 0){
-		errno = ENXIO;
-		return -1;
-	}
+	if(di_fd < 0)
+		return -ENXIO;
 
-	// Wait for the lock
 	while(LWP_MutexLock(bufferMutex));
 
 	dic[0] = DVD_READ_DISCID << 24;
 
 	int ret = IOS_Ioctl(di_fd, DVD_READ_DISCID, dic, 0x20, outbuf, 0x20);
 
-	if(ret == 2) errno = EIO;
+	if(ret == 2)
+		ret = EIO;
 
 	memcpy(id, outbuf, sizeof(*id));
 

@@ -1056,8 +1056,15 @@ void __SYS_InitCallbacks()
 	__RSWCallback = __RSWDefaultHandler;
 }
 
+void __attribute__((weak)) __SYS_PreInit()
+{
+
+}
+
 void SYS_Init()
 {
+	__SYS_PreInit();
+	
 	u32 level;
 
 	_CPU_ISR_Disable(level);
