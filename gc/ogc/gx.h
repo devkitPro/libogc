@@ -1569,7 +1569,7 @@ GXBreakPtCallback GX_SetBreakPtCallback(GXBreakPtCallback cb);
  * \details This command will reset the entire graphics pipeline, including any commands in the graphics FIFO.
  *
  * \note Texture memory will not be reset, so currently loaded textures will still be valid; however, when loading texture using
- * GX_PreloadEntireTex() or TLUTs using GX_LoadTlut(), you must make sure the command completed. You can use the draw sync mechanism to
+ * GX_PreloadEntireTexture() or TLUTs using GX_LoadTlut(), you must make sure the command completed. You can use the draw sync mechanism to
  * do this; see GX_SetDrawSync() and GX_GetDrawSync().
  *
  * \return none
@@ -3928,7 +3928,7 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod);
  *
  * \details It takes about 512 GP clocks to invalidate all the texture caches.
  *
- * \note Preloaded textures (see GX_PreloadEntireTex()) are not affected.
+ * \note Preloaded textures (see GX_PreloadEntireTexture()) are not affected.
  *
  * \return none
  */
@@ -3942,7 +3942,7 @@ void GX_InvalidateTexAll();
  * is possibly cached in the texture region.
  *
  * \note In reality, this function invalidates the cache tags, forcing the texture cache to load new data. Preloaded textures (see
- * GX_PreloadEntireTex()) do not use the tags.<br><br>
+ * GX_PreloadEntireTexture()) do not use the tags.<br><br>
  *
  * \note The texture hardware can invalidate 4 tags each GP clock. Each tag represents a superline or 512B of TMEM. Therefore, it takes 16
  * GP clocks to invalidate a 32KB texture region.
@@ -4153,7 +4153,7 @@ void GX_LoadTlut(GXTlutObj *obj,u32 tlut_name);
  * \brief Loads the state describing a preloaded texture into one of eight hardware register sets.
  *
  * \details Before this happens, the texture object \a obj should be initialized using GX_InitTexObj() or GX_InitTexObjCI(). The \a mapid parameter refers to
- * the texture state register set. The texture should be loaded beforehand using GX_PreloadEntireTex(). Once loaded, the texture can be used in any Texture Environment
+ * the texture state register set. The texture should be loaded beforehand using GX_PreloadEntireTexture(). Once loaded, the texture can be used in any Texture Environment
  * (TEV) stage using GX_SetTevOrder().
  *
  * \note GX_Init() initially calls GX_SetTevOrder() to make a simple texture pipeline that associates <tt>GX_TEXMAP0</tt> with <tt>GX_TEVSTAGE0</tt>,
@@ -4172,7 +4172,7 @@ void GX_LoadTlut(GXTlutObj *obj,u32 tlut_name);
 void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid);
 
 /*!
- * \fn void GX_PreloadEntireTex(GXTexObj *obj,GXTexRegion *region)
+ * \fn void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region)
  * \brief Loads a given texture from DRAM into the texture memory.
  *
  * \details Accesses to this texture will bypass the texture cache tag look-up and instead read the texels directly from texture memory. The
@@ -4187,7 +4187,7 @@ void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid);
  *
  * \return none
  */
-void GX_PreloadEntireTex(GXTexObj *obj,GXTexRegion *region);
+void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region);
 
 /*!
  * \fn void GX_InitTlutObj(GXTlutObj *obj,void *lut,u8 fmt,u16 entries)
