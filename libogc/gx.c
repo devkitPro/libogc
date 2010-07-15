@@ -3501,10 +3501,10 @@ GXTlutRegionCallback GX_SetTlutRegionCallback(GXTlutRegionCallback cb)
 void GX_SetBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op)
 {
 	__gx->peCMode0 = (__gx->peCMode0&~0x1);
-	if(type==GX_BM_BLEND || type==GX_BM_SUBSTRACT) __gx->peCMode0 |= 0x1;
+	if(type==GX_BM_BLEND || type==GX_BM_SUBTRACT) __gx->peCMode0 |= 0x1;
 
 	__gx->peCMode0 = (__gx->peCMode0&~0x800);
-	if(type==GX_BM_SUBSTRACT) __gx->peCMode0 |= 0x800;
+	if(type==GX_BM_SUBTRACT) __gx->peCMode0 |= 0x800;
 
 	__gx->peCMode0 = (__gx->peCMode0&~0x2);
 	if(type==GX_BM_LOGIC) __gx->peCMode0 |= 0x2;
@@ -4168,10 +4168,10 @@ void GX_PokeBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op)
 	u32 regval = _peReg[1];
 
 	regval = (regval&~0x1);
-	if(type==GX_BM_BLEND || type==GX_BM_SUBSTRACT) regval |= 0x1;
+	if(type==GX_BM_BLEND || type==GX_BM_SUBTRACT) regval |= 0x1;
 
 	regval = (regval&~0x800);
-	if(type==GX_BM_SUBSTRACT) regval |= 0x800;
+	if(type==GX_BM_SUBTRACT) regval |= 0x800;
 
 	regval = (regval&~0x2);
 	if(type==GX_BM_LOGIC) regval |= 0x2;

@@ -428,7 +428,7 @@
 #define GX_BM_NONE			0			/*!< Write input directly to EFB */
 #define GX_BM_BLEND			1			/*!< Blend using blending equation */
 #define GX_BM_LOGIC			2			/*!< Blend using bitwise operation */
-#define GX_BM_SUBSTRACT		3			/*!< Input subtracts from existing pixel */
+#define GX_BM_SUBTRACT		3			/*!< Input subtracts from existing pixel */
 #define GX_MAX_BLENDMODE	4
 /*! @} */
 

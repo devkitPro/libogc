@@ -116,7 +116,7 @@ void __timesystem_init()
 	}
 }
 
-void timespec_substract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result)
+void timespec_subtract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result)
 {
 	struct timespec start_st = *tp_start;
 	struct timespec *start = &start_st;
