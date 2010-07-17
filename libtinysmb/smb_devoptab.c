@@ -973,22 +973,33 @@ static DIR_ITER* __smb_diropen(struct _reent *r, DIR_ITER *dirState, const char 
 	else
 		env->diropen_root=false;
 
-	strcat(path_absolute, "*");
-
-	memset(&dentry, 0, sizeof(SMBDIRENTRY));
 	_SMB_lock(env->pos);
+	if(!env->diropen_root) // root must be valid - we don't need check it
+	{
+		memset(&dentry, 0, sizeof(SMBDIRENTRY));
+		found = SMB_PathInfo(path_absolute, &dentry, env->smbconn);
+		if (found != SMB_SUCCESS)
+		{
+			r->_errno = ENOENT;
+			_SMB_unlock(env->pos);
+			return NULL;
+		}
+
+		if (!(dentry.attributes & SMB_SRCH_DIRECTORY))
+		{
+			r->_errno = ENOTDIR;
+			_SMB_unlock(env->pos);
+			return NULL;
+		}
+	}
+
+	strcat(path_absolute, "*");
+	memset(&dentry, 0, sizeof(SMBDIRENTRY));
 	found = SMB_FindFirst(path_absolute, smbFlags, &dentry, env->smbconn);
 
 	if (found != SMB_SUCCESS)
 	{
 		r->_errno = ENOENT;
-		_SMB_unlock(env->pos);
-		return NULL;
-	}
-
-	if (!(dentry.attributes & SMB_SRCH_DIRECTORY))
-	{
-		r->_errno = ENOTDIR;
 		_SMB_unlock(env->pos);
 		return NULL;
 	}
