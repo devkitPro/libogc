@@ -786,8 +786,10 @@ int DI_ReadDiscID(uint64_t *id)
 static bool diio_Startup()
 {
 	u64 t1,t2;
-	
-	DI_Init();
+
+	if(di_fd < 0)
+		return false;
+
 	DI_Mount();
 
 	t1=ticks_to_millisecs(gettime());
@@ -808,6 +810,10 @@ static bool diio_Startup()
 static bool diio_IsInserted()
 {
 	u32 val;
+
+	if(di_fd < 0)
+		return false;
+
 	DI_GetCoverRegister(&val);
 	if(val & 0x2)
 		return true;
