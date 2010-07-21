@@ -57,14 +57,22 @@ distribution.
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
 #if defined(HW_DOL)
-	static vu32* const _aiReg = (u32*)0xCC006C00;
+	#define AI_REG_BASE (0xCC006C00)
 #elif defined(HW_RVL)
-	static vu32* const _aiReg = (u32*)0xCD006C00;
+	#define AI_REG_BASE (0xCD006C00)
 #else
 	#error HW model not supported.
 #endif
 
-static vu16* const _dspReg = (u16*)0xCC005000;
+#define AI_READ(i) read32(AI_REG_BASE + (i) * 4)
+#define AI_WRITE(i, value) write32(AI_REG_BASE + (i) * 4, value)
+#define AI_MASK(i, clear, set) mask32(AI_REG_BASE + (i) * 4, clear, set)
+
+#define DSP_REG_BASE (0xCC005000)
+
+#define DSP_READ(i) read16(DSP_REG_BASE + (i) * 2)
+#define DSP_WRITE(i, value) write16(DSP_REG_BASE + (i) * 2, value)
+#define DSP_MASK(i, clear, set) mask16(DSP_REG_BASE + (i) * 2, clear, set)
 
 static u32 __AIInitFlag = 0;
 static u32 __AIActive = 0;
@@ -108,14 +116,14 @@ static void __AICallbackStackSwitch(AIDCallback handler)
 static void __AISHandler(u32 nIrq,void *pCtx)
 {
 	if(__AIS_Callback)
-		__AIS_Callback(_aiReg[2]);
-	_aiReg[0] |= 0x0008;
+		__AIS_Callback(AI_READ(2));
+	AI_MASK(0, 0, 0x0008);
 }
 #endif
 
 static void __AIDHandler(u32 nIrq,void *pCtx)
 {
-	_dspReg[5] = (_dspReg[5]&~(DSPCR_DSPINT|DSPCR_ARINT))|DSPCR_AIINT;
+	DSP_MASK(5, DSPCR_DSPINT | DSPCR_ARINT, DSPCR_AIINT);
 	if(__AID_Callback) {
 		if(!__AIActive) {
 			__AIActive = 1;
@@ -135,23 +143,23 @@ static void __AISRCINIT()
 	u64 time1,time2,wait;
 
 	while(!done) {
-		_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
-		_aiReg[0] = (_aiReg[0]&~0x02);
-		_aiReg[0] = (_aiReg[0]&~0x01)|0x01;
+		AI_MASK(0, 0x20, 0x20);
+		AI_MASK(0, 0x02, 0);
+		AI_MASK(0, 0x01, 0x01);
 
-		scnt = _aiReg[2]&0x7fffffff;
-		while(scnt!=(_aiReg[2]&0x7fffffff));
+		scnt = AI_READ(2) & 0x7fffffff;
+		while(scnt != (AI_READ(2) & 0x7fffffff));
 
 		time1 = gettime();
-		_aiReg[0] = (_aiReg[0]&~0x02)|0x02;
-		_aiReg[0] = (_aiReg[0]&~0x01)|0x01;
+		AI_MASK(0, 0x02, 0x02);
+		AI_MASK(0, 0x01, 0x01);
 
-		scnt = _aiReg[2]&0x7fffffff;
-		while(scnt!=(_aiReg[2]&0x7fffffff));
+		scnt = AI_READ(2) & 0x7fffffff;
+		while(scnt != (AI_READ(2) & 0x7fffffff));
 		
 		time2 = gettime();
-		_aiReg[0] = (_aiReg[0]&~0x02);
-		_aiReg[0] = (_aiReg[0]&~0x01);
+		AI_MASK(0, 0x02, 0);
+		AI_MASK(0, 0x01, 0);
 
 		tdiff = time2 - time1;
 		if(tdiff>(bound_32KHz - buffer) && tdiff<(bound_32KHz + buffer)) {
@@ -181,14 +189,14 @@ static void __AISetStreamSampleRate(u32 rate)
 		volright = AUDIO_GetStreamVolRight();
 		AUDIO_SetStreamVolLeft(0);
 		AUDIO_SetStreamVolRight(0);
-		dsprate = _aiReg[0]&0x40;
-		_aiReg[0] = _aiReg[0]&~0x40;
+		dsprate = AI_READ(0) & 0x40;
+		AI_MASK(0, 0x40, 0);
 
 		_CPU_ISR_Disable(level);
 		__AISRCINIT();
-		_aiReg[0] |= dsprate;
-		_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
-		_aiReg[0] = (_aiReg[0]&~0x02)|(_SHIFTL(rate,1,1));
+		AI_MASK(0, 0, dsprate);
+		AI_MASK(0, 0x20, 0x20);
+		AI_MASK(0, 0x02, (_SHIFTL(rate,1,1)));
 		_CPU_ISR_Restore(level);
 
 		AUDIO_SetStreamPlayState(playstate);
@@ -220,18 +228,18 @@ void AUDIO_Init(u8 *stack)
 		max_wait = nanosecs_to_ticks(63000);
 		buffer = nanosecs_to_ticks(3000);
 
-		_aiReg[0] &= ~0x15;
-		_aiReg[1] = 0;
-		_aiReg[3] = 0;
+		AI_MASK(0, 0x15, 0);
+		AI_WRITE(1, 0);
+		AI_WRITE(3, 0);
 
-		_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
+		AI_MASK(0, 0x20, 0x20);
 
-		rate = (_SHIFTR(_aiReg[0],6,1))^1;
+		rate = (_SHIFTR(AI_READ(0),6,1))^1;
 		if(rate==AI_SAMPLERATE_48KHZ) {
-			_aiReg[0] &= ~0x40;
+			AI_MASK(0, 0x40, 0);
 			_CPU_ISR_Disable(level);
 			__AISRCINIT();
-			_aiReg[0] |= 0x40;
+			AI_MASK(0, 0, 0x40);
 			_CPU_ISR_Restore(level);
 		}
 
@@ -256,42 +264,42 @@ void AUDIO_Init(u8 *stack)
 #if defined(HW_DOL)
 void AUDIO_SetStreamVolLeft(u8 vol)
 {
-	_aiReg[1] = (_aiReg[1]&~0x000000ff)|(vol&0xff);
+	AI_MASK(1, 0xff, vol & 0xff);
 }
 
 u8 AUDIO_GetStreamVolLeft()
 {
-	return (u8)(_aiReg[1]&0xff);
+	return AI_READ(1) & 0xff;
 }
 
 void AUDIO_SetStreamVolRight(u8 vol)
 {
-	_aiReg[1] = (_aiReg[1]&~0x0000ff00)|(_SHIFTL(vol,8,8));
+	AI_MASK(1, 0xff00, _SHIFTL(vol,8,8));
 }
 
 u8 AUDIO_GetStreamVolRight()
 {
-	return (u8)(_SHIFTR(_aiReg[1],8,8));
+	return _SHIFTR(AI_READ(1),8,8) & 0xff;
 }
 
 void AUDIO_SetStreamSampleRate(u32 rate)
 {
-	_aiReg[0] = (_aiReg[0]&~0x0002)|(_SHIFTL(rate,1,1));
+	AI_MASK(0, 0x02, _SHIFTL(rate,1,1));
 }
 
 u32 AUDIO_GetStreamSampleRate()
 {
-	return _SHIFTR(_aiReg[0],1,1);
+	return _SHIFTR(AI_READ(0),1,1);
 }
 
 void AUDIO_SetStreamTrigger(u32 cnt)
 {
-	_aiReg[3] = cnt;
+	AI_WRITE(3, cnt);
 }
 
 void AUDIO_ResetStreamSampleCnt()
 {
-	_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
+	AI_MASK(0, 0x20, 0x20);
 }
 
 void AUDIO_SetStreamPlayState(u32 state)
@@ -309,19 +317,19 @@ void AUDIO_SetStreamPlayState(u32 state)
 
 		_CPU_ISR_Disable(level);
 		__AISRCINIT();
-		_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
-		_aiReg[0] = (_aiReg[0]&~0x01)|0x01;
+		AI_MASK(0, 0x20, 0x20);
+		AI_MASK(0, 0x01, 0x01);
 		_CPU_ISR_Restore(level);
 		AUDIO_SetStreamVolRight(volright);
 		AUDIO_SetStreamVolLeft(volleft);
 	} else {
-		_aiReg[0] = (_aiReg[0]&~0x01)|(state&0x01);
+		AI_MASK(0, 0x01, state & 0x01);
 	}
 }
 
 u32 AUDIO_GetStreamPlayState()
 {
-	return (_aiReg[0]&0x01);
+	return AI_READ(0) & 0x01;
 }
 #endif
 
@@ -342,40 +350,40 @@ void AUDIO_InitDMA(u32 startaddr,u32 len)
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	_dspReg[24] = (_dspReg[24]&~0x1fff)|(_SHIFTR(startaddr,16,13));
-	_dspReg[25] = (_dspReg[25]&~0xffe0)|(startaddr&0xffff);
-	_dspReg[27] = (_dspReg[27]&~0x7fff)|(_SHIFTR(len,5,15));
+	DSP_MASK(24, 0x1fff, _SHIFTR(startaddr,16,13));
+	DSP_MASK(25, 0xffe0, startaddr & 0xffff);
+	DSP_MASK(27, 0x7fff, _SHIFTR(len,5,15));
 	_CPU_ISR_Restore(level);
 }
 
 u16 AUDIO_GetDMAEnableFlag()
 {
-	return (_SHIFTR(_dspReg[27],15,1));
+	return _SHIFTR(DSP_READ(27),15,1);
 }
 
 void AUDIO_StartDMA()
 {
-	_dspReg[27] = (_dspReg[27]&~0x8000)|0x8000;
+	DSP_MASK(27, 0x8000, 0x8000);
 }
 
 void AUDIO_StopDMA()
 {
-	_dspReg[27] = (_dspReg[27]&~0x8000);
+	DSP_MASK(27, 0x8000, 0);
 }
 
 u32 AUDIO_GetDMABytesLeft()
 {
-	return (_SHIFTL(_dspReg[29],5,15));
+	return (_SHIFTL(DSP_READ(29),5,15));
 }
 
 u32 AUDIO_GetDMAStartAddr()
 {
-	return (_SHIFTL((_dspReg[24]&0x1fff),16,13)|(_dspReg[25]&0xffe0));
+	return _SHIFTL(DSP_READ(24) & 0x1fff,16,13) | (DSP_READ(25) & 0xffe0);
 }
 
 u32 AUDIO_GetDMALength()
 {
-	return ((_dspReg[27]&0x7fff)<<5);
+	return (DSP_READ(27) & 0x7fff) << 5;
 }
 
 void AUDIO_SetDSPSampleRate(u8 rate)
@@ -383,11 +391,11 @@ void AUDIO_SetDSPSampleRate(u8 rate)
 	u32 level;
 
 	if(AUDIO_GetDSPSampleRate()!=rate) {
-		_aiReg[0] &= ~0x40;
+		AI_MASK(0, 0x40, 0);
 		if(rate==AI_SAMPLERATE_32KHZ) {
 			_CPU_ISR_Disable(level);
 			__AISRCINIT();
-			_aiReg[0] |= 0x40;
+			AI_MASK(0, 0, 0x40);
 			_CPU_ISR_Restore(level);
 		}
 	}
@@ -395,5 +403,5 @@ void AUDIO_SetDSPSampleRate(u8 rate)
 
 u32 AUDIO_GetDSPSampleRate()
 {
-	return (_SHIFTR(_aiReg[0],6,1))^1;		//0^1(1) = 48Khz, 1^1(0) = 32Khz
+	return (_SHIFTR(AI_READ(0),6,1))^1;		//0^1(1) = 48Khz, 1^1(0) = 32Khz
 }

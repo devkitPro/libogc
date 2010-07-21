@@ -41,8 +41,7 @@ distribution.
 #include "irq.h"
 
 #define IOS_HEAP_SIZE 0x1000
-#define MAX_IOS_RETRIES 2000
-#define MAX_IPC_RETRIES 2000
+#define MAX_IPC_RETRIES 200
 
 //#define DEBUG_IOS
 
@@ -201,9 +200,10 @@ s32 IOS_GetRevisionMinor()
 s32 __IOS_LaunchNewIOS(int version)
 {
 	u32 numviews;
-	s32 res, retries;
+	s32 res;
 	u64 titleID = 0x100000000LL;
 	raw_irq_handler_t irq_handler;
+	u32 counter;
 
 	STACK_ALIGN(tikview,views,4,32);
 #ifdef DEBUG_IOS
@@ -244,6 +244,8 @@ s32 __IOS_LaunchNewIOS(int version)
 		return res;
 	}
 
+	write32(0x80003140, 0);
+
 	res = ES_LaunchTitleBackground(titleID, &views[0]);
 	if(res < 0) {
 #ifdef DEBUG_IOS
@@ -251,41 +253,51 @@ s32 __IOS_LaunchNewIOS(int version)
 #endif
 		return res;
 	}
-		__ES_Reset();
+
+	__ES_Reset();
 
 	// Mask IPC IRQ while we're busy reloading
 	__MaskIrq(IRQ_PI_ACR);
 	irq_handler = IRQ_Free(IRQ_PI_ACR);
 
-	// Wait for old IOS to change version number before reloading
-	for (retries = 0; retries < MAX_IOS_RETRIES; retries++)
-	{
-		newversion = IOS_GetVersion();
 #ifdef DEBUG_IOS
-		printf(" IOS Version: IOS%d %d.%d\n",newversion,IOS_GetRevisionMajor(),IOS_GetRevisionMinor());
+	printf("Waiting for IOS ...\n");
 #endif
-		if (newversion != version) udelay(1000);
-	}
-
-	if(newversion != version)
-	{
-#ifdef DEBUG_IOS
-		printf(" Version mismatch!\n");
-#endif
-		return IOS_EMISMATCH;
-	}
-
-	// Wait for new IOS to signal IPC is ready
-	for (retries = 0; retries < MAX_IPC_RETRIES; retries++)
-	{
-		if(IPC_ReadReg(1) & 2) break;
+	while ((read32(0x80003140) >> 16) == 0)
 		udelay(1000);
+
+#ifdef DEBUG_IOS
+	u32 v = read32(0x80003140);
+	printf("IOS loaded: IOS%d v%d.%d\n", v >> 16, (v >> 8) & 0xff, v & 0xff);
+#endif
+
+#ifdef DEBUG_IOS
+	printf("Waiting for IPC ...\n");
+#endif
+	for (counter = 0; !(read32(0x0d000004) & 2); counter++) {
+		udelay(1000);
+		
+		if (counter >= MAX_IPC_RETRIES)
+			break;
 	}
+
+#ifdef DEBUG_IOS
+	printf("IPC started (%u)\n", counter);
+#endif
 
 	IRQ_Request(IRQ_PI_ACR, irq_handler, NULL);
     __UnmaskIrq(IRQ_PI_ACR);
 
 	__IPC_Reinitialize();
+
+	newversion = IOS_GetVersion();
+
+	if(newversion != version) {
+#ifdef DEBUG_IOS
+		printf(" Version mismatch!\n");
+#endif
+		return IOS_EMISMATCH;
+	}
 
 	return version;
 }
@@ -312,6 +324,7 @@ s32 __attribute__((weak)) __IOS_LoadStartupIOS()
 	res = __IOS_LaunchNewIOS(version);
 	if(res < 0) return res;
 #endif
+
 	return 0;
 }
 
@@ -319,22 +332,44 @@ s32 IOS_ReloadIOS(int version)
 {
 	int ret = 0;
 	int res;
+
 #ifdef DEBUG_IOS
 	printf("Reloading to IOS%d\n",version);
 #endif
+
 	res = __IOS_ShutdownSubsystems();
-	if(res < 0) ret = res;
+	if(res < 0) {
+#ifdef DEBUG_IOS
+		printf("__IOS_ShutdownSubsystems failed: %d\n", res);
+#endif
+		ret = res;
+	}
+
 	res = __ES_Init();
-	if(res < 0) ret = res;
-	else {
+	if(res < 0) {
+#ifdef DEBUG_IOS
+		printf("__ES_Init failed: %d\n", res);
+#endif
+		ret = res;
+	} else {
 		res = __IOS_LaunchNewIOS(version);
 		if(res < 0) {
+#ifdef DEBUG_IOS
+			printf("__IOS_LaunchNewIOS failed: %d\n", res);
+#endif
 			ret = res;
 			__ES_Close();
 		}
 	}
+
 	res = __IOS_InitializeSubsystems();
-	if(res < 0) ret = res;
+	if(res < 0) {
+#ifdef DEBUG_IOS
+		printf("__IOS_InitializeSubsystems failed: %d\n", res);
+#endif
+		ret = res;
+	}
+
 	return ret;
 }
 

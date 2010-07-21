@@ -40,7 +40,7 @@ typedef struct
 	int env;
 } SMBDIRSTATESTRUCT;
 
-static int smbInited = 0;
+static bool smbInited = false;
 static unsigned short smbFlags = SMB_SRCH_DIRECTORY | SMB_SRCH_READONLY;
 
 ///////////////////////////////////////////
@@ -1400,7 +1400,6 @@ static void MountDevice(const char *name,SMBCONN smbconn, int env)
 
 bool smbInitDevice(const char* name, const char *user, const char *password, const char *share, const char *ip)
 {
-	char myIP[16];
 	int i;
 
 	if(!name || strlen(name) > 9)
@@ -1411,13 +1410,8 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 	if(FindDevice(devname) >= 0)
 		return false;
 
-	while(smbInited == 2)
-		usleep(1000);
-
 	if(!smbInited)
 	{
-		smbInited = 2;
-
 		for(i=0;i<MAX_SMB_MOUNTED;i++)
 		{
 			SMBEnv[i].SMBCONNECTED=false;
@@ -1431,16 +1425,10 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 
 		if(cache_thread == LWP_THREAD_NULL)
 			if(LWP_CreateThread(&cache_thread, process_cache_thread, NULL, NULL, 0, 64) != 0)
-			{
-				smbInited = 0;
 				return false;
-			}
 
-		smbInited = 1;
+		smbInited = true;
 	}
-
-	if (if_config(myIP, NULL, NULL, true) < 0)
-		return false;
 
 	//root connect
 	bool ret = true;

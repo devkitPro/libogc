@@ -173,7 +173,7 @@ extern void __UnmaskIrq(u32 nMask);
 extern void* __SYS_GetIPCBufferLo(void);
 extern void* __SYS_GetIPCBufferHi(void);
 
-u32 IPC_ReadReg(u32 reg)
+static __inline__ u32 IPC_ReadReg(u32 reg)
 {
 	return _ipcReg[reg];
 }

@@ -60,7 +60,6 @@ typedef struct _ioctlv
 } ioctlv;
 
 void __IPC_Reinitialize(void);
-u32 IPC_ReadReg(u32 reg);
 
 typedef s32 (*ipccallback)(s32 result,void *usrdata);
 

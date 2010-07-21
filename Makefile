@@ -95,7 +95,7 @@ ifeq ($(PLATFORM),cube)
 MACHDEP		+=	-DHW_DOL
 endif
 
-CFLAGS		:= -DLIBOGC_INTERNAL -O2 -mregnames -Wall $(MACHDEP)  -fno-strict-aliasing $(INCLUDES) -Wa,-mgekko
+CFLAGS		:= -DLIBOGC_INTERNAL -g -Os -mregnames -Wall $(MACHDEP)  -fno-strict-aliasing $(INCLUDES) -Wa,-mgekko
 ASFLAGS		:=	$(MACHDEP) -mregnames -D_LANGUAGE_ASSEMBLY -Wa,-mgekko $(INCLUDES)
 
 #---------------------------------------------------------------------------------

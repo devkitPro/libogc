@@ -227,6 +227,11 @@ static inline void write16(u32 addr, u16 x)
 	asm("sth %0,0(%1) ; eieio" : : "r"(x), "b"(0xc0000000 | addr));
 }
 
+static inline void mask16(u32 addr, u16 clear, u16 set)
+{
+	write16(addr, (read16(addr)&(~clear)) | set);
+}
+
 static inline u8 read8(u32 addr)
 {
 	u8 x;
