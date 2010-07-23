@@ -1125,6 +1125,11 @@ void SYS_Init()
 void SYS_PreMain()
 {
 #if defined(HW_RVL)
+	u32 i;
+
+	for (i = 0; i < 32; ++i)
+		IOS_Close(i);
+
 	__IOS_LoadStartupIOS();
 	__IOS_InitializeSubsystems();
 	STM_RegisterEventHandler(__STMEventHandler);
