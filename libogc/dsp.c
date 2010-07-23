@@ -61,11 +61,7 @@ static u32 __dsp_rudetask_pend = FALSE;
 static DSPCallback __dsp_intcb = NULL;
 static dsptask_t *__dsp_currtask,*__dsp_lasttask,*__dsp_firsttask,*__dsp_rudetask,*tmp_task;
 
-#define DSP_REG_BASE (0xCC005000)
-
-#define DSP_READ(i) read16(DSP_REG_BASE + (i) * 2)
-#define DSP_WRITE(i, value) write16(DSP_REG_BASE + (i) * 2, value)
-#define DSP_MASK(i, clear, set) mask16(DSP_REG_BASE + (i) * 2, clear, set)
+static vu16* const _dspReg = (u16*)0xCC005000;
 
 static void __dsp_inserttask(dsptask_t *task)
 {
@@ -322,7 +318,7 @@ static void __dsp_def_taskcb()
 
 static void __dsp_inthandler(u32 nIrq,void *pCtx)
 {
-	DSP_MASK(5, DSPCR_AIINT | DSPCR_ARINT, DSPCR_DSPINT);
+	_dspReg[5] = (_dspReg[5]&~(DSPCR_AIINT|DSPCR_ARINT))|DSPCR_DSPINT;
 	if(__dsp_intcb) __dsp_intcb();
 }
 
@@ -339,8 +335,8 @@ void DSP_Init()
 		IRQ_Request(IRQ_DSP_DSP,__dsp_inthandler,NULL);
 		__UnmaskIrq(IRQMASK(IRQ_DSP_DSP));
 
-		DSP_MASK(5, DSPCR_AIINT | DSPCR_ARINT | DSPCR_DSPINT, DSPCR_DSPRESET);
-		DSP_MASK(5, DSPCR_HALT | DSPCR_AIINT | DSPCR_ARINT | DSPCR_DSPINT, 0);
+		_dspReg[5] = (_dspReg[5]&~(DSPCR_AIINT|DSPCR_ARINT|DSPCR_DSPINT))|DSPCR_DSPRESET;
+		_dspReg[5] = (_dspReg[5]&~(DSPCR_HALT|DSPCR_AIINT|DSPCR_ARINT|DSPCR_DSPINT));
 
 		__dsp_currtask = NULL;
 		__dsp_firsttask = NULL;
@@ -372,7 +368,7 @@ DSPCallback DSP_RegisterCallback(DSPCallback usr_cb)
 u32 DSP_CheckMailTo()
 {
 	u32 sent_mail;
-	sent_mail = _SHIFTR(DSP_READ(0),15,1);
+	sent_mail = _SHIFTR(_dspReg[0],15,1);
 #ifdef _DSP_DEBUG
 	printf("DSP_CheckMailTo(%02x)\n",sent_mail);
 #endif
@@ -382,7 +378,7 @@ u32 DSP_CheckMailTo()
 u32 DSP_CheckMailFrom()
 {
 	u32 has_mail;
-	has_mail = _SHIFTR(DSP_READ(2),15,1);
+	has_mail = _SHIFTR(_dspReg[2],15,1);
 #ifdef _DSP_DEBUG
 	printf("DSP_CheckMailFrom(%02x)\n",has_mail);
 #endif
@@ -392,7 +388,7 @@ u32 DSP_CheckMailFrom()
 u32 DSP_ReadMailFrom()
 {
 	u32 mail;
-	mail = (_SHIFTL(DSP_READ(2),16,16) | (DSP_READ(3) & 0xffff));
+	mail = (_SHIFTL(_dspReg[2],16,16)|(_dspReg[3]&0xffff));
 #ifdef _DSP_DEBUG
 	printf("DSP_ReadMailFrom(%08x)\n",mail);
 #endif
@@ -404,14 +400,14 @@ void DSP_SendMailTo(u32 mail)
 #ifdef _DSP_DEBUG
 	printf("DSP_SendMailTo(%08x)\n",mail);
 #endif
-	DSP_WRITE(0, _SHIFTR(mail,16,16));
-	DSP_WRITE(1, mail & 0xffff);
+	_dspReg[0] = _SHIFTR(mail,16,16);
+	_dspReg[1] = (mail&0xffff);
 }
 
 u32 DSP_ReadCPUtoDSP()
 {
 	u32 cpu_dsp;
-	cpu_dsp = (_SHIFTL(DSP_READ(0),16,16) | (DSP_READ(1) & 0xffff));
+	cpu_dsp = (_SHIFTL(_dspReg[0],16,16)|(_dspReg[1]&0xffff));
 #ifdef _DSP_DEBUG
 	printf("DSP_ReadCPUtoDSP(%08x)\n",cpu_dsp);
 #endif
@@ -425,26 +421,28 @@ void DSP_AssertInt()
 	printf("DSP_AssertInt()\n");
 #endif
 	_CPU_ISR_Disable(level);
-	DSP_MASK(5, DSPCR_AIINT | DSPCR_ARINT | DSPCR_DSPINT, DSPCR_PIINT);
+	_dspReg[5] = (_dspReg[5]&~(DSPCR_AIINT|DSPCR_ARINT|DSPCR_DSPINT))|DSPCR_PIINT;
 	_CPU_ISR_Restore(level);
 }
 
 void DSP_Reset()
 {
+	u16 old;
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	DSP_MASK(5, DSPCR_AIINT | DSPCR_ARINT | DSPCR_DSPINT,
-				DSPCR_DSPRESET | DSPCR_RES);
+	old = _dspReg[5];
+	_dspReg[5] = (old&~(DSPCR_AIINT|DSPCR_ARINT|DSPCR_DSPINT))|(DSPCR_DSPRESET|DSPCR_RES);
 	_CPU_ISR_Restore(level);
 }
 
 void DSP_Halt()
 {
-	u32 level;
+	u32 level,old;
 
 	_CPU_ISR_Disable(level);
-	DSP_MASK(5, DSPCR_AIINT | DSPCR_ARINT | DSPCR_DSPINT, DSPCR_HALT);
+	old = _dspReg[5];
+	_dspReg[5] = (old&~(DSPCR_AIINT|DSPCR_ARINT|DSPCR_DSPINT))|DSPCR_HALT;
 	_CPU_ISR_Restore(level);
 }
 
@@ -453,13 +451,13 @@ void DSP_Unhalt()
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	DSP_MASK(5, DSPCR_AIINT | DSPCR_ARINT | DSPCR_DSPINT | DSPCR_HALT, 0);
+	_dspReg[5] = (_dspReg[5]&~(DSPCR_AIINT|DSPCR_ARINT|DSPCR_DSPINT|DSPCR_HALT));
 	_CPU_ISR_Restore(level);
 }
 
 u32 DSP_GetDMAStatus()
 {
-	return DSP_READ(5) & DSPCR_DSPDMA;
+	return _dspReg[5]&DSPCR_DSPDMA;
 }
 
 dsptask_t* DSP_AddTask(dsptask_t *task)
@@ -502,7 +500,7 @@ dsptask_t* DSP_AssertTask(dsptask_t *task)
 			__dsp_rudetask = task;
 			__dsp_rudetask_pend = TRUE;
 			if(__dsp_currtask->state==DSPTASK_RUN)
-				DSP_MASK(5, DSPCR_DSPINT | DSPCR_ARINT | DSPCR_AIINT, DSPCR_PIINT);
+				_dspReg[5] = ((_dspReg[5]&~(DSPCR_DSPINT|DSPCR_ARINT|DSPCR_AIINT))|DSPCR_PIINT);
 
 			ret = task;
 		}
