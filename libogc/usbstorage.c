@@ -84,13 +84,13 @@ static u8 __heap_created = 0;
 static lwpq_t __usbstorage_waitq = 0;
 
 /*
-The following is for implementing a DISC_INTERFACE 
+The following is for implementing a DISC_INTERFACE
 as used by libfat
 */
 
 static usbstorage_handle __usbfd;
 static u8 __lun = 0;
-static u8 __mounted = 0;
+static bool __mounted = false;
 static u16 __vid = 0;
 static u16 __pid = 0;
 
@@ -165,7 +165,6 @@ static s32 __USB_CtrlMsgTimeout(usbstorage_handle *dev, u8 bmRequestType, u8 bmR
 	ts.tv_sec = 2;
 	ts.tv_nsec = 0;
 
-
 	dev->retval = USBSTORAGE_PROCESSING;
 	retval = USB_WriteCtrlMsgAsync(dev->usb_fd, bmRequestType, bmRequest, wValue, wIndex, wLength, rpData, __usb_blkmsg_cb, (void *)dev);
 	if(retval < 0) return retval;
@@ -194,7 +193,7 @@ s32 USBStorage_Initialize()
 		_CPU_ISR_Restore(level);
 		return IPC_OK;
 	}
-	
+
 	LWP_InitQueue(&__usbstorage_waitq);
 
 	ptr = (u8*)ROUNDDOWN32(((u32)SYS_GetArena2Hi() - HEAP_SIZE));
@@ -219,7 +218,7 @@ static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u
 
 	if(cbLen == 0 || cbLen > 16)
 		return IPC_EINVAL;
-	
+
 	memset(dev->buffer, 0, CBW_SIZE);
 
 	__stwbrx(dev->buffer, 0, CBW_SIGNATURE);
@@ -318,7 +317,6 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 					retval = USBSTORAGE_EDATARESIDUE;
 					break;
 				}
-
 
 				if(retval != thisLen && len > 0)
 				{
@@ -464,7 +462,8 @@ end:
 s32 USBStorage_Open(usbstorage_handle *dev, const char *bus, u16 vid, u16 pid)
 {
 	s32 retval = -1;
-	u8 conf,*max_lun = NULL;
+	u8 conf;
+	u8 *max_lun;
 	u32 iConf, iInterface, iEp;
 	usb_devdesc udd;
 	usb_configurationdesc *ucd;
@@ -472,51 +471,51 @@ s32 USBStorage_Open(usbstorage_handle *dev, const char *bus, u16 vid, u16 pid)
 	usb_endpointdesc *ued;
 
 	max_lun = __lwp_heap_allocate(&__heap, 1);
-	if(max_lun==NULL) return IPC_ENOMEM;
+	if (!max_lun)
+		return IPC_ENOMEM;
 
 	memset(dev, 0, sizeof(*dev));
 
 	dev->tag = TAG_START;
-	if(LWP_MutexInit(&dev->lock, false) < 0)
+
+	if (LWP_MutexInit(&dev->lock, false) < 0)
 		goto free_and_return;
-	if(SYS_CreateAlarm(&dev->alarm)<0)
+
+	if (SYS_CreateAlarm(&dev->alarm) < 0)
 		goto free_and_return;
 
 	retval = USB_OpenDevice(bus, vid, pid, &dev->usb_fd);
-	if(retval < 0)
+	if (retval < 0)
 		goto free_and_return;
 
 	retval = USB_GetDescriptors(dev->usb_fd, &udd);
-	if(retval < 0)
+	if (retval < 0)
 		goto free_and_return;
 
-	for(iConf = 0; iConf < udd.bNumConfigurations; iConf++)
-	{
-		ucd = &udd.configurations[iConf];		
-		for(iInterface = 0; iInterface < ucd->bNumInterfaces; iInterface++)
-		{
+	for (iConf = 0; iConf < udd.bNumConfigurations; iConf++) {
+		ucd = &udd.configurations[iConf];
+		for (iInterface = 0; iInterface < ucd->bNumInterfaces; iInterface++) {
 			uid = &ucd->interfaces[iInterface];
-			if(uid->bInterfaceClass    == USB_CLASS_MASS_STORAGE &&
-			   uid->bInterfaceSubClass == MASS_STORAGE_SCSI_COMMANDS &&
-			   uid->bInterfaceProtocol == MASS_STORAGE_BULK_ONLY)
+			if (uid->bInterfaceClass    == USB_CLASS_MASS_STORAGE &&
+				uid->bInterfaceSubClass == MASS_STORAGE_SCSI_COMMANDS &&
+				uid->bInterfaceProtocol == MASS_STORAGE_BULK_ONLY)
 			{
-				if(uid->bNumEndpoints < 2)
+				if (uid->bNumEndpoints < 2)
 					continue;
 
 				dev->ep_in = dev->ep_out = 0;
-				for(iEp = 0; iEp < uid->bNumEndpoints; iEp++)
-				{
+				for (iEp = 0; iEp < uid->bNumEndpoints; iEp++) {
 					ued = &uid->endpoints[iEp];
-					if(ued->bmAttributes != USB_ENDPOINT_BULK)
+					if (ued->bmAttributes != USB_ENDPOINT_BULK)
 						continue;
 
-					if(ued->bEndpointAddress & USB_ENDPOINT_IN)
+					if (ued->bEndpointAddress & USB_ENDPOINT_IN)
 						dev->ep_in = ued->bEndpointAddress;
 					else
 						dev->ep_out = ued->bEndpointAddress;
 				}
-				if(dev->ep_in != 0 && dev->ep_out != 0)
-				{
+
+				if (dev->ep_in != 0 && dev->ep_out != 0) {
 					dev->configuration = ucd->bConfigurationValue;
 					dev->interface = uid->bInterfaceNumber;
 					dev->altInterface = uid->bAlternateSetting;
@@ -534,40 +533,39 @@ found:
 	USB_FreeDescriptors(&udd);
 
 	retval = USBSTORAGE_EINIT;
-	if(USB_GetConfiguration(dev->usb_fd, &conf) < 0)
+	if (USB_GetConfiguration(dev->usb_fd, &conf) < 0)
 		goto free_and_return;
-	if(conf != dev->configuration && USB_SetConfiguration(dev->usb_fd, dev->configuration) < 0)
+
+	if (conf != dev->configuration && USB_SetConfiguration(dev->usb_fd, dev->configuration) < 0)
 		goto free_and_return;
-	if(dev->altInterface != 0 && USB_SetAlternativeInterface(dev->usb_fd, dev->interface, dev->altInterface) < 0)
+
+	if (dev->altInterface != 0 && USB_SetAlternativeInterface(dev->usb_fd, dev->interface, dev->altInterface) < 0)
 		goto free_and_return;
+
 	dev->suspended = 0;
 
 	retval = USBStorage_Reset(dev);
-	if(retval < 0)
+	if (retval < 0)
 		goto free_and_return;
 
 	LWP_MutexLock(dev->lock);
 	retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_DEVICE2HOST | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_GET_MAX_LUN, 0, dev->interface, 1, max_lun);
 	LWP_MutexUnlock(dev->lock);
-	if(retval < 0)
+
+	if (retval < 0)
 		dev->max_lun = 1;
 	else
-		dev->max_lun = *max_lun;
+		dev->max_lun = *max_lun + 1;
 
-	
-	if(retval == USBSTORAGE_ETIMEDOUT)
+	if (retval == USBSTORAGE_ETIMEDOUT)
 		goto free_and_return;
 
 	retval = USBSTORAGE_OK;
-	dev->sector_size = (u32 *)calloc(dev->max_lun, sizeof(u32));
-	if(dev->sector_size == NULL)
-	{
+	dev->sector_size = (u32 *) calloc(dev->max_lun, sizeof(u32));
+	if(!dev->sector_size) {
 		retval = IPC_ENOMEM;
 		goto free_and_return;
 	}
-
-	if(dev->max_lun == 0)
-		dev->max_lun++;
 
 	/* taken from linux usbstorage module (drivers/usb/storage/transport.c) */
 	/*
@@ -580,27 +578,23 @@ found:
 	USB_ClearHalt(dev->usb_fd, dev->ep_out);
 
 	dev->buffer = __lwp_heap_allocate(&__heap, MAX_TRANSFER_SIZE);
-	
-	if(dev->buffer == NULL) retval = IPC_ENOMEM;
-	else {
+
+	if(!dev->buffer) {
+		retval = IPC_ENOMEM;
+	} else {
 		USB_DeviceRemovalNotifyAsync(dev->usb_fd,__usb_deviceremoved_cb,dev);
 		retval = USBSTORAGE_OK;
 	}
 
 free_and_return:
-	if(max_lun!=NULL) __lwp_heap_free(&__heap, max_lun);
-	if(retval < 0)
-	{
-		USB_CloseDevice(&dev->usb_fd);
-		LWP_MutexDestroy(dev->lock);
-		SYS_RemoveAlarm(dev->alarm);
-		if(dev->buffer != NULL)
-			__lwp_heap_free(&__heap, dev->buffer);
-		if(dev->sector_size != NULL)
-			free(dev->sector_size);
-		memset(dev, 0, sizeof(*dev));
+	if (max_lun)
+		__lwp_heap_free(&__heap, max_lun);
+
+	if (retval < 0) {
+		USBStorage_Close(dev);
 		return retval;
 	}
+
 	return 0;
 }
 
@@ -609,10 +603,13 @@ s32 USBStorage_Close(usbstorage_handle *dev)
 	USB_CloseDevice(&dev->usb_fd);
 	LWP_MutexDestroy(dev->lock);
 	SYS_RemoveAlarm(dev->alarm);
-	if(dev->sector_size!=NULL)
+
+	if (dev->sector_size)
 		free(dev->sector_size);
-	if(dev->buffer!=NULL)
+
+	if (dev->buffer)
 		__lwp_heap_free(&__heap, dev->buffer);
+
 	memset(dev, 0, sizeof(*dev));
 	return 0;
 }
@@ -682,12 +679,15 @@ s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u
 		n_sectors >> 8,
 		n_sectors,
 		0
-		};
+	};
+
 	if(lun >= dev->max_lun || dev->sector_size[lun] == 0)
 		return IPC_EINVAL;
+
 	retval = __cycle(dev, lun, buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 0, &status, NULL);
 	if(retval > 0 && status != 0)
 		retval = USBSTORAGE_ESTATUS;
+
 	return retval;
 }
 
@@ -706,7 +706,8 @@ s32 USBStorage_Write(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, 
 		n_sectors >> 8,
 		n_sectors,
 		0
-		};
+	};
+
 	if(lun >= dev->max_lun || dev->sector_size[lun] == 0)
 		return IPC_EINVAL;
 	retval = __cycle(dev, lun, (u8 *)buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 1, &status, NULL);
@@ -724,11 +725,10 @@ s32 USBStorage_Suspend(usbstorage_handle *dev)
 	dev->suspended = 1;
 
 	return USBSTORAGE_OK;
-
 }
 
 /*
-The following is for implementing a DISC_INTERFACE 
+The following is for implementing a DISC_INTERFACE
 as used by libfat
 */
 
@@ -754,24 +754,24 @@ static bool __usbstorage_IsInserted(void)
 	s32 maxLun;
 	s32 retval;
 
-	if(!usb_inited)
-	{
-		usb_inited=true;
+	if(!usb_inited) {
+		usb_inited = true;
 		USB_Initialize();
 		USBStorage_Initialize();
 	}
 
-	__mounted = 0; //reset it here and check if device is still attached
+	// reset it here and check if device is still attached
+	__mounted = false;
 
 	buffer = __lwp_heap_allocate(&__heap, DEVLIST_MAXSIZE << 3);
-	if(buffer == NULL)
+	if (!buffer)
 		return false;
+
 	memset(buffer, 0, DEVLIST_MAXSIZE << 3);
 
-	if(USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, 0, &dummy) < 0)
+	if (USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, USB_CLASS_MASS_STORAGE, &dummy) < 0)
 	{
-		if(__vid!=0 || __pid!=0)
-		{
+		if (__vid != 0 || __pid != 0) {
 			USBStorage_Close(&__usbfd);
 			memset(&__usbfd, 0, sizeof(__usbfd));
 		}
@@ -781,28 +781,29 @@ static bool __usbstorage_IsInserted(void)
 		__pid = 0;
 
 		__lwp_heap_free(&__heap,buffer);
+
 		return false;
 	}
-	
+
 	usleep(100);
 
-	if(__vid!=0 || __pid!=0)
-	{
-		for(i = 0; i < DEVLIST_MAXSIZE; i++)
-		{
+	if (__vid != 0 || __pid != 0) {
+		for(i = 0; i < dummy; i++) {
 			memcpy(&vid, (buffer + (i << 3) + 4), 2);
 			memcpy(&pid, (buffer + (i << 3) + 6), 2);
-			if(vid != 0 || pid != 0)
-			{
-				if( (vid == __vid) && (pid == __pid))
-				{
-					__mounted = 1;
+			if(vid != 0 || pid != 0) {
+				if((vid == __vid) && (pid == __pid)) {
+					__mounted = true;
 					__lwp_heap_free(&__heap,buffer);
-					usleep(50); // I don't know why I have to wait but it's needed
+
+					// I don't know why I have to wait but it's needed
+					usleep(50);
+
 					return true;
 				}
 			}
 		}
+
 		USBStorage_Close(&__usbfd);
 		memset(&__usbfd, 0, sizeof(__usbfd));
 	}
@@ -811,72 +812,73 @@ static bool __usbstorage_IsInserted(void)
 	__vid = 0;
 	__pid = 0;
 
-	for(i = 0; i < DEVLIST_MAXSIZE; i++)
-	{
+	for (i = 0; i < dummy; i++) {
 		memcpy(&vid, (buffer + (i << 3) + 4), 2);
 		memcpy(&pid, (buffer + (i << 3) + 6), 2);
-		if(vid == 0 || pid == 0)
+		if (vid == 0 || pid == 0)
 			continue;
 
-		if(USBStorage_Open(&__usbfd, "oh0", vid, pid) < 0)
+		if (USBStorage_Open(&__usbfd, "oh0", vid, pid) < 0)
 			continue;
 
 		maxLun = USBStorage_GetMaxLUN(&__usbfd);
-		for(j = 0; j < maxLun; j++)
-		{
+		for (j = 0; j < maxLun; j++) {
 			retval = USBStorage_MountLUN(&__usbfd, j);
 
-			if(retval == USBSTORAGE_ETIMEDOUT)
+			if (retval == USBSTORAGE_ETIMEDOUT)
 				break;
-			if(retval < 0)
+
+			if (retval < 0)
 				continue;
 
-			__mounted = 1;
+			__mounted = true;
 			__lun = j;
 			__vid = vid;
 			__pid = pid;
-			i = DEVLIST_MAXSIZE;
+
 			break;
 		}
+
+		if (__mounted)
+			break;
+
+		USBStorage_Close(&__usbfd);
+		memset(&__usbfd, 0, sizeof(__usbfd));
 	}
+
 	__lwp_heap_free(&__heap,buffer);
-	if(__mounted == 1)
-		return true;
-	return false;
+
+	return __mounted;
 }
 
 static bool __usbstorage_ReadSectors(u32 sector, u32 numSectors, void *buffer)
 {
 	s32 retval;
 
-	if(__mounted != 1)
+	if (!__mounted)
 		return false;
 
 	retval = USBStorage_Read(&__usbfd, __lun, sector, numSectors, buffer);
 
-	if(retval == USBSTORAGE_ETIMEDOUT)
-		__mounted = 0;
+	if (retval == USBSTORAGE_ETIMEDOUT)
+		__mounted = false;
 
-	if(retval < 0)
-		return false;
-	return true;
+	return retval >= 0;
 }
 
 static bool __usbstorage_WriteSectors(u32 sector, u32 numSectors, const void *buffer)
 {
 	s32 retval;
-	
-	if(__mounted != 1)
+
+	if (!__mounted)
 		return false;
-	
+
 	retval = USBStorage_Write(&__usbfd, __lun, sector, numSectors, buffer);
 
-	if(retval == USBSTORAGE_ETIMEDOUT)
-		__mounted = 0;
+	if (retval == USBSTORAGE_ETIMEDOUT)
+		__mounted = false;
 
-	if(retval < 0)
-		return false;
-	return true;
+	return retval >= 0;
 }
 
 static bool __usbstorage_ClearStatus(void)
@@ -886,8 +888,7 @@ static bool __usbstorage_ClearStatus(void)
 
 static bool __usbstorage_Shutdown(void)
 {
-	if(__vid!=0 || __pid!=0)
-	{
+	if (__vid != 0 || __pid != 0) {
 		USBStorage_Close(&__usbfd);
 		memset(&__usbfd, 0, sizeof(__usbfd));
 	}
@@ -895,19 +896,20 @@ static bool __usbstorage_Shutdown(void)
 	__lun = 0;
 	__vid = 0;
 	__pid = 0;
-	__mounted = 0;
+	__mounted = false;
+
 	return true;
 }
 
 DISC_INTERFACE __io_usbstorage = {
-   DEVICE_TYPE_WII_USB,
-   FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_WII_USB,
-   (FN_MEDIUM_STARTUP)&__usbstorage_Startup,
-   (FN_MEDIUM_ISINSERTED)&__usbstorage_IsInserted,
-   (FN_MEDIUM_READSECTORS)&__usbstorage_ReadSectors,
-   (FN_MEDIUM_WRITESECTORS)&__usbstorage_WriteSectors,
-   (FN_MEDIUM_CLEARSTATUS)&__usbstorage_ClearStatus,
-   (FN_MEDIUM_SHUTDOWN)&__usbstorage_Shutdown
+	DEVICE_TYPE_WII_USB,
+	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_WII_USB,
+	(FN_MEDIUM_STARTUP)&__usbstorage_Startup,
+	(FN_MEDIUM_ISINSERTED)&__usbstorage_IsInserted,
+	(FN_MEDIUM_READSECTORS)&__usbstorage_ReadSectors,
+	(FN_MEDIUM_WRITESECTORS)&__usbstorage_WriteSectors,
+	(FN_MEDIUM_CLEARSTATUS)&__usbstorage_ClearStatus,
+	(FN_MEDIUM_SHUTDOWN)&__usbstorage_Shutdown
 };
 
 #endif /* HW_RVL */
