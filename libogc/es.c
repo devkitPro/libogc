@@ -6,6 +6,7 @@ Copyright (C) 2008
 Michael Wiedenbauer (shagkur)
 Dave Murphy (WinterMute)
 Hector Martin (marcan)
+Andre Heider (dhewg)
 
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any
