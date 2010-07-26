@@ -1063,11 +1063,11 @@ void __attribute__((weak)) __SYS_PreInit()
 
 void SYS_Init()
 {
-	__SYS_PreInit();
-	
 	u32 level;
 
 	_CPU_ISR_Disable(level);
+
+	__SYS_PreInit();
 
 	if(system_initialized) return;
 	system_initialized = 1;
