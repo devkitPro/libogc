@@ -6,6 +6,7 @@ Copyright (C) 2008
 Michael Wiedenbauer (shagkur)
 Dave Murphy (WinterMute)
 Hector Martin (marcan)
+Andre Heider (dhewg)
 
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any
@@ -43,11 +44,11 @@ distribution.
 
 #define ES_SIG_RSA4096		0x10000
 #define ES_SIG_RSA2048		0x10001
-#define ES_SIG_ECC			0x10002
+#define ES_SIG_ECDSA		0x10002
 
 #define ES_CERT_RSA4096		0
 #define ES_CERT_RSA2048		1
-#define ES_CERT_ECC			2
+#define ES_CERT_ECDSA		2
 
 #define ES_KEY_COMMON		4
 #define ES_KEY_SDCARD		6
@@ -74,6 +75,12 @@ typedef struct _sig_rsa4096 {
 	u8 sig[512];
 	u8 fill[60];
 }  __attribute__((packed)) sig_rsa4096;
+
+typedef struct _sig_ecdsa {
+	sigtype type;
+	u8 sig[60];
+	u8 fill[64];
+}  __attribute__((packed)) sig_ecdsa;
 
 typedef char sig_issuer[0x40];
 
@@ -192,25 +199,43 @@ typedef struct _cert_rsa4096 {
 	u8 pad[0x34];
 } __attribute__((packed)) cert_rsa4096;
 
+typedef struct _cert_ecdsa {
+	sig_issuer issuer;
+	u32 cert_type;
+	char cert_name[64];
+	u32 cert_id;		// ng key id
+	u8 r[30];
+	u8 s[30];
+	u8 pad[0x3c];
+} __attribute__((packed)) cert_ecdsa;
+
 #define TMD_SIZE(x) (((x)->num_contents)*sizeof(tmd_content) + sizeof(tmd))
 // backwards compatibility
 #define TMD_CONTENTS(x) ((x)->contents)
 
 //TODO: add ECC stuff
 
-#define IS_VALID_SIGNATURE(x) (((*(x))==ES_SIG_RSA2048) || ((*(x))==ES_SIG_RSA4096))
+#define IS_VALID_SIGNATURE(x) ( \
+	((*(x))==ES_SIG_RSA2048) || \
+	((*(x))==ES_SIG_RSA4096) || \
+	((*(x))==ES_SIG_ECDSA))
 
 #define SIGNATURE_SIZE(x) (\
 	((*(x))==ES_SIG_RSA2048) ? sizeof(sig_rsa2048) : ( \
-	((*(x))==ES_SIG_RSA4096) ? sizeof(sig_rsa4096) : 0 ))
+	((*(x))==ES_SIG_RSA4096) ? sizeof(sig_rsa4096) : ( \
+	((*(x))==ES_SIG_ECDSA) ? sizeof(sig_ecdsa) : 0 )))
 
 #define SIGNATURE_SIG(x) (((u8*)x)+4)
 
-#define IS_VALID_CERT(x) ((((x)->cert_type)==ES_CERT_RSA2048) || (((x)->cert_type)==ES_CERT_RSA4096))
+#define IS_VALID_CERT(x) ( \
+	(((x)->cert_type)==ES_CERT_RSA2048) || \
+	(((x)->cert_type)==ES_CERT_RSA4096) || \
+	(((x)->cert_type)==ES_CERT_ECDSA))
 
 #define CERTIFICATE_SIZE(x) (\
 	(((x)->cert_type)==ES_CERT_RSA2048) ? sizeof(cert_rsa2048) : ( \
-	(((x)->cert_type)==ES_CERT_RSA4096) ? sizeof(cert_rsa4096) : 0 ))
+	(((x)->cert_type)==ES_CERT_RSA4096) ? sizeof(cert_rsa4096) : ( \
+	(((x)->cert_type)==ES_CERT_ECDSA) ? sizeof(cert_ecdsa) : 0 )))
 
 #define SIGNATURE_PAYLOAD(x) ((void *)(((u8*)(x)) + SIGNATURE_SIZE(x)))
 
