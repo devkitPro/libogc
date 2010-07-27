@@ -226,7 +226,7 @@ static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u
 	__stwbrx(dev->buffer, 8, len);
 	dev->buffer[12] = flags;
 	dev->buffer[13] = lun;
-	dev->buffer[14] = (cbLen > 6 ? 0x10 : 6);
+	dev->buffer[14] = (cbLen > 6 ? 10 : 6);
 
 	memcpy(dev->buffer + 15, cb, cbLen);
 
@@ -648,10 +648,10 @@ s32 USBStorage_MountLUN(usbstorage_handle *dev, u8 lun)
 s32 USBStorage_ReadCapacity(usbstorage_handle *dev, u8 lun, u32 *sector_size, u32 *n_sectors)
 {
 	s32 retval;
-	u8 cmd[] = {SCSI_READ_CAPACITY, lun << 5};
+	u8 cmd[10] = {SCSI_READ_CAPACITY, lun<<5, 0,0,0,0,0,0,0,0};
 	u8 response[8];
 
-	retval = __cycle(dev, lun, response, 8, cmd, 2, 0, NULL, NULL);
+	retval = __cycle(dev, lun, response, sizeof(response), cmd, sizeof(cmd), 0, NULL, NULL);
 	if(retval >= 0)
 	{
 		if(n_sectors != NULL)
