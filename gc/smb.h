@@ -123,11 +123,11 @@ void smbSetSearchFlags(unsigned short flags);
 /*** Session ***/
 s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const char *share, const char *IP);
 void SMB_Close(SMBCONN smbhndl);
-s32 SMB_Reconnect(SMBCONN *_smbhndl, BOOL test_conn);
+s32 SMB_Reconnect(SMBCONN *_smbhndl, bool test_conn);
 
 /*** File Find ***/
 s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl);
-s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,SMBCONN smbhndl);
+s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir, SMBCONN smbhndl);
 s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl);
 s32 SMB_FindClose(SMBDIRENTRY *sdir,SMBCONN smbhndl);
 

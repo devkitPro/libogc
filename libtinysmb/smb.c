@@ -218,14 +218,14 @@ typedef struct _smbhandle
 	char *server_name;
 	s32 sck_server;
 	struct sockaddr_in server_addr;
-	BOOL conn_valid;
+	bool conn_valid;
 	SMBSESSION session;
 	NBTSMB message;
 	bool unicode;
 } SMBHANDLE;
 
 static u32 smb_dialectcnt = 1;
-static BOOL smb_inited = FALSE;
+static bool smb_inited = false;
 static lwp_objinfo smb_handle_objects;
 static lwp_queue smb_filehandle_queue;
 static struct _smbfile smb_filehandles[SMB_FILEHANDLES_MAX];
@@ -398,7 +398,7 @@ static __inline__ void __smb_handle_free(SMBHANDLE *handle)
 
 static void __smb_init()
 {
-	smb_inited = TRUE;
+	smb_inited = true;
 	__lwp_objmgr_initinfo(&smb_handle_objects,SMB_CONNHANDLES_MAX,sizeof(SMBHANDLE));
 	__lwp_queue_initialize(&smb_filehandle_queue,smb_filehandles,SMB_FILEHANDLES_MAX,sizeof(struct _smbfile));
 }
@@ -416,7 +416,7 @@ static SMBHANDLE* __smb_allocate_handle()
 		handle->server_name = NULL;
 		handle->share_name = NULL;
 		handle->sck_server = INVALID_SOCKET;
-		handle->conn_valid = FALSE;
+		handle->conn_valid = false;
 		__lwp_objmgr_open(&smb_handle_objects,&handle->object);
 	}
 	_CPU_ISR_Restore(level);
@@ -1052,7 +1052,7 @@ static s32 do_smbconnect(SMBHANDLE *handle)
 		return -1;
 	}
 
-	handle->conn_valid = TRUE;
+	handle->conn_valid = true;
 	return 0;
 }
 
@@ -1211,7 +1211,7 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 		return SMB_BAD_LOGINDATA;
 	}
 
-	if(smb_inited==FALSE)
+	if(!smb_inited)
 	{
 		u32 level;
 		_CPU_ISR_Disable(level);
@@ -1243,6 +1243,7 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 		else
 			memcpy((char *)&handle->server_addr.sin_addr.s_addr, hp->h_addr_list[0], hp->h_length);
 #else
+		__smb_free_handle(handle);
 		return SMB_ERROR;
 #endif
 	}
@@ -1265,7 +1266,7 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 	}
 	if(ret!=0)
 	{
-		handle->server_addr.sin_port = 0;
+		__smb_free_handle(handle);
 		return SMB_ERROR;
 	}
 
@@ -1274,21 +1275,19 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 
 /****************************************************************************
  * SMB_Destroy
- *
- * Probably NEVER called on GameCube, but here for completeness
  ****************************************************************************/
 void SMB_Close(SMBCONN smbhndl)
 {
-	SMBHANDLE *handle;
-
-	handle = __smb_handle_open(smbhndl);
+	SMBHANDLE *handle = __smb_handle_open(smbhndl);
 	if(!handle) return;
 
-	if(handle->sck_server!=INVALID_SOCKET)	net_close(handle->sck_server);
+	if(handle->sck_server!=INVALID_SOCKET)
+		net_close(handle->sck_server);
+
 	__smb_free_handle(handle);
 }
 
-s32 SMB_Reconnect(SMBCONN *_smbhndl, BOOL test_conn)
+s32 SMB_Reconnect(SMBCONN *_smbhndl, bool test_conn)
 {
 	s32 ret = SMB_SUCCESS;
 	SMBCONN smbhndl = *_smbhndl;
@@ -1300,7 +1299,7 @@ s32 SMB_Reconnect(SMBCONN *_smbhndl, BOOL test_conn)
 	{
 		SMBDIRENTRY dentry;
 		if(SMB_PathInfo("\\", &dentry, smbhndl)==SMB_SUCCESS) return SMB_SUCCESS; // no need to reconnect
-		handle->conn_valid = FALSE; // else connection is invalid
+		handle->conn_valid = false; // else connection is invalid
 	}
 	if(!handle->conn_valid)
 	{
@@ -1354,7 +1353,7 @@ SMBFILE SMB_OpenFile(const char *filename, u16 access, u16 creation,SMBCONN smbh
 	if(filename == NULL)
 		return NULL;
 
-	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return NULL;
+	if(SMB_Reconnect(&smbhndl,true)!=SMB_SUCCESS) return NULL;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return NULL;
@@ -1425,12 +1424,12 @@ SMBFILE SMB_OpenFile(const char *filename, u16 access, u16 creation,SMBCONN smbh
 	return (SMBFILE)fid;
 
 failed:
-	handle->conn_valid = FALSE;
+	handle->conn_valid = false;
 	return NULL;
 }
 
 /**
- * SMB_Close
+ * SMB_CloseFile
  */
 void SMB_CloseFile(SMBFILE sfid)
 {
@@ -1461,7 +1460,7 @@ void SMB_CloseFile(SMBFILE sfid)
 
 	pos += 4;
 	ret = smb_send(handle->sck_server,(char*)&handle->message,pos);
-	if(ret<0) handle->conn_valid = FALSE;
+	if(ret<0) handle->conn_valid = false;
 	else SMBCheck(SMB_CLOSE,handle);
 	__lwp_queue_append(&smb_filehandle_queue,&fid->node);
 }
@@ -1480,7 +1479,7 @@ s32 SMB_CreateDirectory(const char *dirname, SMBCONN smbhndl)
 	if(dirname == NULL)
 		return -1;
 
-	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return -1;
+	if(SMB_Reconnect(&smbhndl,true)!=SMB_SUCCESS) return -1;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return -1;
@@ -1543,7 +1542,7 @@ s32 SMB_DeleteDirectory(const char *dirname, SMBCONN smbhndl)
 	if(dirname == NULL)
 		return -1;
 
-	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return -1;
+	if(SMB_Reconnect(&smbhndl,true)!=SMB_SUCCESS) return -1;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return -1;
@@ -1606,7 +1605,7 @@ s32 SMB_DeleteFile(const char *filename, SMBCONN smbhndl)
 	if(filename == NULL)
 		return -1;
 
-	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return -1;
+	if(SMB_Reconnect(&smbhndl,true)!=SMB_SUCCESS) return -1;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return -1;
@@ -1672,7 +1671,7 @@ s32 SMB_Rename(const char *filename, const char * newfilename, SMBCONN smbhndl)
 	if(filename == NULL || newfilename == NULL)
         return -1;
 
-	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS)
+	if(SMB_Reconnect(&smbhndl,true)!=SMB_SUCCESS)
         return -1;
 
 	handle = __smb_handle_open(smbhndl);
@@ -1755,7 +1754,7 @@ s32 SMB_DiskInformation(struct statvfs *buf, SMBCONN smbhndl)
 	u8 *ptr;
 	SMBHANDLE *handle;
 
-	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return -1;
+	if(SMB_Reconnect(&smbhndl,true)!=SMB_SUCCESS) return -1;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return -1;
@@ -1812,7 +1811,7 @@ s32 SMB_DiskInformation(struct statvfs *buf, SMBCONN smbhndl)
 	}
 
 failed:
-	handle->conn_valid = FALSE;
+	handle->conn_valid = false;
 	return ret;
 }
 
@@ -1894,7 +1893,7 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	return size;
 
 failed:
-	handle->conn_valid = FALSE;
+	handle->conn_valid = false;
 	return ret;
 }
 
@@ -1982,7 +1981,7 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	return ret;
 
 failed:
-	handle->conn_valid = FALSE;
+	handle->conn_valid = false;
 	return ret;
 }
 
@@ -2076,7 +2075,7 @@ s32 SMB_PathInfo(const char *filename, SMBDIRENTRY *sdir, SMBCONN smbhndl)
 	return ret;
 
 failed:
-	handle->conn_valid = FALSE;
+	handle->conn_valid = false;
 	return ret;
 }
 
@@ -2098,7 +2097,7 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 	if(filename == NULL)
 		return SMB_ERROR;
 
-	if(SMB_Reconnect(&smbhndl,TRUE)!=SMB_SUCCESS) return SMB_ERROR;
+	if(SMB_Reconnect(&smbhndl,true)!=SMB_SUCCESS) return SMB_ERROR;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return SMB_ERROR;
@@ -2185,7 +2184,7 @@ s32 SMB_FindFirst(const char *filename, unsigned short flags, SMBDIRENTRY *sdir,
 	return ret;
 
 failed:
-	handle->conn_valid = FALSE;
+	handle->conn_valid = false;
 	return ret;
 }
 
@@ -2272,7 +2271,7 @@ s32 SMB_FindNext(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	return ret;
 
 failed:
-	handle->conn_valid = FALSE;
+	handle->conn_valid = false;
 	return ret;
 }
 
@@ -2314,6 +2313,6 @@ s32 SMB_FindClose(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	return ret;
 
 failed:
-	handle->conn_valid = FALSE;
+	handle->conn_valid = false;
 	return ret;
 }
