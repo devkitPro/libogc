@@ -475,6 +475,7 @@ s32 USBStorage_Open(usbstorage_handle *dev, const char *bus, u16 vid, u16 pid)
 		return IPC_ENOMEM;
 
 	memset(dev, 0, sizeof(*dev));
+	dev->usb_fd = -1;
 
 	dev->tag = TAG_START;
 
@@ -600,7 +601,9 @@ free_and_return:
 
 s32 USBStorage_Close(usbstorage_handle *dev)
 {
-	USB_CloseDevice(&dev->usb_fd);
+	if (dev->usb_fd >= 0)
+		USB_CloseDevice(&dev->usb_fd);
+
 	LWP_MutexDestroy(dev->lock);
 	SYS_RemoveAlarm(dev->alarm);
 
@@ -611,6 +614,8 @@ s32 USBStorage_Close(usbstorage_handle *dev)
 		__lwp_heap_free(&__heap, dev->buffer);
 
 	memset(dev, 0, sizeof(*dev));
+	dev->usb_fd = -1;
+
 	return 0;
 }
 
@@ -771,10 +776,8 @@ static bool __usbstorage_IsInserted(void)
 
 	if (USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, USB_CLASS_MASS_STORAGE, &dummy) < 0)
 	{
-		if (__vid != 0 || __pid != 0) {
+		if (__vid != 0 || __pid != 0)
 			USBStorage_Close(&__usbfd);
-			memset(&__usbfd, 0, sizeof(__usbfd));
-		}
 
 		__lun = 0;
 		__vid = 0;
@@ -805,7 +808,6 @@ static bool __usbstorage_IsInserted(void)
 		}
 
 		USBStorage_Close(&__usbfd);
-		memset(&__usbfd, 0, sizeof(__usbfd));
 	}
 
 	__lun = 0;
@@ -843,7 +845,6 @@ static bool __usbstorage_IsInserted(void)
 			break;
 
 		USBStorage_Close(&__usbfd);
-		memset(&__usbfd, 0, sizeof(__usbfd));
 	}
 
 	__lwp_heap_free(&__heap,buffer);
@@ -888,10 +889,8 @@ static bool __usbstorage_ClearStatus(void)
 
 static bool __usbstorage_Shutdown(void)
 {
-	if (__vid != 0 || __pid != 0) {
+	if (__vid != 0 || __pid != 0)
 		USBStorage_Close(&__usbfd);
-		memset(&__usbfd, 0, sizeof(__usbfd));
-	}
 
 	__lun = 0;
 	__vid = 0;
