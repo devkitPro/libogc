@@ -79,11 +79,18 @@ static void __distub_restregs(void)
 	settime(di_regs.timebase);
 }
 
-static u32 __di_check_ahbprot(void) {
+u32 __di_check_ahbprot(void) {
 	s32 res;
 	u64 title_id;
 	u32 tmd_size;
 	STACK_ALIGN(u32, tmdbuf, 1024, 32);
+
+	res = __ES_Init();
+
+	if (res < 0) {
+		dprintf("ES failed to initialize\n");
+		return res;
+	}
 
 	res = ES_GetTitleID(&title_id);
 	if (res < 0) {
@@ -214,18 +221,6 @@ s32 __DI_StubLaunch(void)
 	u32 numviews;
 	s32 res;
 	u32 ints;
-
-	res = __ES_Init();
-
-	if (res < 0) {
-		dprintf("ES failed to initialize\n");
-		return res;
-	}
-
-	if (__di_check_ahbprot() == 1) {
-		dprintf("we already have full hw access\n");
-		return 1;
-	}
 
 	res = __di_find_stub(&titleID);
 	if (res < 0) {

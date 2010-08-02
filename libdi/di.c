@@ -155,6 +155,7 @@ Initialize the DI interface, should always be called first!
 */
 
 s32 __DI_StubLaunch(void);
+u32 __di_check_ahbprot(void);
 
 int DI_Init() {
 	if(di_fd >= 0)
@@ -162,7 +163,7 @@ int DI_Init() {
 
 	state = DVD_INIT | DVD_NO_DISC;
 
-	if(load_dvdx){
+	if(__di_check_ahbprot() != 1 && load_dvdx) {
 		int res = __DI_StubLaunch(); // Marcan's 1337 magics happen here!
 
 		if (res < 0)
