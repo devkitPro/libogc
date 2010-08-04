@@ -1971,6 +1971,20 @@ void GX_SetVtxDesc(u8 attr,u8 type);
 void GX_SetVtxDescv(GXVtxDesc *attr_list);
 
 /*!
+ * \fn void GX_GetVtxDescv(GXVtxDesc *attr_list)
+ * \brief Gets the type of multiple attributes.
+ *
+ * \details This function saves the attributes that are current set. This is usually used in conjunction with GX_SetVtxDescv
+ *
+ * \note The constant <tt>GX_MAX_VTXATTRFMT_LISTSIZE</tt> must be used to allocate memory for \a attr_list
+ *
+ * \param[in] attr_list array of pointers to GXVtxDesc structs
+ *
+ * \return none
+ */
+void GX_GetVtxDescv(GXVtxDesc *attr_list);
+
+/*!
  * \fn u32 GX_EndDispList()
  * \brief Ends a display list and resumes writing graphics commands to the CPU FIFO.
  *
@@ -4825,6 +4839,25 @@ void GX_GetGPStatus(u8 *overhi,u8 *underlow,u8 *readIdle,u8 *cmdIdle,u8 *brkpt);
  * \return none
  */
 void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1);
+
+/*!
+ * \fn void GX_ReadBoundingBox(u16 *t,u16 *b,u16 *l,u16 *r)
+ * \brief Returns the bounding box of pixel coordinates that are drawn in the Embedded Framebuffer (EFB).
+ *
+ * \details This function reads the bounding box values. GX_ClearBoundingBox() can be used reset the values of the bounding box.
+ *
+ * \note Since the hardware can only test the bounding box in quads (2x2 pixel blocks), the result of this function may contain error
+ * of plus or minus 1 pixel. Also because of this, <b>left</b> and <b>top</b> are always even-numbered and <b>right</b> and <b>bottom</b>
+ * are always odd-numbered.
+ *
+ * \param[out] top uppermost line in the bounding box
+ * \param[out] bottom lowest line in the bounding box
+ * \param[out] left leftmost pixel in the bounding box
+ * \param[out] right rightmost pixel in the bounding box
+ *
+ * \return none
+ */
+void GX_ReadBoundingBox(u16 *top,u16 *bottom,u16 *left,u16 *right);
 
 /*!
  * \fn volatile void* GX_RedirectWriteGatherPipe(void *ptr)
