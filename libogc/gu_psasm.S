@@ -219,9 +219,9 @@ ps_guMtxInverse:
 	psq_st		fr7,44(r4),1,0
 	blr
 
-	.globl ps_guMtxInvXpos
+	.globl ps_guMtxInvXpose
 	//r3 = src, r4 = invx
-ps_guMtxInvXpos:
+ps_guMtxInvXpose:
 	psq_l       fr0, 0(r3), 1, 0
 	psq_l       fr1, 4(r3), 0, 0
 	psq_l       fr2, 16(r3), 1, 0
