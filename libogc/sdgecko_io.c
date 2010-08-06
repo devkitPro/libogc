@@ -1483,3 +1483,25 @@ void sdgecko_ejectedCB(s32 drv_no)
 		pfCallbackOUT[drv_no](drv_no);
 }
 
+void sdgecko_setSpeed(u32 freq)
+{
+	_ioCardFreq = freq;
+}
+
+u32 sdgecko_getPageSize(s32 drv_no)
+{
+	return _ioPageSize[drv_no];
+}
+
+u32 sdgecko_setPageSize(s32 drv_no, int size)
+{
+	if(_ioPageSize[drv_no]!=size)
+		_ioPageSize[drv_no] = size;
+
+	return __card_setblocklen(drv_no, _ioPageSize[drv_no]);
+}
+
+u32 sdgecko_getAddressingType(s32 drv_no)
+{
+	return _ioAddressingType[drv_no];
+}
