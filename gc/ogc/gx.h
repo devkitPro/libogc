@@ -48,8 +48,8 @@
 #define GX_COLOR0A0			4
 #define GX_COLOR1A1			5
 #define GX_COLORZERO		6
-#define GX_BUMP				7
-#define GX_BUMPN			8
+#define GX_ALPHA_BUMP		7
+#define GX_ALPHA_BUMPN		8
 #define GX_COLORNULL		0xff
 /*! @} */
 
@@ -2985,9 +2985,9 @@ void GX_SetNumChans(u8 num);
  * than are being generated.<br><br>
  *
  * \note There are some special settings for the \a color argument. If you specify <tt>GX_COLOR_ZERO</tt>, you always get zero as rasterized color. If you specify
- * <tt>GX_BUMP</tt> or <tt>GX_BUMPN</tt>, you can use "Bump alpha" component from indirect texture unit as rasterized color input (see GX_SetTevIndirect()
- * for details about how to configure bump alpha). Since bump alpha contains only 5-bit data, <tt>GX_BUMP</tt> shifts them to higher bits, which makes the
- * value range 0-248. Meanwhile <tt>GX_BUMPN</tt> performs normalization and you can get the value range 0-255.
+ * <tt>GX_ALPHA_BUMP</tt> or <tt>GX_ALPHA_BUMPN</tt>, you can use "Bump alpha" component from indirect texture unit as rasterized color input (see GX_SetTevIndirect()
+ * for details about how to configure bump alpha). Since bump alpha contains only 5-bit data, <tt>GX_ALPHA_BUMP</tt> shifts them to higher bits, which makes the
+ * value range 0-248. Meanwhile <tt>GX_ALPHA_BUMPN</tt> performs normalization and you can get the value range 0-255.
  *
  * \param[in] tevstage \ref tevstage
  * \param[in] texcoord \ref texcoordid
