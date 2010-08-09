@@ -3917,7 +3917,7 @@ void GX_SetTevOrder(u8 tevstage,u8 texcoord,u32 texmap,u8 color)
 		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x7000)|(_SHIFTL(texm,12,3));
 		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x38000)|(_SHIFTL(texc,15,3));
 
-		colid = GX_BUMP;
+		colid = GX_ALPHA_BUMP;
 		if(color!=GX_COLORNULL) colid = _gxtevcolid[color];
 		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x380000)|(_SHIFTL(colid,19,3));
 
@@ -3928,7 +3928,7 @@ void GX_SetTevOrder(u8 tevstage,u8 texcoord,u32 texmap,u8 color)
 		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x7)|(texm&0x7);
 		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x38)|(_SHIFTL(texc,3,3));
 
-		colid = GX_BUMP;
+		colid = GX_ALPHA_BUMP;
 		if(color!=GX_COLORNULL) colid = _gxtevcolid[color];
 		__gx->tevRasOrder[reg] = (__gx->tevRasOrder[reg]&~0x380)|(_SHIFTL(colid,7,3));
 
