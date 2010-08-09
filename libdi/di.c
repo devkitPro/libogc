@@ -8,6 +8,9 @@ Copyright (C) 2008
 Erant
 marcan
 
+rodries
+emukidid
+
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any
 damages arising from the use of this software.
@@ -31,18 +34,21 @@ distribution.
 
 #include <errno.h>
 #include <string.h>
+#include <malloc.h>
+#include <unistd.h>
 
 #include <di/di.h>
+#include <ogc/cache.h>
 #include <ogc/ipc.h>
 #include <ogc/ios.h>
 #include <ogc/mutex.h>
 #include <ogc/lwp_watchdog.h>
-#include <unistd.h>
 
 #define MOUNT_TIMEOUT		15000 // 15 seconds
 
 int di_fd = -1;
 static bool load_dvdx = false;
+static int have_ahbprot = 0;
 static int state = DVD_INIT | DVD_NO_DISC;
 
 static int _cover_callback(int ret, void* usrdata);
@@ -100,6 +106,26 @@ static int _DI_ReadDVD_D0_Async(void* buf, uint32_t len, uint32_t lba, ipccallba
 	return (ret == 1)? 0 : -ret;
 }
 
+volatile unsigned long* dvd = (volatile unsigned long*)0xCD806000;
+
+static int _DI_ReadDVD(void* buf, uint32_t len, uint32_t lba, uint32_t read_cmd){
+	if ((((int) buf) & 0xC0000000) == 0x80000000) // cached?
+		dvd[0] = 0x2E;
+	dvd[1] = 0;
+	dvd[2] = read_cmd;
+	dvd[3] = read_cmd == 0xD0000000 ? lba : lba << 9;
+	dvd[4] = read_cmd == 0xD0000000 ? len : len << 11;
+	dvd[5] = (unsigned long) buf;
+	dvd[6] = len << 11;
+	dvd[7] = 3; // enable reading!
+	DCInvalidateRange(buf, len << 11);
+	while (dvd[7] & 1);
+
+	if (dvd[0] & 0x4)
+		return 1;
+	return 0;
+}
+
 static int _DI_ReadDVD_A8(void* buf, uint32_t len, uint32_t lba){
 	int ret, retry_count = LIBDI_MAX_RETRIES;
 	
@@ -108,6 +134,9 @@ static int _DI_ReadDVD_A8(void* buf, uint32_t len, uint32_t lba){
 
 	if((uint32_t)buf & 0x1F) // This only works with 32 byte aligned addresses!
 		return -EFAULT;
+	
+	if(have_ahbprot)
+		return _DI_ReadDVD(buf, len, lba, 0xA8000000);
 	
 	dic[0] = DVD_READ_UNENCRYPTED << 24;
 	dic[1] = len << 11; // 1 LB is 2048 bytes
@@ -132,6 +161,9 @@ static int _DI_ReadDVD_D0(void* buf, uint32_t len, uint32_t lba){
 	
 	if((uint32_t)buf & 0x1F)
 		return -EFAULT;
+	
+	if(have_ahbprot)
+		return _DI_ReadDVD(buf, len, lba, 0xD0000000);
 
 	dic[0] = DVD_READ << 24;
 	dic[1] = 0; // Unknown what this does as of now. (Sets some value to 0x10 in the drive if set).
@@ -150,6 +182,65 @@ static int _DI_ReadDVD_D0(void* buf, uint32_t len, uint32_t lba){
 	return (ret == 1)? 0 : -ret;
 }
 
+///// Cache
+#define CACHE_FREE 0xFFFFFFFF
+#define BLOCK_SIZE 0x800
+#define CACHEBLOCKS 26
+typedef struct
+{
+	uint32_t block;
+	void *ptr;
+} cache_page;
+static cache_page *cache_read = NULL;
+
+static void CreateDVDCache()
+{
+	if (cache_read != NULL)
+		return;
+	cache_read = (cache_page *) malloc(sizeof(cache_page));
+	if (cache_read == NULL)
+		return;
+
+	cache_read->block = CACHE_FREE;
+	cache_read->ptr = memalign(32, BLOCK_SIZE * CACHEBLOCKS);
+	if (cache_read->ptr == NULL)
+	{
+		free(cache_read);
+		cache_read = NULL;
+		return;
+	}
+	memset(cache_read->ptr, 0, BLOCK_SIZE);
+}
+
+static int ReadBlockFromCache(void *buf, uint32_t len, uint32_t block)
+{
+	int retval;
+
+	if (cache_read == NULL)
+		return DI_ReadDVDptr(buf, len, block);
+
+	if ((block >= cache_read->block) && (block + len < (cache_read->block + CACHEBLOCKS)))
+	{
+		memcpy(buf, cache_read->ptr	+ ((block - cache_read->block) * BLOCK_SIZE), BLOCK_SIZE * len);
+		return 0;
+	}
+
+	if (len > CACHEBLOCKS)
+		return DI_ReadDVDptr(buf, len, block);
+
+	retval = DI_ReadDVDptr(cache_read->ptr, CACHEBLOCKS, block);
+	if (retval)
+	{
+		cache_read->block = CACHE_FREE;
+		return retval;
+	}
+
+	cache_read->block = block;
+	memcpy(buf, cache_read->ptr, len * BLOCK_SIZE);
+
+	return 0;
+}
+
 /*
 Initialize the DI interface, should always be called first!
 */
@@ -162,8 +253,9 @@ int DI_Init() {
 		return 1;
 
 	state = DVD_INIT | DVD_NO_DISC;
+	have_ahbprot = __di_check_ahbprot();
 
-	if(__di_check_ahbprot() != 1 && load_dvdx) {
+	if(have_ahbprot != 1 && load_dvdx) {
 		int res = __DI_StubLaunch(); // Marcan's 1337 magics happen here!
 
 		if (res < 0)
@@ -179,6 +271,7 @@ int DI_Init() {
 	if (!bufferMutex)
 		LWP_MutexInit(&bufferMutex, false);
 
+	CreateDVDCache();
 	return 0;
 }
 
@@ -204,6 +297,9 @@ void DI_Mount() {
 
 	state = DVD_INIT | DVD_NO_DISC;
 	_cover_callback(1, NULL);	// Initialize the callback chain.
+
+	if (cache_read != NULL)
+		cache_read->block = CACHE_FREE; // reset cache
 }
 
 void DI_Close(){
@@ -434,7 +530,7 @@ int DI_ReadDVD(void* buf, uint32_t len, uint32_t lba){
 	int ret;
 	if(DI_ReadDVDptr){
 		while(LWP_MutexLock(bufferMutex));
-		ret = DI_ReadDVDptr(buf,len,lba);
+		ret = ReadBlockFromCache(buf,len,lba);
 		LWP_MutexUnlock(bufferMutex);
 		return ret;
 	}
