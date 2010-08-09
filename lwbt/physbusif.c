@@ -84,14 +84,14 @@ static s32 __readbulkdataCB(s32 result,void *usrdata)
 				ptr += q->len;
 				len -= q->len;
 			}
-			
+
 			SYS_SwitchFiber((u32)p,0,0,0,(u32)hci_acldata_handler,(u32)(&__ppc_btstack2[STACKSIZE]));
 			btpbuf_free(p);
 		} else
 			ERROR("__readbulkdataCB: Could not allocate memory for pbuf.\n");
 	}
 	btmemb_free(&aclbufs,buf);
-	
+
 	return __issue_bulkread();
 }
 
@@ -194,11 +194,11 @@ static s32 __getDeviceId(u16 vid,u16 pid)
 
 	if(__ntd_ohci_initflag==0x0001) {
 		if(__ntd_ohci==0x0000)
-			ret = USB_OpenDevice("oh0",vid,pid,&__usbdev.fd);
+			ret = USB_OpenDevice(0,vid,pid,&__usbdev.fd);
 		else if(__ntd_ohci==0x0001)
-			ret = USB_OpenDevice("oh1",vid,pid,&__usbdev.fd);
+			ret = USB_OpenDevice(USB_OH1_DEVICE_ID,vid,pid,&__usbdev.fd);
 	} else
-		ret = USB_OpenDevice("oh1",vid,pid,&__usbdev.fd);
+		ret = USB_OpenDevice(USB_OH1_DEVICE_ID,vid,pid,&__usbdev.fd);
 
 	//printf("__getDeviceId(%04x,%04x,%d)\n",vid,pid,__usbdev.fd);
 	if(ret==0) __ntd_usb_fd = __usbdev.fd;
@@ -238,7 +238,7 @@ static s32 __usb_register(pbcallback cb)
 
 	__initUsbIOBuffer(&ctrlbufs,CTRL_BUF_SIZE,NUM_CTRL_BUFS);
 	__initUsbIOBuffer(&aclbufs,ACL_BUF_SIZE,NUM_ACL_BUFS);
-	
+
 	__usbdev.openstate = 4;
 	__wait4hci = 1;
 
@@ -272,7 +272,7 @@ void __ntd_set_ohci(u8 hci)
 
 void __ntd_set_pid_vid(u16 vid,u16 pid)
 {
-	__ntd_vid = vid;	
+	__ntd_vid = vid;
 	__ntd_pid = pid;
 	__ntd_vid_pid_specified = 1;
 }
@@ -306,7 +306,7 @@ void physbusif_reset_all()
 {
 	return;
 }
- 
+
 void physbusif_output(struct pbuf *p,u16_t len)
 {
 	s32 ret;
@@ -321,7 +321,7 @@ void physbusif_output(struct pbuf *p,u16_t len)
 	if(((u8*)p->payload)[0]==HCI_COMMAND_DATA_PACKET) mblks = &ctrlbufs;
 	else if(((u8*)p->payload)[0]==HCI_ACL_DATA_PACKET) mblks = &aclbufs;
 	else return;
-	
+
 	blkbuf = btmemb_alloc(mblks);
 	if(blkbuf!=NULL) {
 		blkbuf->txsize = --len;

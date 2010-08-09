@@ -75,6 +75,7 @@
 #define USB_ENDPOINT_IN					0x80
 #define USB_ENDPOINT_OUT				0x00
 
+#define USB_OH1_DEVICE_ID				0x00200000
 
 #ifdef __cplusplus
    extern "C" {
@@ -151,12 +152,19 @@ typedef struct _usbhiddesc
 	} descr[1];
 } ATTRIBUTE_PACKED usb_hiddesc;
 
+typedef struct _usb_device_entry {
+	s32 device_id;
+	u16 vid;
+	u16 pid;
+	u32 token;
+} usb_device_entry;
+
 typedef s32 (*usbcallback)(s32 result,void *usrdata);
 
 s32 USB_Initialize();
 s32 USB_Deinitialize();
 
-s32 USB_OpenDevice(const char *device,u16 vid,u16 pid,s32 *fd);
+s32 USB_OpenDevice(s32 device_id,u16 vid,u16 pid,s32 *fd);
 s32 USB_CloseDevice(s32 *fd);
 s32 USB_CloseDeviceAsync(s32 *fd,usbcallback cb,void *usrdata);
 
@@ -167,9 +175,10 @@ s32 USB_GetHIDDescriptor(s32 fd,usb_hiddesc *uhd);
 
 s32 USB_GetDeviceDescription(s32 fd,usb_devdesc *devdesc);
 s32 USB_DeviceRemovalNotifyAsync(s32 fd,usbcallback cb,void *userdata);
+s32 USB_DeviceChangeNotifyAsync(u8 interface_class,usbcallback cb,void *userdata);
 
-void USB_SuspendDevice(s32 fd);
-void USB_ResumeDevice(s32 fd);
+s32 USB_SuspendDevice(s32 fd);
+s32 USB_ResumeDevice(s32 fd);
 
 s32 USB_ReadIntrMsg(s32 fd,u8 bEndpoint,u16 wLength,void *rpData);
 s32 USB_ReadIntrMsgAsync(s32 fd,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *usrdata);
@@ -193,7 +202,9 @@ s32 USB_GetConfiguration(s32 fd, u8 *configuration);
 s32 USB_SetConfiguration(s32 fd, u8 configuration);
 s32 USB_SetAlternativeInterface(s32 fd, u8 interface, u8 alternateSetting);
 s32 USB_ClearHalt(s32 fd, u8 endpointAddress);
-s32 USB_GetDeviceList(const char *devpath,void *descr_buffer,u8 num_descr,u8 b0,u8 *cnt_descr);
+s32 USB_GetDeviceList(usb_device_entry *descr_buffer,u8 num_descr,u8 interface_class,u8 *cnt_descr);
+
+s32 USB_GetAsciiString(s32 fd,u16 wIndex,u16 wLangID,u16 wLength,void *rpData);
 
 #ifdef __cplusplus
    }

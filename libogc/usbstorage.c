@@ -114,6 +114,7 @@ static s32 __usb_blkmsg_cb(s32 retval, void *dummy)
 
 static s32 __usb_deviceremoved_cb(s32 retval,void *arg)
 {
+	//TODO: Unmount the device here and remove the isInserted junk
 	return 0;
 }
 
@@ -152,7 +153,9 @@ static s32 __USB_BlkMsgTimeout(usbstorage_handle *dev, u8 bEndpoint, u16 wLength
 	} while(retval==USBSTORAGE_PROCESSING);
 	_CPU_ISR_Restore(level);
 
-	if(retval==USBSTORAGE_ETIMEDOUT) USBStorage_Close(dev);
+	if (retval<0)
+		USB_ClearHalt(dev->usb_fd, bEndpoint);
+
 	return retval;
 }
 
@@ -179,7 +182,6 @@ static s32 __USB_CtrlMsgTimeout(usbstorage_handle *dev, u8 bmRequestType, u8 bmR
 	} while(retval==USBSTORAGE_PROCESSING);
 	_CPU_ISR_Restore(level);
 
-	if(retval==USBSTORAGE_ETIMEDOUT) USBStorage_Close(dev);
 	return retval;
 }
 
@@ -294,8 +296,6 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 		if(write)
 		{
 			retval = __send_cbw(dev, lun, len, CBW_OUT, cb, cbLen);
-			if(retval == USBSTORAGE_ETIMEDOUT)
-				break;
 			if(retval < 0)
 			{
 				if(__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
@@ -305,11 +305,13 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 			while(len > 0)
 			{
 				thisLen = len > MAX_TRANSFER_SIZE ? MAX_TRANSFER_SIZE : len;
-				memset(dev->buffer, 0, MAX_TRANSFER_SIZE);
-				memcpy(dev->buffer, buffer, thisLen);
-				retval = __USB_BlkMsgTimeout(dev, dev->ep_out, thisLen, dev->buffer);
+				if ((u32)buffer&0x1F || !((u32)buffer&0x10000000)) {
+					memcpy(dev->buffer, buffer, thisLen);
+					retval = __USB_BlkMsgTimeout(dev, dev->ep_out, thisLen, dev->buffer);
+				} else
+					retval = __USB_BlkMsgTimeout(dev, dev->ep_out, thisLen, buffer);
 
-				if(retval == USBSTORAGE_ETIMEDOUT)
+				if (retval == USBSTORAGE_ETIMEDOUT)
 					break;
 
 				if(retval < 0)
@@ -338,8 +340,6 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 		{
 			retval = __send_cbw(dev, lun, len, CBW_IN, cb, cbLen);
 
-			if(retval == USBSTORAGE_ETIMEDOUT)
-				break;
 
 			if(retval < 0)
 			{
@@ -350,11 +350,16 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 			while(len > 0)
 			{
 				thisLen = len > MAX_TRANSFER_SIZE ? MAX_TRANSFER_SIZE : len;
-				retval = __USB_BlkMsgTimeout(dev, dev->ep_in, thisLen, dev->buffer);
-				if(retval < 0)
+				if ((u32)buffer&0x1F || !((u32)buffer&0x10000000)) {
+					retval = __USB_BlkMsgTimeout(dev, dev->ep_in, thisLen, dev->buffer);
+					if (retval>0)
+						memcpy(buffer, dev->buffer, retval);
+				} else
+					retval = __USB_BlkMsgTimeout(dev, dev->ep_in, thisLen, buffer);
+
+				if (retval == USBSTORAGE_ETIMEDOUT)
 					break;
 
-				memcpy(buffer, dev->buffer, retval);
 				len -= retval;
 				buffer += retval;
 
@@ -371,9 +376,6 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 		}
 
 		retval = __read_csw(dev, &status, &dataResidue);
-
-		if(retval == USBSTORAGE_ETIMEDOUT)
-			break;
 
 		if(retval < 0)
 		{
@@ -412,9 +414,9 @@ static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun)
 	cmd[0] = SCSI_TEST_UNIT_READY;
 
 	retval = __cycle(dev, lun, NULL, 0, cmd, 1, 0, &status, NULL);
-	if(retval < 0) return retval;
+	if (retval < 0) return retval;
 
-	if(status != 0)
+	if (status)
 	{
 		cmd[0] = SCSI_REQUEST_SENSE;
 		cmd[1] = lun << 5;
@@ -422,10 +424,15 @@ static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun)
 		cmd[5] = 0;
 		memset(sense, 0, SCSI_SENSE_REPLY_SIZE);
 		retval = __cycle(dev, lun, sense, SCSI_SENSE_REPLY_SIZE, cmd, 6, 0, NULL, NULL);
-		if(retval < 0) return retval;
-
-		status = sense[2] & 0x0F;
-		if(status == SCSI_SENSE_NOT_READY || status == SCSI_SENSE_MEDIUM_ERROR || status == SCSI_SENSE_HARDWARE_ERROR) return USBSTORAGE_ESENSE;
+		if (retval>=0) {
+			switch (sense[2]&0xF) {
+				case SCSI_SENSE_NOT_READY:
+					return USBSTORAGE_EINIT;
+				case SCSI_SENSE_MEDIUM_ERROR:
+				case SCSI_SENSE_HARDWARE_ERROR:
+					return USBSTORAGE_ESENSE;
+			}
+		}
 	}
 
 	return retval;
@@ -433,33 +440,24 @@ static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun)
 
 static s32 __usbstorage_reset(usbstorage_handle *dev)
 {
-	s32 retval;
+	s32 retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_HOST2DEVICE | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_RESET, 0, dev->interface, 0, NULL);
 
-	if(dev->suspended == 1)
-	{
-		USB_ResumeDevice(dev->usb_fd);
-		dev->suspended = 0;
-	}
-
-	retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_HOST2DEVICE | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_RESET, 0, dev->interface, 0, NULL);
-
-	/* FIXME?: some devices return -7004 here which definitely violates the usb ms protocol but they still seem to be working... */
-	if(retval < 0 && retval != -7004)
+	if (retval<0 && retval != -7004)
 		goto end;
 
-	/* gives device enough time to process the reset */
-	usleep(60);
+	//  don't clear the endpoints, it makes too many devices die
 
-	retval = USB_ClearHalt(dev->usb_fd, dev->ep_in);
-	if(retval < 0)
-		goto end;
-	retval = USB_ClearHalt(dev->usb_fd, dev->ep_out);
+	//retval = USB_ClearHalt(dev->usb_fd, dev->ep_in);
+	//if (retval < 0)	goto end;
+	//retval = USB_ClearHalt(dev->usb_fd, dev->ep_out);
+
+	usleep(100);
 
 end:
 	return retval;
 }
 
-s32 USBStorage_Open(usbstorage_handle *dev, const char *bus, u16 vid, u16 pid)
+s32 USBStorage_Open(usbstorage_handle *dev, s32 device_id, u16 vid, u16 pid)
 {
 	s32 retval = -1;
 	u8 conf;
@@ -485,7 +483,7 @@ s32 USBStorage_Open(usbstorage_handle *dev, const char *bus, u16 vid, u16 pid)
 	if (SYS_CreateAlarm(&dev->alarm) < 0)
 		goto free_and_return;
 
-	retval = USB_OpenDevice(bus, vid, pid, &dev->usb_fd);
+	retval = USB_OpenDevice(device_id, vid, pid, &dev->usb_fd);
 	if (retval < 0)
 		goto free_and_return;
 
@@ -534,8 +532,8 @@ found:
 	USB_FreeDescriptors(&udd);
 
 	retval = USBSTORAGE_EINIT;
-	if (USB_GetConfiguration(dev->usb_fd, &conf) < 0)
-		goto free_and_return;
+	// some devices return an error, ignore it
+	USB_GetConfiguration(dev->usb_fd, &conf);
 
 	if (conf != dev->configuration && USB_SetConfiguration(dev->usb_fd, dev->configuration) < 0)
 		goto free_and_return;
@@ -568,15 +566,18 @@ found:
 		goto free_and_return;
 	}
 
-	/* taken from linux usbstorage module (drivers/usb/storage/transport.c) */
-	/*
+	/* taken from linux usbstorage module (drivers/usb/storage/transport.c)
+	 *
 	 * Some devices (i.e. Iomega Zip100) need this -- apparently
 	 * the bulk pipes get STALLed when the GetMaxLUN request is
 	 * processed.   This is, in theory, harmless to all other devices
 	 * (regardless of if they stall or not).
+	 *
+	 * 8/9/10: If anyone wants to actually use a Zip100, they can add this back.
+	 * But for now, it seems to be breaking things more than it is helping.
 	 */
-	USB_ClearHalt(dev->usb_fd, dev->ep_in);
-	USB_ClearHalt(dev->usb_fd, dev->ep_out);
+	//USB_ClearHalt(dev->usb_fd, dev->ep_in);
+	//USB_ClearHalt(dev->usb_fd, dev->ep_out);
 
 	dev->buffer = __lwp_heap_allocate(&__heap, MAX_TRANSFER_SIZE);
 
@@ -601,20 +602,24 @@ free_and_return:
 
 s32 USBStorage_Close(usbstorage_handle *dev)
 {
-	if (dev->usb_fd >= 0)
+	if (dev->usb_fd != -1)
 		USB_CloseDevice(&dev->usb_fd);
 
 	LWP_MutexDestroy(dev->lock);
 	SYS_RemoveAlarm(dev->alarm);
 
-	if (dev->sector_size)
-		free(dev->sector_size);
+	free(dev->sector_size);
 
 	if (dev->buffer)
 		__lwp_heap_free(&__heap, dev->buffer);
 
 	memset(dev, 0, sizeof(*dev));
 	dev->usb_fd = -1;
+
+	__mounted = false;
+	__lun = 0;
+	__vid = 0;
+	__pid = 0;
 
 	return 0;
 }
@@ -643,7 +648,7 @@ s32 USBStorage_MountLUN(usbstorage_handle *dev, u8 lun)
 		return IPC_EINVAL;
 
 	retval = __usbstorage_clearerrors(dev, lun);
-	if(retval < 0)
+	if (retval<0)
 		return retval;
 
 	retval = USBStorage_ReadCapacity(dev, lun, &dev->sector_size[lun], NULL);
@@ -653,7 +658,7 @@ s32 USBStorage_MountLUN(usbstorage_handle *dev, u8 lun)
 s32 USBStorage_ReadCapacity(usbstorage_handle *dev, u8 lun, u32 *sector_size, u32 *n_sectors)
 {
 	s32 retval;
-	u8 cmd[10] = {SCSI_READ_CAPACITY, lun<<5, 0,0,0,0,0,0,0,0};
+	u8 cmd[10] = {SCSI_READ_CAPACITY, lun<<5};
 	u8 response[8];
 
 	retval = __cycle(dev, lun, response, sizeof(response), cmd, sizeof(cmd), 0, NULL, NULL);
@@ -752,8 +757,8 @@ static bool __usbstorage_Startup(void)
 
 static bool __usbstorage_IsInserted(void)
 {
-	u8 *buffer;
-	u8 dummy;
+	usb_device_entry *buffer;
+	u8 device_count;
 	u8 i, j;
 	u16 vid, pid;
 	s32 maxLun;
@@ -768,20 +773,16 @@ static bool __usbstorage_IsInserted(void)
 	// reset it here and check if device is still attached
 	__mounted = false;
 
-	buffer = __lwp_heap_allocate(&__heap, DEVLIST_MAXSIZE << 3);
+	buffer = (usb_device_entry*)__lwp_heap_allocate(&__heap, DEVLIST_MAXSIZE * sizeof(usb_device_entry));
 	if (!buffer)
 		return false;
 
-	memset(buffer, 0, DEVLIST_MAXSIZE << 3);
+	memset(buffer, 0, DEVLIST_MAXSIZE * sizeof(usb_device_entry));
 
-	if (USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, USB_CLASS_MASS_STORAGE, &dummy) < 0)
+	if (USB_GetDeviceList(buffer, DEVLIST_MAXSIZE, USB_CLASS_MASS_STORAGE, &device_count) < 0)
 	{
 		if (__vid != 0 || __pid != 0)
 			USBStorage_Close(&__usbfd);
-
-		__lun = 0;
-		__vid = 0;
-		__pid = 0;
 
 		__lwp_heap_free(&__heap,buffer);
 
@@ -791,9 +792,9 @@ static bool __usbstorage_IsInserted(void)
 	usleep(100);
 
 	if (__vid != 0 || __pid != 0) {
-		for(i = 0; i < dummy; i++) {
-			memcpy(&vid, (buffer + (i << 3) + 4), 2);
-			memcpy(&pid, (buffer + (i << 3) + 6), 2);
+		for(i = 0; i < device_count; i++) {
+			vid = buffer[i].vid;
+			pid = buffer[i].pid;
 			if(vid != 0 || pid != 0) {
 				if((vid == __vid) && (pid == __pid)) {
 					__mounted = true;
@@ -810,17 +811,13 @@ static bool __usbstorage_IsInserted(void)
 		USBStorage_Close(&__usbfd);
 	}
 
-	__lun = 0;
-	__vid = 0;
-	__pid = 0;
-
-	for (i = 0; i < dummy; i++) {
-		memcpy(&vid, (buffer + (i << 3) + 4), 2);
-		memcpy(&pid, (buffer + (i << 3) + 6), 2);
+	for (i = 0; i < device_count; i++) {
+		vid = buffer[i].vid;
+		pid = buffer[i].pid;
 		if (vid == 0 || pid == 0)
 			continue;
 
-		if (USBStorage_Open(&__usbfd, "oh0", vid, pid) < 0)
+		if (USBStorage_Open(&__usbfd, buffer[i].device_id, vid, pid) < 0)
 			continue;
 
 		maxLun = USBStorage_GetMaxLUN(&__usbfd);
@@ -861,9 +858,6 @@ static bool __usbstorage_ReadSectors(u32 sector, u32 numSectors, void *buffer)
 
 	retval = USBStorage_Read(&__usbfd, __lun, sector, numSectors, buffer);
 
-	if (retval == USBSTORAGE_ETIMEDOUT)
-		__mounted = false;
-
 	return retval >= 0;
 }
 
@@ -875,9 +869,6 @@ static bool __usbstorage_WriteSectors(u32 sector, u32 numSectors, const void *bu
 		return false;
 
 	retval = USBStorage_Write(&__usbfd, __lun, sector, numSectors, buffer);
-
-	if (retval == USBSTORAGE_ETIMEDOUT)
-		__mounted = false;
 
 	return retval >= 0;
 }
@@ -891,11 +882,6 @@ static bool __usbstorage_Shutdown(void)
 {
 	if (__vid != 0 || __pid != 0)
 		USBStorage_Close(&__usbfd);
-
-	__lun = 0;
-	__vid = 0;
-	__pid = 0;
-	__mounted = false;
 
 	return true;
 }

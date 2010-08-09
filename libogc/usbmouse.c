@@ -41,6 +41,8 @@ distribution.
 #define MOUSE_THREAD_PRIO			65
 #define MOUSE_THREAD_UDELAY			(1000 * 1000 * 3)
 
+#define MOUSE_MAX_DATA				20
+
 #define	HEAP_SIZE					4096
 #define DEVLIST_MAXSIZE				8
 
@@ -96,7 +98,7 @@ static s32 _mouse_event_cb(s32 result,void *usrdata)
 		event.rx = _mousedata[1];
 		event.ry = _mousedata[2];
 		_mouse_addEvent(&event);
-		USB_ReadIntrMsgAsync(_mouse->fd, 0x81, 4, _mousedata, _mouse_event_cb, 0);
+		USB_ReadIntrMsgAsync(_mouse->fd, _mouse->ep, _mouse->ep_size, _mousedata, _mouse_event_cb, 0);
 	}
 	else
 	{
@@ -151,8 +153,8 @@ static void USBMouse_Close(void)
 //Thanks to Sven Peter usbstorage support
 static s32 USBMouse_Open()
 {
-	u8 *buffer;
-	u8 dummy, i;
+	usb_device_entry *buffer;
+	u8 device_count, i;
 	u16 vid, pid;
 	bool found = false;
 	u32 iConf, iInterface, iEp;
@@ -161,28 +163,28 @@ static s32 USBMouse_Open()
 	usb_interfacedesc *uid;
 	usb_endpointdesc *ued;
 
-	buffer = iosAlloc(hId, DEVLIST_MAXSIZE << 3);
+	buffer = iosAlloc(hId, DEVLIST_MAXSIZE * sizeof(usb_device_entry));
 	if(buffer == NULL)
 		return -1;
 
-	memset(buffer, 0, DEVLIST_MAXSIZE << 3);
+	memset(buffer, 0, DEVLIST_MAXSIZE * sizeof(usb_device_entry));
 
-	if (USB_GetDeviceList("/dev/usb/oh0", buffer, DEVLIST_MAXSIZE, 0, &dummy) < 0)
+	if (USB_GetDeviceList(buffer, DEVLIST_MAXSIZE, USB_CLASS_HID, &device_count) < 0)
 	{
 		iosFree(hId,buffer);
 		return -2;
 	}
 
-	for (i = 0; i < DEVLIST_MAXSIZE; i++)
+	for (i = 0; i < device_count; i++)
 	{
-		vid = *((u16 *) (buffer + (i << 3) + 4));
-		pid = *((u16 *) (buffer + (i << 3) + 6));
+		vid = buffer[i].vid;
+		pid = buffer[i].pid;
 
 		if ((vid == 0) || (pid == 0))
 			continue;
 
 		s32 fd = 0;
-		if (USB_OpenDevice("oh0", vid, pid, &fd) < 0)
+		if (USB_OpenDevice(buffer[i].device_id, vid, pid, &fd) < 0)
 			continue;
 
 		USB_GetDescriptors(fd, &udd);
@@ -206,6 +208,9 @@ static s32 USBMouse_Open()
 							continue;
 
 						if (!(ued->bEndpointAddress & USB_ENDPOINT_IN))
+							continue;
+
+						if (ued->wMaxPacketSize > MOUSE_MAX_DATA)
 							continue;
 
 						_mouse->fd = fd;
@@ -252,7 +257,7 @@ static s32 USBMouse_Open()
 
 	//set boot protocol
 	USB_WriteCtrlMsg(_mouse->fd, USB_REQTYPE_SET, USB_REQ_SETPROTOCOL, 0, 0, 0, 0);
-	USB_ReadIntrMsgAsync(_mouse->fd, 0x81, 4, _mousedata, _mouse_event_cb, 0);
+	USB_ReadIntrMsgAsync(_mouse->fd, _mouse->ep, _mouse->ep_size, _mousedata, _mouse_event_cb, 0);
 	_mouse->connected = true;
 	return 1;
 }
@@ -290,7 +295,7 @@ s32 MOUSE_Init(void)
 		return -2;
 	}
 
-	_mousedata = (s8*)iosAlloc(hId,20);
+	_mousedata = (s8*)iosAlloc(hId,MOUSE_MAX_DATA);
 	_mouse = (struct umouse *) malloc(sizeof(struct umouse));
 	memset(_mouse, 0, sizeof(struct umouse));
 

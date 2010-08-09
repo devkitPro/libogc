@@ -50,7 +50,7 @@ typedef struct
 
 s32 USBStorage_Initialize();
 
-s32 USBStorage_Open(usbstorage_handle *dev, const char *bus, u16 vid, u16 pid);
+s32 USBStorage_Open(usbstorage_handle *dev, s32 device_id, u16 vid, u16 pid);
 s32 USBStorage_Close(usbstorage_handle *dev);
 s32 USBStorage_Reset(usbstorage_handle *dev);
 

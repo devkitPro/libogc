@@ -5,6 +5,7 @@ usb.c -- USB lowlevel
 Copyright (C) 2008
 Michael Wiedenbauer (shagkur)
 Dave Murphy (WinterMute)
+tueidj
 
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any
@@ -27,6 +28,16 @@ distribution.
 
 -------------------------------------------------------------*/
 
+
+/*  Note: There are 3 types of USB interfaces here, the early ones
+ *  (V0: /dev/usb/oh0 and /dev/usb/oh1) and two later ones (V5: /dev/usb/ven
+ *  and /dev/usb/hid) which are similar but have some small
+ *  differences. There is also an earlier version of /dev/usb/hid (V4)
+ *  found in IOSes 37,61,56,etc. and /dev/usb/msc found in IOS 57.
+ *  These interfaces aren't implemented here and you may find some
+ *  devices don't show up if you're running under those IOSes.
+ */
+
 #if defined(HW_RVL)
 #include <stdlib.h>
 #include <stdio.h>
@@ -41,226 +52,298 @@ distribution.
 
 #include "usb.h"
 
-#define USB_HEAPSIZE					8192
-#define USB_STRUCTSIZE					96
+#define USB_HEAPSIZE                         16384
 
-#define USB_IOCTL_CTRLMSG				0
-#define USB_IOCTL_BLKMSG				1
-#define USB_IOCTL_INTRMSG				2
-#define USB_IOCTL_SUSPENDDEV			5
-#define USB_IOCTL_RESUMEDEV				6
-#define USB_IOCTL_GETDEVLIST			12
-#define USB_IOCTL_DEVREMOVALHOOK		26
-#define USB_IOCTL_DEVINSERTHOOK			27
+#define USBV0_IOCTL_CTRLMSG                      0
+#define USBV0_IOCTL_BLKMSG                       1
+#define USBV0_IOCTL_INTRMSG                      2
+#define USBV0_IOCTL_SUSPENDDEV                   5
+#define USBV0_IOCTL_RESUMEDEV                    6
+#define USBV0_IOCTL_GETDEVLIST                  12
+#define USBV0_IOCTL_DEVREMOVALHOOK              26
+#define USBV0_IOCTL_DEVINSERTHOOK               27
+#define USBV0_IOCTL_DEVICECLASSCHANGE           28
 
-struct _usb_cb {
+#define USBV4_IOCTL_GETVERSION                   6 // returns 0x40001
+
+#define USBV5_IOCTL_GETVERSION                   0 // should return 0x50001
+#define USBV5_IOCTL_GETDEVICECHANGE              1
+#define USBV5_IOCTL_SHUTDOWN                     2
+#define USBV5_IOCTL_GETDEVPARAMS                 3
+#define USBV5_IOCTL_ATTACHFINISH                 6
+#define USBV5_IOCTL_SETALTERNATE                 7
+#define USBV5_IOCTL_SUSPEND_RESUME              16
+#define USBV5_IOCTL_CANCELENDPOINT              17
+#define USBV5_IOCTL_CTRLMSG                     18
+#define USBV5_IOCTL_INTRMSG                     19
+#define USBV5_IOCTL_ISOMSG                      20
+#define USBV5_IOCTL_BULKMSG                     21
+
+#define USB_MAX_DEVICES                         32
+
+static s32 hId = -1;
+static const char __oh0_path[] ATTRIBUTE_ALIGN(32) = "/dev/usb/oh0";
+static const char __ven_path[] ATTRIBUTE_ALIGN(32) = "/dev/usb/ven";
+static const char __hid_path[] ATTRIBUTE_ALIGN(32) = "/dev/usb/hid";
+
+struct _usb_cb_removalnotify_list {
 	usbcallback cb;
-	void *usrdata;
-	ioctlv *vec;
+	void *userdata;
+	s32 device_id;
+};
+
+struct _usbv5_host {
+	usb_device_entry attached_devices[USB_MAX_DEVICES];
+	struct _usb_cb_removalnotify_list remove_cb[USB_MAX_DEVICES];
 	s32 fd;
 };
 
-static s32 hId = -1;
+static struct _usbv5_host* ven_host = NULL;
+static struct _usbv5_host* hid_host = NULL;
 
-static s32 __usb_device_notificationCB(s32 result,void *usrdata)
+struct _usb_msg {
+	s32 fd;
+	s32 zero;
+	union {
+		struct {
+			u8 bmRequestType;
+			u8 bmRequest;
+			u16 wValue;
+			u16 wIndex;
+			u16 wLength;
+			void *rpData;
+		} ctrl;
+
+		struct {
+			void *rpData;
+			u16 wLength;
+			u8 pad[4];
+			u8 bEndpoint;
+		} bulk;
+
+		struct {
+			void *rpData;
+			u16 wLength;
+			u8 bEndpoint;
+		} intr;
+
+		struct {
+			u16 pid;
+			u16 vid;
+		} notify;
+
+		u8 class;
+		// not completely sure about this but this field must be 0 for reads
+		u32 hid_intr_write;
+
+		u32 align_pad[4]; // pad to 24 bytes
+	};
+	usbcallback cb;
+	void *userdata;
+	ioctlv vec[7];
+};
+
+static s32 __usbv5_devicechangeCB(s32 result, void *p);
+
+static s32 __usbv5_attachfinishCB(s32 result, void *p)
 {
-	ioctlv *vec = NULL;
-	struct _usb_cb *msgcb = (struct _usb_cb*)usrdata;
+	struct _usbv5_host* host = (struct _usbv5_host*)p;
+	if(host==NULL) return IPC_EINVAL;
 
-	if(msgcb==NULL) return IPC_EINVAL;
-
-	if(msgcb->cb!=NULL) msgcb->cb(result,msgcb->usrdata);
-
-	if(msgcb->fd>=0) IOS_Close(msgcb->fd);
-
-	vec = msgcb->vec;
-	if(vec==NULL) return IPC_EINVAL;
-
-	if(vec[0].data!=NULL) iosFree(hId,vec[0].data);
-	if(vec[1].data!=NULL) iosFree(hId,vec[1].data);
-
-	iosFree(hId,vec);
-	iosFree(hId,msgcb);
+	if (result==0)
+		IOS_IoctlAsync(host->fd, USBV5_IOCTL_GETDEVICECHANGE, NULL, 0, host->attached_devices, 0x180, __usbv5_devicechangeCB, host);
 
 	return IPC_OK;
 }
 
-static s32 __usb_control_messageCB(s32 result,void *usrdata)
+static s32 __usbv5_devicechangeCB(s32 result, void *p)
 {
-	ioctlv *vec = NULL;
-	struct _usb_cb *msgcb = (struct _usb_cb*)usrdata;
+	int i, j;
+	struct _usbv5_host* host = (struct _usbv5_host*)p;
 
-	if(msgcb==NULL) return IPC_EINVAL;
+	if(host==NULL) return IPC_EINVAL;
 
-	if(msgcb->cb!=NULL) msgcb->cb(result,msgcb->usrdata);
-    
-	vec = msgcb->vec;
-	if(vec==NULL) return IPC_EINVAL;
+	if (result>=0) {
+		// can't check the remove callbacks only if the number of devices has decreased,
+		// because devices may have been inserted as well as removed
+		for (i=0; i<USB_MAX_DEVICES; i++) {
+			if (host->remove_cb[i].cb==NULL)
+				continue;
+			for (j=0; j<result; j++) {
+				if (host->remove_cb[i].device_id == host->attached_devices[j].device_id)
+					break;
+			}
 
-	if(vec[0].data!=NULL) iosFree(hId,vec[0].data);
-	if(vec[1].data!=NULL) iosFree(hId,vec[1].data);
-	if(vec[2].data!=NULL) iosFree(hId,vec[2].data);
-	if(vec[3].data!=NULL) iosFree(hId,vec[3].data);
-	if(vec[4].data!=NULL) iosFree(hId,vec[4].data);
-	if(vec[5].data!=NULL) iosFree(hId,vec[5].data);
+			if (j==result) { // execute callback and remove it
+				host->remove_cb[i].cb(0, host->remove_cb[i].userdata);
+				host->remove_cb[i].cb = NULL;
+			}
+		}
+		// wipe unused device entries
+		memset(host->attached_devices+result, 0, sizeof(usb_device_entry)*(32-result));
 
-	iosFree(hId,vec);
-	iosFree(hId,msgcb);
+		IOS_IoctlAsync(host->fd, USBV5_IOCTL_ATTACHFINISH, NULL, 0, NULL, 0, __usbv5_attachfinishCB, host);
+	}
 
 	return IPC_OK;
 }
 
-static s32 __usb_bulk_messageCB(s32 result,void *usrdata)
+
+static s32 __usb_messageCB(s32 result,void *_msg)
 {
-	ioctlv *vec = NULL;
-	struct _usb_cb *msgcb = (struct _usb_cb*)usrdata;
+	struct _usb_msg *msg = (struct _usb_msg*)_msg;
 
-	if(msgcb==NULL) return IPC_EINVAL;
-	
-	if(msgcb->cb!=NULL) msgcb->cb(result,msgcb->usrdata);
+	if(msg==NULL) return IPC_EINVAL;
 
-	vec = msgcb->vec;
-	if(vec==NULL) return IPC_EINVAL;
+	if(msg->cb!=NULL) msg->cb(result, msg->userdata);
 
-	if(vec[0].data!=NULL) iosFree(hId,vec[0].data);
-	if(vec[1].data!=NULL) iosFree(hId,vec[1].data);
-
-	iosFree(hId,vec);
-	iosFree(hId,msgcb);
+	iosFree(hId,msg);
 
 	return IPC_OK;
 }
 
-static inline s32 __usb_control_message(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
+static s32 __find_device_on_host(struct _usbv5_host *host, s32 device_id)
 {
-	s32 ret = IPC_ENOMEM;
-	u8 *pRqType = NULL;
-	u8 *pRq = NULL;
-	u8 *pNull = NULL;
-	u16 *pValue = NULL;
-	u16 *pIndex = NULL;
-	u16 *pLength = NULL;
-	ioctlv *vec = NULL;
-	struct _usb_cb *msgcb = NULL;
+	int i;
+	if (host==NULL) return -1;
+
+	for (i=0; host->attached_devices[i].device_id; i++) {
+		if (host->attached_devices[i].device_id == device_id)
+			return i;
+	}
+
+	return -1;
+}
+
+static s32 __usb_control_message(s32 device_id,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData,usbcallback cb,void *userdata)
+{
+	s32 ret;
+	struct _usb_msg *msg;
 
 	if(((s32)rpData%32)!=0) return IPC_EINVAL;
 	if(wLength && !rpData) return IPC_EINVAL;
 	if(!wLength && rpData) return IPC_EINVAL;
 
-	vec = iosAlloc(hId,sizeof(ioctlv)*7);
-	if(vec==NULL) return IPC_ENOMEM;
+	msg = iosAlloc(hId,sizeof(*msg));
+	if(msg==NULL) return IPC_ENOMEM;
 
-	pRqType = iosAlloc(hId,32);
-	if(pRqType==NULL) goto done;
-	*pRqType = bmRequestType;
+	memset(msg, 0, sizeof(*msg));
 
-	pRq = iosAlloc(hId,32);
-	if(pRq==NULL) goto done;
-	*pRq = bmRequest;
+	msg->fd = device_id;
+	msg->ctrl.bmRequestType = bmRequestType;
+	msg->ctrl.bmRequest = bmRequest;
+	msg->cb = cb;
+	msg->userdata = userdata;
 
-	pValue = iosAlloc(hId,32);
-	if(pValue==NULL) goto done;
-	*pValue = bswap16(wValue);
+	if (device_id>=0 && device_id<0x20) {
+		msg->ctrl.wValue = bswap16(wValue);
+		msg->ctrl.wIndex = bswap16(wIndex);
+		msg->ctrl.wLength = bswap16(wLength);
 
-	pIndex = iosAlloc(hId,32);
-	if(pIndex==NULL) goto done;
-	*pIndex = bswap16(wIndex);
+		msg->vec[0].data = &msg->ctrl.bmRequestType;
+		msg->vec[0].len = sizeof(u8);
+		msg->vec[1].data = &msg->ctrl.bmRequest;
+		msg->vec[1].len = sizeof(u8);
+		msg->vec[2].data = &msg->ctrl.wValue;
+		msg->vec[2].len = sizeof(u16);
+		msg->vec[3].data = &msg->ctrl.wIndex;
+		msg->vec[3].len = sizeof(u16);
+		msg->vec[4].data = &msg->ctrl.wLength;
+		msg->vec[4].len = sizeof(u16);
+		msg->vec[5].data = &msg->ctrl.rpData;
+		msg->vec[5].len = sizeof(u8);
+		msg->vec[6].data = rpData;
+		msg->vec[6].len = wLength;
 
-	pLength = iosAlloc(hId,32);
-	if(pLength==NULL) goto done;
-	*pLength = bswap16(wLength);
+		if (cb==NULL)
+			ret = IOS_Ioctlv(device_id, USBV0_IOCTL_CTRLMSG, 6, 1, msg->vec);
+		else
+			return IOS_IoctlvAsync(device_id, USBV0_IOCTL_CTRLMSG, 6, 1, msg->vec, __usb_messageCB, msg);
 
-	pNull = iosAlloc(hId,32);
-	if(pNull==NULL) goto done;
-	*pNull = 0;
+	} else {
+		u8 adjust = bmRequestType >> 7;
+		s32 fd = (device_id<0) ? ven_host->fd : hid_host->fd;
+		msg->ctrl.wValue = wValue;
+		msg->ctrl.wIndex = wIndex;
+		msg->ctrl.wLength = wLength;
+		msg->ctrl.rpData = rpData;
 
-	vec[0].data = pRqType;
-	vec[0].len = sizeof(u8);
-	vec[1].data = pRq;
-	vec[1].len = sizeof(u8);
-	vec[2].data = pValue;
-	vec[2].len = sizeof(u16);
-	vec[3].data = pIndex;
-	vec[3].len = sizeof(u16);
-	vec[4].data = pLength;
-	vec[4].len = sizeof(u16);
-	vec[5].data = pNull;
-	vec[5].len = sizeof(u8);
-	vec[6].data = rpData;
-	vec[6].len = wLength;
+		msg->vec[0].data = msg;
+		msg->vec[0].len = 64;
+		msg->vec[1].data = rpData;
+		msg->vec[1].len = wLength;
 
-	if(cb==NULL)
-		ret = IOS_Ioctlv(fd,USB_IOCTL_CTRLMSG,6,1,vec);
-	else {
-		msgcb = iosAlloc(hId,sizeof(struct _usb_cb));
-		if(msgcb==NULL) goto done;
-
-		msgcb->fd = -1;
-		msgcb->cb = cb;
-		msgcb->usrdata = usrdata;
-		msgcb->vec = vec;
-		return IOS_IoctlvAsync(fd,USB_IOCTL_CTRLMSG,6,1,vec,__usb_control_messageCB,msgcb);
+		if (cb==NULL)
+			ret = IOS_Ioctlv(fd, USBV5_IOCTL_CTRLMSG, 2-adjust, adjust, msg->vec);
+		else
+			return IOS_IoctlvAsync(fd, USBV5_IOCTL_CTRLMSG, 2-adjust, adjust, msg->vec, __usb_messageCB, msg);
 	}
 
-done:
-	if(pNull!=NULL) iosFree(hId,pNull);
-	if(pLength!=NULL) iosFree(hId,pLength);
-	if(pIndex!=NULL) iosFree(hId,pIndex);
-	if(pValue!=NULL) iosFree(hId,pValue);
-	if(pRq!=NULL) iosFree(hId,pRq);
-	if(pRqType!=NULL) iosFree(hId,pRqType);
-	if(vec!=NULL) iosFree(hId,vec);
+	if(msg!=NULL) iosFree(hId,msg);
 
 	return ret;
 }
 
-static inline s32 __usb_interrupt_bulk_message(s32 fd,u8 ioctl,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
+static inline s32 __usb_interrupt_bulk_message(s32 device_id,u8 ioctl,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *userdata)
 {
-	s32 ret = IPC_ENOMEM;
-	u8 *pEndP = NULL;
-	u16 *pLength = NULL;
-	ioctlv *vec = NULL;
-	struct _usb_cb *msgcb = NULL;
+	s32 ret;
+	struct _usb_msg *msg;
 
 	if(((s32)rpData%32)!=0) return IPC_EINVAL;
 	if(wLength && !rpData) return IPC_EINVAL;
 	if(!wLength && rpData) return IPC_EINVAL;
 
-	vec = iosAlloc(hId,sizeof(ioctlv)*3);
-	if(vec==NULL) return IPC_ENOMEM;
+	msg = iosAlloc(hId,sizeof(*msg));
+	if(msg==NULL) return IPC_ENOMEM;
 
-	pEndP = iosAlloc(hId,32);
-	if(pEndP==NULL) goto done;
-	*pEndP = bEndpoint;
+	memset(msg, 0, sizeof(*msg));
 
-	pLength = iosAlloc(hId,32);
-	if(pLength==NULL) goto done;
-	*pLength = wLength;
+	msg->fd = device_id;
+	msg->bulk.wLength = wLength;
+	msg->bulk.rpData = rpData;
+	msg->cb = cb;
+	msg->userdata = userdata;
 
-	vec[0].data = pEndP;
-	vec[0].len = sizeof(u8);
-	vec[1].data = pLength;
-	vec[1].len = sizeof(u16);
-	vec[2].data = rpData;
-	vec[2].len = wLength;
+	if (device_id>=0 && device_id<0x20) {
+		msg->bulk.bEndpoint = bEndpoint;
+		msg->vec[0].data = &msg->bulk.bEndpoint;
+		msg->vec[0].len = sizeof(u8);
+		msg->vec[1].data = &msg->bulk.wLength;
+		msg->vec[1].len = sizeof(u16);
+		msg->vec[2].data = rpData;
+		msg->vec[2].len = wLength;
 
-	if(cb==NULL)
-		ret = IOS_Ioctlv(fd,ioctl,2,1,vec);
-	else {
-		msgcb = iosAlloc(hId,sizeof(struct _usb_cb));
-		if(msgcb==NULL) goto done;
+		if (cb==NULL)
+			ret = IOS_Ioctlv(device_id,ioctl,2,1,msg->vec);
+		else
+			return IOS_IoctlvAsync(device_id,ioctl,2,1,msg->vec,__usb_messageCB,msg);
 
-		msgcb->fd = -1;
-		msgcb->cb = cb;
-		msgcb->usrdata = usrdata;
-		msgcb->vec = vec;
-		return IOS_IoctlvAsync(fd,ioctl,2,1,vec,__usb_bulk_messageCB,msgcb);
+	} else {
+		u8 adjust = bEndpoint >> 7;
+		s32 fd = (device_id<0) ? ven_host->fd : hid_host->fd;
+		if (ioctl == USBV0_IOCTL_INTRMSG) {
+			msg->intr.bEndpoint = bEndpoint;
+			ioctl = USBV5_IOCTL_INTRMSG;
+			// HID does this a little bit differently
+			if (device_id>=0)
+				msg->hid_intr_write = !adjust;
+		} else {
+			msg->bulk.bEndpoint = bEndpoint;
+			ioctl = USBV5_IOCTL_BULKMSG;
+		}
+
+		msg->vec[0].data = msg;
+		msg->vec[0].len = 64;
+		msg->vec[1].data = rpData;
+		msg->vec[1].len = wLength;
+
+		if (cb==NULL)
+			ret = IOS_Ioctlv(fd, ioctl, 2-adjust, adjust, msg->vec);
+		else
+			return IOS_IoctlvAsync(fd, ioctl, 2-adjust, adjust, msg->vec, __usb_messageCB, msg);
 	}
 
-done:
-	if(pLength!=NULL) iosFree(hId,pLength);
-	if(pEndP!=NULL) iosFree(hId,pEndP);
-	if(vec!=NULL) iosFree(hId,vec);
+	if(msg!=NULL) iosFree(hId,msg);
 
 	return ret;
 }
@@ -275,7 +358,8 @@ static u32 __find_next_endpoint(u8 *buffer,u32 size)
 	u8 *ptr = buffer;
 
 	while(size>0) {
-		if(buffer[1]==USB_DT_ENDPOINT || buffer[1]==USB_DT_INTERFACE) break;
+		if(buffer[1]==USB_DT_ENDPOINT || buffer[1]==USB_DT_INTERFACE)
+			break;
 
 		size -= buffer[0];
 		buffer += buffer[0];
@@ -288,59 +372,190 @@ s32 USB_Initialize()
 {
 	if(hId==-1) hId = iosCreateHeap(USB_HEAPSIZE);
 	if(hId<0) return IPC_ENOMEM;
+
+	if (ven_host==NULL) {
+		s32 ven_fd = IOS_Open(__ven_path, IPC_OPEN_NONE);
+		if (ven_fd>=0) {
+			ven_host = (struct _usbv5_host*)iosAlloc(hId, sizeof(*ven_host));
+			if (ven_host==NULL) {
+				IOS_Close(ven_fd);
+				return IPC_ENOMEM;
+			}
+			memset(ven_host, 0, sizeof(*ven_host));
+			ven_host->fd = ven_fd;
+
+			u32 *ven_ver = (u32*)iosAlloc(hId, 0x20);
+			if (ven_ver==NULL) goto mem_error;
+			if (IOS_Ioctl(ven_fd, USBV5_IOCTL_GETVERSION, NULL, 0, ven_ver, 0x20)==0 && ven_ver[0]==0x50001)
+				IOS_IoctlAsync(ven_fd, USBV5_IOCTL_GETDEVICECHANGE, NULL, 0, ven_host->attached_devices, 0x180, __usbv5_devicechangeCB, ven_host);
+			else {
+				// wrong ven version
+				IOS_Close(ven_fd);
+				iosFree(hId, ven_host);
+				ven_host = NULL;
+			}
+
+			iosFree(hId, ven_ver);
+		}
+	}
+
+	if (hid_host==NULL) {
+		s32 hid_fd = IOS_Open(__hid_path, IPC_OPEN_NONE);
+		if (hid_fd>=0) {
+			hid_host = (struct _usbv5_host*)iosAlloc(hId, sizeof(*hid_host));
+			if (hid_host==NULL) {
+				IOS_Close(hid_fd);
+				goto mem_error;
+			}
+			memset(hid_host, 0, sizeof(*hid_host));
+			hid_host->fd = hid_fd;
+
+			u32 *hid_ver = (u32*)iosAlloc(hId, 0x20);
+			if (hid_ver==NULL) goto mem_error;
+			// have to call the USB4 version first, to be safe
+			if (IOS_Ioctl(hid_fd, USBV4_IOCTL_GETVERSION, NULL, 0, NULL, 0)==0x40001  || \
+					IOS_Ioctl(hid_fd, USBV5_IOCTL_GETVERSION, NULL, 0, hid_ver, 0x20) || hid_ver[0]!=0x50001) {
+				// wrong hid version
+				IOS_Close(hid_fd);
+				iosFree(hId, hid_host);
+				hid_host = NULL;
+			} else
+				IOS_IoctlAsync(hid_fd, USBV5_IOCTL_GETDEVICECHANGE, NULL, 0, hid_host->attached_devices, 0x180, __usbv5_devicechangeCB, hid_host);
+
+			iosFree(hId, hid_ver);
+		}
+	}
+
 	return IPC_OK;
+
+mem_error:
+	USB_Deinitialize();
+	return IPC_ENOMEM;
 }
 
 s32 USB_Deinitialize()
 {
-	if(hId<0) return IPC_EINVAL;
-	return iosDestroyHeap(hId);
+	if (hid_host) {
+		if (hid_host->fd) {
+			IOS_Ioctl(hid_host->fd, USBV5_IOCTL_SHUTDOWN, NULL, 0, NULL, 0);
+			IOS_Close(hid_host->fd);
+		}
+		iosFree(hId, hid_host);
+		hid_host = NULL;
+	}
+
+	if (ven_host) {
+		if (ven_host->fd>=0) {
+			IOS_Ioctl(ven_host->fd, USBV5_IOCTL_SHUTDOWN, NULL, 0, NULL, 0);
+			IOS_Close(ven_host->fd);
+		}
+		iosFree(hId, ven_host);
+		ven_host = NULL;
+	}
+
+	if (hId>=0) {
+		iosDestroyHeap(hId);
+		hId = -1;
+	}
+
+	return IPC_OK;
 }
 
-s32 USB_OpenDevice(const char *device,u16 vid,u16 pid,s32 *fd)
+s32 USB_OpenDevice(s32 device_id,u16 vid,u16 pid,s32 *fd)
 {
-	s32 _fd = -1;
 	s32 ret = USB_OK;
 	char *devicepath = NULL;
+	*fd = -1;
+
+	if (device_id && device_id!=USB_OH1_DEVICE_ID) {
+		int i;
+
+		i = __find_device_on_host(ven_host, device_id);
+		if (i<0)
+			i = __find_device_on_host(hid_host, device_id);
+		if (i>=0) {
+			*fd = device_id;
+			return USB_ResumeDevice(device_id);
+		}
+	}
 
 	devicepath = iosAlloc(hId,USB_MAXPATH);
 	if(devicepath==NULL) return IPC_ENOMEM;
 
-	snprintf(devicepath,USB_MAXPATH,"/dev/usb/%s/%x/%x",device,vid,pid);
+	if (device_id==USB_OH1_DEVICE_ID)
+		snprintf(devicepath,USB_MAXPATH,"/dev/usb/oh1/%x/%x",vid,pid);
+	else
+		snprintf(devicepath,USB_MAXPATH,"/dev/usb/oh0/%x/%x",vid,pid);
 
-	_fd = IOS_Open(devicepath,0);
-	if(_fd<0) ret = _fd;
+	*fd = IOS_Open(devicepath,0);
+	if(*fd<0) ret = *fd;
 
-	*fd = _fd;
-
-	if(devicepath!=NULL) iosFree(hId,devicepath);
+	if (devicepath!=NULL) iosFree(hId,devicepath);
 	return ret;
+}
+
+s32 USBV5_CloseDevice(s32 device_id)
+{
+	int i;
+	struct _usbv5_host* host;
+
+	if (__find_device_on_host(ven_host, device_id)>=0)
+		host = ven_host;
+	else if (__find_device_on_host(hid_host, device_id)>=0)
+		host = hid_host;
+	else
+		return IPC_EINVAL;
+
+	for (i=0; i < USB_MAX_DEVICES; i++) {
+		if (host->remove_cb[i].cb==NULL)
+			continue;
+
+		if (host->remove_cb[i].device_id==device_id) {
+			host->remove_cb[i].cb(0, host->remove_cb[i].userdata);
+			host->remove_cb[i].cb = NULL;
+			break;
+		}
+	}
+
+	return USB_SuspendDevice(device_id);
 }
 
 s32 USB_CloseDevice(s32 *fd)
 {
-	s32 ret = IPC_OK;
-
-	if(fd && *fd>=0) {
-		ret = IOS_Close(*fd);
-		if(ret>=0) *fd = -1;
+	s32 ret = IPC_EINVAL;
+	if (fd) {
+		ret = USBV5_CloseDevice(*fd);
+		if (ret==IPC_EINVAL && *fd>0)
+			ret = IOS_Close(*fd);
+		if (ret>=0) *fd = -1;
 	}
+
 	return ret;
 }
 
-s32 USB_CloseDeviceAsync(s32 *fd,usbcallback cb,void *usrdata)
+s32 USB_CloseDeviceAsync(s32 *fd,usbcallback cb,void *userdata)
 {
-	if(fd && *fd>=0)
-		return IOS_CloseAsync(*fd,cb,usrdata);
+	s32 ret = IPC_EINVAL;
+	if(fd) {
+		ret = USBV5_CloseDevice(*fd);
+		if (ret!=IPC_EINVAL) {
+			if (cb)
+				return cb(ret, userdata);
+			else
+				return ret;
+		}
+		if (*fd>0)
+			return IOS_CloseAsync(*fd,cb,userdata);
+	}
 
-	return IPC_OK;
+	return ret;
 }
 
 s32 USB_GetDeviceDescription(s32 fd,usb_devdesc *devdesc)
 {
 	s32 ret;
 	usb_devdesc *p;
-	
+
 	p = iosAlloc(hId,USB_DT_DEVICE_SIZE);
 	if(p==NULL) return IPC_ENOMEM;
 
@@ -350,6 +565,82 @@ s32 USB_GetDeviceDescription(s32 fd,usb_devdesc *devdesc)
 
 	if(p!=NULL) iosFree(hId,p);
 	return ret;
+}
+
+static s32 USBV5_GetDescriptors(s32 device_id, usb_devdesc *udd)
+{
+	s32 retval = IPC_ENOMEM;
+	u32 *io_buffer = NULL;
+	u8 *buffer = NULL;
+	usb_configurationdesc *ucd = NULL;
+	usb_interfacedesc *uid = NULL;
+	usb_endpointdesc *ued = NULL;
+	u32 iConf, iEndpoint;
+	s32 fd;
+	u32 desc_out_size, desc_start_offset;
+
+	if (__find_device_on_host(ven_host, device_id)>=0) {
+		fd = ven_host->fd;
+		desc_out_size = 0xC0;
+		desc_start_offset = 20;
+	} else if (__find_device_on_host(hid_host, device_id)>=0) {
+		fd = hid_host->fd;
+		desc_out_size = 0x60;
+		desc_start_offset = 36;
+	} else
+		return IPC_EINVAL;
+
+	io_buffer = (u32*)iosAlloc(hId, 0x20);
+	buffer = (u8*)iosAlloc(hId, desc_out_size);
+	if (io_buffer==NULL || buffer==NULL) goto free_bufs;
+
+	io_buffer[0] = device_id;
+	io_buffer[2] = 0;
+	retval = IOS_Ioctl(fd, USBV5_IOCTL_GETDEVPARAMS, io_buffer, 0x20, buffer, desc_out_size);
+	if (retval==IPC_OK) {
+		u8 *next = buffer+desc_start_offset;
+
+		memcpy(udd, next, sizeof(*udd));
+		udd->configurations = calloc(udd->bNumConfigurations, sizeof(*udd->configurations));
+		if(udd->configurations == NULL)	goto free_bufs;
+
+		next += (udd->bLength+3)&~3;
+		for (iConf = 0; iConf < udd->bNumConfigurations; iConf++)
+		{
+			ucd = &udd->configurations[iConf];
+			memcpy(ucd, next, USB_DT_CONFIG_SIZE);
+			next += (USB_DT_CONFIG_SIZE+3)&~3;
+			// IOS presents each interface as a different device
+			if (ucd->bNumInterfaces) ucd->bNumInterfaces = 1;
+
+			ucd->interfaces = calloc(ucd->bNumInterfaces, sizeof(*ucd->interfaces));
+			if (ucd->interfaces == NULL) goto free_bufs;
+
+			uid = ucd->interfaces;
+			memcpy(uid, next, USB_DT_INTERFACE_SIZE);
+			next += (uid->bLength+3)&~3;
+
+			uid->endpoints = calloc(uid->bNumEndpoints, sizeof(*uid->endpoints));
+			if (uid->endpoints == NULL)	goto free_bufs;
+
+			memset(uid->endpoints,0,uid->bNumEndpoints*sizeof(*uid->endpoints));
+			for(iEndpoint = 0; iEndpoint < uid->bNumEndpoints; iEndpoint++)
+			{
+				ued = &uid->endpoints[iEndpoint];
+				memcpy(ued, next, USB_DT_ENDPOINT_SIZE);
+				next += (ued->bLength+3)&~3;
+			}
+
+			retval = IPC_OK;
+		}
+	}
+
+free_bufs:
+	if (io_buffer!=NULL)
+		iosFree(hId, io_buffer);
+	if (buffer!=NULL)
+		iosFree(hId, buffer);
+	return retval;
 }
 
 s32 USB_GetDescriptors(s32 fd, usb_devdesc *udd)
@@ -362,6 +653,9 @@ s32 USB_GetDescriptors(s32 fd, usb_devdesc *udd)
 	s32 retval = 0;
 	u32 size,i;
 	u32 iConf, iInterface, iEndpoint;
+
+	if (fd>=0x20 || fd<-1)
+		return USBV5_GetDescriptors(fd, udd);
 
 	buffer = iosAlloc(hId, sizeof(*udd));
 	if(buffer == NULL)
@@ -429,6 +723,8 @@ s32 USB_GetDescriptors(s32 fd, usb_devdesc *udd)
 			ptr += uid->bLength;
 			size -= uid->bLength;
 
+			if (uid->bNumEndpoints==0)
+				continue;
 			uid->endpoints = calloc(uid->bNumEndpoints, sizeof(*uid->endpoints));
 			if(uid->endpoints == NULL)
 				goto free_and_error;
@@ -467,6 +763,7 @@ free_and_error:
 	return retval;
 }
 
+//TODO: Fix for /dev/usb/hid
 s32 USB_GetHIDDescriptor(s32 fd,usb_hiddesc *uhd)
 {
 	u8 *buffer = NULL;
@@ -566,42 +863,42 @@ s32 USB_GetAsciiString(s32 fd,u16 wIndex,u16 wLangID,u16 wLength,void *rpData)
 
 s32 USB_ReadIntrMsg(s32 fd,u8 bEndpoint,u16 wLength,void *rpData)
 {
-	return __usb_interrupt_bulk_message(fd,USB_IOCTL_INTRMSG,bEndpoint,wLength,rpData,NULL,NULL);
+	return __usb_interrupt_bulk_message(fd,USBV0_IOCTL_INTRMSG,bEndpoint,wLength,rpData,NULL,NULL);
 }
 
-s32 USB_ReadIntrMsgAsync(s32 fd,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
+s32 USB_ReadIntrMsgAsync(s32 fd,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *userdata)
 {
-	return __usb_interrupt_bulk_message(fd,USB_IOCTL_INTRMSG,bEndpoint,wLength,rpData,cb,usrdata);
+	return __usb_interrupt_bulk_message(fd,USBV0_IOCTL_INTRMSG,bEndpoint,wLength,rpData,cb,userdata);
 }
 
 s32 USB_WriteIntrMsg(s32 fd,u8 bEndpoint,u16 wLength,void *rpData)
 {
-	return __usb_interrupt_bulk_message(fd,USB_IOCTL_INTRMSG,bEndpoint,wLength,rpData,NULL,NULL);
+	return __usb_interrupt_bulk_message(fd,USBV0_IOCTL_INTRMSG,bEndpoint,wLength,rpData,NULL,NULL);
 }
 
-s32 USB_WriteIntrMsgAsync(s32 fd,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
+s32 USB_WriteIntrMsgAsync(s32 fd,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *userdata)
 {
-	return __usb_interrupt_bulk_message(fd,USB_IOCTL_INTRMSG,bEndpoint,wLength,rpData,cb,usrdata);
+	return __usb_interrupt_bulk_message(fd,USBV0_IOCTL_INTRMSG,bEndpoint,wLength,rpData,cb,userdata);
 }
 
 s32 USB_ReadBlkMsg(s32 fd,u8 bEndpoint,u16 wLength,void *rpData)
 {
-	return __usb_interrupt_bulk_message(fd,USB_IOCTL_BLKMSG,bEndpoint,wLength,rpData,NULL,NULL);
+	return __usb_interrupt_bulk_message(fd,USBV0_IOCTL_BLKMSG,bEndpoint,wLength,rpData,NULL,NULL);
 }
 
-s32 USB_ReadBlkMsgAsync(s32 fd,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
+s32 USB_ReadBlkMsgAsync(s32 fd,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *userdata)
 {
-	return __usb_interrupt_bulk_message(fd,USB_IOCTL_BLKMSG,bEndpoint,wLength,rpData,cb,usrdata);
+	return __usb_interrupt_bulk_message(fd,USBV0_IOCTL_BLKMSG,bEndpoint,wLength,rpData,cb,userdata);
 }
 
 s32 USB_WriteBlkMsg(s32 fd,u8 bEndpoint,u16 wLength,void *rpData)
 {
-	return __usb_interrupt_bulk_message(fd,USB_IOCTL_BLKMSG,bEndpoint,wLength,rpData,NULL,NULL);
+	return __usb_interrupt_bulk_message(fd,USBV0_IOCTL_BLKMSG,bEndpoint,wLength,rpData,NULL,NULL);
 }
 
-s32 USB_WriteBlkMsgAsync(s32 fd,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
+s32 USB_WriteBlkMsgAsync(s32 fd,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *userdata)
 {
-	return __usb_interrupt_bulk_message(fd,USB_IOCTL_BLKMSG,bEndpoint,wLength,rpData,cb,usrdata);
+	return __usb_interrupt_bulk_message(fd,USBV0_IOCTL_BLKMSG,bEndpoint,wLength,rpData,cb,userdata);
 }
 
 s32 USB_ReadCtrlMsg(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData)
@@ -609,9 +906,9 @@ s32 USB_ReadCtrlMsg(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u
 	return __usb_control_message(fd,bmRequestType,bmRequest,wValue,wIndex,wLength,rpData,NULL,NULL);
 }
 
-s32 USB_ReadCtrlMsgAsync(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
+s32 USB_ReadCtrlMsgAsync(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData,usbcallback cb,void *userdata)
 {
-	return __usb_control_message(fd,bmRequestType,bmRequest,wValue,wIndex,wLength,rpData,cb,usrdata);
+	return __usb_control_message(fd,bmRequestType,bmRequest,wValue,wIndex,wLength,rpData,cb,userdata);
 }
 
 s32 USB_WriteCtrlMsg(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData)
@@ -619,110 +916,171 @@ s32 USB_WriteCtrlMsg(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,
 	return __usb_control_message(fd,bmRequestType,bmRequest,wValue,wIndex,wLength,rpData,NULL,NULL);
 }
 
-s32 USB_WriteCtrlMsgAsync(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData,usbcallback cb,void *usrdata)
+s32 USB_WriteCtrlMsgAsync(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData,usbcallback cb,void *userdata)
 {
-	return __usb_control_message(fd,bmRequestType,bmRequest,wValue,wIndex,wLength,rpData,cb,usrdata);
+	return __usb_control_message(fd,bmRequestType,bmRequest,wValue,wIndex,wLength,rpData,cb,userdata);
+}
+
+static s32 USB5_RegisterDeviceRemoval(struct _usbv5_host *host, s32 device_id, usbcallback cb, void *userdata)
+{
+	int i;
+
+	// check to make sure the device is present
+	if (__find_device_on_host(host, device_id)<0)
+		return IPC_ENOENT;
+
+	// now make sure it's not hooked already
+	for (i=0; i<USB_MAX_DEVICES; i++) {
+		if (host->remove_cb[i].cb && host->remove_cb[i].device_id==device_id)
+			return IPC_EINVAL;
+	}
+
+	// find a free entry and add it
+	for (i=0; i<USB_MAX_DEVICES; i++) {
+		if (host->remove_cb[i].cb==NULL) {
+			host->remove_cb[i].cb = cb;
+			host->remove_cb[i].userdata = userdata;
+			host->remove_cb[i].device_id = device_id;
+			return IPC_OK;
+		}
+	}
+	return IPC_EINVAL;
 }
 
 s32 USB_DeviceRemovalNotifyAsync(s32 fd,usbcallback cb,void *userdata)
 {
-	return IOS_IoctlAsync(fd,USB_IOCTL_DEVREMOVALHOOK,NULL,0,NULL,0,cb,userdata);
-}
+	s32 ret;
+	if (fd>=0 && fd<0x20)
+		return IOS_IoctlAsync(fd,USBV0_IOCTL_DEVREMOVALHOOK,NULL,0,NULL,0,cb,userdata);
 
-s32 USB_DeviceInsertNotifyAsync(const char *devpath,u16 vid,u16 pid,usbcallback cb,void *usrdata)
-{
-	char *path;
-	s32 fd = -1;
-	s32 ret = IPC_ENOMEM;
-	u16 *pvid = NULL;
-	u16 *ppid = NULL;
-	ioctlv *vec = NULL;
-	struct _usb_cb *msgcb = NULL;
-
-	if(devpath==NULL || *devpath=='\0') return IPC_EINVAL;
-
-	path = (char*)iosAlloc(hId,IPC_MAXPATH_LEN);
-	if(path==NULL) return IPC_ENOMEM;
-	
-	strncpy(path,devpath,IPC_MAXPATH_LEN);
-	fd = IOS_Open(path,IPC_OPEN_NONE);
-	if(fd<0) {
-		ret = fd;
-		goto done;
-	}
-
-	vec = iosAlloc(hId,sizeof(ioctlv)*2);
-	if(vec==NULL) goto done;
-
-	msgcb = iosAlloc(hId,sizeof(struct _usb_cb));
-	if(msgcb==NULL) goto done;
-
-	pvid = iosAlloc(hId,32);
-	if(pvid==NULL) goto done;
-	*pvid = vid;
-
-	ppid = iosAlloc(hId,32);
-	if(ppid==NULL) goto done;
-	*ppid = pid;
-
-	vec[0].data = pvid;
-	vec[0].len = sizeof(u16);
-	vec[1].data = ppid;
-	vec[1].len = sizeof(u16);
-
-	msgcb->fd = fd;
-	msgcb->cb = cb;
-	msgcb->vec = vec;
-	msgcb->usrdata = usrdata;
-	return IOS_IoctlvAsync(fd,USB_IOCTL_DEVINSERTHOOK,2,0,vec,__usb_device_notificationCB,msgcb);
-
-done:
-	if(ppid!=NULL) iosFree(hId,ppid);
-	if(pvid!=NULL) iosFree(hId,pvid);
-	if(msgcb!=NULL) iosFree(hId,msgcb);
-	if(vec!=NULL) iosFree(hId,vec);
-	if(path!=NULL) iosFree(hId,path);
-	
-	if(fd>=0) IOS_Close(fd);
+	ret = USB5_RegisterDeviceRemoval(ven_host, fd, cb, userdata);
+	if (ret == IPC_ENOENT)
+		ret = USB5_RegisterDeviceRemoval(hid_host, fd, cb, userdata);
 
 	return ret;
 }
 
-void USB_SuspendDevice(s32 fd)
+static s32 USBV5_SuspendResume(s32 device_id, s32 resumed)
 {
-	IOS_Ioctl(fd,USB_IOCTL_SUSPENDDEV,NULL,0,NULL,0);
+	s32 ret;
+	s32 fd;
+
+	if (__find_device_on_host(ven_host, device_id)>=0)
+		fd = ven_host->fd;
+	else if (__find_device_on_host(hid_host, device_id)>=0)
+		fd = hid_host->fd;
+	else
+		return IPC_ENOENT;
+
+	s32 *buf = (s32*)iosAlloc(hId, 32);
+	if (buf==NULL) return IPC_ENOMEM;
+
+	buf[0] = device_id;
+	buf[2] = resumed;
+	ret = IOS_Ioctl(fd, USBV5_IOCTL_SUSPEND_RESUME, buf, 32, NULL, 0);
+	iosFree(hId, buf);
+
+	return ret;
 }
 
-void USB_ResumeDevice(s32 fd)
+s32 USB_SuspendDevice(s32 fd)
 {
-	IOS_Ioctl(fd,USB_IOCTL_RESUMEDEV,NULL,0,NULL,0);
+	if (fd>=0x20 || fd<-1)
+		return USBV5_SuspendResume(fd, 0);
+
+	return IOS_Ioctl(fd,USBV0_IOCTL_SUSPENDDEV,NULL,0,NULL,0);
 }
 
-s32 USB_GetDeviceList(const char *devpath,void *descr_buffer,u8 num_descr,u8 b0,u8 *cnt_descr)
+s32 USB_ResumeDevice(s32 fd)
 {
-	s32 fd,ret;
-	char *path;
-	u8 cntdevs;
+	if (fd>=0x20 || fd<-1)
+		return USBV5_SuspendResume(fd, 1);
 
-	if(devpath==NULL || *devpath=='\0') return IPC_EINVAL;
+	return IOS_Ioctl(fd,USBV0_IOCTL_RESUMEDEV,NULL,0,NULL,0);
+}
 
-	path = (char*)iosAlloc(hId,IPC_MAXPATH_LEN);
-	if(path==NULL) return IPC_ENOMEM;
-	
-	strncpy(path,devpath,IPC_MAXPATH_LEN);
-	fd = IOS_Open(path,IPC_OPEN_NONE);
-	if(fd<0) {
-		iosFree(hId,path);
-		return fd;
+// TODO: Implement this for VEN and HID
+s32 USB_DeviceChangeNotifyAsync(u8 interface_class, usbcallback cb, void* userdata)
+{
+	s32 fd;
+	struct _usb_msg *msg;
+	s32 ret;
+
+	fd = IOS_Open(__oh0_path,IPC_OPEN_NONE);
+	if (fd<0) return fd;
+
+	msg = iosAlloc(hId,sizeof(*msg));
+	if (msg==NULL) {
+		IOS_Close(fd);
+		return IPC_ENOMEM;
 	}
 
-	cntdevs = 0;
-	ret = IOS_IoctlvFormat(hId,fd,USB_IOCTL_GETDEVLIST,"bb:dd",num_descr,b0,&cntdevs,sizeof(cntdevs),descr_buffer,(num_descr<<3));
-	if(ret>=0) *cnt_descr = cntdevs;
-	
-	iosFree(hId,path);
+	msg->cb = cb;
+	msg->userdata = userdata;
+	msg->class = interface_class;
+
+	msg->vec[0].data = &msg->class;
+	msg->vec[0].len = 1;
+
+	ret = IOS_IoctlvAsync(fd,USBV0_IOCTL_DEVICECLASSCHANGE,1,0,msg->vec,__usb_messageCB,msg);
 	IOS_Close(fd);
+
+	if (ret<0) iosFree(hId, msg);
+
 	return ret;
+}
+
+s32 USB_GetDeviceList(usb_device_entry *descr_buffer,u8 num_descr,u8 interface_class,u8 *cnt_descr)
+{
+	int i;
+	u8 cntdevs=0;
+
+	if (ven_host==NULL) {
+		s32 fd;
+		u32 *buf = (u32*)iosAlloc(hId, num_descr<<3);
+		if (buf==NULL) return IPC_ENOMEM;
+
+		fd = IOS_Open(__oh0_path,IPC_OPEN_NONE);
+		if (fd<0) {
+			iosFree(hId, buf);
+			return fd;
+		}
+
+		cntdevs = 0;
+		i = IOS_IoctlvFormat(hId,fd,USBV0_IOCTL_GETDEVLIST,"bb:dd",num_descr,interface_class,&cntdevs,sizeof(cntdevs),buf,(num_descr<<3));
+		if (cnt_descr) *cnt_descr = cntdevs;
+
+		while (cntdevs--) {
+			descr_buffer[cntdevs].device_id = 0;
+			descr_buffer[cntdevs].vid = (u16)(buf[cntdevs*2+1]>>16);
+			descr_buffer[cntdevs].pid = (u16)buf[cntdevs*2+1];
+		}
+
+		IOS_Close(fd);
+		iosFree(hId, buf);
+		return i;
+	}
+
+	// for ven_host, we can only exclude usb_hid class devices
+	if (interface_class != USB_CLASS_HID && ven_host) {
+		i=0;
+		while (cntdevs<num_descr && ven_host->attached_devices[i].device_id) {
+			descr_buffer[cntdevs++] = ven_host->attached_devices[i++];
+			if (i>=32) break;
+		}
+	}
+
+	if ((!interface_class || interface_class==USB_CLASS_HID) && hid_host) {
+		i=0;
+		while (cntdevs<num_descr && hid_host->attached_devices[i].device_id) {
+			descr_buffer[cntdevs++] = hid_host->attached_devices[i++];
+			if (i>32) break;
+		}
+	}
+
+	if (cnt_descr) *cnt_descr = cntdevs;
+
+	return IPC_OK;
 }
 
 s32 USB_SetConfiguration(s32 fd, u8 configuration)
@@ -754,8 +1112,33 @@ s32 USB_SetAlternativeInterface(s32 fd, u8 interface, u8 alternateSetting)
 	return __usb_control_message(fd, (USB_CTRLTYPE_DIR_HOST2DEVICE | USB_CTRLTYPE_TYPE_STANDARD | USB_CTRLTYPE_REC_INTERFACE), USB_REQ_SETINTERFACE, alternateSetting, interface, 0, NULL, NULL, NULL);
 }
 
+static s32 USBV5_CancelEndpoint(s32 device_id, u8 endpoint)
+{
+	s32 ret;
+	s32 fd;
+
+	if (__find_device_on_host(ven_host, device_id)>=0)
+		fd = ven_host->fd;
+	else if (__find_device_on_host(hid_host, device_id)>=0)
+		fd = hid_host->fd;
+	else
+		return IPC_ENOENT;
+
+	s32 *buf = (s32*)iosAlloc(hId, 32);
+	if (buf==NULL) return IPC_ENOMEM;
+
+	buf[0] = device_id;
+	buf[2] = endpoint;
+	ret = IOS_Ioctl(fd, USBV5_IOCTL_CANCELENDPOINT, buf, 32, NULL, 0);
+	iosFree(hId, buf);
+
+	return ret;
+}
+
 s32 USB_ClearHalt(s32 fd, u8 endpoint)
 {
+	if (fd>=0x20 || fd<-1)
+		return USBV5_CancelEndpoint(fd, endpoint);
 	return __usb_control_message(fd, (USB_CTRLTYPE_DIR_HOST2DEVICE | USB_CTRLTYPE_TYPE_STANDARD | USB_CTRLTYPE_REC_ENDPOINT), USB_REQ_CLEARFEATURE, USB_FEATURE_ENDPOINT_HALT, endpoint, 0, NULL, NULL, NULL);
 }
 
