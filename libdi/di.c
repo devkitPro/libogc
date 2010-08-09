@@ -42,7 +42,7 @@ distribution.
 #define MOUNT_TIMEOUT		15000 // 15 seconds
 
 int di_fd = -1;
-static bool load_dvdx = true;
+static bool load_dvdx = false;
 static int state = DVD_INIT | DVD_NO_DISC;
 
 static int _cover_callback(int ret, void* usrdata);
