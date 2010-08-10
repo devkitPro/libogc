@@ -144,9 +144,10 @@ static s32 USBMouse_Deinitialize(void)
 //Close the device
 static void USBMouse_Close(void)
 {
-	if (_mouse && _mouse->fd > 0)
+	if (_mouse && _mouse->fd != -1) {
 		USB_CloseDevice(&_mouse->fd);
-	_mouse->fd = 0;
+		_mouse->fd = -1;
+	}
 }
 
 //Search for a mouse connected to the wii usb port
@@ -187,7 +188,11 @@ static s32 USBMouse_Open()
 		if (USB_OpenDevice(buffer[i].device_id, vid, pid, &fd) < 0)
 			continue;
 
-		USB_GetDescriptors(fd, &udd);
+		if (USB_GetDescriptors(fd, &udd) < 0) {
+			USB_CloseDevice(&fd);
+			continue;
+		}
+
 		for(iConf = 0; iConf < udd.bNumConfigurations; iConf++)
 		{
 			ucd = &udd.configurations[iConf];
@@ -256,8 +261,8 @@ static s32 USBMouse_Open()
 	}
 
 	//set boot protocol
-	USB_WriteCtrlMsg(_mouse->fd, USB_REQTYPE_SET, USB_REQ_SETPROTOCOL, 0, 0, 0, 0);
-	USB_ReadIntrMsgAsync(_mouse->fd, _mouse->ep, _mouse->ep_size, _mousedata, _mouse_event_cb, 0);
+	USB_WriteCtrlMsg(_mouse->fd, USB_REQTYPE_SET, USB_REQ_SETPROTOCOL, 0, _mouse->interface, 0, NULL);
+	USB_ReadIntrMsgAsync(_mouse->fd, _mouse->ep, _mouse->ep_size, _mousedata, _mouse_event_cb, NULL);
 	_mouse->connected = true;
 	return 1;
 }
@@ -298,6 +303,7 @@ s32 MOUSE_Init(void)
 	_mousedata = (s8*)iosAlloc(hId,MOUSE_MAX_DATA);
 	_mouse = (struct umouse *) malloc(sizeof(struct umouse));
 	memset(_mouse, 0, sizeof(struct umouse));
+	_mouse->fd = -1;
 
 	if (!_mouse_thread_running)
 	{
