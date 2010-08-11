@@ -31,6 +31,7 @@ distribution.
 #if defined(HW_RVL)
 
 #include <stdio.h>
+#include <malloc.h>
 #include "asm.h"
 #include "processor.h"
 #include "cache.h"
@@ -114,7 +115,6 @@ s32 IOS_GetPreferredVersion()
 	u32 count;
 	u64 *titles;
 	u32 tmd_size;
-	u32 tmdbuffer[MAX_SIGNED_TMD_SIZE] ATTRIBUTE_ALIGN(32);
 	u32 i;
 	u32 a,b;
 
@@ -144,6 +144,14 @@ s32 IOS_GetPreferredVersion()
 		iosFree(__ios_hid, titles);
 		return res;
 	}
+	
+	u32 *tmdbuffer = memalign(32, MAX_SIGNED_TMD_SIZE);
+
+	if(!tmdbuffer)
+	{
+		iosFree(__ios_hid, titles);
+		return -1;
+	}
 
 	for(i=0; i<count; i++) {
 		a = titles[i]>>32;
@@ -170,6 +178,7 @@ s32 IOS_GetPreferredVersion()
 	printf(" Preferred verson: %d\n",ver);
 #endif
 	iosFree(__ios_hid, titles);
+	free(tmdbuffer);
 	return ver;
 }
 
