@@ -164,7 +164,7 @@ s32 IOS_GetPreferredVersion()
 		if (!tmdbuffer[1] && !tmdbuffer[2])
 			continue;
 		
-		if(((s32)b) > ((s32)ver) && ver != 58) ver = b;
+		if((((s32)b) > ((s32)ver) && ver != 58) || b == 58) ver = b;
 	}
 #ifdef DEBUG_IOS
 	printf(" Preferred verson: %d\n",ver);
