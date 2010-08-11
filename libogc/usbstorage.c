@@ -807,8 +807,9 @@ static bool __usbstorage_IsInserted(void)
 				}
 			}
 		}
-
 		USBStorage_Close(&__usbfd);
+		__lwp_heap_free(&__heap,buffer);
+		return false;
 	}
 
 	for (i = 0; i < device_count; i++) {
