@@ -47,7 +47,7 @@ distribution.
 //#define DEBUG_IOS
 
 #define IOS_MAX_VERSION 61
-#define IOS_MIN_VERSION 3
+#define IOS_MIN_VERSION 28
 
 static s32 __ios_hid = -1;
 extern void udelay(int us);
