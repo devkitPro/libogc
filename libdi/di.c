@@ -106,7 +106,7 @@ static int _DI_ReadDVD_D0_Async(void* buf, uint32_t len, uint32_t lba, ipccallba
 	return (ret == 1)? 0 : -ret;
 }
 
-volatile unsigned long* dvd = (volatile unsigned long*)0xCD806000;
+static volatile unsigned long* dvd = (volatile unsigned long*)0xCD806000;
 
 static int _DI_ReadDVD(void* buf, uint32_t len, uint32_t lba, uint32_t read_cmd){
 	if ((((int) buf) & 0xC0000000) == 0x80000000) // cached?
