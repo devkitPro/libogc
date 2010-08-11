@@ -113,6 +113,8 @@ s32 IOS_GetPreferredVersion()
 	s32 res;
 	u32 count;
 	u64 *titles;
+	u32 tmd_size;
+	u32 tmdbuffer[MAX_SIGNED_TMD_SIZE] ATTRIBUTE_ALIGN(32);
 	u32 i;
 	u32 a,b;
 
@@ -149,7 +151,20 @@ s32 IOS_GetPreferredVersion()
 		if(a != 1) continue;
 		if(b < IOS_MIN_VERSION) continue;
 		if(b > IOS_MAX_VERSION) continue;
-		if(((s32)b) > ((s32)ver)) ver = b;
+		
+		if (ES_GetStoredTMDSize(titles[i], &tmd_size) < 0)
+			continue;
+
+		if (tmd_size < 0 || tmd_size > 4096)
+			continue;
+
+		if(ES_GetStoredTMD(titles[i], (signed_blob *)tmdbuffer, tmd_size) < 0)
+			continue;
+
+		if (!tmdbuffer[1] && !tmdbuffer[2])
+			continue;
+		
+		if(((s32)b) > ((s32)ver) && ver != 58) ver = b;
 	}
 #ifdef DEBUG_IOS
 	printf(" Preferred verson: %d\n",ver);
