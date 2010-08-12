@@ -75,6 +75,7 @@
 #define USB_ENDPOINT_IN					0x80
 #define USB_ENDPOINT_OUT				0x00
 
+#define USB_OH0_DEVICE_ID				0x00000000				// for completion
 #define USB_OH1_DEVICE_ID				0x00200000
 
 #ifdef __cplusplus
