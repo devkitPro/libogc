@@ -62,6 +62,8 @@ static read_func DI_ReadDVDptr = NULL;
 static read_func_async DI_ReadDVDAsyncptr = NULL;
 static di_callback di_cb = NULL;
 
+static vu32* const _dvdReg = (u32*)0xCD806000;
+
 static int _DI_ReadDVD_A8_Async(void* buf, uint32_t len, uint32_t lba, ipccallback ipc_cb){
 	int ret;
 	
@@ -106,22 +108,20 @@ static int _DI_ReadDVD_D0_Async(void* buf, uint32_t len, uint32_t lba, ipccallba
 	return (ret == 1)? 0 : -ret;
 }
 
-static volatile unsigned long* dvd = (volatile unsigned long*)0xCD806000;
-
 static int _DI_ReadDVD(void* buf, uint32_t len, uint32_t lba, uint32_t read_cmd){
 	if ((((int) buf) & 0xC0000000) == 0x80000000) // cached?
-		dvd[0] = 0x2E;
-	dvd[1] = 0;
-	dvd[2] = read_cmd;
-	dvd[3] = read_cmd == 0xD0000000 ? lba : lba << 9;
-	dvd[4] = read_cmd == 0xD0000000 ? len : len << 11;
-	dvd[5] = (unsigned long) buf;
-	dvd[6] = len << 11;
-	dvd[7] = 3; // enable reading!
+		_dvdReg[0] = 0x2E;
+	_dvdReg[1] = 0;
+	_dvdReg[2] = read_cmd;
+	_dvdReg[3] = read_cmd == 0xD0000000 ? lba : lba << 9;
+	_dvdReg[4] = read_cmd == 0xD0000000 ? len : len << 11;
+	_dvdReg[5] = (unsigned long) buf;
+	_dvdReg[6] = len << 11;
+	_dvdReg[7] = 3; // enable reading!
 	DCInvalidateRange(buf, len << 11);
-	while (dvd[7] & 1);
+	while (_dvdReg[7] & 1);
 
-	if (dvd[0] & 0x4)
+	if (_dvdReg[0] & 0x4)
 		return 1;
 	return 0;
 }
