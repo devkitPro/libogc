@@ -189,13 +189,49 @@ static s32 __usbv5_devicechangeCB(s32 result, void *p)
 }
 
 
-static s32 __usb_messageCB(s32 result,void *_msg)
+static s32 __usbv5_messageCB(s32 result,void *_msg)
 {
 	struct _usb_msg *msg = (struct _usb_msg*)_msg;
 
 	if(msg==NULL) return IPC_EINVAL;
 
 	if(msg->cb!=NULL) msg->cb(result, msg->userdata);
+
+	iosFree(hId,msg);
+
+	return IPC_OK;
+}
+
+static s32 __usbv0_control_messageCB(s32 result,void *usrdata)
+{
+	struct _usb_msg *msg = (struct _usb_msg*)usrdata;
+
+	if(msg==NULL) return IPC_EINVAL;
+
+	if(msg->cb!=NULL) msg->cb(result, msg->userdata);
+
+	if(msg->vec[0].data!=NULL) iosFree(hId,msg->vec[0].data);
+	if(msg->vec[1].data!=NULL) iosFree(hId,msg->vec[1].data);
+	if(msg->vec[2].data!=NULL) iosFree(hId,msg->vec[2].data);
+	if(msg->vec[3].data!=NULL) iosFree(hId,msg->vec[3].data);
+	if(msg->vec[4].data!=NULL) iosFree(hId,msg->vec[4].data);
+	if(msg->vec[5].data!=NULL) iosFree(hId,msg->vec[5].data);
+
+	iosFree(hId,msg);
+
+	return IPC_OK;
+}
+
+static s32 __usbv0_intrbulk_messageCB(s32 result,void *usrdata)
+{
+	struct _usb_msg *msg = (struct _usb_msg*)usrdata;
+
+	if(msg==NULL) return IPC_EINVAL;
+
+	if(msg->cb!=NULL) msg->cb(result, msg->userdata);
+
+	if(msg->vec[0].data!=NULL) iosFree(hId,msg->vec[0].data);
+	if(msg->vec[1].data!=NULL) iosFree(hId,msg->vec[1].data);
 
 	iosFree(hId,msg);
 
@@ -217,40 +253,61 @@ static s32 __find_device_on_host(struct _usbv5_host *host, s32 device_id)
 
 static s32 __usb_control_message(s32 device_id,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData,usbcallback cb,void *userdata)
 {
-	s32 ret;
+	s32 ret = IPC_ENOMEM;
 	struct _usb_msg *msg;
 
 	if(((s32)rpData%32)!=0) return IPC_EINVAL;
 	if(wLength && !rpData) return IPC_EINVAL;
 	if(!wLength && rpData) return IPC_EINVAL;
 
-	msg = iosAlloc(hId,sizeof(*msg));
+	msg = (struct _usb_msg*)iosAlloc(hId,sizeof(struct _usb_msg));
 	if(msg==NULL) return IPC_ENOMEM;
 
-	memset(msg, 0, sizeof(*msg));
+	memset(msg, 0, sizeof(struct _usb_msg));
 
 	msg->fd = device_id;
-	msg->ctrl.bmRequestType = bmRequestType;
-	msg->ctrl.bmRequest = bmRequest;
 	msg->cb = cb;
 	msg->userdata = userdata;
 
 	if (device_id>=0 && device_id<0x20) {
-		msg->ctrl.wValue = bswap16(wValue);
-		msg->ctrl.wIndex = bswap16(wIndex);
-		msg->ctrl.wLength = bswap16(wLength);
+		u8 *pRqType = NULL,*pRq = NULL,*pNull = NULL;
+		u16 *pValue = NULL,*pIndex = NULL,*pLength = NULL;
 
-		msg->vec[0].data = &msg->ctrl.bmRequestType;
+		pRqType = (u8*)iosAlloc(hId,32);
+		if(pRqType==NULL) goto done;
+		*pRqType  = bmRequestType;
+
+		pRq = (u8*)iosAlloc(hId,32);
+		if(pRq==NULL) goto done;
+		*pRq = bmRequest;
+
+		pValue = (u16*)iosAlloc(hId,32);
+		if(pValue==NULL) goto done;
+		*pValue = bswap16(wValue);
+
+		pIndex = (u16*)iosAlloc(hId,32);
+		if(pIndex==NULL) goto done;
+		*pIndex = bswap16(wIndex);
+
+		pLength = (u16*)iosAlloc(hId,32);
+		if(pLength==NULL) goto done;
+		*pLength = bswap16(wLength);
+
+		pNull = (u8*)iosAlloc(hId,32);
+		if(pNull==NULL) goto done;
+		*pNull = 0;
+
+		msg->vec[0].data = pRqType;
 		msg->vec[0].len = sizeof(u8);
-		msg->vec[1].data = &msg->ctrl.bmRequest;
+		msg->vec[1].data = pRq;
 		msg->vec[1].len = sizeof(u8);
-		msg->vec[2].data = &msg->ctrl.wValue;
+		msg->vec[2].data = pValue;
 		msg->vec[2].len = sizeof(u16);
-		msg->vec[3].data = &msg->ctrl.wIndex;
+		msg->vec[3].data = pIndex;
 		msg->vec[3].len = sizeof(u16);
-		msg->vec[4].data = &msg->ctrl.wLength;
+		msg->vec[4].data = pLength;
 		msg->vec[4].len = sizeof(u16);
-		msg->vec[5].data = &msg->ctrl.rpData;
+		msg->vec[5].data = pNull;
 		msg->vec[5].len = sizeof(u8);
 		msg->vec[6].data = rpData;
 		msg->vec[6].len = wLength;
@@ -258,11 +315,22 @@ static s32 __usb_control_message(s32 device_id,u8 bmRequestType,u8 bmRequest,u16
 		if (cb==NULL)
 			ret = IOS_Ioctlv(device_id, USBV0_IOCTL_CTRLMSG, 6, 1, msg->vec);
 		else
-			return IOS_IoctlvAsync(device_id, USBV0_IOCTL_CTRLMSG, 6, 1, msg->vec, __usb_messageCB, msg);
+			return IOS_IoctlvAsync(device_id, USBV0_IOCTL_CTRLMSG, 6, 1, msg->vec, __usbv0_control_messageCB, msg);
+
+done:
+		if(pRqType!=NULL) iosFree(hId,pRqType);
+		if(pRq!=NULL) iosFree(hId,pRq);
+		if(pValue!=NULL) iosFree(hId,pValue);
+		if(pIndex!=NULL) iosFree(hId,pIndex);
+		if(pLength!=NULL) iosFree(hId,pLength);
+		if(pNull!=NULL) iosFree(hId,pNull);
 
 	} else {
 		u8 adjust = bmRequestType >> 7;
 		s32 fd = (device_id<0) ? ven_host->fd : hid_host->fd;
+
+		msg->ctrl.bmRequestType = bmRequestType;
+		msg->ctrl.bmRequest = bmRequest;
 		msg->ctrl.wValue = wValue;
 		msg->ctrl.wIndex = wIndex;
 		msg->ctrl.wLength = wLength;
@@ -276,7 +344,7 @@ static s32 __usb_control_message(s32 device_id,u8 bmRequestType,u8 bmRequest,u16
 		if (cb==NULL)
 			ret = IOS_Ioctlv(fd, USBV5_IOCTL_CTRLMSG, 2-adjust, adjust, msg->vec);
 		else
-			return IOS_IoctlvAsync(fd, USBV5_IOCTL_CTRLMSG, 2-adjust, adjust, msg->vec, __usb_messageCB, msg);
+			return IOS_IoctlvAsync(fd, USBV5_IOCTL_CTRLMSG, 2-adjust, adjust, msg->vec, __usbv5_messageCB, msg);
 	}
 
 	if(msg!=NULL) iosFree(hId,msg);
@@ -286,29 +354,37 @@ static s32 __usb_control_message(s32 device_id,u8 bmRequestType,u8 bmRequest,u16
 
 static inline s32 __usb_interrupt_bulk_message(s32 device_id,u8 ioctl,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *userdata)
 {
-	s32 ret;
+	s32 ret = IPC_ENOMEM;
 	struct _usb_msg *msg;
 
 	if(((s32)rpData%32)!=0) return IPC_EINVAL;
 	if(wLength && !rpData) return IPC_EINVAL;
 	if(!wLength && rpData) return IPC_EINVAL;
 
-	msg = iosAlloc(hId,sizeof(*msg));
+	msg = (struct _usb_msg*)iosAlloc(hId,sizeof(struct _usb_msg));
 	if(msg==NULL) return IPC_ENOMEM;
 
-	memset(msg, 0, sizeof(*msg));
+	memset(msg, 0, sizeof(struct _usb_msg));
 
 	msg->fd = device_id;
-	msg->bulk.wLength = wLength;
-	msg->bulk.rpData = rpData;
 	msg->cb = cb;
 	msg->userdata = userdata;
 
 	if (device_id>=0 && device_id<0x20) {
-		msg->bulk.bEndpoint = bEndpoint;
-		msg->vec[0].data = &msg->bulk.bEndpoint;
+		u8 *pEndP = NULL;
+		u16 *pLength = NULL;
+
+		pEndP = (u8*)iosAlloc(hId,32);
+		if(pEndP==NULL) goto done;
+		*pEndP = bEndpoint;
+
+		pLength = (u16*)iosAlloc(hId,32);
+		if(pLength==NULL) goto done;
+		*pLength = wLength;
+
+		msg->vec[0].data = pEndP;
 		msg->vec[0].len = sizeof(u8);
-		msg->vec[1].data = &msg->bulk.wLength;
+		msg->vec[1].data = pLength;
 		msg->vec[1].len = sizeof(u16);
 		msg->vec[2].data = rpData;
 		msg->vec[2].len = wLength;
@@ -316,18 +392,27 @@ static inline s32 __usb_interrupt_bulk_message(s32 device_id,u8 ioctl,u8 bEndpoi
 		if (cb==NULL)
 			ret = IOS_Ioctlv(device_id,ioctl,2,1,msg->vec);
 		else
-			return IOS_IoctlvAsync(device_id,ioctl,2,1,msg->vec,__usb_messageCB,msg);
+			return IOS_IoctlvAsync(device_id,ioctl,2,1,msg->vec,__usbv0_intrbulk_messageCB,msg);
+
+done:
+		if(pEndP!=NULL) iosFree(hId,pEndP);
+		if(pLength!=NULL) iosFree(hId,pLength);
 
 	} else {
 		u8 adjust = bEndpoint >> 7;
 		s32 fd = (device_id<0) ? ven_host->fd : hid_host->fd;
+
 		if (ioctl == USBV0_IOCTL_INTRMSG) {
+			msg->intr.rpData = rpData;
+			msg->intr.wLength = wLength;
 			msg->intr.bEndpoint = bEndpoint;
 			ioctl = USBV5_IOCTL_INTRMSG;
 			// HID does this a little bit differently
 			if (device_id>=0)
 				msg->hid_intr_write = !adjust;
 		} else {
+			msg->bulk.rpData = rpData;
+			msg->bulk.wLength = wLength;
 			msg->bulk.bEndpoint = bEndpoint;
 			ioctl = USBV5_IOCTL_BULKMSG;
 		}
@@ -340,7 +425,7 @@ static inline s32 __usb_interrupt_bulk_message(s32 device_id,u8 ioctl,u8 bEndpoi
 		if (cb==NULL)
 			ret = IOS_Ioctlv(fd, ioctl, 2-adjust, adjust, msg->vec);
 		else
-			return IOS_IoctlvAsync(fd, ioctl, 2-adjust, adjust, msg->vec, __usb_messageCB, msg);
+			return IOS_IoctlvAsync(fd, ioctl, 2-adjust, adjust, msg->vec, __usbv5_messageCB, msg);
 	}
 
 	if(msg!=NULL) iosFree(hId,msg);
@@ -1022,7 +1107,7 @@ s32 USB_DeviceChangeNotifyAsync(u8 interface_class, usbcallback cb, void* userda
 	msg->vec[0].data = &msg->class;
 	msg->vec[0].len = 1;
 
-	ret = IOS_IoctlvAsync(fd,USBV0_IOCTL_DEVICECLASSCHANGE,1,0,msg->vec,__usb_messageCB,msg);
+	ret = IOS_IoctlvAsync(fd,USBV0_IOCTL_DEVICECLASSCHANGE,1,0,msg->vec,__usbv5_messageCB,msg);
 	IOS_Close(fd);
 
 	if (ret<0) iosFree(hId, msg);
