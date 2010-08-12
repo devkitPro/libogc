@@ -194,7 +194,7 @@ static s32 __getDeviceId(u16 vid,u16 pid)
 
 	if(__ntd_ohci_initflag==0x0001) {
 		if(__ntd_ohci==0x0000)
-			ret = USB_OpenDevice(0,vid,pid,&__usbdev.fd);
+			ret = USB_OpenDevice(USB_OH0_DEVICE_ID,vid,pid,&__usbdev.fd);
 		else if(__ntd_ohci==0x0001)
 			ret = USB_OpenDevice(USB_OH1_DEVICE_ID,vid,pid,&__usbdev.fd);
 	} else
