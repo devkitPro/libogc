@@ -720,7 +720,7 @@ static int _DI_SetMotor(int flag){
 
 	dic[0] = DVD_SET_MOTOR << 24;
 	dic[1] = flag & 0x1;			// Eject flag.
-	dic[2] = (flag >> 1) & 0x1;		// Don't use this flag, it kills the drive untill next reset.
+	dic[2] = (flag >> 1) & 0x1;		// Don't use this flag, it kills the drive until next reset.
 
 	int ret = IOS_Ioctl(di_fd, DVD_SET_MOTOR, dic, 0x20, outbuf, 0x20);
 
@@ -937,6 +937,7 @@ static bool diio_ClearStatus()
 
 static bool diio_Shutdown()
 {
+	DI_StopMotor();
 	return true;
 }
 
