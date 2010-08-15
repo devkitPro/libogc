@@ -359,13 +359,13 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 					/* A response without a matching request is silently discarded */
 					break;
 				}
-				LOG("l2cap_process_sig: conn rsp, active pcb->state == W4_L2CAP_CONNECT_RSP\n",pcb->state == W4_L2CAP_CONNECT_RSP);
+				LOG("l2cap_process_sig: conn rsp, active pcb->state == W4_L2CAP_CONNECT_RSP\n");
 				result = le16toh(((u16_t *)p->payload)[2]);
 				status = le16toh(((u16_t *)p->payload)[3]);
 				switch(result) {
 					case L2CAP_CONN_SUCCESS:
 						LOG("l2cap_process_sig: Conn_rsp_sucess, status %d\n", status);
-						LOG("l2cap_process_sig: conn rsp success, pcb->scid == ((u16_t *)p->payload)[1]\n",pcb->scid == ((u16_t *)p->payload)[1]);
+						LOG("l2cap_process_sig: conn rsp success, pcb->scid == %04x\n", ((u16_t *)p->payload)[1]);
 
 						/* Set destination connection id */
 						pcb->dcid = le16toh(((u16_t *)p->payload)[0]);
@@ -553,6 +553,7 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 			case L2CAP_CFG_RSP:
 				if(pcb == NULL) {
 					/* A response without a matching request is silently discarded */
+					LOG("l2cap_process_sig: discarded response without matching request\n");
 					break;
 				}
 
@@ -1060,7 +1061,7 @@ err_t l2cap_signal(struct l2cap_pcb *pcb, u8_t code, u16_t ursp_id, struct bd_ad
 
 	if(sighdr->code % 2) { /* If odd this is a resp/rej signal */
 		sig->sigid = ursp_id; /* Get id */
-		LOG(L2CAP_DEBUG, ("l2cap_signal: Sending response/reject signal with id = %d code = %d\n", sig->sigid, sighdr->code));
+		LOG("l2cap_signal: Sending response/reject signal with id = %d code = %d\n", sig->sigid, sighdr->code);
 	} else {
 		sig->sigid = l2cap_next_sigid(); /* Alloc id */
 		sig->rtx = L2CAP_RTX; /* Set Response Timeout Expired timer (in seconds)
