@@ -350,21 +350,14 @@ continue_read:
 
 		if ( (cache_offset < SMBEnv[j].SMBReadAheadCache[i].offset ) && (cache_offset + SMB_READ_BUFFERSIZE > SMBEnv[j].SMBReadAheadCache[i].offset) )
 		{
-			//tail of new page intersects with some cache block
-			if ( SMBEnv[j].SMBReadAheadCache[i].offset >= SMB_READ_BUFFERSIZE )
-			{
-				cache_offset = SMBEnv[j].SMBReadAheadCache[i].offset - SMB_READ_BUFFERSIZE;
-			}
-			else
-			{
-				cache_offset = 0;
-			}
+			//tail of new page intersects with some cache block, clear page
+			SMBEnv[j].SMBReadAheadCache[i].file = NULL;
 		}
 
 		if ( (cache_offset >= SMBEnv[j].SMBReadAheadCache[i].offset ) && (cache_offset < SMBEnv[j].SMBReadAheadCache[i].offset + SMB_READ_BUFFERSIZE ) )
 		{
-			//head of new page intersects with some cache block
-			cache_offset = SMBEnv[j].SMBReadAheadCache[i].offset + SMB_READ_BUFFERSIZE;
+			//head of new page intersects with some cache block, clear page
+			SMBEnv[j].SMBReadAheadCache[i].file = NULL;
 		}
 	}
 
@@ -374,12 +367,15 @@ continue_read:
 		cache_to_read = SMB_READ_BUFFERSIZE;
 	}
 
-	if ( SMB_ReadFile(SMBEnv[j].SMBReadAheadCache[leastUsed].ptr, cache_to_read, cache_offset, file->handle) <0 )
+	int read=0;
+	while(read<cache_to_read)
 	{
-		SMBEnv[j].SMBReadAheadCache[leastUsed].file = NULL;
-		return -1;
+		if ( (read+=SMB_ReadFile(SMBEnv[j].SMBReadAheadCache[leastUsed].ptr+read, cache_to_read-read, cache_offset+read, file->handle)) <=0 )
+		{
+			SMBEnv[j].SMBReadAheadCache[leastUsed].file = NULL;
+			return -1;
+		}
 	}
-
 	SMBEnv[j].SMBReadAheadCache[leastUsed].last_used = gettime();
 
 	SMBEnv[j].SMBReadAheadCache[leastUsed].offset = cache_offset;
