@@ -560,7 +560,8 @@ s32 USB_OpenDevice(s32 device_id,u16 vid,u16 pid,s32 *fd)
 			i = __find_device_on_host(hid_host, device_id);
 		if (i>=0) {
 			*fd = device_id;
-			return USB_ResumeDevice(device_id);
+			USB_ResumeDevice(device_id);
+			return 0;
 		}
 	}
 
@@ -601,8 +602,8 @@ s32 USBV5_CloseDevice(s32 device_id)
 			break;
 		}
 	}
-
-	return USB_SuspendDevice(device_id);
+	//return USB_SuspendDevice(device_id);
+	return 0;
 }
 
 s32 USB_CloseDevice(s32 *fd)
