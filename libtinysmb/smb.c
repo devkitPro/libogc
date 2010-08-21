@@ -1849,14 +1849,14 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 
 	// Check for invalid size
 	if(size == 0) return -1;
-
+	
 	handle = __smb_handle_open(fid->conn);
 	if(!handle) return -1;
 
 	while(totalread < size)
 	{
-		if((size-totalread) > handle->session.MaxBuffer)
-			nextread=handle->session.MaxBuffer;
+		if((size-totalread) > SMB_MAX_TRANSMIT_SIZE)
+			nextread=SMB_MAX_TRANSMIT_SIZE;
 		else
 			nextread=size-totalread;
 
@@ -1894,7 +1894,7 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 		pos += 4;
 
 		ret = smb_send(handle->sck_server,(char*)&handle->message, pos);
-		if(ret<0) goto  failed;
+		if(ret<0) goto failed;
 
 		/*** SMBCheck  ***/
 		if(SMBCheck(SMB_READ_ANDX,handle)!=SMB_SUCCESS) goto failed;
@@ -1902,19 +1902,20 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 		ptr = handle->message.smb;
 		// Retrieve data length for this packet
 		length = getUShort(ptr,(SMB_HEADER_SIZE+11));
+
+		if(length==0)
+			break;
+
 		// Retrieve offset to data
 		ofs = getUShort(ptr,(SMB_HEADER_SIZE+13));
-
 		memcpy(&buffer[totalread],&ptr[ofs],length);
 		totalread+=length;
-
-		if(length==0) break;
 	}
 	return size;
 
 failed:
 	handle->conn_valid = false;
-	return SMB_ERROR;
+	return ret;
 }
 
 /**
@@ -1974,8 +1975,8 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	src = (u8*)buffer;
 	copy_len = size;	
 
-	if((copy_len+pos)>handle->session.MaxBuffer)
-		copy_len = (handle->session.MaxBuffer-pos);
+	if((copy_len+pos)>SMB_MAX_TRANSMIT_SIZE)
+		copy_len = (SMB_MAX_TRANSMIT_SIZE-pos);
 
 	memcpy(&ptr[pos],src,copy_len);
 	size -= copy_len;
