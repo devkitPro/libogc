@@ -698,7 +698,6 @@ s32 net_socket(u32 domain, u32 type, u32 protocol)
 	if(ret>=0) // set tcp window size to 32kb
 	{
 		int window_size = 32768;
-		net_setsockopt(ret, SOL_SOCKET, SO_SNDBUF, (char *) &window_size, sizeof(window_size));
 		net_setsockopt(ret, SOL_SOCKET, SO_RCVBUF, (char *) &window_size, sizeof(window_size));
 	}
 	debug_printf("net_socket(%d, %d, %d)=%d\n", domain, type, protocol, ret);
