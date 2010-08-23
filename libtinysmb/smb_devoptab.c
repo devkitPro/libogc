@@ -141,23 +141,23 @@ static int FlushWriteSMBCache(char *name)
 		return 0;
 	}
 
+	int ret;
 	int written = 0;
 
-	while(env->SMBWriteCache.len>0)
+	while(env->SMBWriteCache.len > 0)
 	{
-
-		written = SMB_WriteFile(env->SMBWriteCache.ptr+written, env->SMBWriteCache.len,
+		ret = SMB_WriteFile(env->SMBWriteCache.ptr+written, env->SMBWriteCache.len,
 				env->SMBWriteCache.file->offset, env->SMBWriteCache.file->handle);
 
-		if (written <= 0)
-		{
+		if (ret <= 0)
 			return -1;
-		}
-		env->SMBWriteCache.file->offset += written;
+
+		written += ret;
+		env->SMBWriteCache.file->offset += ret;
 		if (env->SMBWriteCache.file->offset > env->SMBWriteCache.file->len)
 			env->SMBWriteCache.file->len = env->SMBWriteCache.file->offset;
 
-		env->SMBWriteCache.len-=written;
+		env->SMBWriteCache.len-=ret;
 		if(env->SMBWriteCache.len==0) break;
 	}
 	env->SMBWriteCache.used = 0;
@@ -384,7 +384,6 @@ continue_read:
 	goto continue_read;
 }
 
-static char *aux_send_buf = NULL;
 static int WriteSMBUsingCache(const char *buf, size_t len, SMBFILESTRUCT *file)
 {
 	size_t size=len;
@@ -412,19 +411,14 @@ static int WriteSMBUsingCache(const char *buf, size_t len, SMBFILESTRUCT *file)
 	}
 	int rest;
 	s32 written;
-	while(len>0)
+	while(len > 0)
 	{
-		if(SMBEnv[j].SMBWriteCache.len+len>=SMB_WRITE_BUFFERSIZE)
+		if(SMBEnv[j].SMBWriteCache.len+len >= SMB_WRITE_BUFFERSIZE)
 		{
-			if(aux_send_buf == NULL) aux_send_buf = memalign(32, SMB_WRITE_BUFFERSIZE);
-			if(aux_send_buf == NULL) goto failed;
-			if (SMBEnv[j].SMBWriteCache.len > 0)
-				memcpy(aux_send_buf, SMBEnv[j].SMBWriteCache.ptr, SMBEnv[j].SMBWriteCache.len);
-
 			rest = SMB_WRITE_BUFFERSIZE - SMBEnv[j].SMBWriteCache.len;
-			memcpy(aux_send_buf + SMBEnv[j].SMBWriteCache.len, buf, rest);
+			memcpy(SMBEnv[j].SMBWriteCache.ptr + SMBEnv[j].SMBWriteCache.len, buf, rest);
 
-			written=SMB_WriteFile(aux_send_buf, SMB_WRITE_BUFFERSIZE, file->offset, file->handle);
+			written = SMB_WriteFile(SMBEnv[j].SMBWriteCache.ptr, SMB_WRITE_BUFFERSIZE, file->offset, file->handle);
 			if(written<0)
 			{
 				goto failed;
@@ -433,8 +427,8 @@ static int WriteSMBUsingCache(const char *buf, size_t len, SMBFILESTRUCT *file)
 			if (file->offset > file->len)
 				file->len = file->offset;
 
-			buf = buf + rest;
-			len = len - rest;
+			buf += rest;
+			len -= rest;
 			SMBEnv[j].SMBWriteCache.used = gettime();
 			SMBEnv[j].SMBWriteCache.len = 0;
 		}
@@ -486,7 +480,7 @@ static char *smb_absolute_path_no_device(const char *srcpath, char *destpath, in
 
 	while(temp[i]!='\0')
 	{
-		if(temp[i]=='/') 
+		if(temp[i]=='/')
 		{
 			destpath[j++]='\\';
 			while(temp[i]!='\0' && (temp[i]=='/' || temp[i]=='\\'))i++;
@@ -718,7 +712,13 @@ static ssize_t __smb_read(struct _reent *r, int fd, char *ptr, size_t len)
 	}
 
 	// Short circuit cases where len is 0 (or less)
-	if (len <= 0)
+	if (len == 0)
+	{
+		_SMB_unlock(file->env);
+        return 0;
+	}
+
+	if (len < 0)
 	{
 		r->_errno = EOVERFLOW;
 		_SMB_unlock(file->env);
@@ -783,21 +783,25 @@ static ssize_t __smb_write(struct _reent *r, int fd, const char *ptr, size_t len
 	}
 
 	// Short circuit cases where len is 0 (or less)
-	if (len <= 0)
+	if (len == 0)
+        return 0;
+
+	if (len < 0)
 	{
 		r->_errno = EOVERFLOW;
 		return -1;
 	}
+
 	_SMB_lock(file->env);
-	ClearSMBFileCache(file);
 	written = WriteSMBUsingCache(ptr, len, file);
+    _SMB_unlock(file->env);
+
 	if (written <= 0)
 	{
 		r->_errno = EIO;
-		_SMB_unlock(file->env);
 		return -1;
 	}
-	_SMB_unlock(file->env);
+
 	return written;
 }
 

@@ -30,7 +30,7 @@
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  ****************************************************************************/
- 
+
 #include <asm.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -633,9 +633,9 @@ static s32 SMBCheck(u8 command,SMBHANDLE *handle)
 	if(ret) goto failed;
 
 	return SMB_SUCCESS;
-failed:	
-clear_network(handle->sck_server,ptr);
-return SMB_ERROR;	
+failed:
+    clear_network(handle->sck_server,ptr);
+    return SMB_ERROR;
 }
 
 /**
@@ -1849,7 +1849,7 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 
 	// Check for invalid size
 	if(size == 0) return -1;
-	
+
 	handle = __smb_handle_open(fid->conn);
 	if(!handle) return -1;
 
@@ -1873,7 +1873,7 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 		pos += 2;	    /*** Next AndX Offset ***/
 		setUShort(ptr, pos, fid->sfid);
 		pos += 2;					    /*** FID ***/
-		setUInt(ptr, pos, offset+totalread);
+		setUInt(ptr, pos, (offset+totalread) & 0xffffffff);
 		pos += 4;						 /*** Offset ***/
 
 		setUShort(ptr, pos, nextread & 0xffff);
@@ -1915,7 +1915,7 @@ s32 SMB_ReadFile(char *buffer, size_t size, off_t offset, SMBFILE sfid)
 
 failed:
 	handle->conn_valid = false;
-	return ret;
+	return SMB_ERROR;
 }
 
 /**
@@ -1973,7 +1973,7 @@ s32 SMB_WriteFile(const char *buffer, size_t size, off_t offset, SMBFILE sfid)
 	handle->message.length = htons(pos+size);
 
 	src = (u8*)buffer;
-	copy_len = size;	
+	copy_len = size;
 
 	if((copy_len+pos)>SMB_MAX_TRANSMIT_SIZE)
 		copy_len = (SMB_MAX_TRANSMIT_SIZE-pos);
