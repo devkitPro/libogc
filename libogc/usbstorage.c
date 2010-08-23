@@ -190,11 +190,10 @@ s32 USBStorage_Initialize()
 	u8 *ptr;
 	u32 level;
 
-	_CPU_ISR_Disable(level);
-	if(__heap_created != 0) {
-		_CPU_ISR_Restore(level);
+	if(__heap_created != 0)
 		return IPC_OK;
-	}
+
+	_CPU_ISR_Disable(level);
 
 	LWP_InitQueue(&__usbstorage_waitq);
 
@@ -211,7 +210,6 @@ s32 USBStorage_Initialize()
 	_CPU_ISR_Restore(level);
 
 	return IPC_OK;
-
 }
 
 static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u8 *cb, u8 cbLen)
@@ -340,7 +338,6 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 		{
 			retval = __send_cbw(dev, lun, len, CBW_IN, cb, cbLen);
 
-
 			if(retval < 0)
 			{
 				if(__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
@@ -393,7 +390,6 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 			retval = USBSTORAGE_ETIMEDOUT;
 	}
 	LWP_MutexUnlock(dev->lock);
-
 
 	if(_status != NULL)
 		*_status = status;
