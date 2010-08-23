@@ -42,22 +42,22 @@ distribution.
 
 #define ROUNDDOWN32(v)				(((u32)(v)-0x1f)&~0x1f)
 
-#define	HEAP_SIZE			(32*1024)
-#define	TAG_START			0x0BADC0DE
+#define	HEAP_SIZE					(18*1024)
+#define	TAG_START					0x0BADC0DE
 
-#define	CBW_SIZE			31
-#define	CBW_SIGNATURE			0x43425355
-#define	CBW_IN				(1 << 7)
-#define	CBW_OUT				0
+#define	CBW_SIZE					31
+#define	CBW_SIGNATURE				0x43425355
+#define	CBW_IN						(1 << 7)
+#define	CBW_OUT						0
 
-#define	CSW_SIZE			13
-#define	CSW_SIGNATURE			0x53425355
+#define	CSW_SIZE					13
+#define	CSW_SIGNATURE				0x53425355
 
 #define	SCSI_TEST_UNIT_READY		0x00
-#define	SCSI_REQUEST_SENSE		0x03
-#define	SCSI_READ_CAPACITY		0x25
-#define	SCSI_READ_10			0x28
-#define	SCSI_WRITE_10			0x2A
+#define	SCSI_REQUEST_SENSE			0x03
+#define	SCSI_READ_CAPACITY			0x25
+#define	SCSI_READ_10				0x28
+#define	SCSI_WRITE_10				0x2A
 
 #define	SCSI_SENSE_REPLY_SIZE		18
 #define	SCSI_SENSE_NOT_READY		0x02
@@ -69,15 +69,16 @@ distribution.
 #define	MASS_STORAGE_BULK_ONLY		0x50
 
 #define USBSTORAGE_GET_MAX_LUN		0xFE
-#define USBSTORAGE_RESET		0xFF
+#define USBSTORAGE_RESET			0xFF
 
-#define	USB_ENDPOINT_BULK		0x02
+#define	USB_ENDPOINT_BULK			0x02
 
 #define USBSTORAGE_CYCLE_RETRIES	3
 
-#define MAX_TRANSFER_SIZE			4096
+#define MAX_TRANSFER_SIZE_V0		4096
+#define MAX_TRANSFER_SIZE_V5		(16*1024)
 
-#define DEVLIST_MAXSIZE    8
+#define DEVLIST_MAXSIZE    			8
 
 static heap_cntrl __heap;
 static u8 __heap_created = 0;
@@ -105,10 +106,10 @@ static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun);
 
 static s32 __usb_blkmsg_cb(s32 retval, void *dummy)
 {
-	usbstorage_handle *dev = (usbstorage_handle *)dummy;
-	dev->retval = retval;
+	usbstorage_handle *dev = (usbstorage_handle *)dummy;	
 	SYS_CancelAlarm(dev->alarm);
 	LWP_ThreadBroadcast(__usbstorage_waitq);
+	dev->retval = retval;
 	return 0;
 }
 
@@ -209,6 +210,7 @@ s32 USBStorage_Initialize()
 	__heap_created = 1;
 	_CPU_ISR_Restore(level);
 
+
 	return IPC_OK;
 }
 
@@ -226,7 +228,7 @@ static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u
 	__stwbrx(dev->buffer, 8, len);
 	dev->buffer[12] = flags;
 	dev->buffer[13] = lun;
-	dev->buffer[14] = (cbLen > 6 ? 10 : 6);
+	dev->buffer[14] = (cbLen > 0x1f ? 10 : 6);
 
 	memcpy(dev->buffer + 15, cb, cbLen);
 
@@ -280,8 +282,11 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 	u8 status = 0;
 	u32 dataResidue = 0;
 	u32 thisLen;
+	u16 max_size;
 
 	s8 retries = USBSTORAGE_CYCLE_RETRIES + 1;
+	if (dev->usb_fd>=0x20 || dev->usb_fd<-1) max_size=MAX_TRANSFER_SIZE_V5;
+	else  max_size=MAX_TRANSFER_SIZE_V0;
 
 	LWP_MutexLock(dev->lock);
 	do
@@ -302,7 +307,7 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 			}
 			while(len > 0)
 			{
-				thisLen = len > MAX_TRANSFER_SIZE ? MAX_TRANSFER_SIZE : len;
+				thisLen = len > max_size ? max_size : len;
 				if ((u32)buffer&0x1F || !((u32)buffer&0x10000000)) {
 					memcpy(dev->buffer, buffer, thisLen);
 					retval = __USB_BlkMsgTimeout(dev, dev->ep_out, thisLen, dev->buffer);
@@ -346,7 +351,7 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 			}
 			while(len > 0)
 			{
-				thisLen = len > MAX_TRANSFER_SIZE ? MAX_TRANSFER_SIZE : len;
+				thisLen = len > max_size ? max_size : len;
 				if ((u32)buffer&0x1F || !((u32)buffer&0x10000000)) {
 					retval = __USB_BlkMsgTimeout(dev, dev->ep_in, thisLen, dev->buffer);
 					if (retval>0)
@@ -354,14 +359,11 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 				} else
 					retval = __USB_BlkMsgTimeout(dev, dev->ep_in, thisLen, buffer);
 
-				if (retval == USBSTORAGE_ETIMEDOUT)
+				if (retval == USBSTORAGE_ETIMEDOUT || retval != thisLen)
 					break;
 
 				len -= retval;
-				buffer += retval;
-
-				if(retval != thisLen)
-					break;
+				buffer += retval;			
 			}
 
 			if(retval < 0)
@@ -531,16 +533,10 @@ found:
 	// some devices return an error, ignore it
 	USB_GetConfiguration(dev->usb_fd, &conf);
 
-	if (conf != dev->configuration && USB_SetConfiguration(dev->usb_fd, dev->configuration) < 0)
+	if (USB_SetConfiguration(dev->usb_fd, dev->configuration) < 0)
 		goto free_and_return;
 
-	if (dev->altInterface != 0 && USB_SetAlternativeInterface(dev->usb_fd, dev->interface, dev->altInterface) < 0)
-		goto free_and_return;
-
-	dev->suspended = 0;
-
-	retval = USBStorage_Reset(dev);
-	if (retval < 0)
+	if (USB_SetAlternativeInterface(dev->usb_fd, dev->interface, dev->altInterface) < 0)
 		goto free_and_return;
 
 	LWP_MutexLock(dev->lock);
@@ -575,7 +571,8 @@ found:
 	//USB_ClearHalt(dev->usb_fd, dev->ep_in);
 	//USB_ClearHalt(dev->usb_fd, dev->ep_out);
 
-	dev->buffer = __lwp_heap_allocate(&__heap, MAX_TRANSFER_SIZE);
+	if(!dev->buffer)
+		dev->buffer = __lwp_heap_allocate(&__heap, MAX_TRANSFER_SIZE_V5);
 
 	if(!dev->buffer) {
 		retval = IPC_ENOMEM;
@@ -604,7 +601,8 @@ s32 USBStorage_Close(usbstorage_handle *dev)
 	LWP_MutexDestroy(dev->lock);
 	SYS_RemoveAlarm(dev->alarm);
 
-	free(dev->sector_size);
+	if(dev->sector_size)
+		free(dev->sector_size);
 
 	if (dev->buffer)
 		__lwp_heap_free(&__heap, dev->buffer);
