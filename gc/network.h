@@ -258,6 +258,7 @@ s32 net_init();
 typedef s32 (*netcallback)(s32 result, void *usrdata);
 s32 net_init_async(netcallback cb, void *usrdata);
 s32 net_get_status(void);
+void net_wc24cleanup();
 #endif
 void net_deinit();
 

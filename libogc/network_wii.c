@@ -155,10 +155,10 @@ struct setsockopt_params {
 // I sense a pattern here...
 static u8 _net_error_code_map[] = {
 	0, // 0
- 	E2BIG, 
- 	EACCES, 
+ 	E2BIG,
+ 	EACCES,
  	EADDRINUSE,
- 	EADDRNOTAVAIL, 
+ 	EADDRNOTAVAIL,
  	EAFNOSUPPORT, // 5
 	EAGAIN,
 	EALREADY,
@@ -250,8 +250,8 @@ static char __kd_fs[] ATTRIBUTE_ALIGN(32) = "/dev/net/kd/request";
 static s32 NetCreateHeap()
 {
 	u32 level;
-	void *net_heap_ptr;	
-	
+	void *net_heap_ptr;
+
 	_CPU_ISR_Disable(level);
 
 	if(__net_heap_inited)
@@ -259,7 +259,7 @@ static s32 NetCreateHeap()
 		_CPU_ISR_Restore(level);
 		return IPC_OK;
 	}
-	
+
 	net_heap_ptr = (void *)ROUNDDOWN32(((u32)SYS_GetArena2Hi() - NET_HEAP_SIZE));
 	if((u32)net_heap_ptr < (u32)SYS_GetArena2Lo())
 	{
@@ -548,7 +548,7 @@ s32 net_init_async(netcallback cb, void *usrdata) {
 	if (_init_busy)
 		return -EBUSY;
 
-	ret = NetCreateHeap(); 
+	ret = NetCreateHeap();
 	if (ret != IPC_OK)
 		return ret;
 
@@ -627,6 +627,17 @@ void net_deinit() {
 	if (net_ip_top_fd >= 0) IOS_Close(net_ip_top_fd);
 	net_ip_top_fd = -1;
 	_last_init_result = -ENETDOWN;
+}
+
+void net_wc24cleanup() {
+    s32 kd_fd, ret;
+    STACK_ALIGN(u8, kd_buf, 0x20, 32);
+
+    kd_fd = IOS_Open(__kd_fs, 0);
+    if (kd_fd >= 0) {
+        ret = IOS_Ioctl(kd_fd, 7, NULL, 0, kd_buf, 0x20);
+        IOS_Close(kd_fd);
+    }
 }
 
 /* Returned value is a static buffer -- this function is not threadsafe! */

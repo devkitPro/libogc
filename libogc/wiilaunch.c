@@ -38,6 +38,7 @@ distribution.
 #include "processor.h"
 #include "es.h"
 #include "video.h"
+#include "network.h"
 #include "wiilaunch.h"
 
 static char __nandbootinfo[] ATTRIBUTE_ALIGN(32) = "/shared2/sys/NANDBOOTINFO";
@@ -260,6 +261,8 @@ s32 WII_LaunchTitle(u64 titleID)
 	res = ES_GetTicketViews(titleID, views, numviews);
 	if(res < 0)
 		return res;
+
+	net_wc24cleanup();
 
 	VIDEO_SetBlack(1);
 	VIDEO_Flush();
