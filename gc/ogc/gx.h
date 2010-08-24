@@ -3915,7 +3915,8 @@ u32 GX_GetTexObjFmt(GXTexObj *obj);
  */
 u32 GX_GetTexObjMipMap(GXTexObj *obj);
 
-u8 GX_GetTexFmt(GXTexObj *obj);
+
+void* GX_GetTexObjUserData(GXTexObj *obj);
 
 /*!
  * \fn u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
@@ -4122,7 +4123,7 @@ void GX_InitTexObjLODBias(GXTexObj *obj,f32 lodbias);
 void GX_InitTexObjBiasClamp(GXTexObj *obj,u8 biasclamp);
 void GX_InitTexObjEdgeLOD(GXTexObj *obj,u8 edgelod);
 void GX_InitTexObjMaxAniso(GXTexObj *obj,u8 maxaniso);
-
+void GX_InitTexObjUserData(GXTexObj *obj,void *userdata);
 /*!
  * \fn void GX_LoadTexObj(GXTexObj *obj,u8 mapid)
  * \brief Loads the state describing a texture into one of eight hardware register sets.
