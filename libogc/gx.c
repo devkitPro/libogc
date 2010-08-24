@@ -3329,6 +3329,18 @@ void GX_InitTexObjMaxAniso(GXTexObj *obj,u8 maxaniso)
 	ptr->tex_filt = (ptr->tex_filt&~0x180000)|(_SHIFTL(maxaniso,19,2));
 }
 
+void GX_InitTexObjUserData(GXTexObj *obj,void *userdata)
+{
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+	ptr->usr_data = (u32)userdata;
+}
+
+void* GX_GetTexObjUserData(GXTexObj *obj)
+{
+	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+	return (void*)ptr->usr_data;
+}
+
 void GX_InitTlutObj(GXTlutObj *obj,void *lut,u8 fmt,u16 entries)
 {
 	struct __gx_tlutobj *ptr = (struct __gx_tlutobj*)obj;

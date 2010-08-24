@@ -108,7 +108,7 @@ struct __gx_texobj
 	u32 tex_lod;
 	u32 tex_size;
 	u32 tex_maddr;
-	u32 _pad;
+	u32 usr_data;
 	u32 tex_fmt;
 	u32 tex_tlut;
 	u16 tex_tile_cnt;
