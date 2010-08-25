@@ -106,7 +106,7 @@ static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun);
 
 static s32 __usb_blkmsg_cb(s32 retval, void *dummy)
 {
-	usbstorage_handle *dev = (usbstorage_handle *)dummy;	
+	usbstorage_handle *dev = (usbstorage_handle *)dummy;
 	dev->retval = retval;
 	SYS_CancelAlarm(dev->alarm);
 	LWP_ThreadBroadcast(__usbstorage_waitq);
@@ -359,7 +359,7 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 					break;
 
 				len -= retval;
-				buffer += retval;			
+				buffer += retval;
 			}
 
 			if(retval < 0)
@@ -529,13 +529,17 @@ found:
 	// some devices return an error, ignore it
 	USB_GetConfiguration(dev->usb_fd, &conf);
 
-	if (USB_SetConfiguration(dev->usb_fd, dev->configuration) < 0)
+	if (conf != dev->configuration && USB_SetConfiguration(dev->usb_fd, dev->configuration) < 0)
 		goto free_and_return;
 
 	if (USB_SetAlternativeInterface(dev->usb_fd, dev->interface, dev->altInterface) < 0)
 		goto free_and_return;
 
 	dev->suspended = 0;
+
+	//retval = USBStorage_Reset(dev);
+	//if (retval < 0)
+	//	goto free_and_return;
 
 	LWP_MutexLock(dev->lock);
 	retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_DEVICE2HOST | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_GET_MAX_LUN, 0, dev->interface, 1, max_lun);

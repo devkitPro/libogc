@@ -1193,8 +1193,6 @@ s32 USB_GetConfiguration(s32 fd, u8 *configuration)
 
 s32 USB_SetAlternativeInterface(s32 fd, u8 interface, u8 alternateSetting)
 {
-	if(alternateSetting == 0)
-		return IPC_EINVAL;
 	return __usb_control_message(fd, (USB_CTRLTYPE_DIR_HOST2DEVICE | USB_CTRLTYPE_TYPE_STANDARD | USB_CTRLTYPE_REC_INTERFACE), USB_REQ_SETINTERFACE, alternateSetting, interface, 0, NULL, NULL, NULL);
 }
 
