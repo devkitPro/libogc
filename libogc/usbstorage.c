@@ -735,6 +735,17 @@ as used by libfat
 
 static bool __usbstorage_Startup(void)
 {
+	if(__inited)
+		return true;
+
+	if(USB_Initialize() < 0 || USBStorage_Initialize() < 0)
+		return false;
+
+	return true;
+}
+
+static bool __usbstorage_IsInserted(void)
+{
 	usb_device_entry *buffer;
 	u8 device_count;
 	u8 i, j;
@@ -742,13 +753,11 @@ static bool __usbstorage_Startup(void)
 	s32 maxLun;
 	s32 retval;
 
-	if(USB_Initialize() < 0)
-		return false;
+	if(__mounted)
+		return true;
 
-	if(USBStorage_Initialize() < 0)
+	if(!__inited)
 		return false;
-
-	__mounted = false; // reset flag and check if a device is still attached
 
 	buffer = (usb_device_entry*)__lwp_heap_allocate(&__heap, DEVLIST_MAXSIZE * sizeof(usb_device_entry));
 	if (!buffer)
@@ -817,12 +826,7 @@ static bool __usbstorage_Startup(void)
 
 		USBStorage_Close(&__usbfd);
 	}
-	__lwp_heap_free(&__heap,buffer);
-	return __mounted;
-}
-
-static bool __usbstorage_IsInserted(void)
-{
+	__lwp_heap_free(&__heap, buffer);
 	return __mounted;
 }
 
