@@ -115,7 +115,7 @@ static s32 __usb_blkmsg_cb(s32 retval, void *dummy)
 
 static s32 __usb_deviceremoved_cb(s32 retval,void *arg)
 {
-	//TODO: Unmount the device here and remove the isInserted junk
+	__mounted = false;
 	return 0;
 }
 
@@ -739,18 +739,6 @@ static bool __usbstorage_IsInserted(void);
 
 static bool __usbstorage_Startup(void)
 {
-	if(__inited)
-		return true;
-
-	if(USB_Initialize() < 0)
-		return false;
-
-	USBStorage_Initialize();
-	return __inited;
-}
-
-static bool __usbstorage_IsInserted(void)
-{
 	usb_device_entry *buffer;
 	u8 device_count;
 	u8 i, j;
@@ -758,11 +746,13 @@ static bool __usbstorage_IsInserted(void)
 	s32 maxLun;
 	s32 retval;
 
-	if(!__inited)
+	if(USB_Initialize() < 0)
 		return false;
 
-	// reset it here and check if device is still attached
-	__mounted = false;
+	if(USBStorage_Initialize() < 0)
+		return false;
+
+	__mounted = false; // reset flag and check if a device is still attached
 
 	buffer = (usb_device_entry*)__lwp_heap_allocate(&__heap, DEVLIST_MAXSIZE * sizeof(usb_device_entry));
 	if (!buffer)
@@ -775,8 +765,7 @@ static bool __usbstorage_IsInserted(void)
 		if (__vid != 0 || __pid != 0)
 			USBStorage_Close(&__usbfd);
 
-		__lwp_heap_free(&__heap,buffer);
-
+		__lwp_heap_free(&__heap, buffer);
 		return false;
 	}
 
@@ -790,10 +779,7 @@ static bool __usbstorage_IsInserted(void)
 				if((vid == __vid) && (pid == __pid)) {
 					__mounted = true;
 					__lwp_heap_free(&__heap,buffer);
-
-					// I don't know why I have to wait but it's needed
-					usleep(50);
-
+					usleep(50); // I don't know why I have to wait but it's needed
 					return true;
 				}
 			}
@@ -835,9 +821,12 @@ static bool __usbstorage_IsInserted(void)
 
 		USBStorage_Close(&__usbfd);
 	}
-
 	__lwp_heap_free(&__heap,buffer);
+	return __mounted;
+}
 
+static bool __usbstorage_IsInserted(void)
+{
 	return __mounted;
 }
 
