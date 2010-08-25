@@ -593,6 +593,11 @@ free_and_return:
 
 s32 USBStorage_Close(usbstorage_handle *dev)
 {
+	__mounted = false;
+	__lun = 0;
+	__vid = 0;
+	__pid = 0;
+
 	if (dev->usb_fd != -1)
 		USB_CloseDevice(&dev->usb_fd);
 
@@ -607,12 +612,6 @@ s32 USBStorage_Close(usbstorage_handle *dev)
 
 	memset(dev, 0, sizeof(*dev));
 	dev->usb_fd = -1;
-
-	__mounted = false;
-	__lun = 0;
-	__vid = 0;
-	__pid = 0;
-
 	return 0;
 }
 
