@@ -81,7 +81,7 @@ distribution.
 #define DEVLIST_MAXSIZE    			8
 
 static heap_cntrl __heap;
-static u8 __heap_created = 0;
+static bool __inited = false;
 static lwpq_t __usbstorage_waitq = 0;
 
 /*
@@ -107,9 +107,9 @@ static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun);
 static s32 __usb_blkmsg_cb(s32 retval, void *dummy)
 {
 	usbstorage_handle *dev = (usbstorage_handle *)dummy;	
+	dev->retval = retval;
 	SYS_CancelAlarm(dev->alarm);
 	LWP_ThreadBroadcast(__usbstorage_waitq);
-	dev->retval = retval;
 	return 0;
 }
 
@@ -191,11 +191,10 @@ s32 USBStorage_Initialize()
 	u8 *ptr;
 	u32 level;
 
-	if(__heap_created != 0)
+	if(__inited)
 		return IPC_OK;
 
 	_CPU_ISR_Disable(level);
-
 	LWP_InitQueue(&__usbstorage_waitq);
 
 	ptr = (u8*)ROUNDDOWN32(((u32)SYS_GetArena2Hi() - HEAP_SIZE));
@@ -205,12 +204,9 @@ s32 USBStorage_Initialize()
 	}
 
 	SYS_SetArena2Hi(ptr);
-
 	__lwp_heap_init(&__heap, ptr, HEAP_SIZE, 32);
-	__heap_created = 1;
+	__inited = true;
 	_CPU_ISR_Restore(level);
-
-
 	return IPC_OK;
 }
 
@@ -228,7 +224,7 @@ static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u
 	__stwbrx(dev->buffer, 8, len);
 	dev->buffer[12] = flags;
 	dev->buffer[13] = lun;
-	dev->buffer[14] = (cbLen > 0x1f ? 10 : 6);
+	dev->buffer[14] = (cbLen > 6 ? 10 : 6);
 
 	memcpy(dev->buffer + 15, cb, cbLen);
 
@@ -539,6 +535,8 @@ found:
 	if (USB_SetAlternativeInterface(dev->usb_fd, dev->interface, dev->altInterface) < 0)
 		goto free_and_return;
 
+	dev->suspended = 0;
+
 	LWP_MutexLock(dev->lock);
 	retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_DEVICE2HOST | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_GET_MAX_LUN, 0, dev->interface, 1, max_lun);
 	LWP_MutexUnlock(dev->lock);
@@ -736,17 +734,19 @@ The following is for implementing a DISC_INTERFACE
 as used by libfat
 */
 
-static bool usb_inited=false;
 static bool __usbstorage_ReadSectors(u32, u32, void *);
-
 static bool __usbstorage_IsInserted(void);
 
 static bool __usbstorage_Startup(void)
 {
-	usb_inited=true;
-	USB_Initialize();
+	if(__inited)
+		return true;
+
+	if(USB_Initialize() < 0)
+		return false;
+
 	USBStorage_Initialize();
-	return __usbstorage_IsInserted();
+	return __inited;
 }
 
 static bool __usbstorage_IsInserted(void)
@@ -758,11 +758,8 @@ static bool __usbstorage_IsInserted(void)
 	s32 maxLun;
 	s32 retval;
 
-	if(!usb_inited) {
-		usb_inited = true;
-		USB_Initialize();
-		USBStorage_Initialize();
-	}
+	if(!__inited)
+		return false;
 
 	// reset it here and check if device is still attached
 	__mounted = false;
