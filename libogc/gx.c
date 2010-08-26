@@ -3424,6 +3424,7 @@ void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region)
 
 	regD = (regD&~0xff000000)|(_SHIFTL(0x63,24,8));
 	regD = (regD&~0x00007fff)|(ptr->tex_tile_cnt&0x00007fff);
+	regD = (regD&~0x00018000)|(_SHIFTL(ptr->tex_tile_type,15,2));
 
 	fmt = _SHIFTR(ptr->tex_size,20,4);
 
@@ -3437,9 +3438,9 @@ void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region)
 		wd = (ptr->tex_size&0x3ff)+1;
 		ht = _SHIFTR(ptr->tex_size,10,10)+1;
 		if(wd>ht)
-			cnt = (32 - (cntlzw(wd)));
+			cnt = (31 - (cntlzw(wd)));
 		else
-			cnt = (32 - (cntlzw(ht)));
+			cnt = (31 - (cntlzw(ht)));
 	}
 
 	if(cnt>0) {
@@ -3553,17 +3554,17 @@ void GX_InvalidateTexRegion(GXTexRegion *region)
 	ismipmap = ptr->ismipmap;
 
 	tmp = size = cw_e+ch_e;
-	if(ismipmap) size = tmp+(cw_o+ch_o-2);
-	regvalA = _SHIFTR((ptr->tmem_even&0x7fff),6,24)|(_SHIFTL(size,9,24))|(_SHIFTL(0x66,24,8));
+	if(ismipmap) size = (tmp+cw_o+ch_o)-2;
+	regvalA = _SHIFTR((ptr->tmem_even&0x7fff),6,9)|(_SHIFTL(size,9,4))|(_SHIFTL(0x66,24,8));
 
 	if(cw_o!=0) {
 		size = cw_o+ch_o;
 		if(ismipmap) size += (tmp-2);
-		regvalB = _SHIFTR((ptr->tmem_odd&0x7fff),6,24)|(_SHIFTL(size,9,24))|(_SHIFTL(0x66,24,8));
+		regvalB = _SHIFTR((ptr->tmem_odd&0x7fff),6,9)|(_SHIFTL(size,9,4))|(_SHIFTL(0x66,24,8));
 	}
 	__GX_FlushTextureState();
 	GX_LOAD_BP_REG(regvalA);
-	if(ismipmap) GX_LOAD_BP_REG(regvalB);
+	if(cw_o!=0) GX_LOAD_BP_REG(regvalB);
 	__GX_FlushTextureState();
 }
 
