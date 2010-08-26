@@ -3423,7 +3423,7 @@ void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region)
 	regC = (regC&~0x00007fff)|(reg->tmem_odd&0x00007fff);
 
 	regD = (regD&~0xff000000)|(_SHIFTL(0x63,24,8));
-	regB = (regD&~0x00007fff)|(ptr->tex_tile_cnt&0x00007fff);
+	regD = (regD&~0x00007fff)|(ptr->tex_tile_cnt&0x00007fff);
 
 	fmt = _SHIFTR(ptr->tex_size,20,4);
 
@@ -3437,9 +3437,9 @@ void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region)
 		wd = (ptr->tex_size&0x3ff)+1;
 		ht = _SHIFTR(ptr->tex_size,10,10)+1;
 		if(wd>ht)
-			cnt = (31 - (cntlzw(wd)));
+			cnt = (32 - (cntlzw(wd)));
 		else
-			cnt = (31 - (cntlzw(ht)));
+			cnt = (32 - (cntlzw(ht)));
 	}
 
 	if(cnt>0) {
