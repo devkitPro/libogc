@@ -2992,7 +2992,6 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 
 	switch(fmt) {
 		case GX_TF_I4:
-		case GX_TF_IA4:
 		case GX_TF_CMPR:
 		case GX_CTF_R4:
 		case GX_CTF_RA4:
@@ -3002,7 +3001,7 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 			break;
 		case GX_TF_Z8:
 		case GX_TF_I8:
-		case GX_CTF_RA8:
+		case GX_TF_IA4:
 		case GX_CTF_A8:
 		case GX_CTF_R8:
 		case GX_CTF_G8:
@@ -3021,6 +3020,7 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 		case GX_TF_RGB5A3:
 		case GX_TF_RGBA8:
 		case GX_CTF_Z16L:
+		case GX_CTF_RA8:
 			xshift = 2;
 			yshift = 2;
 			break;
@@ -3175,12 +3175,12 @@ void GX_InitTexObj(GXTexObj *obj,void *img_ptr,u16 wd,u16 ht,u8 fmt,u8 wrap_s,u8
 	switch(fmt) {
 		case GX_TF_I4:
 		case GX_TF_CI4:
-		case GX_TF_IA4:
 			xshift = 3;
 			yshift = 3;
 			ptr->tex_tile_type = 1;
 			break;
 		case GX_TF_I8:
+		case GX_TF_IA4:
 		case GX_TF_CI8:
 			xshift = 3;
 			yshift = 2;
