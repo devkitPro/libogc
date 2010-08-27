@@ -281,12 +281,17 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 	u16 max_size;
 
 	s8 retries = USBSTORAGE_CYCLE_RETRIES + 1;
-	if (dev->usb_fd>=0x20 || dev->usb_fd<-1) max_size=MAX_TRANSFER_SIZE_V5;
-	else  max_size=MAX_TRANSFER_SIZE_V0;
+
+	if (dev->usb_fd>=0x20 || dev->usb_fd<-1)
+		max_size=MAX_TRANSFER_SIZE_V5;
+	else
+		max_size=MAX_TRANSFER_SIZE_V0;
 
 	LWP_MutexLock(dev->lock);
 	do
 	{
+		u8 *_buffer = buffer;
+		u32 _len = len;
 		retries--;
 
 		if(retval == USBSTORAGE_ETIMEDOUT)
@@ -294,21 +299,21 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 
 		if(write)
 		{
-			retval = __send_cbw(dev, lun, len, CBW_OUT, cb, cbLen);
+			retval = __send_cbw(dev, lun, _len, CBW_OUT, cb, cbLen);
 			if(retval < 0)
 			{
 				if(__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
 					retval = USBSTORAGE_ETIMEDOUT;
 				continue;
 			}
-			while(len > 0)
+			while(_len > 0)
 			{
-				thisLen = len > max_size ? max_size : len;
-				if ((u32)buffer&0x1F || !((u32)buffer&0x10000000)) {
-					memcpy(dev->buffer, buffer, thisLen);
+				thisLen = _len > max_size ? max_size : _len;
+				if ((u32)_buffer&0x1F || !((u32)_buffer&0x10000000)) {
+					memcpy(dev->buffer, _buffer, thisLen);
 					retval = __USB_BlkMsgTimeout(dev, dev->ep_out, thisLen, dev->buffer);
 				} else
-					retval = __USB_BlkMsgTimeout(dev, dev->ep_out, thisLen, buffer);
+					retval = __USB_BlkMsgTimeout(dev, dev->ep_out, thisLen, _buffer);
 
 				if (retval == USBSTORAGE_ETIMEDOUT)
 					break;
@@ -319,13 +324,13 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 					break;
 				}
 
-				if(retval != thisLen && len > 0)
+				if(retval != thisLen && _len > 0)
 				{
 					retval = USBSTORAGE_EDATARESIDUE;
 					break;
 				}
-				len -= retval;
-				buffer += retval;
+				_len -= retval;
+				_buffer += retval;
 			}
 
 			if(retval < 0)
@@ -337,7 +342,7 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 		}
 		else
 		{
-			retval = __send_cbw(dev, lun, len, CBW_IN, cb, cbLen);
+			retval = __send_cbw(dev, lun, _len, CBW_IN, cb, cbLen);
 
 			if(retval < 0)
 			{
@@ -345,21 +350,21 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 					retval = USBSTORAGE_ETIMEDOUT;
 				continue;
 			}
-			while(len > 0)
+			while(_len > 0)
 			{
-				thisLen = len > max_size ? max_size : len;
-				if ((u32)buffer&0x1F || !((u32)buffer&0x10000000)) {
+				thisLen = _len > max_size ? max_size : _len;
+				if ((u32)_buffer&0x1F || !((u32)_buffer&0x10000000)) {
 					retval = __USB_BlkMsgTimeout(dev, dev->ep_in, thisLen, dev->buffer);
 					if (retval>0)
-						memcpy(buffer, dev->buffer, retval);
+						memcpy(_buffer, dev->buffer, retval);
 				} else
-					retval = __USB_BlkMsgTimeout(dev, dev->ep_in, thisLen, buffer);
+					retval = __USB_BlkMsgTimeout(dev, dev->ep_in, thisLen, _buffer);
 
 				if (retval == USBSTORAGE_ETIMEDOUT || retval != thisLen)
 					break;
 
-				len -= retval;
-				buffer += retval;
+				_len -= retval;
+				_buffer += retval;
 			}
 
 			if(retval < 0)
