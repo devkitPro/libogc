@@ -4159,10 +4159,10 @@ void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 
 void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col)
 {
     f32 A, B, B_mant, C, A_f;
-    u32 b_expn, b_m, a_hex, c_hex,proj = 0;
+    u32 b_expn, b_m, a_hex, c_hex,val,proj = 0;
+	union ieee32 { f32 f; u32 i; } v;
 
-
-  	proj = (u32)((type >> 3) & 0x01);
+  	proj = _SHIFTR(type,3,1);
 
 	// Calculate constants a, b, and c (TEV HW requirements).
 	if(proj) { // Orthographic Fog Type
@@ -4193,32 +4193,101 @@ void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col)
 
 		B_mant = B;
 		b_expn = 1;
-		while(B_mant>1.0) {
-			B_mant /= 2;
+		while(B_mant>1.0f) {
+			B_mant /= 2.0f;
 			b_expn++;
 		}
 
-		while((B_mant>0) && (B_mant<0.5)) {
-			B_mant *= 2;
+		while((B_mant>0.0f) && (B_mant<0.5f)) {
+			B_mant *= 2.0f;
 			b_expn--;
 		}
 
 		A_f   = A/(1<<(b_expn));
-		b_m   = (u32)(B_mant * 8388638);
+		b_m   = (u32)(B_mant * 8388638.0f);
 	}
-    a_hex = (*(u32*)((void*)&A_f));
-    c_hex = (*(u32*)((void*)&C));
+	v.f = A_f;
+    a_hex = v.i;
 
-	GX_LOAD_BP_REG(0xee000000|(a_hex>>12));
-	GX_LOAD_BP_REG(0xef000000|b_m);
-	GX_LOAD_BP_REG(0xf0000000|b_expn);
-	GX_LOAD_BP_REG(0xf1000000|((type<<21)|(proj<<20)|(c_hex>>12)));
-	GX_LOAD_BP_REG(0xf2000000|(_SHIFTL(col.r,16,8)|_SHIFTL(col.g,8,8)|(col.b&0xff)));
+	v.f = C;
+    c_hex = v.i;
+
+	val = 0xee000000|(_SHIFTR(a_hex,12,20));
+	GX_LOAD_BP_REG(val);
+
+	val = 0xef000000|(b_m&0x00ffffff);
+	GX_LOAD_BP_REG(val);
+
+	val = 0xf0000000|(b_expn&0x1f);
+	GX_LOAD_BP_REG(val);
+
+	val = 0xf1000000|(_SHIFTL(type,21,3))|(_SHIFTL(proj,20,1))|(_SHIFTR(c_hex,12,20));
+	GX_LOAD_BP_REG(val);
+
+	val = 0xf2000000|(_SHIFTL(col.r,16,8))|(_SHIFTL(col.g,8,8))|(col.b&0xff);
+	GX_LOAD_BP_REG(val);
+}
+
+void GX_InitFogAdjTable(GXFogAdjTbl *table,u16 width,f32 projmtx[4][4])
+{
+	u32 i,val7;
+	f32 val0,val1,val2,val3,val4,val5,val6;
+	union ieee64 { f64 f; u32 i[2]; } v;
+
+	if(projmtx[3][3]==0.0f) {
+		val0 = projmtx[2][3]/(projmtx[2][2] - 1.0f);
+		val1 = val0/projmtx[0][0];
+	} else {
+		val1 = 1.0f/projmtx[0][0];
+		val0 = val1*1.7320499f;
+	}
+
+	v.i[0] = 0x43300000;
+	v.i[1] = width;
+	val2 = val0*val0;
+
+	val3 = v.f - 4503599627370496.0;
+	val4 = 2.0f/val3;
+	for(i=0;i<10;i++) {
+		v.i[1] = (i+1)<<5;
+		val5 = v.f - 4503599627370496.0;
+		val5 *= val4;
+		val5 *= val1;
+		val5 *= val5;
+		val5 /= val2;
+		val6 = sqrtf(val5 + 1.0f);
+		val7 = (u32)(val6*256.0f);
+		table->r[i] = (val7&0x0fff);
+	}
 }
 
 void GX_SetFogRangeAdj(u8 enable,u16 center,GXFogAdjTbl *table)
 {
-	GX_LOAD_BP_REG(0xe8000156);
+	u32 val;
+
+	if(enable) {
+		val = 0xe9000000|(_SHIFTL(table->r[1],12,12))|(table->r[0]&0x0fff);
+		GX_LOAD_BP_REG(val);
+
+		val = 0xea000000|(_SHIFTL(table->r[3],12,12))|(table->r[2]&0x0fff);
+		GX_LOAD_BP_REG(val);
+
+		val = 0xeb000000|(_SHIFTL(table->r[5],12,12))|(table->r[4]&0x0fff);
+		GX_LOAD_BP_REG(val);
+
+		val = 0xec000000|(_SHIFTL(table->r[7],12,12))|(table->r[6]&0x0fff);
+		GX_LOAD_BP_REG(val);
+
+		val = 0xed000000|(_SHIFTL(table->r[9],12,12))|(table->r[8]&0x0fff);
+		GX_LOAD_BP_REG(val);
+	}
+	val = 0xe8000000|(_SHIFTL(enable,10,1))|((center + 342)&0x03ff);
+	GX_LOAD_BP_REG(val);
+}
+
+void GX_SetFogColor(GXColor color)
+{
+	GX_LOAD_BP_REG(0xf2000000|(_SHIFTL(color.r,16,8)|_SHIFTL(color.g,8,8)|(color.b&0xff)));
 }
 
 void GX_SetColorUpdate(u8 enable)
