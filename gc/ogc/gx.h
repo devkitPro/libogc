@@ -3254,6 +3254,10 @@ void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col);
  */
 void GX_SetFogRangeAdj(u8 enable,u16 center,GXFogAdjTbl *table);
 
+void GX_SetFogColor(GXColor color);
+
+void GX_InitFogAdjTable(GXFogAdjTbl *table,u16 width,f32 projmtx[4][4]);
+
 /*!
  * \fn void GX_SetIndTexMatrix(u8 indtexmtx,f32 offset_mtx[2][3],s8 scale_exp)
  * \brief Sets one of the three static indirect matrices and the associated scale factor.
