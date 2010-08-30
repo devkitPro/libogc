@@ -55,6 +55,7 @@ distribution.
 
 #define	SCSI_TEST_UNIT_READY		0x00
 #define	SCSI_REQUEST_SENSE			0x03
+#define SCSI_START_STOP				0x1B
 #define	SCSI_READ_CAPACITY			0x25
 #define	SCSI_READ_10				0x28
 #define	SCSI_WRITE_10				0x2A
@@ -74,6 +75,7 @@ distribution.
 #define	USB_ENDPOINT_BULK			0x02
 
 #define USBSTORAGE_CYCLE_RETRIES	3
+#define USBSTORAGE_TIMEOUT			2
 
 #define MAX_TRANSFER_SIZE_V0		4096
 #define MAX_TRANSFER_SIZE_V5		(16*1024)
@@ -126,16 +128,16 @@ static void __usb_timeouthandler(syswd_t alarm,void *cbarg)
 	LWP_ThreadBroadcast(__usbstorage_waitq);
 }
 
-static void __usb_settimeout(usbstorage_handle *dev)
+static void __usb_settimeout(usbstorage_handle *dev, u32 secs)
 {
 	struct timespec ts;
 
-	ts.tv_sec = 2;
+	ts.tv_sec = secs;
 	ts.tv_nsec = 0;
 	SYS_SetAlarm(dev->alarm,&ts,__usb_timeouthandler,dev);
 }
 
-static s32 __USB_BlkMsgTimeout(usbstorage_handle *dev, u8 bEndpoint, u16 wLength, void *rpData)
+static s32 __USB_BlkMsgTimeout(usbstorage_handle *dev, u8 bEndpoint, u16 wLength, void *rpData, u32 timeout)
 {
 	u32 level;
 	s32 retval;
@@ -144,7 +146,7 @@ static s32 __USB_BlkMsgTimeout(usbstorage_handle *dev, u8 bEndpoint, u16 wLength
 	retval = USB_WriteBlkMsgAsync(dev->usb_fd, bEndpoint, wLength, rpData, __usb_blkmsg_cb, (void *)dev);
 	if(retval < 0) return retval;
 
-	__usb_settimeout(dev);
+	__usb_settimeout(dev, timeout);
 
 	_CPU_ISR_Disable(level);
 	do {
@@ -164,16 +166,12 @@ static s32 __USB_CtrlMsgTimeout(usbstorage_handle *dev, u8 bmRequestType, u8 bmR
 {
 	u32 level;
 	s32 retval;
-	struct timespec ts;
-
-	ts.tv_sec = 2;
-	ts.tv_nsec = 0;
 
 	dev->retval = USBSTORAGE_PROCESSING;
 	retval = USB_WriteCtrlMsgAsync(dev->usb_fd, bmRequestType, bmRequest, wValue, wIndex, wLength, rpData, __usb_blkmsg_cb, (void *)dev);
 	if(retval < 0) return retval;
 
-	__usb_settimeout(dev);
+	__usb_settimeout(dev, USBSTORAGE_TIMEOUT);
 
 	_CPU_ISR_Disable(level);
 	do {
@@ -234,7 +232,7 @@ static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u
 		dev->suspended = 0;
 	}
 
-	retval = __USB_BlkMsgTimeout(dev, dev->ep_out, CBW_SIZE, (void *)dev->buffer);
+	retval = __USB_BlkMsgTimeout(dev, dev->ep_out, CBW_SIZE, (void *)dev->buffer, USBSTORAGE_TIMEOUT);
 
 	if(retval == CBW_SIZE) return USBSTORAGE_OK;
 	else if(retval > 0) return USBSTORAGE_ESHORTWRITE;
@@ -242,14 +240,14 @@ static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u
 	return retval;
 }
 
-static s32 __read_csw(usbstorage_handle *dev, u8 *status, u32 *dataResidue)
+static s32 __read_csw(usbstorage_handle *dev, u8 *status, u32 *dataResidue, u32 timeout)
 {
 	s32 retval = USBSTORAGE_OK;
 	u32 signature, tag, _dataResidue, _status;
 
 	memset(dev->buffer, 0, CSW_SIZE);
 
-	retval = __USB_BlkMsgTimeout(dev, dev->ep_in, CSW_SIZE, dev->buffer);
+	retval = __USB_BlkMsgTimeout(dev, dev->ep_in, CSW_SIZE, dev->buffer, timeout);
 	if(retval > 0 && retval != CSW_SIZE) return USBSTORAGE_ESHORTREAD;
 	else if(retval < 0) return retval;
 
@@ -299,17 +297,18 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 
 		retval = __send_cbw(dev, lun, len, (write ? CBW_OUT:CBW_IN), cb, cbLen);
 
+
 		while(_len > 0 && retval >= 0)
 		{
 			u32 thisLen = _len > max_size ? max_size : _len;
 
 			if ((u32)_buffer&0x1F || !((u32)_buffer&0x10000000)) {
 				if (write) memcpy(dev->buffer, _buffer, thisLen);
-				retval = __USB_BlkMsgTimeout(dev, ep, thisLen, dev->buffer);
+				retval = __USB_BlkMsgTimeout(dev, ep, thisLen, dev->buffer, USBSTORAGE_TIMEOUT);
 				if (!write && retval > 0)
 					memcpy(_buffer, dev->buffer, retval);
 			} else
-				retval = __USB_BlkMsgTimeout(dev, ep, thisLen, _buffer);
+				retval = __USB_BlkMsgTimeout(dev, ep, thisLen, _buffer, USBSTORAGE_TIMEOUT);
 
 			if (retval == thisLen) {
 				_len -= retval;
@@ -320,14 +319,14 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 		}
 
 		if (retval >= 0)
-			retval = __read_csw(dev, &status, &dataResidue);
+			__read_csw(dev, &status, &dataResidue, USBSTORAGE_TIMEOUT);
 
 		if (retval < 0) {
 			if (__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
 				retval = USBSTORAGE_ETIMEDOUT;
 		}
 
-	} while(retval < 0 && retries > 0);
+	} while (retval < 0 && retries > 0);
 
 	LWP_MutexUnlock(dev->lock);
 
@@ -342,7 +341,7 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun)
 {
 	s32 retval;
-	u8 cmd[16];
+	u8 cmd[6];
 	u8 sense[SCSI_SENSE_REPLY_SIZE];
 	u8 status = 0;
 
@@ -357,7 +356,6 @@ static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun)
 		cmd[0] = SCSI_REQUEST_SENSE;
 		cmd[1] = lun << 5;
 		cmd[4] = SCSI_SENSE_REPLY_SIZE;
-		cmd[5] = 0;
 		memset(sense, 0, SCSI_SENSE_REPLY_SIZE);
 		retval = __cycle(dev, lun, sense, SCSI_SENSE_REPLY_SIZE, cmd, 6, 0, NULL, NULL);
 		if (retval>=0) {
@@ -611,6 +609,43 @@ s32 USBStorage_ReadCapacity(usbstorage_handle *dev, u8 lun, u32 *sector_size, u3
 	return retval;
 }
 
+/* lo_ej = load/eject, controls the tray
+*  start = start(1) or stop(0) the motor (or eject(0), load(1))
+*  imm = return before the command has completed
+* it might be a good idea to call this before STM_ShutdownToStandby() so the USB HDD doesn't stay on
+*/
+s32 USBStorage_StartStop(usbstorage_handle *dev, u8 lun, u8 lo_ej, u8 start, u8 imm)
+{
+	u8 status = 0;
+	s32 retval = USBSTORAGE_OK;
+	u8 cmd[] = {
+		SCSI_START_STOP,
+		(lun << 5) | (imm&1),
+		0,
+		0,
+		((lo_ej&1)<<1) | (start&1),
+		0
+	};
+
+	if(lun >= dev->max_lun)
+		return IPC_EINVAL;
+
+	LWP_MutexLock(dev->lock);
+
+	retval = __send_cbw(dev, lun, 0, CBW_IN, cmd, sizeof(cmd));
+
+	// if imm==0, wait up to 10secs for spinup to finish
+	if (retval >= 0)
+		retval = __read_csw(dev, &status, NULL, (imm ? USBSTORAGE_TIMEOUT : 10));
+
+	LWP_MutexUnlock(dev->lock);
+
+	if(retval >=0 && status != 0)
+		retval = USBSTORAGE_ESTATUS;
+
+	return retval;
+}
+
 s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u8 *buffer)
 {
 	u8 status = 0;
@@ -630,6 +665,15 @@ s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u
 
 	if(lun >= dev->max_lun || dev->sector_size[lun] == 0)
 		return IPC_EINVAL;
+
+	retval = __usbstorage_clearerrors(dev, lun);
+
+	// it's gone to sleep, try and wake it up
+	// don't check the returned value, device may not support this command
+	if (retval==USBSTORAGE_EINIT)
+		retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
+	else if (retval<0)
+		return retval;
 
 	retval = __cycle(dev, lun, buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 0, &status, NULL);
 	if(retval > 0 && status != 0)
@@ -657,6 +701,13 @@ s32 USBStorage_Write(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, 
 
 	if(lun >= dev->max_lun || dev->sector_size[lun] == 0)
 		return IPC_EINVAL;
+
+	retval = __usbstorage_clearerrors(dev, lun);
+	if (retval==USBSTORAGE_EINIT)
+		retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
+	else if (retval<0)
+		return retval;
+
 	retval = __cycle(dev, lun, (u8 *)buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 1, &status, NULL);
 	if(retval > 0 && status != 0)
 		retval = USBSTORAGE_ESTATUS;
@@ -751,6 +802,7 @@ static bool __usbstorage_IsInserted(void)
 
 		maxLun = USBStorage_GetMaxLUN(&__usbfd);
 		for (j = 0; j < maxLun; j++) {
+			USBStorage_StartStop(&__usbfd, j, 0, 1, 0);
 			retval = USBStorage_MountLUN(&__usbfd, j);
 
 			if (retval == USBSTORAGE_ETIMEDOUT)
@@ -763,7 +815,6 @@ static bool __usbstorage_IsInserted(void)
 			__lun = j;
 			__vid = vid;
 			__pid = pid;
-
 			break;
 		}
 
