@@ -4,6 +4,7 @@ usbstorage.c -- Bulk-only USB mass storage support
 
 Copyright (C) 2008
 Sven Peter (svpe) <svpe@gmx.net>
+tueidj
 
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any
