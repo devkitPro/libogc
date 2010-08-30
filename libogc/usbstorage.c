@@ -220,7 +220,7 @@ static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u
 	memset(dev->buffer, 0, CBW_SIZE);
 
 	__stwbrx(dev->buffer, 0, CBW_SIGNATURE);
-	__stwbrx(dev->buffer, 4, dev->tag);
+	__stwbrx(dev->buffer, 4, ++dev->tag);
 	__stwbrx(dev->buffer, 8, len);
 	dev->buffer[12] = flags;
 	dev->buffer[13] = lun;
@@ -266,7 +266,6 @@ static s32 __read_csw(usbstorage_handle *dev, u8 *status, u32 *dataResidue)
 		*status = _status;
 
 	if(tag != dev->tag) return USBSTORAGE_ETAG;
-	dev->tag++;
 
 	return USBSTORAGE_OK;
 }
@@ -275,17 +274,18 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 {
 	s32 retval = USBSTORAGE_OK;
 
-	u8 status = 0;
+	u8 status=0;
 	u32 dataResidue = 0;
-	u32 thisLen;
 	u16 max_size;
-
+	u8 ep = write ? dev->ep_out : dev->ep_in;
 	s8 retries = USBSTORAGE_CYCLE_RETRIES + 1;
 
 	if (dev->usb_fd>=0x20 || dev->usb_fd<-1)
 		max_size=MAX_TRANSFER_SIZE_V5;
 	else
 		max_size=MAX_TRANSFER_SIZE_V0;
+
+	if (len==0) return 0;
 
 	LWP_MutexLock(dev->lock);
 	do
@@ -297,101 +297,38 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 		if(retval == USBSTORAGE_ETIMEDOUT)
 			break;
 
-		if(write)
+		retval = __send_cbw(dev, lun, len, (write ? CBW_OUT:CBW_IN), cb, cbLen);
+
+		while(_len > 0 && retval >= 0)
 		{
-			retval = __send_cbw(dev, lun, _len, CBW_OUT, cb, cbLen);
-			if(retval < 0)
-			{
-				if(__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
-					retval = USBSTORAGE_ETIMEDOUT;
-				continue;
-			}
-			while(_len > 0)
-			{
-				thisLen = _len > max_size ? max_size : _len;
-				if ((u32)_buffer&0x1F || !((u32)_buffer&0x10000000)) {
-					memcpy(dev->buffer, _buffer, thisLen);
-					retval = __USB_BlkMsgTimeout(dev, dev->ep_out, thisLen, dev->buffer);
-				} else
-					retval = __USB_BlkMsgTimeout(dev, dev->ep_out, thisLen, _buffer);
+			u32 thisLen = _len > max_size ? max_size : _len;
 
-				if (retval == USBSTORAGE_ETIMEDOUT)
-					break;
+			if ((u32)_buffer&0x1F || !((u32)_buffer&0x10000000)) {
+				if (write) memcpy(dev->buffer, _buffer, thisLen);
+				retval = __USB_BlkMsgTimeout(dev, ep, thisLen, dev->buffer);
+				if (!write && retval > 0)
+					memcpy(_buffer, dev->buffer, retval);
+			} else
+				retval = __USB_BlkMsgTimeout(dev, ep, thisLen, _buffer);
 
-				if(retval < 0)
-				{
-					retval = USBSTORAGE_EDATARESIDUE;
-					break;
-				}
-
-				if(retval != thisLen && _len > 0)
-				{
-					retval = USBSTORAGE_EDATARESIDUE;
-					break;
-				}
+			if (retval == thisLen) {
 				_len -= retval;
 				_buffer += retval;
 			}
-
-			if(retval < 0)
-			{
-				if(__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
-					retval = USBSTORAGE_ETIMEDOUT;
-				continue;
-			}
-		}
-		else
-		{
-			retval = __send_cbw(dev, lun, _len, CBW_IN, cb, cbLen);
-
-			if(retval < 0)
-			{
-				if(__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
-					retval = USBSTORAGE_ETIMEDOUT;
-				continue;
-			}
-			while(_len > 0)
-			{
-				thisLen = _len > max_size ? max_size : _len;
-				if ((u32)_buffer&0x1F || !((u32)_buffer&0x10000000)) {
-					retval = __USB_BlkMsgTimeout(dev, dev->ep_in, thisLen, dev->buffer);
-					if (retval>0)
-						memcpy(_buffer, dev->buffer, retval);
-				} else
-					retval = __USB_BlkMsgTimeout(dev, dev->ep_in, thisLen, _buffer);
-
-				if (retval == USBSTORAGE_ETIMEDOUT || retval != thisLen)
-					break;
-
-				_len -= retval;
-				_buffer += retval;
-			}
-
-			if(retval < 0)
-			{
-				if(__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
-					retval = USBSTORAGE_ETIMEDOUT;
-				continue;
-			}
+			else if (retval != USBSTORAGE_ETIMEDOUT)
+				retval = USBSTORAGE_EDATARESIDUE;
 		}
 
-		retval = __read_csw(dev, &status, &dataResidue);
+		if (retval >= 0)
+			retval = __read_csw(dev, &status, &dataResidue);
 
-		if(retval < 0)
-		{
-			if(__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
+		if (retval < 0) {
+			if (__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
 				retval = USBSTORAGE_ETIMEDOUT;
-			continue;
 		}
 
-		retval = USBSTORAGE_OK;
 	} while(retval < 0 && retries > 0);
 
-	if(retval < 0 && retval != USBSTORAGE_ETIMEDOUT)
-	{
-		if(__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
-			retval = USBSTORAGE_ETIMEDOUT;
-	}
 	LWP_MutexUnlock(dev->lock);
 
 	if(_status != NULL)
