@@ -371,7 +371,7 @@ static void _DI_SetCallback(int ioctl_nr, ipccallback ipc_cb){
 	if ((di_fd < 0) || !ipc_cb)
 		return;
 
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 
 	memset(dic, 0x00, sizeof(dic));
 
@@ -379,7 +379,6 @@ static void _DI_SetCallback(int ioctl_nr, ipccallback ipc_cb){
 	dic[1] = (ioctl_nr == DVD_RESET)? 1 : 0;	// For reset callback. Dirty, I know...
 
 	IOS_IoctlAsync(di_fd,ioctl_nr, dic, 0x20, outbuf, 0x20, ipc_cb, outbuf);
-
 	LWP_MutexUnlock(bufferMutex);
 }
 
@@ -457,7 +456,7 @@ int DI_Identify(DI_DriveID* id){
 	if(!id)
 		return -EINVAL;
 
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 	
 	dic[0] = DVD_IDENTIFY << 24;
 	
@@ -483,7 +482,7 @@ int DI_GetError(uint32_t* error){
 	if(!error)
 		return -EINVAL;
 
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 	
 	dic[0] = DVD_GET_ERROR << 24;
 	
@@ -505,7 +504,7 @@ int DI_Reset(){
 	if(di_fd < 0)
 		return -ENXIO;
 
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 	
 	dic[0] = DVD_RESET << 24;
 	dic[1] = 1;
@@ -529,7 +528,7 @@ int DI_ReadDVD(void* buf, uint32_t len, uint32_t lba){
 
 	int ret;
 	if(DI_ReadDVDptr){
-		while(LWP_MutexLock(bufferMutex));
+		LWP_MutexLock(bufferMutex);
 		ret = ReadBlockFromCache(buf,len,lba);
 		LWP_MutexUnlock(bufferMutex);
 		return ret;
@@ -543,7 +542,7 @@ int DI_ReadDVDAsync(void* buf, uint32_t len, uint32_t lba,ipccallback ipc_cb){
 
 	int ret;
 	if(DI_ReadDVDAsyncptr){
-		while(LWP_MutexLock(bufferMutex));
+		LWP_MutexLock(bufferMutex);
 		ret = DI_ReadDVDAsyncptr(buf,len,lba,ipc_cb);
 		LWP_MutexUnlock(bufferMutex);
 		return ret;
@@ -561,7 +560,7 @@ int DI_ReadDVDConfig(uint32_t* val, uint32_t flag){
 	if(!val)
 		return -EINVAL;
 
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 	
 	dic[0] = DVD_READ_CONFIG << 24;
 	dic[1] = flag & 0x1;		// Update flag, val will be written if this is 1, val won't be written if it's 0.
@@ -588,7 +587,7 @@ int DI_ReadDVDCopyright(uint32_t* copyright){
 	if(!copyright)
 		return -EINVAL;
 
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 	
 	dic[0] = DVD_READ_COPYRIGHT << 24;
 	dic[1] = 0;
@@ -619,7 +618,7 @@ int DI_ReadDVDDiscKey(void* buf){
 	if((uint32_t)buf & 0x1F)
 		return -EFAULT;
 	
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 
 	dic[0] = DVD_READ_DISCKEY << 24;
 	dic[1] = 0;		// Unknown what this flag does.
@@ -651,7 +650,7 @@ int DI_ReadDVDPhysical(void* buf){
 	if((uint32_t)buf & 0x1F)
 		return -EFAULT;
 
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 
 	dic[0] = DVD_READ_PHYSICAL << 24;
 	dic[1] = 0;		// Unknown what this flag does.
@@ -678,7 +677,7 @@ int DI_ReportKey(int keytype, uint32_t lba, void* buf){
 	if((uint32_t)buf & 0x1F)
 		return -EFAULT;
 
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 	
 	dic[0] = DVD_REPORTKEY << 24;
 	dic[1] = keytype & 0xFF;
@@ -697,8 +696,7 @@ int DI_GetCoverRegister(uint32_t* status){
 	if(di_fd < 0)
 		return -ENXIO;
 
-	while(LWP_MutexLock(bufferMutex));
-
+	LWP_MutexLock(bufferMutex);
 	memset(dic, 0x00, 0x20);
 
 	int ret = IOS_Ioctl(di_fd, DVD_GETCOVER, dic, 0x20, outbuf, 0x20);
@@ -716,7 +714,7 @@ static int _DI_SetMotor(int flag){
 	if(di_fd < 0)
 		return -ENXIO;
 
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 
 	dic[0] = DVD_SET_MOTOR << 24;
 	dic[1] = flag & 0x1;			// Eject flag.
@@ -755,7 +753,7 @@ int DI_ClosePartition() {
 	if(di_fd < 0)
 		return -ENXIO;
 
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 
 	dic[0] = DVD_CLOSE_PARTITION << 24;
 
@@ -775,7 +773,7 @@ int DI_OpenPartition(uint32_t offset)
 
 	static ioctlv vectors[5] __attribute__((aligned(32)));
 	static char certs[0x49e4] __attribute__((aligned(32)));
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 
 	dic[0] = DVD_OPEN_PARTITION << 24;
 	dic[1] = offset;
@@ -813,7 +811,7 @@ int DI_Read(void *buf, uint32_t size, uint32_t offset)
 	if((uint32_t)buf & 0x1F)
 		return -EFAULT;
 
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 
 	dic[0] = DVD_LOW_READ << 24;
 	dic[1] = size;
@@ -841,7 +839,7 @@ int DI_UnencryptedRead(void *buf, uint32_t size, uint32_t offset)
 	if((uint32_t)buf & 0x1F) // This only works with 32 byte aligned addresses!
 		return -EFAULT;
 
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 
 	dic[0] = DVD_READ_UNENCRYPTED << 24;
 	dic[1] = size;
@@ -865,7 +863,7 @@ int DI_ReadDiscID(uint64_t *id)
 	if(di_fd < 0)
 		return -ENXIO;
 
-	while(LWP_MutexLock(bufferMutex));
+	LWP_MutexLock(bufferMutex);
 
 	dic[0] = DVD_READ_DISCID << 24;
 
