@@ -76,7 +76,7 @@ distribution.
 #define	USB_ENDPOINT_BULK			0x02
 
 #define USBSTORAGE_CYCLE_RETRIES	3
-#define USBSTORAGE_TIMEOUT			2
+#define USBSTORAGE_TIMEOUT  2
 
 #define MAX_TRANSFER_SIZE_V0		4096
 #define MAX_TRANSFER_SIZE_V5		(16*1024)
@@ -310,6 +310,8 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 					memcpy(_buffer, dev->buffer, retval);
 			} else
 				retval = __USB_BlkMsgTimeout(dev, ep, thisLen, _buffer, USBSTORAGE_TIMEOUT);
+
+
 
 			if (retval == thisLen) {
 				_len -= retval;
@@ -669,11 +671,12 @@ s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u
 
 	retval = __usbstorage_clearerrors(dev, lun);
 
-	// it's gone to sleep, try and wake it up
-	// don't check the returned value, device may not support this command
-	if (retval==USBSTORAGE_EINIT)
-		retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
-	else if (retval<0)
+	if (retval < 0)
+		return retval;
+
+	retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
+
+	if (retval < 0)
 		return retval;
 
 	retval = __cycle(dev, lun, buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 0, &status, NULL);
@@ -704,9 +707,13 @@ s32 USBStorage_Write(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, 
 		return IPC_EINVAL;
 
 	retval = __usbstorage_clearerrors(dev, lun);
-	if (retval==USBSTORAGE_EINIT)
-		retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
-	else if (retval<0)
+
+	if (retval < 0)
+		return retval;
+
+	retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
+
+	if (retval < 0)
 		return retval;
 
 	retval = __cycle(dev, lun, (u8 *)buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 1, &status, NULL);
