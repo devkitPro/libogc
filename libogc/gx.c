@@ -20,9 +20,9 @@
 #define GX_FINISH		2
 
 #if defined(HW_DOL)
-	#define LARGE_NUMBER	(1024*1024)
+	#define LARGE_NUMBER	(-1048576.0f)
 #elif defined(HW_RVL)
-	#define LARGE_NUMBER	(1.0e+18f)
+	#define LARGE_NUMBER	(-1.0e+18f)
 #endif
 
 #define _SHIFTL(v, s, w)	\
@@ -4231,8 +4231,7 @@ void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col)
 void GX_InitFogAdjTable(GXFogAdjTbl *table,u16 width,f32 projmtx[4][4])
 {
 	u32 i,val7;
-	f32 val0,val1,val2,val3,val4,val5,val6;
-	union ieee64 { f64 f; u32 i[2]; } v;
+	f32 val0,val1,val2,val4,val5,val6;
 
 	if(projmtx[3][3]==0.0f) {
 		val0 = projmtx[2][3]/(projmtx[2][2] - 1.0f);
@@ -4242,15 +4241,10 @@ void GX_InitFogAdjTable(GXFogAdjTbl *table,u16 width,f32 projmtx[4][4])
 		val0 = val1*1.7320499f;
 	}
 
-	v.i[0] = 0x43300000;
-	v.i[1] = width;
 	val2 = val0*val0;
-
-	val3 = v.f - 4503599627370496.0;
-	val4 = 2.0f/val3;
+	val4 = 2.0f/(f32)width;
 	for(i=0;i<10;i++) {
-		v.i[1] = (i+1)<<5;
-		val5 = v.f - 4503599627370496.0;
+		val5 = (i+1)*32.0f;
 		val5 *= val4;
 		val5 *= val1;
 		val5 *= val5;
