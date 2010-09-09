@@ -48,6 +48,7 @@ distribution.
 
 int di_fd = -1;
 static bool load_dvdx = false;
+static bool use_dvd_cache = true;
 static int have_ahbprot = 0;
 static int state = DVD_INIT | DVD_NO_DISC;
 
@@ -271,12 +272,18 @@ int DI_Init() {
 	if (!bufferMutex)
 		LWP_MutexInit(&bufferMutex, false);
 
-	CreateDVDCache();
+	if(use_dvd_cache)
+		CreateDVDCache();
+
 	return 0;
 }
 
-void DI_LoadDVDX(bool load){
+void DI_LoadDVDX(bool load) {
 	load_dvdx = load;
+}
+
+void DI_UseCache(bool use) {
+	use_dvd_cache = use;
 }
 
 void DI_Mount() {

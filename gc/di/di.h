@@ -91,6 +91,7 @@ extern const DISC_INTERFACE __io_wiidvd;
 
 int DI_Init();
 void DI_LoadDVDX(bool load);
+void DI_UseCache(bool use);
 void DI_SetInitCallback(di_callback cb);
 void DI_Mount();
 void DI_Close();
