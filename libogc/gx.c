@@ -3586,7 +3586,7 @@ void GX_LoadTlut(GXTlutObj *obj,u32 tlut_name)
 	region->tlut_nentries = ptr->tlut_nentries;
 }
 
-void GX_SetTexCoorScaleManually(u8 texcoord,u8 enable,u16 ss,u16 ts)
+void GX_SetTexCoordScaleManually(u8 texcoord,u8 enable,u16 ss,u16 ts)
 {
 	u32 reg;
 
