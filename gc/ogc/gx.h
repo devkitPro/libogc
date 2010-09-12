@@ -3324,7 +3324,7 @@ void GX_SetTevIndBumpXYZ(u8 tevstage,u8 indstage,u8 mtx_sel);
  * \details It will set up the correct values in the given indirect matrix; you only need to specify which matrix slot to use.
  *
  * \note The regular texture map contains only the tile definitions. The actual texture size to be applied to the polygon being drawn is the product of the base tile
- * size and the size of the indirect map. In order to set the proper texture coordinate scale, one must call GX_SetTexCoorScaleManually(). One can also use
+ * size and the size of the indirect map. In order to set the proper texture coordinate scale, one must call GX_SetTexCoordScaleManually(). One can also use
  * GX_SetIndTexCoordScale() in order to use the same texcoord for the indirect stage as the regular TEV stage.
  *
  * \param[in] tevstage \ref tevstage that is being affected
@@ -4273,7 +4273,7 @@ void GX_InitTlutRegion(GXTlutRegion *region,u32 tmem_addr,u8 tlut_sz);
 void GX_InitTexObjLOD(GXTexObj *obj,u8 minfilt,u8 magfilt,f32 minlod,f32 maxlod,f32 lodbias,u8 biasclamp,u8 edgelod,u8 maxaniso);
 
 /*!
- * \fn void GX_SetTexCoorScaleManually(u8 texcoord,u8 enable,u16 ss,u16 ts)
+ * \fn void GX_SetTexCoordScaleManually(u8 texcoord,u8 enable,u16 ss,u16 ts)
  * \brief Overrides the automatic texture coordinate scaling (based upon the associated map size) and lets one manually assign the scale values that
  * are used for a given \a texcoord.
  *
@@ -4291,7 +4291,7 @@ void GX_InitTexObjLOD(GXTexObj *obj,u8 minfilt,u8 magfilt,f32 minlod,f32 maxlod,
  *
  * \return none
  */
-void GX_SetTexCoorScaleManually(u8 texcoord,u8 enable,u16 ss,u16 ts);
+void GX_SetTexCoordScaleManually(u8 texcoord,u8 enable,u16 ss,u16 ts);
 
 /*!
  * \fn void GX_SetTexCoordBias(u8 texcoord,u8 s_enable,u8 t_enable)
@@ -4303,7 +4303,7 @@ void GX_SetTexCoorScaleManually(u8 texcoord,u8 enable,u16 ss,u16 ts);
  * have no effect upon the actual appearance of the texture.
  *
  * \note Texture coordinate range bias is something that is normally set automatically by the GX API (during GX_Begin()); however, when a texture
- * coordinate is being scaled manually (by using GX_SetTexCoorScaleManually()), the associated bias is no longer modified by GX. Thus,
+ * coordinate is being scaled manually (by using GX_SetTexCoordScaleManually()), the associated bias is no longer modified by GX. Thus,
  * GX_SetTexCoordBias() allows the bias to be changed while a texture coordinate is being manually controlled.
  *
  * \param[in] texcoord \ref texcoordid being changed
