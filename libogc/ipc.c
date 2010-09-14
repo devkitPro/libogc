@@ -50,8 +50,6 @@ distribution.
 
 //#define DEBUG_IPC
 
-#define IPC_REQ_MAGIC			0x4C4F4743
-
 #define IPC_HEAP_SIZE			4096
 #define IPC_REQUESTSIZE			64
 #define IPC_NUMHEAPS			16
@@ -146,6 +144,8 @@ struct _ioctlvfmt_cbdata
 	struct _ioctlvfmt_bufent *bufs;
 };
 
+static u32 IPC_REQ_MAGIC;
+
 static s32 _ipc_hid = -1;
 static s32 _ipc_mailboxack = 1;
 static u32 _ipc_relnchFl = 0;
@@ -158,6 +158,8 @@ static void *_ipc_bufferlo = NULL;
 static void *_ipc_bufferhi = NULL;
 static void *_ipc_currbufferlo = NULL;
 static void *_ipc_currbufferhi = NULL;
+
+static u32 _ipc_seed = 0xffffffff;
 
 static struct _ipcreqres _ipc_responses;
 
@@ -172,6 +174,8 @@ extern void __MaskIrq(u32 nMask);
 extern void __UnmaskIrq(u32 nMask);
 extern void* __SYS_GetIPCBufferLo(void);
 extern void* __SYS_GetIPCBufferHi(void);
+
+extern u32 gettick();
 
 static __inline__ u32 IPC_ReadReg(u32 reg)
 {
@@ -196,6 +200,17 @@ static __inline__ void* __ipc_allocreq()
 static __inline__ void __ipc_freereq(void *ptr)
 {
 	iosFree(_ipc_hid,ptr);
+}
+
+static __inline__ void __ipc_srand(u32 seed)
+{
+	_ipc_seed = seed;
+}
+
+static __inline__ u32 __ipc_rand()
+{
+	_ipc_seed = (214013*_ipc_seed) + 2531011;
+	return _ipc_seed;
 }
 
 static s32 __ioctlvfmtCB(s32 result,void *userdata)
@@ -811,6 +826,10 @@ u32 __IPC_ClntInit(void)
 {
 	if(!_ipc_clntinitialized) {
 		_ipc_clntinitialized = 1;
+
+		// generate a random request magic
+		__ipc_srand(gettick());
+		IPC_REQ_MAGIC = __ipc_rand();
 
 		__IPC_Init();
 
