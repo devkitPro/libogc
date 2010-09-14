@@ -1,4 +1,5 @@
 // Modified by Francisco Mu�oz 'Hermes' MAY 2008
+// Changed to use libAESND
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,14 +11,11 @@
 //#define _GCMOD_DEBUG
 
 #define STACKSIZE		8192
-#define SNDBUFFERSIZE	8192			//that's the maximum buffer size for one VBlank we need.
+#define SNDBUFFERSIZE	(3840)			//that's the maximum buffer size
 
 static BOOL thr_running = FALSE;
 static BOOL sndPlaying = FALSE;
 static MODSNDBUF sndBuffer;
-
-static s32 have_samples = 0;
-static s32 mod_freq = 48000;
 
 static u32 shiftVal = 0;
 static vu32 curr_audio = 0;
@@ -25,11 +23,17 @@ static u8 audioBuf[2][SNDBUFFERSIZE] ATTRIBUTE_ALIGN(32);
 
 static lwpq_t player_queue;
 static lwp_t hplayer;
-static u8 player_stack[STACKSIZE];
+static u8 player_stack[STACKSIZE] ATTRIBUTE_ALIGN(8);
 static void* player(void *);
 
+#ifdef __AESNDLIB_H__
+static s32 mod_freq = 48000;
+static AESNDPB	*modvoice = NULL;
+#endif
+
 #ifdef _GCMOD_DEBUG
-extern long long gettime();
+static u64 mixtime = 0;
+static u64 reqcbtime = 0;
 extern u32 diff_usec(unsigned long long start,unsigned long long end);
 extern u32 diff_msec(unsigned long long start,unsigned long long end);
 #endif
@@ -37,7 +41,7 @@ extern u32 diff_msec(unsigned long long start,unsigned long long end);
 static void* player(void *arg)
 {
 #ifdef _GCMOD_DEBUG
-	long long start,end;
+	u64 start;
 #endif
 
 	thr_running = TRUE;
@@ -45,66 +49,70 @@ static void* player(void *arg)
 		LWP_ThreadSleep(player_queue);
 		if(sndPlaying==TRUE) {
 #ifdef _GCMOD_DEBUG
-			printf("player(run callback)\n\n");
 			start = gettime();
 #endif
 			sndBuffer.callback(sndBuffer.usr_data,((u8*)audioBuf[curr_audio]),SNDBUFFERSIZE);
-			have_samples = 2;
 #ifdef _GCMOD_DEBUG
-			end = gettime();
-			printf("player(end callback,%d - %d us)\n\n",curr_audio,diff_usec(start,end));
+			mixtime = gettime();
 #endif
 		}
 	}
 	thr_running = FALSE;
-#ifdef _GCMOD_DEBUG
-	printf("player stopped %d\n",thr_running);
-#endif
+
 	return 0;
 }
+
+#ifdef __AESNDLIB_H__
+static void __aesndvoicecallback(AESNDPB *pb,u32 state)
+{
+#ifdef _GCMOD_DEBUG
+	static u64 rqstart = 0,rqend = 0;
+
+	rqend = gettime();
+	if(rqstart) reqcbtime = rqend - rqstart;
+#endif
+	switch(state) {
+		case VOICE_STATE_STOPPED:
+		case VOICE_STATE_RUNNING:
+			break;
+		case VOICE_STATE_STREAM:
+			AESND_SetVoiceBuffer(pb,(void*)audioBuf[curr_audio],SNDBUFFERSIZE);
+			LWP_ThreadSignal(player_queue);
+			curr_audio ^= 1;
+			break;
+	}
+#ifdef _GCMOD_DEBUG
+	rqstart = gettime();
+#endif
+}
+
+#else
 
 static void dmaCallback()
 {	
 #ifdef _GCMOD_DEBUG
-	static long long start = 0,end = 0;
+	static u64 adstart = 0,adend = 0;
 
-	end = gettime();
-	if(start) printf("dmaCallback(%p,%d,%d - after %d ms)\n",(void*)audioBuf[curr_audio],SNDBUFFERSIZE,curr_audio,diff_msec(start,end));
+	adend = gettime();
+	if(adstart) printf("dmaCallback(%d us)\n",diff_usec(adstart,adend));
 #endif
 
-#ifndef __SNDLIB_H__
 	curr_audio ^= 1;
 	AUDIO_InitDMA((u32)audioBuf[curr_audio],SNDBUFFERSIZE);
 	LWP_ThreadSignal(player_queue);
-#else
-	if(have_samples==0) {
-		have_samples = 1;
-		LWP_ThreadSignal(player_queue);
-		return;
-	}
-	if(have_samples==1) return;
-	
-	if(have_samples==2) {
-		if(SND_AddVoice(0,audioBuf[curr_audio], SNDBUFFERSIZE)!=0) return; // Sorry I am busy: try again
-		have_samples=0;
-		curr_audio ^= 1;
-	}
-#endif
 
 #ifdef _GCMOD_DEBUG
-	start = gettime();
-	printf("dmaCallback(%p,%d,%d,%d us) leave\n",(void*)audioBuf[curr_audio],SNDBUFFERSIZE,curr_audio,diff_usec(end,start));
+	adstart = gettime();
 #endif
 }
+#endif
 
 static void mixCallback(void *usrdata,u8 *stream,u32 len)
 {
 	u32 i;
 	MODPlay *mp = (MODPlay*)usrdata;
 	MOD *mod = &mp->mod;
-#ifdef _GCMOD_DEBUG
-	printf("mixCallback(%p,%p,%d) enter\n",stream,usrdata,len);
-#endif
+
 	if(mp->manual_polling)
 		mod->notify = &mp->paused;
 	else
@@ -119,21 +127,15 @@ static void mixCallback(void *usrdata,u8 *stream,u32 len)
 	} else
 		MOD_Player(mod);
 
-#ifndef __SNDLIB_H__
+#ifndef __AESNDLIB_H__
 	DCFlushRange(stream,len);
-#endif
-
-#ifdef _GCMOD_DEBUG
-	printf("mixCallback(%p,%p,%d,%d) leave\n",stream,usrdata,len,mp->paused);
 #endif
 }
 
 static s32 SndBufStart(MODSNDBUF *sndbuf)
 {
 	if(sndPlaying) return -1;
-#ifdef _GCMOD_DEBUG
-	printf("SndBufStart(%p) enter\n",sndbuf);
-#endif
+
 	memcpy(&sndBuffer,sndbuf,sizeof(MODSNDBUF));
 	
 	shiftVal = 0;
@@ -153,14 +155,12 @@ static s32 SndBufStart(MODSNDBUF *sndbuf)
 	curr_audio = 0;
 	sndPlaying = TRUE;
 	if(LWP_CreateThread(&hplayer,player,NULL,player_stack,STACKSIZE,80)!=-1) {
-#ifndef __SNDLIB_H__
+#ifndef __AESNDLIB_H__
 		AUDIO_RegisterDMACallback(dmaCallback);
 		AUDIO_InitDMA((u32)audioBuf[curr_audio],SNDBUFFERSIZE);
 		AUDIO_StartDMA();
 #else
-		SND_SetVoice(0, VOICE_STEREO_16BIT, mod_freq,0, audioBuf[curr_audio], SNDBUFFERSIZE, 255, 255, dmaCallback);
-		have_samples=0;
-		SND_Pause(0);
+		AESND_SetVoiceStop(modvoice,false);
 #endif
 		return 1;
 	}
@@ -172,11 +172,11 @@ static s32 SndBufStart(MODSNDBUF *sndbuf)
 static void SndBufStop()
 {
 	if(!sndPlaying) return;
-#ifndef __SNDLIB_H__
+#ifndef __AESNDLIB_H__
 	AUDIO_StopDMA();
 	AUDIO_RegisterDMACallback(NULL);
 #else
-	SND_StopVoice(0);
+	AESND_SetVoiceStop(modvoice,true);
 #endif
 	curr_audio = 0;
 	sndPlaying = FALSE;
@@ -223,11 +223,15 @@ void MODPlay_Init(MODPlay *mod)
 {
 	memset(mod,0,sizeof(MODPlay));
 
-#ifndef __SNDLIB_H__
+#ifndef __AESNDLIB_H__
     AUDIO_Init(NULL);
 #else
-    SND_Pause(0);
-    SND_StopVoice(0);
+	modvoice = AESND_AllocateVoice(__aesndvoicecallback);
+	if(modvoice) {
+		AESND_SetVoiceFormat(modvoice,VOICE_STEREO16);
+		AESND_SetVoiceFrequency(modvoice,mod_freq);
+		AESND_SetVoiceVolume(modvoice,255,255);
+	}
 #endif
 	MODPlay_SetFrequency(mod,48000);
 	MODPlay_SetStereo(mod,TRUE);
@@ -247,7 +251,7 @@ s32 MODPlay_SetFrequency(MODPlay *mod,u32 freq)
 {
 	if(freq==mod->playfreq) return 0;
 	if(freq==32000 || freq==48000) {
-#ifndef __SNDLIB_H__
+#ifndef __AESNDLIB_H__
 		if(freq==32000)
 			AUDIO_SetDSPSampleRate(AI_SAMPLERATE_32KHZ);
 		else
@@ -357,3 +361,14 @@ void MODPlay_SetVolume(MODPlay *mod, s32 musicvolume, s32 sfxvolume)
 	mod->mod.sfxvolume = sfxvolume;
 }
 
+#ifdef _GCMOD_DEBUG
+u32 MODPlay_MixingTime()
+{
+	return ticks_to_microsecs(mixtime);
+}
+
+u32 MODPlay_RequestTime()
+{
+	return ticks_to_microsecs(reqcbtime);
+}
+#endif
