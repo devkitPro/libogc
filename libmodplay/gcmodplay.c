@@ -1,11 +1,12 @@
 // Modified by Francisco Mu�oz 'Hermes' MAY 2008
 // Changed to use libAESND
+// linke aginst libaesnd.a - -laesnd
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <gccore.h>
-#include <asndlib.h>
+#include <aesndlib.h>
 #include "gcmodplay.h"
 
 //#define _GCMOD_DEBUG
