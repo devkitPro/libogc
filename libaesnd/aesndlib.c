@@ -158,7 +158,7 @@ static __inline__ void __aesndsetvoicefreq(AESNDPB *pb,u32 freq)
 
 #if defined(HW_DOL)
 static ARQRequest arq_request[MAX_VOICES];
-static u8 stream_buffer[SND_BUFFERSIZE*2] ATTRIBUTE_ALIGN(32);
+static u8 stream_buffer[DSP_STREAMBUFFER_SIZE*2] ATTRIBUTE_ALIGN(32);
 
 static void __aesndarqcallback(ARQRequest *req)
 {
@@ -168,20 +168,19 @@ static void __aesndarqcallback(ARQRequest *req)
 static void __aesndfillbuffer(AESNDPB *pb,u32 buffer)
 {
 	register u32 copy_len;
-	register u32 rem_len;
 	register u32 buf_addr;
 
 	buf_addr = __aesndaramblocks[pb->voiceno];
-	if(buffer) buf_addr += SND_BUFFERSIZE;
+	if(buffer) buf_addr += DSP_STREAMBUFFER_SIZE;
 
-	rem_len = (pb->mram_end - pb->mram_curr);
-	copy_len = (rem_len<SND_BUFFERSIZE) ? rem_len : SND_BUFFERSIZE;
+	copy_len = (pb->mram_end - pb->mram_curr);
+	if(copy_len>DSP_STREAMBUFFER_SIZE) copy_len = DSP_STREAMBUFFER_SIZE;
 
 	memcpy(stream_buffer,(void*)pb->mram_curr,copy_len);
-	if(copy_len<SND_BUFFERSIZE) memset(stream_buffer + copy_len,0,SND_BUFFERSIZE - copy_len);
+	if(copy_len<DSP_STREAMBUFFER_SIZE) memset(stream_buffer + copy_len,0,DSP_STREAMBUFFER_SIZE - copy_len);
 
-	DCFlushRange(stream_buffer,SND_BUFFERSIZE);
-	ARQ_PostRequestAsync(&arq_request[pb->voiceno],pb->voiceno,ARQ_MRAMTOARAM,ARQ_PRIO_HI,buf_addr,(u32)MEM_VIRTUAL_TO_PHYSICAL(stream_buffer),SND_BUFFERSIZE,NULL);
+	DCFlushRange(stream_buffer,DSP_STREAMBUFFER_SIZE);
+	ARQ_PostRequestAsync(&arq_request[pb->voiceno],pb->voiceno,ARQ_MRAMTOARAM,ARQ_PRIO_HI,buf_addr,(u32)MEM_VIRTUAL_TO_PHYSICAL(stream_buffer),DSP_STREAMBUFFER_SIZE,NULL);
 
 	pb->mram_curr += copy_len;
 }
@@ -190,7 +189,6 @@ static __inline__ void __aesndhandlerequest(AESNDPB *pb)
 {
 	register u32 buf_addr;
 	register u32 copy_len;
-	register u32 rem_len;
 
 	if(pb->mram_curr>=pb->mram_end) {
 		if(pb->flags&VOICE_ONCE) {
@@ -204,8 +202,8 @@ static __inline__ void __aesndhandlerequest(AESNDPB *pb)
 		register u32 curr_pos = pb->buf_curr;
 		if(curr_pos<pb->stream_last)
 			__aesndfillbuffer(pb,1);
-		if(curr_pos>=(pb->buf_start + (SND_BUFFERSIZE>>pb->shift)) &&
-		   pb->stream_last<(pb->buf_start + (SND_BUFFERSIZE>>pb->shift)))
+		if(curr_pos>=(pb->buf_start + (DSP_STREAMBUFFER_SIZE>>pb->shift)) &&
+		   pb->stream_last<(pb->buf_start + (DSP_STREAMBUFFER_SIZE>>pb->shift)))
 			__aesndfillbuffer(pb,0);
 
 		pb->stream_last = curr_pos;
@@ -214,39 +212,38 @@ static __inline__ void __aesndhandlerequest(AESNDPB *pb)
 
 	buf_addr = __aesndaramblocks[pb->voiceno];
 	pb->buf_start = buf_addr>>pb->shift;
-	pb->buf_end = (buf_addr + (SND_BUFFERSIZE*2) - (1<<pb->shift))>>pb->shift;
+	pb->buf_end = (buf_addr + (DSP_STREAMBUFFER_SIZE*2) - (1<<pb->shift))>>pb->shift;
 	pb->buf_curr = pb->buf_start;
 
-	rem_len = (pb->mram_end - pb->mram_curr);
-	copy_len = (rem_len<(SND_BUFFERSIZE*2)) ? rem_len : (SND_BUFFERSIZE*2);
+	copy_len = (pb->mram_end - pb->mram_curr);
+	if(copy_len>(DSP_STREAMBUFFER_SIZE*2)) copy_len = (DSP_STREAMBUFFER_SIZE*2);
 
 	memcpy(stream_buffer,(void*)pb->mram_curr,copy_len);
-	if(copy_len<(SND_BUFFERSIZE*2)) memset(stream_buffer + copy_len,0,(SND_BUFFERSIZE*2) - copy_len);
+	if(copy_len<(DSP_STREAMBUFFER_SIZE*2)) memset(stream_buffer + copy_len,0,(DSP_STREAMBUFFER_SIZE*2) - copy_len);
 
-	DCFlushRange(stream_buffer,(SND_BUFFERSIZE*2));
-	ARQ_PostRequestAsync(&arq_request[pb->voiceno],pb->voiceno,ARQ_MRAMTOARAM,ARQ_PRIO_HI,buf_addr,(u32)MEM_VIRTUAL_TO_PHYSICAL(stream_buffer),(SND_BUFFERSIZE*2),__aesndarqcallback);
+	DCFlushRange(stream_buffer,(DSP_STREAMBUFFER_SIZE*2));
+	ARQ_PostRequestAsync(&arq_request[pb->voiceno],pb->voiceno,ARQ_MRAMTOARAM,ARQ_PRIO_HI,buf_addr,(u32)MEM_VIRTUAL_TO_PHYSICAL(stream_buffer),(DSP_STREAMBUFFER_SIZE*2),__aesndarqcallback);
 
 	pb->mram_curr += copy_len;
 }
 #elif defined(HW_RVL)
-static u8 stream_buffer[MAX_VOICES][SND_BUFFERSIZE*2] ATTRIBUTE_ALIGN(32);
+static u8 stream_buffer[MAX_VOICES][DSP_STREAMBUFFER_SIZE*2] ATTRIBUTE_ALIGN(32);
 
 static void __aesndfillbuffer(AESNDPB *pb,u32 buffer)
 {
 	register u32 copy_len;
-	register u32 rem_len;
 	register u32 buf_addr;
 
 	buf_addr = (u32)stream_buffer[pb->voiceno];
-	if(buffer) buf_addr += SND_BUFFERSIZE;
+	if(buffer) buf_addr += DSP_STREAMBUFFER_SIZE;
 
-	rem_len = (pb->mram_end - pb->mram_curr);
-	copy_len = (rem_len<SND_BUFFERSIZE) ? rem_len : SND_BUFFERSIZE;
+	copy_len = (pb->mram_end - pb->mram_curr);
+	if(copy_len>DSP_STREAMBUFFER_SIZE) copy_len = DSP_STREAMBUFFER_SIZE;
 
 	memcpy((void*)buf_addr,(void*)pb->mram_curr,copy_len);
-	if(copy_len<SND_BUFFERSIZE) memset((void*)(buf_addr + copy_len),0,SND_BUFFERSIZE - copy_len);
+	if(copy_len<DSP_STREAMBUFFER_SIZE) memset((void*)(buf_addr + copy_len),0,DSP_STREAMBUFFER_SIZE - copy_len);
 
-	DCFlushRange((void*)buf_addr,SND_BUFFERSIZE);
+	DCFlushRange((void*)buf_addr,DSP_STREAMBUFFER_SIZE);
 
 	pb->mram_curr += copy_len;
 }
@@ -255,10 +252,10 @@ static __inline__ void __aesndhandlerequest(AESNDPB *pb)
 {
 	register u32 buf_addr;
 	register u32 copy_len;
-	register u32 rem_len;
 
 	if(pb->mram_curr>=pb->mram_end) {
 		if(pb->flags&VOICE_ONCE) {
+			pb->buf_start = 0;
 			pb->flags |= VOICE_STOPPED;
 			return;
 		} else if(pb->flags&VOICE_LOOP) pb->mram_curr = pb->mram_start;
@@ -269,8 +266,8 @@ static __inline__ void __aesndhandlerequest(AESNDPB *pb)
 		register u32 curr_pos = pb->buf_curr;
 		if(curr_pos<pb->stream_last)
 			__aesndfillbuffer(pb,1);
-		if(curr_pos>=(pb->buf_start + (SND_BUFFERSIZE>>pb->shift)) &&
-		   pb->stream_last<(pb->buf_start + (SND_BUFFERSIZE>>pb->shift)))
+		if(curr_pos>=(pb->buf_start + (DSP_STREAMBUFFER_SIZE>>pb->shift)) &&
+		   pb->stream_last<(pb->buf_start + (DSP_STREAMBUFFER_SIZE>>pb->shift)))
 			__aesndfillbuffer(pb,0);
 
 		pb->stream_last = curr_pos;
@@ -279,16 +276,16 @@ static __inline__ void __aesndhandlerequest(AESNDPB *pb)
 
 	buf_addr = (u32)MEM_VIRTUAL_TO_PHYSICAL(stream_buffer[pb->voiceno]);
 	pb->buf_start = buf_addr>>pb->shift;
-	pb->buf_end = (buf_addr + (SND_BUFFERSIZE*2) - (1<<pb->shift))>>pb->shift;
+	pb->buf_end = (buf_addr + (DSP_STREAMBUFFER_SIZE*2) - (1<<pb->shift))>>pb->shift;
 	pb->buf_curr = pb->buf_start;
 
-	rem_len = (pb->mram_end - pb->mram_curr);
-	copy_len = (rem_len<(SND_BUFFERSIZE*2)) ? rem_len : (SND_BUFFERSIZE*2);
+	copy_len = (pb->mram_end - pb->mram_curr);
+	if(copy_len>(DSP_STREAMBUFFER_SIZE*2)) copy_len = (DSP_STREAMBUFFER_SIZE*2);
 
 	memcpy(stream_buffer,(void*)pb->mram_curr,copy_len);
-	if(copy_len<(SND_BUFFERSIZE*2)) memset(stream_buffer + copy_len,0,(SND_BUFFERSIZE*2) - copy_len);
+	if(copy_len<(DSP_STREAMBUFFER_SIZE*2)) memset(stream_buffer + copy_len,0,(DSP_STREAMBUFFER_SIZE*2) - copy_len);
 
-	DCFlushRange(stream_buffer,(SND_BUFFERSIZE*2));
+	DCFlushRange(stream_buffer,(DSP_STREAMBUFFER_SIZE*2));
 
 	pb->mram_curr += copy_len;
 	pb->flags |= VOICE_RUNNING;
@@ -439,7 +436,7 @@ void AESND_Init()
 		__aesndvoicesstopped = true;
 
 #if defined(HW_DOL)
-		for(i=0;i<MAX_VOICES;i++) __aesndaramblocks[i] = AR_Alloc(SND_BUFFERSIZE*2);
+		for(i=0;i<MAX_VOICES;i++) __aesndaramblocks[i] = AR_Alloc(DSP_STREAMBUFFER_SIZE*2);
 #endif
 		snd_set0w((int*)mute_buffer,SND_BUFFERSIZE>>2);
 		snd_set0w((int*)stream_buffer,SND_BUFFERSIZE>>1);
