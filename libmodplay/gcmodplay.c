@@ -12,7 +12,7 @@
 //#define _GCMOD_DEBUG
 
 #define STACKSIZE		8192
-#define SNDBUFFERSIZE	(3840)			//that's the maximum buffer size
+#define SNDBUFFERSIZE	(5760)			//that's the maximum buffer size
 
 static BOOL thr_running = FALSE;
 static BOOL sndPlaying = FALSE;
