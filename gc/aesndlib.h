@@ -4,7 +4,8 @@
 #include <gctypes.h>
 
 #define MAX_VOICES				32
-#define SND_BUFFERSIZE			384				// process 2ms sound data
+#define SND_BUFFERSIZE			384				// output 2ms sound data at 48KHz
+#define	DSP_STREAMBUFFER_SIZE	1152			// input 2ms sound data at max. 144KHz
 
 #define DSP_DEFAULT_FREQ		48000
 
