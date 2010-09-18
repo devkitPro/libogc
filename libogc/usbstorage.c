@@ -397,7 +397,7 @@ end:
 s32 USBStorage_Open(usbstorage_handle *dev, s32 device_id, u16 vid, u16 pid)
 {
 	s32 retval = -1;
-	u8 conf;
+	u8 conf = -1;
 	u8 *max_lun;
 	u32 iConf, iInterface, iEp;
 	usb_devdesc udd;
@@ -479,10 +479,14 @@ found:
 		goto free_and_return;
 
 	dev->suspended = 0;
-
-	retval = USBStorage_Reset(dev);
-	if (retval < 0)
-		goto free_and_return;
+	
+	// only do a reset under the USB1.1 IOS module
+	if(dev->usb_fd >= 0 && dev->usb_fd < 0x20)
+	{
+		retval = USBStorage_Reset(dev);
+		if (retval < 0)
+			goto free_and_return;
+	}
 
 	LWP_MutexLock(dev->lock);
 	retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_DEVICE2HOST | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_GET_MAX_LUN, 0, dev->interface, 1, max_lun);
