@@ -609,6 +609,26 @@ int DI_ReadDVDCopyright(uint32_t* copyright){
 	return (ret == 1)? 0 : -ret;
 }
 
+int DI_Read_BCA(void *outbuf)
+{
+	if(di_fd < 0)
+		return -ENXIO;
+
+	if(!outbuf)
+		return -EINVAL;
+
+	memset(dic, 0, sizeof(dic));
+	dic[0] = DVD_READ_BCA << 24;
+
+	int ret = IOS_Ioctl(di_fd, DVD_READ_BCA, dic, 0x20, outbuf, 64);
+	
+	if(ret == 2)
+		ret = EIO;
+
+	LWP_MutexUnlock(bufferMutex);
+	return (ret == 1)? 0 : -ret;
+}
+
 /*
 Returns 0x800 bytes worth of Disc key
 */
