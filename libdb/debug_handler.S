@@ -84,11 +84,6 @@ exit:
 
 	EXCEPTION_EPILOG
 
-	mfmsr	r4
-	rlwinm	r4,r4,0,19,17
-	mtmsr	r4
-	isync
-
 	lwz		toc,GPR2_OFFSET(sp)
 	lwz		r0,GPR0_OFFSET(sp)
 
