@@ -529,13 +529,9 @@ void __lwp_thread_loadenv(lwp_cntrl *thethread)
 	
 	thethread->context.GPR[1] = sp;
 	
-	_CPU_MSR_GET(msr_value);
+	msr_value = (MSR_ME|MSR_IR|MSR_DR|MSR_RI);
 	if(!(thethread->isr_level&CPU_MODES_INTERRUPT_MASK))
 		msr_value |= MSR_EE;
-	else
-		msr_value &= ~MSR_EE;
-
-	msr_value &= ~MSR_FP;		//disable FPU, we'll use it only when needed, then it'll get saved/restored in the FP exception handler
 	
 	thethread->context.MSR = msr_value;
 	thethread->context.LR = (u32)__lwp_thread_handler;
