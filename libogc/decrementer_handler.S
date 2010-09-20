@@ -148,7 +148,6 @@ easy_exit:
 	EXCEPTION_EPILOG
 
 	mfmsr	r4
-	rlwinm	r4,r4,0,19,17
 	rlwinm	r4,r4,0,31,29
 	mtmsr	r4
 	isync

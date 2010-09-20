@@ -119,7 +119,7 @@ exceptionhandler_start:
 	mr			r5,r3
 	nop		
 	mfmsr		r3
-	ori			r3,r3,MSR_IR|MSR_DR|MSR_FP
+	ori			r3,r3,MSR_IR|MSR_DR
 	mtsrr1		r3
 	
 exceptionhandler_patch:
@@ -166,11 +166,6 @@ default_exceptionhandler:
 
 	lmw			r16,GPR16_OFFSET(sp)
 
-	mfmsr		r4
-	rlwinm		r4,r4,0,19,17
-	mtmsr		r4
-	isync
-
 	lwz			toc,GPR2_OFFSET(sp)
 	lwz			r0,GPR0_OFFSET(sp)
 
@@ -190,6 +185,11 @@ fpu_exceptionhandler:
 	stwu		sp,-EXCEPTION_FRAME_END(sp)		//now we're able to adjust the stackpointer with it's cached address
 
 	EXCEPTION_PROLOG
+
+	mfmsr		r4
+	ori			r4,r4,MSR_FP
+	mtmsr		r4
+	isync
 
 	bl			__thread_dispatch_fp
 

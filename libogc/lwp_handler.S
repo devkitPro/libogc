@@ -192,8 +192,7 @@ _cpu_context_save_fp:
 	psq_st	fr29,PSFP_29(r3),0,0
 	psq_st	fr30,PSFP_30(r3),0,0
 	psq_st	fr31,PSFP_31(r3),0,0
-1:	
-	blr
+1:	blr
 
 	.align	5
 	.globl _cpu_context_restore_fp
@@ -238,7 +237,6 @@ _cpu_context_restore_fp:
 	psq_l	fr29,PSFP_29(r3),0,0
 	psq_l	fr30,PSFP_30(r3),0,0
 	psq_l	fr31,PSFP_31(r3),0,0
-
 1:	lfd		fr0, FP_0(r3)
 	lfd		fr1, FP_1(r3)
 	lfd		fr2, FP_2(r3)
@@ -271,7 +269,6 @@ _cpu_context_restore_fp:
 	lfd		fr29, FP_29(r3)
 	lfd		fr30, FP_30(r3)
 	lfd		fr31, FP_31(r3)
-
 2:	blr
 
 	.align	5
