@@ -740,6 +740,8 @@ void __lwp_thread_coreinit()
 	_thr_allocated_fp = NULL;
 	_lwp_ticks_per_timeslice = 10;
 
+	memset(&core_context,0,sizeof(core_context));
+
 	for(index=0;index<=LWP_PRIO_MAX;index++)
 		__lwp_queue_init_empty(&_lwp_thr_ready[index]);
 	
