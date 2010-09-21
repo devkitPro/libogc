@@ -365,12 +365,8 @@ _cpu_context_switch:
 	mfmsr	r5
 	stw		r5, GP_MSR(r3)
 	lwz		r6, GP_MSR(r4)
-	lwz		r5,_thr_executing@sda21(r0)
-	lwz		r7,_thr_allocated_fp@sda21(r0)
-	cmpw	r5,r7
-	beq		1f
 	rlwinm	r6, r6, 0, 19, 17
-1:	mtmsr	r6
+	mtmsr	r6
 
 	blr
 
