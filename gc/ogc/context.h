@@ -38,8 +38,7 @@ typedef struct _excption_frame {
 	u16 mode;		//unused
 
 	f64 FPR[32];
-	u32 FPSCR_PAD;
-	u32	FPSCR;
+	u64	FPSCR;
 	f64 PSFPR[32];
 } frame_context;
 
