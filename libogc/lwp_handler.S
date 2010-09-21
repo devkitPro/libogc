@@ -323,50 +323,54 @@ _cpu_context_switch:
 
 	mfspr	r5,912
 	stw		r5,GQ_0(r3)
-	lwz		r5,GQ_0(r4)
-	mfspr	r6,913
-	mtspr	912,r5
-	stw		r6,GQ_1(r3)
+	lwz		r6,GQ_0(r4)
+	mtspr	912,r6
+	mfspr	r5,913
+	stw		r5,GQ_1(r3)
 	lwz		r6,GQ_1(r4)
-	mfspr	r5,914
 	mtspr	913,r6
+	mfspr	r5,914
 	stw		r5,GQ_2(r3)
-	lwz		r5,GQ_2(r4)
-	mfspr	r6,915
-	mtspr	914,r5
-	stw		r6,GQ_3(r3)
+	lwz		r6,GQ_2(r4)
+	mtspr	914,r6
+	mfspr	r5,915
+	stw		r5,GQ_3(r3)
 	lwz		r6,GQ_3(r4)
-	mfspr	r5,916
 	mtspr	915,r6
+	mfspr	r5,916
 	stw		r5,GQ_4(r3)
-	lwz		r5,GQ_4(r4)
-	mfspr	r6,917
-	mtspr	916,r5
-	stw		r6,GQ_5(r3)
+	lwz		r6,GQ_4(r4)
+	mtspr	916,r6
+	mfspr	r5,917
+	stw		r5,GQ_5(r3)
 	lwz		r6,GQ_5(r4)
-	mfspr	r5,918
 	mtspr	917,r6
+	mfspr	r5,918
 	stw		r5,GQ_6(r3)
-	lwz		r5,GQ_6(r4)
-	mfspr	r6,919
-	mtspr	918,r5
-	stw		r6,GQ_7(r3)
+	lwz		r6,GQ_6(r4)
+	mtspr	918,r6
+	mfspr	r5,919
+	stw		r5,GQ_7(r3)
 	lwz		r6,GQ_7(r4)
 	mtspr	919,r6
 
 	mfcr	r5
 	stw		r5, GP_CR(r3)
-	lwz		r5, GP_CR(r4)
-	mflr	r6
-	mtcrf	255, r5
-	stw		r6, GP_LR(r3)
+	lwz		r6, GP_CR(r4)
+	mtcrf	255, r6
+	mflr	r5
+	stw		r5, GP_LR(r3)
 	lwz		r6, GP_LR(r4)
-	mfmsr	r5
 	mtlr	r6
+	mfmsr	r5
 	stw		r5, GP_MSR(r3)
-	lwz		r5, GP_MSR(r4)
-	rlwinm	r5, r5, 0, 19, 17
-	mtmsr	r5
+	lwz		r6, GP_MSR(r4)
+	lwz		r5,_thr_executing@sda21(r0)
+	lwz		r7,_thr_allocated_fp@sda21(r0)
+	cmpw	r5,r7
+	beq		1f
+	rlwinm	r6, r6, 0, 19, 17
+1:	mtmsr	r6
 
 	blr
 

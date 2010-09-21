@@ -144,6 +144,14 @@ easy_exit:
 	lwz		r4,XER_OFFSET(sp)
 	mtxer	r4
 
+	lwz		r4,SRR1_OFFSET(sp)
+	lwz		r5,_thr_executing@sda21(r0)
+	lwz		r6,_thr_allocated_fp@sda21(r0)
+	cmpw	r5,r6
+	beq		1f
+	rlwinm	r4,r4,0,19,17
+1:	mtsrr1	r4
+
 	EXCEPTION_EPILOG
 
 	mfmsr	r4
@@ -156,9 +164,6 @@ easy_exit:
 
 	lwz		r4,SRR0_OFFSET(sp)
 	mtsrr0	r4
-	lwz		r4,SRR1_OFFSET(sp)
-	rlwinm	r4,r4,0,19,17
-	mtsrr1	r4
 
 	lwz		r4,GPR4_OFFSET(sp)
 	lwz		r3,GPR3_OFFSET(sp)

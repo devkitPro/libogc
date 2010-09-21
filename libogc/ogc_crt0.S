@@ -17,8 +17,9 @@
 
 	# Entry Point
 
-	.extern InitBATS
+	.extern __InitBATS
 	.extern __PSInit
+	.extern __FPRInit
 	.extern __CacheInit
 	.extern __SystemInit
 	.extern __sbss_start, __bss_end, __CheckARGV
@@ -35,11 +36,9 @@ __argv:
 	.long 0		# end address of argv
 
 startup:
-	bl		InitBATS			# Initialize BATs to a clear and known state
-	bl		InitGPRS			# Initialize the General Purpose Registers
-	bl		FPRInit			 	# Initialize the FPR's
-	bl		__PSInit 			# Initialize Paired Singles
-	bl		__CacheInit 		# Initialize the system caches
+	bl		__InitBATS			# Initialize BATs to a clear and known state
+	bl		__InitGPRS			# Initialize the General Purpose Registers
+	bl		__InitHardware		# Initialize some aspects of the Hardware
 	bl		__SystemInit		# Initialize more cache aspects, clear a few SPR's, and disable interrupts.
 
 	bl		__CheckARGV		# check for argv & initialise struct
@@ -61,7 +60,7 @@ startup:
 1:
 	b      SYS_Init # Branch to the user code!
 
-InitGPRS:
+__InitGPRS:
 	# Clear all of the GPR's to 0
 	li      r0,0
 	li      r3,0
@@ -105,51 +104,19 @@ InitGPRS:
 	ori     r13,r13,_SDA_BASE_@l # Set the Small Data (Read\Write) base register.	
 	blr
 
-FPRInit:
+__InitHardware:
 	# Enable the Floating Point Registers
 	mfmsr   r3
-	ori     r3,r3,0x2000
+	ori     r3,r3,MSR_FP
 	mtmsr   r3
-	
-	# Clear all of the FPR's to 0
-	lis	    r3,zfloat@ha
-	lfd	    fr0,zfloat@l(r3)
-	fmr     fr1,fr0
-	fmr     fr2,fr0
-	fmr     fr3,fr0
-	fmr     fr4,fr0
-	fmr     fr5,fr0
-	fmr     fr6,fr0
-	fmr     fr7,fr0
-	fmr     fr8,fr0
-	fmr     fr9,fr0
-	fmr     fr10,fr0
-	fmr     fr11,fr0
-	fmr     fr12,fr0
-	fmr     fr13,fr0
-	fmr     fr14,fr0
-	fmr     fr15,fr0
-	fmr     fr16,fr0
-	fmr     fr17,fr0
-	fmr     fr18,fr0
-	fmr     fr19,fr0
-	fmr     fr20,fr0
-	fmr     fr21,fr0
-	fmr     fr22,fr0
-	fmr     fr23,fr0
-	fmr     fr24,fr0
-	fmr     fr25,fr0
-	fmr     fr26,fr0
-	fmr     fr27,fr0
-	fmr     fr28,fr0
-	fmr     fr29,fr0
-	fmr     fr30,fr0
-	fmr     fr31,fr0
-	mtfsf   255,fr0
 
-	# Return
+	mflr	r31
+	bl		__PSInit 			# Initialize Paired Singles
+	bl		__FPRInit		 	# Initialize the FPR's
+	bl		__CacheInit 		# Initialize the system caches
+	mtlr	r31
 	blr
-
+	
 	//r3 = ptr, r4 = fill, r5 = size
 	.globl _memset
 _memset:
@@ -166,25 +133,11 @@ _memset:
 	bne+	2b
 3:	blr
 
-	.globl video_line
-video_line:
-	mulli	r5,r3,640
-	lis		r3,0xC0F0
-	mtctr	r5
-1:	stwu	r4,4(r3)
-	bdnz	1b
-	blr
-
 	.section .bss
 	.balign 8
 __crt0stack_end:
 	.space 0x4000
 __crt0stack:
-
-	.section .data
-	.balign	4
-zfloat:
-	.double 0.0
 
 	.globl __system_argv
 	.section	.sdata,"aw",@progbits

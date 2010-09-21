@@ -250,6 +250,91 @@ __configMEM2_128Mb:
 	rfi	
 #endif
 
+	.globl __FPRInit
+__FPRInit:
+	# Enable the Floating Point Registers
+	mfmsr   r3
+	ori     r3,r3,MSR_FP
+	mtmsr   r3
+	mfspr	r3,920
+	extrwi.	r3,r3,1,2
+	beq		1f
+
+	# Clear all of the PS FPR's to 0
+	lis		r3,zeroPS@ha
+	addi	r3,r3,zeroPS@l
+	psq_l	fr0,0(r3),0,0
+	ps_mr	fr1,fr0	
+	ps_mr	fr2,fr0	
+	ps_mr	fr3,fr0	
+	ps_mr	fr4,fr0	
+	ps_mr	fr5,fr0	
+	ps_mr	fr6,fr0	
+	ps_mr	fr7,fr0	
+	ps_mr	fr8,fr0	
+	ps_mr	fr9,fr0	
+	ps_mr	fr10,fr0	
+	ps_mr	fr11,fr0	
+	ps_mr	fr12,fr0	
+	ps_mr	fr13,fr0	
+	ps_mr	fr14,fr0	
+	ps_mr	fr15,fr0	
+	ps_mr	fr16,fr0	
+	ps_mr	fr17,fr0	
+	ps_mr	fr18,fr0	
+	ps_mr	fr19,fr0	
+	ps_mr	fr20,fr0	
+	ps_mr	fr21,fr0	
+	ps_mr	fr22,fr0	
+	ps_mr	fr23,fr0	
+	ps_mr	fr24,fr0	
+	ps_mr	fr25,fr0	
+	ps_mr	fr26,fr0	
+	ps_mr	fr27,fr0	
+	ps_mr	fr28,fr0	
+	ps_mr	fr29,fr0	
+	ps_mr	fr30,fr0	
+	ps_mr	fr31,fr0
+		
+	# Clear all of the FPR's to 0
+1:	lis	    r3,zeroF@ha
+	lfd	    fr0,zeroF@l(r3)
+	fmr     fr1,fr0
+	fmr     fr2,fr0
+	fmr     fr3,fr0
+	fmr     fr4,fr0
+	fmr     fr5,fr0
+	fmr     fr6,fr0
+	fmr     fr7,fr0
+	fmr     fr8,fr0
+	fmr     fr9,fr0
+	fmr     fr10,fr0
+	fmr     fr11,fr0
+	fmr     fr12,fr0
+	fmr     fr13,fr0
+	fmr     fr14,fr0
+	fmr     fr15,fr0
+	fmr     fr16,fr0
+	fmr     fr17,fr0
+	fmr     fr18,fr0
+	fmr     fr19,fr0
+	fmr     fr20,fr0
+	fmr     fr21,fr0
+	fmr     fr22,fr0
+	fmr     fr23,fr0
+	fmr     fr24,fr0
+	fmr     fr25,fr0
+	fmr     fr26,fr0
+	fmr     fr27,fr0
+	fmr     fr28,fr0
+	fmr     fr29,fr0
+	fmr     fr30,fr0
+	fmr     fr31,fr0
+	mtfsf   255,fr0
+
+	# Return
+	blr
+
 	.extern ICFlashInvalidate
 	.globl __PSInit
 __PSInit:
@@ -263,6 +348,13 @@ __PSInit:
 	sync
 	li		r3,0
 	mtspr	GQR0,r3
+	mtspr	GQR1,r3
+	mtspr	GQR2,r3
+	mtspr	GQR3,r3
+	mtspr	GQR4,r3
+	mtspr	GQR5,r3
+	mtspr	GQR6,r3
+	mtspr	GQR7,r3
 	lwz		r0,12(sp)
 	addi	sp,sp,8
 	mtlr	r0
@@ -407,6 +499,15 @@ __reset:
 	b		7b
 8:	b		9b	
 
+	.globl __InitBATS
+__InitBATS:
+	mflr	r31
+	lis		r3,__configBATS@h
+	ori		r3,r3,__configBATS@l
+	bl		__realmode
+	mtlr	r31
+	blr
+	
 	.globl SYS_SwitchFiber
 SYS_SwitchFiber:
 	mflr	r0
@@ -422,12 +523,9 @@ SYS_SwitchFiber:
 	mr		sp,r5
 	blr
 
-	.globl InitBATS
-InitBATS:
-	mflr	r31
-	lis		r3,__configBATS@h
-	ori		r3,r3,__configBATS@l
-	bl		__realmode
-	mtlr	r31
-	blr
-	
+	.section .data
+	.balign	4
+zeroF:
+	.double 0.0
+zeroPS:
+	.float 0.0,0.0
