@@ -514,28 +514,6 @@ static void __ipcbuffer_init()
 }
 #endif
 
-static void __bat_config()
-{
-	u32 realmem1 = SYSMEM1_SIZE;
-	u32 simmem1 = SYSMEM1_SIZE;
-#if defined(HW_RVL)
-	u32 simmem2 = SYSMEM2_SIZE;
-#endif
-
-	if(simmem1<realmem1 && !(simmem1-0x1800000)) {
-		DCInvalidateRange((void*)0x81800000,0x01800000);
-		_memReg[20] = 2;
-	}
-
-	if(simmem1<=0x01800000) __realmode(__configMEM1_24Mb);
-	else if(simmem1<=0x03000000) __realmode(__configMEM1_48Mb);
-
-#if defined(HW_RVL)
-	if(simmem2<=0x04000000) __realmode(__configMEM2_64Mb);
-	else if(simmem2<=0x08000000) __realmode(__configMEM2_128Mb);
-#endif
-}
-
 static void __memprotect_init()
 {
 	u32 level;
@@ -554,7 +532,6 @@ static void __memprotect_init()
 	IRQ_Request(IRQ_MEMADDRESS,__MEMInterruptHandler,NULL);
 
 	SYS_RegisterResetFunc(&mem_resetinfo);
-	__bat_config();
 	__UnmaskIrq(IM_MEMADDRESS);		//only enable memaddress irq atm
 
 	_CPU_ISR_Restore(level);
