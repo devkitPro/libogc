@@ -140,7 +140,6 @@ static void __usb_settimeout(usbstorage_handle *dev, u32 secs)
 
 static s32 __USB_BlkMsgTimeout(usbstorage_handle *dev, u8 bEndpoint, u16 wLength, void *rpData, u32 timeout)
 {
-	u32 level;
 	s32 retval;
 
 	dev->retval = USBSTORAGE_PROCESSING;
@@ -149,13 +148,11 @@ static s32 __USB_BlkMsgTimeout(usbstorage_handle *dev, u8 bEndpoint, u16 wLength
 
 	__usb_settimeout(dev, timeout);
 
-	_CPU_ISR_Disable(level);
 	do {
 		retval = dev->retval;
 		if(retval!=USBSTORAGE_PROCESSING) break;
 		else LWP_ThreadSleep(__usbstorage_waitq);
 	} while(retval==USBSTORAGE_PROCESSING);
-	_CPU_ISR_Restore(level);
 
 	if (retval<0)
 		USB_ClearHalt(dev->usb_fd, bEndpoint);
@@ -165,7 +162,6 @@ static s32 __USB_BlkMsgTimeout(usbstorage_handle *dev, u8 bEndpoint, u16 wLength
 
 static s32 __USB_CtrlMsgTimeout(usbstorage_handle *dev, u8 bmRequestType, u8 bmRequest, u16 wValue, u16 wIndex, u16 wLength, void *rpData)
 {
-	u32 level;
 	s32 retval;
 
 	dev->retval = USBSTORAGE_PROCESSING;
@@ -174,13 +170,11 @@ static s32 __USB_CtrlMsgTimeout(usbstorage_handle *dev, u8 bmRequestType, u8 bmR
 
 	__usb_settimeout(dev, USBSTORAGE_TIMEOUT);
 
-	_CPU_ISR_Disable(level);
 	do {
 		retval = dev->retval;
 		if(retval!=USBSTORAGE_PROCESSING) break;
 		else LWP_ThreadSleep(__usbstorage_waitq);
 	} while(retval==USBSTORAGE_PROCESSING);
-	_CPU_ISR_Restore(level);
 
 	return retval;
 }
