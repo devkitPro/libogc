@@ -36,30 +36,31 @@ DCFlashInvalidate:
 	mfspr	r3,HID0
 	ori		r3,r3,0x0400
 	mtspr	HID0,r3
+	isync
 	blr
 
 	.globl DCEnable
 DCEnable:
-	sync
 	mfspr	r3,HID0
 	ori		r3,r3,0x4000
 	mtspr	HID0,r3
+	isync
 	blr
 
 	.globl DCDisable
 DCDisable:
-	sync
 	mfspr	r3,HID0
 	rlwinm	r3,r3,0,18,16
 	mtspr	HID0,r3
+	isync
 	blr
 
 	.globl DCFreeze
 DCFreeze:
-	sync
 	mfspr	r3,HID0
 	ori		r3,r3,0x1000
 	mtspr	HID0,r3
+	isync
 	blr
 
 	.globl DCUnfreeze
@@ -67,6 +68,7 @@ DCUnfreeze:
 	mfspr	r3,HID0
 	rlwinm	r3,r3,0,20,18
 	mtspr	HID0,r3
+	isync
 	blr
 
 	.globl DCTouchLoad
@@ -239,30 +241,31 @@ ICFlashInvalidate:
 	mfspr	r3,HID0
 	ori		r3,r3,0x0800
 	mtspr	HID0,r3
+	isync
 	blr
 
 	.globl ICEnable
 ICEnable:
-	isync
 	mfspr	r3,HID0
 	ori		r3,r3,0x8000
 	mtspr	HID0,r3
+	isync
 	blr
 
 	.globl ICDisable
 ICDisable:
-	isync
 	mfspr	r3,HID0
 	rlwinm	r3,r3,0,17,15
 	mtspr	HID0,r3
+	isync
 	blr
 
 	.globl ICFreeze
 ICFreeze:
-	isync
 	mfspr	r3,HID0
 	ori		r3,r3,0x2000
 	mtspr	HID0,r3
+	isync
 	blr
 
 	.globl ICUnfreeze
@@ -270,6 +273,7 @@ ICUnfreeze:
 	mfspr	r3,HID0
 	rlwinm	r3,r3,0,19,17
 	mtspr	HID0,r3
+	isync
 	blr
 
 	.globl ICBlockInvalidate
@@ -305,10 +309,12 @@ L2Init:
 
 	.globl L2Enable
 L2Enable:
+	sync
 	mfspr	r3,L2CR;
 	oris	r0,r3,0x8000
 	rlwinm	r3,r0,0,11,9
 	mtspr	L2CR,r3
+	sync
 	blr
 
 	.globl L2Disable

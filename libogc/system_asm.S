@@ -24,10 +24,6 @@ __configBATS:
 	mtspr	HID0,r3
 	isync
 	
-	ori		r3,r3,0xc000	// d-cache & i-cache enable
-	mtspr	HID0,r3
-	isync
-
 #if defined(HW_RVL)
 	lis		r3,0x8200		//bits set: H4A(HID4 access), SBE(2nd BAT enabled)
 	mtspr	HID4,r3
@@ -194,6 +190,7 @@ __PSInit:
 	mfspr	r3,HID2
 	oris	r3,r3,0xA000
 	mtspr	HID2,r3
+	isync
 	bl		ICFlashInvalidate
 	sync
 	li		r3,0
@@ -205,6 +202,7 @@ __PSInit:
 	mtspr	GQR5,r3
 	mtspr	GQR6,r3
 	mtspr	GQR7,r3
+	isync
 	lwz		r0,12(sp)
 	addi	sp,sp,8
 	mtlr	r0
@@ -221,24 +219,21 @@ __CacheInit:
 	stwu    sp, -16(sp)
 	stw     r31, 12(sp)
 
-	mfspr   r3,HID0 # (HID0)
-	rlwinm  r0,r3, 0, 16, 16
-	cmplwi  r0, 0x0000 # Check if the Instruction Cache has been enabled or not.
+	mfspr   r3,HID0
+	rlwinm. r0,r3, 0, 16, 16	// Check if the Instruction Cache has been enabled or not.
 	bne     ICEnabled
 
 	bl		ICEnable
 ICEnabled:
-	mfspr   r3, HID0 # bl       PPCMfhid0
-	rlwinm  r0, r3, 0, 17, 17
-	cmplwi  r0, 0x0000 # Check if the Data Cache has been enabled or not.
+	mfspr   r3, HID0
+	rlwinm. r0, r3, 0, 17, 17	// Check if the Data Cache has been enabled or not.
 	bne     DCEnabled
 	
 	bl		DCEnable	
 DCEnabled:
 	
-	mfspr   r3, L2CR # (L2CR)
-	clrrwi  r0, r3, 31 # Clear all of the bits except 31
-	cmplwi  r0, 0x0000
+	mfspr   r3, L2CR
+	clrrwi. r0, r3, 31			// Check if the Locked Cache has been enabled or not.
 	bne     L2Enabled
 
 	bl		L2Init
@@ -275,24 +270,30 @@ __SystemInit:
 	mtspr   954, r3
 	mtspr   957, r3
 	mtspr   958, r3
-
+	isync
+	
 #if defined(HW_RVL)
-	lis		r3,0x8390		//bits set: H4A(HID4 access), SBE(2nd BAT enabled),  SR0(store 0), LPE(PS LE exception), L2CFI(L2 castout prior to L2 inv. flash)
+	mfspr	r3,HID4
+	oris	r3,r3,0x0190		//set additional bits in HID4: SR0(store 0), LPE(PS LE exception), L2CFI(L2 castout prior to L2 inv. flash)
 	mtspr	HID4,r3
+	isync
 #endif
 
 	# Disable Speculative Bus Accesses to non-guarded space from both caches.
 	mfspr   r3, HID0
 	ori     r3, r3, 0x0200
 	mtspr   HID0, r3
-
+	isync
+	
 	# Set the Non-IEEE mode in the FPSCR
 	mtfsb1  29
 	
+	# Disable Write Gather Pipe
 	mfspr   r3,HID2 # (HID2)
-	rlwinm  r3, r3, 0, 2, 0
+	rlwinm  r3, r3, 0, 2, 0	
 	mtspr   HID2,r3 # (HID2)
-
+	isync
+	
 	# Restore the non-volatile registers to their previous values and return.
 	lwz     r0, 28(sp)
 	lwz     r31,20(sp)
