@@ -24,10 +24,6 @@ __configBATS:
 	mtspr	HID0,r3
 	isync
 	
-	mfmsr	r4
-	ori		r4,r4,MSR_FP	// MSR = 00002000 (FP on)
-	mtmsr	r4
-	
 	ori		r3,r3,0xc000	// d-cache & i-cache enable
 	mtspr	HID0,r3
 	isync
