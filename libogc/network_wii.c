@@ -664,7 +664,7 @@ s32 net_get_mac_address(void *mac_buf) {
 	s32 fd;
 	s32 result;
 	void *_mac_buf;
-	STACK_ALIGN(u32, manage_buf, 0x06, 32);
+	STACK_ALIGN(u32, manage_buf, 0x20, 32);
 
 	if (mac_buf==NULL) return -EINVAL;
 
