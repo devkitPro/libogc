@@ -66,6 +66,7 @@ distribution.
 #define IOCTL_NCD_SETIFCONFIG3		0x03
 #define IOCTL_NCD_SETIFCONFIG4		0x04
 #define IOCTL_NCD_GETLINKSTATUS		0x07
+#define IOCTLV_NCD_GETMACADDRESS    0x08
 
 #define NET_UNKNOWN_ERROR_OFFSET	-10000
 
@@ -233,9 +234,9 @@ static u8 _net_error_code_map[] = {
  	ETIMEDOUT,
 };
 
-static bool _init_busy = false;
-static bool _init_abort = false;
-static s32 _last_init_result = -ENETDOWN;
+static volatile bool _init_busy = false;
+static volatile bool _init_abort = false;
+static vs32 _last_init_result = -ENETDOWN;
 static s32 net_ip_top_fd = -1;
 static u8 __net_heap_inited = 0;
 static s32 __net_hid=-1;
@@ -422,7 +423,9 @@ static s32 net_init_chain(s32 result, void *usrdata) {
 		}
 
 		data->fd = result;
-		data->state = 6;
+		data->retries = MAX_INIT_RETRIES;
+	case 6:
+		data->state = 7;
 		data->result = IOS_IoctlAsync(data->fd, IOCTL_NWC24_STARTUP, NULL, 0, data->buf, 0x20, net_init_chain, data);
 		if (data->result < 0) {
 			data->result = _net_convert_error(data->result);
@@ -431,10 +434,27 @@ static s32 net_init_chain(s32 result, void *usrdata) {
 				goto done;
 		}
 		return 0;
+	case 7:
+		if(result==0) {
+			memcpy(&result,data->buf,sizeof(result));
+			if(result==-29 && --data->retries) {
+				data->state = 6;
+				tb.tv_sec = 0;
+				tb.tv_nsec = 100000000;
+				data->result = SYS_SetAlarm(data->alarm, &tb, net_init_alarm, data);
+				if (data->result) {
+					data->state = 0xff;
+					debug_printf("error setting the alarm: %d\n", data->result);
+					if (IOS_CloseAsync(data->fd, net_init_chain, data) < 0)
+						goto done;	
+				}
+				return 0;
+			} else if(result==-15) // this happens if it's already been started
+				return 0;
+		}
 
-	case 6: // close request fd
 		data->prevres = result;
-		data->state = 7;
+		data->state = 8;
 		data->result = IOS_CloseAsync(data->fd, net_init_chain, data);
 		if (data->result < 0) {
 			data->result = _net_convert_error(data->result);
@@ -443,7 +463,7 @@ static s32 net_init_chain(s32 result, void *usrdata) {
 		}
 		return 0;
 
-	case 7: // socket startup
+	case 8: // socket startup
 		if (data->prevres < 0) {
 			data->result = _net_convert_error(data->prevres);
 			debug_printf("NWC24 startup failed: %d\n", data->result);
@@ -451,7 +471,7 @@ static s32 net_init_chain(s32 result, void *usrdata) {
 			goto error;
 		}
 
-		data->state = 8;
+		data->state = 9;
 		data->retries = MAX_IP_RETRIES;
 		data->result = IOS_IoctlAsync(net_ip_top_fd, IOCTL_SO_STARTUP, 0, 0, 0, 0, net_init_chain, data);
 		if (data->result < 0) {
@@ -461,7 +481,7 @@ static s32 net_init_chain(s32 result, void *usrdata) {
 		}
 		return 0;
 
-	case 8: // check ip
+	case 9: // check ip
 		if (result < 0) {
 			data->result = _net_convert_error(result);
 			debug_printf("socket startup failed: %d\n", data->result);
@@ -469,7 +489,7 @@ static s32 net_init_chain(s32 result, void *usrdata) {
 			goto error;
 		}
 
-		data->state = 9;
+		data->state = 10;
 		data->result = IOS_IoctlAsync(net_ip_top_fd, IOCTL_SO_GETHOSTID, 0, 0, 0, 0, net_init_chain, data);
 		if (data->result < 0) {
 			data->result = _net_convert_error(data->result);
@@ -478,7 +498,7 @@ static s32 net_init_chain(s32 result, void *usrdata) {
 		}
 		return 0;
 
-	case 9: // done, check result
+	case 10: // done, check result
 		if (result == 0) {
 			if (!data->retries) {
 				data->result = -ETIMEDOUT;
@@ -488,7 +508,7 @@ static s32 net_init_chain(s32 result, void *usrdata) {
 			}
 
 			debug_printf("unable to obtain ip, retrying...\n");
-			data->state = 8;
+			data->state = 9;
 			data->retries--;
 			tb.tv_sec = 0;
 			tb.tv_nsec = 100000000;
@@ -638,6 +658,38 @@ void net_wc24cleanup() {
         ret = IOS_Ioctl(kd_fd, 7, NULL, 0, kd_buf, 0x20);
         IOS_Close(kd_fd);
     }
+}
+
+s32 net_get_mac_address(void *mac_buf) {
+	s32 fd;
+	s32 result;
+	void *_mac_buf;
+	STACK_ALIGN(u32, manage_buf, 0x06, 32);
+
+	if (mac_buf==NULL) return -EINVAL;
+
+	result = NetCreateHeap();
+	if (result!=IPC_OK) return result;
+
+	_mac_buf = net_malloc(6);
+	if (_mac_buf==NULL) return IPC_ENOMEM;
+
+	fd = IOS_Open(__manage_fs, 0);
+	if (fd<0) {
+		net_free(_mac_buf);
+		return fd;
+	}
+
+	result = IOS_IoctlvFormat(__net_hid, fd, IOCTLV_NCD_GETMACADDRESS, ":dd", manage_buf, 0x20, _mac_buf, 0x06);
+	IOS_Close(fd);
+
+	if (result>=0) {
+		memcpy(mac_buf, _mac_buf, 6);
+		if (manage_buf[0]) result = manage_buf[0];
+	}
+
+	net_free(_mac_buf);
+	return result;
 }
 
 /* Returned value is a static buffer -- this function is not threadsafe! */
