@@ -96,8 +96,8 @@ __configBATS:
 	mtsrr0	r3
 	rfi
 	
-	.globl __FPRInit
-__FPRInit:
+	.globl __InitFPRS
+__InitFPRS:
 	# Enable the Floating Point Registers
 	mfmsr   r3
 	ori     r3,r3,MSR_FP
@@ -182,8 +182,8 @@ __FPRInit:
 	blr
 
 	.extern ICFlashInvalidate
-	.globl __PSInit
-__PSInit:
+	.globl __InitPS
+__InitPS:
 	mflr	r0
 	stw		r0,4(sp)
 	stwu	sp,-8(sp)
@@ -212,8 +212,8 @@ __PSInit:
 	.extern DCEnable
 	.extern L2Init
 	.extern L2Enable
-	.globl __CacheInit
-__CacheInit:
+	.globl __InitCache
+__InitCache:
 	mflr    r0
 	stw     r0, 4(sp)
 	stwu    sp, -16(sp)
@@ -247,8 +247,8 @@ L2Enabled:
 	mtlr    r0
 	blr
 
-	.globl __SystemInit
-__SystemInit:
+	.globl __InitSystem
+__InitSystem:
 	mflr    r0
 	stw     r0, 4(sp)
 	stwu    sp, -24(sp)
@@ -316,7 +316,7 @@ __flush_cache:
 	addic	r5,r5,8
 	subic.	r4,r4,8
 	bge		1b
-	isync
+	sync
 	blr
 
 	.globl __reset

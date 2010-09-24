@@ -18,10 +18,10 @@
 	# Entry Point
 
 	.extern __InitBATS
-	.extern __PSInit
-	.extern __FPRInit
-	.extern __CacheInit
-	.extern __SystemInit
+	.extern __InitPS
+	.extern __InitFPRS
+	.extern __InitCache
+	.extern __InitSystem
 	.extern __sbss_start, __bss_end, __CheckARGV
 	.globl _start, __main, __system_argv
 _start:
@@ -39,7 +39,7 @@ startup:
 	bl		__InitBATS			# Initialize BATs to a clear and known state
 	bl		__InitGPRS			# Initialize the General Purpose Registers
 	bl		__InitHardware		# Initialize some aspects of the Hardware
-	bl		__SystemInit		# Initialize more cache aspects, clear a few SPR's, and disable interrupts.
+	bl		__InitSystem		# Initialize more cache aspects, clear a few SPR's, and disable interrupts.
 
 	bl		__CheckARGV		# check for argv & initialise struct
 
@@ -111,9 +111,9 @@ __InitHardware:
 	mtmsr   r3
 
 	mflr	r31
-	bl		__PSInit 			# Initialize Paired Singles
-	bl		__FPRInit		 	# Initialize the FPR's
-	bl		__CacheInit 		# Initialize the system caches
+	bl		__InitPS 			# Initialize Paired Singles
+	bl		__InitFPRS		 	# Initialize the FPR's
+	bl		__InitCache 		# Initialize the system caches
 	mtlr	r31
 	blr
 	
