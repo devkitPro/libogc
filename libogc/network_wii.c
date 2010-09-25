@@ -435,8 +435,8 @@ static s32 net_init_chain(s32 result, void *usrdata) {
 		}
 		return 0;
 	case 7:
-		if(result==0) {
-			memcpy(&result,data->buf,sizeof(result));
+		if (result==0) {
+			memcpy(&result, data->buf, sizeof(result));
 			if(result==-29 && --data->retries) {
 				data->state = 6;
 				tb.tv_sec = 0;
@@ -446,11 +446,11 @@ static s32 net_init_chain(s32 result, void *usrdata) {
 					data->state = 0xff;
 					debug_printf("error setting the alarm: %d\n", data->result);
 					if (IOS_CloseAsync(data->fd, net_init_chain, data) < 0)
-						goto done;	
+						goto error;
 				}
 				return 0;
-			} else if(result==-15) // this happens if it's already been started
-				return 0;
+			} else if (result == -15) // this happens if it's already been started
+				result = 0;
 		}
 
 		data->prevres = result;
