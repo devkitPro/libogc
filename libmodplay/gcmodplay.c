@@ -232,6 +232,7 @@ void MODPlay_Init(MODPlay *mod)
 		AESND_SetVoiceFormat(modvoice,VOICE_STEREO16);
 		AESND_SetVoiceFrequency(modvoice,mod_freq);
 		AESND_SetVoiceVolume(modvoice,255,255);
+		AESND_SetVoiceStream(modvoice,true);
 	}
 #endif
 	MODPlay_SetFrequency(mod,48000);
