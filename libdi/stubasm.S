@@ -6,9 +6,9 @@
 
 #define		CACHE_SCRATCH	0x81000000
 
-	.extern __PSInit
-	.extern __CacheInit
-	.extern __SystemInit
+	.extern __InitPS
+	.extern __InitCache
+	.extern __InitSystem
 	.extern DCDisable
 	.extern ICDisable
 	.extern L2Disable
