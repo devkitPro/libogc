@@ -146,9 +146,9 @@ __distub_return:
 	lwz	r31, R31_OFF(r3)
 
 	# initialize system partially
-	bl	__PSInit
-	bl	__CacheInit
-	bl	__SystemInit
+	bl	__InitPS
+	bl	__InitCache
+	bl	__InitSystem
 
 	# get the context address (again), this time into r31
 	lis	r4, CTX_SAVE@h
