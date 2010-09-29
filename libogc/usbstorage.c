@@ -738,9 +738,6 @@ as used by libfat
 
 static bool __usbstorage_Startup(void)
 {
-	if(__inited)
-		return true;
-
 	if(USB_Initialize() < 0 || USBStorage_Initialize() < 0)
 		return false;
 
