@@ -278,8 +278,6 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 	else
 		max_size=MAX_TRANSFER_SIZE_V0;
 
-	if (len==0) return 0;
-
 	LWP_MutexLock(dev->lock);
 	do
 	{
@@ -292,7 +290,6 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 
 		retval = __send_cbw(dev, lun, len, (write ? CBW_OUT:CBW_IN), cb, cbLen);
 
-
 		while(_len > 0 && retval >= 0)
 		{
 			u32 thisLen = _len > max_size ? max_size : _len;
@@ -304,8 +301,6 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 					memcpy(_buffer, dev->buffer, retval);
 			} else
 				retval = __USB_BlkMsgTimeout(dev, ep, thisLen, _buffer, USBSTORAGE_TIMEOUT);
-
-
 
 			if (retval == thisLen) {
 				_len -= retval;
