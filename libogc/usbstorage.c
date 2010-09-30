@@ -40,6 +40,7 @@ distribution.
 #include "asm.h"
 #include "processor.h"
 #include "disc_io.h"
+#include "lwp_watchdog.h"
 
 #define ROUNDDOWN32(v)				(((u32)(v)-0x1f)&~0x1f)
 
@@ -85,6 +86,7 @@ distribution.
 
 static heap_cntrl __heap;
 static bool __inited = false;
+static u64 usb_last_used = 0;
 static lwpq_t __usbstorage_waitq = 0;
 
 /*
@@ -667,10 +669,16 @@ s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u
 	if (retval < 0)
 		return retval;
 
-	retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
+	// more than 60s since last use - make sure drive is awake
+	if(diff_sec(usb_last_used, gettime()) > 60)
+	{
+		retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
 
-	if (retval < 0)
-		return retval;
+		if (retval < 0)
+			return retval;
+	}
+
+	usb_last_used = gettime();
 
 	retval = __cycle(dev, lun, buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 0, &status, NULL);
 	if(retval > 0 && status != 0)
@@ -704,10 +712,16 @@ s32 USBStorage_Write(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, 
 	if (retval < 0)
 		return retval;
 
-	retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
+	// more than 60s since last use - make sure drive is awake
+	if(diff_sec(usb_last_used, gettime()) > 60)
+	{
+		retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
+	
+		if (retval < 0)
+			return retval;
+	}
 
-	if (retval < 0)
-		return retval;
+	usb_last_used = gettime();
 
 	retval = __cycle(dev, lun, (u8 *)buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 1, &status, NULL);
 	if(retval > 0 && status != 0)
@@ -813,6 +827,8 @@ static bool __usbstorage_IsInserted(void)
 			__lun = j;
 			__vid = vid;
 			__pid = pid;
+			usb_last_used = gettime();
+
 			break;
 		}
 
