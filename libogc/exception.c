@@ -127,21 +127,29 @@ void __exception_init()
 
 void __exception_close(u32 except)
 {
+	u32 level;
 	void *pAdd = (void*)(0x80000000|exception_location[except]);
+
+	_CPU_ISR_Disable(level);
+	__exception_sethandler(except,NULL);
+
 	*(u32*)pAdd = 0x4C000064;
 	DCFlushRangeNoSync(pAdd,0x100);
 	ICInvalidateRange(pAdd,0x100);
 	_sync();
+	_CPU_ISR_Restore(level);
 }
 
 void __exception_closeall()
 {
 	s32 i;
+
+	mtmsr(mfmsr()&~MSR_EE);
+	mtmsr(mfmsr()|(MSR_FP|MSR_RI));
+
 	for(i=0;i<NUM_EXCEPTIONS;i++) {
 		__exception_close(i);
 	}
-	mtmsr(mfmsr()&~MSR_EE);
-	mtmsr(mfmsr()|(MSR_FP|MSR_RI));
 }
 
 void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*))
