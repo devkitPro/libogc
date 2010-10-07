@@ -93,6 +93,7 @@ __configBATS:
 	ori		r3,r3,MSR_DR|MSR_IR
 	mtsrr1	r3
 	mflr	r3
+	oris    r3,r3,0x8000
 	mtsrr0	r3
 	rfi
 	
@@ -353,6 +354,7 @@ __reset:
 	.globl __InitBATS
 __InitBATS:
 	mflr	r31
+	oris	r31,r31,0x8000
 	lis		r3,__configBATS@h
 	ori		r3,r3,__configBATS@l
 	bl		__realmode
