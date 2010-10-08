@@ -35,6 +35,7 @@
 #define __NBTSMB_H__
 
 #include <gctypes.h>
+#include <sys/statvfs.h>
 
 #define SMB_MAXPATH					4096
 
