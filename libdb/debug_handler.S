@@ -46,6 +46,11 @@ dbg_exceptionhandler:
 
 	EXCEPTION_PROLOG
 
+	mfmsr	r4
+	ori		r4,r4,MSR_FP
+	mtmsr	r4
+	isync
+
 	addi	r14,sp,0
 
 	lis		r15,__debug_nestlevel@ha
@@ -83,6 +88,11 @@ exit:
 	mtxer	r4
 
 	EXCEPTION_EPILOG
+
+	mfmsr		r4
+	rlwinm		r4,r4,0,19,17
+	mtmsr		r4
+	isync
 
 	lwz		toc,GPR2_OFFSET(sp)
 	lwz		r0,GPR0_OFFSET(sp)
