@@ -25,10 +25,7 @@ This will install the lib into your libogc.
 Usage is fairly self-explanatory, aside from DI_Init. You can set
 a callback using DI_SetCallback, which will be called upon completion
 of the disc initialization. This callback runs in the regular callback
-context. You MUST call DI_Init as the first thing in your program, it
-wreaks massive havoc on the system, as it saves the context, launches
-a channel, and restores the context. This will break most libs, and
-probably video inits as well.
+context.
 
 After this initial init, you call DI_Mount to spin the drive up. There is
 no need for unmounting, you can just eject the disc any time you want.

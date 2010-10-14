@@ -39,10 +39,12 @@ distribution.
 
 #include <di/di.h>
 #include <ogc/cache.h>
+#include <ogc/es.h>
 #include <ogc/ipc.h>
 #include <ogc/ios.h>
 #include <ogc/mutex.h>
 #include <ogc/lwp_watchdog.h>
+#include <ogc/machine/processor.h>
 
 #define MOUNT_TIMEOUT		15000 // 15 seconds
 
@@ -246,8 +248,37 @@ static int ReadBlockFromCache(void *buf, uint32_t len, uint32_t block)
 Initialize the DI interface, should always be called first!
 */
 
-s32 __DI_StubLaunch(void);
-u32 __di_check_ahbprot(void);
+u32 __di_check_ahbprot(void) {
+	s32 res;
+	u64 title_id;
+	u32 tmd_size;
+	STACK_ALIGN(u32, tmdbuf, 1024, 32);
+
+	res = __ES_Init();
+
+	if (res < 0)
+		return res;
+
+	res = ES_GetTitleID(&title_id);
+	if (res < 0)
+		return res;
+
+	res  = ES_GetStoredTMDSize(title_id, &tmd_size);
+	if (res < 0)
+		return res;
+
+	if (tmd_size > 4096)
+		return -EINVAL;
+
+	res = ES_GetStoredTMD(title_id, tmdbuf, tmd_size);
+	if (res < 0)
+		return -EINVAL;
+
+	if ((tmdbuf[0x76] & 3) == 3)
+		return 1;
+
+	return 0;
+}
 
 int DI_Init() {
 	if(di_fd >= 0)
@@ -256,12 +287,8 @@ int DI_Init() {
 	state = DVD_INIT | DVD_NO_DISC;
 	have_ahbprot = __di_check_ahbprot();
 
-	if(have_ahbprot != 1 && load_dvdx) {
-		int res = __DI_StubLaunch(); // Marcan's 1337 magics happen here!
-
-		if (res < 0)
-			return res;
-	}
+	if(have_ahbprot == 0)
+		return 0;
 
 	if (di_fd < 0)
 		di_fd = IOS_Open(di_path, 2);
