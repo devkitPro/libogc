@@ -1095,6 +1095,7 @@ void WPAD_Shutdown()
 {
 	s32 i;
 	u32 level;
+	u32 cnt = 0;
 	struct _wpad_cb *wpdcb = NULL;
 
 	_CPU_ISR_Disable(level);
@@ -1114,8 +1115,10 @@ void WPAD_Shutdown()
 	__wpads_inited = WPAD_STATE_DISABLED;
 	_CPU_ISR_Restore(level);
 
-	while(__wpads_active)
+	while(__wpads_active) {
 		usleep(50);
+		if(cnt++>3000) break;
+	}
 
 	BTE_Shutdown();
 }
