@@ -76,8 +76,8 @@ distribution.
 
 #define	USB_ENDPOINT_BULK			0x02
 
-#define USBSTORAGE_CYCLE_RETRIES	3
-#define USBSTORAGE_TIMEOUT  2
+#define USBSTORAGE_CYCLE_RETRIES	2
+#define USBSTORAGE_TIMEOUT			2
 
 #define MAX_TRANSFER_SIZE_V0		4096
 #define MAX_TRANSFER_SIZE_V5		(16*1024)
@@ -88,6 +88,7 @@ static heap_cntrl __heap;
 static bool __inited = false;
 static u64 usb_last_used = 0;
 static lwpq_t __usbstorage_waitq = 0;
+static u32 usbtimeout = USBSTORAGE_TIMEOUT;
 
 /*
 The following is for implementing a DISC_INTERFACE
@@ -99,6 +100,7 @@ static u8 __lun = 0;
 static bool __mounted = false;
 static u16 __vid = 0;
 static u16 __pid = 0;
+static bool usb2_mode=true;
 
 static s32 __usbstorage_reset(usbstorage_handle *dev);
 static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun);
@@ -170,7 +172,7 @@ static s32 __USB_CtrlMsgTimeout(usbstorage_handle *dev, u8 bmRequestType, u8 bmR
 	retval = USB_WriteCtrlMsgAsync(dev->usb_fd, bmRequestType, bmRequest, wValue, wIndex, wLength, rpData, __usb_blkmsg_cb, (void *)dev);
 	if(retval < 0) return retval;
 
-	__usb_settimeout(dev, USBSTORAGE_TIMEOUT);
+	__usb_settimeout(dev, usbtimeout);
 
 	do {
 		retval = dev->retval;
@@ -229,7 +231,7 @@ static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u
 		dev->suspended = 0;
 	}
 
-	retval = __USB_BlkMsgTimeout(dev, dev->ep_out, CBW_SIZE, (void *)dev->buffer, USBSTORAGE_TIMEOUT);
+	retval = __USB_BlkMsgTimeout(dev, dev->ep_out, CBW_SIZE, (void *)dev->buffer, usbtimeout);
 
 	if(retval == CBW_SIZE) return USBSTORAGE_OK;
 	else if(retval > 0) return USBSTORAGE_ESHORTWRITE;
@@ -274,8 +276,8 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 	u16 max_size;
 	u8 ep = write ? dev->ep_out : dev->ep_in;
 	s8 retries = USBSTORAGE_CYCLE_RETRIES + 1;
-
-	if (dev->usb_fd>=0x20 || dev->usb_fd<-1)
+	
+	if(usb2_mode)
 		max_size=MAX_TRANSFER_SIZE_V5;
 	else
 		max_size=MAX_TRANSFER_SIZE_V0;
@@ -298,11 +300,11 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 
 			if ((u32)_buffer&0x1F || !((u32)_buffer&0x10000000)) {
 				if (write) memcpy(dev->buffer, _buffer, thisLen);
-				retval = __USB_BlkMsgTimeout(dev, ep, thisLen, dev->buffer, USBSTORAGE_TIMEOUT);
+				retval = __USB_BlkMsgTimeout(dev, ep, thisLen, dev->buffer, usbtimeout);
 				if (!write && retval > 0)
 					memcpy(_buffer, dev->buffer, retval);
 			} else
-				retval = __USB_BlkMsgTimeout(dev, ep, thisLen, _buffer, USBSTORAGE_TIMEOUT);
+				retval = __USB_BlkMsgTimeout(dev, ep, thisLen, _buffer, usbtimeout);
 
 			if (retval == thisLen) {
 				_len -= retval;
@@ -313,7 +315,7 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 		}
 
 		if (retval >= 0)
-			__read_csw(dev, &status, &dataResidue, USBSTORAGE_TIMEOUT);
+			__read_csw(dev, &status, &dataResidue, usbtimeout);
 
 		if (retval < 0) {
 			if (__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
@@ -368,20 +370,11 @@ static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun)
 
 static s32 __usbstorage_reset(usbstorage_handle *dev)
 {
+	u32 t = usbtimeout;
+	usbtimeout = 1;
 	s32 retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_HOST2DEVICE | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_RESET, 0, dev->interface, 0, NULL);
-
-	if (retval<0 && retval != -7004)
-		goto end;
-
-	//  don't clear the endpoints, it makes too many devices die
-
-	//retval = USB_ClearHalt(dev->usb_fd, dev->ep_in);
-	//if (retval < 0)	goto end;
-	//retval = USB_ClearHalt(dev->usb_fd, dev->ep_out);
-
 	usleep(100);
-
-end:
+	usbtimeout = t;
 	return retval;
 }
 
@@ -395,6 +388,7 @@ s32 USBStorage_Open(usbstorage_handle *dev, s32 device_id, u16 vid, u16 pid)
 	usb_configurationdesc *ucd;
 	usb_interfacedesc *uid;
 	usb_endpointdesc *ued;
+	bool reset_flag = false;
 
 	max_lun = __lwp_heap_allocate(&__heap, 1);
 	if (!max_lun)
@@ -436,10 +430,16 @@ s32 USBStorage_Open(usbstorage_handle *dev, s32 device_id, u16 vid, u16 pid)
 					if (ued->bmAttributes != USB_ENDPOINT_BULK)
 						continue;
 
-					if (ued->bEndpointAddress & USB_ENDPOINT_IN)
+					if (ued->bEndpointAddress & USB_ENDPOINT_IN) {
 						dev->ep_in = ued->bEndpointAddress;
-					else
+					}
+					else {
 						dev->ep_out = ued->bEndpointAddress;
+						if(ued->wMaxPacketSize > 64 && (dev->usb_fd>=0x20 || dev->usb_fd<-1)) 
+							usb2_mode=true;
+						else 
+							usb2_mode=false;
+					}
 				}
 
 				if (dev->ep_in != 0 && dev->ep_out != 0) {
@@ -459,6 +459,8 @@ s32 USBStorage_Open(usbstorage_handle *dev, s32 device_id, u16 vid, u16 pid)
 found:
 	USB_FreeDescriptors(&udd);
 
+retry_init:
+
 	retval = USBSTORAGE_EINIT;
 	// some devices return an error, ignore it
 	USB_GetConfiguration(dev->usb_fd, &conf);
@@ -471,12 +473,12 @@ found:
 
 	dev->suspended = 0;
 	
-	// only do a reset under the USB1.1 IOS module
-	if(dev->usb_fd >= 0 && dev->usb_fd < 0x20)
+	if(!reset_flag)
 	{
+		reset_flag = true;
 		retval = USBStorage_Reset(dev);
 		if (retval < 0)
-			goto free_and_return;
+			goto retry_init;
 	}
 
 	LWP_MutexLock(dev->lock);
@@ -663,7 +665,7 @@ s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u
 
 	if(lun >= dev->max_lun || dev->sector_size[lun] == 0)
 		return IPC_EINVAL;
-
+		
 	retval = __usbstorage_clearerrors(dev, lun);
 
 	if (retval < 0)
@@ -672,17 +674,19 @@ s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u
 	// more than 60s since last use - make sure drive is awake
 	if(diff_sec(usb_last_used, gettime()) > 60)
 	{
+		usbtimeout = 10;
 		retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
 
 		if (retval < 0)
 			return retval;
 	}
 
-	usb_last_used = gettime();
-
 	retval = __cycle(dev, lun, buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 0, &status, NULL);
 	if(retval > 0 && status != 0)
 		retval = USBSTORAGE_ESTATUS;
+
+	usb_last_used = gettime();
+	usbtimeout = USBSTORAGE_TIMEOUT;
 
 	return retval;
 }
@@ -715,17 +719,20 @@ s32 USBStorage_Write(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, 
 	// more than 60s since last use - make sure drive is awake
 	if(diff_sec(usb_last_used, gettime()) > 60)
 	{
+		usbtimeout = 10;
 		retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
 	
 		if (retval < 0)
 			return retval;
 	}
 
-	usb_last_used = gettime();
-
 	retval = __cycle(dev, lun, (u8 *)buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 1, &status, NULL);
 	if(retval > 0 && status != 0)
 		retval = USBSTORAGE_ESTATUS;
+
+	usb_last_used = gettime();
+	usbtimeout = USBSTORAGE_TIMEOUT;
+
 	return retval;
 }
 
@@ -890,3 +897,4 @@ DISC_INTERFACE __io_usbstorage = {
 };
 
 #endif /* HW_RVL */
+
