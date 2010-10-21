@@ -834,7 +834,7 @@ static bool __usbstorage_IsInserted(void)
 			__lun = j;
 			__vid = vid;
 			__pid = pid;
-			usb_last_used = gettime();
+			usb_last_used = 0;
 
 			break;
 		}
