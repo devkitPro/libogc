@@ -14,6 +14,7 @@
 #define MAX_COMMANDS					0x100
 
 static vu32* const _ipcReg = (u32*)0xCD000000;
+static u8 *queue_buffer = NULL;
 
 extern void parse_event(struct wiimote_t *wm);
 extern void idle_cycle(struct wiimote_t* wm);
@@ -179,14 +180,19 @@ void wiiuse_sensorbar_enable(int enable)
 	__wiiuse_sensorbar_enable(enable);
 }
 
+
 void wiiuse_init_cmd_queue(struct wiimote_t *wm)
 {
-	u8 *buffer;
 	u32 size;
 
-	size = (MAX_COMMANDS*sizeof(struct cmd_blk_t));
-	buffer = __lwp_wkspace_allocate(size);
-	__lwp_queue_initialize(&wm->cmdq,buffer,MAX_COMMANDS,sizeof(struct cmd_blk_t));
+	if (!queue_buffer) {
+		size = (MAX_COMMANDS*sizeof(struct cmd_blk_t));
+		queue_buffer = __lwp_wkspace_allocate(size);
+		if(!queue_buffer) return;
+		memset(queue_buffer, 0, size);
+	}
+
+	__lwp_queue_initialize(&wm->cmdq,queue_buffer,MAX_COMMANDS,sizeof(struct cmd_blk_t));
 }
 
 int wiiuse_io_write(struct wiimote_t *wm,ubyte *buf,int len)

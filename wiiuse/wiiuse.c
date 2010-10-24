@@ -12,6 +12,8 @@
 #include "wiiuse_internal.h"
 #include "io.h"
 
+static struct wiimote_t** wm = NULL;
+
 void wiiuse_send_next_command(struct wiimote_t *wm)
 {
 	struct cmd_blk_t *cmd = wm->cmd_head;
@@ -54,17 +56,21 @@ extern void __wiiuse_sensorbar_enable(int enable);
 struct wiimote_t** wiiuse_init(int wiimotes, wii_event_cb event_cb) {
 #endif
 	int i = 0;
-	struct wiimote_t** wm = NULL;
 
 	if (!wiimotes)
 		return NULL;
 
-	wm = __lwp_wkspace_allocate(sizeof(struct wiimote_t*) * wiimotes);
-	if(!wm) return NULL;
-
+	if (!wm) {
+		wm = __lwp_wkspace_allocate(sizeof(struct wiimote_t*) * wiimotes);
+		if(!wm)	return NULL;
+		memset(wm, 0, sizeof(struct wiimote_t) * wiimotes);
+	}
+	
 	for (i = 0; i < wiimotes; ++i) {
-		wm[i] = __lwp_wkspace_allocate(sizeof(struct wiimote_t));
-		memset(wm[i], 0, sizeof(struct wiimote_t));
+		if(!wm[i]) {
+			wm[i] = __lwp_wkspace_allocate(sizeof(struct wiimote_t));
+			memset(wm[i], 0, sizeof(struct wiimote_t));
+		}
 
 		wm[i]->unid = i;
 

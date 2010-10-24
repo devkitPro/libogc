@@ -402,6 +402,7 @@ void BTE_Shutdown()
 	LOG("BTE_Shutdown()\n");
 
 	_CPU_ISR_Disable(level);
+	SYS_RemoveAlarm(btstate.timer_svc);
 	btstate.cb = NULL;
 	btstate.usrdata = NULL;
 	btstate.hci_cmddone = 0;
