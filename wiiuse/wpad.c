@@ -660,7 +660,6 @@ s32 WPAD_Init()
 
 	_CPU_ISR_Disable(level);
 	if(__wpads_inited==WPAD_STATE_DISABLED) {
-		__wpads_inited = WPAD_STATE_ENABLING;
 		__wpads_ponded = 0;
 		__wpads_active = 0;
 
@@ -727,6 +726,7 @@ s32 WPAD_Init()
 		tb.tv_sec = 1;
 		tb.tv_nsec = 0;
 		SYS_SetPeriodicAlarm(__wpad_timer,&tb,&tb,__wpad_timeouthandler,NULL);
+		__wpads_inited = WPAD_STATE_ENABLING;
 	}
 	_CPU_ISR_Restore(level);
 	return WPAD_ERR_NONE;
@@ -743,7 +743,7 @@ s32 WPAD_ReadEvent(s32 chan, WPADData *data)
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
 
 	_CPU_ISR_Disable(level);
-	if(__wpads_inited!=WPAD_STATE_ENABLED) {
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
@@ -804,7 +804,7 @@ s32 WPAD_DroppedEvents(s32 chan)
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
 
 	_CPU_ISR_Disable(level);
-	if(__wpads_inited!=WPAD_STATE_ENABLED) {
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
@@ -915,7 +915,7 @@ s32 WPAD_SetDataFormat(s32 chan, s32 fmt)
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
 
 	_CPU_ISR_Disable(level);
-	if(__wpads_inited!=WPAD_STATE_ENABLED) {
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
@@ -953,7 +953,7 @@ s32 WPAD_SetMotionPlus(s32 chan, u8 enable)
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
 
 	_CPU_ISR_Disable(level);
-	if(__wpads_inited!=WPAD_STATE_ENABLED) {
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
@@ -981,7 +981,7 @@ s32 WPAD_SetVRes(s32 chan,u32 xres,u32 yres)
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
 
 	_CPU_ISR_Disable(level);
-	if(__wpads_inited!=WPAD_STATE_ENABLED) {
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
@@ -1014,7 +1014,7 @@ s32 WPAD_Probe(s32 chan,u32 *type)
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
 
 	_CPU_ISR_Disable(level);
-	if(__wpads_inited!=WPAD_STATE_ENABLED) {
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
@@ -1091,7 +1091,7 @@ s32 WPAD_Disconnect(s32 chan)
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
 
 	_CPU_ISR_Disable(level);
-	if(__wpads_inited!=WPAD_STATE_ENABLED)	{
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
@@ -1117,10 +1117,6 @@ void WPAD_Shutdown()
 	struct _wpad_cb *wpdcb = NULL;
 
 	_CPU_ISR_Disable(level);
-	if(__wpads_inited==WPAD_STATE_DISABLED) {
-		_CPU_ISR_Restore(level);
-		return;
-	}
 
 	__wpads_inited = WPAD_STATE_DISABLED;
 	SYS_RemoveAlarm(__wpad_timer);
@@ -1171,7 +1167,7 @@ s32 WPAD_Rumble(s32 chan, int status)
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
 
 	_CPU_ISR_Disable(level);
-	if(__wpads_inited!=WPAD_STATE_ENABLED) {
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
@@ -1199,7 +1195,7 @@ s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
 
 	_CPU_ISR_Disable(level);
-	if(__wpads_inited!=WPAD_STATE_ENABLED) {
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
@@ -1232,7 +1228,7 @@ s32 WPAD_ControlSpeaker(s32 chan,s32 enable)
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
 
 	_CPU_ISR_Disable(level);
-	if(__wpads_inited!=WPAD_STATE_ENABLED) {
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
@@ -1255,7 +1251,7 @@ s32 WPAD_IsSpeakerEnabled(s32 chan)
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
 
 	_CPU_ISR_Disable(level);
-	if(__wpads_inited!=WPAD_STATE_ENABLED) {
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
@@ -1280,7 +1276,7 @@ s32 WPAD_SendStreamData(s32 chan,void *buf,u32 len)
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_WIIMOTES) return WPAD_ERR_BAD_CHANNEL;
 
 	_CPU_ISR_Disable(level);
-	if(__wpads_inited!=WPAD_STATE_ENABLED) {
+	if(__wpads_inited==WPAD_STATE_DISABLED) {
 		_CPU_ISR_Restore(level);
 		return WPAD_ERR_NOT_READY;
 	}
