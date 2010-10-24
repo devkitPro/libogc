@@ -14,7 +14,7 @@
 #define MAX_COMMANDS					0x100
 
 static vu32* const _ipcReg = (u32*)0xCD000000;
-static u8 *queue_buffer = NULL;
+static u8 *__queue_buffer = NULL;
 
 extern void parse_event(struct wiimote_t *wm);
 extern void idle_cycle(struct wiimote_t* wm);
@@ -185,14 +185,13 @@ void wiiuse_init_cmd_queue(struct wiimote_t *wm)
 {
 	u32 size;
 
-	if (!queue_buffer) {
+	if (!__queue_buffer) {
 		size = (MAX_COMMANDS*sizeof(struct cmd_blk_t));
-		queue_buffer = __lwp_wkspace_allocate(size);
-		if(!queue_buffer) return;
-		memset(queue_buffer, 0, size);
+		__queue_buffer = __lwp_wkspace_allocate(size);
+		if(!__queue_buffer) return;
 	}
 
-	__lwp_queue_initialize(&wm->cmdq,queue_buffer,MAX_COMMANDS,sizeof(struct cmd_blk_t));
+	__lwp_queue_initialize(&wm->cmdq,__queue_buffer,MAX_COMMANDS,sizeof(struct cmd_blk_t));
 }
 
 int wiiuse_io_write(struct wiimote_t *wm,ubyte *buf,int len)
