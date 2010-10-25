@@ -63,6 +63,7 @@ struct wiimote_t** wiiuse_init(int wiimotes, wii_event_cb event_cb) {
 	if (!__wm) {
 		__wm = __lwp_wkspace_allocate(sizeof(struct wiimote_t*) * wiimotes);
 		if(!__wm) return NULL;
+		memset(__wm, 0, sizeof(struct wiimote_t*) * wiimotes);
 	}
 
 	for (i = 0; i < wiimotes; ++i) {
