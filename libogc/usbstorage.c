@@ -76,7 +76,7 @@ distribution.
 
 #define	USB_ENDPOINT_BULK			0x02
 
-#define USBSTORAGE_CYCLE_RETRIES	2
+#define USBSTORAGE_CYCLE_RETRIES	3
 #define USBSTORAGE_TIMEOUT			2
 
 #define MAX_TRANSFER_SIZE_V0		4096
@@ -665,16 +665,17 @@ s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u
 
 	if(lun >= dev->max_lun || dev->sector_size[lun] == 0)
 		return IPC_EINVAL;
-		
-	retval = __usbstorage_clearerrors(dev, lun);
-
-	if (retval < 0)
-		return retval;
 
 	// more than 60s since last use - make sure drive is awake
 	if(diff_sec(usb_last_used, gettime()) > 60)
 	{
 		usbtimeout = 10;
+
+		retval = __usbstorage_clearerrors(dev, lun);
+
+		if (retval < 0)
+			return retval;
+
 		retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
 
 		if (retval < 0)
@@ -711,15 +712,15 @@ s32 USBStorage_Write(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, 
 	if(lun >= dev->max_lun || dev->sector_size[lun] == 0)
 		return IPC_EINVAL;
 
-	retval = __usbstorage_clearerrors(dev, lun);
-
-	if (retval < 0)
-		return retval;
-
 	// more than 60s since last use - make sure drive is awake
 	if(diff_sec(usb_last_used, gettime()) > 60)
 	{
 		usbtimeout = 10;
+
+		retval = __usbstorage_clearerrors(dev, lun);
+
+		if (retval < 0)
+			return retval;
 		retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
 	
 		if (retval < 0)
@@ -834,7 +835,7 @@ static bool __usbstorage_IsInserted(void)
 			__lun = j;
 			__vid = vid;
 			__pid = pid;
-			usb_last_used = 0;
+			usb_last_used = gettime()-secs_to_ticks(100);
 
 			break;
 		}
@@ -897,4 +898,3 @@ DISC_INTERFACE __io_usbstorage = {
 };
 
 #endif /* HW_RVL */
-
