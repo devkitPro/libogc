@@ -42,7 +42,7 @@ distribution.
 
 #define LWP_CLOSED					-1
 #define LWP_SUCCESSFUL				0
-#define LWP_ALLREADY_SUSPENDED		1
+#define LWP_ALREADY_SUSPENDED		1
 #define LWP_NOT_SUSPENDED			2
 
 #define LWP_PRIO_IDLE				0

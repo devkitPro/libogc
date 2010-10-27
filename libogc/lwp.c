@@ -230,7 +230,7 @@ s32 LWP_SuspendThread(lwp_t thethread)
 		return LWP_SUCCESSFUL;
 	}
 	__lwp_thread_dispatchenable();
-	return LWP_ALLREADY_SUSPENDED;
+	return LWP_ALREADY_SUSPENDED;
 }
 
 s32 LWP_ResumeThread(lwp_t thethread)
