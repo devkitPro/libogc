@@ -29,6 +29,7 @@ typedef struct
 	u8 configuration;
 	u32 interface;
 	u32 altInterface;
+	u8 bInterfaceSubClass;
 
 	u8 ep_in;
 	u8 ep_out;
