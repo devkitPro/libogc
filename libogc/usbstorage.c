@@ -762,8 +762,8 @@ s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u
 	if(lun >= dev->max_lun || dev->sector_size[lun] == 0)
 		return IPC_EINVAL;
 
-	// more than 5s since last use - make sure drive is awake
-	if(ticks_to_secs(gettime() - usb_last_used) > 5)
+	// more than 60s since last use - make sure drive is awake
+	if(ticks_to_secs(gettime() - usb_last_used) > 60)
 	{
 		usbtimeout = 10;
 		USB_ResumeDevice(dev->usb_fd);
