@@ -249,35 +249,7 @@ Initialize the DI interface, should always be called first!
 */
 
 u32 __di_check_ahbprot(void) {
-	s32 res;
-	u64 title_id;
-	u32 tmd_size;
-	STACK_ALIGN(u32, tmdbuf, 1024, 32);
-
-	res = __ES_Init();
-
-	if (res < 0)
-		return res;
-
-	res = ES_GetTitleID(&title_id);
-	if (res < 0)
-		return res;
-
-	res  = ES_GetStoredTMDSize(title_id, &tmd_size);
-	if (res < 0)
-		return res;
-
-	if (tmd_size > 4096)
-		return -EINVAL;
-
-	res = ES_GetStoredTMD(title_id, tmdbuf, tmd_size);
-	if (res < 0)
-		return -EINVAL;
-
-	if ((tmdbuf[0x76] & 3) == 3)
-		return 1;
-
-	return 0;
+	return ((*(vu32*)0xcd800064 == 0xFFFFFFFF) ? 1 : 0);
 }
 
 int DI_Init() {
