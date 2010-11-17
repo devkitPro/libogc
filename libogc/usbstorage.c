@@ -112,7 +112,6 @@ static u16 __vid = 0;
 static u16 __pid = 0;
 static bool usb2_mode=true;
 
-static s32 __usbstorage_hard_reset();
 static s32 __usbstorage_reset(usbstorage_handle *dev);
 static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun);
 
@@ -294,7 +293,6 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 		max_size=MAX_TRANSFER_SIZE_V0;
 
 	LWP_MutexLock(dev->lock);
-
 	do
 	{
 		u8 *_buffer = buffer;
@@ -329,18 +327,11 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 		if (retval >= 0)
 			__read_csw(dev, &status, &dataResidue, usbtimeout);
 
-		if (retval < 0 && retries > 0) {
-			if(retries>1) {
-				if (__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
-					retval = USBSTORAGE_ETIMEDOUT;
-			}
-			if(retries==1 || retval == USBSTORAGE_ETIMEDOUT)
-			{
-				retval = __usbstorage_hard_reset(); // retval==-1 means ok
-				if(retval==-1) LWP_MutexLock(dev->lock);
-				retries=1;
-			}
+		if (retval < 0) {
+			if (__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
+				retval = USBSTORAGE_ETIMEDOUT;
 		}
+
 	} while (retval < 0 && retries > 0);
 
 	LWP_MutexUnlock(dev->lock);
@@ -641,70 +632,6 @@ s32 USBStorage_ReadCapacity(usbstorage_handle *dev, u8 lun, u32 *sector_size, u3
 	return retval;
 }
 
-static s32 __usbstorage_hard_reset()
-{
-	u16 old_vid, old_pid;
-	u8 device_count;
-	u8 i, j;
-	u16 vid, pid;
-	s32 maxLun;
-	usb_device_entry *buffer;
-	s32 retval;
-
-	old_vid = __vid;
-	old_pid = __pid;
-
-	USBStorage_Close(&__usbfd);
-
-	buffer = (usb_device_entry*)__lwp_heap_allocate(&__heap, DEVLIST_MAXSIZE * sizeof(usb_device_entry));
-	if (!buffer)
-		return USBSTORAGE_ETIMEDOUT;
-
-	memset(buffer, 0, DEVLIST_MAXSIZE * sizeof(usb_device_entry));
-
-	if (USB_GetDeviceList(buffer, DEVLIST_MAXSIZE, USB_CLASS_MASS_STORAGE, &device_count) < 0)
-	{
-		__lwp_heap_free(&__heap, buffer);
-		return USBSTORAGE_ETIMEDOUT;
-	}
-
-	usleep(100);
-
-	for(i = 0; i < device_count; i++) {
-		vid = buffer[i].vid;
-		pid = buffer[i].pid;
-		if((vid == old_vid) && (pid == old_pid)) {
-			__lwp_heap_free(&__heap,buffer);
-
-			if (USBStorage_Open(&__usbfd, buffer[i].device_id, vid, pid) < 0)
-				return USBSTORAGE_ETIMEDOUT;
-
-			maxLun = USBStorage_GetMaxLUN(&__usbfd);
-			for (j = 0; j < maxLun; j++) {
-				retval = USBStorage_MountLUN(&__usbfd, j);
-	
-				if (retval == USBSTORAGE_ETIMEDOUT)
-					return USBSTORAGE_ETIMEDOUT;
-				
-				if (retval < 0)
-					continue;
-
-				__mounted = true;
-				__lun = j;
-				__vid = vid;
-				__pid = pid;
-				usb_last_used = gettime()-secs_to_ticks(100);
-	
-				return -1;
-			}
-			return USBSTORAGE_ETIMEDOUT;
-		}
-	}
-
-	__lwp_heap_free(&__heap,buffer);
-	return USBSTORAGE_ETIMEDOUT;
-}
-
 /* lo_ej = load/eject, controls the tray
 *  start = start(1) or stop(0) the motor (or eject(0), load(1))
 *  imm = return before the command has completed
@@ -769,7 +696,7 @@ s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u
 		USB_ResumeDevice(dev->usb_fd);
 
 		if(dev->bInterfaceSubClass == MASS_STORAGE_SCSI_COMMANDS)
-		{			
+		{
 			retval = __usbstorage_clearerrors(dev, lun);
 
 			if (retval < 0)
@@ -780,11 +707,9 @@ s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u
 			if (retval < 0)
 				return retval;
 		}
-		
 	}
 
 	retval = __cycle(dev, lun, buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 0, &status, NULL);
-	
 	if(retval > 0 && status != 0)
 		retval = USBSTORAGE_ESTATUS;
 
@@ -819,7 +744,7 @@ s32 USBStorage_Write(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, 
 	{
 		usbtimeout = 10;
 		USB_ResumeDevice(dev->usb_fd);
-
+	
 		if(dev->bInterfaceSubClass == MASS_STORAGE_SCSI_COMMANDS)
 		{
 			retval = __usbstorage_clearerrors(dev, lun);
