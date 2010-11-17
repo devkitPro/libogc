@@ -36,20 +36,34 @@ distribution.
 #include "audio.h"
 #include "lwp_watchdog.h"
 
-#define STACKSIZE		16384
+#define STACKSIZE			16384
 
 // DSPCR bits
-#define DSPCR_DSPRESET      0x0800        // Reset DSP
-#define DSPCR_DSPDMA         0x0200        // ARAM dma in progress, if set
-#define DSPCR_DSPINTMSK     0x0100        // * interrupt mask   (RW)
-#define DSPCR_DSPINT        0x0080        // * interrupt active (RWC)
-#define DSPCR_ARINTMSK      0x0040
-#define DSPCR_ARINT         0x0020
-#define DSPCR_AIINTMSK      0x0010
-#define DSPCR_AIINT         0x0008
-#define DSPCR_HALT          0x0004        // halt DSP
-#define DSPCR_PIINT         0x0002        // assert DSP PI interrupt
-#define DSPCR_RES           0x0001        // reset DSP
+#define DSPCR_DSPRESET		0x0800        // Reset DSP
+#define DSPCR_DSPDMA		0x0200        // ARAM dma in progress, if set
+#define DSPCR_DSPINTMSK		0x0100        // * interrupt mask   (RW)
+#define DSPCR_DSPINT		0x0080        // * interrupt active (RWC)
+#define DSPCR_ARINTMSK		0x0040
+#define DSPCR_ARINT			0x0020
+#define DSPCR_AIINTMSK		0x0010
+#define DSPCR_AIINT			0x0008
+#define DSPCR_HALT			0x0004        // halt DSP
+#define DSPCR_PIINT			0x0002        // assert DSP PI interrupt
+#define DSPCR_RES			0x0001        // reset DSP
+
+// Audio Interface Registers
+#define AI_CONTROL			0
+#define AI_STREAM_VOL		1
+#define AI_SAMPLE_COUNT		2
+#define AI_INT_TIMING		3
+
+#define AI_PSTAT			0x01
+#define AI_AISFR			0x02
+#define AI_AIINTMSK			0x04
+#define AI_AIINT			0x08
+#define AI_AIINTVLD			0x10
+#define AI_SCRESET			0x20
+#define AI_DMAFR			0x40
 
 #define _SHIFTL(v, s, w)	\
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
@@ -108,8 +122,8 @@ static void __AICallbackStackSwitch(AIDCallback handler)
 static void __AISHandler(u32 nIrq,void *pCtx)
 {
 	if(__AIS_Callback)
-		__AIS_Callback(_aiReg[2]);
-	_aiReg[0] |= 0x0008;
+		__AIS_Callback(_aiReg[AI_SAMPLE_COUNT]);
+	_aiReg[AI_CONTROL] |= AI_AIINT;
 }
 #endif
 
@@ -130,32 +144,46 @@ static void __AIDHandler(u32 nIrq,void *pCtx)
 
 static void __AISRCINIT()
 {
-	u64 tdiff;
-	u32 scnt,done = 0;
-	u64 time1,time2,wait;
+	int done = 0;
+	u32 sample_counter;
+	u64 time1, time2, tdiff;
+	u64 wait = 0;
 
-	while(!done) {
-		_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
-		_aiReg[0] = (_aiReg[0]&~0x02);
-		_aiReg[0] = (_aiReg[0]&~0x01)|0x01;
+	while (!done) {
+		_aiReg[AI_CONTROL] |=  AI_SCRESET;
+		_aiReg[AI_CONTROL] &= ~AI_AISFR;
+		_aiReg[AI_CONTROL] |=  AI_PSTAT;
 
-		scnt = _aiReg[2]&0x7fffffff;
-		while(scnt!=(_aiReg[2]&0x7fffffff));
+#ifdef HW_DOL
+		sample_counter = _aiReg[AI_SAMPLE_COUNT];
+		while (sample_counter == _aiReg[AI_SAMPLE_COUNT]) {}
+#else
+		sample_counter = _aiReg[AI_SAMPLE_COUNT] & 0x7fffffff;
+		while (sample_counter == (_aiReg[AI_SAMPLE_COUNT] & 0x7fffffff)) {}
+#endif
 
 		time1 = gettime();
-		_aiReg[0] = (_aiReg[0]&~0x02)|0x02;
-		_aiReg[0] = (_aiReg[0]&~0x01)|0x01;
 
-		scnt = _aiReg[2]&0x7fffffff;
-		while(scnt!=(_aiReg[2]&0x7fffffff));
-		
+		_aiReg[AI_CONTROL] |= AI_AISFR;
+		_aiReg[AI_CONTROL] |= AI_PSTAT;
+
+#ifdef HW_DOL
+		sample_counter = _aiReg[AI_SAMPLE_COUNT];
+		while (sample_counter == _aiReg[AI_SAMPLE_COUNT]) {}
+#else
+		sample_counter = _aiReg[AI_SAMPLE_COUNT] & 0x7fffffff;
+		while (sample_counter == (_aiReg[AI_SAMPLE_COUNT] & 0x7fffffff)) {}
+#endif
+
 		time2 = gettime();
-		_aiReg[0] = (_aiReg[0]&~0x02);
-		_aiReg[0] = (_aiReg[0]&~0x01);
-
 		tdiff = time2 - time1;
-		if(tdiff>(bound_32KHz - buffer) && tdiff<(bound_32KHz + buffer)) {
-			if(tdiff<(bound_48KHz - buffer)) {
+
+		_aiReg[AI_CONTROL] &= ~AI_AISFR;
+		_aiReg[AI_CONTROL] &= ~AI_PSTAT;
+
+		if ((tdiff > (bound_32KHz - buffer)) &&
+			(tdiff < (bound_32KHz + buffer))) {
+			if (tdiff < (bound_48KHz - buffer)) {
 				wait = max_wait;
 				done = 1;
 			}
@@ -165,7 +193,7 @@ static void __AISRCINIT()
 		}
 	}
 
-	while(diff_ticks(time2,gettime()) < wait);
+	while (diff_ticks(time2, gettime()) < wait) {}
 }
 
 #if defined(HW_DOL)
@@ -181,14 +209,14 @@ static void __AISetStreamSampleRate(u32 rate)
 		volright = AUDIO_GetStreamVolRight();
 		AUDIO_SetStreamVolLeft(0);
 		AUDIO_SetStreamVolRight(0);
-		dsprate = _aiReg[0]&0x40;
-		_aiReg[0] = _aiReg[0]&~0x40;
+		dsprate = _aiReg[AI_CONTROL]&0x40;
+		_aiReg[AI_CONTROL] = _aiReg[AI_CONTROL]&~0x40;
 
 		_CPU_ISR_Disable(level);
 		__AISRCINIT();
-		_aiReg[0] |= dsprate;
-		_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
-		_aiReg[0] = (_aiReg[0]&~0x02)|(_SHIFTL(rate,1,1));
+		_aiReg[AI_CONTROL] |= dsprate;
+		_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]&~0x20)|0x20;
+		_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]&~0x02)|(_SHIFTL(rate,1,1));
 		_CPU_ISR_Restore(level);
 
 		AUDIO_SetStreamPlayState(playstate);
@@ -220,18 +248,18 @@ void AUDIO_Init(u8 *stack)
 		max_wait = nanosecs_to_ticks(63000);
 		buffer = nanosecs_to_ticks(3000);
 
-		_aiReg[0] &= ~0x15;
+		_aiReg[AI_CONTROL] &= ~(AI_AIINTVLD|AI_AIINTMSK|AI_PSTAT);
 		_aiReg[1] = 0;
 		_aiReg[3] = 0;
 
-		_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
+		_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]&~AI_SCRESET)|AI_SCRESET;
 
-		rate = (_SHIFTR(_aiReg[0],6,1))^1;
+		rate = (_SHIFTR(_aiReg[AI_CONTROL],6,1))^1;
 		if(rate==AI_SAMPLERATE_48KHZ) {
-			_aiReg[0] &= ~0x40;
+			_aiReg[AI_CONTROL] &= ~AI_DMAFR;
 			_CPU_ISR_Disable(level);
 			__AISRCINIT();
-			_aiReg[0] |= 0x40;
+			_aiReg[AI_CONTROL] |= AI_DMAFR;
 			_CPU_ISR_Restore(level);
 		}
 
@@ -276,12 +304,12 @@ u8 AUDIO_GetStreamVolRight()
 
 void AUDIO_SetStreamSampleRate(u32 rate)
 {
-	_aiReg[0] = (_aiReg[0]&~0x0002)|(_SHIFTL(rate,1,1));
+	_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]&~AI_AISFR)|(_SHIFTL(rate,1,1));
 }
 
 u32 AUDIO_GetStreamSampleRate()
 {
-	return _SHIFTR(_aiReg[0],1,1);
+	return _SHIFTR(_aiReg[AI_CONTROL],1,1);
 }
 
 void AUDIO_SetStreamTrigger(u32 cnt)
@@ -291,7 +319,7 @@ void AUDIO_SetStreamTrigger(u32 cnt)
 
 void AUDIO_ResetStreamSampleCnt()
 {
-	_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
+	_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]&~AI_SCRESET)|AI_SCRESET;
 }
 
 void AUDIO_SetStreamPlayState(u32 state)
@@ -309,19 +337,19 @@ void AUDIO_SetStreamPlayState(u32 state)
 
 		_CPU_ISR_Disable(level);
 		__AISRCINIT();
-		_aiReg[0] = (_aiReg[0]&~0x20)|0x20;
-		_aiReg[0] = (_aiReg[0]&~0x01)|0x01;
+		_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]&~AI_SCRESET)|AI_SCRESET;
+		_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]&~0x01)|0x01;
 		_CPU_ISR_Restore(level);
 		AUDIO_SetStreamVolRight(volright);
 		AUDIO_SetStreamVolLeft(volleft);
 	} else {
-		_aiReg[0] = (_aiReg[0]&~0x01)|(state&0x01);
+		_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]&~AI_PSTAT)|(state&AI_PSTAT);
 	}
 }
 
 u32 AUDIO_GetStreamPlayState()
 {
-	return (_aiReg[0]&0x01);
+	return (_aiReg[AI_CONTROL]&AI_PSTAT);
 }
 #endif
 
@@ -383,11 +411,11 @@ void AUDIO_SetDSPSampleRate(u8 rate)
 	u32 level;
 
 	if(AUDIO_GetDSPSampleRate()!=rate) {
-		_aiReg[0] &= ~0x40;
+		_aiReg[AI_CONTROL] &= ~AI_DMAFR;
 		if(rate==AI_SAMPLERATE_32KHZ) {
 			_CPU_ISR_Disable(level);
 			__AISRCINIT();
-			_aiReg[0] |= 0x40;
+			_aiReg[AI_CONTROL] |= AI_DMAFR;
 			_CPU_ISR_Restore(level);
 		}
 	}
@@ -395,5 +423,5 @@ void AUDIO_SetDSPSampleRate(u8 rate)
 
 u32 AUDIO_GetDSPSampleRate()
 {
-	return (_SHIFTR(_aiReg[0],6,1))^1;		//0^1(1) = 48Khz, 1^1(0) = 32Khz
+	return (_SHIFTR(_aiReg[AI_CONTROL],6,1))^1;		//0^1(1) = 48Khz, 1^1(0) = 32Khz
 }
