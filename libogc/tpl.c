@@ -144,7 +144,7 @@ error_open:
 	return 0;
 }
 
-s32 TPL_OpenTPLFromMemory(TPLFile* tdf, const void *memory,u32 len)
+s32 TPL_OpenTPLFromMemory(TPLFile* tdf, void *memory,u32 len)
 {
 	u32 c;
 	u32 version,pos;

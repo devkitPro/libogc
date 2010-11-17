@@ -18,7 +18,7 @@ typedef struct _tplfile {
 } TPLFile;
 
 s32 TPL_OpenTPLFromFile(TPLFile* tdf, const char* file_name);
-s32 TPL_OpenTPLFromMemory(TPLFile* tdf, const void *memory,u32 len);
+s32 TPL_OpenTPLFromMemory(TPLFile* tdf, void *memory,u32 len);
 s32 TPL_GetTexture(TPLFile *tdf,s32 id,GXTexObj *texObj);
 s32 TPL_GetTextureCI(TPLFile *tdf,s32 id,GXTexObj *texObj,GXTlutObj *tlutObj,u8 tluts);
 s32 TPL_GetTextureInfo(TPLFile *tdf,s32 id,u32 *fmt,u16 *width,u16 *height);
