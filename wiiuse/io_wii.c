@@ -12,9 +12,10 @@
 #include "lwp_wkspace.h"
 
 #define MAX_COMMANDS					0x100
+#define MAX_WIIMOTES					5
 
 static vu32* const _ipcReg = (u32*)0xCD000000;
-static u8 *__queue_buffer = NULL;
+static u8 *__queue_buffer[MAX_WIIMOTES] = { 0, 0, 0, 0, 0 };
 
 extern void parse_event(struct wiimote_t *wm);
 extern void idle_cycle(struct wiimote_t* wm);
@@ -185,13 +186,13 @@ void wiiuse_init_cmd_queue(struct wiimote_t *wm)
 {
 	u32 size;
 
-	if (!__queue_buffer) {
+	if (!__queue_buffer[wm->unid]) {
 		size = (MAX_COMMANDS*sizeof(struct cmd_blk_t));
-		__queue_buffer = __lwp_wkspace_allocate(size);
-		if(!__queue_buffer) return;
+		__queue_buffer[wm->unid] = __lwp_wkspace_allocate(size);
+		if(!__queue_buffer[wm->unid]) return;
 	}
 
-	__lwp_queue_initialize(&wm->cmdq,__queue_buffer,MAX_COMMANDS,sizeof(struct cmd_blk_t));
+	__lwp_queue_initialize(&wm->cmdq,__queue_buffer[wm->unid],MAX_COMMANDS,sizeof(struct cmd_blk_t));
 }
 
 int wiiuse_io_write(struct wiimote_t *wm,ubyte *buf,int len)
