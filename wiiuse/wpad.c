@@ -182,17 +182,17 @@ static void __wpad_setfmt(s32 chan)
 		case WPAD_FMT_BTNS:
 			wiiuse_set_flags(__wpads[chan], 0, WIIUSE_CONTINUOUS);
 			wiiuse_motion_sensing(__wpads[chan],0);
-			wiiuse_set_ir(__wpads[chan],0);
+			if(chan != WPAD_BALANCE_BOARD) wiiuse_set_ir(__wpads[chan],0);
 			break;
 		case WPAD_FMT_BTNS_ACC:
 			wiiuse_set_flags(__wpads[chan], WIIUSE_CONTINUOUS, 0);
 			wiiuse_motion_sensing(__wpads[chan],1);
-			wiiuse_set_ir(__wpads[chan],0);
+			if(chan != WPAD_BALANCE_BOARD) wiiuse_set_ir(__wpads[chan],0);
 			break;
 		case WPAD_FMT_BTNS_ACC_IR:
 			wiiuse_set_flags(__wpads[chan], WIIUSE_CONTINUOUS, 0);
 			wiiuse_motion_sensing(__wpads[chan],1);
-			wiiuse_set_ir(__wpads[chan],1);
+			if(chan != WPAD_BALANCE_BOARD) wiiuse_set_ir(__wpads[chan],1);
 			break;
 		default:
 			break;
