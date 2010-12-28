@@ -110,11 +110,12 @@ void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
  					if(!wii_board_handshake(wm,&wm->exp.wb,data,len)) return;
  					break;
 				default:
-					WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_EXP_HANDSHAKE);
+					if(!classic_ctrl_handshake(wm,&wm->exp.classic,data,len)) return;
+					/*WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_EXP_HANDSHAKE);
 					WIIMOTE_ENABLE_STATE(wm,WIIMOTE_STATE_EXP_FAILED);
 					__lwp_wkspace_free(data);
 					wiiuse_status(wm,NULL);
-					return;
+					return;*/
 			}
 			__lwp_wkspace_free(data);
 
