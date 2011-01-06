@@ -42,7 +42,7 @@ distribution.
 #include "irq.h"
 
 #define IOS_HEAP_SIZE 0x1000
-#define MAX_IPC_RETRIES 200
+#define MAX_IPC_RETRIES 400
 
 //#define DEBUG_IOS
 
