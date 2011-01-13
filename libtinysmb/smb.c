@@ -1005,6 +1005,7 @@ static s32 do_netconnect(SMBHANDLE *handle)
 	nodelay = 1;
 	net_setsockopt(sock,IPPROTO_TCP,TCP_NODELAY,&nodelay,sizeof(nodelay));
 
+#ifdef HW_RVL
 	// create non blocking socket
 	ret = net_fcntl(sock, F_GETFL, 0);
 	if (ret < 0)
@@ -1019,18 +1020,27 @@ static s32 do_netconnect(SMBHANDLE *handle)
 		net_close(sock);
 		return ret;
 	}
+#endif
 
 	t1=ticks_to_millisecs(gettime());
 	while(1)
 	{
 		ret = net_connect(sock,(struct sockaddr*)&handle->server_addr,sizeof(handle->server_addr));
+#ifdef HW_RVL
 		if(ret==-EISCONN) break;
+#else
+		if(ret==0) break;
+#endif
 		t2=ticks_to_millisecs(gettime());
 		usleep(1000);
 		if((t2-t1) > CONN_TIMEOUT) break; // usually not more than 90ms
 	}
 
+#ifdef HW_RVL
 	if(ret!=-EISCONN)
+#else
+	if(ret==-1)
+#endif
 	{
 		net_close(sock);
 		return -1;
