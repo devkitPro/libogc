@@ -12,11 +12,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/iosupport.h>
-#include <network.h>
 #include <ogcsys.h>
 #include <ogc/lwp_watchdog.h>
 #include <ogc/mutex.h>
-#include <sys/statvfs.h>
 
 #include "smb.h"
 
