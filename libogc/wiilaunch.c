@@ -264,6 +264,17 @@ s32 WII_LaunchTitle(u64 titleID)
 
 	net_wc24cleanup();
 
+	memset(&nandboot,0,sizeof(NANDBootInfo));
+	nandboot.apptype = 0x80;
+	if(titleID == 0x100000002LL)
+		nandboot.titletype = 4;
+	else
+		nandboot.titletype = 2;
+	if(ES_GetTitleID(&nandboot.launcher) < 0)
+		nandboot.launcher = 0x0000000100000002LL;
+	nandboot.checksum = __CalcChecksum((u32*)&nandboot,sizeof(NANDBootInfo));
+	__WII_WriteNANDBootInfo();
+
 	VIDEO_SetBlack(1);
 	VIDEO_Flush();
 
