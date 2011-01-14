@@ -484,7 +484,7 @@ static s32 __ios_ioctlvformat_parse(const char *format,va_list args,struct _ioct
 
 	ret = IPC_OK;
 	while(*format) {
-		type = tolower(*format);
+		type = tolower((int)*format);
 		switch(type) {
 			case 'b':
 				pdata = iosAlloc(hId,sizeof(u8));
@@ -586,7 +586,7 @@ static s32 __ios_ioctlvformat_parse(const char *format,va_list args,struct _ioct
 
 parse_io_params:
 	while(*format) {
-		type = tolower(*format);
+		type = tolower((int)*format);
 		switch(type) {
 			case 'b':
 				pdata = iosAlloc(hId,sizeof(u8));
@@ -757,6 +757,7 @@ s32 iosCreateHeap(s32 size)
 s32 iosDestroyHeap(s32 hid)
 {
 	s32 ret = 0;
+	u32 ipclo;
 	u32 level;
 #ifdef DEBUG_IPC
 	printf("iosDestroyHeap(%d)\n",hid);
@@ -765,6 +766,11 @@ s32 iosDestroyHeap(s32 hid)
 
 	if(hid>=0 && hid<IPC_NUMHEAPS) {
 		if(_ipc_heaps[hid].membase!=NULL) {
+			// release memory
+			if(hid == IPC_NUMHEAPS-1 || _ipc_heaps[hid+1].membase==NULL) {
+				ipclo = (((u32)IPC_GetBufferLo()+0x1f)&~0x1f);
+				IPC_SetBufferLo((void*)(ipclo - _ipc_heaps[hid].size));
+			}
 			_ipc_heaps[hid].membase = NULL;
 			_ipc_heaps[hid].size = 0;
 		}
@@ -844,6 +850,7 @@ u32 __IPC_ClntInit(void)
 void __IPC_Reinitialize(void)
 {
 	u32 level;
+	s32 i;
 
 	_CPU_ISR_Disable(level);
 
@@ -857,6 +864,18 @@ void __IPC_Reinitialize(void)
 	_ipc_responses.cnt_queue = 0;
 	_ipc_responses.req_send_no = 0;
 	_ipc_responses.cnt_sent = 0;
+
+	// clear IPC heaps
+	i=0;
+	while(i<IPC_NUMHEAPS) {
+		_ipc_heaps[i].membase = NULL;
+		_ipc_heaps[i].size = 0;
+		i++;
+	}
+
+	_ipc_initialized = 0;
+	_ipc_clntinitialized = 0;
+	__IPC_ClntInit();
 
 	_CPU_ISR_Restore(level);
 }
