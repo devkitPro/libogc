@@ -88,7 +88,7 @@ MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -fmod
 
 
 ifeq ($(PLATFORM),wii)
-MACHDEP		+=	-DHW_RVL -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE
+MACHDEP		+=	-DHW_RVL
 endif
 
 ifeq ($(PLATFORM),cube)
