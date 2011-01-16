@@ -64,7 +64,6 @@ void __IPC_Reinitialize(void);
 typedef s32 (*ipccallback)(s32 result,void *usrdata);
 
 s32 iosCreateHeap(s32 size);
-s32 iosDestroyHeap(s32 hid);
 void* iosAlloc(s32 hid,s32 size);
 void iosFree(s32 hid,void *ptr);
 

@@ -128,17 +128,9 @@ static s32 USBMouse_Initialize(void)
 	return IPC_OK;
 }
 
-//Destroy the io heap
 static s32 USBMouse_Deinitialize(void)
 {
-	if (hId < 0)
-		return -1;
-
-	s32 retval;
-	retval = iosDestroyHeap(hId);
-	hId = -1;
-
-	return retval;
+	return IPC_OK;
 }
 
 //Close the device

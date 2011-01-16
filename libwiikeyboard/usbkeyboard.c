@@ -215,17 +215,9 @@ s32 USBKeyboard_Initialize(void)
 	return IPC_OK;
 }
 
-//Destroy the io heap
 s32 USBKeyboard_Deinitialize(void)
 {
-	if (hId < 0)
-		return -1;
-
-	s32 retval;
-	retval = iosDestroyHeap(hId);
-	hId = -1;
-
-	return retval;
+	return IPC_OK;
 }
 
 //Search for a keyboard connected to the wii usb port

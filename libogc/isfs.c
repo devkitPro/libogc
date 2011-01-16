@@ -110,9 +110,7 @@ struct isfs_cb
 
 
 static s32 hId = -1;
-
 static s32 _fs_fd = -1;
-static u32 _fs_initialized = 0;
 static char _dev_fs[] ATTRIBUTE_ALIGN(32) = "/dev/fs";
 
 static s32 __isfsGetStatsCB(s32 result,void *usrdata)
@@ -178,11 +176,9 @@ s32 ISFS_Initialize()
 		if(_fs_fd<0) return _fs_fd;
 	}
 
-	if(_fs_initialized==0) {
+	if(hId<0) {
 		hId = iosCreateHeap(ISFS_HEAPSIZE);
 		if(hId<0) return IPC_ENOMEM;
-
-		_fs_initialized = 1;
 	}
 	return ret;
 }
@@ -193,9 +189,6 @@ s32 ISFS_Deinitialize()
 
 	IOS_Close(_fs_fd);
 	_fs_fd = -1;
-
-	iosDestroyHeap(hId);
-	_fs_initialized = 0;
 
 	return 0;
 }

@@ -538,11 +538,6 @@ s32 USB_Deinitialize()
 		ven_host = NULL;
 	}
 
-	if (hId>=0) {
-		iosDestroyHeap(hId);
-		hId = -1;
-	}
-
 	return IPC_OK;
 }
 
