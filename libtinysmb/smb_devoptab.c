@@ -26,7 +26,7 @@ typedef struct
 {
 	SMBFILE handle;
 	off_t offset;
-	size_t len;
+	off_t len;
 	char filename[SMB_MAXPATH];
 	unsigned short access;
 	int env;
