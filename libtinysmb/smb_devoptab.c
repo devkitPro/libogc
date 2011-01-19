@@ -4,15 +4,16 @@
  *
  * SMB devoptab
  ****************************************************************************/
-
+ /* Define to `unsigned int' if <sys/types.h> does not define. */
 #include <malloc.h>
+#include <sys/iosupport.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
-#include <sys/iosupport.h>
-#include <ogcsys.h>
+
+#include <ogc/lwp.h>
 #include <ogc/lwp_watchdog.h>
 #include <ogc/mutex.h>
 
@@ -87,7 +88,7 @@ typedef struct
 
 	smb_write_cache SMBWriteCache;
 	smb_cache_page *SMBReadAheadCache;
-	u32 SMB_RA_pages;
+	int SMB_RA_pages;
 
 	mutex_t _SMB_mutex;
 } smb_env;
@@ -220,7 +221,7 @@ static void *process_cache_thread(void *ptr)
 
 static void SMBEnableReadAhead(const char *name, u32 pages)
 {
-	int i, j;
+	s32 i, j;
 
 	smb_env *env;
 	env=FindSMBEnv(name);
@@ -555,6 +556,7 @@ static int __smb_open(struct _reent *r, void *fileStruct, const char *path, int 
 	if (SMB_PathInfo(fixedpath, &dentry, env->smbconn) != SMB_SUCCESS)
 		fileExists = false;
 
+	
 	// Determine which mode the file is open for
 	u8 smb_mode;
 	unsigned short access;
@@ -605,7 +607,7 @@ static int __smb_open(struct _reent *r, void *fileStruct, const char *path, int 
 	file->len = 0;
 	if (fileExists)
 		file->len = dentry.size;
-
+	
 	if (flags & O_APPEND)
 		file->offset = file->len;
 	else
@@ -622,7 +624,7 @@ static off_t __smb_seek(struct _reent *r, int fd, off_t pos, int dir)
 {
 	SMBFILESTRUCT *file = (SMBFILESTRUCT*) fd;
 	off_t position;
-
+	
 	if (file == NULL)
 	{
 		r->_errno = EBADF;
@@ -684,8 +686,7 @@ static ssize_t __smb_read(struct _reent *r, int fd, char *ptr, size_t len)
 	{
 		r->_errno = EBADF;
 		return -1;
-	}
-
+	} 
 	//have to flush because SMBWriteCache.file->offset holds offset of cached block not yet writeln
 	//and file->len also may not have been updated yet
 	_SMB_lock(file->env);
@@ -715,14 +716,6 @@ static ssize_t __smb_read(struct _reent *r, int fd, char *ptr, size_t len)
 		_SMB_unlock(file->env);
         return 0;
 	}
-
-	if (len < 0)
-	{
-		r->_errno = EOVERFLOW;
-		_SMB_unlock(file->env);
-		return -1;
-	}
-
 retry_read:
 	while(offset < len)
 	{
@@ -783,12 +776,6 @@ static ssize_t __smb_write(struct _reent *r, int fd, const char *ptr, size_t len
 	// Short circuit cases where len is 0 (or less)
 	if (len == 0)
         return 0;
-
-	if (len < 0)
-	{
-		r->_errno = EOVERFLOW;
-		return -1;
-	}
 
 	_SMB_lock(file->env);
 	written = WriteSMBUsingCache(ptr, len, file);
