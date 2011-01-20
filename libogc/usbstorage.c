@@ -58,10 +58,12 @@ distribution.
 
 #define	SCSI_TEST_UNIT_READY		0x00
 #define	SCSI_REQUEST_SENSE			0x03
+#define	SCSI_INQUIRY				0x12
 #define SCSI_START_STOP				0x1B
 #define	SCSI_READ_CAPACITY			0x25
 #define	SCSI_READ_10				0x28
 #define	SCSI_WRITE_10				0x2A
+
 
 #define	SCSI_SENSE_REPLY_SIZE		18
 #define	SCSI_SENSE_NOT_READY		0x02
@@ -90,9 +92,6 @@ distribution.
 
 #define DEVLIST_MAXSIZE    			8
 
-
-
-
 static heap_cntrl __heap;
 static bool __inited = false;
 static u64 usb_last_used = 0;
@@ -104,7 +103,6 @@ The following is for implementing a DISC_INTERFACE
 as used by libfat
 */
 
-
 static usbstorage_handle __usbfd;
 static u8 __lun = 0;
 static bool __mounted = false;
@@ -114,6 +112,7 @@ static bool usb2_mode=true;
 
 static s32 __usbstorage_reset(usbstorage_handle *dev);
 static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun);
+s32 USBStorage_Inquiry(usbstorage_handle *dev, u8 lun);
 
 /* XXX: this is a *really* dirty and ugly way to send a bulkmessage with a timeout
  *      but there's currently no other known way of doing this and it's in my humble
@@ -133,6 +132,7 @@ static s32 __usb_blkmsg_cb(s32 retval, void *dummy)
 static s32 __usb_deviceremoved_cb(s32 retval,void *arg)
 {
 	__mounted = false;
+	if(__vid != 0) USBStorage_Close(&__usbfd);
 	return 0;
 }
 
@@ -193,9 +193,10 @@ static s32 __USB_CtrlMsgTimeout(usbstorage_handle *dev, u8 bmRequestType, u8 bmR
 	return retval;
 }
 
+static u8 *arena_ptr=NULL;
+
 s32 USBStorage_Initialize()
 {
-	u8 *ptr;
 	u32 level;
 
 	if(__inited)
@@ -203,15 +204,15 @@ s32 USBStorage_Initialize()
 
 	_CPU_ISR_Disable(level);
 	LWP_InitQueue(&__usbstorage_waitq);
-
-	ptr = (u8*)ROUNDDOWN32(((u32)SYS_GetArena2Hi() - HEAP_SIZE));
-	if((u32)ptr < (u32)SYS_GetArena2Lo()) {
-		_CPU_ISR_Restore(level);
-		return IPC_ENOMEM;
+	if(!arena_ptr) {
+		arena_ptr = (u8*)ROUNDDOWN32(((u32)SYS_GetArena2Hi() - HEAP_SIZE));
+		if((u32)arena_ptr < (u32)SYS_GetArena2Lo()) {
+			_CPU_ISR_Restore(level);
+			return IPC_ENOMEM;
+		}
+		SYS_SetArena2Hi(arena_ptr);
 	}
-
-	SYS_SetArena2Hi(ptr);
-	__lwp_heap_init(&__heap, ptr, HEAP_SIZE, 32);
+	__lwp_heap_init(&__heap, arena_ptr, HEAP_SIZE, 32);
 	__inited = true;
 	_CPU_ISR_Restore(level);
 	return IPC_OK;
@@ -385,6 +386,8 @@ static s32 __usbstorage_reset(usbstorage_handle *dev)
 	s32 retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_HOST2DEVICE | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_RESET, 0, dev->interface, 0, NULL);
 	usleep(100);
 	usbtimeout = t;
+	USB_ClearHalt(dev->usb_fd, dev->ep_in);usleep(100); //from http://www.usb.org/developers/devclass_docs/usbmassbulk_10.pdf
+	USB_ClearHalt(dev->usb_fd, dev->ep_out);usleep(100);
 	return retval;
 }
 
@@ -430,17 +433,10 @@ retry_init:
 		for (iInterface = 0; iInterface < ucd->bNumInterfaces; iInterface++) {
 			uid = &ucd->interfaces[iInterface];
 			if(uid->bInterfaceClass    == USB_CLASS_MASS_STORAGE &&
-				   (uid->bInterfaceSubClass == MASS_STORAGE_SCSI_COMMANDS
-					|| uid->bInterfaceSubClass == MASS_STORAGE_RBC_COMMANDS
-					|| uid->bInterfaceSubClass == MASS_STORAGE_ATA_COMMANDS
-					|| uid->bInterfaceSubClass == MASS_STORAGE_QIC_COMMANDS
-					|| uid->bInterfaceSubClass == MASS_STORAGE_UFI_COMMANDS
-					|| uid->bInterfaceSubClass == MASS_STORAGE_SFF8070_COMMANDS) &&
 				   uid->bInterfaceProtocol == MASS_STORAGE_BULK_ONLY)
 			{
 				if (uid->bNumEndpoints < 2)
 					continue;
-				
 
 				dev->ep_in = dev->ep_out = 0;
 				for (iEp = 0; iEp < uid->bNumEndpoints; iEp++) {
@@ -470,7 +466,6 @@ retry_init:
 		}
 	}
 
-
 	USB_FreeDescriptors(&udd);
 	retval = USBSTORAGE_ENOINTERFACE;
 	goto free_and_return;
@@ -484,29 +479,15 @@ found:
 	// some devices return an error, ignore it
 	USB_GetConfiguration(dev->usb_fd, &conf);
 
-	if (conf != dev->configuration && USB_SetConfiguration(dev->usb_fd, dev->configuration) < 0)
-		goto free_and_return;
-	
-	if (dev->altInterface !=0 && USB_SetAlternativeInterface(dev->usb_fd, dev->interface, dev->altInterface) < 0)
-		goto free_and_return;
+	if(!usb2_mode)
+		retval = USBStorage_Reset(dev);
 
 	dev->suspended = 0;
-	
-	if(!reset_flag && dev->bInterfaceSubClass == MASS_STORAGE_SCSI_COMMANDS)
-	{
-		reset_flag = true;
-		retval = USBStorage_Reset(dev);
-		if (retval < 0)
-		{
-			USB_CloseDevice(&dev->usb_fd);
-			goto retry_init;
-		}
-	}
 
 	LWP_MutexLock(dev->lock);
 	retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_DEVICE2HOST | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_GET_MAX_LUN, 0, dev->interface, 1, max_lun);
 	LWP_MutexUnlock(dev->lock);
-
+	
 	if (retval < 0)
 		dev->max_lun = 1;
 	else
@@ -604,12 +585,49 @@ s32 USBStorage_MountLUN(usbstorage_handle *dev, u8 lun)
 	if(lun >= dev->max_lun)
 		return IPC_EINVAL;
 
+	usleep(50);
 	retval = __usbstorage_clearerrors(dev, lun);
 	if (retval<0)
-		return retval;
+	{
+		USBStorage_Reset(dev);
+		retval = __usbstorage_clearerrors(dev, lun);
+	}
 
+	retval = USBStorage_Inquiry(dev,  lun);
 	retval = USBStorage_ReadCapacity(dev, lun, &dev->sector_size[lun], NULL);
+	return retval;
+}
 
+s32 USBStorage_Inquiry(usbstorage_handle *dev, u8 lun)
+{
+	int n;
+	s32 retval;
+	u8 cmd[] = {SCSI_INQUIRY, lun << 5,0,0,36,0};
+	u8 response[36];
+
+	for(n=0;n<2;n++)
+	{
+		memset(response,0,36);
+		retval = __cycle(dev, lun, response, 36, cmd, 6, 0, NULL, NULL);
+		if(retval>=0) break;
+	}
+	if(retval>=0) retval=*response & 31;
+	/*
+	if(retval>=0)
+		{
+		switch(*response & 31)
+			{
+			// info from http://en.wikipedia.org/wiki/SCSI_Peripheral_Device_Type
+			case 5: // CDROM
+			case 7: // optical memory device (e.g., some optical disks)
+				is_dvd=1;
+				break;
+			default:
+				is_dvd=0;
+			break;
+			}
+		}
+	*/
 	return retval;
 }
 
@@ -693,23 +711,10 @@ s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u
 	if(ticks_to_secs(gettime() - usb_last_used) > 60)
 	{
 		usbtimeout = 10;
-		USB_ResumeDevice(dev->usb_fd);
-
-		if(dev->bInterfaceSubClass == MASS_STORAGE_SCSI_COMMANDS)
-		{
-			retval = __usbstorage_clearerrors(dev, lun);
-
-			if (retval < 0)
-				return retval;
-
-			retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
-
-			if (retval < 0)
-				return retval;
-		}
 	}
 
 	retval = __cycle(dev, lun, buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 0, &status, NULL);
+
 	if(retval > 0 && status != 0)
 		retval = USBSTORAGE_ESTATUS;
 
@@ -743,19 +748,6 @@ s32 USBStorage_Write(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, 
 	if(ticks_to_secs(gettime() - usb_last_used) > 60)
 	{
 		usbtimeout = 10;
-		USB_ResumeDevice(dev->usb_fd);
-	
-		if(dev->bInterfaceSubClass == MASS_STORAGE_SCSI_COMMANDS)
-		{
-			retval = __usbstorage_clearerrors(dev, lun);
-
-			if (retval < 0)
-				return retval;
-			retval = USBStorage_StartStop(dev, lun, 0, 1, 0);
-		
-			if (retval < 0)
-				return retval;
-		}			
 	}
 
 	retval = __cycle(dev, lun, (u8 *)buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 1, &status, NULL);
@@ -841,7 +833,6 @@ static bool __usbstorage_IsInserted(void)
 		__lwp_heap_free(&__heap,buffer);
 		return false;
 	}
-
 	for (i = 0; i < device_count; i++) {
 		vid = buffer[i].vid;
 		pid = buffer[i].pid;
@@ -852,21 +843,22 @@ static bool __usbstorage_IsInserted(void)
 			continue;
 
 		maxLun = USBStorage_GetMaxLUN(&__usbfd);
+
 		for (j = 0; j < maxLun; j++) {
 			retval = USBStorage_MountLUN(&__usbfd, j);
 
-			if (retval == USBSTORAGE_ETIMEDOUT)
-				break;
-
 			if (retval < 0)
+			{
+				__usbstorage_reset(&__usbfd);
 				continue;
+			}
 
 			__mounted = true;
 			__lun = j;
 			__vid = vid;
 			__pid = pid;
 			usb_last_used = gettime()-secs_to_ticks(100);
-
+			usleep(100);
 			break;
 		}
 
@@ -914,6 +906,13 @@ static bool __usbstorage_Shutdown(void)
 		USBStorage_Close(&__usbfd);
 
 	return true;
+}
+
+void USBStorage_Deinitialize()
+{
+	__usbstorage_Shutdown();
+	LWP_CloseQueue(__usbstorage_waitq);
+	__inited = false;
 }
 
 DISC_INTERFACE __io_usbstorage = {
