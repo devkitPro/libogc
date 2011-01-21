@@ -4,7 +4,6 @@
  *
  * SMB devoptab
  ****************************************************************************/
- /* Define to `unsigned int' if <sys/types.h> does not define. */
 #include <malloc.h>
 #include <sys/iosupport.h>
 #include <fcntl.h>
@@ -12,6 +11,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <dirent.h>
 
 #include <ogc/lwp.h>
 #include <ogc/lwp_watchdog.h>
@@ -22,6 +22,9 @@
 #define MAX_SMB_MOUNTED 10
 
 static lwp_t cache_thread = LWP_THREAD_NULL;
+static SMBDIRENTRY last_dentry;
+static int last_env=-1;
+static char last_path[SMB_MAXPATH];
 
 typedef struct
 {
@@ -31,12 +34,14 @@ typedef struct
 	char filename[SMB_MAXPATH];
 	unsigned short access;
 	int env;
+	u32 attributes;
 } SMBFILESTRUCT;
 
 typedef struct
 {
 	SMBDIRENTRY smbdir;
 	int env;
+	char dir[SMB_MAXPATH];
 } SMBDIRSTATESTRUCT;
 
 static bool smbInited = false;
@@ -471,7 +476,7 @@ static char *smb_absolute_path_no_device(const char *srcpath, char *destpath, in
 	}
 	if(srcpath[0]!='\0') //strlen(srcpath) > 0
 	{
-		if(srcpath[0]=='.' && (srcpath[1]=='\\' || srcpath[1]=='\\' || srcpath[1]=='\0')) // to fix opendir(".") or chdir(".")
+		if(srcpath[0]=='.' && (srcpath[1]=='\\' || srcpath[1]=='\0')) // to fix opendir(".") or chdir(".")
 			strcat(temp, &srcpath[1]);
 		else
 			strcat(temp, srcpath);
@@ -595,7 +600,6 @@ static int __smb_open(struct _reent *r, void *fileStruct, const char *path, int 
 		smb_mode = SMB_OF_CREATE;
 	if (!(flags & O_APPEND) && fileExists && ((flags & 0x03) != O_RDONLY))
 		smb_mode = SMB_OF_TRUNCATE;
-
 	file->handle = SMB_OpenFile(fixedpath, access, smb_mode, env->smbconn);
 	if (!file->handle)
 	{
@@ -605,8 +609,12 @@ static int __smb_open(struct _reent *r, void *fileStruct, const char *path, int 
 	}
 
 	file->len = 0;
+	file->attributes = 0;
 	if (fileExists)
+	{
 		file->len = dentry.size;
+		file->attributes = dentry.attributes;
+	}
 	
 	if (flags & O_APPEND)
 		file->offset = file->len;
@@ -978,6 +986,8 @@ static DIR_ITER* __smb_diropen(struct _reent *r, DIR_ITER *dirState, const char 
 		}
 	}
 
+	strcpy(state->dir,path_absolute);
+
 	strcat(path_absolute, "*");
 	memset(&dentry, 0, sizeof(SMBDIRENTRY));
 	found = SMB_FindFirst(path_absolute, smbFlags, &dentry, env->smbconn);
@@ -1012,8 +1022,7 @@ static int dentry_to_stat(SMBDIRENTRY *dentry, struct stat *st)
 	st->st_dev = 0;
 	st->st_ino = 0;
 
-	st->st_mode = ((dentry->attributes & SMB_SRCH_DIRECTORY) ? S_IFDIR
-			: S_IFREG);
+	st->st_mode = ((dentry->attributes & SMB_SRCH_DIRECTORY) ? S_IFDIR : S_IFREG);
 	st->st_nlink = 1;
 	st->st_uid = 1; // Faked
 	st->st_rdev = st->st_dev;
@@ -1029,6 +1038,21 @@ static int dentry_to_stat(SMBDIRENTRY *dentry, struct stat *st)
 	st->st_blocks = (st->st_size + st->st_blksize - 1) / st->st_blksize; // File size in blocks
 	st->st_spare4[0] = 0;
 	st->st_spare4[1] = 0;
+
+	return 0;
+}
+
+static int cpy_dentry(SMBDIRENTRY *dest, SMBDIRENTRY *source)
+{
+	if (!dest || !source)
+		return -1;
+
+	dest->attributes=source->attributes;
+	dest->size=source->size;
+	dest->atime=source->atime;
+	dest->mtime=source->mtime;
+	dest->ctime=source->ctime;
+	strcpy(dest->name,source->name);
 
 	return 0;
 }
@@ -1089,6 +1113,9 @@ static int __smb_dirnext(struct _reent *r, DIR_ITER *dirState, char *filename,
 	}
 
 	dentry_to_stat(&dentry, filestat);
+	cpy_dentry(&last_dentry,&dentry);
+	last_env=state->env;
+	strcpy(last_path,state->dir);
 	_SMB_unlock(state->env);
 	return 0;
 }
@@ -1109,6 +1136,19 @@ static int __smb_stat(struct _reent *r, const char *path, struct stat *st)
 {
 	char path_absolute[SMB_MAXPATH];
 	SMBDIRENTRY dentry;
+
+	if(path == NULL)
+	{
+		r->_errno = ENODEV;
+		return -1;
+	}
+
+	if(strcmp(path,".")==0 || strcmp(path,"..")==0)
+	{
+		memset(st,0,sizeof(struct stat));
+		st->st_mode = S_IFDIR;
+		return 0;
+	}
 
 	ExtractDevice(path,path_absolute);
 	if(path_absolute[0]=='\0')
@@ -1131,6 +1171,19 @@ static int __smb_stat(struct _reent *r, const char *path, struct stat *st)
 		r->_errno = EINVAL;
 		return -1;
 	}
+
+	if(env->pos==last_env) //optimization, usually after a dirnext we do stat
+	{
+		char file[SMB_MAXPATH];
+		strcpy(file,last_path);
+		strcat(file,last_dentry.name);
+		if(strcmp(file,path_absolute)==0)
+		{
+			dentry_to_stat(&last_dentry, st);
+			return 0;
+		}
+	}
+
 	_SMB_lock(env->pos);
 	if (SMB_PathInfo(path_absolute, &dentry, env->smbconn) != SMB_SUCCESS)
 	{
@@ -1141,6 +1194,7 @@ static int __smb_stat(struct _reent *r, const char *path, struct stat *st)
 
 	if (dentry.name[0] == '\0')
 	{
+		
 		r->_errno = ENOENT;
 		_SMB_unlock(env->pos);
 		return -1;
@@ -1163,6 +1217,7 @@ static int __smb_fstat(struct _reent *r, int fd, struct stat *st)
 	}
 
 	st->st_size = filestate->len;
+	st->st_mode = ((filestate->attributes & SMB_SRCH_DIRECTORY) ? S_IFDIR : S_IFREG);
 
 	return 0;
 }
@@ -1207,11 +1262,11 @@ static int __smb_unlink(struct _reent *r, const char *name)
 	smb_env *env;
 	bool isDir = false;
 
-	DIR_ITER *dir = NULL;
-	dir = diropen(name);
+	DIR *dir = NULL;
+	dir = opendir(name);
 	if(dir)
     {
-        dirclose(dir);
+        closedir(dir);
         isDir = true;
 	}
 
