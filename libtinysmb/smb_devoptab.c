@@ -26,6 +26,7 @@ static SMBDIRENTRY last_dentry;
 static int last_env=-1;
 static char last_path[SMB_MAXPATH];
 
+
 typedef struct
 {
 	SMBFILE handle;
@@ -468,7 +469,7 @@ static char *smb_absolute_path_no_device(const char *srcpath, char *destpath, in
 		return NULL;
 	}
 
-	temp[0]='\0';
+	memset(temp,0,SMB_MAXPATH);
 
 	if (srcpath[0] != '\\' && srcpath[0] != '/')
 	{
@@ -482,17 +483,17 @@ static char *smb_absolute_path_no_device(const char *srcpath, char *destpath, in
 			strcat(temp, srcpath);
 	}
 
-	while(temp[i]!='\0')
+	while(temp[i]!='\0' && i < SMB_MAXPATH)
 	{
 		if(temp[i]=='/')
 		{
 			destpath[j++]='\\';
-			while(temp[i]!='\0' && (temp[i]=='/' || temp[i]=='\\'))i++;
+			while(temp[i]!='\0' && i < SMB_MAXPATH && (temp[i]=='/' || temp[i]=='\\'))i++;
 		}
 		else if(srcpath[i]=='\\')
 		{
 			destpath[j++]=temp[i++];
-			while(temp[i]!='\0' && (temp[i]=='/' || temp[i]=='\\'))i++;
+			while(temp[i]!='\0' && i < SMB_MAXPATH && (temp[i]=='/' || temp[i]=='\\'))i++;
 		}
 		else
 		{
@@ -1083,6 +1084,9 @@ static int __smb_dirnext(struct _reent *r, DIR_ITER *dirState, char *filename,
 		strcpy(dentry.name, state->smbdir.name);
 		strcpy(filename, dentry.name);
 		dentry_to_stat(&dentry, filestat);
+		cpy_dentry(&last_dentry,&dentry);
+		last_env=state->env;
+		strcpy(last_path,state->dir);
 		_SMB_unlock(state->env);
 		return 0;
 	}
