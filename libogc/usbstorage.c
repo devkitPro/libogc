@@ -87,6 +87,8 @@ distribution.
 #define USBSTORAGE_CYCLE_RETRIES	3
 #define USBSTORAGE_TIMEOUT			2
 
+#define INVALID_LUN					-2
+
 #define MAX_TRANSFER_SIZE_V0		4096
 #define MAX_TRANSFER_SIZE_V5		(16*1024)
 
@@ -401,7 +403,6 @@ s32 USBStorage_Open(usbstorage_handle *dev, s32 device_id, u16 vid, u16 pid)
 	usb_configurationdesc *ucd;
 	usb_interfacedesc *uid;
 	usb_endpointdesc *ued;
-	bool reset_flag = false;
 
 	max_lun = __lwp_heap_allocate(&__heap, 1);
 	if (!max_lun)
@@ -417,8 +418,6 @@ s32 USBStorage_Open(usbstorage_handle *dev, s32 device_id, u16 vid, u16 pid)
 
 	if (SYS_CreateAlarm(&dev->alarm) < 0)
 		goto free_and_return;
-
-retry_init:
 
 	retval = USB_OpenDevice(device_id, vid, pid, &dev->usb_fd);
 	if (retval < 0)
@@ -581,6 +580,7 @@ s32 USBStorage_GetMaxLUN(usbstorage_handle *dev)
 s32 USBStorage_MountLUN(usbstorage_handle *dev, u8 lun)
 {
 	s32 retval;
+	u32 n_sectors;
 
 	if(lun >= dev->max_lun)
 		return IPC_EINVAL;
@@ -594,7 +594,14 @@ s32 USBStorage_MountLUN(usbstorage_handle *dev, u8 lun)
 	}
 
 	retval = USBStorage_Inquiry(dev,  lun);
-	retval = USBStorage_ReadCapacity(dev, lun, &dev->sector_size[lun], NULL);
+	retval = USBStorage_ReadCapacity(dev, lun, &dev->sector_size[lun], &n_sectors);
+
+	if(retval < 0)
+		return retval;
+
+	if((dev->sector_size[lun] != 512 && dev->sector_size[lun] != 2048) || n_sectors==0)
+		return INVALID_LUN;
+
 	return retval;
 }
 
@@ -846,6 +853,9 @@ static bool __usbstorage_IsInserted(void)
 
 		for (j = 0; j < maxLun; j++) {
 			retval = USBStorage_MountLUN(&__usbfd, j);
+
+			if (retval == INVALID_LUN)
+				continue;
 
 			if (retval < 0)
 			{
