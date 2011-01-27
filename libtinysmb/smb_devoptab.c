@@ -967,6 +967,12 @@ static DIR_ITER* __smb_diropen(struct _reent *r, DIR_ITER *dirState, const char 
 	else
 		env->diropen_root=false;
 
+	if(!smbCheckConnection(env->name))	
+	{
+		r->_errno = ENODEV;
+				return NULL;
+	}
+
 	_SMB_lock(env->pos);
 	if(!env->diropen_root) // root must be valid - we don't need check it
 	{
