@@ -991,7 +991,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 
 static s32 do_netconnect(SMBHANDLE *handle)
 {
-	u32 nodelay;
+	u32 set = 1;
 	s32 ret;
 	s32 sock;
 	u64 t1,t2;
@@ -1002,45 +1002,27 @@ static s32 do_netconnect(SMBHANDLE *handle)
 	if(sock==INVALID_SOCKET) return -1;
 
 	// Switch off Nagle with TCP_NODELAY
-	nodelay = 1;
-	net_setsockopt(sock,IPPROTO_TCP,TCP_NODELAY,&nodelay,sizeof(nodelay));
+	net_setsockopt(sock,IPPROTO_TCP,TCP_NODELAY,&set,sizeof(set));
 
-#ifdef HW_RVL
 	// create non blocking socket
-	ret = net_fcntl(sock, F_GETFL, 0);
+	ret = net_ioctl(sock, FIONBIO, &set);
 	if (ret < 0)
 	{
 		net_close(sock);
 		return ret;
 	}
-
-	ret = net_fcntl(sock, F_SETFL, ret | IOS_O_NONBLOCK);
-	if (ret < 0)
-	{
-		net_close(sock);
-		return ret;
-	}
-#endif
 
 	t1=ticks_to_millisecs(gettime());
 	while(1)
 	{
 		ret = net_connect(sock,(struct sockaddr*)&handle->server_addr,sizeof(handle->server_addr));
-#ifdef HW_RVL
 		if(ret==-EISCONN) break;
-#else
-		if(ret==0) break;
-#endif
 		t2=ticks_to_millisecs(gettime());
 		usleep(1000);
 		if((t2-t1) > CONN_TIMEOUT) break; // usually not more than 90ms
 	}
 
-#ifdef HW_RVL
 	if(ret!=-EISCONN)
-#else
-	if(ret==-1)
-#endif
 	{
 		net_close(sock);
 		return -1;
