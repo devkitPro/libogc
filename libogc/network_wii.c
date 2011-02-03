@@ -300,7 +300,7 @@ u32 net_gethostip(void)
 	int retries;
 
 	if (net_ip_top_fd < 0) return 0;
-	for (retries=0, ip_addr=0; !ip_addr && retries < MAX_IP_RETRIES; retries++) {
+	for (retries=0, ip_addr=0; !ip_addr && retries < 5; retries++) {
 		ip_addr = IOS_Ioctl(net_ip_top_fd, IOCTL_SO_GETHOSTID, 0, 0, 0, 0);
 #ifdef DEBUG_NET
 		debug_printf(".");
