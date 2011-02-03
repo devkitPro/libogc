@@ -76,7 +76,7 @@ typedef struct dentry_s
 typedef struct filestruct_s
 {
 	DIR_ENTRY entry;
-	u32 offset;
+	off_t offset;
 	BOOL inUse;
 } FILE_STRUCT;
 
@@ -512,7 +512,7 @@ static ssize_t _ISO9660_read_r(struct _reent *r, int fd, char *ptr, size_t len)
 
 static off_t _ISO9660_seek_r(struct _reent *r, int fd, off_t pos, int dir)
 {
-	int position;
+	off_t position;
 	FILE_STRUCT *file = (FILE_STRUCT*) fd;
 
 	if (!file->inUse)
