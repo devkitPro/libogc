@@ -94,6 +94,9 @@ distribution.
 
 #define DEVLIST_MAXSIZE    			8
 
+
+
+
 static heap_cntrl __heap;
 static bool __inited = false;
 static u64 usb_last_used = 0;
@@ -105,6 +108,7 @@ The following is for implementing a DISC_INTERFACE
 as used by libfat
 */
 
+
 static usbstorage_handle __usbfd;
 static u8 __lun = 0;
 static bool __mounted = false;
@@ -115,6 +119,7 @@ static bool usb2_mode=true;
 static s32 __usbstorage_reset(usbstorage_handle *dev);
 static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun);
 s32 USBStorage_Inquiry(usbstorage_handle *dev, u8 lun);
+
 
 /* XXX: this is a *really* dirty and ugly way to send a bulkmessage with a timeout
  *      but there's currently no other known way of doing this and it's in my humble
@@ -196,6 +201,7 @@ static s32 __USB_CtrlMsgTimeout(usbstorage_handle *dev, u8 bmRequestType, u8 bmR
 }
 
 static u8 *arena_ptr=NULL;
+static u8 *cbw_buffer=NULL;
 
 s32 USBStorage_Initialize()
 {
@@ -215,6 +221,7 @@ s32 USBStorage_Initialize()
 		SYS_SetArena2Hi(arena_ptr);
 	}
 	__lwp_heap_init(&__heap, arena_ptr, HEAP_SIZE, 32);
+	cbw_buffer=(u8*)__lwp_heap_allocate(&__heap, 32);
 	__inited = true;
 	_CPU_ISR_Restore(level);
 	return IPC_OK;
@@ -227,16 +234,16 @@ static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u
 	if(cbLen == 0 || cbLen > 16)
 		return IPC_EINVAL;
 
-	memset(dev->buffer, 0, CBW_SIZE);
+	memset(cbw_buffer, 0, CBW_SIZE);
 
-	__stwbrx(dev->buffer, 0, CBW_SIGNATURE);
-	__stwbrx(dev->buffer, 4, ++dev->tag);
-	__stwbrx(dev->buffer, 8, len);
-	dev->buffer[12] = flags;
-	dev->buffer[13] = lun;
-	dev->buffer[14] = (cbLen > 6 ? 10 : 6);
+	__stwbrx(cbw_buffer, 0, CBW_SIGNATURE);
+	__stwbrx(cbw_buffer, 4, ++dev->tag);
+	__stwbrx(cbw_buffer, 8, len);
+	cbw_buffer[12] = flags;
+	cbw_buffer[13] = lun;
+	cbw_buffer[14] = (cbLen > 6 ? 10 : 6);
 
-	memcpy(dev->buffer + 15, cb, cbLen);
+	memcpy(cbw_buffer + 15, cb, cbLen);
 
 	if(dev->suspended == 1)
 	{
@@ -244,7 +251,7 @@ static s32 __send_cbw(usbstorage_handle *dev, u8 lun, u32 len, u8 flags, const u
 		dev->suspended = 0;
 	}
 
-	retval = __USB_BlkMsgTimeout(dev, dev->ep_out, CBW_SIZE, (void *)dev->buffer, usbtimeout);
+	retval = __USB_BlkMsgTimeout(dev, dev->ep_out, CBW_SIZE, (void *)cbw_buffer, usbtimeout);
 
 	if(retval == CBW_SIZE) return USBSTORAGE_OK;
 	else if(retval > 0) return USBSTORAGE_ESHORTWRITE;
@@ -257,16 +264,16 @@ static s32 __read_csw(usbstorage_handle *dev, u8 *status, u32 *dataResidue, u32 
 	s32 retval = USBSTORAGE_OK;
 	u32 signature, tag, _dataResidue, _status;
 
-	memset(dev->buffer, 0, CSW_SIZE);
+	memset(cbw_buffer, 0, CSW_SIZE);
 
-	retval = __USB_BlkMsgTimeout(dev, dev->ep_in, CSW_SIZE, dev->buffer, timeout);
+	retval = __USB_BlkMsgTimeout(dev, dev->ep_in, CSW_SIZE, cbw_buffer, timeout);
 	if(retval > 0 && retval != CSW_SIZE) return USBSTORAGE_ESHORTREAD;
 	else if(retval < 0) return retval;
 
 	signature = __lwbrx(dev->buffer, 0);
 	tag = __lwbrx(dev->buffer, 4);
-	_dataResidue = __lwbrx(dev->buffer, 8);
-	_status = dev->buffer[12];
+	_dataResidue = __lwbrx(cbw_buffer, 8);
+	_status = cbw_buffer[12];
 
 	if(signature != CSW_SIGNATURE) return USBSTORAGE_ESIGNATURE;
 
@@ -330,11 +337,8 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 		if (retval >= 0)
 			__read_csw(dev, &status, &dataResidue, usbtimeout);
 
-		if (retval < 0) {
-			if (__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
-				retval = USBSTORAGE_ETIMEDOUT;
-		}
-
+		if (retval < 0)
+			retval = __usbstorage_reset(dev);
 	} while (retval < 0 && retries > 0);
 
 	LWP_MutexUnlock(dev->lock);
@@ -386,10 +390,10 @@ static s32 __usbstorage_reset(usbstorage_handle *dev)
 	u32 t = usbtimeout;
 	usbtimeout = 1;
 	s32 retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_HOST2DEVICE | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_RESET, 0, dev->interface, 0, NULL);
-	usleep(100);
 	usbtimeout = t;
-	USB_ClearHalt(dev->usb_fd, dev->ep_in);usleep(100); //from http://www.usb.org/developers/devclass_docs/usbmassbulk_10.pdf
-	USB_ClearHalt(dev->usb_fd, dev->ep_out);usleep(100);
+	usleep(60*1000);
+	USB_ClearHalt(dev->usb_fd, dev->ep_in);usleep(10000); //from http://www.usb.org/developers/devclass_docs/usbmassbulk_10.pdf
+	USB_ClearHalt(dev->usb_fd, dev->ep_out);usleep(10000);
 	return retval;
 }
 
@@ -431,11 +435,19 @@ s32 USBStorage_Open(usbstorage_handle *dev, s32 device_id, u16 vid, u16 pid)
 		ucd = &udd.configurations[iConf];
 		for (iInterface = 0; iInterface < ucd->bNumInterfaces; iInterface++) {
 			uid = &ucd->interfaces[iInterface];
-			if(uid->bInterfaceClass    == USB_CLASS_MASS_STORAGE &&
+			if(uid->bInterfaceClass    == USB_CLASS_MASS_STORAGE && /*
+				   (uid->bInterfaceSubClass == MASS_STORAGE_SCSI_COMMANDS
+					|| uid->bInterfaceSubClass == MASS_STORAGE_RBC_COMMANDS
+					|| uid->bInterfaceSubClass == MASS_STORAGE_ATA_COMMANDS
+					|| uid->bInterfaceSubClass == MASS_STORAGE_QIC_COMMANDS
+					|| uid->bInterfaceSubClass == MASS_STORAGE_UFI_COMMANDS
+					|| uid->bInterfaceSubClass == MASS_STORAGE_SFF8070_COMMANDS) &&*/
 				   uid->bInterfaceProtocol == MASS_STORAGE_BULK_ONLY)
 			{
+				
 				if (uid->bNumEndpoints < 2)
 					continue;
+				
 
 				dev->ep_in = dev->ep_out = 0;
 				for (iEp = 0; iEp < uid->bNumEndpoints; iEp++) {
@@ -478,10 +490,14 @@ found:
 	// some devices return an error, ignore it
 	USB_GetConfiguration(dev->usb_fd, &conf);
 
+	if (conf != dev->configuration) USB_SetConfiguration(dev->usb_fd, dev->configuration);
+	if (dev->altInterface !=0) USB_SetAlternativeInterface(dev->usb_fd, dev->interface, dev->altInterface);
+
 	if(!usb2_mode)
 		retval = USBStorage_Reset(dev);
 
 	dev->suspended = 0;
+		
 
 	LWP_MutexLock(dev->lock);
 	retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_DEVICE2HOST | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_GET_MAX_LUN, 0, dev->interface, 1, max_lun);
@@ -592,14 +608,11 @@ s32 USBStorage_MountLUN(usbstorage_handle *dev, u8 lun)
 		USBStorage_Reset(dev);
 		retval = __usbstorage_clearerrors(dev, lun);
 	}
-
+	
 	retval = USBStorage_Inquiry(dev,  lun);
+	
 	retval = USBStorage_ReadCapacity(dev, lun, &dev->sector_size[lun], &n_sectors);
-
-	if(retval < 0)
-		return retval;
-
-	if((dev->sector_size[lun] != 512 && dev->sector_size[lun] != 2048) || n_sectors==0)
+	if(retval >= 0 && (dev->sector_size[lun]<512 || n_sectors==0))
 		return INVALID_LUN;
 
 	return retval;
@@ -612,17 +625,22 @@ s32 USBStorage_Inquiry(usbstorage_handle *dev, u8 lun)
 	u8 cmd[] = {SCSI_INQUIRY, lun << 5,0,0,36,0};
 	u8 response[36];
 
+	
 	for(n=0;n<2;n++)
 	{
-		memset(response,0,36);
-		retval = __cycle(dev, lun, response, 36, cmd, 6, 0, NULL, NULL);
-		if(retval>=0) break;
+	
+
+	memset(response,0,36);
+
+	retval = __cycle(dev, lun, response, 36, cmd, 6, 0, NULL, NULL);
+	if(retval>=0) break;
+	
 	}
 	if(retval>=0) retval=*response & 31;
 	/*
 	if(retval>=0)
 		{
-		switch(*response & 31)
+		switch(retval)
 			{
 			// info from http://en.wikipedia.org/wiki/SCSI_Peripheral_Device_Type
 			case 5: // CDROM
@@ -634,7 +652,7 @@ s32 USBStorage_Inquiry(usbstorage_handle *dev, u8 lun)
 			break;
 			}
 		}
-	*/
+*/
 	return retval;
 }
 
@@ -718,10 +736,10 @@ s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u
 	if(ticks_to_secs(gettime() - usb_last_used) > 60)
 	{
 		usbtimeout = 10;
+		USBStorage_MountLUN(dev, lun);
 	}
 
 	retval = __cycle(dev, lun, buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 0, &status, NULL);
-
 	if(retval > 0 && status != 0)
 		retval = USBSTORAGE_ESTATUS;
 
@@ -755,6 +773,7 @@ s32 USBStorage_Write(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, 
 	if(ticks_to_secs(gettime() - usb_last_used) > 60)
 	{
 		usbtimeout = 10;
+		USBStorage_MountLUN(dev, lun);
 	}
 
 	retval = __cycle(dev, lun, (u8 *)buffer, n_sectors * dev->sector_size[lun], cmd, sizeof(cmd), 1, &status, NULL);
@@ -836,7 +855,7 @@ static bool __usbstorage_IsInserted(void)
 				}
 			}
 		}
-		USBStorage_Close(&__usbfd);
+		USBStorage_Close(&__usbfd); // device changed or unplugged, return false the first time to notify to the client that he must unmount devices
 		__lwp_heap_free(&__heap,buffer);
 		return false;
 	}
@@ -850,7 +869,6 @@ static bool __usbstorage_IsInserted(void)
 			continue;
 
 		maxLun = USBStorage_GetMaxLUN(&__usbfd);
-
 		for (j = 0; j < maxLun; j++) {
 			retval = USBStorage_MountLUN(&__usbfd, j);
 
@@ -868,7 +886,7 @@ static bool __usbstorage_IsInserted(void)
 			__vid = vid;
 			__pid = pid;
 			usb_last_used = gettime()-secs_to_ticks(100);
-			usleep(100);
+			usleep(10000);
 			break;
 		}
 
@@ -921,7 +939,9 @@ static bool __usbstorage_Shutdown(void)
 void USBStorage_Deinitialize()
 {
 	__usbstorage_Shutdown();
+
 	LWP_CloseQueue(__usbstorage_waitq);
+
 	__inited = false;
 }
 
