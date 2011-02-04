@@ -9,8 +9,8 @@
 extern "C" {
 #endif
 
-BOOL ISO9660_Mount();
-BOOL ISO9660_Unmount();
+bool ISO9660_Mount();
+bool ISO9660_Unmount();
 u64 ISO9660_LastAccess();
 
 #ifdef __cplusplus

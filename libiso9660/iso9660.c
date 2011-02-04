@@ -77,14 +77,14 @@ typedef struct filestruct_s
 {
 	DIR_ENTRY entry;
 	off_t offset;
-	BOOL inUse;
+	bool inUse;
 } FILE_STRUCT;
 
 typedef struct dstate_s
 {
 	DIR_ENTRY entry;
 	u32 index;
-	BOOL inUse;
+	bool inUse;
 } DIR_STATE_STRUCT;
 
 static u8 read_buffer[BUFFER_SIZE] __attribute__((aligned(32)));
@@ -94,11 +94,11 @@ static u32 cache_sectors = 0;
 
 static s32 dotab_device = -1;
 static u64 iso_last_access = 0;
-static BOOL iso_unicode = FALSE;
+static bool iso_unicode = false;
 static PATH_ENTRY *iso_rootentry = NULL;
 static PATH_ENTRY *iso_currententry = NULL;
 
-static __inline__ BOOL is_dir(DIR_ENTRY *entry)
+static __inline__ bool is_dir(DIR_ENTRY *entry)
 {
 	return entry->flags & FLAG_DIR;
 }
@@ -106,10 +106,10 @@ static __inline__ BOOL is_dir(DIR_ENTRY *entry)
 static __inline__ const DISC_INTERFACE* get_interface()
 {
 #if defined(HW_RVL)
-	return &__io_wiidvd;
+		return &__io_wiidvd;
 #endif
 #if defined(HW_DOL)
-	return &__io_gcdvd;
+		return &__io_gcdvd;
 #endif
 }
 
@@ -201,18 +201,18 @@ static char* dirname(char *path)
 	return result;
 }
 
-static BOOL invalid_drive_specifier(const char *path)
+static bool invalid_drive_specifier(const char *path)
 {
 	s32 namelen;
 
 	if (strchr(path, ':') == NULL)
-		return FALSE;
+		return false;
 
 	namelen = strlen(DEVICE_NAME);
 	if (!strncmp(DEVICE_NAME, path, namelen) && path[namelen] == ':')
-		return FALSE;
+		return false;
 
-	return TRUE;
+	return true;
 }
 
 static s32 read_direntry(DIR_ENTRY *entry, u8 *buf)
@@ -273,7 +273,7 @@ static s32 read_direntry(DIR_ENTRY *entry, u8 *buf)
 	return *buf;
 }
 
-static BOOL read_directory(DIR_ENTRY *dir_entry, PATH_ENTRY *path_entry)
+static bool read_directory(DIR_ENTRY *dir_entry, PATH_ENTRY *path_entry)
 {
 	u32 sector = path_entry->table_entry.sector;
 	u32 remaining = 0;
@@ -283,10 +283,10 @@ static BOOL read_directory(DIR_ENTRY *dir_entry, PATH_ENTRY *path_entry)
 	{
 		if (_read(cluster_buffer, (u64) sector * SECTOR_SIZE + sector_offset,
 				(SECTOR_SIZE - sector_offset)) != (SECTOR_SIZE - sector_offset))
-			return FALSE;
+			return false;
 		int offset = read_direntry(dir_entry, cluster_buffer);
 		if (offset == -1)
-			return FALSE;
+			return false;
 		if (!remaining)
 		{
 			remaining = dir_entry->size;
@@ -301,20 +301,20 @@ static BOOL read_directory(DIR_ENTRY *dir_entry, PATH_ENTRY *path_entry)
 		}
 	} while (remaining > 0);
 
-	return TRUE;
+	return true;
 }
 
-static BOOL path_entry_from_path(PATH_ENTRY *path_entry, const char *path)
+static bool path_entry_from_path(PATH_ENTRY *path_entry, const char *path)
 {
-	BOOL found = FALSE;
-	BOOL notFound = FALSE;
+	bool found = false;
+	bool notFound = false;
 	const char *pathPosition = path;
 	const char *pathEnd = strchr(path, '\0');
 	PATH_ENTRY *entry = iso_rootentry;
 	while (pathPosition[0] == DIR_SEPARATOR)
 		pathPosition++;
 	if (pathPosition >= pathEnd)
-		found = TRUE;
+		found = true;
 	PATH_ENTRY *dir = entry;
 	while (!found && !notFound)
 	{
@@ -325,7 +325,7 @@ static BOOL path_entry_from_path(PATH_ENTRY *path_entry, const char *path)
 		else
 			dirnameLength = strlen(pathPosition);
 		if (dirnameLength >= ISO_MAXPATHLEN)
-			return FALSE;
+			return false;
 
 		u32 childIndex = 0;
 		while (childIndex < dir->childCount && !found && !notFound)
@@ -334,19 +334,19 @@ static BOOL path_entry_from_path(PATH_ENTRY *path_entry, const char *path)
 			if (dirnameLength == strnlen(entry->table_entry.name,
 					ISO_MAXPATHLEN - 1) && !strncasecmp(pathPosition,
 					entry->table_entry.name, dirnameLength))
-				found = TRUE;
+				found = true;
 			if (!found)
 				childIndex++;
 		}
 
 		if (childIndex >= dir->childCount)
 		{
-			notFound = TRUE;
-			found = FALSE;
+			notFound = true;
+			found = false;
 		}
 		else if (!nextPathPosition || nextPathPosition >= pathEnd)
 		{
-			found = TRUE;
+			found = true;
 		}
 		else
 		{
@@ -355,9 +355,9 @@ static BOOL path_entry_from_path(PATH_ENTRY *path_entry, const char *path)
 			while (pathPosition[0] == DIR_SEPARATOR)
 				pathPosition++;
 			if (pathPosition >= pathEnd)
-				found = TRUE;
+				found = true;
 			else
-				found = FALSE;
+				found = false;
 		}
 	}
 
@@ -366,7 +366,7 @@ static BOOL path_entry_from_path(PATH_ENTRY *path_entry, const char *path)
 	return found;
 }
 
-static BOOL find_in_directory(DIR_ENTRY *entry, PATH_ENTRY *parent,
+static bool find_in_directory(DIR_ENTRY *entry, PATH_ENTRY *parent,
 		const char *base)
 {
 	u32 childIdx;
@@ -386,7 +386,7 @@ static BOOL find_in_directory(DIR_ENTRY *entry, PATH_ENTRY *parent,
 	}
 
 	if (!read_directory(entry, parent))
-		return FALSE;
+		return false;
 	for (childIdx = 0; childIdx < entry->fileCount; childIdx++)
 	{
 		DIR_ENTRY *child = entry->children + childIdx;
@@ -394,21 +394,21 @@ static BOOL find_in_directory(DIR_ENTRY *entry, PATH_ENTRY *parent,
 				base, child->name, nl))
 		{
 			memcpy(entry, child, sizeof(DIR_ENTRY));
-			return TRUE;
+			return true;
 		}
 	}
-	return FALSE;
+	return false;
 }
 
-static BOOL entry_from_path(DIR_ENTRY *entry, const char *const_path)
+static bool entry_from_path(DIR_ENTRY *entry, const char *const_path)
 {
 	u32 len;
-	BOOL found = FALSE;
+	bool found = false;
 	char *path, *dir, *base;
 	PATH_ENTRY parent_entry;
 
 	if (invalid_drive_specifier(const_path))
-		return FALSE;
+		return false;
 
 	memset(entry, 0, sizeof(DIR_ENTRY));
 
@@ -455,7 +455,7 @@ static int _ISO9660_open_r(struct _reent *r, void *fileStruct, const char *path,
 
 	memcpy(&file->entry, &entry, sizeof(DIR_ENTRY));
 	file->offset = 0;
-	file->inUse = TRUE;
+	file->inUse = true;
 
 	return (int) file;
 }
@@ -470,7 +470,7 @@ static int _ISO9660_close_r(struct _reent *r, int fd)
 		return -1;
 	}
 
-	file->inUse = FALSE;
+	file->inUse = false;
 	return 0;
 }
 
@@ -499,7 +499,7 @@ static ssize_t _ISO9660_read_r(struct _reent *r, int fd, char *ptr, size_t len)
 	if (len <= 0)
 		return 0;
 
-	offset = file->entry.sector * SECTOR_SIZE + file->offset;
+	offset = (u64)file->entry.sector * SECTOR_SIZE + file->offset;
 	if ((len = _read(ptr, offset, len)) < 0)
 	{
 		r->_errno = EIO;
@@ -622,7 +622,7 @@ static DIR_ITER* _ISO9660_diropen_r(struct _reent *r, DIR_ITER *dirState, const 
 	}
 
 	state->index = 0;
-	state->inUse = TRUE;
+	state->inUse = true;
 	return dirState;
 }
 
@@ -673,7 +673,7 @@ static int _ISO9660_dirclose_r(struct _reent *r, DIR_ITER *dirState)
 		return -1;
 	}
 
-	state->inUse = FALSE;
+	state->inUse = false;
 	if (state->entry.children)
 		free(state->entry.children);
 	return 0;
@@ -796,16 +796,16 @@ static struct pvd_s* read_volume_descriptor(u8 descriptor)
 	return NULL;
 }
 
-static BOOL read_directories()
+static bool read_directories()
 {
 	struct pvd_s *volume = read_volume_descriptor(2);
 	if (volume)
-		iso_unicode = TRUE;
+		iso_unicode = true;
 	else if (!(volume = read_volume_descriptor(1)))
-		return FALSE;
+		return false;
 
 	if (!(iso_rootentry = malloc(sizeof(PATH_ENTRY))))
-		return FALSE;
+		return false;
 	memset(iso_rootentry, 0, sizeof(PATH_ENTRY));
 	iso_rootentry->table_entry.name_length = 1;
 	iso_rootentry->table_entry.extended_sectors = volume->root[OFFSET_EXTENDED];
@@ -824,14 +824,14 @@ static BOOL read_directories()
 	{
 		PATHTABLE_ENTRY entry;
 		if (_read(&entry, (u64) path_table * SECTOR_SIZE + offset, sizeof(PATHTABLE_ENTRY)) != sizeof(PATHTABLE_ENTRY))
-			return FALSE; // kinda dodgy - could be reading too far
+			return false; // kinda dodgy - could be reading too far
 		if (parent->index != entry.parent)
 			parent = entry_from_index(iso_rootentry, entry.parent);
 		if (!parent)
-			return FALSE;
+			return false;
 		PATH_ENTRY *child = add_child_entry(parent);
 		if (!child)
-			return FALSE;
+			return false;
 		memcpy(&child->table_entry, &entry, sizeof(PATHTABLE_ENTRY));
 		offset += sizeof(PATHTABLE_ENTRY) - ISO_MAXPATHLEN + child->table_entry.name_length;
 		if (child->table_entry.name_length % 2)
@@ -853,12 +853,12 @@ static BOOL read_directories()
 
 	}
 
-	return TRUE;
+	return true;
 }
 
-BOOL ISO9660_Mount()
+bool ISO9660_Mount()
 {
-	BOOL success = FALSE;
+	bool success = false;
 	const DISC_INTERFACE *disc = get_interface();
 
 	ISO9660_Unmount();
@@ -875,7 +875,7 @@ BOOL ISO9660_Mount()
 	return success;
 }
 
-BOOL ISO9660_Unmount()
+bool ISO9660_Unmount()
 {
 	if (iso_rootentry)
 	{
@@ -885,7 +885,7 @@ BOOL ISO9660_Unmount()
 	}
 
 	iso_last_access = 0;
-	iso_unicode = FALSE;
+	iso_unicode = false;
 	iso_currententry = iso_rootentry;
 	cache_sectors = 0;
 	if (dotab_device >= 0)
@@ -894,7 +894,7 @@ BOOL ISO9660_Unmount()
 		return !RemoveDevice(DEVICE_NAME ":");
 	}
 
-	return TRUE;
+	return true;
 }
 
 u64 ISO9660_LastAccess()
