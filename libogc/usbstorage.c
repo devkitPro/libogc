@@ -64,7 +64,6 @@ distribution.
 #define	SCSI_READ_10				0x28
 #define	SCSI_WRITE_10				0x2A
 
-
 #define	SCSI_SENSE_REPLY_SIZE		18
 #define	SCSI_SENSE_NOT_READY		0x02
 #define	SCSI_SENSE_MEDIUM_ERROR		0x03
@@ -94,9 +93,6 @@ distribution.
 
 #define DEVLIST_MAXSIZE    			8
 
-
-
-
 static heap_cntrl __heap;
 static bool __inited = false;
 static u64 usb_last_used = 0;
@@ -108,10 +104,10 @@ The following is for implementing a DISC_INTERFACE
 as used by libfat
 */
 
-
 static usbstorage_handle __usbfd;
 static u8 __lun = 0;
 static bool __mounted = false;
+static s32 __dvd_mounted = 0;
 static u16 __vid = 0;
 static u16 __pid = 0;
 static bool usb2_mode=true;
@@ -119,7 +115,6 @@ static bool usb2_mode=true;
 static s32 __usbstorage_reset(usbstorage_handle *dev);
 static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun);
 s32 USBStorage_Inquiry(usbstorage_handle *dev, u8 lun);
-
 
 /* XXX: this is a *really* dirty and ugly way to send a bulkmessage with a timeout
  *      but there's currently no other known way of doing this and it's in my humble
@@ -447,7 +442,6 @@ s32 USBStorage_Open(usbstorage_handle *dev, s32 device_id, u16 vid, u16 pid)
 				
 				if (uid->bNumEndpoints < 2)
 					continue;
-				
 
 				dev->ep_in = dev->ep_out = 0;
 				for (iEp = 0; iEp < uid->bNumEndpoints; iEp++) {
@@ -497,7 +491,6 @@ found:
 		retval = USBStorage_Reset(dev);
 
 	dev->suspended = 0;
-		
 
 	LWP_MutexLock(dev->lock);
 	retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_DEVICE2HOST | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_GET_MAX_LUN, 0, dev->interface, 1, max_lun);
@@ -624,36 +617,40 @@ s32 USBStorage_Inquiry(usbstorage_handle *dev, u8 lun)
 	s32 retval;
 	u8 cmd[] = {SCSI_INQUIRY, lun << 5,0,0,36,0};
 	u8 response[36];
-
 	
 	for(n=0;n<2;n++)
 	{
+		memset(response,0,36);
 	
-
-	memset(response,0,36);
-
-	retval = __cycle(dev, lun, response, 36, cmd, 6, 0, NULL, NULL);
-	if(retval>=0) break;
-	
+		retval = __cycle(dev, lun, response, 36, cmd, 6, 0, NULL, NULL);
+		if(retval>=0) break;
 	}
+
 	if(retval>=0) retval=*response & 31;
-	/*
+
 	if(retval>=0)
-		{
+	{
 		switch(retval)
-			{
+		{
 			// info from http://en.wikipedia.org/wiki/SCSI_Peripheral_Device_Type
 			case 5: // CDROM
 			case 7: // optical memory device (e.g., some optical disks)
-				is_dvd=1;
+				__dvd_mounted = 1;
 				break;
 			default:
-				is_dvd=0;
-			break;
-			}
+				__dvd_mounted = 0;
+				break;
 		}
-*/
+	}
 	return retval;
+}
+
+s32 USBStorage_IsDVD()
+{
+	if(!__mounted)
+		return 0;
+
+	return __dvd_mounted;
 }
 
 s32 USBStorage_ReadCapacity(usbstorage_handle *dev, u8 lun, u32 *sector_size, u32 *n_sectors)
@@ -896,6 +893,7 @@ static bool __usbstorage_IsInserted(void)
 		USBStorage_Close(&__usbfd);
 	}
 	__lwp_heap_free(&__heap, buffer);
+
 	return __mounted;
 }
 
@@ -939,9 +937,7 @@ static bool __usbstorage_Shutdown(void)
 void USBStorage_Deinitialize()
 {
 	__usbstorage_Shutdown();
-
 	LWP_CloseQueue(__usbstorage_waitq);
-
 	__inited = false;
 }
 

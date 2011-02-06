@@ -58,6 +58,7 @@ s32 USBStorage_Reset(usbstorage_handle *dev);
 s32 USBStorage_GetMaxLUN(usbstorage_handle *dev);
 s32 USBStorage_MountLUN(usbstorage_handle *dev, u8 lun);
 s32 USBStorage_Suspend(usbstorage_handle *dev);
+s32 USBStorage_IsDVD();
 
 s32 USBStorage_ReadCapacity(usbstorage_handle *dev, u8 lun, u32 *sector_size, u32 *n_sectors);
 s32 USBStorage_Read(usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, u8 *buffer);
