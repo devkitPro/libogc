@@ -1,4 +1,10 @@
-#include <di/di.h>
+/****************************************************************************
+ * ISO9660 devoptab
+ * 
+ * Copyright (C) 2008-2010
+ * tipoloski, clava, shagkur, Tantric, joedj
+ ****************************************************************************/
+
 #include <errno.h>
 #include <ogc/lwp_watchdog.h>
 #include <ogcsys.h>
@@ -20,7 +26,6 @@
 #define SECTOR_SIZE			0x800
 #define BUFFER_SIZE			0x8000
 
-#define DEVICE_NAME			"dvd"
 #define DIR_SEPARATOR		'/'
 
 #define FLAG_DIR 2
@@ -39,10 +44,8 @@ struct pvd_s
 	unsigned long path_table_le, path_table_2nd_le;
 	unsigned long path_table_be, path_table_2nd_be;
 	u8 root[34];
-	char volume_set_id[128], publisher_id[128], data_preparer_id[128],
-			application_id[128];
-	char copyright_file_id[37], abstract_file_id[37],
-			bibliographical_file_id[37];
+	char volume_set_id[128], publisher_id[128], data_preparer_id[128], application_id[128];
+	char copyright_file_id[37], abstract_file_id[37], bibliographical_file_id[37];
 }__attribute__((packed));
 
 typedef struct
@@ -73,11 +76,24 @@ typedef struct dentry_s
 	struct dentry_s *children;
 } DIR_ENTRY;
 
+typedef struct iso9660mount_s
+{
+	const DISC_INTERFACE *disc_interface;
+	u8 read_buffer[BUFFER_SIZE] __attribute__((aligned(32)));
+	u8 cluster_buffer[BUFFER_SIZE] __attribute__((aligned(32)));
+	u32 cache_start;
+	u32 cache_sectors;
+	bool iso_unicode;
+	PATH_ENTRY *iso_rootentry;
+	PATH_ENTRY *iso_currententry;
+} MOUNT_DESCR;
+
 typedef struct filestruct_s
 {
 	DIR_ENTRY entry;
 	off_t offset;
 	bool inUse;
+	MOUNT_DESCR *mdescr;
 } FILE_STRUCT;
 
 typedef struct dstate_s
@@ -87,68 +103,66 @@ typedef struct dstate_s
 	bool inUse;
 } DIR_STATE_STRUCT;
 
-static u8 read_buffer[BUFFER_SIZE] __attribute__((aligned(32)));
-static u8 cluster_buffer[BUFFER_SIZE] __attribute__((aligned(32)));
-static u32 cache_start = 0;
-static u32 cache_sectors = 0;
-
-static s32 dotab_device = -1;
-static u64 iso_last_access = 0;
-static bool iso_unicode = false;
-static PATH_ENTRY *iso_rootentry = NULL;
-static PATH_ENTRY *iso_currententry = NULL;
+static MOUNT_DESCR* _ISO9660_getMountDescrFromPath(const char *path, devoptab_t **pdevops);
 
 static __inline__ bool is_dir(DIR_ENTRY *entry)
 {
 	return entry->flags & FLAG_DIR;
 }
 
-static __inline__ const DISC_INTERFACE* get_interface()
-{
-#if defined(HW_RVL)
-		return &__io_wiidvd;
-#endif
-#if defined(HW_DOL)
-		return &__io_gcdvd;
-#endif
-}
-
-static int _read(void *ptr, u64 offset, size_t len)
+static int __read(MOUNT_DESCR *mdescr, void *ptr, u64 offset, size_t len)
 {
 	u32 sector = offset / SECTOR_SIZE;
 	u32 end_sector = (offset + len - 1) / SECTOR_SIZE;
 	u32 sectors = MIN(BUFFER_SIZE / SECTOR_SIZE, end_sector - sector + 1);
 	u32 sector_offset = offset % SECTOR_SIZE;
-	const DISC_INTERFACE *disc = get_interface();
+	const DISC_INTERFACE *disc = mdescr->disc_interface;
 
 	len = MIN(BUFFER_SIZE - sector_offset, len);
-	if (cache_sectors && sector >= cache_start && (sector + sectors)
-			<= (cache_start + cache_sectors))
+	if (mdescr->cache_sectors && sector >= mdescr->cache_start && (sector + sectors) <= (mdescr->cache_start + mdescr->cache_sectors))
 	{
-		memcpy(ptr, read_buffer + (sector - cache_start) * SECTOR_SIZE
-				+ sector_offset, len);
+		memcpy(ptr, mdescr->read_buffer + (sector - mdescr->cache_start) * SECTOR_SIZE + sector_offset, len);
 		return len;
 	}
 
-	if (!disc->readSectors(sector, BUFFER_SIZE / SECTOR_SIZE, read_buffer))
+	if (!disc->readSectors(sector, BUFFER_SIZE / SECTOR_SIZE, mdescr->read_buffer))
 	{
-		iso_last_access = gettime();
-		cache_sectors = 0;
+		mdescr->cache_sectors = 0;
 		return -1;
 	}
 
-	iso_last_access = gettime();
-	cache_start = sector;
-	cache_sectors = BUFFER_SIZE / SECTOR_SIZE;
-	memcpy(ptr, read_buffer + sector_offset, len);
+	mdescr->cache_start = sector;
+	mdescr->cache_sectors = BUFFER_SIZE / SECTOR_SIZE;
+	memcpy(ptr, mdescr->read_buffer + sector_offset, len);
 
 	return len;
 }
 
-static void stat_entry(DIR_ENTRY *entry,struct stat *st)
+static int _read(MOUNT_DESCR *mdescr, void *ptr, u64 offset, size_t len)
+{
+	int ret, read = 0;
+	char *cptr = ptr;
+	while (read < len)
+	{
+		ret = __read(mdescr, cptr + read, offset + read, len - read);
+		if (ret > 0)
+		{
+			read += ret;
+		}
+		else if (ret == 0)
+		{
+			break;
+		}
+		else
+			return -1;
+	}
+	return read;
+}
+
+static void stat_entry(DIR_ENTRY *entry, struct stat *st)
 {
 	st->st_dev = 69;
-	st->st_ino = (ino_t)entry->sector;
+	st->st_ino = (ino_t) entry->sector;
 	st->st_mode = (is_dir(entry) ? S_IFDIR : S_IFREG) | (S_IRUSR | S_IRGRP | S_IROTH);
 	st->st_nlink = 1;
 	st->st_uid = 1;
@@ -201,21 +215,7 @@ static char* dirname(char *path)
 	return result;
 }
 
-static bool invalid_drive_specifier(const char *path)
-{
-	s32 namelen;
-
-	if (strchr(path, ':') == NULL)
-		return false;
-
-	namelen = strlen(DEVICE_NAME);
-	if (!strncmp(DEVICE_NAME, path, namelen) && path[namelen] == ':')
-		return false;
-
-	return true;
-}
-
-static s32 read_direntry(DIR_ENTRY *entry, u8 *buf)
+static s32 read_direntry(MOUNT_DESCR *mdescr, DIR_ENTRY *entry, u8 *buf)
 {
 	u8 extended_sectors = buf[OFFSET_EXTENDED];
 	u32 sector = *(u32 *) (buf + OFFSET_SECTOR) + extended_sectors;
@@ -223,8 +223,7 @@ static s32 read_direntry(DIR_ENTRY *entry, u8 *buf)
 	u8 flags = buf[OFFSET_FLAGS];
 	u8 namelen = buf[OFFSET_NAMELEN];
 
-	if (namelen == 1 && buf[OFFSET_NAME] == 1 
-			&& iso_rootentry->table_entry.sector == entry->sector)
+	if (namelen == 1 && buf[OFFSET_NAME] == 1 && mdescr->iso_rootentry->table_entry.sector == entry->sector)
 	{
 		// .. at root - do not show
 	}
@@ -236,8 +235,7 @@ static s32 read_direntry(DIR_ENTRY *entry, u8 *buf)
 	}
 	else
 	{
-		DIR_ENTRY *newChildren = realloc(entry->children, sizeof(DIR_ENTRY)
-				* (entry->fileCount + 1));
+		DIR_ENTRY *newChildren = realloc(entry->children, sizeof(DIR_ENTRY) * (entry->fileCount + 1));
 		if (!newChildren)
 			return -1;
 		memset(newChildren + entry->fileCount, 0, sizeof(DIR_ENTRY));
@@ -253,7 +251,7 @@ static s32 read_direntry(DIR_ENTRY *entry, u8 *buf)
 			// ..
 			sprintf(name, "..");
 		}
-		else if (iso_unicode)
+		else if (mdescr->iso_unicode)
 		{
 			u32 i;
 			for (i = 0; i < (namelen / 2); i++)
@@ -273,7 +271,7 @@ static s32 read_direntry(DIR_ENTRY *entry, u8 *buf)
 	return *buf;
 }
 
-static bool read_directory(DIR_ENTRY *dir_entry, PATH_ENTRY *path_entry)
+static bool read_directory(MOUNT_DESCR *mdescr, DIR_ENTRY *dir_entry, PATH_ENTRY *path_entry)
 {
 	u32 sector = path_entry->table_entry.sector;
 	u32 remaining = 0;
@@ -281,10 +279,9 @@ static bool read_directory(DIR_ENTRY *dir_entry, PATH_ENTRY *path_entry)
 
 	do
 	{
-		if (_read(cluster_buffer, (u64) sector * SECTOR_SIZE + sector_offset,
-				(SECTOR_SIZE - sector_offset)) != (SECTOR_SIZE - sector_offset))
+		if (_read(mdescr, mdescr->cluster_buffer, (u64) sector * SECTOR_SIZE + sector_offset, (SECTOR_SIZE - sector_offset)) != (SECTOR_SIZE - sector_offset))
 			return false;
-		int offset = read_direntry(dir_entry, cluster_buffer);
+		int offset = read_direntry(mdescr, dir_entry, mdescr->cluster_buffer);
 		if (offset == -1)
 			return false;
 		if (!remaining)
@@ -293,7 +290,7 @@ static bool read_directory(DIR_ENTRY *dir_entry, PATH_ENTRY *path_entry)
 			dir_entry->path_entry = path_entry;
 		}
 		sector_offset += offset;
-		if (sector_offset >= SECTOR_SIZE || !cluster_buffer[offset])
+		if (sector_offset >= SECTOR_SIZE || !mdescr->cluster_buffer[offset])
 		{
 			remaining -= SECTOR_SIZE;
 			sector_offset = 0;
@@ -304,17 +301,20 @@ static bool read_directory(DIR_ENTRY *dir_entry, PATH_ENTRY *path_entry)
 	return true;
 }
 
-static bool path_entry_from_path(PATH_ENTRY *path_entry, const char *path)
+static bool path_entry_from_path(MOUNT_DESCR *mdescr, PATH_ENTRY *path_entry, const char *path)
 {
 	bool found = false;
 	bool notFound = false;
+
 	const char *pathPosition = path;
 	const char *pathEnd = strchr(path, '\0');
-	PATH_ENTRY *entry = iso_rootentry;
+
+	PATH_ENTRY *entry = mdescr->iso_rootentry;
 	while (pathPosition[0] == DIR_SEPARATOR)
 		pathPosition++;
 	if (pathPosition >= pathEnd)
 		found = true;
+
 	PATH_ENTRY *dir = entry;
 	while (!found && !notFound)
 	{
@@ -331,9 +331,7 @@ static bool path_entry_from_path(PATH_ENTRY *path_entry, const char *path)
 		while (childIndex < dir->childCount && !found && !notFound)
 		{
 			entry = &dir->children[childIndex];
-			if (dirnameLength == strnlen(entry->table_entry.name,
-					ISO_MAXPATHLEN - 1) && !strncasecmp(pathPosition,
-					entry->table_entry.name, dirnameLength))
+			if (dirnameLength == strnlen(entry->table_entry.name, ISO_MAXPATHLEN - 1) && !strncasecmp(pathPosition, entry->table_entry.name, dirnameLength))
 				found = true;
 			if (!found)
 				childIndex++;
@@ -366,32 +364,29 @@ static bool path_entry_from_path(PATH_ENTRY *path_entry, const char *path)
 	return found;
 }
 
-static bool find_in_directory(DIR_ENTRY *entry, PATH_ENTRY *parent,
-		const char *base)
+static bool find_in_directory(MOUNT_DESCR *mdescr, DIR_ENTRY *entry, PATH_ENTRY *parent, const char *base)
 {
 	u32 childIdx;
 	u32 nl = strlen(base);
 
 	if (!nl)
-		return read_directory(entry, parent);
+		return read_directory(mdescr, entry, parent);
 
 	for (childIdx = 0; childIdx < parent->childCount; childIdx++)
 	{
 		PATH_ENTRY *child = parent->children + childIdx;
-		if (nl == strnlen(child->table_entry.name, ISO_MAXPATHLEN - 1)
-				&& !strncasecmp(base, child->table_entry.name, nl))
+		if (nl == strnlen(child->table_entry.name, ISO_MAXPATHLEN - 1) && !strncasecmp(base, child->table_entry.name, nl))
 		{
-			return read_directory(entry, child);
+			return read_directory(mdescr, entry, child);
 		}
 	}
 
-	if (!read_directory(entry, parent))
+	if (!read_directory(mdescr, entry, parent))
 		return false;
 	for (childIdx = 0; childIdx < entry->fileCount; childIdx++)
 	{
 		DIR_ENTRY *child = entry->children + childIdx;
-		if (nl == strnlen(child->name, ISO_MAXPATHLEN - 1) && !strncasecmp(
-				base, child->name, nl))
+		if (nl == strnlen(child->name, ISO_MAXPATHLEN - 1) && !strncasecmp(base, child->name, nl))
 		{
 			memcpy(entry, child, sizeof(DIR_ENTRY));
 			return true;
@@ -400,15 +395,12 @@ static bool find_in_directory(DIR_ENTRY *entry, PATH_ENTRY *parent,
 	return false;
 }
 
-static bool entry_from_path(DIR_ENTRY *entry, const char *const_path)
+static bool entry_from_path(MOUNT_DESCR *mdescr, DIR_ENTRY *entry, const char *const_path)
 {
 	u32 len;
 	bool found = false;
 	char *path, *dir, *base;
 	PATH_ENTRY parent_entry;
-
-	if (invalid_drive_specifier(const_path))
-		return false;
 
 	memset(entry, 0, sizeof(DIR_ENTRY));
 
@@ -422,14 +414,14 @@ static bool entry_from_path(DIR_ENTRY *entry, const char *const_path)
 
 	dir = dirname(path);
 	base = basename(path);
-	if (!path_entry_from_path(&parent_entry, dir))
+	if (!path_entry_from_path(mdescr, &parent_entry, dir))
 		goto done;
 
-	found = find_in_directory(entry, &parent_entry, base);
+	found = find_in_directory(mdescr, entry, &parent_entry, base);
 	if (!found && entry->children)
 		free(entry->children);
 
-done: 
+done:
 	free(path);
 	free(dir);
 	return found;
@@ -438,9 +430,17 @@ done:
 static int _ISO9660_open_r(struct _reent *r, void *fileStruct, const char *path, int flags, int mode)
 {
 	DIR_ENTRY entry;
-	FILE_STRUCT *file = (FILE_STRUCT*) fileStruct;
+	FILE_STRUCT *file = (FILE_STRUCT *) fileStruct;
+	MOUNT_DESCR *mdescr;
 
-	if (!entry_from_path(&entry, path))
+	mdescr = _ISO9660_getMountDescrFromPath(path, NULL);
+	if (mdescr == NULL)
+	{
+		r->_errno = ENODEV;
+		return -1;
+	}
+
+	if (!entry_from_path(mdescr, &entry, path))
 	{
 		r->_errno = ENOENT;
 		return -1;
@@ -456,6 +456,7 @@ static int _ISO9660_open_r(struct _reent *r, void *fileStruct, const char *path,
 	memcpy(&file->entry, &entry, sizeof(DIR_ENTRY));
 	file->offset = 0;
 	file->inUse = true;
+	file->mdescr = mdescr;
 
 	return (int) file;
 }
@@ -499,8 +500,8 @@ static ssize_t _ISO9660_read_r(struct _reent *r, int fd, char *ptr, size_t len)
 	if (len <= 0)
 		return 0;
 
-	offset = (u64)file->entry.sector * SECTOR_SIZE + file->offset;
-	if ((len = _read(ptr, offset, len)) < 0)
+	offset = (u64) file->entry.sector * SECTOR_SIZE + file->offset;
+	if ((len = _read(file->mdescr, ptr, offset, len)) < 0)
 	{
 		r->_errno = EIO;
 		return -1;
@@ -570,8 +571,16 @@ static int _ISO9660_fstat_r(struct _reent *r, int fd, struct stat *st)
 static int _ISO9660_stat_r(struct _reent *r, const char *path, struct stat *st)
 {
 	DIR_ENTRY entry;
+	MOUNT_DESCR *mdescr;
 
-	if (!entry_from_path(&entry, path))
+	mdescr = _ISO9660_getMountDescrFromPath(path, NULL);
+	if (mdescr == NULL)
+	{
+		r->_errno = ENODEV;
+		return -1;
+	}
+
+	if (!entry_from_path(mdescr, &entry, path))
 	{
 		r->_errno = ENOENT;
 		return -1;
@@ -587,8 +596,16 @@ static int _ISO9660_stat_r(struct _reent *r, const char *path, struct stat *st)
 static int _ISO9660_chdir_r(struct _reent *r, const char *path)
 {
 	DIR_ENTRY entry;
+	MOUNT_DESCR *mdescr;
 
-	if (!entry_from_path(&entry, path))
+	mdescr = _ISO9660_getMountDescrFromPath(path, NULL);
+	if (mdescr == NULL)
+	{
+		r->_errno = ENODEV;
+		return -1;
+	}
+
+	if (!entry_from_path(mdescr, &entry, path))
 	{
 		r->_errno = ENOENT;
 		return -1;
@@ -599,7 +616,7 @@ static int _ISO9660_chdir_r(struct _reent *r, const char *path)
 		return -1;
 	}
 
-	iso_currententry = entry.path_entry;
+	mdescr->iso_currententry = entry.path_entry;
 	if (entry.children)
 		free(entry.children);
 
@@ -609,8 +626,16 @@ static int _ISO9660_chdir_r(struct _reent *r, const char *path)
 static DIR_ITER* _ISO9660_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path)
 {
 	DIR_STATE_STRUCT *state = (DIR_STATE_STRUCT*) (dirState->dirStruct);
+	MOUNT_DESCR *mdescr;
 
-	if (!entry_from_path(&state->entry, path))
+	mdescr = _ISO9660_getMountDescrFromPath(path, NULL);
+	if (mdescr == NULL)
+	{
+		r->_errno = ENODEV;
+		return NULL;
+	}
+
+	if (!entry_from_path(mdescr, &state->entry, path))
 	{
 		r->_errno = ENOENT;
 		return NULL;
@@ -679,8 +704,7 @@ static int _ISO9660_dirclose_r(struct _reent *r, DIR_ITER *dirState)
 	return 0;
 }
 
-static int _ISO9660_statvfs_r(struct _reent *r, const char *path,
-		struct statvfs *buf)
+static int _ISO9660_statvfs_r(struct _reent *r, const char *path, struct statvfs *buf)
 {
 	// FAT clusters = POSIX blocks
 	buf->f_bsize = 0x800; // File system block size. 
@@ -706,9 +730,9 @@ static int _ISO9660_statvfs_r(struct _reent *r, const char *path,
 	return 0;
 }
 
-static const devoptab_t dotab_iso9660 = 
+static const devoptab_t dotab_iso9660 =
 {
-	DEVICE_NAME,
+	NULL,
 	sizeof(FILE_STRUCT),
 	_ISO9660_open_r,
 	_ISO9660_close_r,
@@ -728,10 +752,31 @@ static const devoptab_t dotab_iso9660 =
 	_ISO9660_dirnext_r,
 	_ISO9660_dirclose_r,
 	_ISO9660_statvfs_r,
-	NULL,               // device ftruncate_r
-	NULL,           // device fsync_r
-	NULL       	/* Device data */
+	NULL, // device ftruncate_r
+	NULL, // device fsync_r
+	NULL // device data
 };
+
+static MOUNT_DESCR* _ISO9660_getMountDescrFromPath(const char *path, devoptab_t **pdevops)
+{
+	devoptab_t *devops;
+
+	if (!path)
+		return NULL;
+
+	devops = (devoptab_t *) GetDeviceOpTab(path);
+	if (!devops)
+		return NULL;
+
+	// Perform a quick check to make sure we're dealing with a libiso9660 controlled device
+	if (devops->open_r != dotab_iso9660.open_r)
+		return NULL;
+
+	if (pdevops)
+		*pdevops = devops;
+
+	return (MOUNT_DESCR*) devops->deviceData;
+}
 
 static PATH_ENTRY* entry_from_index(PATH_ENTRY *entry, u16 index)
 {
@@ -775,20 +820,20 @@ static void cleanup_recursive(PATH_ENTRY *entry)
 		free(entry->children);
 }
 
-static struct pvd_s* read_volume_descriptor(u8 descriptor)
+static struct pvd_s* read_volume_descriptor(MOUNT_DESCR *mdescr, u8 descriptor)
 {
 	u8 sector;
-	const DISC_INTERFACE *disc = get_interface();
+	const DISC_INTERFACE *disc = mdescr->disc_interface;
 
 	for (sector = 16; sector < 32; sector++)
 	{
-		if (!disc->readSectors(sector, 1, read_buffer))
+		if (!disc->readSectors(sector, 1, mdescr->read_buffer))
 			return NULL;
-		if (!memcmp(read_buffer + 1, "CD001\1", 6))
+		if (!memcmp(mdescr->read_buffer + 1, "CD001\1", 6))
 		{
-			if (*read_buffer == descriptor)
-				return (struct pvd_s*) read_buffer;
-			else if (*read_buffer == 0xff)
+			if (*mdescr->read_buffer == descriptor)
+				return (struct pvd_s*) mdescr->read_buffer;
+			else if (*mdescr->read_buffer == 0xff)
 				return NULL;
 		}
 	}
@@ -796,37 +841,37 @@ static struct pvd_s* read_volume_descriptor(u8 descriptor)
 	return NULL;
 }
 
-static bool read_directories()
+static bool read_directories(MOUNT_DESCR *mdescr)
 {
-	struct pvd_s *volume = read_volume_descriptor(2);
+	struct pvd_s *volume = read_volume_descriptor(mdescr, 2);
 	if (volume)
-		iso_unicode = true;
-	else if (!(volume = read_volume_descriptor(1)))
+		mdescr->iso_unicode = true;
+	else if (!(volume = read_volume_descriptor(mdescr, 1)))
 		return false;
 
-	if (!(iso_rootentry = malloc(sizeof(PATH_ENTRY))))
+	if (!(mdescr->iso_rootentry = malloc(sizeof(PATH_ENTRY))))
 		return false;
-	memset(iso_rootentry, 0, sizeof(PATH_ENTRY));
-	iso_rootentry->table_entry.name_length = 1;
-	iso_rootentry->table_entry.extended_sectors = volume->root[OFFSET_EXTENDED];
-	iso_rootentry->table_entry.sector = *(u32 *) (volume->root + OFFSET_SECTOR);
-	iso_rootentry->table_entry.parent = 0;
-	iso_rootentry->table_entry.name[0] = '\x00';
-	iso_rootentry->index = 1;
-	iso_currententry = iso_rootentry;
+	memset(mdescr->iso_rootentry, 0, sizeof(PATH_ENTRY));
+	mdescr->iso_rootentry->table_entry.name_length = 1;
+	mdescr->iso_rootentry->table_entry.extended_sectors = volume->root[OFFSET_EXTENDED];
+	mdescr->iso_rootentry->table_entry.sector = *(u32 *) (volume->root + OFFSET_SECTOR);
+	mdescr->iso_rootentry->table_entry.parent = 0;
+	mdescr->iso_rootentry->table_entry.name[0] = '\x00';
+	mdescr->iso_rootentry->index = 1;
+	mdescr->iso_currententry = mdescr->iso_rootentry;
 
 	u32 path_table = volume->path_table_be;
 	u32 path_table_len = volume->path_table_len_be;
 	u16 i = 1;
 	u64 offset = sizeof(PATHTABLE_ENTRY) - ISO_MAXPATHLEN + 2;
-	PATH_ENTRY *parent = iso_rootentry;
+	PATH_ENTRY *parent = mdescr->iso_rootentry;
 	while (i < 0xffff && offset < path_table_len)
 	{
 		PATHTABLE_ENTRY entry;
-		if (_read(&entry, (u64) path_table * SECTOR_SIZE + offset, sizeof(PATHTABLE_ENTRY)) != sizeof(PATHTABLE_ENTRY))
+		if (_read(mdescr, &entry, (u64) path_table * SECTOR_SIZE + offset, sizeof(PATHTABLE_ENTRY)) != sizeof(PATHTABLE_ENTRY))
 			return false; // kinda dodgy - could be reading too far
 		if (parent->index != entry.parent)
-			parent = entry_from_index(iso_rootentry, entry.parent);
+			parent = entry_from_index(mdescr->iso_rootentry, entry.parent);
 		if (!parent)
 			return false;
 		PATH_ENTRY *child = add_child_entry(parent);
@@ -838,7 +883,7 @@ static bool read_directories()
 			offset++;
 		child->index = ++i;
 
-		if (iso_unicode)
+		if (mdescr->iso_unicode)
 		{
 			u32 i;
 			for (i = 0; i < (child->table_entry.name_length / 2); i++)
@@ -856,48 +901,112 @@ static bool read_directories()
 	return true;
 }
 
-bool ISO9660_Mount()
+static MOUNT_DESCR *_ISO9660_mdescr_constructor(const DISC_INTERFACE *disc_interface)
 {
-	bool success = false;
-	const DISC_INTERFACE *disc = get_interface();
+	MOUNT_DESCR *mdescr = NULL;
 
-	ISO9660_Unmount();
+	mdescr = malloc(sizeof(MOUNT_DESCR));
+	if (!mdescr)
+		return NULL;
 
-	if (disc->startup())
+	mdescr->disc_interface = disc_interface;
+	mdescr->cache_start = 0;
+	mdescr->cache_sectors = 0;
+	mdescr->iso_unicode = false;
+	mdescr->iso_rootentry = NULL;
+	mdescr->iso_currententry = NULL;
+
+	if (!read_directories(mdescr))
 	{
-		success = (read_directories() && (dotab_device = AddDevice(&dotab_iso9660)) >= 0);
-		if (success)
-			iso_last_access = gettime();
-		else
-			ISO9660_Unmount();
+		free(mdescr);
+		return NULL;
 	}
-
-	return success;
+	return mdescr;
 }
 
-bool ISO9660_Unmount()
+bool ISO9660_Mount(const char* name, const DISC_INTERFACE *disc_interface)
 {
-	if (iso_rootentry)
+	char *nameCopy;
+	devoptab_t *devops = NULL;
+	MOUNT_DESCR *mdescr = NULL;
+	char devname[10];
+
+	if (!name || strlen(name) > 8 || !disc_interface)
+		return false;
+
+	if (!disc_interface->startup())
+		return false;
+
+	if (!disc_interface->isInserted())
+		return false;
+
+	sprintf(devname, "%s:", name);
+	if (FindDevice(devname) >= 0)
+		return false;
+
+	devops = malloc(sizeof(dotab_iso9660) + strlen(name) + 1);
+	if (!devops)
+		return false;
+
+	// Use the space allocated at the end of the devoptab struct for storing the name
+	nameCopy = (char*) (devops + 1);
+
+	// Initialize the file system
+	mdescr = _ISO9660_mdescr_constructor(disc_interface);
+	if (!mdescr)
 	{
-		cleanup_recursive(iso_rootentry);
-		free(iso_rootentry);
-		iso_rootentry = NULL;
+		free(devops);
+		return false;
 	}
 
-	iso_last_access = 0;
-	iso_unicode = false;
-	iso_currententry = iso_rootentry;
-	cache_sectors = 0;
-	if (dotab_device >= 0)
-	{
-		dotab_device = -1;
-		return !RemoveDevice(DEVICE_NAME ":");
-	}
+	// Add an entry for this device to the devoptab table
+	memcpy(devops, &dotab_iso9660, sizeof(dotab_iso9660));
+	strcpy(nameCopy, name);
+	devops->name = nameCopy;
+	devops->deviceData = mdescr;
 
+	if (AddDevice(devops) < 0)
+	{
+		free(mdescr);
+		free(devops);
+		return false;
+	}
 	return true;
 }
 
-u64 ISO9660_LastAccess()
+bool ISO9660_Unmount(const char* name)
 {
-	return iso_last_access;
+	devoptab_t *devops;
+	MOUNT_DESCR *mdescr;
+	char devname[11];
+	int len;
+
+	if (!name)
+		return false;
+
+	len = strlen(name);
+	if (len == 0 || len > 9)
+		return false;
+
+	// append ':' if missing
+	strcpy(devname, name);
+	if (devname[len-1] != ':')
+		strcat(devname, ":");
+
+	mdescr = _ISO9660_getMountDescrFromPath(devname, &devops);
+	if (!mdescr)
+		return false;
+
+	if (RemoveDevice(devname) == -1)
+		return false;
+
+	if (mdescr->iso_rootentry)
+	{
+		cleanup_recursive(mdescr->iso_rootentry);
+		free(mdescr->iso_rootentry);
+	}
+
+	free(mdescr);
+	free(devops);
+	return true;
 }
