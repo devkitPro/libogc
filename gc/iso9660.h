@@ -18,6 +18,7 @@ extern "C" {
 
 bool ISO9660_Mount(const char* name, const DISC_INTERFACE* disc_interface);
 bool ISO9660_Unmount(const char* name);
+const char *ISO9660_GetVolumeLabel(const char *name);
 
 #ifdef __cplusplus
 }

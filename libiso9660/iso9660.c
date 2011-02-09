@@ -86,6 +86,7 @@ typedef struct iso9660mount_s
 	bool iso_unicode;
 	PATH_ENTRY *iso_rootentry;
 	PATH_ENTRY *iso_currententry;
+	char volume_id[32];
 } MOUNT_DESCR;
 
 typedef struct filestruct_s
@@ -146,13 +147,9 @@ static int _read(MOUNT_DESCR *mdescr, void *ptr, u64 offset, size_t len)
 	{
 		ret = __read(mdescr, cptr + read, offset + read, len - read);
 		if (ret > 0)
-		{
 			read += ret;
-		}
 		else if (ret == 0)
-		{
 			break;
-		}
 		else
 			return -1;
 	}
@@ -279,7 +276,7 @@ static bool read_directory(MOUNT_DESCR *mdescr, DIR_ENTRY *dir_entry, PATH_ENTRY
 
 	do
 	{
-		if (_read(mdescr, mdescr->cluster_buffer, (u64) sector * SECTOR_SIZE + sector_offset, (SECTOR_SIZE - sector_offset)) != (SECTOR_SIZE - sector_offset))
+		if (__read(mdescr, mdescr->cluster_buffer, (u64) sector * SECTOR_SIZE + sector_offset, (SECTOR_SIZE - sector_offset)) != (SECTOR_SIZE - sector_offset))
 			return false;
 		int offset = read_direntry(mdescr, dir_entry, mdescr->cluster_buffer);
 		if (offset == -1)
@@ -425,6 +422,25 @@ done:
 	free(path);
 	free(dir);
 	return found;
+}
+
+static bool check_dev_name(const char* name, char *devname, size_t devname_size)
+{
+    size_t len;
+    
+	if (!name)
+		return false;
+
+	len = strlen(name);
+	if (len == 0 || len > devname_size-2)
+		return false;
+
+	// append ':' if missing
+	strcpy(devname, name);
+	if (devname[len-1] != ':')
+		strcat(devname, ":");
+		
+	return true;
 }
 
 static int _ISO9660_open_r(struct _reent *r, void *fileStruct, const char *path, int flags, int mode)
@@ -859,6 +875,9 @@ static bool read_directories(MOUNT_DESCR *mdescr)
 	mdescr->iso_rootentry->table_entry.name[0] = '\x00';
 	mdescr->iso_rootentry->index = 1;
 	mdescr->iso_currententry = mdescr->iso_rootentry;
+	
+    strncpy(mdescr->volume_id, volume->volume_id, 32);
+    mdescr->volume_id[31] = '\0';
 
 	u32 path_table = volume->path_table_be;
 	u32 path_table_len = volume->path_table_len_be;
@@ -868,7 +887,7 @@ static bool read_directories(MOUNT_DESCR *mdescr)
 	while (i < 0xffff && offset < path_table_len)
 	{
 		PATHTABLE_ENTRY entry;
-		if (_read(mdescr, &entry, (u64) path_table * SECTOR_SIZE + offset, sizeof(PATHTABLE_ENTRY)) != sizeof(PATHTABLE_ENTRY))
+		if (__read(mdescr, &entry, (u64) path_table * SECTOR_SIZE + offset, sizeof(PATHTABLE_ENTRY)) != sizeof(PATHTABLE_ENTRY))
 			return false; // kinda dodgy - could be reading too far
 		if (parent->index != entry.parent)
 			parent = entry_from_index(mdescr->iso_rootentry, entry.parent);
@@ -974,24 +993,15 @@ bool ISO9660_Mount(const char* name, const DISC_INTERFACE *disc_interface)
 	return true;
 }
 
+
 bool ISO9660_Unmount(const char* name)
 {
 	devoptab_t *devops;
 	MOUNT_DESCR *mdescr;
 	char devname[11];
-	int len;
 
-	if (!name)
+    if (! check_dev_name(name, devname, sizeof(devname)))
 		return false;
-
-	len = strlen(name);
-	if (len == 0 || len > 9)
-		return false;
-
-	// append ':' if missing
-	strcpy(devname, name);
-	if (devname[len-1] != ':')
-		strcat(devname, ":");
 
 	mdescr = _ISO9660_getMountDescrFromPath(devname, &devops);
 	if (!mdescr)
@@ -1009,4 +1019,19 @@ bool ISO9660_Unmount(const char* name)
 	free(mdescr);
 	free(devops);
 	return true;
+}
+
+const char *ISO9660_GetVolumeLabel(const char *name)
+{
+	MOUNT_DESCR *mdescr;
+	char devname[11];
+
+    if (! check_dev_name(name, devname, sizeof(devname)))
+		return NULL;
+
+	mdescr = _ISO9660_getMountDescrFromPath(devname, NULL);
+	if (!mdescr)
+		return NULL;
+
+    return mdescr->volume_id;
 }
