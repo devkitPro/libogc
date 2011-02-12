@@ -107,7 +107,6 @@ as used by libfat
 static usbstorage_handle __usbfd;
 static u8 __lun = 0;
 static bool __mounted = false;
-static s32 __dvd_mounted = 0;
 static u16 __vid = 0;
 static u16 __pid = 0;
 static bool usb2_mode=true;
@@ -332,8 +331,10 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 		if (retval >= 0)
 			__read_csw(dev, &status, &dataResidue, usbtimeout);
 
-		if (retval < 0)
-			retval = __usbstorage_reset(dev);
+		if (retval < 0) {
+			if (__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
+				retval = USBSTORAGE_ETIMEDOUT;
+		}
 	} while (retval < 0 && retries > 0);
 
 	LWP_MutexUnlock(dev->lock);
@@ -627,7 +628,7 @@ s32 USBStorage_Inquiry(usbstorage_handle *dev, u8 lun)
 	}
 
 	if(retval>=0) retval=*response & 31;
-
+	/*
 	if(retval>=0)
 	{
 		switch(retval)
@@ -642,15 +643,8 @@ s32 USBStorage_Inquiry(usbstorage_handle *dev, u8 lun)
 				break;
 		}
 	}
+	*/
 	return retval;
-}
-
-s32 USBStorage_IsDVD()
-{
-	if(!__mounted)
-		return 0;
-
-	return __dvd_mounted;
 }
 
 s32 USBStorage_ReadCapacity(usbstorage_handle *dev, u8 lun, u32 *sector_size, u32 *n_sectors)
@@ -670,6 +664,21 @@ s32 USBStorage_ReadCapacity(usbstorage_handle *dev, u8 lun, u32 *sector_size, u3
 	}
 
 	return retval;
+}
+
+s32 USBStorage_IsDVD()
+{
+	u32 sectorsize, numSectors;
+
+	if(!__mounted)
+		return 0;
+
+	if(USBStorage_ReadCapacity(&__usbfd, __lun, &sectorsize, &numSectors) < 0)
+		return 0;
+
+	if(sectorsize == 2048)
+		return 1;
+	return 0;
 }
 
 /* lo_ej = load/eject, controls the tray
