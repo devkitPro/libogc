@@ -264,8 +264,8 @@ static s32 __read_csw(usbstorage_handle *dev, u8 *status, u32 *dataResidue, u32 
 	if(retval > 0 && retval != CSW_SIZE) return USBSTORAGE_ESHORTREAD;
 	else if(retval < 0) return retval;
 
-	signature = __lwbrx(dev->buffer, 0);
-	tag = __lwbrx(dev->buffer, 4);
+	signature = __lwbrx(cbw_buffer, 0);
+	tag = __lwbrx(cbw_buffer, 4);
 	_dataResidue = __lwbrx(cbw_buffer, 8);
 	_status = cbw_buffer[12];
 
@@ -329,7 +329,7 @@ static s32 __cycle(usbstorage_handle *dev, u8 lun, u8 *buffer, u32 len, u8 *cb, 
 		}
 
 		if (retval >= 0)
-			__read_csw(dev, &status, &dataResidue, usbtimeout);
+			retval = __read_csw(dev, &status, &dataResidue, usbtimeout);
 
 		if (retval < 0) {
 			if (__usbstorage_reset(dev) == USBSTORAGE_ETIMEDOUT)
