@@ -670,7 +670,7 @@ s32 USBStorage_IsDVD()
 {
 	u32 sectorsize, numSectors;
 
-	if(!__mounted)
+	if(!__mounted || __usbfd.sector_size[__lun] != 2048)
 		return 0;
 
 	if(USBStorage_ReadCapacity(&__usbfd, __lun, &sectorsize, &numSectors) < 0)
