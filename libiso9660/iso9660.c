@@ -494,6 +494,7 @@ static int _ISO9660_close_r(struct _reent *r, int fd)
 static ssize_t _ISO9660_read_r(struct _reent *r, int fd, char *ptr, size_t len)
 {
 	u64 offset;
+	int ret;
 	FILE_STRUCT *file = (FILE_STRUCT*) fd;
 
 	if (!file->inUse)
@@ -513,16 +514,18 @@ static ssize_t _ISO9660_read_r(struct _reent *r, int fd, char *ptr, size_t len)
 		r->_errno = EOVERFLOW;
 		len = file->entry.size - file->offset;
 	}
-	if (len <= 0)
+
+	if (len == 0)
 		return 0;
 
 	offset = (u64) file->entry.sector * SECTOR_SIZE + file->offset;
-	if ((len = _read(file->mdescr, ptr, offset, len)) < 0)
+	if ((ret = _read(file->mdescr, ptr, offset, len)) < 0)
 	{
 		r->_errno = EIO;
 		return -1;
 	}
 
+	len = (size_t)ret;
 	file->offset += len;
 	return len;
 }

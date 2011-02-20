@@ -824,9 +824,20 @@ static bool __usbstorage_IsInserted(void)
 	u16 vid, pid;
 	s32 maxLun;
 	s32 retval;
+	u32 sectorsize, numSectors;
 
 	if(__mounted)
-		return true;
+	{
+		// device is not a USB DVD drive - always return true
+		if (__usbfd.sector_size[__lun] != 2048)
+			return true;
+
+		// check if DVD is inserted
+		if (USBStorage_ReadCapacity(&__usbfd, __lun, &sectorsize, &numSectors) < 0)
+			return false;
+		else
+			return true;
+	}
 
 	if(!__inited)
 		return false;
