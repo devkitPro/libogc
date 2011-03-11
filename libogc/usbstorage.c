@@ -881,6 +881,9 @@ static bool __usbstorage_IsInserted(void)
 		pid = buffer[i].pid;
 		if (vid == 0 || pid == 0)
 			continue;
+			
+		if (vid == 0x0b95 && pid == 0x7720) // USB LAN
+			continue;
 
 		if (USBStorage_Open(&__usbfd, buffer[i].device_id, vid, pid) < 0)
 			continue;
