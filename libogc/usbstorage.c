@@ -33,6 +33,7 @@ distribution.
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdarg.h>
 #include <sys/time.h>
 #include <errno.h>
 #include <lwp_heap.h>
@@ -962,6 +963,32 @@ void USBStorage_Deinitialize()
 	__usbstorage_Shutdown();
 	LWP_CloseQueue(__usbstorage_waitq);
 	__inited = false;
+}
+
+int USBStorage_ioctl(int request, ...)
+{
+    int retval = 0;
+    va_list ap;
+    va_start(ap, request); 
+
+    switch (request)
+    {
+        case B_RAW_DEVICE_COMMAND:
+        {
+            u8 write;
+            raw_device_command *rdc = va_arg(ap, raw_device_command *);
+		    write = (rdc->flags == B_RAW_DEVICE_DATA_IN) ? 0 : 1;
+            retval = __cycle(&__usbfd, __lun, rdc->data, rdc->data_length, rdc->command, rdc->command_length, write, &rdc->scsi_status, NULL);
+            break;
+        }
+
+        default:
+			retval = -1;
+		    break;
+    }
+    
+    va_end(ap);
+    return retval;
 }
 
 DISC_INTERFACE __io_usbstorage = {
