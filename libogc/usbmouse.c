@@ -253,7 +253,7 @@ static s32 USBMouse_Open()
 	}
 
 	//set boot protocol
-	USB_WriteCtrlMsg(_mouse->fd, USB_REQTYPE_SET, USB_REQ_SETPROTOCOL, 0, _mouse->interface, 0, NULL);
+	USB_WriteCtrlMsg(_mouse->fd, USB_REQTYPE_INTERFACE_SET, USB_REQ_SETPROTOCOL, 0, _mouse->interface, 0, NULL);
 	USB_ReadIntrMsgAsync(_mouse->fd, _mouse->ep, _mouse->ep_size, _mousedata, _mouse_event_cb, NULL);
 	_mouse->connected = true;
 	return 1;

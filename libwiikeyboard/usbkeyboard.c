@@ -127,7 +127,7 @@ static s32 _get_protocol(void)
 	if (buffer == NULL)
 		return -1;
 
-	USB_WriteCtrlMsg(_kbd->fd, USB_REQTYPE_GET, USB_REQ_GETPROTOCOL, 0, _kbd->interface, 1, buffer);
+	USB_WriteCtrlMsg(_kbd->fd, USB_REQTYPE_INTERFACE_GET, USB_REQ_GETPROTOCOL, 0, _kbd->interface, 1, buffer);
 
 	protocol = *buffer;
 	iosFree(hId, buffer);
@@ -139,7 +139,7 @@ static s32 _get_protocol(void)
 static s32 _set_protocol(u8 protocol)
 {
 	if(!_kbd || _kbd->fd==-1) return -1;
-	return USB_WriteCtrlMsg(_kbd->fd, USB_REQTYPE_SET, USB_REQ_SETPROTOCOL, protocol, _kbd->interface, 0, NULL);
+	return USB_WriteCtrlMsg(_kbd->fd, USB_REQTYPE_INTERFACE_SET, USB_REQ_SETPROTOCOL, protocol, _kbd->interface, 0, NULL);
 }
 
 //Get an input report from interrupt pipe
@@ -174,7 +174,7 @@ static s32 _get_output_report(u8 *leds)
 	if (buffer == NULL)
 		return -1;
 
-	s32 ret = USB_WriteCtrlMsg(_kbd->fd, USB_REQTYPE_GET, USB_REQ_GETREPORT, USB_REPTYPE_OUTPUT << 8, _kbd->interface, 1, buffer);
+	s32 ret = USB_WriteCtrlMsg(_kbd->fd, USB_REQTYPE_INTERFACE_GET, USB_REQ_GETREPORT, USB_REPTYPE_OUTPUT << 8, _kbd->interface, 1, buffer);
 
 	memcpy(leds, buffer, 1);
 	iosFree(hId, buffer);
@@ -194,7 +194,7 @@ static s32 _set_output_report(void)
 		return -1;
 
 	memcpy(buffer, &_kbd->leds, 1);
-	s32 ret = USB_WriteCtrlMsg(_kbd->fd, USB_REQTYPE_SET, USB_REQ_SETREPORT, USB_REPTYPE_OUTPUT << 8, _kbd->interface, 1, buffer);
+	s32 ret = USB_WriteCtrlMsg(_kbd->fd, USB_REQTYPE_INTERFACE_SET, USB_REQ_SETREPORT, USB_REPTYPE_OUTPUT << 8, _kbd->interface, 1, buffer);
 
 	iosFree(hId, buffer);
 

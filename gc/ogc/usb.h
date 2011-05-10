@@ -15,11 +15,10 @@
 #define USB_SUBCLASS_BOOT				0x01
 #define USB_PROTOCOL_KEYBOARD			0x01
 #define USB_PROTOCOL_MOUSE				0x02
+
 #define USB_REPTYPE_INPUT				0x01
 #define USB_REPTYPE_OUTPUT				0x02
 #define USB_REPTYPE_FEATURE				0x03
-#define USB_REQTYPE_GET					0xA1
-#define USB_REQTYPE_SET					0x21
 
 /* Descriptor types */
 #define USB_DT_DEVICE					0x01
@@ -29,6 +28,7 @@
 #define USB_DT_ENDPOINT					0x05
 #define USB_DT_HID						0x21
 #define USB_DT_REPORT					0x22
+#define USB_DT_PHYSICAL					0x23
 
 /* Standard requests */
 #define USB_REQ_GETSTATUS				0x00
@@ -43,10 +43,12 @@
 #define USB_REQ_SETINTERFACE			0x0b
 #define USB_REQ_SYNCFRAME				0x0c
 
-#define USB_REQ_GETPROTOCOL				0x03
-#define USB_REQ_SETPROTOCOL				0x0B
 #define USB_REQ_GETREPORT				0x01
+#define USB_REQ_GETIDLE					0x02
+#define USB_REQ_GETPROTOCOL				0x03
 #define USB_REQ_SETREPORT				0x09
+#define USB_REQ_SETIDLE					0x0A
+#define USB_REQ_SETPROTOCOL				0x0B
 
 /* Descriptor sizes per descriptor type */
 #define USB_DT_DEVICE_SIZE				18
@@ -68,6 +70,11 @@
 #define USB_CTRLTYPE_REC_INTERFACE		1
 #define USB_CTRLTYPE_REC_ENDPOINT		2
 #define USB_CTRLTYPE_REC_OTHER			3
+
+#define USB_REQTYPE_INTERFACE_GET		(USB_CTRLTYPE_DIR_DEVICE2HOST|USB_CTRLTYPE_TYPE_CLASS|USB_CTRLTYPE_REC_INTERFACE)
+#define USB_REQTYPE_INTERFACE_SET		(USB_CTRLTYPE_DIR_HOST2DEVICE|USB_CTRLTYPE_TYPE_CLASS|USB_CTRLTYPE_REC_INTERFACE)
+#define USB_REQTYPE_ENDPOINT_GET		(USB_CTRLTYPE_DIR_DEVICE2HOST|USB_CTRLTYPE_TYPE_CLASS|USB_CTRLTYPE_REC_ENDPOINT)
+#define USB_REQTYPE_ENDPOINT_SET		(USB_CTRLTYPE_DIR_HOST2DEVICE|USB_CTRLTYPE_TYPE_CLASS|USB_CTRLTYPE_REC_ENDPOINT)
 
 #define USB_FEATURE_ENDPOINT_HALT		0
 
@@ -150,7 +157,7 @@ typedef struct _usbhiddesc
 	struct {
 		u8 bDescriptorType;
 		u16 wDescriptorLength;
-	} descr[1];
+	} ATTRIBUTE_PACKED descr[1];
 } ATTRIBUTE_PACKED usb_hiddesc;
 
 typedef struct _usb_device_entry {
@@ -172,7 +179,8 @@ s32 USB_CloseDeviceAsync(s32 *fd,usbcallback cb,void *usrdata);
 s32 USB_GetDescriptors(s32 fd, usb_devdesc *udd);
 void USB_FreeDescriptors(usb_devdesc *udd);
 
-s32 USB_GetHIDDescriptor(s32 fd,usb_hiddesc *uhd);
+s32 USB_GetGenericDescriptor(s32 fd,u8 type,u8 index,u8 interface,void *data,u32 size);
+s32 USB_GetHIDDescriptor(s32 fd,u8 interface,usb_hiddesc *uhd,u32 size);
 
 s32 USB_GetDeviceDescription(s32 fd,usb_devdesc *devdesc);
 s32 USB_DeviceRemovalNotifyAsync(s32 fd,usbcallback cb,void *userdata);
@@ -180,6 +188,9 @@ s32 USB_DeviceChangeNotifyAsync(u8 interface_class,usbcallback cb,void *userdata
 
 s32 USB_SuspendDevice(s32 fd);
 s32 USB_ResumeDevice(s32 fd);
+
+s32 USB_ReadIsoMsg(s32 fd,u8 bEndpoint,u8 bPackets,u16 *rpPacketSizes,void *rpData);
+s32 USB_ReadIsoMsgAsync(s32 fd,u8 bEndpoint,u8 bPackets,u16 *rpPacketSizes,void *rpData,usbcallback cb,void *userdata);
 
 s32 USB_ReadIntrMsg(s32 fd,u8 bEndpoint,u16 wLength,void *rpData);
 s32 USB_ReadIntrMsgAsync(s32 fd,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *usrdata);
@@ -189,6 +200,9 @@ s32 USB_ReadBlkMsgAsync(s32 fd,u8 bEndpoint,u16 wLength,void *rpData,usbcallback
 
 s32 USB_ReadCtrlMsg(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData);
 s32 USB_ReadCtrlMsgAsync(s32 fd,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *rpData,usbcallback cb,void *usrdata);
+
+s32 USB_WriteIsoMsg(s32 fd,u8 bEndpoint,u8 bPackets,u16 *rpPacketSizes,void *rpData);
+s32 USB_WriteIsoMsgAsync(s32 fd,u8 bEndpoint,u8 bPackets,u16 *rpPacketSizes,void *rpData,usbcallback cb,void *userdata);
 
 s32 USB_WriteIntrMsg(s32 fd,u8 bEndpoint,u16 wLength,void *rpData);
 s32 USB_WriteIntrMsgAsync(s32 fd,u8 bEndpoint,u16 wLength,void *rpData,usbcallback cb,void *usrdata);
@@ -205,7 +219,7 @@ s32 USB_SetAlternativeInterface(s32 fd, u8 interface, u8 alternateSetting);
 s32 USB_ClearHalt(s32 fd, u8 endpointAddress);
 s32 USB_GetDeviceList(usb_device_entry *descr_buffer,u8 num_descr,u8 interface_class,u8 *cnt_descr);
 
-s32 USB_GetAsciiString(s32 fd,u16 wIndex,u16 wLangID,u16 wLength,void *rpData);
+s32 USB_GetAsciiString(s32 fd,u8 bIndex,u16 wLangID,u16 wLength,void *rpData);
 
 #ifdef __cplusplus
    }
