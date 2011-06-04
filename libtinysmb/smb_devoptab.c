@@ -372,14 +372,16 @@ continue_read:
 		cache_to_read = SMB_READ_BUFFERSIZE;
 	}
 
-	int read=0;
+	int read=0, readed;
 	while(read<cache_to_read)
 	{
-		if ( (read+=SMB_ReadFile(SMBEnv[j].SMBReadAheadCache[leastUsed].ptr+read, cache_to_read-read, cache_offset+read, file->handle)) <=0 )
+		readed = SMB_ReadFile(SMBEnv[j].SMBReadAheadCache[leastUsed].ptr+read, cache_to_read-read, cache_offset+read, file->handle);
+		if ( readed <=0 )
 		{
 			SMBEnv[j].SMBReadAheadCache[leastUsed].file = NULL;
 			return -1;
 		}
+		read += readed;
 	}
 	SMBEnv[j].SMBReadAheadCache[leastUsed].last_used = gettime();
 
@@ -696,6 +698,11 @@ static ssize_t __smb_read(struct _reent *r, int fd, char *ptr, size_t len)
 		r->_errno = EBADF;
 		return -1;
 	} 
+
+	if (len <= 0)
+	{
+        return 0;
+	}
 	//have to flush because SMBWriteCache.file->offset holds offset of cached block not yet writeln
 	//and file->len also may not have been updated yet
 	_SMB_lock(file->env);
@@ -720,7 +727,7 @@ static ssize_t __smb_read(struct _reent *r, int fd, char *ptr, size_t len)
 	}
 
 	// Short circuit cases where len is 0 (or less)
-	if (len == 0)
+	if (len <= 0)
 	{
 		_SMB_unlock(file->env);
         return 0;
