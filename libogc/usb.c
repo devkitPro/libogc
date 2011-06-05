@@ -491,7 +491,7 @@ done:
 		if(pLength!=NULL) iosFree(hId,pLength);
 
 	} else {
-		u8 endpoint_dir = !!(bEndpoint&USB_ENDPOINT_INTERRUPT);
+		u8 endpoint_dir = !!(bEndpoint&USB_ENDPOINT_IN);
 		s32 fd = (device_id<0) ? ven_host->fd : hid_host->fd;
 
 		if (ioctl == USBV0_IOCTL_INTRMSG) {
