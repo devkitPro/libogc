@@ -102,6 +102,8 @@ struct _usbv5_host {
 	usb_device_entry attached_devices[USB_MAX_DEVICES];
 	struct _usb_cb_removalnotify_list remove_cb[USB_MAX_DEVICES];
 	s32 fd;
+	usbcallback device_change_notify;
+	void *device_change_userdata;
 };
 
 static struct _usbv5_host* ven_host = NULL;
@@ -161,6 +163,16 @@ static s32 __usbv5_attachfinishCB(s32 result, void *p)
 {
 	struct _usbv5_host* host = (struct _usbv5_host*)p;
 	if(host==NULL) return IPC_EINVAL;
+
+	if (host->device_change_notify) {
+		/* this callback function may attempt to set a new notify func,
+		 * device_change_notify is set to NULL *before* calling it to
+		 * avoid wiping out the new function
+		 */
+		usbcallback cb = host->device_change_notify;
+		host->device_change_notify = NULL;
+		cb(result, host->device_change_userdata);
+	}
 
 	if (result==0)
 		IOS_IoctlAsync(host->fd, USBV5_IOCTL_GETDEVICECHANGE, NULL, 0, host->attached_devices, 0x180, __usbv5_devicechangeCB, host);
@@ -650,11 +662,25 @@ s32 USB_OpenDevice(s32 device_id,u16 vid,u16 pid,s32 *fd)
 		int i;
 
 		i = __find_device_on_host(ven_host, device_id);
-		if (i<0)
+		if (i>=0)
+			USB_ResumeDevice(device_id);
+		else {
+			// HID V5 devices need their descriptors read before being used
+			usb_devdesc desc;
 			i = __find_device_on_host(hid_host, device_id);
+			if (i>=0) {
+				USB_ResumeDevice(device_id);
+				i = USB_GetDescriptors(device_id, &desc);
+				if (i>=0)
+					USB_FreeDescriptors(&desc);
+				else {
+					USB_SuspendDevice(device_id);
+					return i;
+				}
+			}
+		}
 		if (i>=0) {
 			*fd = device_id;
-			USB_ResumeDevice(device_id);
 			return 0;
 		}
 	}
@@ -856,6 +882,10 @@ s32 USB_GetDescriptors(s32 fd, usb_devdesc *udd)
 	u32 size;
 	u32 iConf, iInterface, iEndpoint;
 
+	if (udd==NULL)
+		return IPC_EINVAL;
+	memset(udd, 0, sizeof(*udd));
+
 	if (fd>=0x20 || fd<-1)
 		return USBV5_GetDescriptors(fd, udd);
 
@@ -982,7 +1012,7 @@ s32 USB_GetGenericDescriptor(s32 fd,u8 type,u8 index,u8 interface,void *data,u32
 	u8 *buffer;
 	s32 retval;
 
-	buffer = iosAlloc(hId,sizeof(size));
+	buffer = iosAlloc(hId,size);
 	if(buffer==NULL) {
 		retval = IPC_ENOMEM;
 		goto free_and_error;
@@ -1248,33 +1278,49 @@ s32 USB_ResumeDevice(s32 fd)
 	return IOS_Ioctl(fd,USBV0_IOCTL_RESUMEDEV,NULL,0,NULL,0);
 }
 
-// TODO: Implement this for VEN and HID
 s32 USB_DeviceChangeNotifyAsync(u8 interface_class, usbcallback cb, void* userdata)
 {
-	s32 fd;
-	struct _usb_msg *msg;
-	s32 ret;
+	s32 ret=IPC_EQUEUEFULL;
 
-	fd = IOS_Open(__oh0_path,IPC_OPEN_NONE);
-	if (fd<0) return fd;
+	if (ven_host==NULL) {
+		s32 fd;
+		struct _usb_msg *msg;
 
-	msg = iosAlloc(hId,sizeof(*msg));
-	if (msg==NULL) {
+		fd = IOS_Open(__oh0_path,IPC_OPEN_NONE);
+		if (fd<0) return fd;
+
+		msg = iosAlloc(hId,sizeof(*msg));
+		if (msg==NULL) {
+			IOS_Close(fd);
+			return IPC_ENOMEM;
+		}
+
+		msg->cb = cb;
+		msg->userdata = userdata;
+		msg->class = interface_class;
+
+		msg->vec[0].data = &msg->class;
+		msg->vec[0].len = 1;
+
+		ret = IOS_IoctlvAsync(fd,USBV0_IOCTL_DEVICECLASSCHANGE,1,0,msg->vec,__usbv5_messageCB,msg);
 		IOS_Close(fd);
-		return IPC_ENOMEM;
+
+		if (ret<0) iosFree(hId, msg);
 	}
-
-	msg->cb = cb;
-	msg->userdata = userdata;
-	msg->class = interface_class;
-
-	msg->vec[0].data = &msg->class;
-	msg->vec[0].len = 1;
-
-	ret = IOS_IoctlvAsync(fd,USBV0_IOCTL_DEVICECLASSCHANGE,1,0,msg->vec,__usbv5_messageCB,msg);
-	IOS_Close(fd);
-
-	if (ret<0) iosFree(hId, msg);
+	else if (interface_class != USB_CLASS_HID && ven_host) {
+		if (ven_host->device_change_notify == NULL) {
+			ret = 0;
+			ven_host->device_change_notify = cb;
+			ven_host->device_change_userdata = userdata;
+		}
+	}
+	else if (interface_class==USB_CLASS_HID && hid_host) {
+		if (hid_host->device_change_notify == NULL) {
+			ret = 0;
+			hid_host->device_change_notify = cb;
+			hid_host->device_change_userdata = userdata;
+		}
+	}
 
 	return ret;
 }
