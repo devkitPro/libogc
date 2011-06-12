@@ -44,16 +44,14 @@ ps_guMtxConcat:
 	psq_l		A00_A01,0(r3),0,0
 	stfd		fr14,8(r1)
 	psq_l		B00_B01,0(r4),0,0
-	lis			r6,Unit01@ha
 	psq_l		B02_B03,8(r4),0,0
 	stfd		fr15,16(r1)
-	addi		6,6,Unit01@l
 	stfd		fr31,40(r1)
 	psq_l		B10_B11,16(r4),0,0
 	ps_muls0	D00_D01,B00_B01,A00_A01
 	psq_l		A10_A11,16(r3),0,0
 	ps_muls0	D02_D03,B02_B03,A00_A01
-	psq_l		UNIT01,0(r6),0,0
+	psq_l		UNIT01,Unit01@sdarel(r13),0,0
 	ps_muls0	D10_D11,B00_B01,A10_A11
 	psq_l		B12_B13,24(r4),0,0
 	ps_muls0	D12_D13,B02_B03,A10_A11
@@ -81,24 +79,22 @@ ps_guMtxConcat:
 	ps_madds1	D20_D21,B10_B11,A20_A21,D20_D21
 	ps_madds1	D22_D23,B12_B13,A20_A21,D22_D23
 	ps_madds0	D20_D21,B20_B21,A22_A23,D20_D21
-	lfd			fr14,8(r1)
+	lfd		fr14,8(r1)
 	psq_st		D12_D13,24(r5),0,0
 	ps_madds0	D22_D23,B22_B23,A22_A23,D22_D23
 	psq_st		D20_D21,32(r5),0,0
 	ps_madds1	D22_D23,UNIT01,A22_A23,D22_D23
-	lfd			fr15,16(r1)
+	lfd		fr15,16(r1)
 	psq_st		D22_D23,40(r5),0,0
-	lfd			fr31,40(r1)
+	lfd		fr31,40(r1)
 	addi		r1,r1,64
 	blr
 
 	.globl ps_guMtxIdentity
 	//r3 == mtx
 ps_guMtxIdentity:
-	lis			r9,Unit01@ha
-	addi		r9,r9,Unit01@l
-	lfs			fr0,0(r9)
-	lfs			fr1,4(r9)
+	lfs		fr0,Unit01@sdarel(r13)
+	lfs		fr1,Unit01+4@sdarel(r13)
 	psq_st		fr0,8(r3),0,0
 	ps_merge01	fr2,fr0,fr1
 	psq_st		fr0,24(r3),0,0
@@ -129,9 +125,7 @@ ps_guMtxCopy:
 	.globl ps_guMtxTranspose
 	//r3 = src, r4 = xpose
 ps_guMtxTranspose:
-	lis			r9,Unit01@ha
-	addi		r9,r9,Unit01@l
-	lfs			fr0,0(r9)
+	lfs		fr0,Unit01@sdarel(r13)
 	psq_l		fr1,0(r3),0,0
 	stfs		fr0,44(r4)
 	psq_l		fr2,16(r3),0,0
@@ -147,7 +141,7 @@ ps_guMtxTranspose:
 	psq_st		fr7,32(r4),0,0
 	ps_merge10	fr6,fr1,fr0
 	psq_st		fr5,8(r4),0,0
-	lfs			fr3,40(r3)
+	lfs		fr3,40(r3)
 	psq_st		fr6,24(r4),0,0
 	stfs		fr3,40(r4)
 	blr
@@ -189,11 +183,11 @@ ps_guMtxInverse:
 	ps_add		fr6,fr0,fr0
 	ps_mul		fr5,fr0,fr0
 	ps_nmsub	fr0,fr7,fr5,fr6
-	lfs			fr1,12(r3)
+	lfs		fr1,12(r3)
 	ps_muls0	fr13,fr13,fr0
-	lfs			fr2,28(r3)
+	lfs		fr2,28(r3)
 	ps_muls0	fr12,fr12,fr0
-	lfs			fr3,44(r3)
+	lfs		fr3,44(r3)
 	ps_muls0	fr11,fr11,fr0
 	ps_merge00	fr5,fr13,fr12
 	ps_muls0	fr10,fr10,fr0
@@ -215,7 +209,7 @@ ps_guMtxInverse:
 	ps_madd		fr7,fr9,fr2,fr7
 	psq_st		fr4,24(r4),0,0
 	ps_nmadd	fr7,fr8,fr3,fr7
-	li			r3,1
+	li		r3,1
 	psq_st		fr7,44(r4),1,0
 	blr
 
@@ -277,9 +271,7 @@ ps_guMtxInvXpose:
 	.globl ps_guMtxScale
 	//r3 = mtx,fr1 = xS,fr2 = yS,fr3 = zS
 ps_guMtxScale:
-	lis			r9,Unit01@ha
-	addi		r9,r9,Unit01@l
-	lfs			fr0,0(r9)
+	lfs		fr0,Unit01@sdarel(r13)
 	stfs		fr1,0(r3)
 	psq_st		fr0,4(r3),0,0
 	psq_st		fr0,12(r3),0,0
@@ -319,9 +311,7 @@ ps_guMtxScaleApply:
 	.globl ps_guMtxApplyScale
 	//r3 = src,r4 = dst,fr1 = xS,fr2 = yS,fr3 = zS
 ps_guMtxApplyScale:
-	lis			r9,Unit01@ha
-	addi		r9,r9,Unit01@l
-	lfs			fr6,4(r9)
+	lfs		fr6,Unit01+4@sdarel(r13)
 	frsp		fr1,fr1
 	psq_l		fr4,0(r3),0,0
 	frsp		fr2,fr2
@@ -350,10 +340,8 @@ ps_guMtxApplyScale:
 	.globl ps_guMtxTrans
 	//r3 = mtx,fr1 = xT,fr2 = yT,fr3 = zT
 ps_guMtxTrans:
-	lis			r9,Unit01@ha
-	addi		r9,r9,Unit01@l
-	lfs			fr4,0(r9)
-	lfs			fr5,4(r9)
+	lfs		fr4,Unit01@sdarel(r13)
+	lfs		fr5,Unit01+4@sdarel(r13)
 	stfs		fr4,16(r3)
 	stfs		fr1,12(r3)
 	stfs		fr2,28(r3)
@@ -392,9 +380,7 @@ ps_guMtxTransApply:
 	.globl ps_guMtxApplyTrans
 	//r3 = src,r4 = dst,fr1 = xT,fr2 = yT,fr3 = zT
 ps_guMtxApplyTrans:
-	lis			r9,Unit01@ha
-	addi		r9,r9,Unit01@l
-	lfs			fr6,4(r9)
+	lfs		fr6,Unit01+4@sdarel(r13)
 	psq_l		fr4,0(r3),0,0
 	frsp		fr1,fr1
 	psq_l		fr5,8(r3),0,0
@@ -429,21 +415,19 @@ ps_guMtxApplyTrans:
 	.globl ps_guMtxRotTrig
 	//r3 = mt,r4 = axis,fr1 = sinA,fr2 = cosA
 ps_guMtxRotTrig:
-	lis			r9,Unit01@ha
-	addi		r9,r9,Unit01@l
 	frsp		fr1,fr1
-	lfs			fr3,0(r9)
+	lfs		fr3,Unit01@sdarel(r13)
 	frsp		fr2,fr2
-	lfs			fr4,4(r9)
-	ori			r4,r4,0x20
+	lfs		fr4,Unit01+4@sdarel(r13)
+	ori		r4,r4,0x20
 	ps_neg		fr5,fr1
 	cmplwi		r4,'x'
-	beq			0f
+	beq		0f
 	cmplwi		r4,'y'
-	beq			1f
+	beq		1f
 	cmplwi		r4,'z'
-	beq			2f
-	b			3f
+	beq		2f
+	b		3f
 0:
 	psq_st		fr4,0(r3),1,0
 	psq_st		fr3,4(r3),0,0
@@ -454,7 +438,7 @@ ps_guMtxRotTrig:
 	psq_st		fr3,44(r3),1,0
 	psq_st		fr6,36(r3),0,0
 	psq_st		fr7,20(r3),0,0
-	b			3f
+	b		3f
 1:
 	ps_merge00	fr6,fr2,fr3
 	ps_merge00	fr7,fr3,fr4
@@ -466,7 +450,7 @@ ps_guMtxRotTrig:
 	psq_st		fr7,16(r3),0,0
 	psq_st		fr9,8(r3),0,0
 	psq_st		fr8,32(r3),0,0
-	b			3f
+	b		3f
 2:
 	psq_st		fr3,8(r3),0,0
 	ps_merge00	fr6,fr1,fr2
@@ -486,14 +470,12 @@ __ps_guMtxRotAxisRadInternal:
 	stwu		r1,-64(r1)
 	frsp		fr2,fr2
 	psq_l		fr3,0(r4),0,0
-	lis			r6,NrmData@ha
 	frsp		fr1,fr1
 	stfd		fr14,8(r1)
-	addi		r6,r6,NrmData@l
-	lfs			fr11,4(r6);
-	lfs			fr12,0(r6)
+	lfs		fr11,NrmData+4@sdarel(r13)
+	lfs		fr12,NrmData@sdarel(r13)
 	ps_mul		fr5,fr3,fr3
-	lfs			fr4,8(r4)
+	lfs		fr4,8(r4)
 	fadds		fr10,fr12,fr12
 	ps_madd		fr6,fr4,fr4,fr5
 	fsubs		fr14,fr12,fr12
@@ -537,9 +519,7 @@ __ps_guMtxRotAxisRadInternal:
 	.globl ps_guMtxReflect
 	//r3 = mtx,r4 = vec1,r5 = vec2
 ps_guMtxReflect:
-	lis			r9,Unit01@ha
-	addi		r9,r9,Unit01@l
-	lfs			fr0,4(r9)
+	lfs		fr0,Unit01+4@sdarel(r13)
 	psq_l		fr1,8(r5),1,0
 	psq_l		fr2,0(r5),0,0
 	psq_l		fr3,0(r4),0,0
@@ -608,10 +588,8 @@ ps_guVecScale:
 	.globl	ps_guVecNormalize
 	//r3 = v
 ps_guVecNormalize:
-	lis			r9,NrmData@ha
-	addi		r9,r9,NrmData@l
-	lfs			fr0,0(r9)
-	lfs			fr1,4(r9)
+	lfs		fr0,NrmData@sdarel(r13)
+	lfs		fr1,NrmData+4@sdarel(r13)
 	psq_l		fr2,0(r3),0,0
 	ps_mul		fr4,fr2,fr2
 	psq_l		fr3,8(r3),1,0
@@ -632,10 +610,10 @@ ps_guVecNormalize:
 	//r3 = v1,r4 = v2,r5 = v12
 ps_guVecCross:
 	psq_l		fr1,0(r4),0,0
-	lfs			fr2,8(r3)
+	lfs		fr2,8(r3)
 	psq_l		fr0,0(r3),0,0
 	ps_merge10	fr6,fr1,fr1
-	lfs			fr3,8(r4)
+	lfs		fr3,8(r4)
 	ps_mul		fr4,fr1,fr2
 	ps_muls0	fr7,fr1,fr0
 	ps_msub		fr5,fr0,fr3,fr4
@@ -735,7 +713,7 @@ ps_guQuatDotProduct:
 	ps_sum0		fr1,fr1,fr1,fr1
 	blr
 
-	.section .data
+	.section .sdata
 	.balign 4
 QuatEpsilon:
 	.float	0.00001

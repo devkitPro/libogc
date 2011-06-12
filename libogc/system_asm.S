@@ -253,9 +253,7 @@ __InitSystem:
 	mflr    r0
 	stw     r0, 4(sp)
 	stwu    sp, -24(sp)
-	stw     r31, 20(sp)
-	stw     r30, 16(sp)
-	stw     r29, 12(sp)
+	stmw	r29, 12(sp)
 
 	# Disable interrupts!
 	mfmsr   r3
@@ -275,7 +273,7 @@ __InitSystem:
 	
 #if defined(HW_RVL)
 	mfspr	r3,HID4
-	oris	r3,r3,0x0190		//set additional bits in HID4: SR0(store 0), LPE(PS LE exception), L2CFI(L2 castout prior to L2 inv. flash)
+	oris	r3,r3,0x0190		//set additional bits in HID4: L2FM, BCO, SR0(store 0), LPE(PS LE exception), L2MUM, L2CFI(L2 castout prior to L2 inv. flash)
 	mtspr	HID4,r3
 	isync
 #endif
@@ -297,9 +295,7 @@ __InitSystem:
 	
 	# Restore the non-volatile registers to their previous values and return.
 	lwz     r0, 28(sp)
-	lwz     r31,20(sp)
-	lwz     r30,16(sp)
-	lwz     r29,12(sp)
+	lmw	r29,12(sp)
 	addi    sp, sp, 24
 	mtlr    r0
 	blr
