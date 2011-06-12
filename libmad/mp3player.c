@@ -334,22 +334,23 @@ static void *StreamPlay(void *arg)
 			//Stream.error = 0;
 		}
 
-		if(mad_frame_decode(&Frame,&Stream)) {
-			if(MAD_RECOVERABLE(Stream.error)) {
-			  if(Stream.error!=MAD_ERROR_LOSTSYNC
-				|| Stream.this_frame!=GuardPtr) continue;
-			} else {
-				if(Stream.error!=MAD_ERROR_BUFLEN) break;
-			}
+		while (!mad_frame_decode(&Frame,&Stream) && thr_running==TRUE) {
+			if(mp3filterfunc)
+				mp3filterfunc(&Stream,&Frame);
+
+			mad_timer_add(&Timer,Frame.header.duration);
+			mad_synth_frame(&Synth,&Frame);
+
+			Resample(&Synth.pcm,eqs,(MAD_NCHANNELS(&Frame.header)==2),Frame.header.samplerate);
 		}
-		
-		if(mp3filterfunc)
-			mp3filterfunc(&Stream,&Frame);
 
-		mad_timer_add(&Timer,Frame.header.duration);
-		mad_synth_frame(&Synth,&Frame);
+		if(MAD_RECOVERABLE(Stream.error)) {
+		  if(Stream.error!=MAD_ERROR_LOSTSYNC
+			|| Stream.this_frame!=GuardPtr) continue;
+		} else {
+			if(Stream.error!=MAD_ERROR_BUFLEN) break;
+		}
 
-		Resample(&Synth.pcm,eqs,(MAD_NCHANNELS(&Frame.header)==2),Frame.header.samplerate);
 	}
 
 	mad_synth_finish(&Synth);
