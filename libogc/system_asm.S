@@ -273,7 +273,7 @@ __InitSystem:
 	
 #if defined(HW_RVL)
 	mfspr	r3,HID4
-	oris	r3,r3,0x0190		//set additional bits in HID4: L2FM, BCO, SR0(store 0), LPE(PS LE exception), L2MUM, L2CFI(L2 castout prior to L2 inv. flash)
+	oris	r3,r3,0x25B0		//set additional bits in HID4: L2FM, BCO, SR0(store 0), LPE(PS LE exception), L2MUM, L2CFI(L2 castout prior to L2 inv. flash)
 	mtspr	HID4,r3
 	isync
 #endif

@@ -272,21 +272,37 @@ static bool __stub_found()
 	return false;
 }
 
+#define TITLE_ID(x,y)		(((u64)(x) << 32) | (y))
+
 void __reload()
 {
+	// Workaround - HBC currently doesn't support 64-byte fetch mode for the L2 cache
+	// So we will launch the title rather than using the stub
 	if(__stub_found())
-		reload();
+	{
+		WII_LaunchTitle(TITLE_ID(0x00010001,0xAF1BF516));
+		WII_LaunchTitle(TITLE_ID(0x00010001,0x48415858));
+		WII_LaunchTitle(TITLE_ID(0x00010001,0x4A4F4449));
+	}
+	//if(__stub_found())
+	//	reload();
 	SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
 }
 
 void __libogc_exit(int status)
 {
 	if(__stub_found()) {
-		SYS_ResetSystem(SYS_SHUTDOWN,0,0);
-		__lwp_thread_stopmultitasking(reload);
+		// Workaround - HBC currently doesn't support 64-byte fetch mode for the L2 cache
+		// So we will launch the title rather than using the stub
+		WII_LaunchTitle(TITLE_ID(0x00010001,0xAF1BF516));
+		WII_LaunchTitle(TITLE_ID(0x00010001,0x48415858));
+		WII_LaunchTitle(TITLE_ID(0x00010001,0x4A4F4449));
+		//SYS_ResetSystem(SYS_SHUTDOWN,0,0);
+		//__lwp_thread_stopmultitasking(reload);
 	}
 	SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
 }
+
 #endif
 
 static void __init_syscall_array() {
