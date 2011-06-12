@@ -67,10 +67,16 @@ extern "C" {
 /*! \addtogroup sndsetvoiceformats Voice format
  * @{
  */
-#define VOICE_MONO_8BIT    0
-#define VOICE_MONO_16BIT   1
-#define VOICE_STEREO_8BIT  2
-#define VOICE_STEREO_16BIT 3
+#define VOICE_MONO_8BIT       0
+#define VOICE_MONO_16BIT      1
+#define VOICE_MONO_16BIT_BE   1
+#define VOICE_STEREO_8BIT     2
+#define VOICE_STEREO_16BIT    3
+#define VOICE_STEREO_16BIT_BE 3
+#define VOICE_MONO_8BIT_U     4
+#define VOICE_MONO_16BIT_LE   5
+#define VOICE_STEREO_8BIT_U   6
+#define VOICE_STEREO_16BIT_LE 7
 /*! @} */
 
 /*! \addtogroup voicevol Voice volume

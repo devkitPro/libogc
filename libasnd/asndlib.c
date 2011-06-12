@@ -40,13 +40,13 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #undef SND_BUFFERSIZE
 
 #define MAX_SND_VOICES			16
-#define SND_BUFFERSIZE			(4096) // don´t modify this value
+#define SND_BUFFERSIZE			(4096) // don't modify this value
 
-#define VOICE_UPDATEADD   256
-#define VOICE_UPDATE      128
-#define VOICE_VOLUPDATE    64
-#define VOICE_PAUSE        32
-#define VOICE_SETLOOP       4
+#define VOICE_UPDATEADD   (1<<12)
+#define VOICE_UPDATE      (1<<11)
+#define VOICE_VOLUPDATE   (1<<10)
+#define VOICE_PAUSE       (1<<9)
+#define VOICE_SETLOOP     (1<<8)
 
 typedef struct
 {
@@ -54,7 +54,7 @@ typedef struct
 
 	u32 delay_samples; // samples per delay to start (48000 == 1sec)
 
-	u32 flags;	// (step<<16) | (loop<<2) | (type & 3) used in DSP side
+	u32 flags;	// (step<<16) | (statuses<<8) | (type & 7) used in DSP side
 
 	u32 start_addr; // internal addr counter
 	u32 end_addr;   // end voice physical pointer(bytes without alignament, but remember it reads in blocks of 32 bytes (use padding to the end))
@@ -378,7 +378,7 @@ void ASND_Init()
 
 		dsp_task.prio = 255;
 		dsp_task.iram_maddr = (u16*)MEM_VIRTUAL_TO_PHYSICAL(dsp_mixer);
-		dsp_task.iram_len = size_dsp_mixer;
+		dsp_task.iram_len = dsp_mixer_size;
 		dsp_task.iram_addr = 0x0000;
 		dsp_task.init_vec = 0x10;
 		dsp_task.res_cb = NULL;
@@ -433,14 +433,13 @@ s32 ASND_SetVoice(s32 voice, s32 format, s32 pitch,s32 delay, void *snd, s32 siz
 
 	delay=(u32) (48000LL*((u64) delay)/1000LL);
 
-	format&=3;
+	format&=7;
 
-	switch(format)
+	switch(format&3)
 	{
 	case 0:
 		flag_h=1<<16;break;
 	case 1:
-		flag_h=2<<16;break;
 	case 2:
 		flag_h=2<<16;break;
 	case 3:
@@ -501,14 +500,13 @@ s32 ASND_SetInfiniteVoice(s32 voice, s32 format, s32 pitch,s32 delay, void *snd,
 
 	delay=(u32) (48000LL*((u64) delay)/1000LL);
 
-	format&=3;
+	format&=7;
 
-	switch(format)
+	switch(format&3)
 	{
 	case 0:
 		flag_h=1<<16;break;
 	case 1:
-		flag_h=2<<16;break;
 	case 2:
 		flag_h=2<<16;break;
 	case 3:

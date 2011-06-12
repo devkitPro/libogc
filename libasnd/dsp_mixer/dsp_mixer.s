@@ -192,7 +192,7 @@ MEM_SND:	equ	data_end ; it need 2048 words (4096 bytes)
 
 	lri     $CONFIG, #0xff
 	lri	$SR,#0
-	s40         
+	s16         
 	clr15       
 	m0         
 
@@ -222,34 +222,34 @@ recv_cmd:
 	clr		$ACC0
 	lri		$ACM0,#0xcdd1
 	cmp
-	jz		sys_command
+	jeq		sys_command
 	
 	clr	$ACC1
 	lrs	$ACM1, @CMBL
 
 	cmpi    $ACM1, #0x111  // fill the internal sample buffer and process the voice internally
-	jz	input_samples
+	jeq	input_samples
 
 	cmpi    $ACM1, #0x112  // get samples from the external buffer to the internal buffer and process the voice mixing the samples internally
-	jz	input_samples2
+	jeq	input_samples2
 
 	cmpi    $ACM1, #0x123  // get the address of the voice datas buffer (CHANNEL DATAS)
-	jz	get_data_addr 
+	jeq	get_data_addr 
 
 	cmpi    $ACM1, #0x222  // process the voice mixing the samples internally
-	jz	input_next_samples
+	jeq	input_next_samples
 
 	cmpi    $ACM1, #0x666  // send the samples for the internal buffer to the external buffer
-	jz	send_samples
+	jeq	send_samples
 
 	cmpi    $ACM1, #0x777   // special: to dump the IROM Datas (remember disable others functions from the interrupt vector to use)
-	jz	rom_dump_word   // (CMBH+0x8000) countain the address of IROM
+	jeq	rom_dump_word   // (CMBH+0x8000) countain the address of IROM
 
 	cmpi    $ACM1, #0x888	// Used for test
-	jz	polla_loca 
+	jeq	polla_loca 
 
 	cmpi	$ACM1, #0x999
-	jz	task_terminate
+	jeq	task_terminate
 	
 	si	@DMBL, #0x0004	// return 0 as ignore command
 	si	@DIRQ, #0x1 // set the interrupt
@@ -265,15 +265,15 @@ sys_command:
 	lrs	$ACM1, @CMBL
 	
 	cmpi	$ACM1,#0x0001
-	jz		run_nexttask
+	jeq		run_nexttask
 	
 	cmpi	$ACM1,#0x0002
-	jz		0x8000
+	jeq		0x8000
 	
 	jmp		recv_cmd
 	
 run_nexttask:
-	s40
+	s16
 	call		wait_for_cpu_mail
 	lrs			$29,@CMBL
 	call		wait_for_cpu_mail
@@ -439,7 +439,7 @@ start_main:
 // optimize the jump function to get MONO/STEREO 8/16 bits samples
 
 	lr	$ACM1, @FLAGSL_SMP
-	andi	$ACM1, #0x3
+	andi	$ACM1, #0x7
 	addi	$ACM1, #sample_selector
 	mrr	$AR3, $ACM1
 	ilrr	$ACM1, @$AR3
@@ -450,7 +450,7 @@ start_main:
 // test for channel paused
 
 	lr	$ACM0, @FLAGSL_SMP 
-	andcf	$ACM0, #0x20 
+	andcf	$ACM0, #0x200
 	jlz	end_main
 	
 // load the sample address
@@ -461,7 +461,7 @@ start_main:
 // test if ADDR_SMP & ADDR2H_SMP are zero
 	
 	tst	$ACC0
-	jnz	do_not_change1
+	jne	do_not_change1
 
 // set return as "change of buffer"
 
@@ -475,7 +475,7 @@ start_main:
 // stops if again 0 address
 
 	tst	$ACC0
-	jz	save_datas_end
+	jeq	save_datas_end
 
 do_not_change1:
 
@@ -515,7 +515,7 @@ do_not_change1:
 	lr	$ACH0, @DELAYH_SND
         lr	$ACM0, @DELAYL_SND
 	tst	$ACC0
-	jz	no_delay
+	jeq	no_delay
 
 // samples left and right to 0	
 
@@ -529,10 +529,10 @@ l_delay:
 	iar	$AR1 // skip two samples
 	iar	$AR1 
 	decm	$ACM1
-	jz	exit_delay1 // exit1 if samples to be processed == 0
+	jeq	exit_delay1 // exit1 if samples to be processed == 0
 
 	decm	$ACM0
-	jz	exit_delay2 // exit2 if delay time == 0
+	jeq	exit_delay2 // exit2 if delay time == 0
 	jmp	l_delay
 
 // store the remanent delay and ends
@@ -580,7 +580,7 @@ no_delay:
 	
 // test the freq value
 
-	clr	$ACL0
+	clr	$ACC0
 	lr	$ACH0, @FREQH_SMP
 	lr	$ACM0, @FREQL_SMP
 	
@@ -595,7 +595,7 @@ no_delay:
 
 // if  number is greater freq>48000 fix different routine 
 	
-	ifg	
+	ifgt	
 	lri	$AR0, #get_sample2 // slow method >48000
 
 // loops for samples to be processed
@@ -608,10 +608,10 @@ no_delay:
 // Mix right sample section
 
 	lrr	$ACL0, @$AR1 // load in ACL0 the  right sample from the internal buffer 
-	movax	$ACC1, $AXL1 // big trick :)  load the current sample <<16 and sign extended
+	movax	$ACC1, $ACX1 // big trick :)  load the current sample <<16 and sign extended
 
 	asl	$ACC0,#24    // convert sample from buffer to 24 bit number with sign extended (ACH0:ACM0)
-	asr	$ACC0,#-8
+	asr	$ACC0,#8
 	
 	add	$ACC0,$ACC1  // current_sample+buffer sample
 
@@ -635,10 +635,10 @@ right_skip2:
 
 	lrr	$ACL0, @$AR1 // load in ACL0 the left sample from the internal buffer 
 
-	movax	$ACC1, $AXL0 // big trick :)  load the current sample <<16 and sign extended
+	movax	$ACC1, $ACX0 // big trick :)  load the current sample <<16 and sign extended
 	
 	asl	$ACC0, #24   // convert sample from buffer to 24 bit number with sign extended (ACH0:ACM0)
-	asr	$ACC0, #-8
+	asr	$ACC0, #8
 	
 	add	$ACC0, $ACC1 // current_sample+buffer sample
 
@@ -660,10 +660,10 @@ left_skip2:
 	
 // adds the counter with the voice frequency and test if it >=48000 to get the next sample
 
-	clr	$ACL1
+	clr	$ACC1
 	lr	$ACH1, @COUNTERH_SMP
 	lr	$ACM1, @COUNTERL_SMP
-	clr	$ACL0
+	clr	$ACC0
 	lr	$ACH0, @FREQH_SMP
 	lr	$ACM0, @FREQL_SMP
 	
@@ -674,7 +674,7 @@ left_skip2:
 
 	cmp
 
-	jrl	$AR0 //get_sample or get_sample2 method
+	jrnc	$AR0 //get_sample or get_sample2 method
 
 	sr	@COUNTERH_SMP, $ACH1 
         sr	@COUNTERL_SMP, $ACM1
@@ -730,7 +730,7 @@ get_sample2: // slow method
 
 // if addr>addr end get a new buffer (if you uses double buffer)
 
-	jge	get_new_buffer
+	jc	get_new_buffer
 
 // load samples from dma, return $ar2 with the addr to get the samples and return using $ar0 to the routine to process 8-16bits Mono/Stereo
 
@@ -760,7 +760,7 @@ get_sample: // fast method
 // compares if the current address is >= end address to change the buffer or stops
 
 	cmp
-	jge	get_new_buffer
+	jc	get_new_buffer
 
 // load the new sample from the buffer
 
@@ -776,6 +776,10 @@ sample_selector:
 	cw	mono_16bits 
 	cw	stereo_8bits 
 	cw	stereo_16bits 
+	cw	mono_8bits_unsigned
+	cw	mono_16bits_le
+	cw	stereo_8bits_unsigned
+	cw	stereo_16bits_le
 
 get_new_buffer:
 
@@ -789,7 +793,7 @@ get_new_buffer:
 // addr is 0 ? go to zero_samples and exit
 
 	tst	$acc0
-	jz	zero_samples
+	jeq	zero_samples
 
 // load_smp_addr_align input:  $IX2:$IX3
 
@@ -804,52 +808,109 @@ get_new_buffer:
 
 zero_samples:
 
-	lris	$AXH0, #0
-	lris	$AXH1, #0
+	lris $AXH0, #0
+	lris $AXH1, #0
 	jmp	out_samp
 
 mono_8bits:
 	
 //  8 bits mono
-	mrr	$ACM1, $IX3
-	lrri	$ACL0, @$AR2
-	andf	$ACM1, #0x1
+	mrr  $ACM1, $IX3
+	lrri $ACL0, @$AR2
+	andf $ACM1, #0x1
 
-	iflz	// obtain sample0-sample1 from 8bits packet
-	asr	$ACL0, #-8
-	asl	$ACL0, #8
+	iflz // obtain sample0-sample1 from 8bits packet
+	lsr  $ACC0, #8
+	lsl  $ACC0, #8
 
-	mrr	$AXH1,$ACL0
-	mrr	$AXH0,$ACL0
+	mrr $AXH1,$ACL0
+	mrr $AXH0,$ACL0
 	jmp	out_samp
 
 stereo_8bits:	
 
 // 8 bits stereo
 
-	lrri	$ACL0, @$AR2
-	mrr	$ACM0, $ACL0
-	andi	$ACM0, #0xff00
-	mrr	$AXH1, $ACM0
-	lsl	$ACL0, #8
-	mrr	$AXH0, $ACL0
+	lrri $ACL0, @$AR2
+	mrr  $ACM0, $ACL0
+	andi $ACM0, #0xff00
+	mrr  $AXH1, $ACM0
+	lsl  $ACC0, #8
 
+	mrr  $AXH0, $ACL0
 	jmp	out_samp
 
 mono_16bits:
 
 // 16 bits mono
 
-	lrri	$AXH1, @$AR2
-        mrr	$AXH0,$AXH1
+	lrri $AXH1, @$AR2
+	mrr  $AXH0,$AXH1
 	jmp	out_samp
 
 stereo_16bits:
 
 // 16 bits stereo
 
-	lrri	$AXH1, @$AR2
-	lrri	$AXH0, @$AR2
+	lrri $AXH1, @$AR2
+	lrri $AXH0, @$AR2
+	jmp	out_samp
+
+mono_8bits_unsigned:
+
+//  8 bits mono unsigned
+	mrr  $ACM1, $IX3
+	lrri $ACL0, @$AR2
+	andf $ACM1, #0x1
+
+	iflz // obtain sample0-sample1 from 8bits packet
+	lsr  $ACL0, #8
+	lsl  $ACC0, #24
+	xori $ACM0, #0x8000 // convert unsigned->signed
+
+	mrr  $AXH1,$ACM0
+	mrr  $AXH0,$ACM0
+	jmp	out_samp
+
+mono_16bits_le:
+
+// 16 bits mono little-endian
+
+	lrri $ACM0, @$AR2
+	mrr  $ACL0, $ACM0
+	lsl  $ACC0, #8 // byteswap
+
+	mrr  $AXH1, $ACM0
+	mrr  $AXH0, $ACM0
+	jmp	out_samp
+
+stereo_8bits_unsigned:
+
+// 8 bits stereo unsigned
+
+	lrri $ACM0, @$AR2
+	xori $ACM0, #0x8080 // convert unsigned->signed
+	mrr  $ACL0, $ACM0
+	andi $ACM0, #0xff00
+	mrr  $AXH1, $ACM0
+	lsl  $ACC0, #8
+
+	mrr  $AXH0, $ACL0
+	jmp	out_samp
+
+stereo_16bits_le:
+
+// 16 bits stereo little-endian
+	lrri $ACM1, @$AR2
+	lrri $ACM0, @$AR2
+	mrr  $ACL1, $ACM1
+	mrr  $ACL0, $ACM0
+	lsl  $ACC1, #8 // byteswap
+	lsl  $ACC0, #8
+	
+	mrr  $AXH1, $ACM1
+	mrr  $AXH0, $ACM0
+	//jmp	out_samp
 
 out_samp:	
 	
@@ -858,15 +919,15 @@ out_samp:
 	//   LEFT_VOLUME
 	mrr	$AXL0,$IX0
 	mul	$AXL0,$AXH0
-	movp	$ACL0
-	asr	$ACL0,#-8
+	movp	$ACC0
+	asr	$ACC0,#8
 	mrr	$AXH0, $ACL0
 
         // RIGHT VOLUME
 	mrr	$AXL1,$IX1
 	mul	$AXL1,$AXH1
-	movp	$ACL0
-	asr	$ACL0,#-8
+	movp	$ACC0
+	asr	$ACC0,#8
 	mrr	$AXH1, $ACL0
 
 loop_end:
@@ -881,7 +942,7 @@ end_process:
         mrr	$ACL0, $IX3
 
 	tst	$ACC0
-	jnz	save_datas_end
+	jne	save_datas_end
 
 // set return as "change of buffer"
 
@@ -947,8 +1008,9 @@ change_buffer:
 	mrr	$IX2, $ACM0
 	mrr	$IX3, $ACL0
 	
+// check loop flag	
 	lr	$ACM1, @FLAGSL_SMP
-	andcf	$ACM1, #0x4
+	andcf	$ACM1, #0x100
 	retlz
         
 	sr	@ADDR2H_SMP, $ACH0
@@ -995,7 +1057,7 @@ load_smp_addr_align:
 
 	mrr	$ACL0, $IX3  // load ADDRL_SMP
 
-	lsr	$ACC0, #-5
+	lsr	$ACC0, #5
 	lsl	$ACC0, #5
 	sr	@DSMAH, $IX2
 	sr	@DSMAL, $ACL0
@@ -1017,9 +1079,9 @@ wait_dma1:
 jump_load_smp_addr:
 
 	mrr	$ACM0, $IX3  // load ADDRL_SMP
-	asr	$ACC0, #-1
+	asr	$ACC0, #1
 	andi	$ACM0, #0xf
-	jz	jump_load_smp_dma
+	jeq	jump_load_smp_dma
 	
 	addi	$ACM0, #MEM_SAMP
 	mrr	$AR2, $ACM0
