@@ -272,33 +272,20 @@ static bool __stub_found()
 	return false;
 }
 
-#define TITLE_ID(x,y)		(((u64)(x) << 32) | (y))
-
 void __reload()
 {
-	// Workaround - HBC currently doesn't support 64-byte fetch mode for the L2 cache
-	// So we will launch the title rather than using the stub
-	if(__stub_found())
-	{
-		WII_LaunchTitle(TITLE_ID(0x00010001,0xAF1BF516));
-		WII_LaunchTitle(TITLE_ID(0x00010001,0x48415858));
-		WII_LaunchTitle(TITLE_ID(0x00010001,0x4A4F4449));
+	if(__stub_found()) {
+		__exception_closeall();
+		reload();
 	}
-	//if(__stub_found())
-	//	reload();
 	SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
 }
 
 void __libogc_exit(int status)
 {
 	if(__stub_found()) {
-		// Workaround - HBC currently doesn't support 64-byte fetch mode for the L2 cache
-		// So we will launch the title rather than using the stub
-		WII_LaunchTitle(TITLE_ID(0x00010001,0xAF1BF516));
-		WII_LaunchTitle(TITLE_ID(0x00010001,0x48415858));
-		WII_LaunchTitle(TITLE_ID(0x00010001,0x4A4F4449));
-		//SYS_ResetSystem(SYS_SHUTDOWN,0,0);
-		//__lwp_thread_stopmultitasking(reload);
+		SYS_ResetSystem(SYS_SHUTDOWN,0,0);
+		__lwp_thread_stopmultitasking(reload);
 	}
 	SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
 }
@@ -513,7 +500,7 @@ static void __lowmem_init()
 	DCFlushRangeNoSync(arena_start, 0x100);
 	DCFlushRangeNoSync(_gx, 2048);
 	_sync();
-	
+
 	SYS_SetArenaLo((void*)__myArena1Lo);
 	SYS_SetArenaHi((void*)__myArena1Hi);
 #if defined(HW_RVL)
@@ -1139,7 +1126,7 @@ u32 SYS_ResetButtonDown()
 #if defined(HW_DOL)
 void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 {
-	u32 level,ret = 0;
+	u32 ret = 0;
 	syssram *sram;
 
 	__dsp_shutdown();
@@ -1157,7 +1144,7 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 		while(!__SYS_SyncSram());
 	}
 
-	_CPU_ISR_Disable(level);
+	__exception_closeall();
 	__call_resetfuncs(TRUE);
 
 	LCDisable();
@@ -1188,7 +1175,7 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 
 void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 {
-	u32 level,ret = 0;
+	u32 ret = 0;
 
 	__dsp_shutdown();
 
@@ -1229,7 +1216,7 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 
 	__IOS_ShutdownSubsystems();
 
-	_CPU_ISR_Disable(level);
+	__exception_closeall();
 	__call_resetfuncs(TRUE);
 
 	LCDisable();
