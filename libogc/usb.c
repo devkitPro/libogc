@@ -539,7 +539,7 @@ done:
 	return ret;
 }
 
-static inline s32 __usb_getdesc(s32 fd, u8 *buffer, u8 valuehi, u8 valuelo, u16 index, u8 size)
+static inline s32 __usb_getdesc(s32 fd, u8 *buffer, u8 valuehi, u8 valuelo, u16 index, u16 size)
 {
 	u8 requestType = USB_CTRLTYPE_DIR_DEVICE2HOST;
 
@@ -923,6 +923,9 @@ s32 USB_GetDescriptors(s32 fd, usb_devdesc *udd)
 		}
 
 		retval = __usb_getdesc(fd, buffer, USB_DT_CONFIG, iConf, 0, USB_DT_CONFIG_SIZE);
+		if (retval < 0)
+			goto free_and_error;
+
 		ucd = &udd->configurations[iConf];
 		memcpy(ucd, buffer, USB_DT_CONFIG_SIZE);
 		iosFree(hId, buffer);
@@ -951,6 +954,13 @@ s32 USB_GetDescriptors(s32 fd, usb_devdesc *udd)
 			goto free_and_error;
 		for(iInterface = 0; iInterface < ucd->bNumInterfaces; iInterface++)
 		{
+			retval = __find_next_endpoint(ptr, size, 0);
+			if (retval>0) {
+				// FIXME: do something with this data
+			}
+			ptr += retval;
+			size -= retval;
+
 			uid = ucd->interfaces+iInterface;
 			memcpy(uid, ptr, USB_DT_INTERFACE_SIZE);
 			ptr += uid->bLength;
@@ -983,16 +993,20 @@ s32 USB_GetDescriptors(s32 fd, usb_devdesc *udd)
 				}
 			}
 
-			if (iInterface==(ucd->bNumInterfaces-1) && size>2 && ptr[0]==USB_DT_INTERFACE_SIZE && ptr[1]==USB_DT_INTERFACE) {
-				// looks like there's interfaces with alternate settings on this device.
-				// grab them and make them look like separate interfaces
-				usb_interfacedesc *interfaces = realloc(ucd->interfaces, (iInterface+2)*sizeof(*interfaces));
-				if (interfaces == NULL)
-					goto free_and_error;
-				interfaces[iInterface+1].endpoints = NULL;
-				interfaces[iInterface+1].extra = NULL;
-				ucd->bNumInterfaces++;
-				ucd->interfaces = interfaces;
+			if (iInterface==(ucd->bNumInterfaces-1) && size>2) {
+				// we've read all the interfaces but there's data left (probably alternate setting interfaces)
+				// see if we can find another interface descriptor
+				retval = __find_next_endpoint(ptr, size, 0);
+				if (size-retval >= USB_DT_INTERFACE_SIZE && ptr[retval+1] == USB_DT_INTERFACE) {
+					// found alternates, make room and loop
+					usb_interfacedesc *interfaces = realloc(ucd->interfaces, (iInterface+2)*sizeof(*interfaces));
+					if (interfaces == NULL)
+						goto free_and_error;
+					interfaces[iInterface+1].endpoints = NULL;
+					interfaces[iInterface+1].extra = NULL;
+					ucd->bNumInterfaces++;
+					ucd->interfaces = interfaces;
+				}
 			}
 		}
 		iosFree(hId, buffer);
