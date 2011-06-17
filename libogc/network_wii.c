@@ -758,9 +758,9 @@ s32 net_socket(u32 domain, u32 type, u32 protocol)
 	params[2] = protocol;
 
 	ret = _net_convert_error(IOS_Ioctl(net_ip_top_fd, IOCTL_SO_SOCKET, params, 12, NULL, 0));
-	if(ret>=0) // set tcp window size to 24kb
+	if(ret>=0) // set tcp window size to 32kb
 	{
-		int window_size = 24576;
+		int window_size = 32768;
 		net_setsockopt(ret, SOL_SOCKET, SO_RCVBUF, (char *) &window_size, sizeof(window_size));
 	}
 	debug_printf("net_socket(%d, %d, %d)=%d\n", domain, type, protocol, ret);
