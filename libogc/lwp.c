@@ -406,11 +406,10 @@ void LWP_ThreadBroadcast(lwpq_t thequeue)
 void LWP_ThreadSignal(lwpq_t thequeue)
 {
 	tqueue_st *tq;
-	lwp_cntrl *thethread;
 
 	tq = __lwp_tqueue_open(thequeue);
 	if(!tq) return;
 
-	thethread = __lwp_threadqueue_dequeue(&tq->tqueue);
+	__lwp_threadqueue_dequeue(&tq->tqueue);
 	__lwp_thread_dispatchenable();
 }

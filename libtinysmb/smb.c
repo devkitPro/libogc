@@ -852,7 +852,6 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 	s32 pos;
 	s32 bcnt,i,j;
 	s32 ret,len;
-	u16 bytecount;
 	u32 serverMaxBuffer;
 	SMBSESSION *sess;
 
@@ -955,7 +954,7 @@ static s32 SMB_NegotiateProtocol(const char *dialects[],int dialectc,SMBHANDLE *
 		}
 
 		pos++;
-		bytecount = getUShort(ptr,pos);
+		getUShort(ptr,pos); // byte count
 
 		if (sess->challengeUsed)
 		{
@@ -1759,7 +1758,7 @@ failed:
 s32 SMB_DiskInformation(struct statvfs *buf, SMBCONN smbhndl)
 {
 	s32 pos;
-	s32 bpos,ret;
+	s32 ret;
 	u16 TotalUnits, BlocksPerUnit, BlockSize, FreeUnits;
 	u8 *ptr;
 	SMBHANDLE *handle;
@@ -1777,7 +1776,6 @@ s32 SMB_DiskInformation(struct statvfs *buf, SMBCONN smbhndl)
 	pos++;			       /*** Word Count ***/
 	setUShort(ptr, pos, 0);
 	pos += 2;              /*** Byte Count ***/
-	bpos = pos;
 
 	handle->message.msg = NBT_SESSISON_MSG;
 	handle->message.length = htons(pos);
@@ -2303,12 +2301,10 @@ s32 SMB_FindClose(SMBDIRENTRY *sdir,SMBCONN smbhndl)
 	s32 pos;
 	s32 ret;
 	SMBHANDLE *handle;
-	SMBSESSION *sess;
 
 	handle = __smb_handle_open(smbhndl);
 	if(!handle) return SMB_ERROR;
 
-	sess = &handle->session;
 	if(sdir->sid==0) return SMB_ERROR;
 
 	MakeSMBHeader(SMB_FIND_CLOSE2,CIFS_FLAGS1,handle->unicode?CIFS_FLAGS2_UNICODE:CIFS_FLAGS2,handle);

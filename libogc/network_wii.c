@@ -650,12 +650,12 @@ void net_deinit() {
 }
 
 void net_wc24cleanup() {
-    s32 kd_fd, ret;
+    s32 kd_fd;
     STACK_ALIGN(u8, kd_buf, 0x20, 32);
 
     kd_fd = IOS_Open(__kd_fs, 0);
     if (kd_fd >= 0) {
-        ret = IOS_Ioctl(kd_fd, 7, NULL, 0, kd_buf, 0x20);
+        IOS_Ioctl(kd_fd, 7, NULL, 0, kd_buf, 0x20);
         IOS_Close(kd_fd);
     }
 }

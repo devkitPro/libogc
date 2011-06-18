@@ -65,10 +65,8 @@ u16_t uip_chksum_pseudo(struct uip_pbuf *p,struct uip_ip_addr *src,struct uip_ip
 {
 	u32_t acc,len,rem;
 	struct uip_pbuf *q;
-	u8_t swapped;
 
 	acc = 0;
-	swapped = 0;
 
 	rem = proto_len;
 	for(q=p;q!=NULL && rem>0;q=q->next) {
@@ -99,10 +97,8 @@ u16_t uip_ipchksum_pbuf(struct uip_pbuf *p)
 {
   u32_t acc;
   struct uip_pbuf *q;
-  u8_t swapped;
 
   acc = 0;
-  swapped = 0;
   for(q = p; q != NULL; q = q->next) {
 	acc += uip_chksum(q->payload,q->len);
   }

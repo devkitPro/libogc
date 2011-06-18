@@ -407,8 +407,6 @@ static void __POWDefaultHandler()
 static void __RSWHandler()
 {
 	s64 now;
-	static u32 down = 0;
-	static u32 last_state = 0;
 	static s64 hold_down = 0;
 
 	hold_down = gettime();
@@ -418,10 +416,7 @@ static void __RSWHandler()
 	} while(!(_piReg[0]&0x10000));
 
 	if(_piReg[0]&0x10000) {
-		down = 0;
-		last_state = 1;
 		__MaskIrq(IRQMASK(IRQ_PI_RSW));
-
 
 		if(__RSWCallback) {
 			__RSWCallback();
@@ -974,10 +969,9 @@ s64 __SYS_GetSystemTime()
 
 void __SYS_SetBootTime()
 {
-	syssram *sram;
 	u32 gctime;
 
-	sram = __SYS_LockSram();
+	__SYS_LockSram();
 	__SYS_GetRTC(&gctime);
 	__SYS_SetTime(secs_to_ticks(gctime));
 	__SYS_UnlockSram(0);

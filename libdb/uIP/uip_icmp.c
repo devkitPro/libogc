@@ -22,7 +22,7 @@ struct uip_stats uip_stat;
 
 void uip_icmpinput(struct uip_pbuf *p,struct uip_netif *inp)
 {
-	u8_t code,type;
+	u8_t type;
 	u16_t hlen;
 	struct uip_ip_addr tmpaddr;
 	struct uip_ip_hdr *iphdr;
@@ -37,7 +37,7 @@ void uip_icmpinput(struct uip_pbuf *p,struct uip_netif *inp)
 	}
 
 	type = *((u8_t*)p->payload);
-	code = *((u8_t*)p->payload+1);
+	//code = *((u8_t*)p->payload+1);
 	switch(type) {
 		case UIP_ICMP_ECHO:
 			if(ip_addr_isbroadcast(&iphdr->dst,inp) || ip_addr_ismulticast(&iphdr->dst)) {

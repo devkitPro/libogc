@@ -241,13 +241,12 @@ static void __time_exi_wait()
 
 static u32 __getRTC(u32 *gctime)
 {
-	u32 cnt,ret;
-	u32 time1,time2;
+	u32 cnt,time1,time2;
 
 	__time_exi_wait();
 
 	cnt = 0;
-	ret = 0;
+
 	while(cnt<16) {
 		if(__getrtc(&time1)==0
 			|| __getrtc(&time2)==0) {

@@ -100,16 +100,16 @@ static void event_status(struct wiimote_t *wm,ubyte *msg)
 	int ir = 0;
 	int attachment = 0;
 	int speaker = 0;
-	int led[4]= {0};
+	//int led[4]= {0};
 	struct cmd_blk_t *cmd = wm->cmd_head;
 
 	wiiuse_pressed_buttons(wm,msg);
 
 	wm->event = WIIUSE_STATUS;
-	if(msg[2]&WM_CTRL_STATUS_BYTE1_LED_1) led[0] = 1;
-	if(msg[2]&WM_CTRL_STATUS_BYTE1_LED_2) led[1] = 1;
-	if(msg[2]&WM_CTRL_STATUS_BYTE1_LED_3) led[2] = 1;
-	if(msg[2]&WM_CTRL_STATUS_BYTE1_LED_4) led[3] = 1;
+	//if(msg[2]&WM_CTRL_STATUS_BYTE1_LED_1) led[0] = 1;
+	//if(msg[2]&WM_CTRL_STATUS_BYTE1_LED_2) led[1] = 1;
+	//if(msg[2]&WM_CTRL_STATUS_BYTE1_LED_3) led[2] = 1;
+	//if(msg[2]&WM_CTRL_STATUS_BYTE1_LED_4) led[3] = 1;
 
 	if((msg[2]&WM_CTRL_STATUS_BYTE1_ATTACHMENT)==WM_CTRL_STATUS_BYTE1_ATTACHMENT) attachment = 1;
 	if((msg[2]&WM_CTRL_STATUS_BYTE1_SPEAKER_ENABLED)==WM_CTRL_STATUS_BYTE1_SPEAKER_ENABLED) speaker = 1;

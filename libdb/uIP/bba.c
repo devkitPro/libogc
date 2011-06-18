@@ -665,7 +665,6 @@ static u32 bba_calc_response(struct uip_netif *dev,u32 val)
 static void bba_devpoll(u16 *pstatus)
 {
 	u8 status;
-	u32 ret;
 	s64 now;
 
 	UIP_LOG("bba_devpoll()\n");
@@ -676,7 +675,6 @@ static void bba_devpoll(u16 *pstatus)
 		bba_arp_tmr = gettime();
 	}
 
-	ret = 0;
 	status = 0;
 	*pstatus = 0;
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_2,NULL)==1) {

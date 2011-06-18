@@ -62,7 +62,6 @@ static void __ARQMPollCallback(ARQRequest *req)
 {
 	u32 i;
 	ARQM_Info *ptr = NULL;
-	ARQMCallback tccb;
 
 	for(i=0;i<ARQM_STACKENTRIES;i++) {
 		ptr = &__ARQMInfo[i];
@@ -70,7 +69,6 @@ static void __ARQMPollCallback(ARQRequest *req)
 	}
 	if(i>=ARQM_STACKENTRIES) return;
 
-	tccb = ptr->callback;
 	ptr->callback = NULL;
 	ptr->polled = TRUE;
 }

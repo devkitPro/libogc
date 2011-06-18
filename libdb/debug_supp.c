@@ -235,7 +235,6 @@ s32 gdbstub_idtoindex(s32 objid)
 
 lwp_cntrl* gdbstub_indextoid(s32 thread)
 {
-	s32 objid;
 	s32 min_id,max_id,first_id;
 	lwp_cntrl *th;
 
@@ -244,7 +243,6 @@ lwp_cntrl* gdbstub_indextoid(s32 thread)
 	if(thread==1) return _thr_idle;
 
 	first_id = 1;
-	objid = _thr_executing->object.id;
 	min_id = _lwp_thr_objects.min_id;
 	max_id = _lwp_thr_objects.max_id;
 	if(thread<(first_id + (max_id - min_id))) {

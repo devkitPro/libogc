@@ -309,7 +309,6 @@ void physbusif_reset_all()
 
 void physbusif_output(struct pbuf *p,u16_t len)
 {
-	s32 ret;
 	u32 pos;
 	u8 *ptr;
 	struct pbuf *q;
@@ -335,9 +334,9 @@ void physbusif_output(struct pbuf *p,u16_t len)
 		}
 
 		if(((u8*)p->payload)[0]==HCI_COMMAND_DATA_PACKET) {
-			ret = USB_WriteCtrlMsgAsync(__usbdev.fd,0x20,0,0,0,blkbuf->txsize,blkbuf->rpData,__writectrlmsgCB,blkbuf);
+			USB_WriteCtrlMsgAsync(__usbdev.fd,0x20,0,0,0,blkbuf->txsize,blkbuf->rpData,__writectrlmsgCB,blkbuf);
 		} else if(((u8*)p->payload)[0]==HCI_ACL_DATA_PACKET) {
-			ret = USB_WriteBlkMsgAsync(__usbdev.fd,__usbdev.acl_out,blkbuf->txsize,blkbuf->rpData,__writebulkmsgCB,blkbuf);
+			USB_WriteBlkMsgAsync(__usbdev.fd,__usbdev.acl_out,blkbuf->txsize,blkbuf->rpData,__writebulkmsgCB,blkbuf);
 		}
 	}
 }

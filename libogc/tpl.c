@@ -146,8 +146,7 @@ error_open:
 
 s32 TPL_OpenTPLFromMemory(TPLFile* tdf, void *memory,u32 len)
 {
-	u32 c;
-	u32 version,pos;
+	u32 c,pos;
 	const char *p = memory;
 	TPLDescHeader *deschead = NULL;
 	TPLImgHeader *imghead = NULL;
@@ -158,7 +157,7 @@ s32 TPL_OpenTPLFromMemory(TPLFile* tdf, void *memory,u32 len)
 	tdf->type = TPL_FILE_TYPE_MEM;
 	tdf->tpl_file = (FHANDLE)NULL;
 
-	version = *(u32*)(p + TPL_HDR_VERSION_FIELD);
+	//version = *(u32*)(p + TPL_HDR_VERSION_FIELD);
 	tdf->ntextures = *(u32*)(p + TPL_HDR_NTEXTURE_FIELD);
 
 	deschead = (TPLDescHeader*)(p + TPL_HDR_DESCR_FIELD);
