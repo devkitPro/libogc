@@ -38,6 +38,8 @@ distribution.
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
 extern void __LCEnable();
+extern void L2GlobalInvalidate();
+extern void L2Enable();
 
 void LCEnable()
 {
@@ -138,4 +140,40 @@ void LCAllocNoInvalidate(void *addr,u32 bytes)
 		_CPU_ISR_Restore(level);
 	}
 	LCAllocTags(FALSE,addr,cnt);
+}
+
+void L2Enhance()
+{
+	u32 level, hid4;
+	u32 *stub = (u32*)0x80001800;
+	_CPU_ISR_Disable(level);
+	hid4 = mfspr(HID4);
+	// make sure H4A is set before doing anything
+	if (hid4 & 0x80000000) {
+		// There's no easy way to flush only L2, so just flush everything
+		// L2GlobalInvalidate will take care of syncing
+		DCFlushRangeNoSync((void*)0x80000000, 0x01800000);
+#ifdef HW_RVL
+		DCFlushRangeNoSync((void*)0x90000000, 0x04000000);
+#endif
+		// Invalidate L2 (this will disable it first)
+		L2GlobalInvalidate();
+		// set bits: L2FM=01, BCO=1, L2MUM=1
+		hid4 |= 0x24200000;
+		mtspr(HID4, hid4);
+		// Re-enable L2
+		L2Enable();
+
+		// look for HBC stub (STUBHAXX)
+		if (stub[1]==0x53545542 && stub[2]==0x48415858) {
+			// look for a HID4 write
+			for (stub += 3; (u32)stub < 0x80003000; stub++) {
+				if ((stub[0] & 0xFC1FFFFF)==0x7C13FBA6) {
+					write32((u32)stub, 0x60000000);
+					break;
+				}
+			}
+		}
+	}
+	_CPU_ISR_Restore(level);
 }

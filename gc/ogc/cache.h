@@ -33,10 +33,10 @@ distribution.
 #ifndef __CACHE_H__
 #define __CACHE_H__
 
-/*! \file cache.h 
+/*! \file cache.h
 \brief Cache subsystem
 
-*/ 
+*/
 
 #include <gctypes.h>
 
@@ -48,7 +48,7 @@ distribution.
 #endif /* __cplusplus */
 
 
-/*! 
+/*!
  * \fn void DCEnable()
  * \brief Enable L1 d-cache
  *
@@ -88,9 +88,9 @@ void DCFreeze();
  * \return none
  */
 void DCUnfreeze();
-  
- 
-/*! 
+
+
+/*!
  * \fn void DCFlashInvalidate()
  * \brief Invalidate L1 d-cache.
  *
@@ -102,7 +102,7 @@ void DCUnfreeze();
 void DCFlashInvalidate();
 
 
-/*! 
+/*!
  * \fn void DCInvalidateRange(void *startaddress,u32 len)
  * \brief Invalidates a given range of the d-cache.
  *
@@ -116,7 +116,7 @@ void DCFlashInvalidate();
 void DCInvalidateRange(void *startaddress,u32 len);
 
 
-/*! 
+/*!
  * \fn void DCFlushRange(void *startaddress,u32 len)
  * \brief Flushes a given range.
  *
@@ -130,7 +130,7 @@ void DCInvalidateRange(void *startaddress,u32 len);
  */
 void DCFlushRange(void *startaddress,u32 len);
 
-/*! 
+/*!
  * \fn void DCStoreRange(void *startaddress,u32 len)
  * \brief Ensures a range of memory is updated with any modified data in the cache.
  *
@@ -144,9 +144,9 @@ void DCFlushRange(void *startaddress,u32 len);
 void DCStoreRange(void *startaddress,u32 len);
 
 
-/*! 
+/*!
  * \fn void DCFlushRangeNoSync(void *startaddress,u32 len)
- * \brief Flushes a given range. 
+ * \brief Flushes a given range.
  *
  *        If any part of the range hits in the d-cache the corresponding block will be flushed to main memory and invalidated.<br>
  *        <b><i>NOTE:</i></b> This routine does not perform a "sync" to ensure that the range has been flushed to memory.  That is, the cache blocks are sent to the bus interface unit for storage to main memory, but by the time this function returns, you are not guaranteed that the blocks have been written to memory.
@@ -159,7 +159,7 @@ void DCStoreRange(void *startaddress,u32 len);
 void DCFlushRangeNoSync(void *startaddress,u32 len);
 
 
-/*! 
+/*!
  * \fn void DCStoreRangeNoSync(void *startaddress,u32 len)
  * \brief Ensures a range of memory is updated with any modified data in the cache.
  *
@@ -173,7 +173,7 @@ void DCFlushRangeNoSync(void *startaddress,u32 len);
 void DCStoreRangeNoSync(void *startaddress,u32 len);
 
 
-/*! 
+/*!
  * \fn void DCZeroRange(void *startaddress,u32 len)
  * \brief Loads a range of memory into cache and zeroes all the cache lines.
  *
@@ -185,7 +185,7 @@ void DCStoreRangeNoSync(void *startaddress,u32 len);
 void DCZeroRange(void *startaddress,u32 len);
 
 
-/*! 
+/*!
  * \fn void DCTouchRange(void *startaddress,u32 len)
  * \brief Loads a range of memory into cache.
  *
@@ -197,9 +197,9 @@ void DCZeroRange(void *startaddress,u32 len);
 void DCTouchRange(void *startaddress,u32 len);
 
 
-/*! 
+/*!
  * \fn void ICSync()
- * \brief Performs an instruction cache synchronization. 
+ * \brief Performs an instruction cache synchronization.
  *
  *        This ensures that all instructions preceding this instruction have completed before this instruction completes.
  *
@@ -208,7 +208,7 @@ void DCTouchRange(void *startaddress,u32 len);
 void ICSync();
 
 
-/*! 
+/*!
  * \fn void ICFlashInvalidate()
  * \brief Invalidate the L1 i-cache.
  *
@@ -220,7 +220,7 @@ void ICSync();
 void ICFlashInvalidate();
 
 
-/*! 
+/*!
  * \fn void ICEnable()
  * \brief Enable L1 i-cache
  *
@@ -229,7 +229,7 @@ void ICFlashInvalidate();
 void ICEnable();
 
 
-/*! 
+/*!
  * \fn void ICDisable()
  * \brief Disable L1 i-cache
  *
@@ -238,7 +238,7 @@ void ICEnable();
 void ICDisable();
 
 
-/*! 
+/*!
  * \fn void ICFreeze()
  * \brief Current contents of the L1 i-cache are locked down and will not be cast out.
  *
@@ -250,7 +250,7 @@ void ICDisable();
 void ICFreeze();
 
 
-/*! 
+/*!
  * \fn void ICUnfreeze()
  * \brief Undoes actions of ICFreeze().
  *
@@ -262,9 +262,9 @@ void ICFreeze();
 void ICUnfreeze();
 
 
-/*! 
+/*!
  * \fn void ICBlockInvalidate(void *startaddress)
- * \brief Invalidates a block in the i-cache. 
+ * \brief Invalidates a block in the i-cache.
  *
  *        If the block hits in the i-cache, the corresponding block will be invalidated.
  *
@@ -275,9 +275,9 @@ void ICUnfreeze();
 void ICBlockInvalidate(void *startaddress);
 
 
-/*! 
+/*!
  * \fn void ICInvalidateRange(void *startaddress,u32 len)
- * \brief Invalidate a range in the L1 i-cache. 
+ * \brief Invalidate a range in the L1 i-cache.
  *
  *        If any part of the range hits in the i-cache, the corresponding block will be invalidated.
  *
@@ -287,6 +287,20 @@ void ICBlockInvalidate(void *startaddress);
  * \return none
  */
 void ICInvalidateRange(void *startaddress,u32 len);
+
+/*!
+ * \fn void L2Enhance()
+ * \brief Turn on extra L2 cache features
+ *
+ *        Sets the following bits in the HID4 register which affect the L2 cache:
+ *          - L2FM=01 (64-byte fetch mode)
+ *          - BCO=1 (dual 64-byte castout buffers)
+ *          - L2MUM=1 (configured as 2-deep miss-under-miss cache)
+ *        Since these features can't be enabled safely, any HID4 writes in the HBC stub will be removed.
+ *
+ * \return none
+ */
+void L2Enhance();
 
 void LCEnable();
 void LCDisable();
