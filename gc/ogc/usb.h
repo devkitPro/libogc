@@ -26,9 +26,18 @@
 #define USB_DT_STRING					0x03
 #define USB_DT_INTERFACE				0x04
 #define USB_DT_ENDPOINT					0x05
+#define USB_DT_DEVICE_QUALIFIER         0x06
+#define USB_DT_OTHER_SPEED_CONFIG       0x07
+#define USB_DT_INTERFACE_POWER          0x08
+#define USB_DT_OTG                      0x09
+#define USB_DT_DEBUG                    0x10
+#define USB_DT_INTERFACE_ASSOCIATION    0x11
 #define USB_DT_HID						0x21
 #define USB_DT_REPORT					0x22
 #define USB_DT_PHYSICAL					0x23
+#define USB_DT_CLASS_SPECIFIC_INTERFACE 0x24
+#define USB_DT_CLASS_SPECIFIC_ENDPOINT  0x25
+#define USB_DT_HUB                      0x29
 
 /* Standard requests */
 #define USB_REQ_GETSTATUS				0x00
@@ -39,9 +48,9 @@
 #define USB_REQ_SETDESCRIPTOR			0x07
 #define USB_REQ_GETCONFIG				0x08
 #define USB_REQ_SETCONFIG				0x09
-#define USB_REQ_GETINTERFACE			0x0a
-#define USB_REQ_SETINTERFACE			0x0b
-#define USB_REQ_SYNCFRAME				0x0c
+#define USB_REQ_GETINTERFACE			0x0A
+#define USB_REQ_SETINTERFACE			0x0B
+#define USB_REQ_SYNCFRAME				0x0C
 
 #define USB_REQ_GETREPORT				0x01
 #define USB_REQ_GETIDLE					0x02
@@ -111,7 +120,7 @@ typedef struct _usbinterfacedesc
 	u8 bInterfaceProtocol;
 	u8 iInterface;
 	u8 *extra;
-	u8 extra_size;
+	u16 extra_size;
 	struct _usbendpointdesc *endpoints;
 } ATTRIBUTE_PACKED usb_interfacedesc;
 
