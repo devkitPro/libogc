@@ -993,7 +993,7 @@
 #define GX_SP_RING2						6
 /*! @} */
 
-/*! \addtogroup texfilter Texture filter type
+/*! \addtogroup texfilter Texture filter types
  * @{
  */
 #define GX_NEAR							0			/*!< Point sampling, no mipmap */
@@ -1186,7 +1186,7 @@ typedef struct _gx_color {
 	u8 a;			/*!< Alpha component. If a function does not use the alpha value, it is safely ignored. */
 } GXColor;
 
-/*! \typedef struct gx_colors10 GXColorS10
+/*! \typedef struct _gx_colors10 GXColorS10
  * \brief Structure used to pass signed 10-bit colors to some GX functions.
  */
 typedef struct _gx_colors10 {
@@ -1523,6 +1523,18 @@ void GX_GetGPFifo(GXFifoObj *fifo);
  * \return pointer to the base address of the FIFO in main memory.
  */
 void* GX_GetFifoBase(GXFifoObj *fifo);
+
+/*!
+ * \fn u32 GX_GetFifoCount(GXFifoObj *fifo)
+ * \brief Returns number of cache lines in the FIFO.
+ *
+ * \note The count is incorrect if an overflow has occurred (i.e. you have written more data than the size of the fifo), as the
+ * hardware cannot detect an overflow in general.
+ *
+ * \param[in] fifo the FIFO to get the count from
+ *
+ * \return number of cache lines in the FIFO
+ */
 u32 GX_GetFifoCount(GXFifoObj *fifo);
 
 /*!
@@ -1534,6 +1546,21 @@ u32 GX_GetFifoCount(GXFifoObj *fifo);
  * \return size of the FIFO, in bytes
  */
 u32 GX_GetFifoSize(GXFifoObj *fifo);
+
+/*!
+ * \fn u8 GX_GetFifoWrap(GXFifoObj *fifo)
+ * \brief Returns a non-zero value if the write pointer has passed the TOP of the FIFO.
+ *
+ * \details Returns true only if the FIFO is attached to the CPU and the FIFO write pointer has passed the top of the FIFO. Use the
+ * return value to detect whether or not an overflow has occured by initializing the FIFO's write pointer to the base of the FIFO
+ * before sending any commands to the FIFO.
+ *
+ * \note If the FIFO write pointer is not explicitly set to the base of the FIFO, you cannot rely on this function to detect overflows.
+ *
+ * \param[in] fifo the object to get the wrap status from
+ *
+ * \return wrap value
+ */
 u8 GX_GetFifoWrap(GXFifoObj *fifo);
 
 /*!
@@ -1781,7 +1808,7 @@ void GX_LoadProjectionMtx(Mtx44 mt,u8 type);
  * \param[in] wd width of the viewport
  * \param[in] ht height of the viewport
  * \param[in] nearZ value to use for near depth scale
- * \param[in] farz value to use for far depth scale
+ * \param[in] farZ value to use for far depth scale
  *
  * \return none
  */
@@ -1802,7 +1829,7 @@ void GX_SetViewport(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ);
  * \param[in] wd width of the viewport
  * \param[in] ht height of the viewport
  * \param[in] nearZ value to use for near depth scale
- * \param[in] farz value to use for far depth scale
+ * \param[in] farZ value to use for far depth scale
  * \param[in] field whether the next field is even (0) or odd (1)
  *
  * \return none
@@ -1927,7 +1954,7 @@ void GX_SetArray(u32 attr,void *ptr,u8 stride);
 void GX_SetVtxAttrFmt(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac);
 
 /*!
- * \fn void GX_SetVtxAttrFmtv(u8 vtxfmt,GXVtxAttr *attr_list)
+ * \fn void GX_SetVtxAttrFmtv(u8 vtxfmt,GXVtxAttrFmt *attr_list)
  * \brief Sets multiple attribute formats within a single vertex format.
  *
  * \details This is useful when you need to set all the attributes in a vertex format at once (e.g., during graphics initialization).
@@ -1964,7 +1991,7 @@ void GX_SetVtxDesc(u8 attr,u8 type);
  *
  * \note The constant <tt>GX_MAX_VTXATTRFMT_LISTSIZE</tt> can be used to allocate memory for \a attr_list
  *
- * \param[in] attr_list array of pointers to GXVtxAttrFmt structs; last element of the array should be <tt>GX_VA_NULL</tt>
+ * \param[in] attr_list array of pointers to GXVtxDesc structs; last element of the array should be <tt>GX_VA_NULL</tt>
  *
  * \return none
  */
@@ -2468,7 +2495,7 @@ void GX_LoadTexMtxImm(Mtx mt,u32 texidx,u8 type);
  * GX_SetTexCoordGen2() for information about how to use post-transform texture matrices.
  *
  * \param[in] mtxidx index to the matrix array to load
- * \param[in] texid \ref texmtx
+ * \param[in] texidx \ref texmtx
  * \param[in] type \ref mtxtype
  *
  * \return none
@@ -2523,7 +2550,7 @@ void GX_SetTevOp(u8 tevstage,u8 mode);
 void GX_SetTevColor(u8 tev_regid,GXColor color);
 
 /*!
- * \fn void GX_SetTevColorS10(u8 tev_regid,GXColor color)
+ * \fn void GX_SetTevColorS10(u8 tev_regid,GXColorS10 color)
  * \brief Used to set one of the constant color registers in the TEV unit.
  *
  * \details These registers are available to all TEV stages. At least one of these registers is used to pass the output of one TEV stage to the
@@ -3165,7 +3192,7 @@ void GX_SetTevSwapModeTable(u8 swapid,u8 r,u8 g,u8 b,u8 a);
 void GX_SetTevIndirect(u8 tevstage,u8 indtexid,u8 format,u8 bias,u8 mtxid,u8 wrap_s,u8 wrap_t,u8 addprev,u8 utclod,u8 a);
 
 /*!
- * \fn void SX_SetTevDirect(u8 tevstage)
+ * \fn void GX_SetTevDirect(u8 tevstage)
  * \brief Used to turn off all indirect texture processing for the specified regular TEV stage.
  *
  * \param[in] tevstage the \ref tevstage to change
@@ -3190,7 +3217,7 @@ void GX_SetNumIndStages(u8 nstages);
  * \fn void GX_SetIndTexOrder(u8 indtexstage,u8 texcoord,u8 texmap)
  * \brief Used to specify the \a texcoord and \a texmap to used with a given indirect lookup.
  *
- * \param[in] \ref indtexstage being affected
+ * \param[in] indtexstage \ref indtexstage being affected
  * \param[in] texcoord \ref texcoordid to be used for this stage
  * \param[in] texmap \ref texmapid to be used for this stage
  *
@@ -3213,7 +3240,7 @@ void GX_SetIndTexOrder(u8 indtexstage,u8 texcoord,u8 texmap);
 void GX_SetIndTexCoordScale(u8 indtexid,u8 scale_s,u8 scale_t);
 
 /*!
- * \fn void GX_SetFog(u8 type,f32 starz,f32 endz,f32 nearz,f32 farz,GXColor col)
+ * \fn void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col)
  * \brief Enables fog.
  *
  * \details Using \a type, the programmer may select one of several functions to control the fog density as a function of range to a quad (2x2 pixels).
@@ -3246,6 +3273,8 @@ void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col);
  *
  * \note GX_Init() disables range adjustment.
  *
+ * \sa GX_InitFogAdjTable()
+ *
  * \param[in] enable enables adjustment when <tt>GX_ENABLE</tt> is passed; disabled with <tt>GX_DISABLE</tt>
  * \param[in] center centers the range adjust function; normally corresponds with the center of the viewport
  * \param[in] table range adjustment parameter table
@@ -3254,8 +3283,31 @@ void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col);
  */
 void GX_SetFogRangeAdj(u8 enable,u16 center,GXFogAdjTbl *table);
 
+/*!
+ * \fn GX_SetFogColor(GXColor color)
+ * \brief Sets the fog color.
+ *
+ * \details \a color is the color that a pixel will be if fully fogged. Alpha channel is ignored.
+ *
+ * \param[in] color color to set fog to
+ */
 void GX_SetFogColor(GXColor color);
 
+/*!
+ * \fn void GX_InitFogAdjTable(GXFogAdjTbl *table,u16 width,f32 projmtx[4][4])
+ * \brief Generates the standard range adjustment table and puts the results into \a table.
+ *
+ * \details This table can be used by GX_SetFogRangeAdj() to adjust the eye-space Z used for fog based upon the X position of the pixels being rendered.
+ * The Y direction is not compensated. This effectively increases the fog density at the edges of the screen, making for a more realistic fog effect. The
+ * width of the viewport is specified using \a width. The \a projmtx parameter is the projection matrix that is used to render into the viewport. It must
+ * be specified so that the function can compute the X extent of the viewing frustum in eye space.
+ *
+ * \note You must allocate \a table yourself.
+ *
+ * \param[in] table range adjustment parameter table
+ * \param[in] width width of the viewport
+ * \param[in] projmtx projection matrix used to render into the viewport
+ */
 void GX_InitFogAdjTable(GXFogAdjTbl *table,u16 width,f32 projmtx[4][4]);
 
 /*!
@@ -3336,7 +3388,7 @@ void GX_SetTevIndBumpXYZ(u8 tevstage,u8 indstage,u8 mtx_sel);
  * \param[in] indtexfmt \ref indtexformat to use
  * \param[in] indtexmtx \ref indtexmtx to multiply the offsets with
  * \param[in] bias_sel \ref indtexbias to indicate tile stacking direction for pseudo-3D textures
- * \param[in] alpha_sel \ref which indtexalphasel will supply the indirect "bump" alpha, if any (for pseudo-3D textures).
+ * \param[in] alpha_sel which \ref indtexalphasel will supply the indirect "bump" alpha, if any (for pseudo-3D textures).
  *
  * \return none
  */
@@ -3353,6 +3405,7 @@ void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 
  * \return none
  */
 void GX_SetTevIndRepeat(u8 tevstage);
+
 /*!
  * \fn void GX_SetColorUpdate(u8 enable)
  * \brief Enables or disables color-buffer updates when rendering into the Embedded Frame Buffer (EFB).
@@ -3741,7 +3794,7 @@ void GX_PokeColorUpdate(u8 update_enable);
  *
  * \note A 4x4 Bayer matrix is used for dithering.
  *
- * \param[in] if set to <tt>GX_TRUE</tt> and pixel format is one of the above, dithering is enabled; otherwise disabled
+ * \param[in] dither if set to <tt>GX_TRUE</tt> and pixel format is one of the above, dithering is enabled; otherwise disabled
  *
  * \return none
  */
@@ -3751,7 +3804,7 @@ void GX_PokeDither(u8 dither);
  * \fn void GX_PokeBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op)
  * \brief Determines how the source image, is blended with the current Embedded Frame Buffer (EFB).
  *
- * \defails When type is set to <tt>GX_BM_NONE</tt>, no color data is written to the EFB. When type is set to <tt>GX_BM_BLEND</tt>, the source and EFB pixels
+ * \details When type is set to <tt>GX_BM_NONE</tt>, no color data is written to the EFB. When type is set to <tt>GX_BM_BLEND</tt>, the source and EFB pixels
  * are blended using the following equation:<br><br>
  *
  * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>dst_pix_clr</i> = <i>src_pix_clr</i> * \a src_fact + <i>dst_pix_clr</i> * \a dst_fact<br><br>
@@ -3919,7 +3972,16 @@ u32 GX_GetTexObjFmt(GXTexObj *obj);
  */
 u32 GX_GetTexObjMipMap(GXTexObj *obj);
 
-
+/*!
+ * \fn void* GX_GetTexObjUserData(GXTexObj *obj)
+ * \brief Used to get a pointer to user data from the \ref GXTexObj structure.
+ *
+ * \details You can use this function to retrieve private data structures from the texture object. This pointer is set using GX_InitTexObjUserData().
+ *
+ * \param[in] obj ptr to object to read data from
+ *
+ * \return Pointer to user data.
+ */
 void* GX_GetTexObjUserData(GXTexObj *obj);
 
 /*!
@@ -3936,6 +3998,7 @@ void* GX_GetTexObjUserData(GXTexObj *obj);
  * \param[in] ht height of the texture in texels
  * \param[in] fmt format of the texture; use GX_TexFmt() or GX_CITexFmt() to get it
  * \param[in] mipmap flag indicating whether or not the texture is a mipmap
+ * \param[in] maxlod if \a mipmap is \a GX_TRUE, texture size will include mipmap pyramid up to this value
  *
  * \return number of bytes needed for the texture, including tile padding
  */
@@ -4019,7 +4082,7 @@ void GX_InitTexCacheRegion(GXTexRegion *region,u8 is32bmipmap,u32 tmem_even,u8 s
  * \param[in] tmem_even base ptr in TMEM for even LODs; must be 32B aligned
  * \param[in] size_even size of the even cache, in bytes; should be multiple of 32B
  * \param[in] tmem_odd base ptr in TMEM for odd LODs; must be 32B aligned
- * \param[in] size_off size of the odd cache, in bytes; should be multiple of 32B
+ * \param[in] size_odd size of the odd cache, in bytes; should be multiple of 32B
  *
  * \return none
  */
@@ -4120,14 +4183,105 @@ void GX_InitTexObjData(GXTexObj *obj,void *img_ptr);
  * \return none
  */
 void GX_InitTexObjWrapMode(GXTexObj *obj,u8 wrap_s,u8 wrap_t);
+
+/*!
+ * \fn void GX_InitTexObjFilterMode(GXTexObj *obj,u8 minfilt,u8 magfilt)
+ * \brief Sets the filter mode for a texture.
+ *
+ * \details When the ratio of texels for this texture to pixels is not 1:1, the filter type for \a minfilt or \a magfilt is used.
+ *
+ * \param[in] obj texture object to set the filters for
+ * \param[in] minfilt filter mode to use when the texel/pixel ratio is >= 1.0; needs to be one of \ref texfilter.
+ * \param[in] magfilt filter mode to use when the texel/pixel ratio is < 1.0; needs to be \a GX_NEAR or \a GX_LINEAR
+ */
 void GX_InitTexObjFilterMode(GXTexObj *obj,u8 minfilt,u8 magfilt);
+
+/*!
+ * \fn void GX_InitTexObjMinLOD(GXTexObj *obj,f32 minlod)
+ * \brief Sets the minimum LOD for a given texture.
+ *
+ * \param[in] obj texture to set the minimum LOD for
+ * \param[in] minlod minimum LOD value; the hardware will use MAX(min_lod, lod); range is 0.0 to 10.0.
+ */
 void GX_InitTexObjMinLOD(GXTexObj *obj,f32 minlod);
+
+/*!
+ * void GX_InitTexObjMaxLOD(GXTexObj *obj,f32 maxlod)
+ * \brief Sets the maximum LOD for a given texture.
+ *
+ * \param[in] obj texture to set the maximum LOD for
+ * \param[in] maxlod maximum LOD value; the hardware will use MIN(max_lod, lod); range is 0.0 to 10.0.
+ */
 void GX_InitTexObjMaxLOD(GXTexObj *obj,f32 maxlod);
+
+/*!
+ * \fn void GX_InitTexObjLODBias(GXTexObj *obj,f32 lodbias)
+ * \brief Sets the LOD bias for a given texture.
+ *
+ * \details The LOD computed by the graphics hardware can be biased using this function. The \a lodbias is added to the computed lod and the
+ * result is clamped between the values given to GX_InitTexObjMinLOD() and GX_InitTexObjMaxLOD(). If \a GX_ENABLE is given to
+ * GX_InitTexObjBiasClamp(), the effect of \a lodbias will diminish as the polygon becomes more perpendicular to the view direction.
+ *
+ * \param[in] obj texture to set the LOD bias for
+ * \param[in] lodbias bias to add to computed LOD value
+ */
 void GX_InitTexObjLODBias(GXTexObj *obj,f32 lodbias);
+
+/*!
+ * \fn void GX_InitTexObjBiasClamp(GXTexObj *obj,u8 biasclamp)
+ * \brief Enables bias clamping for texture LOD.
+ *
+ * \details If \a biasclamp is \a GX_ENABLE, the sum of LOD and \a lodbias (given in GX_InitTexObjLODBias()) is clamped so that it is never
+ * less than the minimum extent of the pixel projected in texture space. This prevents over-biasing the LOD when the polygon is perpendicular
+ * to the view direction.
+ *
+ * \param[in] obj texture to set the bias clamp value for
+ * \param[in] biasclamp whether or not to enable the bias clamp
+ */
 void GX_InitTexObjBiasClamp(GXTexObj *obj,u8 biasclamp);
+
+/*!
+ * \fn void GX_InitTexObjEdgeLOD(GXTexObj *obj,u8 edgelod)
+ * \brief Changes LOD computing mode.
+ *
+ * \details When set to \a GX_ENABLE, the LOD is computed using adjacent texels; when \a GX_DISABLE, diagonal texels are used instead. This
+ * should be set to \a GX_ENABLE if you use bias clamping (see GX_InitTexObjBiasClamp()) or anisotropic filtering (GX_ANISO_2 or GX_ANISO_4
+ * for GX_InitTexObjMaxAniso() argument).
+ *
+ * \param[in] obj texture to set the edge LOD for
+ * \param[in] edgelod mode to set LOD computation to
+ */
 void GX_InitTexObjEdgeLOD(GXTexObj *obj,u8 edgelod);
+
+/*!
+ * \fn void GX_InitTexObjMaxAniso(GXTexObj *obj,u8 maxaniso)
+ * \brief Sets the maximum anisotropic filter to use for a texture.
+ *
+ * \details Anisotropic filtering is accomplished by iterating the square filter along the direction of anisotropy to better approximate the
+ * quadralateral. This type of filtering results in sharper textures at the expense of multiple cycles per quad. The hardware will only use
+ * multiple cycles when necessary, and the maximum number of cycles is clamped by the \a maxaniso parameter, so setting \a maxaniso to
+ * \a GX_ANISO_2 will use at most 2 filter cycles per texture.
+ *
+ * \note These filter cycles are internal to the texture filter hardware and do not affect the available number of TEV stages. When setting
+ * \a maxaniso to \a GX_ANISO_2 or \a GX_ANISO_4, the \a minfilt parameter given to GX_InitTexObjFilterMode() should be set to
+ * \a GX_LIN_MIP_LIN.
+ *
+ * \param[in] obj texture to set the max anisotropy value to
+ * \param[in] maxaniso the maximum anistropic filter to use; must be one of \ref anisotropy
+ */
 void GX_InitTexObjMaxAniso(GXTexObj *obj,u8 maxaniso);
+
+/*!
+ * \fn GX_InitTexObjUserData(GXTexObj *obj,void *userdata)
+ * \brief Used to set a pointer to user data in the \ref GXTexObj structure.
+ *
+ * \details You can use this function to attach private data structures to the texture object. This pointer can be retrieved using GX_GetTexObjUserData().
+ *
+ * \param[in] obj ptr to a texture object
+ * \param[in] userdata pointer to your data to attach to this texture
+ */
 void GX_InitTexObjUserData(GXTexObj *obj,void *userdata);
+
 /*!
  * \fn void GX_LoadTexObj(GXTexObj *obj,u8 mapid)
  * \brief Loads the state describing a texture into one of eight hardware register sets.
@@ -4464,7 +4618,7 @@ void GX_LoadLightObjIdx(u32 litobjidx,u8 litid);
  *
  * \param[in] lit_obj ptr to a light object
  * \param[in] ref_dist distance between the light and reference point
- * \param[in] red_brite brightness of the reference point
+ * \param[in] ref_brite brightness of the reference point
  * \param[in] dist_fn \ref distattnfn to use
  *
  * \return none
@@ -4569,7 +4723,7 @@ void GX_InitLightAttnK(GXLightObj *lit_obj,f32 k0,f32 k1,f32 k2);
  * \fn void GX_InitSpecularDirHA(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz,f32 hx,f32 hy,f32 hz)
  * \brief Sets the direction and half-angle vector of a specular light in the light object.
  *
- * \detail These vectors are used when the light object is used only as specular light. In contrast to GX_InitSpecularDir(),
+ * \details These vectors are used when the light object is used only as specular light. In contrast to GX_InitSpecularDir(),
  * which caclulates half-angle vector automatically by assuming the view vector as (0, 0, 1), this function allows users to
  * specify half-angle vector directly as input arguments. It is useful to do detailed control for orientation of highlights.
  *
@@ -4846,7 +5000,7 @@ void GX_GetGPStatus(u8 *overhi,u8 *underlow,u8 *readIdle,u8 *cmdIdle,u8 *brkpt);
 void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1);
 
 /*!
- * \fn void GX_ReadBoundingBox(u16 *t,u16 *b,u16 *l,u16 *r)
+ * \fn void GX_ReadBoundingBox(u16 *top,u16 *bottom,u16 *left,u16 *right)
  * \brief Returns the bounding box of pixel coordinates that are drawn in the Embedded Framebuffer (EFB).
  *
  * \details This function reads the bounding box values. GX_ClearBoundingBox() can be used reset the values of the bounding box.
