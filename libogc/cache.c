@@ -141,7 +141,7 @@ void LCAllocNoInvalidate(void *addr,u32 bytes)
 	}
 	LCAllocTags(FALSE,addr,cnt);
 }
-
+#ifdef HW_RVL
 void L2Enhance()
 {
 	u32 level, hid4;
@@ -153,9 +153,8 @@ void L2Enhance()
 		// There's no easy way to flush only L2, so just flush everything
 		// L2GlobalInvalidate will take care of syncing
 		DCFlushRangeNoSync((void*)0x80000000, 0x01800000);
-#ifdef HW_RVL
 		DCFlushRangeNoSync((void*)0x90000000, 0x04000000);
-#endif
+
 		// Invalidate L2 (this will disable it first)
 		L2GlobalInvalidate();
 		// set bits: L2FM=01, BCO=1, L2MUM=1
@@ -177,3 +176,4 @@ void L2Enhance()
 	}
 	_CPU_ISR_Restore(level);
 }
+#endif

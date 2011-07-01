@@ -300,7 +300,9 @@ void ICInvalidateRange(void *startaddress,u32 len);
  *
  * \return none
  */
+#ifdef HW_RVL
 void L2Enhance();
+#endif
 
 void LCEnable();
 void LCDisable();
