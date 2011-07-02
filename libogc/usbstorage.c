@@ -134,7 +134,6 @@ static s32 __usb_blkmsg_cb(s32 retval, void *dummy)
 static s32 __usb_deviceremoved_cb(s32 retval,void *arg)
 {
 	__mounted = false;
-	if(__vid != 0) USBStorage_Close(&__usbfd);
 	return 0;
 }
 
@@ -969,6 +968,10 @@ int USBStorage_ioctl(int request, ...)
 {
     int retval = 0;
     va_list ap;
+    
+    if(!__mounted)
+    	return -1;
+    
     va_start(ap, request); 
 
     switch (request)
