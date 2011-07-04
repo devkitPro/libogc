@@ -157,11 +157,6 @@ struct linger {
 	u8 fd_bits [(FD_SETSIZE+7)/8];
   } fd_set;
 
-  struct timeval {
-    s32    tv_sec;         /* seconds */
-    s32    tv_usec;        /* and microseconds */
-  };
-
 #endif
 
 #ifndef TCP_NODELAY
