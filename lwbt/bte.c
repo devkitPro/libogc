@@ -279,7 +279,6 @@ static err_t __bte_shutdown_finished(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t
 
 static void bte_process_handshake(struct bte_pcb *pcb,u8_t param,void *buf,u16_t len)
 {
-	s32 err;
 	struct ctrl_req_t *req;
 
 	LOG("bte_process_handshake(%p)\n",pcb);
@@ -296,8 +295,8 @@ static void bte_process_handshake(struct bte_pcb *pcb,u8_t param,void *buf,u16_t
 				btmemb_free(&bte_ctrl_reqs,req);
 			} else
 				LWP_ThreadSignal(pcb->cmdq);
-			
-			err = __bte_send_pending_request(pcb);
+
+			__bte_send_pending_request(pcb);
 			break;
 		case HIDP_HSHK_NOTREADY:
 		case HIDP_HSHK_INV_REPORTID:
@@ -863,7 +862,6 @@ err_t l2cap_disconnected_ind(void *arg, struct l2cap_pcb *pcb, err_t err)
 
 err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb)
 {
-	err_t err = ERR_OK;
 	struct bte_pcb *bte = (struct bte_pcb*)arg;
 
 	if(bte==NULL) return ERR_OK;
@@ -872,12 +870,14 @@ err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb)
 		case HIDP_OUTPUT_CHANNEL:
 			l2cap_close(bte->out_pcb);
 			bte->out_pcb = NULL;
-			if(bte->in_pcb!=NULL) err = l2ca_disconnect_req(bte->in_pcb,l2cap_disconnect_cfm);
+			if(bte->in_pcb!=NULL)
+				l2ca_disconnect_req(bte->in_pcb,l2cap_disconnect_cfm);
 			break;
 		case HIDP_INPUT_CHANNEL:
 			l2cap_close(bte->in_pcb);
 			bte->in_pcb = NULL;
-			if(bte->out_pcb!=NULL) err = l2ca_disconnect_req(bte->out_pcb,l2cap_disconnect_cfm);
+			if(bte->out_pcb!=NULL)
+				l2ca_disconnect_req(bte->out_pcb,l2cap_disconnect_cfm);
 			break;
 	}
 	if(bte->in_pcb==NULL && bte->out_pcb==NULL) {		

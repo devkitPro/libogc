@@ -198,19 +198,21 @@ static s32 __gx_onreset(s32 final)
 	return 1;
 }
 
+#if 0
 static u32 __GX_IsGPCPUFifoLinked()
 {
 	return _cpgplinked;
 }
 
-static u32 __GX_IsGPFifoReady()
-{
-	return _gxgpfifoready;
-}
-
 static u32 __GX_IsCPUFifoReady()
 {
 	return _gxcpufifoready;
+}
+#endif
+
+static u32 __GX_IsGPFifoReady()
+{
+	return _gxgpfifoready;
 }
 
 static u32 __GX_CPGPLinkCheck()
@@ -255,6 +257,7 @@ static void __GX_WaitAbort(u32 delay)
 	};
 }
 
+#ifdef HW_RVL
 static u32 __GX_ReadMemCounterU32(u32 reg)
 {
 	u16 lcnt,ucnt,tmp;
@@ -291,6 +294,7 @@ static void __GX_Abort()
 	_piReg[6] = 0;
 	__GX_WaitAbort(5);
 }
+#endif
 
 static void __GX_SaveFifo()
 {
@@ -1799,6 +1803,10 @@ void GX_LoadProjectionMtx(Mtx44 mt,u8 type)
 			tmp[1] = mt[0][3];
 			tmp[3] = mt[1][3];
 			break;
+		default:
+			tmp[1] = 0.0;
+			tmp[3] = 0.0;
+			break;
 	}
 
 	GX_LOAD_XF_REGS(0x1020,7);
@@ -2934,6 +2942,7 @@ void GX_SetZMode(u8 enable,u8 func,u8 update_enable)
 	GX_LOAD_BP_REG(__gx->peZMode);
 }
 
+#if 0
 static void __GetTexTileShift(u32 fmt,u32 *xshift,u32 *yshift)
 {
 	switch(fmt) {
@@ -2975,6 +2984,7 @@ static void __GetTexTileShift(u32 fmt,u32 *xshift,u32 *yshift)
 			break;
 	}
 }
+#endif
 
 u32 GX_GetTexObjFmt(GXTexObj *obj)
 {
@@ -5040,12 +5050,12 @@ void GX_GetGPStatus(u8 *overhi,u8 *underlow,u8 *readIdle,u8 *cmdIdle,u8 *brkpt)
 
 void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1)
 {
-	u32 tmp,reg1,reg2,reg3,reg4;
+	u32 tmp,reg1,reg2;
 
 	reg1 = (_SHIFTL(_cpReg[33],16,16))|(_cpReg[32]&0xffff);
 	reg2 = (_SHIFTL(_cpReg[35],16,16))|(_cpReg[34]&0xffff);
-	reg3 = (_SHIFTL(_cpReg[37],16,16))|(_cpReg[36]&0xffff);
-	reg4 = (_SHIFTL(_cpReg[39],16,16))|(_cpReg[38]&0xffff);
+	//reg3 = (_SHIFTL(_cpReg[37],16,16))|(_cpReg[36]&0xffff);
+	//reg4 = (_SHIFTL(_cpReg[39],16,16))|(_cpReg[38]&0xffff);
 
 	*cnt0 = 0;
 	if(__gx->perf0Mode==GX_PERF0_CLIP_RATIO) {

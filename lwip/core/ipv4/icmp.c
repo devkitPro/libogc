@@ -69,6 +69,7 @@ icmp_input(struct pbuf *p, struct netif *inp)
 
   type = *((u8_t *)p->payload);
   code = *(((u8_t *)p->payload)+1);
+  (void)code;
   switch (type) {
   case ICMP_ECHO:
     /* broadcast or multicast destination address? */

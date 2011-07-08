@@ -196,7 +196,7 @@ static void __AISRCINIT()
 	while (diff_ticks(time2, gettime()) < wait) {}
 }
 
-#if defined(HW_DOL)
+#if 0
 static void __AISetStreamSampleRate(u32 rate)
 {
 	u32 currrate,level;

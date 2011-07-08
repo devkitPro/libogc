@@ -144,7 +144,7 @@ static s32 __sd0_fd = -1;
 static u16 __sd0_rca = 0;
 static s32 __sd0_initialized = 0;
 static s32 __sd0_sdhc = 0;
-static u8 __sd0_csd[16];
+//static u8 __sd0_csd[16];
 static u8 __sd0_cid[16];
  
 static s32 __sdio_initialized = 0;
@@ -291,7 +291,8 @@ static s32 __sdio_setbuswidth(u32 bus_width)
  
 	return __sdio_sethcr(SDIOHCR_HOSTCONTROL, 1, hc_reg);		
 }
- 
+
+#if 0
 static s32 __sd0_getstatus()
 {
 	s32 ret;
@@ -302,7 +303,8 @@ static s32 __sd0_getstatus()
  
 	return status;
 }
- 
+#endif
+
 static s32 __sd0_getrca()
 {
 	s32 ret;
@@ -357,7 +359,8 @@ static s32 __sd0_setbuswidth(u32 bus_width)
  
 	return ret;		
 }
- 
+
+#if 0
 static s32 __sd0_getcsd()
 {
 	s32 ret;
@@ -366,7 +369,8 @@ static s32 __sd0_getcsd()
  
 	return ret;
 }
- 
+#endif
+
 static s32 __sd0_getcid()
 {
 	s32 ret;

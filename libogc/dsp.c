@@ -136,6 +136,8 @@ static void __dsp_boottask(dsptask_t *task)
 	if(mail!=0x8071FEED) {			//if the overflow calculation applies here too, this should be the value which the dsp should deliver on succesfull sync.
 		printf("__dsp_boottask(): failed to sync DSP on boot (%08x)\n",mail);
 	}
+#else
+	(void)mail;
 #endif
 	DSP_SendMailTo(0x80F3A001);
 	while(DSP_CheckMailTo());

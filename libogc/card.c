@@ -510,6 +510,7 @@ static s32 __card_setstatusexasync(s32 chn,s32 fileno,struct card_direntry *entr
 	return __card_putcntrlblock(card,ret);
 }
 
+#if 0
 static s32 __card_setstatusex(s32 chn,s32 fileno,struct card_direntry *entry)
 {
 	s32 ret;
@@ -519,6 +520,7 @@ static s32 __card_setstatusex(s32 chn,s32 fileno,struct card_direntry *entry)
 	}
 	return ret;
 }
+#endif
 
 static s32 __card_getfilenum(card_block *card,const char *filename,const char *gamecode,const char *company,s32 *fileno)
 {
@@ -899,6 +901,7 @@ static s32 __card_clearstatus(s32 chn)
 	return ret;
 }
 
+#if 0
 static s32 __card_sleep(s32 chn)
 {
 	u8 val;
@@ -945,6 +948,7 @@ static s32 __card_wake(s32 chn)
 	
 	return ret;
 }
+#endif
 
 static s32 __card_enableinterrupt(s32 chn,u32 enable)
 {
@@ -2284,7 +2288,6 @@ static void __dsp_donecallback(dsptask_t *task)
 
 static s32 __dounlock(s32 chn,u32 *key)
 {
-	s32 ret;
 	u32 array_addr,len,val;
 	u32 a,b,c,d,e;
 	card_block *card = &cardmap[chn];
@@ -2299,7 +2302,7 @@ static s32 __dounlock(s32 chn,u32 *key)
 	
 	if(__card_readarrayunlock(chn,array_addr,tmp_buffer,len,0)<0) return CARD_ERROR_NOCARD;
 	
-	ret = 0;
+
 	val = exnor_1st(array_addr,(len<<3)+1);
 	{
 		u32 a,b,c,r1,r2,r3;
@@ -2612,13 +2615,11 @@ s32 CARD_ReadAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback 
 {
 	s32 ret;
 	cardcallback cb = NULL;
-	struct card_dat *dirblock = NULL;
 	card_block *card = NULL;
 
 	if(len<=0 || (len&0x1ff) || (offset>0 && (offset&0x1ff))) return CARD_ERROR_FATAL_ERROR;
 	if((ret=__card_seek(file,len,offset,&card))<0) return ret;
 	
-	dirblock = __card_getdirblock(card);
 	DCInvalidateRange(buffer,len);
 	
 	cb = callback;

@@ -107,7 +107,7 @@ static void dhcp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_
 static err_t dhcp_unfold_reply(struct dhcp *dhcp);
 static u8_t *dhcp_get_option_ptr(struct dhcp *dhcp, u8_t option_type);
 static u8_t dhcp_get_option_byte(u8_t *ptr);
-static u16_t dhcp_get_option_short(u8_t *ptr);
+//static u16_t dhcp_get_option_short(u8_t *ptr);
 static u32_t dhcp_get_option_long(u8_t *ptr);
 static void dhcp_free_reply(struct dhcp *dhcp);
 
@@ -1424,6 +1424,7 @@ static u8_t dhcp_get_option_byte(u8_t *ptr)
  *
  * @return byte value at the given address.
  */
+#if 0
 static u16_t dhcp_get_option_short(u8_t *ptr)
 {
   u16_t value;
@@ -1432,6 +1433,7 @@ static u16_t dhcp_get_option_short(u8_t *ptr)
   LWIP_DEBUGF(DHCP_DEBUG, ("option short value=%"U16_F"\n", value));
   return value;
 }
+#endif
 
 /**
  * Return the 32-bit value of DHCP option data.

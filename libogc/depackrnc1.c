@@ -27,7 +27,6 @@ static void bit_advance (bit_stream *bs, int n, unsigned char **p);
 static unsigned long bit_read (bit_stream *bs, unsigned long mask,int n, unsigned char **p);
 
 static unsigned long blong (unsigned char *p);
-static unsigned long llong (unsigned char *p);
 static unsigned long bword (unsigned char *p);
 static unsigned long lword (unsigned char *p);
 
@@ -239,18 +238,6 @@ static unsigned long blong (unsigned char *p) {
     n = (n << 8) + p[1];
     n = (n << 8) + p[2];
     n = (n << 8) + p[3];
-    return n;
-}
-
-/*
- * Return the little-endian longword at p.
- */
-static unsigned long llong (unsigned char *p) {
-    unsigned long n;
-    n = p[3];
-    n = (n << 8) + p[2];
-    n = (n << 8) + p[1];
-    n = (n << 8) + p[0];
     return n;
 }
 

@@ -79,7 +79,9 @@ void l2cap_tmr()
 {
 	struct l2cap_sig *sig;
 	struct l2cap_pcb *pcb;
-	err_t ret; 
+	err_t ret;
+
+	(void) ret;
 
 	/* Step through all of the active pcbs */
 	for(pcb = l2cap_active_pcbs; pcb != NULL; pcb = pcb->next) {
@@ -227,13 +229,15 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 	struct l2cap_pcb *pcb = NULL;
 	struct l2cap_pcb_listen *lpcb;
 	struct l2cap_cfgopt_hdr *opthdr;
-	u16_t result, status, flags, psm, dcid, scid;
+	u16_t result, status, flags, psm, dcid;
 	u16_t len; 
 	u16_t siglen;
 	struct pbuf *p, *r = NULL, *s = NULL, *data;
 	err_t ret;
 	u8_t i;
 	u16_t rspstate = L2CAP_CFG_SUCCESS;
+
+	(void)ret;
 
 	if(q->len != q->tot_len) {
 		LOG("l2cap_process_sig: Fragmented packet received. Reassemble into one buffer\n");
@@ -563,7 +567,7 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 				btmemb_free(&l2cap_sigs, sig);
 
 				siglen = le16toh(sighdr->len);
-				scid = le16toh(((u16_t *)p->payload)[0]);
+				//scid = le16toh(((u16_t *)p->payload)[0]);
 				flags = le16toh(((u16_t *)p->payload)[1]);
 				result = le16toh(((u16_t *)p->payload)[2]);
 				siglen -= 6;
@@ -757,6 +761,8 @@ void l2cap_input(struct pbuf *p, struct bd_addr *bdaddr)
 	struct hci_acl_hdr *aclhdr;
 	struct pbuf *data;
 	err_t ret;
+
+	(void)ret;
 
 	btpbuf_header(p, HCI_ACL_HDR_LEN);
 	aclhdr = p->payload;
@@ -1420,6 +1426,8 @@ void lp_disconnect_ind(struct bd_addr *bdaddr,u8_t reason)
 {
 	struct l2cap_pcb *pcb, *tpcb;
 	err_t ret;
+
+	(void)ret;
 
 	for(pcb = l2cap_active_pcbs; pcb != NULL;) {
 		tpcb = pcb->next;

@@ -1376,8 +1376,10 @@ static void hci_cc_host_ctrl(u8_t ocf,struct pbuf *p)
 
 static void hci_cc_link_policy(u8_t ocf,struct pbuf *p)
 {
-	err_t ret = ERR_OK;
+	err_t ret;
 	struct hci_link *link;
+
+	(void)ret;
 
 	switch(ocf) {
 		case HCI_W_LINK_POLICY:
@@ -1432,6 +1434,8 @@ static void hci_conn_complete_evt(struct pbuf *p)
 	err_t ret;
 	struct bd_addr *bdaddr;
 	struct hci_link *link;
+
+	(void)ret;
 
 	bdaddr = (void*)(((u8_t*)p->payload)+3);
 	link = hci_get_link(bdaddr);
@@ -1529,10 +1533,12 @@ void hci_event_handler(struct pbuf *p)
 	struct hci_link *link;
 	struct bd_addr *bdaddr;
 	struct hci_evt_hdr *evthdr;
-	
+
+	(void)ret;
+
 	evthdr = p->payload;
 	btpbuf_header(p,-HCI_EVENT_HDR_LEN);
-	
+
 	switch(evthdr->code) {
 		case HCI_INQUIRY_COMPLETE:
 			//printf("HCI_INQUIRY_COMPLETE\n");
