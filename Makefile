@@ -80,7 +80,7 @@ DEFINCS		:= -I$(BASEDIR) -I$(BASEDIR)/gc
 INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/ogc -I$(BASEDIR)/gc/ogc/machine \
 				-I$(BASEDIR)/gc/modplay \
-				-I$(BASEDIR)/gc/z -I$(BASEDIR)/gc/bte \
+				-I$(BASEDIR)/gc/bte \
 				-I$(BASEDIR)/gc/sdcard -I$(BASEDIR)/gc/wiiuse \
 				-I$(BASEDIR)/gc/di
 
@@ -186,7 +186,7 @@ WIIKEYBLIBOBJ	:=	usbkeyboard.o keyboard.o ukbdmap.o wskbdutil.o
 
 
 
-all: wii cube 
+all: wii cube
 
 #---------------------------------------------------------------------------------
 wii: gc/ogc/libversion.h
@@ -253,7 +253,7 @@ $(BTELIB).a: $(BTEOBJ)
 #---------------------------------------------------------------------------------
 $(WIIUSELIB).a: $(WIIUSEOBJ)
 #---------------------------------------------------------------------------------
- 
+
 .PHONY: libs wii cube install-headers install dist docs
 
 #---------------------------------------------------------------------------------
@@ -295,11 +295,11 @@ dist: install-headers
 	@tar -cvjf libogc-$(VERSTRING).tar.bz2 include lib libogc_license.txt
 
 
-LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(MADLIB).a $(DBLIB).a $(ZLIB).a \
+LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(MADLIB).a $(DBLIB).a \
 				$(TINYSMBLIB).a $(ASNDLIB).a $(AESNDLIB).a $(ISOLIB).a
 
 ifeq ($(PLATFORM),cube)
-LIBRARIES	+=	$(BBALIB).a 
+LIBRARIES	+=	$(BBALIB).a
 endif
 ifeq ($(PLATFORM),wii)
 LIBRARIES	+=	$(BTELIB).a $(WIIUSELIB).a $(DILIB).a $(WIIKEYBLIB).a
