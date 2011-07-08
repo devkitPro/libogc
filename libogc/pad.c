@@ -724,27 +724,33 @@ u32 PAD_ScanPads()
 	//PAD_Clamp(padstatus);
 	for(i=0;i<PAD_CHANMAX;i++) {
 		padBit = (PAD_CHAN0_BIT>>i);
-		if(padstatus[i].err==PAD_ERR_NONE
-			|| padstatus[i].err==PAD_ERR_TRANSFER) {
-			if(padstatus[i].err==PAD_ERR_NONE) {
-				oldstate				= __pad_keys[i].state;
-				state					= padstatus[i].button;
-				__pad_keys[i].stickX	= padstatus[i].stickX;
-				__pad_keys[i].stickY	= padstatus[i].stickY;
-				__pad_keys[i].substickX	= padstatus[i].substickX;
-				__pad_keys[i].substickY	= padstatus[i].substickY;
-				__pad_keys[i].triggerL	= padstatus[i].triggerL;
-				__pad_keys[i].triggerR	= padstatus[i].triggerR;
-				__pad_keys[i].up		= oldstate&~state;
-				__pad_keys[i].down		= state&(state^oldstate);
-				__pad_keys[i].state		= state;
-				__pad_keys[i].chan		= i;
-			}
+
+		switch(padstatus[i].err) {
+		case PAD_ERR_NONE:
+			oldstate				= __pad_keys[i].state; 
+			state					= padstatus[i].button;
+			__pad_keys[i].stickX	= padstatus[i].stickX;
+			__pad_keys[i].stickY	= padstatus[i].stickY;
+			__pad_keys[i].substickX	= padstatus[i].substickX;
+			__pad_keys[i].substickY	= padstatus[i].substickY;
+			__pad_keys[i].triggerL	= padstatus[i].triggerL;
+			__pad_keys[i].triggerR	= padstatus[i].triggerR;
+			__pad_keys[i].up		= oldstate & ~state;
+			__pad_keys[i].down		= state & (state ^ oldstate);
+			__pad_keys[i].state		= state;
+			__pad_keys[i].chan		= i;
+
 			connected |= (1<<i);
-		} else if(padstatus[i].err==PAD_ERR_NO_CONTROLLER) {
+			break;
+
+		case PAD_ERR_NO_CONTROLLER:
 			if(__pad_keys[i].chan!=-1) memset(&__pad_keys[i],0,sizeof(keyinput));
 			__pad_keys[i].chan = -1;
 			resetBits |= padBit;
+			break;
+
+		default:
+			break;
 		}
 	}
 #ifdef _PAD_DEBUG
@@ -798,7 +804,6 @@ s8 PAD_StickY(int pad)
 	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1) return 0;
 	return __pad_keys[pad].stickY;
 }
-
 
 u8 PAD_TriggerL(int pad)
 {
