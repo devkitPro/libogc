@@ -92,18 +92,20 @@ static const char __oh0_path[] ATTRIBUTE_ALIGN(32) = "/dev/usb/oh0";
 static const char __ven_path[] ATTRIBUTE_ALIGN(32) = "/dev/usb/ven";
 static const char __hid_path[] ATTRIBUTE_ALIGN(32) = "/dev/usb/hid";
 
-struct _usb_cb_removalnotify_list {
+typedef struct _usb_cb_list {
 	usbcallback cb;
 	void *userdata;
-	s32 device_id;
-};
+	union {
+		s32 device_id;
+		struct _usb_cb_list *next;
+	};
+} _usb_cb_list;
 
 struct _usbv5_host {
 	usb_device_entry attached_devices[USB_MAX_DEVICES];
-	struct _usb_cb_removalnotify_list remove_cb[USB_MAX_DEVICES];
+	_usb_cb_list remove_cb[USB_MAX_DEVICES];
 	s32 fd;
-	usbcallback device_change_notify;
-	void *device_change_userdata;
+	_usb_cb_list *device_change_notify;
 };
 
 static struct _usbv5_host* ven_host = NULL;
@@ -161,17 +163,21 @@ static s32 __usbv5_devicechangeCB(s32 result, void *p);
 
 static s32 __usbv5_attachfinishCB(s32 result, void *p)
 {
+	_usb_cb_list *list;
 	struct _usbv5_host* host = (struct _usbv5_host*)p;
 	if(host==NULL) return IPC_EINVAL;
 
-	if (host->device_change_notify) {
-		/* this callback function may attempt to set a new notify func,
-		 * device_change_notify is set to NULL *before* calling it to
-		 * avoid wiping out the new function
-		 */
-		usbcallback cb = host->device_change_notify;
-		host->device_change_notify = NULL;
-		cb(result, host->device_change_userdata);
+	/* the callback functions may attempt to set a new notify func,
+	 * device_change_notify is set to NULL *before* calling it to
+	 * avoid wiping out the new functions
+	 */
+	list = host->device_change_notify;
+	host->device_change_notify = NULL;
+	while (list) {
+		_usb_cb_list *next = list->next;
+		list->cb(result, list->userdata);
+		iosFree(hId, list);
+		list = next;
 	}
 
 	if (result==0)
@@ -212,6 +218,19 @@ static s32 __usbv5_devicechangeCB(s32 result, void *p)
 	return IPC_OK;
 }
 
+static s32 add_devicechange_cb(_usb_cb_list **list, usbcallback cb, void *userdata)
+{
+	_usb_cb_list *new_cb = (_usb_cb_list*)iosAlloc(hId, sizeof(_usb_cb_list));
+	if (new_cb==NULL)
+		return IPC_ENOMEM;
+
+	new_cb->cb = cb;
+	new_cb->userdata = userdata;
+	new_cb->next = *list;
+	*list = new_cb;
+
+	return IPC_OK;
+}
 
 static s32 __usbv5_messageCB(s32 result,void *_msg)
 {
@@ -1294,7 +1313,7 @@ s32 USB_ResumeDevice(s32 fd)
 
 s32 USB_DeviceChangeNotifyAsync(u8 interface_class, usbcallback cb, void* userdata)
 {
-	s32 ret=IPC_EQUEUEFULL;
+	s32 ret=IPC_ENOENT;
 
 	if (ven_host==NULL) {
 		s32 fd;
@@ -1321,20 +1340,12 @@ s32 USB_DeviceChangeNotifyAsync(u8 interface_class, usbcallback cb, void* userda
 
 		if (ret<0) iosFree(hId, msg);
 	}
-	else if (interface_class != USB_CLASS_HID && ven_host) {
-		if (ven_host->device_change_notify == NULL) {
-			ret = 0;
-			ven_host->device_change_notify = cb;
-			ven_host->device_change_userdata = userdata;
-		}
-	}
-	else if (interface_class==USB_CLASS_HID && hid_host) {
-		if (hid_host->device_change_notify == NULL) {
-			ret = 0;
-			hid_host->device_change_notify = cb;
-			hid_host->device_change_userdata = userdata;
-		}
-	}
+	else if (interface_class != USB_CLASS_HID && ven_host)
+		ret = add_devicechange_cb(&ven_host->device_change_notify, cb, userdata);
+
+	else if (interface_class==USB_CLASS_HID && hid_host)
+		ret = add_devicechange_cb(&hid_host->device_change_notify, cb, userdata);
+
 
 	return ret;
 }
