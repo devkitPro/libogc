@@ -57,7 +57,7 @@ ubyte wencdata(WENCStatus *info,short sample)
 	info->predictor += ((info->step*yamaha_difflookup[nibble])/8);
 	info->predictor = wenc_clip_short(info->predictor);
 	info->step = (info->step*yamaha_indexscale[nibble])>>8;
-	info->step = wenc_clip(info->step,127,24567);
+	info->step = wenc_clip(info->step,127,24576);
 
 	return nibble;
 }
