@@ -36,12 +36,12 @@ distribution.
 #include <ogc/usb.h>
 #include <ogc/lwp_queue.h>
 #include <ogc/usbmouse.h>
+#include <ogc/semaphore.h>
 
 #define MOUSE_THREAD_STACKSIZE		(1024 * 4)
 #define MOUSE_THREAD_PRIO			65
-#define MOUSE_THREAD_UDELAY			(1000 * 1000 * 3)
 
-#define MOUSE_MAX_DATA				20
+#define MOUSE_MAX_DATA				32
 
 #define	HEAP_SIZE					4096
 #define DEVLIST_MAXSIZE				8
@@ -53,6 +53,7 @@ typedef struct {
 
 struct umouse {
 	bool connected;
+	bool has_wheel;
 
 	s32 fd;
 
@@ -65,7 +66,6 @@ struct umouse {
 };
 
 static lwp_queue _queue;
-static lwpq_t _mouse_queue;
 
 static s32 hId = -1;
 static bool _mouse_is_inited = false;
@@ -74,6 +74,7 @@ static bool _mouse_thread_running = false;
 static bool _mouse_thread_quit = false;
 static struct umouse *_mouse = NULL;
 static s8 *_mousedata = NULL;
+static sem_t _mousesema = LWP_SEM_NULL;
 
 static u8 _mouse_stack[MOUSE_THREAD_STACKSIZE] ATTRIBUTE_ALIGN(8);
 
@@ -88,22 +89,32 @@ static s32 _mouse_addEvent(const mouse_event *event) {
 }
 
 // Event callback
-static s32 _mouse_event_cb(s32 result,void *usrdata)
+static s32 _mouse_event_cb(s32 result, mouse_event *event)
 {
-	mouse_event event;
-
-	if (result>0)
+	if (result>=3)
 	{
-		event.button = _mousedata[0];
-		event.rx = _mousedata[1];
-		event.ry = _mousedata[2];
-		_mouse_addEvent(&event);
-		USB_ReadIntrMsgAsync(_mouse->fd, _mouse->ep, _mouse->ep_size, _mousedata, _mouse_event_cb, 0);
+		event->button = _mousedata[0];
+		event->rx = _mousedata[1];
+		event->ry = _mousedata[2];
+		// this isn't defined in the HID mouse boot protocol, but it's a fairly safe bet
+		if (_mouse->has_wheel) {
+			// if more than 3 bytes were returned and the fourth byte is 1 or -1, assume it's wheel motion
+			// if it's outside this range, probably not a wheel
+			if (result < 4 || _mousedata[3] < -1 || _mousedata[3] > 1) {
+				_mouse->has_wheel = false;
+				event->rz = 0;
+			}
+			else
+				event->rz = _mousedata[3];
+		} else
+			event->rz = 0;
 	}
 	else
-	{
 		_mouse->connected = false;
-	}
+
+	if (_mousesema != LWP_SEM_NULL)
+		LWP_SemPost(_mousesema);
+
 	return 0;
 }
 
@@ -111,6 +122,16 @@ static s32 _mouse_event_cb(s32 result,void *usrdata)
 static s32 _disconnect(s32 retval, void *data)
 {
 	_mouse->connected = false;
+	if (_mousesema != LWP_SEM_NULL)
+		LWP_SemPost(_mousesema);
+	return 1;
+}
+
+//Callback when a device is connected/disconnected (for notification when we're looking for a mouse)
+static s32 _device_change(s32 retval, void *data)
+{
+	if (_mousesema != LWP_SEM_NULL)
+		LWP_SemPost(_mousesema);
 	return 1;
 }
 
@@ -125,11 +146,6 @@ static s32 USBMouse_Initialize(void)
 	if (hId < 0)
 		return IPC_ENOHEAP;
 
-	return IPC_OK;
-}
-
-static s32 USBMouse_Deinitialize(void)
-{
 	return IPC_OK;
 }
 
@@ -252,9 +268,10 @@ static s32 USBMouse_Open()
 		return -8;
 	}
 
-	//set boot protocol
+	// set boot protocol
 	USB_WriteCtrlMsg(_mouse->fd, USB_REQTYPE_INTERFACE_SET, USB_REQ_SETPROTOCOL, 0, _mouse->interface, 0, NULL);
-	USB_ReadIntrMsgAsync(_mouse->fd, _mouse->ep, _mouse->ep_size, _mousedata, _mouse_event_cb, NULL);
+	// assume there's a wheel until we know otherwise
+	_mouse->has_wheel = true;
 	_mouse->connected = true;
 	return 1;
 }
@@ -267,15 +284,28 @@ bool MOUSE_IsConnected(void)
 
 static void * _mouse_thread_func(void *arg)
 {
+	mouse_event event;
+	memset(&event, 0, sizeof(event));
+
 	while (!_mouse_thread_quit)
 	{
 		// scan for new attached mice
 		if (!MOUSE_IsConnected())
 		{
 			USBMouse_Close();
-			USBMouse_Open();
+			if (USBMouse_Open() < 0) {
+				// wait for something to be inserted
+				USB_DeviceChangeNotifyAsync(USB_CLASS_HID, _device_change, NULL);
+				LWP_SemWait(_mousesema);
+				continue;
+			}
 		}
-		usleep(MOUSE_THREAD_UDELAY);
+
+		if (USB_ReadIntrMsgAsync(_mouse->fd, _mouse->ep, _mouse->ep_size, _mousedata, (usbcallback)_mouse_event_cb, &event) < 0)
+			break;
+		LWP_SemWait(_mousesema);
+		_mouse_addEvent(&event);
+		memset(&event, 0, sizeof(event));
 	}
 	return NULL;
 }
@@ -296,6 +326,7 @@ s32 MOUSE_Init(void)
 	_mouse = (struct umouse *) malloc(sizeof(struct umouse));
 	memset(_mouse, 0, sizeof(struct umouse));
 	_mouse->fd = -1;
+	LWP_SemInit(&_mousesema, 0, 1);
 
 	if (!_mouse_thread_running)
 	{
@@ -311,7 +342,6 @@ s32 MOUSE_Init(void)
 		{
 			USBMouse_Close();
 			MOUSE_FlushEvents();
-			USBMouse_Deinitialize();
 			_mouse_thread_running = false;
 			return -6;
 		}
@@ -319,7 +349,6 @@ s32 MOUSE_Init(void)
 	}
 
 	__lwp_queue_init_empty(&_queue);
-	LWP_InitQueue(&_mouse_queue);
 	_mouse_is_inited = true;
 	return 0;
 }
@@ -331,18 +360,19 @@ s32 MOUSE_Deinit(void)
 
 	if (_mouse_thread_running) {
 		_mouse_thread_quit = true;
+		LWP_SemPost(_mousesema);
 		LWP_JoinThread(_mouse_thread, NULL);
 		_mouse_thread_running = false;
 	}
 
-	LWP_ThreadBroadcast(_mouse_queue);
-	LWP_CloseQueue(_mouse_queue);
-
 	USBMouse_Close();
 	MOUSE_FlushEvents();
-	USBMouse_Deinitialize();
 	if(_mousedata!=NULL) iosFree(hId,_mousedata);
-	if(_mouse!=NULL) free(_mouse);
+	free(_mouse);
+	if (_mousesema != LWP_SEM_NULL) {
+		LWP_SemDestroy(_mousesema);
+		_mousesema = LWP_SEM_NULL;
+	}
 	_mouse_is_inited = false;
 	return 1;
 }
@@ -355,7 +385,8 @@ s32 MOUSE_GetEvent(mouse_event *event)
 	if (!n)
 		return 0;
 
-	*event = n->event;
+	if (event)
+		*event = n->event;
 
 	free(n);
 
@@ -365,19 +396,10 @@ s32 MOUSE_GetEvent(mouse_event *event)
 //Flush all pending events
 s32 MOUSE_FlushEvents(void)
 {
-	s32 res;
-	_node *n;
+	s32 res=0;
 
-	res = 0;
-	while (true) {
-		n = (_node *) __lwp_queue_get(&_queue);
-
-		if (!n)
-			break;
-
-		free(n);
+	while (MOUSE_GetEvent(NULL))
 		res++;
-	}
 
 	return res;
 }

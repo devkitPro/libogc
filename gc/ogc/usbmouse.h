@@ -11,6 +11,7 @@ typedef struct {
 	u8 button;
 	int rx;
 	int ry;
+	int rz;
 } mouse_event;
 
 s32 MOUSE_Init(void);
