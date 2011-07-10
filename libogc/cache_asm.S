@@ -361,6 +361,7 @@ __LCEnable:
 	mtctr	r4
 1:	dcbt	r0,r3
 	dcbst	r0,r3
+	addi    r3,r3,32
 	bdnz	1b
 	mfspr	r4,HID2
 	oris	r4,r4,0x100f
