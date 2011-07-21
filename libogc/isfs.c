@@ -423,7 +423,7 @@ s32 ISFS_GetStatsAsync(void *stats,isfscallback cb,void *usrdata)
 
 s32 ISFS_Write(s32 fd,const void *buffer,u32 length)
 {
-	if(length<=0 || buffer==NULL || ((u32)buffer%32)!=0) return ISFS_EINVAL;
+	if(length<=0 || buffer==NULL) return ISFS_EINVAL;
 	
 	return IOS_Write(fd,buffer,length);
 }
@@ -432,7 +432,7 @@ s32 ISFS_WriteAsync(s32 fd,const void *buffer,u32 length,isfscallback cb,void *u
 {
 	struct isfs_cb *param;
 
-	if(length<=0 || buffer==NULL || ((u32)buffer%32)!=0) return ISFS_EINVAL;
+	if(length<=0 || buffer==NULL) return ISFS_EINVAL;
 	
 	param = (struct isfs_cb*)iosAlloc(hId,ISFS_STRUCTSIZE);
 	if(param==NULL) return ISFS_ENOMEM;
