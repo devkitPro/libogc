@@ -477,6 +477,15 @@ int DI_Identify(DI_DriveID* id){
 	return (ret == 1)? 0 : -ret;
 }
 
+int DI_CheckDVDSupport() {
+	DI_DriveID id;
+
+	if(DI_Identify(&id) == 0 && id.rel_date < 0x20080714)
+		return 1;
+
+	return 0;
+}
+
 /*
 Returns the current error code on the drive.
 yagcd has a pretty comprehensive list of possible error codes

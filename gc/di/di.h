@@ -99,6 +99,7 @@ void DI_Close();
 int DI_GetStatus();
 
 int DI_Identify(DI_DriveID* id);
+int DI_CheckDVDSupport();
 int DI_ReadDiscID(u64 *id);
 int DI_GetError(uint32_t* error);
 int DI_GetCoverRegister(uint32_t* status);
