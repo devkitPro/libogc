@@ -480,7 +480,7 @@ int DI_Identify(DI_DriveID* id){
 int DI_CheckDVDSupport() {
 	DI_DriveID id;
 
-	if(DI_Identify(&id) == 0 && id.rel_date < 0x20080714)
+	if(DI_Identify(&id) == 0 && id.rel_date <= 0x20080714)
 		return 1;
 
 	return 0;
