@@ -46,7 +46,7 @@ const devoptab_t dotab_stdout = {
 };
 
 //color table
-const unsigned int color_table[] =
+static const unsigned int color_table[] =
 {
   0x00800080,		// 30 normal black
   0x246A24BE,		// 31 normal red
