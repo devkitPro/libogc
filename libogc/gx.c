@@ -1834,19 +1834,19 @@ static void __GetImageTileCount(u32 fmt,u16 wd,u16 ht,u32 *xtiles,u32 *ytiles,u3
 			break;
 		case GX_TF_Z8:
 		case GX_TF_I8:
-		case GX_TF_IA8:
-		case GX_CTF_RA8:
 		case GX_CTF_A8:
 		case GX_CTF_R8:
 		case GX_CTF_G8:
 		case GX_CTF_B8:
-		case GX_CTF_RG8:
-		case GX_CTF_GB8:
 		case GX_CTF_Z8M:
 		case GX_CTF_Z8L:
 			xshift = 3;
 			yshift = 2;
 			break;
+		case GX_TF_IA8:
+		case GX_CTF_RA8:
+		case GX_CTF_RG8:
+		case GX_CTF_GB8:
 		case GX_TF_Z16:
 		case GX_TF_Z24X8:
 		case GX_CTF_Z16L:
