@@ -26,6 +26,7 @@ void wiiuse_send_next_command(struct wiimote_t *wm)
 	cmd->state = CMD_SENT;
 	if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_RUMBLE)) cmd->data[1] |= 0x01;
 
+	WIIUSE_DEBUG("Sending command: %02x %02x", cmd->data[0], cmd->data[1]);
 	wiiuse_io_write(wm,cmd->data,cmd->len);
 }
 
@@ -319,6 +320,10 @@ int wiiuse_sendcmd(struct wiimote_t *wm,ubyte report_type,ubyte *msg,int len,cmd
 
 	cmd->data[0] = report_type;
 	memcpy(cmd->data+1,msg,len);
+	if(report_type!=WM_CMD_READ_DATA && report_type!=WM_CMD_CTRL_STATUS)
+		cmd->data[1] |= 0x02;
+
+	WIIUSE_DEBUG("Pushing command: %02x %02x", cmd->data[0], cmd->data[1]);
 	__wiiuse_push_command(wm,cmd);
 
 	return 1;

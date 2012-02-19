@@ -23,8 +23,8 @@
 #define HIDP_STATE_CONNECTING		0x02
 #define HIDP_STATE_CONNECTED		0x04
 
-#define HIDP_OUTPUT_CHANNEL			0x11
-#define HIDP_INPUT_CHANNEL			0x13
+#define HIDP_CONTROL_CHANNEL		0x11
+#define HIDP_DATA_CHANNEL			0x13
 
 #define HIDP_HDR_TRANS_MASK			0xf0
 #define HIDP_HDR_PARAM_MASK			0x0f
@@ -107,8 +107,8 @@ struct bte_pcb
 
 	struct bd_addr bdaddr;
 
-	struct l2cap_pcb *out_pcb;
-	struct l2cap_pcb *in_pcb;
+	struct l2cap_pcb *ctl_pcb;
+	struct l2cap_pcb *data_pcb;
 
 
 	s32 (*recv)(void *arg,void *buffer,u16 len);

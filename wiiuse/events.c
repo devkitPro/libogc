@@ -76,18 +76,27 @@ static void event_data_read(struct wiimote_t *wm,ubyte *msg)
 	}
 }
 
-static void event_data_write(struct wiimote_t *wm,ubyte *msg)
+static void event_ack(struct wiimote_t *wm,ubyte *msg)
 {
 	struct cmd_blk_t *cmd = wm->cmd_head;
 
 	wiiuse_pressed_buttons(wm,msg);
 
 	if(!cmd) return;
-	if(!(cmd->state==CMD_SENT && (cmd->data[0]==WM_CMD_WRITE_DATA || cmd->data[0]==WM_CMD_STREAM_DATA))) return;
+	if(!cmd || cmd->state!=CMD_SENT || cmd->data[0]==WM_CMD_READ_DATA || cmd->data[0]==WM_CMD_CTRL_STATUS || cmd->data[0]!=msg[2]) {
+		WIIUSE_WARNING("Unsolicited event ack: report %02x status %02x", msg[2], msg[3]);
+		return;
+	}
+	if(msg[3]) {
+		WIIUSE_WARNING("Command %02x %02x failed: status %02x", cmd->data[0], cmd->data[1], msg[3]);
+		return;
+	}
+
+	WIIUSE_DEBUG("Received ack for command %02x %02x", cmd->data[0], cmd->data[1]);
 
 	wm->cmd_head = cmd->next;
 
-	wm->event = WIIUSE_WRITE_DATA;
+	wm->event = WIIUSE_ACK;
 	cmd->state = CMD_DONE;
 	if(cmd->cb) cmd->cb(wm,NULL,0);
 
@@ -223,8 +232,8 @@ void parse_event(struct wiimote_t *wm)
 		case WM_RPT_READ:
 			event_data_read(wm,msg);
 			return;
-		case WM_RPT_WRITE:
-			event_data_write(wm,msg);
+		case WM_RPT_ACK:
+			event_ack(wm,msg);
 			return;
 		case WM_RPT_BTN:
 			wiiuse_pressed_buttons(wm,msg);

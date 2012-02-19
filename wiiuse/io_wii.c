@@ -103,37 +103,6 @@ static s32 __wiiuse_connected(void *arg,struct bte_pcb *pcb,u8 err)
 	return ERR_OK;
 }
 
-static s32 __wiiuse_sent(void *arg,struct bte_pcb *pcb,u8 err)
-{
-	struct cmd_blk_t *cmd = NULL;
-	struct wiimote_listen_t *wml = (struct wiimote_listen_t*)arg;
-	struct wiimote_t *wm = wml->wm;
-
-	if(!wm) return ERR_OK;
-
-	cmd = wm->cmd_head;
-
-	if(!cmd) return ERR_OK;
-	if(cmd->state!=CMD_SENT) return ERR_OK;
-
-	switch(cmd->data[0]) {
-		case WM_CMD_CTRL_STATUS:
-		case WM_CMD_WRITE_DATA:
-		case WM_CMD_READ_DATA:
-			return ERR_OK;
-		default:
-			wm->cmd_head = cmd->next;
-
-			cmd->state = CMD_DONE;
-			if(cmd->cb) cmd->cb(wm,NULL,0);
-
-			__lwp_queue_append(&wm->cmdq,&cmd->node);
-			wiiuse_send_next_command(wm);
-			break;
-	}
-	return ERR_OK;
-}
-
 void __wiiuse_sensorbar_enable(int enable)
 {
 	u32 val;
@@ -197,8 +166,9 @@ void wiiuse_init_cmd_queue(struct wiimote_t *wm)
 
 int wiiuse_io_write(struct wiimote_t *wm,ubyte *buf,int len)
 {
-	if(wm->sock)
-		return bte_sendmessageasync(wm->sock,buf,len,__wiiuse_sent);
+	if(wm->sock) {
+		return bte_senddata(wm->sock,buf,len);
+	}
 
 	return ERR_CONN;
 }

@@ -218,7 +218,7 @@ static s32 __bte_send_pending_request(struct bte_pcb *pcb)
 	req = pcb->ctrl_req_head;
 	req->state = STATE_SENDING;
 
-	err = l2ca_datawrite(pcb->out_pcb,req->p);
+	err = l2ca_datawrite(pcb->ctl_pcb,req->p);
 	btpbuf_free(req->p);
 
 	if(err!=ERR_OK) {
@@ -508,8 +508,8 @@ s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*con
 	//printf("bte_registerdeviceasync()\n");
 	_CPU_ISR_Disable(level);
 	pcb->err = ERR_USE;
-	pcb->in_pcb = NULL;
-	pcb->out_pcb = NULL;
+	pcb->data_pcb = NULL;
+	pcb->ctl_pcb = NULL;
 	pcb->conn_cfm = conn_cfm;
 	pcb->state = (u32)STATE_CONNECTING;
 
@@ -520,7 +520,7 @@ s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*con
 	}
 	l2cap_arg(l2capcb,pcb);
 
-	err = l2cap_connect_ind(l2capcb,bdaddr,HIDP_OUTPUT_CHANNEL,l2cap_accepted);
+	err = l2cap_connect_ind(l2capcb,bdaddr,HIDP_CONTROL_CHANNEL,l2cap_accepted);
 	if(err!=ERR_OK) {
 		l2cap_close(l2capcb);
 		err = ERR_CONN;
@@ -533,7 +533,7 @@ s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*con
 	}
 	l2cap_arg(l2capcb,pcb);
 
-	err = l2cap_connect_ind(l2capcb,bdaddr,HIDP_INPUT_CHANNEL,l2cap_accepted);
+	err = l2cap_connect_ind(l2capcb,bdaddr,HIDP_DATA_CHANNEL,l2cap_accepted);
 	if(err!=ERR_OK) {
 		l2cap_close(l2capcb);
 		err = ERR_CONN;
@@ -615,10 +615,10 @@ s32 bte_disconnect(struct bte_pcb *pcb)
 
 	_CPU_ISR_Disable(level);
 	pcb->state = (u32)STATE_DISCONNECTING;
-	if(pcb->in_pcb!=NULL )
-		err = l2ca_disconnect_req(pcb->in_pcb,l2cap_disconnect_cfm);
-	else if(pcb->out_pcb!=NULL)
-		err = l2ca_disconnect_req(pcb->out_pcb,l2cap_disconnect_cfm);
+	if(pcb->data_pcb!=NULL )
+		err = l2ca_disconnect_req(pcb->data_pcb,l2cap_disconnect_cfm);
+	else if(pcb->ctl_pcb!=NULL)
+		err = l2ca_disconnect_req(pcb->ctl_pcb,l2cap_disconnect_cfm);
 	_CPU_ISR_Restore(level);
 
 	return err;
@@ -718,7 +718,7 @@ s32 bte_senddata(struct bte_pcb *pcb,void *message,u16 len)
 	((u8*)p->payload)[0] = (HIDP_TRANS_DATA|HIDP_DATA_RTYPE_OUPUT);
 	memcpy(p->payload+1,message,len);
 
-	err = l2ca_datawrite(pcb->out_pcb,p);
+	err = l2ca_datawrite(pcb->data_pcb,p);
 	btpbuf_free(p);
 
 	return err;
@@ -842,16 +842,16 @@ err_t l2cap_disconnected_ind(void *arg, struct l2cap_pcb *pcb, err_t err)
 
 	bte->state = (u32)STATE_DISCONNECTING;
 	switch(l2cap_psm(pcb)) {
-		case HIDP_OUTPUT_CHANNEL:
-			l2cap_close(bte->out_pcb);
-			bte->out_pcb = NULL;
+		case HIDP_CONTROL_CHANNEL:
+			l2cap_close(bte->ctl_pcb);
+			bte->ctl_pcb = NULL;
 			break;
-		case HIDP_INPUT_CHANNEL:
-			l2cap_close(bte->in_pcb);
-			bte->in_pcb = NULL;
+		case HIDP_DATA_CHANNEL:
+			l2cap_close(bte->data_pcb);
+			bte->data_pcb = NULL;
 			break;
 	}
-	if(bte->in_pcb==NULL && bte->out_pcb==NULL) {
+	if(bte->data_pcb==NULL && bte->ctl_pcb==NULL) {
 		bte->err = ERR_OK;
 		bte->state = (u32)STATE_DISCONNECTED;
 		__bte_close_ctrl_queue(bte);
@@ -867,20 +867,20 @@ err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb)
 	if(bte==NULL) return ERR_OK;
 
 	switch(l2cap_psm(pcb)) {
-		case HIDP_OUTPUT_CHANNEL:
-			l2cap_close(bte->out_pcb);
-			bte->out_pcb = NULL;
-			if(bte->in_pcb!=NULL)
-				l2ca_disconnect_req(bte->in_pcb,l2cap_disconnect_cfm);
+		case HIDP_CONTROL_CHANNEL:
+			l2cap_close(bte->ctl_pcb);
+			bte->ctl_pcb = NULL;
+			if(bte->data_pcb!=NULL)
+				l2ca_disconnect_req(bte->data_pcb,l2cap_disconnect_cfm);
 			break;
-		case HIDP_INPUT_CHANNEL:
-			l2cap_close(bte->in_pcb);
-			bte->in_pcb = NULL;
-			if(bte->out_pcb!=NULL)
-				l2ca_disconnect_req(bte->out_pcb,l2cap_disconnect_cfm);
+		case HIDP_DATA_CHANNEL:
+			l2cap_close(bte->data_pcb);
+			bte->data_pcb = NULL;
+			if(bte->ctl_pcb!=NULL)
+				l2ca_disconnect_req(bte->ctl_pcb,l2cap_disconnect_cfm);
 			break;
 	}
-	if(bte->in_pcb==NULL && bte->out_pcb==NULL) {		
+	if(bte->data_pcb==NULL && bte->ctl_pcb==NULL) {
 		bte->err = ERR_OK;
 		bte->state = (u32)STATE_DISCONNECTED;
 		__bte_close_ctrl_queue(bte);
@@ -928,14 +928,14 @@ err_t l2cap_accepted(void *arg,struct l2cap_pcb *l2cappcb,err_t err)
 		l2cap_recv(l2cappcb,bte_process_input);
 		l2cap_disconnect_ind(l2cappcb,l2cap_disconnected_ind);
 		switch(l2cap_psm(l2cappcb)) {
-			case HIDP_OUTPUT_CHANNEL:
-				btepcb->out_pcb = l2cappcb;
+			case HIDP_CONTROL_CHANNEL:
+				btepcb->ctl_pcb = l2cappcb;
 				break;
-			case HIDP_INPUT_CHANNEL:
-				btepcb->in_pcb = l2cappcb;
+			case HIDP_DATA_CHANNEL:
+				btepcb->data_pcb = l2cappcb;
 				break;
 		}
-		if(btepcb->in_pcb && btepcb->out_pcb) {
+		if(btepcb->data_pcb && btepcb->ctl_pcb) {
 			btepcb->err = ERR_OK;
 			btepcb->state = (u32)STATE_CONNECTED;
 			if(btepcb->conn_cfm) btepcb->conn_cfm(btepcb->cbarg,btepcb,ERR_OK);

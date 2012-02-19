@@ -65,6 +65,7 @@
 #define WM_INPUT_CHANNEL			0x13
 
 #define WM_SET_REPORT				0x50
+#define WM_DATA						0xA0
 
 /* commands */
 #define WM_CMD_RUMBLE				0x10
@@ -82,7 +83,7 @@
 /* input report ids */
 #define WM_RPT_CTRL_STATUS			0x20
 #define WM_RPT_READ					0x21
-#define WM_RPT_WRITE				0x22
+#define WM_RPT_ACK					0x22
 #define WM_RPT_BTN					0x30
 #define WM_RPT_BTN_ACC				0x31
 #define WM_RPT_BTN_ACC_IR			0x33
