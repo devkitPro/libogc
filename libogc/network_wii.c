@@ -405,10 +405,6 @@ static s32 net_init_chain(s32 result, void *usrdata) {
 		}
 
 		net_ip_top_fd = result;
-		
-		if(CONF_GetWiiConnect24() == 0)
-			goto skipwc24;
-		
 		data->state = 5;
 		data->result = IOS_OpenAsync(__kd_fs, 0, net_init_chain, data);
 		if (data->result < 0) {
@@ -425,8 +421,6 @@ static s32 net_init_chain(s32 result, void *usrdata) {
 			data->state = 0xff;
 			goto error;
 		}
-
-skipwc24:
 
 		data->fd = result;
 		data->retries = MAX_INIT_RETRIES;
@@ -656,10 +650,6 @@ void net_deinit() {
 }
 
 void net_wc24cleanup() {
-	
-	if(CONF_GetWiiConnect24() == 0)
-		return;
-	
     s32 kd_fd;
     STACK_ALIGN(u8, kd_buf, 0x20, 32);
 
