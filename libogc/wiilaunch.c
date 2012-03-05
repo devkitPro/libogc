@@ -45,6 +45,7 @@ static char __nandbootinfo[] ATTRIBUTE_ALIGN(32) = "/shared2/sys/NANDBOOTINFO";
 static char __stateflags[] ATTRIBUTE_ALIGN(32) = "/title/00000001/00000002/data/state.dat";
 
 static int __initialized = 0;
+static char args_set = 0;
 
 typedef struct {
 	u32 checksum;
@@ -264,17 +265,19 @@ s32 WII_LaunchTitle(u64 titleID)
 
 	net_wc24cleanup();
 
-	memset(&nandboot,0,sizeof(NANDBootInfo));
-	nandboot.apptype = 0x80;
-	if(titleID == 0x100000002LL)
-		nandboot.titletype = 4;
-	else
-		nandboot.titletype = 2;
-	if(ES_GetTitleID(&nandboot.launcher) < 0)
-		nandboot.launcher = 0x0000000100000002LL;
-	nandboot.checksum = __CalcChecksum((u32*)&nandboot,sizeof(NANDBootInfo));
-	__WII_WriteNANDBootInfo();
-
+	if (args_set == 0)
+	{
+		memset(&nandboot,0,sizeof(NANDBootInfo));
+		nandboot.apptype = 0x81;
+		if(titleID == 0x100000002LL)
+			nandboot.titletype = 4;
+		else
+			nandboot.titletype = 2;
+		if(ES_GetTitleID(&nandboot.launcher) < 0)
+			nandboot.launcher = 0x0000000100000002LL;
+		nandboot.checksum = __CalcChecksum((u32*)&nandboot,sizeof(NANDBootInfo));
+		__WII_WriteNANDBootInfo();
+	}
 	VIDEO_SetBlack(1);
 	VIDEO_Flush();
 
@@ -290,6 +293,7 @@ s32 WII_LaunchTitleWithArgs(u64 titleID, int launchcode, ...)
 	const char *argv[256];
 	int argc = 1;
 	va_list args;
+	int ret = 0;
 
 	if(!__initialized)
 		return WII_ENOTINIT;
@@ -313,7 +317,7 @@ s32 WII_LaunchTitleWithArgs(u64 titleID, int launchcode, ...)
 		nandboot.titletype = 4;
 	else
 		nandboot.titletype = 2;
-	nandboot.apptype = 0x80;
+	nandboot.apptype = 0x81;
 	nandboot.launchcode = launchcode;
 
 	stateflags.type = TYPE_RETURN;
@@ -323,8 +327,14 @@ s32 WII_LaunchTitleWithArgs(u64 titleID, int launchcode, ...)
 
 	__WII_WriteStateFlags();
 	__WII_WriteNANDBootInfo();
+	
+	args_set = 1;
+	
+	ret = WII_LaunchTitle(titleID);
+	if(ret < 0)
+		args_set = 0;
 
-	return WII_LaunchTitle(titleID);
+	return ret;
 }
 
 s32 WII_ReturnToMenu(void)
