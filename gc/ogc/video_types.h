@@ -156,22 +156,30 @@ extern GXRModeObj TVNtsc240IntAa;			/*!< Video and render mode configuration for
 extern GXRModeObj TVNtsc480Int;				/*!< Video and render mode configuration for 480 lines,interlaced NTSC mode */
 extern GXRModeObj TVNtsc480IntDf;			/*!< Video and render mode configuration for 480 lines,interlaced,doublefield NTSC mode */
 extern GXRModeObj TVNtsc480IntAa;			/*!< Video and render mode configuration for 480 lines,interlaced,doublefield,antialiased NTSC mode */
-extern GXRModeObj TVNtsc480Prog;            /*!< Video and render mode configuration for 480 lines,progressive,singlefield NTSC mode */
+extern GXRModeObj TVNtsc480Prog;			/*!< Video and render mode configuration for 480 lines,progressive,singlefield NTSC mode */
 extern GXRModeObj TVNtsc480ProgSoft;
 extern GXRModeObj TVNtsc480ProgAa;
 extern GXRModeObj TVMpal240Ds;
 extern GXRModeObj TVMpal240DsAa;
+extern GXRModeObj TVMpal240Int;
+extern GXRModeObj TVMpal240IntAa;
+extern GXRModeObj TVMpal480Int;
 extern GXRModeObj TVMpal480IntDf;			/*!< Video and render mode configuration for 480 lines,interlaced,doublefield,antialiased MPAL mode */
 extern GXRModeObj TVMpal480IntAa;
 extern GXRModeObj TVMpal480Prog;
+extern GXRModeObj TVMpal480ProgSoft;
+extern GXRModeObj TVMpal480ProgAa;
 extern GXRModeObj TVPal264Ds;				/*!< Video and render mode configuration for 264 lines,singlefield PAL mode */
 extern GXRModeObj TVPal264DsAa;				/*!< Video and render mode configuration for 264 lines,singlefield,antialiased PAL mode */
 extern GXRModeObj TVPal264Int;				/*!< Video and render mode configuration for 264 lines,interlaced PAL mode */
 extern GXRModeObj TVPal264IntAa;			/*!< Video and render mode configuration for 264 lines,interlaced,antialiased PAL mode */
-extern GXRModeObj TVPal524IntAa;			/*!< Video and render mode configuration for 524 lines,interlaced,antialiased PAL mode */
-extern GXRModeObj TVPal528Int;				/*!< Video and render mode configuration for 528 lines,interlaced,antialiased PAL mode */
-extern GXRModeObj TVPal528IntDf;			/*!< Video and render mode configuration for 264 lines,interlaced,doublefield antialiased PAL mode */
+extern GXRModeObj TVPal528Int;				/*!< Video and render mode configuration for 528 lines,interlaced PAL mode */
+extern GXRModeObj TVPal528IntDf;			/*!< Video and render mode configuration for 528 lines,interlaced,doublefield PAL mode */
+extern GXRModeObj TVPal524IntAa;			/*!< Video and render mode configuration for 524 lines,interlaced,doublefield,antialiased PAL mode */
 extern GXRModeObj TVPal576IntDfScale;
+extern GXRModeObj TVPal528Prog;
+extern GXRModeObj TVPal528ProgSoft;
+extern GXRModeObj TVPal524ProgAa;
 extern GXRModeObj TVPal576ProgScale;
 extern GXRModeObj TVEurgb60Hz240Ds;
 extern GXRModeObj TVEurgb60Hz240DsAa;
