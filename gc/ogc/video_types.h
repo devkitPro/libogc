@@ -99,7 +99,7 @@ distribution.
 #define VI_MAX_HEIGHT_NTSC          480
 
 #define VI_MAX_WIDTH_PAL            720
-#define VI_MAX_HEIGHT_PAL           574
+#define VI_MAX_HEIGHT_PAL           576
 
 #define VI_MAX_WIDTH_MPAL           720
 #define VI_MAX_HEIGHT_MPAL          480
@@ -119,18 +119,18 @@ distribution.
 #define VI_TVMODE_NTSC_INT			VI_TVMODE(VI_NTSC,        VI_INTERLACE)
 #define VI_TVMODE_NTSC_DS			VI_TVMODE(VI_NTSC,        VI_NON_INTERLACE)
 #define VI_TVMODE_NTSC_PROG			VI_TVMODE(VI_NTSC,        VI_PROGRESSIVE)
-#define VI_TVMODE_NTSC_PROG_DS		VI_TVMODE(VI_NTSC,        (VI_PROGRESSIVE|VI_NON_INTERLACE))
 
 #define VI_TVMODE_PAL_INT			VI_TVMODE(VI_PAL,         VI_INTERLACE)
 #define VI_TVMODE_PAL_DS			VI_TVMODE(VI_PAL,         VI_NON_INTERLACE)
+#define VI_TVMODE_PAL_PROG			VI_TVMODE(VI_PAL,         VI_PROGRESSIVE)
 
 #define VI_TVMODE_EURGB60_INT		VI_TVMODE(VI_EURGB60,     VI_INTERLACE)
 #define VI_TVMODE_EURGB60_DS		VI_TVMODE(VI_EURGB60,     VI_NON_INTERLACE)
 #define VI_TVMODE_EURGB60_PROG		VI_TVMODE(VI_EURGB60,     VI_PROGRESSIVE)
-#define VI_TVMODE_EURGB60_PROG_DS	VI_TVMODE(VI_EURGB60,     (VI_PROGRESSIVE|VI_NON_INTERLACE))
 
 #define VI_TVMODE_MPAL_INT			VI_TVMODE(VI_MPAL,        VI_INTERLACE)
 #define VI_TVMODE_MPAL_DS			VI_TVMODE(VI_MPAL,        VI_NON_INTERLACE)
+#define VI_TVMODE_MPAL_PROG			VI_TVMODE(VI_MPAL,        VI_PROGRESSIVE)
 
 #define VI_TVMODE_DEBUG_INT			VI_TVMODE(VI_DEBUG,       VI_INTERLACE)
 
@@ -159,10 +159,11 @@ extern GXRModeObj TVNtsc480IntAa;			/*!< Video and render mode configuration for
 extern GXRModeObj TVNtsc480Prog;            /*!< Video and render mode configuration for 480 lines,progressive,singlefield NTSC mode */
 extern GXRModeObj TVNtsc480ProgSoft;
 extern GXRModeObj TVNtsc480ProgAa;
-extern GXRModeObj TVMpal480IntDf;			/*!< Video and render mode configuration for 480 lines,interlaced,doublefield,antialiased MPAL mode */
-extern GXRModeObj TVMpal480IntAa;
 extern GXRModeObj TVMpal240Ds;
 extern GXRModeObj TVMpal240DsAa;
+extern GXRModeObj TVMpal480IntDf;			/*!< Video and render mode configuration for 480 lines,interlaced,doublefield,antialiased MPAL mode */
+extern GXRModeObj TVMpal480IntAa;
+extern GXRModeObj TVMpal480Prog;
 extern GXRModeObj TVPal264Ds;				/*!< Video and render mode configuration for 264 lines,singlefield PAL mode */
 extern GXRModeObj TVPal264DsAa;				/*!< Video and render mode configuration for 264 lines,singlefield,antialiased PAL mode */
 extern GXRModeObj TVPal264Int;				/*!< Video and render mode configuration for 264 lines,interlaced PAL mode */
@@ -170,7 +171,8 @@ extern GXRModeObj TVPal264IntAa;			/*!< Video and render mode configuration for 
 extern GXRModeObj TVPal524IntAa;			/*!< Video and render mode configuration for 524 lines,interlaced,antialiased PAL mode */
 extern GXRModeObj TVPal528Int;				/*!< Video and render mode configuration for 528 lines,interlaced,antialiased PAL mode */
 extern GXRModeObj TVPal528IntDf;			/*!< Video and render mode configuration for 264 lines,interlaced,doublefield antialiased PAL mode */
-extern GXRModeObj TVPal574IntDfScale;
+extern GXRModeObj TVPal576IntDfScale;
+extern GXRModeObj TVPal576ProgScale;
 extern GXRModeObj TVEurgb60Hz240Ds;
 extern GXRModeObj TVEurgb60Hz240DsAa;
 extern GXRModeObj TVEurgb60Hz240Int;

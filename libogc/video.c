@@ -433,6 +433,74 @@ GXRModeObj TVNtsc480ProgAa =
     }
 };
 
+GXRModeObj TVMpal240Ds =
+{
+    VI_TVMODE_MPAL_DS,     // viDisplayMode
+    640,             // fbWidth
+    240,             // efbHeight
+    240,             // xfbHeight
+    (VI_MAX_WIDTH_MPAL - 640)/2,        // viXOrigin
+    (VI_MAX_HEIGHT_MPAL - 480)/2,       // viYOrigin
+    640,             // viWidth
+    480,             // viHeight
+    VI_XFBMODE_SF,   // xFBmode
+    GX_FALSE,        // field_rendering
+    GX_FALSE,        // aa
+
+    // sample points arranged in increasing Y order
+	{
+		{6,6},{6,6},{6,6},  // pix 0, 3 sample points, 1/12 units, 4 bits each
+		{6,6},{6,6},{6,6},  // pix 1
+		{6,6},{6,6},{6,6},  // pix 2
+		{6,6},{6,6},{6,6}   // pix 3
+	},
+
+    // vertical filter[7], 1/64 units, 6 bits each
+	{
+		 0,         // line n-1
+		 0,         // line n-1
+		21,         // line n
+		22,         // line n
+		21,         // line n
+		 0,         // line n+1
+		 0          // line n+1
+	}
+};
+
+GXRModeObj TVMpal240DsAa =
+{
+    VI_TVMODE_MPAL_DS,     // viDisplayMode
+    640,             // fbWidth
+    240,             // efbHeight
+    240,             // xfbHeight
+    (VI_MAX_WIDTH_MPAL - 640)/2,        // viXOrigin
+    (VI_MAX_HEIGHT_MPAL - 480)/2,       // viYOrigin
+    640,             // viWidth
+    480,             // viHeight
+    VI_XFBMODE_SF,   // xFBmode
+    GX_FALSE,        // field_rendering
+    GX_TRUE,         // aa
+
+    // sample points arranged in increasing Y order
+	{
+		{3,2},{9,6},{3,10},  // pix 0, 3 sample points, 1/12 units, 4 bits each
+		{3,2},{9,6},{3,10},  // pix 1
+		{9,2},{3,6},{9,10},  // pix 2
+		{9,2},{3,6},{9,10}   // pix 3
+	},
+
+    // vertical filter[7], 1/64 units, 6 bits each
+	{
+		 0,         // line n-1
+		 0,         // line n-1
+		21,         // line n
+		22,         // line n
+		21,         // line n
+		 0,         // line n+1
+		 0          // line n+1
+	}
+};
+
 GXRModeObj TVMpal480IntDf =
 {
     VI_TVMODE_MPAL_INT,     // viDisplayMode
@@ -501,12 +569,12 @@ GXRModeObj TVMpal480IntAa =
 	}
 };
 
-GXRModeObj TVMpal240Ds =
+GXRModeObj TVMpal480Prog =
 {
-    VI_TVMODE_MPAL_DS,     // viDisplayMode
+    VI_TVMODE_MPAL_PROG,     // viDisplayMode
     640,             // fbWidth
-    240,             // efbHeight
-    240,             // xfbHeight
+    480,             // efbHeight
+    480,             // xfbHeight
     (VI_MAX_WIDTH_MPAL - 640)/2,        // viXOrigin
     (VI_MAX_HEIGHT_MPAL - 480)/2,       // viYOrigin
     640,             // viWidth
@@ -521,40 +589,6 @@ GXRModeObj TVMpal240Ds =
 		{6,6},{6,6},{6,6},  // pix 1
 		{6,6},{6,6},{6,6},  // pix 2
 		{6,6},{6,6},{6,6}   // pix 3
-	},
-
-    // vertical filter[7], 1/64 units, 6 bits each
-	{
-		 0,         // line n-1
-		 0,         // line n-1
-		21,         // line n
-		22,         // line n
-		21,         // line n
-		 0,         // line n+1
-		 0          // line n+1
-	}
-};
-
-GXRModeObj TVMpal240DsAa =
-{
-    VI_TVMODE_MPAL_DS,     // viDisplayMode
-    640,             // fbWidth
-    240,             // efbHeight
-    240,             // xfbHeight
-    (VI_MAX_WIDTH_MPAL - 640)/2,        // viXOrigin
-    (VI_MAX_HEIGHT_MPAL - 480)/2,       // viYOrigin
-    640,             // viWidth
-    480,             // viHeight
-    VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // field_rendering
-    GX_TRUE,         // aa
-
-    // sample points arranged in increasing Y order
-	{
-		{3,2},{9,6},{3,10},  // pix 0, 3 sample points, 1/12 units, 4 bits each
-		{3,2},{9,6},{3,10},  // pix 1
-		{9,2},{3,6},{9,10},  // pix 2
-		{9,2},{3,6},{9,10}   // pix 3
 	},
 
     // vertical filter[7], 1/64 units, 6 bits each
@@ -806,16 +840,16 @@ GXRModeObj TVPal528IntDf =
 	}
 };
 
-GXRModeObj TVPal574IntDfScale =
+GXRModeObj TVPal576IntDfScale =
 {
     VI_TVMODE_PAL_INT,      // viDisplayMode
     640,             // fbWidth
     480,             // efbHeight
-    574,             // xfbHeight
+    576,             // xfbHeight
     (VI_MAX_WIDTH_PAL - 640)/2,         // viXOrigin
-    (VI_MAX_HEIGHT_PAL - 574)/2,        // viYOrigin
+    (VI_MAX_HEIGHT_PAL - 576)/2,        // viYOrigin
     640,             // viWidth
-    574,             // viHeight
+    576,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
@@ -837,6 +871,39 @@ GXRModeObj TVPal574IntDfScale =
 		 8,         // line n+1
 		 8          // line n+1
 	}
+};
+
+GXRModeObj TVPal576ProgScale =
+{
+    VI_TVMODE_PAL_PROG,      // viDisplayMode
+    640,             // fbWidth
+    480,             // efbHeight
+    576,             // xfbHeight
+    (VI_MAX_WIDTH_PAL - 640)/2,         // viXOrigin
+    (VI_MAX_HEIGHT_PAL - 576)/2,        // viYOrigin
+    640,             // viWidth
+    576,             // viHeight
+    VI_XFBMODE_SF,   // xFBmode
+    GX_FALSE,        // field_rendering
+    GX_FALSE,        // aa
+
+    // sample points arranged in increasing Y order
+	{
+		{6,6},{6,6},{6,6},  // pix 0, 3 sample points, 1/12 units, 4 bits each
+		{6,6},{6,6},{6,6},  // pix 1
+		{6,6},{6,6},{6,6},  // pix 2
+		{6,6},{6,6},{6,6}   // pix 3
+	},
+    // vertical filter[7], 1/64 units, 6 bits each
+    {
+		 0,         // line n-1
+		 0,         // line n-1
+		21,         // line n
+		22,         // line n
+		21,         // line n
+		 0,         // line n+1
+		 0          // line n+1
+    }
 };
 
 GXRModeObj TVEurgb60Hz240Ds =
@@ -1049,7 +1116,7 @@ GXRModeObj TVEurgb60Hz480IntAa =
     480,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
     GX_FALSE,        // field_rendering
-    GX_FALSE,        // aa
+    GX_TRUE,         // aa
 
     // sample points arranged in increasing Y order
 	{
@@ -1188,8 +1255,6 @@ static const struct _timing {
 	u16 nhlines,hlw;
 	u8 hsy,hcs,hce,hbe640;
 	u16 hbs640;
-	u8 hbeCCIR656;
-	u16 hbsCCIR656;
 } video_timing[] = {
 	{
 		0x06,0x00F0,
@@ -1198,8 +1263,7 @@ static const struct _timing {
 		0x0208,0x0207,0x0208,0x0207,
 		0x020D,0x01AD,
 		0x40,0x47,0x69,0xA2,
-		0x0175,
-		0x7A,0x019C
+		0x0175
 	},
 	{
 		0x06,0x00F0,
@@ -1208,18 +1272,16 @@ static const struct _timing {
 		0x0208,0x0208,0x0208,0x0208,
 		0x020E,0x01AD,
 		0x40,0x47,0x69,0xA2,
-		0x0175,
-		0x7A,0x019C
+		0x0175
 	},
 	{
-		0x05,0x011F,
-		0x0023,0x0024,0x0001,0x0000,
-		0x0D,0x0C,0x0B,0x0A,
-		0x026B,0x026A,0x0269,0x026C,
+		0x05,0x0120,
+		0x0021,0x0022,0x0001,0x0000,
+		0x0A,0x0B,0x0A,0x0B,
+		0x026D,0x026C,0x026D,0x026C,
 		0x0271,0x01B0,
 		0x40,0x4B,0x6A,0xAC,
-		0x017C,
-		0x85,0x01A4
+		0x017C
 	},
 	{
 		0x05,0x011F,
@@ -1228,8 +1290,7 @@ static const struct _timing {
 		0x026B,0x026D,0x026B,0x026D,
 		0x0270,0x01B0,
 		0x40,0x4B,0x6A,0xAC,
-		0x017C,
-		0x85,0x01A4
+		0x017C
 	},
 	{
 		0x06,0x00F0,
@@ -1238,8 +1299,7 @@ static const struct _timing {
 		0x0206,0x0205,0x0204,0x0207,
 		0x020D,0x01AD,
 		0x40,0x4E,0x70,0xA2,
-		0x0175,
-		0x7A,0x019C
+		0x0175
 	},
 	{
 		0x06,0x00F0,
@@ -1248,38 +1308,7 @@ static const struct _timing {
 		0x0206,0x0208,0x0206,0x0208,
 		0x020E,0x01AD,
 		0x40,0x4E,0x70,0xA2,
-		0x0175,
-		0x7A,0x019C
-	},
-	{
-		0x0C,0x01e0,
-		0x0030,0x0030,0x0006,0x0006,
-		0x18,0x18,0x18,0x18,
-		0x040e,0x040e,0x040e,0x040e,
-		0x041a,0x01ad,
-		0x40,0x47,0x69,0xa2,
-		0x0175,
-		0x7a,0x019c
-	},
-	{
-		0x0c,0x01e0,
-		0x002c,0x002c,0x000a,0x000a,
-		0x18,0x18,0x18,0x18,
-		0x040e,0x040e,0x040e,0x040e,
-		0x041a,0x01ad,
-		0x40,0x47,0x69,0xa8,
-		0x017b,
-		0x7a,0x019c
-	},
-	{
-		0x06,0x00F1,
-		0x0018,0x0019,0x0001,0x0000,
-		0x0C,0x0D,0x0C,0x0D,
-		0x0208,0x0207,0x0208,0x0207,
-		0x020D,0x01AD,
-		0x40,0x47,0x69,0x9F,
-		0x0172,
-		0x7A,0x019C
+		0x0175
 	},
 	{
 		0x0C,0x01E0,
@@ -1287,9 +1316,17 @@ static const struct _timing {
 		0x18,0x18,0x18,0x18,
 		0x040E,0x040E,0x040E,0x040E,
 		0x041A,0x01AD,
-		0x40,0x47,0x69,0xB4,
-		0x0187,
-		0x7A,0x019C
+		0x40,0x47,0x69,0xA2,
+		0x0175
+	},
+	{
+		0x0A,0x0240,
+		0x003E,0x003E,0x0006,0x0006,
+		0x14,0x14,0x14,0x14,
+		0x04D8,0x04D8,0x04D8,0x04D8,
+		0x04E2,0x01B0,
+		0x40,0x4B,0x6A,0xAC,
+		0x017C
 	}
 };
 
@@ -1304,7 +1341,7 @@ static vu32* const _i2cReg = (u32*)0xCD800000;
 
 static u16 regs[60];
 static u16 shdw_regs[60];
-static u32 encoderType,fbSet = 0;
+static u32 fbSet = 0;
 static s16 displayOffsetH;
 static s16 displayOffsetV;
 static u32 currTvMode,changeMode;
@@ -1413,8 +1450,6 @@ static __inline__ u32 cntlzd(u64 bit)
 
 static const struct _timing* __gettiming(u32 vimode)
 {
-	if(vimode>0x1e) return NULL;
-
 	switch(vimode) {
 		case VI_TVMODE_NTSC_INT:
 			return &video_timing[0];
@@ -1443,19 +1478,18 @@ static const struct _timing* __gettiming(u32 vimode)
 		case VI_TVMODE_NTSC_PROG:
 			return &video_timing[6];
 			break;
-		case VI_TVMODE_NTSC_PROG_DS:
+		case VI_TVMODE_PAL_PROG:
 			return &video_timing[7];
 			break;
-		case VI_TVMODE_DEBUG_PAL_INT:
-			return &video_timing[2];
+		case VI_TVMODE_EURGB60_PROG:
+			return &video_timing[6];
 			break;
-		case VI_TVMODE_DEBUG_PAL_DS:
-			return &video_timing[3];
+		case VI_TVMODE_MPAL_PROG:
+			return &video_timing[6];
 			break;
 		default:
-			break;
+			return NULL;
 	}
-	return NULL;
 }
 
 #if defined(HW_RVL)
@@ -1935,13 +1969,11 @@ static void __VIWriteI2CRegisterBuf(u8 reg, int size, u8 *data)
 	udelay(2);
 }
 
-
 static void __VISetYUVSEL(u8 dtvstatus)
 {
 	if(currTvMode==VI_NTSC) vdacFlagRegion = 0x0000;
 	else if(currTvMode==VI_PAL || currTvMode==VI_EURGB60) vdacFlagRegion = 0x0002;
-	/* FIXME: setting this to 1 causes monochrome output on PAL systems*/
-	else if(currTvMode==VI_MPAL) vdacFlagRegion = 0x0002;
+	else if(currTvMode==VI_MPAL) vdacFlagRegion = 0x0001;
 	else vdacFlagRegion = 0x0000;
 
 	__VIWriteI2CRegister8(0x01, _SHIFTL(dtvstatus,5,3)|(vdacFlagRegion&0x1f));
@@ -1951,26 +1983,6 @@ static void __VISetFilterEURGB60(u8 enable)
 {
 	__VIWriteI2CRegister8(0x6e, enable);
 }
-
-#if 0
-static void __VISetTiming(u8 timing)
-{
-	u16 val;
-
-	val = (_SHIFTL(0x00,8,8)|timing);
-	__VISendI2CData(0xe0,&val,sizeof(u16));
-	udelay(2);
-}
-
-static void __VISet3in1Output(u8 enable)
-{
-	u16 val;
-
-	val = (_SHIFTL(0x04,8,8)|enable);
-	__VISendI2CData(0xe0,&val,sizeof(u16));
-	udelay(2);
-}
-#endif
 
 static void __VISetupEncoder(void)
 {
@@ -2015,9 +2027,6 @@ static void __VISetupEncoder(void)
 	__VIWriteI2CRegisterBuf(0x10, sizeof(gamma), gamma);
 
 	__VIWriteI2CRegister8(0x04, 1);
-	__VIWriteI2CRegister32(0x7A, 0x00000000);
-	__VIWriteI2CRegister16(0x08, 0x0000);
-	__VIWriteI2CRegister8(0x03, 1);
 
 	if(tv==VI_EURGB60) __VISetFilterEURGB60(1);
 	else __VISetFilterEURGB60(0);
@@ -2262,7 +2271,6 @@ void VIDEO_Init()
 	shdw_changed = 0;
 	shdw_changeMode = 0;
 	flushFlag = 0;
-	encoderType = 1;
 
 	_viReg[38] = ((taps[1]>>6)|(taps[2]<<4));
 	_viReg[39] = (taps[0]|_SHIFTL(taps[1],10,6));
@@ -2381,7 +2389,6 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	if(rmode->viXOrigin>((curtiming->hlw+40)-curtiming->hbe640)) printf("VIDEO_Configure(): viXOrigin(%d) cannot be greater than %d in this TV mode\n",rmode->viXOrigin,((curtiming->hlw+40)-curtiming->hbe640));
 	if((rmode->viXOrigin+rmode->viWidth)<(680-curtiming->hbs640)) printf("VIDEO_Configure(): viXOrigin + viWidth(%d) cannot be less than %d in this TV mode\n",(rmode->viXOrigin+rmode->viWidth),(680-curtiming->hbs640));
 #endif
-	if(!encoderType) HorVer.tv = VI_DEBUG;
 
 	__setInterruptRegs(curtiming);
 
@@ -2389,12 +2396,12 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	dcr |= _SHIFTL(HorVer.threeD,3,1);
 	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) dcr |= 0x0004;
 	else dcr |= _SHIFTL(HorVer.nonInter,2,1);
-	if(!(HorVer.tv==VI_DEBUG_PAL || HorVer.tv==VI_EURGB60)) dcr |= _SHIFTL(HorVer.tv,8,2);
+	if(!(HorVer.tv==VI_EURGB60)) dcr |= _SHIFTL(HorVer.tv,8,2);
 	regs[1] = dcr;
 	changed |= VI_REGCHANGE(1);
 
 	regs[54] &= ~0x0001;
-	if(rmode->viTVMode==VI_TVMODE_NTSC_PROG || rmode->viTVMode==VI_TVMODE_NTSC_PROG_DS) regs[54] |= 0x0001;
+	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) regs[54] |= 0x0001;
 	changed |= VI_REGCHANGE(54);
 
 	__setScalingRegs(HorVer.panSizeX,HorVer.dispSizeX,HorVer.threeD);
@@ -2530,7 +2537,7 @@ u32 VIDEO_GetCurrentTvMode()
 	mode = currTvMode;
 
 	if(mode==VI_DEBUG) tv = VI_NTSC;
-	else if(mode==VI_EURGB60) tv = mode;
+	else if(mode==VI_EURGB60) tv = VI_EURGB60;
 	else if(mode==VI_MPAL) tv = VI_MPAL;
 	else if(mode==VI_NTSC) tv = VI_NTSC;
 	else tv = VI_PAL;
@@ -2542,26 +2549,35 @@ u32 VIDEO_GetCurrentTvMode()
 GXRModeObj * VIDEO_GetPreferredMode(GXRModeObj *mode)
 {
 
-GXRModeObj *rmode;
+GXRModeObj *rmode = NULL;
 
 #if defined(HW_RVL)
-
-	if ( CONF_GetProgressiveScan() > 0 && VIDEO_HaveComponentCable() ) {
-		rmode = &TVNtsc480Prog;
+	u32 tvmode = CONF_GetVideo();
+	if (CONF_GetProgressiveScan() > 0 && VIDEO_HaveComponentCable()) {
+		switch (tvmode) {
+			case CONF_VIDEO_NTSC:
+				rmode = &TVNtsc480Prog;
+				break;
+			case CONF_VIDEO_PAL:
+				if (CONF_GetEuRGB60() > 0)
+					rmode = &TVEurgb60Hz480Prog;
+				else rmode = &TVPal576ProgScale;
+				break;
+			case CONF_VIDEO_MPAL:
+				rmode = &TVMpal480Prog;
+				break;
+			default:
+				rmode = &TVNtsc480Prog;
+		}
 	} else {
-
-		u32 tvmode = CONF_GetVideo();
-
-		switch ( tvmode ) {
+		switch (tvmode) {
 			case CONF_VIDEO_NTSC:
 				rmode = &TVNtsc480IntDf;
 				break;
 			case CONF_VIDEO_PAL:
-				if ( CONF_GetEuRGB60() > 0 ) {
+				if (CONF_GetEuRGB60() > 0)
 					rmode = &TVEurgb60Hz480IntDf;
-				} else {
-					rmode = &TVPal528IntDf;
-				}
+				else rmode = &TVPal576IntDfScale;
 				break;
 			case CONF_VIDEO_MPAL:
 				rmode = &TVMpal480IntDf;
@@ -2572,20 +2588,36 @@ GXRModeObj *rmode;
 	}
 #else
 	u32 tvmode = VIDEO_GetCurrentTvMode();
-	switch(tvmode)
-	{
-		case VI_NTSC:
-			rmode = &TVNtsc480IntDf;
-			break;
-		case VI_PAL:
-			rmode = &TVPal528IntDf;
-			break;
-		case VI_MPAL:
-			rmode = &TVMpal480IntDf;
-			break;
-		default:
-			rmode = &TVNtsc480IntDf;
-			break;
+	if (VIDEO_HaveComponentCable()) {
+		switch (tvmode) {
+			case VI_NTSC:
+				rmode = &TVNtsc480Prog;
+				break;
+			case VI_PAL:
+				rmode = &TVPal576ProgScale;
+				break;
+			case VI_MPAL:
+				rmode = &TVMpal480Prog;
+				break;
+			case VI_EURGB60:
+				rmode = &TVEurgb60Hz480Prog;
+				break;
+		}
+	} else {
+		switch (tvmode) {
+			case VI_NTSC:
+				rmode = &TVNtsc480IntDf;
+				break;
+			case VI_PAL:
+				rmode = &TVPal576IntDfScale;
+				break;
+			case VI_MPAL:
+				rmode = &TVMpal480IntDf;
+				break;
+			case VI_EURGB60:
+				rmode = &TVEurgb60Hz480IntDf;
+				break;
+		}
 	}
 #endif
 
@@ -2599,7 +2631,6 @@ GXRModeObj *rmode;
 
 
 }
-
 
 u32 VIDEO_GetCurrentLine()
 {
