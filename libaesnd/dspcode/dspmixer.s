@@ -361,33 +361,33 @@ no_delay:
 		
 mono_8bits:
 	bloop	$acx0.l,mono_8bits_end
-	lrs		$acc1.m,@ACDAT			//right channel
+	lrs		$acc0.m,@ACDAT			//right channel
 mono_8bits_end:
-	mrr		$acc0.m,$acc1.m			//left channel
+	mrr		$acc1.m,$acc0.m			//left channel
 	
 	jmp		mix_samples
 
 stereo_8bits:
 	bloop	$acx0.l,stereo_8bits_end
-	lrs		$acc1.m,@ACDAT			//right channel
+	lrs		$acc0.m,@ACDAT			//right channel
 stereo_8bits_end:
-	lrs		$acc0.m,@ACDAT			//left channel
+	lrs		$acc1.m,@ACDAT			//left channel
 
 	jmp		mix_samples
 	
 mono_16bits:
 	bloop	$acx0.l,mono_16bits_end
-	lrs		$acc1.m,@ACDAT			//right channel
+	lrs		$acc0.m,@ACDAT			//right channel
 mono_16bits_end:
-	mrr		$acc0.m,$acc1.m			//left channel
+	mrr		$acc1.m,$acc0.m			//left channel
 
 	jmp		mix_samples
 	
 stereo_16bits:
 	bloop	$acx0.l,stereo_16bits_end
-	lrs		$acc1.m,@ACDAT			//right channel
+	lrs		$acc0.m,@ACDAT			//right channel
 stereo_16bits_end:
-	lrs		$acc0.m,@ACDAT			//left channel
+	lrs		$acc1.m,@ACDAT			//left channel
 
 mix_samples:
 	// multiply samples*volume

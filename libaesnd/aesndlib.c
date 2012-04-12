@@ -191,11 +191,12 @@ static __inline__ void __aesndhandlerequest(AESNDPB *pb)
 	register u32 copy_len;
 
 	if(pb->mram_curr>=pb->mram_end) {
+		if(pb->flags&VOICE_STREAM && pb->cb)
+			pb->cb(pb,VOICE_STATE_STREAM);
 		if(pb->flags&VOICE_ONCE) {
 			pb->flags |= VOICE_STOPPED;
 			return;
 		} else if(pb->flags&VOICE_LOOP) pb->mram_curr = pb->mram_start;
-		else if(pb->cb) pb->cb(pb,VOICE_STATE_STREAM);
 	}
 
 	if(pb->buf_start) {
@@ -254,12 +255,13 @@ static __inline__ void __aesndhandlerequest(AESNDPB *pb)
 	register u32 copy_len;
 
 	if(pb->mram_curr>=pb->mram_end) {
+		if(pb->flags&VOICE_STREAM && pb->cb)
+			pb->cb(pb,VOICE_STATE_STREAM);
 		if(pb->flags&VOICE_ONCE) {
 			pb->buf_start = 0;
 			pb->flags |= VOICE_STOPPED;
 			return;
 		} else if(pb->flags&VOICE_LOOP) pb->mram_curr = pb->mram_start;
-		else if(pb->cb) pb->cb(pb,VOICE_STATE_STREAM);
 	}
 
 	if(pb->buf_start) {
@@ -282,10 +284,10 @@ static __inline__ void __aesndhandlerequest(AESNDPB *pb)
 	copy_len = (pb->mram_end - pb->mram_curr);
 	if(copy_len>(DSP_STREAMBUFFER_SIZE*2)) copy_len = (DSP_STREAMBUFFER_SIZE*2);
 
-	memcpy(stream_buffer,(void*)pb->mram_curr,copy_len);
-	if(copy_len<(DSP_STREAMBUFFER_SIZE*2)) memset(stream_buffer + copy_len,0,(DSP_STREAMBUFFER_SIZE*2) - copy_len);
+	memcpy(stream_buffer[pb->voiceno],(void*)pb->mram_curr,copy_len);
+	if(copy_len<(DSP_STREAMBUFFER_SIZE*2)) memset(stream_buffer[pb->voiceno] + copy_len,0,(DSP_STREAMBUFFER_SIZE*2) - copy_len);
 
-	DCFlushRange(stream_buffer,(DSP_STREAMBUFFER_SIZE*2));
+	DCFlushRange(stream_buffer[pb->voiceno],(DSP_STREAMBUFFER_SIZE*2));
 
 	pb->mram_curr += copy_len;
 	pb->flags |= VOICE_RUNNING;
@@ -439,7 +441,6 @@ void AESND_Init()
 		for(i=0;i<MAX_VOICES;i++) __aesndaramblocks[i] = AR_Alloc(DSP_STREAMBUFFER_SIZE*2);
 #endif
 		snd_set0w((int*)mute_buffer,SND_BUFFERSIZE>>2);
-		snd_set0w((int*)stream_buffer,SND_BUFFERSIZE>>1);
 		snd_set0w((int*)audio_buffer[0],SND_BUFFERSIZE>>2);
 		snd_set0w((int*)audio_buffer[1],SND_BUFFERSIZE>>2);
 		DCFlushRange(mute_buffer,SND_BUFFERSIZE);
@@ -559,6 +560,7 @@ AESNDPB* AESND_AllocateVoice(AESNDVoiceCallback cb)
 void AESND_FreeVoice(AESNDPB *pb)
 {
 	u32 level;
+	if(pb==NULL) return;
 
 	_CPU_ISR_Disable(level);
 	snd_set0w((int*)pb,sizeof(struct aesndpb_t)>>2);
