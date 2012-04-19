@@ -1,5 +1,6 @@
 cube
 deps
+include
 lib
 wii
 gc/ogc/libversion.h
