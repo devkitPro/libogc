@@ -2121,220 +2121,289 @@ static inline void GX_End()
 static inline void GX_Position3f32(f32 x,f32 y,f32 z)
 {
 	wgPipe->F32 = x;
+	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = y;
+	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = z;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Position3u16(u16 x,u16 y,u16 z)
 {
 	wgPipe->U16 = x;
+	asm volatile ("" ::: "memory" );
 	wgPipe->U16 = y;
+	asm volatile ("" ::: "memory" );
 	wgPipe->U16 = z;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Position3s16(s16 x,s16 y,s16 z)
 {
 	wgPipe->S16 = x;
+	asm volatile ("" ::: "memory" );
 	wgPipe->S16 = y;
+	asm volatile ("" ::: "memory" );
 	wgPipe->S16 = z;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Position3u8(u8 x,u8 y,u8 z)
 {
 	wgPipe->U8 = x;
+	asm volatile ("" ::: "memory" );
 	wgPipe->U8 = y;
+	asm volatile ("" ::: "memory" );
 	wgPipe->U8 = z;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Position3s8(s8 x,s8 y,s8 z)
 {
 	wgPipe->S8 = x;
+	asm volatile ("" ::: "memory" );
 	wgPipe->S8 = y;
+	asm volatile ("" ::: "memory" );
 	wgPipe->S8 = z;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Position2f32(f32 x,f32 y)
 {
 	wgPipe->F32 = x;
+	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = y;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Position2u16(u16 x,u16 y)
 {
 	wgPipe->U16 = x;
+	asm volatile ("" ::: "memory" );
 	wgPipe->U16 = y;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Position2s16(s16 x,s16 y)
 {
 	wgPipe->S16 = x;
+	asm volatile ("" ::: "memory" );
 	wgPipe->S16 = y;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Position2u8(u8 x,u8 y)
 {
 	wgPipe->U8 = x;
+	asm volatile ("" ::: "memory" );
 	wgPipe->U8 = y;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Position2s8(s8 x,s8 y)
 {
 	wgPipe->S8 = x;
+	asm volatile ("" ::: "memory" );
 	wgPipe->S8 = y;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Position1x8(u8 index)
 {
 	wgPipe->U8 = index;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Position1x16(u16 index)
 {
 	wgPipe->U16 = index;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Normal3f32(f32 nx,f32 ny,f32 nz)
 {
 	wgPipe->F32 = nx;
+	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = ny;
+	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = nz;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Normal3s16(s16 nx,s16 ny,s16 nz)
 {
 	wgPipe->S16 = nx;
+	asm volatile ("" ::: "memory" );
 	wgPipe->S16 = ny;
+	asm volatile ("" ::: "memory" );
 	wgPipe->S16 = nz;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Normal3s8(s8 nx,s8 ny,s8 nz)
 {
 	wgPipe->S8 = nx;
+	asm volatile ("" ::: "memory" );
 	wgPipe->S8 = ny;
+	asm volatile ("" ::: "memory" );
 	wgPipe->S8 = nz;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Normal1x8(u8 index)
 {
 	wgPipe->U8 = index;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Normal1x16(u16 index)
 {
 	wgPipe->U16 = index;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Color4u8(u8 r,u8 g,u8 b,u8 a)
 {
 	wgPipe->U8 = r;
+	asm volatile ("" ::: "memory" );
 	wgPipe->U8 = g;
+	asm volatile ("" ::: "memory" );
 	wgPipe->U8 = b;
+	asm volatile ("" ::: "memory" );
 	wgPipe->U8 = a;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Color3u8(u8 r,u8 g,u8 b)
 {
 	wgPipe->U8 = r;
+	asm volatile ("" ::: "memory" );
 	wgPipe->U8 = g;
+	asm volatile ("" ::: "memory" );
 	wgPipe->U8 = b;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Color3f32(f32 r, f32 g, f32 b)
 {
 	wgPipe->U8 = (u8)(r * 255.0);
+	asm volatile ("" ::: "memory" );
 	wgPipe->U8 = (u8)(g * 255.0);
+	asm volatile ("" ::: "memory" );
 	wgPipe->U8 = (u8)(b * 255.0);
-
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Color1u32(u32 clr)
 {
 	wgPipe->U32 = clr;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Color1u16(u16 clr)
 {
 	wgPipe->U16 = clr;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Color1x8(u8 index)
 {
 	wgPipe->U8 = index;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_Color1x16(u16 index)
 {
 	wgPipe->U16 = index;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_TexCoord2f32(f32 s,f32 t)
 {
 	wgPipe->F32 = s;
+	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = t;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_TexCoord2u16(u16 s,u16 t)
 {
 	wgPipe->U16 = s;
+	asm volatile ("" ::: "memory" );
 	wgPipe->U16 = t;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_TexCoord2s16(s16 s,s16 t)
 {
 	wgPipe->S16 = s;
+	asm volatile ("" ::: "memory" );
 	wgPipe->S16 = t;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_TexCoord2u8(u8 s,u8 t)
 {
 	wgPipe->U8 = s;
+	asm volatile ("" ::: "memory" );
 	wgPipe->U8 = t;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_TexCoord2s8(s8 s,s8 t)
 {
 	wgPipe->S8 = s;
+	asm volatile ("" ::: "memory" );
 	wgPipe->S8 = t;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_TexCoord1f32(f32 s)
 {
 	wgPipe->F32 = s;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_TexCoord1u16(u16 s)
 {
 	wgPipe->U16 = s;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_TexCoord1s16(s16 s)
 {
 	wgPipe->S16 = s;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_TexCoord1u8(u8 s)
 {
 	wgPipe->U8 = s;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_TexCoord1s8(s8 s)
 {
 	wgPipe->S8 = s;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_TexCoord1x8(u8 index)
 {
 	wgPipe->U8 = index;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_TexCoord1x16(u16 index)
 {
 	wgPipe->U16 = index;
+	asm volatile ("" ::: "memory" );
 }
 
 static inline void GX_MatrixIndex1x8(u8 index)
 {
 	wgPipe->U8 = index;
+	asm volatile ("" ::: "memory" );
 }
 
 /*!
@@ -3996,6 +4065,81 @@ u32 GX_GetTexObjMipMap(GXTexObj *obj);
  * \return Pointer to user data.
  */
 void* GX_GetTexObjUserData(GXTexObj *obj);
+
+/*!
+ * \fn void* GX_GetTexObjData(GXTexObj *obj)
+ * \brief Used to get a pointer to texture data from the \ref GXTexObj structure.
+ *
+ * \note The returned pointer is a physical address.
+ *
+ * \param[in] obj ptr to a texture object
+ *
+ * \return Physical pointer to texture data.
+ */
+void* GX_GetTexObjData(GXTexObj *obj);
+
+/*!
+ * \fn u8 GX_GetTexObjWrapS(GXTexObj* obj)
+ * \brief Returns the texture wrap s mode described by texture object \a obj.
+ *
+ * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture wrap s mode.
+ *
+ * \param[in] obj ptr to a texture object
+ *
+ * \return wrap s mode
+ */
+u8 GX_GetTexObjWrapS(GXTexObj* obj);
+
+/*!
+ * \fn u8 GX_GetTexObjWrapT(GXTexObj* obj)
+ * \brief Returns the texture wrap t mode described by texture object \a obj.
+ *
+ * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture wrap t mode.
+ *
+ * \param[in] obj ptr to a texture object
+ *
+ * \return wrap t mode
+ */
+u8 GX_GetTexObjWrapT(GXTexObj* obj);
+
+/*!
+ * \fn u16 GX_GetTexObjHeight(GXTexObj* obj)
+ * \brief Returns the texture height described by texture object \a obj.
+ *
+ * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture height.
+ *
+ * \param[in] obj ptr to a texture object
+ *
+ * \return texture height
+ */
+u16 GX_GetTexObjHeight(GXTexObj* obj);
+
+/*!
+ * \fn u16 GX_GetTexObjWidth(GXTexObj* obj)
+ * \brief Returns the texture width described by texture object \a obj.
+ *
+ * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture width.
+ *
+ * \param[in] obj ptr to a texture object
+ *
+ * \return texture width
+ */
+u16 GX_GetTexObjWidth(GXTexObj* obj);
+
+/*!
+ * \fn void GX_GetTexObjAll(GXTexObj* obj, void** image_ptr, u16* width, u16* height, u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap);
+ * \brief Returns the parameters described by a texture object. Texture objects are used to describe all the parameters associated with a texture, including size, format, wrap modes, filter modes, etc. Texture objects are initialized using either GX_InitTexObj() or, for color index format textures, GX_InitTexObjCI().
+ *
+ * \param[in] obj ptr to a texture object
+ * \param[out] image_ptr Returns a physical pointer to the image data for a texture.
+ * \param[out] width Returns the width of the texture or LOD 0 for mipmaps
+ * \param[out] height Returns the height of the texture or LOD 0 for mipmaps
+ * \param[out] format Returns the texel format
+ * \param[out] mipmap Returns the mipmap enable flag.
+ *
+ * \return none
+ */
+void GX_GetTexObjAll(GXTexObj* obj, void** image_ptr, u16* width, u16* height, u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap);
 
 /*!
  * \fn u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
