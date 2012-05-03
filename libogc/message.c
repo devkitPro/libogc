@@ -126,9 +126,9 @@ BOOL MQ_Send(mqbox_t mqbox,mqmsg_t msg,u32 flags)
 
 	mbox = __lwp_mqbox_open(mqbox);
 	if(!mbox) return FALSE;
-	
+
 	ret = FALSE;
-	if(__lwpmq_submit(&mbox->mqueue,mbox->object.id,msg,sizeof(mqmsg_t),LWP_MQ_SEND_REQUEST,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
+	if(__lwpmq_submit(&mbox->mqueue,mbox->object.id,(void*)&msg,sizeof(mqmsg_t),LWP_MQ_SEND_REQUEST,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
 	__lwp_thread_dispatchenable();
 
 	return ret;
@@ -146,7 +146,7 @@ BOOL MQ_Receive(mqbox_t mqbox,mqmsg_t *msg,u32 flags)
 	ret = FALSE;
 	if(__lwpmq_seize(&mbox->mqueue,mbox->object.id,(void*)msg,&tmp,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
 	__lwp_thread_dispatchenable();
-	
+
 	return ret;
 }
 
@@ -160,7 +160,7 @@ BOOL MQ_Jam(mqbox_t mqbox,mqmsg_t msg,u32 flags)
 	if(!mbox) return FALSE;
 
 	ret = FALSE;
-	if(__lwpmq_submit(&mbox->mqueue,mbox->object.id,msg,sizeof(mqmsg_t),LWP_MQ_SEND_URGENT,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
+	if(__lwpmq_submit(&mbox->mqueue,mbox->object.id,(void*)&msg,sizeof(mqmsg_t),LWP_MQ_SEND_URGENT,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
 	__lwp_thread_dispatchenable();
 
 	return ret;
