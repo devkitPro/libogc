@@ -792,38 +792,27 @@ static void __GX_SendFlushPrim()
 	tmp = (__gx->xfFlush*__gx->xfFlushExp);
 
 	wgPipe->U8 = 0x98;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U16 = __gx->xfFlush;
-	asm volatile ("" ::: "memory" );
 
 	tmp2 = (tmp+3)/4;
 	if(tmp>0) {
 		cnt = tmp2/8;
 		while(cnt) {
 			wgPipe->U32 = 0;
-			asm volatile ("" ::: "memory" );
-			wgPipe->U32 = 0;
-			asm volatile ("" ::: "memory" );
-			wgPipe->U32 = 0;
-			asm volatile ("" ::: "memory" );
-			wgPipe->U32 = 0;
-			asm volatile ("" ::: "memory" );
-			wgPipe->U32 = 0;
-			asm volatile ("" ::: "memory" );
-			wgPipe->U32 = 0;
-			asm volatile ("" ::: "memory" );
-			wgPipe->U32 = 0;
-			asm volatile ("" ::: "memory" );
-			wgPipe->U32 = 0;
-			asm volatile ("" ::: "memory" );
-			cnt--;
+					wgPipe->U32 = 0;
+					wgPipe->U32 = 0;
+					wgPipe->U32 = 0;
+					wgPipe->U32 = 0;
+					wgPipe->U32 = 0;
+					wgPipe->U32 = 0;
+					wgPipe->U32 = 0;
+					cnt--;
 		}
 		tmp2 &= 0x0007;
 		if(tmp2) {
 			while(tmp2) {
 				wgPipe->U32 = 0;
-				asm volatile ("" ::: "memory" );
-				tmp2--;
+							tmp2--;
 			}
 		}
 	}
@@ -1569,19 +1558,12 @@ void GX_RestoreWriteGatherPipe()
 	_CPU_ISR_Disable(level);
 
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
 
 	ppcsync();
@@ -1605,21 +1587,13 @@ void GX_Flush()
 		__GX_SetDirtyState();
 
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 
 	ppcsync();
 }
@@ -1808,17 +1782,11 @@ void GX_SetViewportJitter(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ,u
 
 	GX_LOAD_XF_REGS(0x101a,6);
 	wgPipe->F32 = x0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = y0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = z;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = x1;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = y1;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = f;
-	asm volatile ("" ::: "memory" );
 }
 
 void GX_SetViewport(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ)
@@ -1853,19 +1821,12 @@ void GX_LoadProjectionMtx(Mtx44 mt,u8 type)
 
 	GX_LOAD_XF_REGS(0x1020,7);
 	wgPipe->F32 = tmp[0];
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = tmp[1];
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = tmp[2];
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = tmp[3];
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = tmp[4];
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = tmp[5];
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = tmp[6];
-	asm volatile ("" ::: "memory" );
 }
 
 static void __GetImageTileCount(u32 fmt,u16 wd,u16 ht,u32 *xtiles,u32 *ytiles,u32 *zplanes)
@@ -2224,11 +2185,8 @@ void GX_CallDispList(void *list,u32 nbytes)
 		__GX_SendFlushPrim();
 
 	wgPipe->U8 = 0x40;		//call displaylist
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = MEM_VIRTUAL_TO_PHYSICAL(list);
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = nbytes;
-	asm volatile ("" ::: "memory" );
 }
 
 void GX_SetChanCtrl(s32 channel,u8 enable,u8 ambsrc,u8 matsrc,u8 litmask,u8 diff_fn,u8 attn_fn)
@@ -2688,9 +2646,7 @@ void GX_Begin(u8 primitve,u8 vtxfmt,u16 vtxcnt)
 		__GX_SetDirtyState();
 
 	wgPipe->U8 = reg;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U16 = vtxcnt;
-	asm volatile ("" ::: "memory" );
 }
 
 void GX_SetTexCoordGen(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc)
@@ -2921,9 +2877,7 @@ void GX_LoadPosMtxImm(Mtx mt,u32 pnidx)
 void GX_LoadPosMtxIdx(u16 mtxidx,u32 pnidx)
 {
 	wgPipe->U8 = 0x20;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = ((_SHIFTL(mtxidx,16,16))|0xb000|(_SHIFTL(pnidx,2,8)));
-	asm volatile ("" ::: "memory" );
 }
 
 void GX_LoadNrmMtxImm(Mtx mt,u32 pnidx)
@@ -2941,9 +2895,7 @@ void GX_LoadNrmMtxImm3x3(Mtx33 mt,u32 pnidx)
 void GX_LoadNrmMtxIdx3x3(u16 mtxidx,u32 pnidx)
 {
 	wgPipe->U8 = 0x28;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = ((_SHIFTL(mtxidx,16,16))|0x8000|(0x0400|(pnidx*3)));
-	asm volatile ("" ::: "memory" );
 }
 
 void GX_LoadTexMtxImm(Mtx mt,u32 texidx,u8 type)
@@ -2972,9 +2924,7 @@ void GX_LoadTexMtxIdx(u16 mtxidx,u32 texidx,u8 type)
 	else addr = 0x0500|(_SHIFTL((texidx-GX_DTTMTX0),2,8));
 
 	wgPipe->U8 = 0x30;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = ((_SHIFTL(mtxidx,16,16))|(_SHIFTL(size,12,4))|addr);
-	asm volatile ("" ::: "memory" );
 }
 
 void GX_SetCurrentMtx(u32 mtx)
@@ -2992,7 +2942,6 @@ void GX_SetNumTexGens(u32 nr)
 void GX_InvVtxCache()
 {
 	wgPipe->U8 = 0x48; // vertex cache weg
-	asm volatile ("" ::: "memory" );
 }
 
 void GX_SetZMode(u8 enable,u8 func,u8 update_enable)
@@ -4641,37 +4590,21 @@ void GX_LoadLightObj(GXLightObj *lit_obj,u8 lit_id)
 	reg = 0x600|(_SHIFTL(id,4,8));
 	GX_LOAD_XF_REGS(reg,16);
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = 0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = lit->col;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = lit->a0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = lit->a1;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = lit->a2;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = lit->k0;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = lit->k1;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = lit->k2;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = lit->px;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = lit->py;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = lit->pz;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = lit->nx;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = lit->ny;
-	asm volatile ("" ::: "memory" );
 	wgPipe->F32 = lit->nz;
-	asm volatile ("" ::: "memory" );
 }
 
 void GX_LoadLightObjIdx(u32 litobjidx,u8 litid)
@@ -4714,9 +4647,7 @@ void GX_LoadLightObjIdx(u32 litobjidx,u8 litid)
 	reg = (reg&~0xffff0000)|(_SHIFTL(litobjidx,16,16));
 
 	wgPipe->U8 = 0x38;
-	asm volatile ("" ::: "memory" );
 	wgPipe->U32 = reg;
-	asm volatile ("" ::: "memory" );
 }
 
 void GX_InitLightDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz)
