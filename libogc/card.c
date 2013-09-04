@@ -2414,7 +2414,11 @@ static s32 __dounlock(s32 chn,u32 *key)
 	cipher1[1] = e;
 	workarea[0] = (u32)cipher1;
 	workarea[1] = 8;
-	workarea[2] = 0;
+#ifdef HW_RVL
+	workarea[2] = 0x10000000; // use MEM2 base
+#else
+	workarea[2] = 0; // use ARAM base
+#endif
 	workarea[3] = (u32)cipher2;
 	DCFlushRange(cipher1,8);
 	DCInvalidateRange(cipher2,4);
