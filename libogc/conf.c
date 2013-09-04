@@ -101,6 +101,7 @@ int __CONF_GetTxt(const char *name, char *buf, int length)
 		if(delim && ((delim - line) == nlen) && !memcmp(name, line, nlen)) {
 			delim++;
 			end = strchr(line, '\r');
+			if (!end) end = strchr(line, '\n');
 			if(end) {
 				slen = end - delim;
 				if(slen < length) {
