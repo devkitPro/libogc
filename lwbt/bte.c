@@ -110,6 +110,8 @@ err_t bte_hci_initcore_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,
 err_t bte_hci_initsub_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result);
 err_t bte_inquiry_complete(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result);
 err_t bte_read_stored_link_key_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result);
+err_t bte_read_bd_addr_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result);
+
 
 MEMB(bte_pcbs,sizeof(struct bte_pcb),MEMP_NUM_BTE_PCB);
 MEMB(bte_ctrl_reqs,sizeof(struct ctrl_req_t),MEMP_NUM_BTE_CTRLS);
@@ -478,6 +480,22 @@ s32 BTE_ReadStoredLinkKey(struct linkkey_info *keys,u8 max_cnt,btecallback cb)
 	_CPU_ISR_Restore(level);
 
 	return ERR_OK;
+}
+
+s32 BTE_ReadBdAddr(struct bd_addr *bdaddr, btecallback cb)
+{    
+    u32 level;
+
+    _CPU_ISR_Disable(level);
+    btstate.cb = cb;
+    btstate.usrdata = bdaddr;
+    btstate.hci_cmddone = 0;
+    hci_arg(&btstate);
+    hci_cmd_complete(bte_read_bd_addr_complete);
+    hci_read_bd_addr();
+    _CPU_ISR_Restore(level);
+
+    return ERR_OK;
 }
 
 void (*BTE_SetDisconnectCallback(void (*callback)(struct bd_addr *bdaddr,u8 reason)))(struct bd_addr *bdaddr,u8 reason)
@@ -1023,6 +1041,38 @@ err_t bte_read_stored_link_key_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u
 
 	return __bte_cmdfinish(state,ERR_VAL);
 }
+
+err_t bte_read_bd_addr_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result)
+{
+    struct bd_addr *bdaddr;
+    struct bt_state *state = (struct bt_state*)arg;
+
+    if(!pcb) return ERR_CONN;
+
+    LOG("bte_read_bd_addr_complete(%02x,%p)\n", result, &pcb->bdaddr);
+
+    if(state==NULL) return ERR_VAL;
+
+    if(!(ogf==HCI_INFO_PARAM_OGF && ocf==HCI_R_BD_ADDR_OCF)) return __bte_cmdfinish(state,ERR_CONN);
+
+    if(result == HCI_SUCCESS) {
+        bdaddr = (struct bd_addr *)state->usrdata;
+        if (bdaddr != NULL) {
+            bdaddr->addr[0] = pcb->bdaddr.addr[5];
+            bdaddr->addr[1] = pcb->bdaddr.addr[4];
+            bdaddr->addr[2] = pcb->bdaddr.addr[3];
+            bdaddr->addr[3] = pcb->bdaddr.addr[2];
+            bdaddr->addr[4] = pcb->bdaddr.addr[1];
+            bdaddr->addr[5] = pcb->bdaddr.addr[0];
+        }
+        LOG("bte_read_bd_addr_complete(%02x,%p,%d)\n",result,bdaddr,i);
+        __bte_cmdfinish(state,ERR_OK);
+        return ERR_OK;
+    }
+
+    return __bte_cmdfinish(state,ERR_VAL);
+}
+
 /* new init with patching */
 err_t bte_hci_initcore_complete2(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result)
 {
