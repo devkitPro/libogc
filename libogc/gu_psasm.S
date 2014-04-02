@@ -714,10 +714,10 @@ ps_guQuatDotProduct:
 	blr
 
 	.section .sdata
-	.balign 4
-QuatEpsilon:
-	.float	0.00001
+	.balign 16
 Unit01:
 	.float	0.0, 1.0
+QuatEpsilon:
+	.float	0.00001
 NrmData:
 	.float	0.5, 3.0
