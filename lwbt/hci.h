@@ -72,6 +72,8 @@
 #define HCI_DISCONNECT 0x06
 #define HCI_PIN_CODE_REQ_REP 0x0D
 #define HCI_PIN_CODE_REQ_NEG_REP 0x0E
+#define HCI_LINK_KEY_REQ_REP 0x0B
+#define HCI_LINK_KEY_REQ_REP_NEG 0x0C
 #define HCI_SET_CONN_ENCRYPT 0x13
 
 /* Link Policy commands */
@@ -133,6 +135,7 @@
 #define HCI_MODE_CHANGE 0x14
 #define HCI_RETURN_LINK_KEYS 0x15
 #define HCI_PIN_CODE_REQUEST 0x16
+#define HCI_LINK_KEY_REQUEST 0x17
 #define HCI_LINK_KEY_NOTIFICATION 0x18
 #define HCI_DATA_BUFFER_OVERFLOW 0x1A
 #define HCI_MAX_SLOTS_CHANGE 0x1B
@@ -241,6 +244,8 @@
 #define HCI_ACCEPT_CONN_REQ_PLEN 11
 #define HCI_PIN_CODE_REQ_REP_PLEN 27
 #define HCI_PIN_CODE_REQ_NEG_REP_PLEN 10
+#define HCI_LINK_KEY_REQ_REP_PLEN 26
+#define HCI_LINK_KEY_REQ_REP_NEG_PLEN 10
 #define HCI_SET_CONN_ENCRYPT_PLEN 7
 #define HCI_WRITE_STORED_LINK_KEY_PLEN 27
 #define HCI_SET_EV_MASK_PLEN 12
@@ -345,6 +350,7 @@ struct hci_pcb
 	struct hci_link_key *keyres;
 
 	err_t (*pin_req)(void *arg,struct bd_addr *bdaddr);
+	err_t (*link_key_req)(void *arg,struct bd_addr *bdaddr);
 	err_t (*cmd_complete)(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result);
 	err_t (*link_key_not)(void *arg, struct bd_addr *bdaddr, u8_t *key);
 	err_t (*conn_complete)(void *arg,struct bd_addr *bdaddr);
@@ -373,11 +379,13 @@ err_t hci_write_inquiry_scan_type(u8_t type);
 err_t hci_disconnect(struct bd_addr *bdaddr, u8_t reason);
 err_t hci_reject_connection_request(struct bd_addr *bdaddr, u8_t reason);
 err_t hci_pin_code_request_reply(struct bd_addr *bdaddr, u8_t pinlen, u8_t *pincode);
+err_t hci_link_key_req_reply(struct bd_addr *bdaddr, u8_t *link_key);
 err_t hci_write_stored_link_key(struct bd_addr *bdaddr, u8_t *link);
 err_t hci_set_event_filter(u8_t filter_type,u8_t filter_cond_type,u8_t *cond);
 err_t hci_write_page_timeout(u16_t timeout);
 err_t hci_inquiry(u32_t lap,u8_t inq_len,u8_t num_resp,err_t (*inq_complete)(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result));
 err_t hci_pin_code_request_neg_reply(struct bd_addr *bdaddr);
+err_t hci_link_key_req_neg_reply(struct bd_addr *bdaddr);
 err_t hci_write_scan_enable(u8_t scan_enable);
 err_t hci_host_num_comp_packets(u16_t conhdl, u16_t num_complete);
 err_t hci_sniff_mode(struct bd_addr *bdaddr, u16_t max_interval, u16_t min_interval, u16_t attempt, u16_t timeout);
@@ -400,6 +408,7 @@ void hci_arg(void *arg);
 void hci_cmd_complete(err_t (*cmd_complete)(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result));
 void hci_connection_complete(err_t (* conn_complete)(void *arg, struct bd_addr *bdaddr));
 void hci_pin_req(err_t (* pin_req)(void *arg, struct bd_addr *bdaddr));
+void hci_link_key_req(err_t (* link_key_req)(void *arg, struct bd_addr *bdaddr));
 void hci_link_key_not(err_t (* link_key_not)(void *arg, struct bd_addr *bdaddr, u8_t *key));
 void hci_wlp_complete(err_t (* wlp_complete)(void *arg, struct bd_addr *bdaddr));
 void hci_conn_req(err_t (*conn_req)(void *arg,struct bd_addr *bdaddr,u8_t *cod,u8_t link_type));
@@ -416,6 +425,12 @@ err_t lp_write_flush_timeout(struct bd_addr *bdaddr, u16_t flushto);
                            (ret = (pcb)->pin_req((pcb)->cbarg,(bdaddr))); \
                          } else { \
                            ret = hci_pin_code_request_neg_reply(bdaddr); \
+						}
+#define HCI_EVENT_LINK_KEY_REQ(pcb,bdaddr,ret) \
+                         if((pcb)->link_key_req != NULL) { \
+                           (ret = (pcb)->link_key_req((pcb)->cbarg,(bdaddr))); \
+                         } else { \
+                           ret = hci_link_key_req_neg_reply(bdaddr); \
 						}
 #define HCI_EVENT_CONN_REQ(pcb,bdaddr,cod,linktype,ret) \
 						 if((pcb)->conn_req!=NULL) \
