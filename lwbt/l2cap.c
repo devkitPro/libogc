@@ -460,14 +460,14 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 								case L2CAP_QOS:
 									/* If service type is Best Effort or No Traffic the remainder fields will be ignored */
 									if(((u8_t *)p->payload)[3] == L2CAP_QOS_GUARANTEED) {
-										LOG("l2cap_process_sig: This implementation does not support the guaranteed QOS service type");
+										/*LOG("l2cap_process_sig: This implementation does not support the guaranteed QOS service type");
 										if(rspstate == L2CAP_CFG_SUCCESS) {
 											rspstate = L2CAP_CFG_UNACCEPT;
 											if(pcb->cfg.opt != NULL) {
 												btpbuf_free(pcb->cfg.opt);
 												pcb->cfg.opt = NULL;
 											}
-										}
+										}*/
 										s = btpbuf_alloc(PBUF_RAW, L2CAP_CFGOPTHDR_LEN + opthdr->len, PBUF_RAM);
 										memcpy((u8_t *)s->payload, (u8_t *)p->payload, L2CAP_CFGOPTHDR_LEN + opthdr->len);
 										if(pcb->cfg.opt == NULL) {
