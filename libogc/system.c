@@ -1706,3 +1706,19 @@ u32 SYS_GetHollywoodRevision()
 }
 #endif
 
+extern u64 gettime();
+
+u64 SYS_Time()
+{
+	u64 current_time = gettime();
+#ifdef HW_RVL
+	u32 bias;
+	if (CONF_GetCounterBias(&bias) >= 0)
+		current_time += bias;
+#else
+	syssram* sram = __SYS_LockSram();
+	current_time += sram->counter_bias;
+	__SYS_UnlockSram(0);
+#endif
+	return current_time;
+}
