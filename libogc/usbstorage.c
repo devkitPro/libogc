@@ -964,7 +964,7 @@ void USBStorage_Deinitialize()
 	__inited = false;
 }
 
-int USBStorage_ioctl(int request, ...)
+s32 USBStorage_ioctl(int request, ...)
 {
     int retval = 0;
     va_list ap;

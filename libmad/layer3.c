@@ -2312,7 +2312,7 @@ enum mad_error III_decode(struct mad_bitptr *ptr, struct mad_frame *frame,
  * NAME:	layer->III()
  * DESCRIPTION:	decode a single Layer III frame
  */
-s32 mad_layer_III(struct mad_stream *stream, struct mad_frame *frame)
+int mad_layer_III(struct mad_stream *stream, struct mad_frame *frame)
 {
   struct mad_header *header = &frame->header;
   u32 nch, priv_bitlen, next_md_begin = 0;

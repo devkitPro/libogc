@@ -39,7 +39,7 @@ mad_timer_t const mad_timer_zero = { 0, 0 };
  * NAME:	timer->compare()
  * DESCRIPTION:	indicate relative order of two timers
  */
-s32 mad_timer_compare(mad_timer_t timer1, mad_timer_t timer2)
+int mad_timer_compare(mad_timer_t timer1, mad_timer_t timer2)
 {
   s32 diff;
 

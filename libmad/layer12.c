@@ -100,7 +100,7 @@ mad_fixed_t I_sample(struct mad_bitptr *ptr, u32 nb)
  * NAME:	layer->I()
  * DESCRIPTION:	decode a single Layer I frame
  */
-s32 mad_layer_I(struct mad_stream *stream, struct mad_frame *frame)
+int mad_layer_I(struct mad_stream *stream, struct mad_frame *frame)
 {
   struct mad_header *header = &frame->header;
   u32 nch, bound, ch, s, sb, nb;
@@ -327,7 +327,7 @@ void II_samples(struct mad_bitptr *ptr,
  * NAME:	layer->II()
  * DESCRIPTION:	decode a single Layer II frame
  */
-s32 mad_layer_II(struct mad_stream *stream, struct mad_frame *frame)
+int mad_layer_II(struct mad_stream *stream, struct mad_frame *frame)
 {
   struct mad_header *header = &frame->header;
   struct mad_bitptr start;

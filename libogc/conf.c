@@ -163,7 +163,7 @@ s32 CONF_GetLength(const char *name)
 	}
 }
 
-int CONF_GetType(const char *name) 
+s32 CONF_GetType(const char *name) 
 {
 	u8 *entry;
 	if(!__conf_inited) return CONF_ENOTINIT;
