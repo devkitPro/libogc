@@ -335,6 +335,12 @@ u32 SYS_GetArena2Size();
 powercallback SYS_SetPowerCallback(powercallback cb);
 #endif
 
+/* \fn u64 SYS_Time()
+\brief Returns the current time in ticks since 2000 (proper Dolphin/Wii time)
+\return ticks since 2000
+*/
+u64 SYS_Time();
+
 void kprintf(const char *str, ...);
 
 #ifdef __cplusplus
