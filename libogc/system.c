@@ -1706,11 +1706,12 @@ u32 SYS_GetHollywoodRevision()
 }
 #endif
 
-extern u64 gettime();
-
 u64 SYS_Time()
 {
-	u64 current_time = gettime();
+	u64 current_time = 0;
+    u32 gmtime =0;
+    __SYS_GetRTC(&gmtime);
+    current_time = gmtime;
 #ifdef HW_RVL
 	u32 bias;
 	if (CONF_GetCounterBias(&bias) >= 0)
@@ -1720,5 +1721,5 @@ u64 SYS_Time()
 	current_time += sram->counter_bias;
 	__SYS_UnlockSram(0);
 #endif
-	return current_time;
+	return (TB_TIMER_CLOCK * 1000) * current_time;
 }
