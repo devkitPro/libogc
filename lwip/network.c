@@ -1451,7 +1451,7 @@ static void evt_callback(struct netconn *conn,enum netconn_evt evt,u32 len)
 
 extern const devoptab_t dotab_stdnet;
 
-s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr *gateway,bool use_dhcp)
+s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr *gateway,bool use_dhcp, int max_retries)
 {
 	s32 ret = 0;
 	struct ip_addr loc_ip, mask, gw;
@@ -1501,15 +1501,15 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 			tb.tv_sec = DHCP_COARSE_TIMER_SECS;
 			tb.tv_nsec = 0;
 			net_dhcpcoarse_ticks = __lwp_wd_calc_ticks(&tb);
-			__lwp_wd_initialize(&dhcp_coarsetimer_cntrl,__dhcpcoarse_timer,DHCPCOARSE_TIMER_ID,NULL);
-			__lwp_wd_insert_ticks(&dhcp_coarsetimer_cntrl,net_dhcpcoarse_ticks);
+			__lwp_wd_initialize(&dhcp_coarsetimer_cntrl, __dhcpcoarse_timer, DHCPCOARSE_TIMER_ID, NULL);
+			__lwp_wd_insert_ticks(&dhcp_coarsetimer_cntrl, net_dhcpcoarse_ticks);
 			
 			//setup fine timer
 			tb.tv_sec = 0;
-			tb.tv_nsec = DHCP_FINE_TIMER_MSECS*TB_NSPERMS;
+			tb.tv_nsec = DHCP_FINE_TIMER_MSECS * TB_NSPERMS;
 			net_dhcpfine_ticks = __lwp_wd_calc_ticks(&tb);
-			__lwp_wd_initialize(&dhcp_finetimer_cntrl,__dhcpfine_timer,DHCPFINE_TIMER_ID,NULL);
-			__lwp_wd_insert_ticks(&dhcp_finetimer_cntrl,net_dhcpfine_ticks);
+			__lwp_wd_initialize(&dhcp_finetimer_cntrl, __dhcpfine_timer, DHCPFINE_TIMER_ID, NULL);
+			__lwp_wd_insert_ticks(&dhcp_finetimer_cntrl, net_dhcpfine_ticks);
 
 			//now start dhcp client
 			dhcp_start(pnet);
@@ -1519,24 +1519,24 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 		return -ENXIO;
 	
 	// setup loopinterface
-	IP4_ADDR(&loc_ip, 127,0,0,1);
-	IP4_ADDR(&mask, 255,0,0,0);
-	IP4_ADDR(&gw, 127,0,0,1);
-	pnet = netif_add(&g_hLoopIF,&loc_ip,&mask,&gw,NULL,loopif_init,net_input);
+	IP4_ADDR(&loc_ip, 127, 0, 0, 1);
+	IP4_ADDR(&mask, 255, 0, 0, 0);
+	IP4_ADDR(&gw, 127, 0, 0, 1);
+	pnet = netif_add(&g_hLoopIF, &loc_ip, &mask, &gw, NULL, loopif_init, net_input);
 
 	//last and least start the tcpip layer
 	ret = net_init();
 
 	if ( ret == 0 && use_dhcp == TRUE ) {
 		
-		int retries = 0;
+		int retries = max_retries;
 		// wait for dhcp to bind
-		while ( g_hNetIF.dhcp->state != DHCP_BOUND && retries < 20 ) {
-			retries++;
+		while ( g_hNetIF.dhcp->state != DHCP_BOUND && retries > 0 ) {
+			retries--;
 			usleep(500000);
 		}
 		
-		if ( retries < 20 ) {
+		if ( retries > 0 ) {
 			//copy back network addresses
 			if ( local_ip != NULL ) local_ip->s_addr = g_hNetIF.ip_addr.addr;
 			if ( gateway != NULL ) gateway->s_addr = g_hNetIF.gw.addr;
@@ -1549,7 +1549,7 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 	return ret;
 }
 
-s32 if_config(char *local_ip, char *netmask, char *gateway,bool use_dhcp)
+s32 if_config(char *local_ip, char *netmask, char *gateway,bool use_dhcp, int max_retries)
 {
 	s32 ret = 0;
 	struct in_addr loc_ip, mask, gw;
@@ -1562,7 +1562,7 @@ s32 if_config(char *local_ip, char *netmask, char *gateway,bool use_dhcp)
 	if ( netmask != NULL ) mask.s_addr = inet_addr(netmask);
 	if ( gateway != NULL ) gw.s_addr = inet_addr(gateway);
 
-	ret = if_configex( &loc_ip, &mask, &gw, use_dhcp );
+	ret = if_configex( &loc_ip, &mask, &gw, use_dhcp, max_retries);
 
 	if (ret<0) return ret;
 
