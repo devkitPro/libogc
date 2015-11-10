@@ -13,18 +13,18 @@
 
 #define cpu_to_be16(x) (x)
 #define cpu_to_be32(x) (x)
-extern inline u16 cpu_to_le16(u16 x) { return (x<<8) | (x>>8);}
-extern inline u32 cpu_to_le32(u32 x) { return((x>>24) | ((x>>8)&0xff00) | ((x<<8)&0xff0000) | (x<<24));}
+static inline u16 cpu_to_le16(u16 x) { return (x<<8) | (x>>8);}
+static inline u32 cpu_to_le32(u32 x) { return((x>>24) | ((x>>8)&0xff00) | ((x<<8)&0xff0000) | (x<<24));}
 
 #define cpu_to_le16p(addr) (cpu_to_le16(*(addr)))
 #define cpu_to_le32p(addr) (cpu_to_le32(*(addr)))
 #define cpu_to_be16p(addr) (cpu_to_be16(*(addr)))
 #define cpu_to_be32p(addr) (cpu_to_be32(*(addr)))
 
-extern inline void cpu_to_le16s(u16 *a) {*a = cpu_to_le16(*a);}
-extern inline void cpu_to_le32s(u32 *a) {*a = cpu_to_le32(*a);}
-extern inline void cpu_to_be16s(u16 *a) {*a = cpu_to_be16(*a);}
-extern inline void cpu_to_be32s(u32 *a) {*a = cpu_to_be32(*a);}
+static inline void cpu_to_le16s(u16 *a) {*a = cpu_to_le16(*a);}
+static inline void cpu_to_le32s(u32 *a) {*a = cpu_to_le32(*a);}
+static inline void cpu_to_be16s(u16 *a) {*a = cpu_to_be16(*a);}
+static inline void cpu_to_be32s(u32 *a) {*a = cpu_to_be32(*a);}
 
 #define le16_to_cpup(x) cpu_to_le16p(x)
 #define le32_to_cpup(x) cpu_to_le32p(x)
