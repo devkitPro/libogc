@@ -19,7 +19,7 @@ char* thread2vhstr(char *buf,s32 thread);
 const char* vhstr2thread(const char *buf,s32 *thread);
 lwp_cntrl* gdbstub_indextoid(s32 thread);
 s32 gdbstub_getoffsets(char **textaddr,char **dataaddr,char **bssaddr);
-s32 parsezbreak(const char *in,int *type,char **addr,int *len);
+s32 parsezbreak(const char *in,s32 *type,char **addr,u32 *len);
 s32 gdbstub_getthreadinfo(s32 thread,struct gdbstub_threadinfo *info);
 s32 parseqp(const char *in,s32 *mask,s32 *thread);
 void packqq(char *out,s32 mask,s32 thread,struct gdbstub_threadinfo *info);

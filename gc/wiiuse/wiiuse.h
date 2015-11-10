@@ -198,7 +198,7 @@ struct orient_t;
 struct gforce_t;
 
 #ifdef GEKKO
-	typedef void (*wii_event_cb)(struct wiimote_t*, int event);
+	typedef void (*wii_event_cb)(struct wiimote_t*, s32 event);
 #endif
 
 /**

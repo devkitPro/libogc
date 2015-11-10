@@ -336,7 +336,7 @@ s32 gdbstub_getthreadinfo(s32 thread,struct gdbstub_threadinfo *info)
 	return 0;
 }
 
-s32 parsezbreak(const char *in,int *type,char **addr,int *len)
+s32 parsezbreak(const char *in,s32 *type,char **addr,u32 *len)
 {
 	s32 ttmp,atmp,ltmp;
 

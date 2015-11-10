@@ -54,9 +54,9 @@ static bool use_dvd_cache = true;
 static int have_ahbprot = 0;
 static int state = DVD_INIT | DVD_NO_DISC;
 
-static int _cover_callback(int ret, void* usrdata);
+static s32 _cover_callback(s32 ret, void* usrdata);
 
-static unsigned int bufferMutex = 0;
+static u32 bufferMutex = 0;
 static uint32_t outbuf[8] __attribute__((aligned(32)));
 static uint32_t dic[8] __attribute__((aligned(32)));
 static const char di_path[] ATTRIBUTE_ALIGN(32) = "/dev/di";
@@ -390,10 +390,10 @@ static void _DI_SetCallback(int ioctl_nr, ipccallback ipc_cb){
 
 #define COVER_CLOSED (*((uint32_t*)usrdata) & DVD_COVER_DISC_INSERTED)
 
-static int _cover_callback(int ret, void* usrdata){
+static s32 _cover_callback(s32 ret, void* usrdata){
 	static int cur_state = 0;
 	static int retry_count = LIBDI_MAX_RETRIES;
-	const int callback_table[] = {
+	const s32 callback_table[] = {
 		DVD_GETCOVER,
 		DVD_WAITFORCOVERCLOSE,
 		DVD_RESET,

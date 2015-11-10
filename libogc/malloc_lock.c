@@ -37,7 +37,7 @@ void __memlock_init()
 void _DEFUN(__libogc_malloc_lock,(r),
 			struct _reent *r)
 {
-	unsigned int level;
+	u32 level;
 	
 	if(!initialized) return;
 

@@ -257,7 +257,7 @@ s32 __IOS_LaunchNewIOS(int version)
 		return res;
 	}
 	if(numviews > 4) {
-		printf(" GetNumTicketViews too many views: %u\n",numviews);
+		printf(" GetNumTicketViews too many views: %lu\n",numviews);
 		return IOS_ETOOMANYVIEWS;
 	}
 	res = ES_GetTicketViews(titleID, views, numviews);

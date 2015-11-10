@@ -1667,7 +1667,7 @@ void SYS_ResetPMC()
 
 void SYS_DumpPMC()
 {
-	printf("<%d load/stores / %d miss cycles / %d cycles / %d instructions>\n",mfpmc1(),mfpmc2(),mfpmc3(),mfpmc4());
+	printf("<%lu load/stores / %lu miss cycles / %lu cycles / %lu instructions>\n",mfpmc1(),mfpmc2(),mfpmc3(),mfpmc4());
 }
 
 void SYS_SetWirelessID(u32 chan,u32 id)

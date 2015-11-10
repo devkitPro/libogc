@@ -510,7 +510,8 @@ void c_debug_handler(frame_context *frame)
 				goto exit;
 			case 'z':
 				{
-					s32 ret,type,len;
+					s32 ret,type;
+					u32 len;
 					char *addr;
 
 					ret = parsezbreak(remcomInBuffer,&type,&addr,&len);
@@ -574,7 +575,8 @@ void c_debug_handler(frame_context *frame)
 				break;
 			case 'Z':
 				{
-					s32 ret,type,len;
+					s32 ret,type;
+					u32 len;
 					char *addr;
 
 					ret = parsezbreak(remcomInBuffer,&type,&addr,&len);
