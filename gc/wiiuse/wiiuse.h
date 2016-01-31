@@ -245,7 +245,7 @@ typedef enum cmd_blk_s
 	CMD_DONE
 } cmd_blk_s;
 
-struct cmd_blk_t 
+struct cmd_blk_t
 {
 	lwp_node node;
 
@@ -470,6 +470,7 @@ typedef struct classic_ctrl_t {
 
 	struct joystick_t ljs;			/**< left joystick calibration				*/
 	struct joystick_t rjs;			/**< right joystick calibration				*/
+   ubyte type;                  /**< original, pro, wiiu pro               */
 } classic_ctrl_t;
 
 

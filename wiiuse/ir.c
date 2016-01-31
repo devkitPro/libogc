@@ -190,7 +190,7 @@ void wiiuse_set_ir(struct wiimote_t *wm,int status)
 
 	if (status) {
 		/* if already enabled then stop */
-		if (WIIMOTE_IS_SET(wm, WIIMOTE_STATE_IR)) {
+		if (WIIMOTE_IS_SET(wm, WIIMOTE_STATE_IR) || WIIMOTE_IS_SET(wm, WIIMOTE_STATE_WIIU_PRO)) {
 			wiiuse_status(wm,NULL);
 			return;
 		}
@@ -579,7 +579,7 @@ void find_sensorbar(struct ir_t* ir, struct orient_t *orient) {
 					hadj = SB_DOT_HEIGHT_RATIO * difference.x;
 					wadj = SB_DOT_WIDTH_RATIO * difference.x;
 					rotate_dots(&dots[i], &tdot, 1, cand.angle);
-					if( ((cand.rot_dots[0].x + wadj) < tdot.x) && 
+					if( ((cand.rot_dots[0].x + wadj) < tdot.x) &&
 						((cand.rot_dots[1].x - wadj) > tdot.x) &&
 						((cand.rot_dots[0].y + hadj) > tdot.y) &&
 						((cand.rot_dots[0].y - hadj) < tdot.y))

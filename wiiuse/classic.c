@@ -71,41 +71,57 @@ int classic_ctrl_handshake(struct wiimote_t* wm, struct classic_ctrl_t* cc, ubyt
 	for (i = 0; i < len; ++i)
 		data[i] = (data[i] ^ 0x17) + 0x17;
 	*/
-	if (data[offset] == 0xFF) {
-		/*
-		 *	Sometimes the data returned here is not correct.
-		 *	This might happen because the wiimote is lagging
-		 *	behind our initialization sequence.
-		 *	To fix this just request the handshake again.
-		 *
-		 *	Other times it's just the first 16 bytes are 0xFF,
-		 *	but since the next 16 bytes are the same, just use
-		 *	those.
-		 */
-		if (data[offset + 16] == 0xFF) {
-			/* get the calibration data again */
-			WIIUSE_DEBUG("Classic controller handshake appears invalid, trying again.");
-			wiiuse_read_data(wm, data, WM_EXP_MEM_CALIBR, EXP_HANDSHAKE_LEN, wiiuse_handshake_expansion);
-		} else
-			offset += 16;
+
+	/* is this a wiiu pro? */
+	if (len > 223 && data[223] == 0x20) {
+		cc->ljs.max.x = cc->ljs.max.y = 0xFF;
+		cc->ljs.min.x = cc->ljs.min.y = 0;
+		cc->ljs.center.x = cc->ljs.center.y = 0x80;
+
+		cc->rjs = cc->ljs;
+
+		cc->type = 2;
 	}
+	else {
+		if (data[offset] == 0xFF) {
+			/*
+			*	Sometimes the data returned here is not correct.
+			*	This might happen because the wiimote is lagging
+			*	behind our initialization sequence.
+			*	To fix this just request the handshake again.
+			*
+			*	Other times it's just the first 16 bytes are 0xFF,
+			*	but since the next 16 bytes are the same, just use
+			*	those.
+			*/
+			if (data[offset + 16] == 0xFF) {
+				/* get the calibration data again */
+				WIIUSE_DEBUG("Classic controller handshake appears invalid, trying again.");
+				wiiuse_read_data(wm, data, WM_EXP_MEM_CALIBR, EXP_HANDSHAKE_LEN, wiiuse_handshake_expansion);
+			} else
+				offset += 16;
+		}
 
+		if (len > 218 && data[218])
+			cc->type = 1; /* classic controller pro (no analog triggers) */
+		else
+			cc->type = 0; /* original classic controller (analog triggers) */
 
-	/* joystick stuff */
-	cc->ljs.max.x = data[0 + offset] / 4 == 0 ? 64 : data[0 + offset] / 4;
-	cc->ljs.min.x = data[1 + offset] / 4;
-	cc->ljs.center.x = data[2 + offset] / 4 == 0 ? 32 : data[2 + offset] / 4;
-	cc->ljs.max.y = data[3 + offset] / 4 == 0 ? 64 : data[3 + offset] / 4;
-	cc->ljs.min.y = data[4 + offset] / 4;
-	cc->ljs.center.y = data[5 + offset] / 4 == 0 ? 32 : data[5 + offset] / 4;
+		/* joystick stuff */
+		cc->ljs.max.x = data[0 + offset] / 4 == 0 ? 64 : data[0 + offset] / 4;
+		cc->ljs.min.x = data[1 + offset] / 4;
+		cc->ljs.center.x = data[2 + offset] / 4 == 0 ? 32 : data[2 + offset] / 4;
+		cc->ljs.max.y = data[3 + offset] / 4 == 0 ? 64 : data[3 + offset] / 4;
+		cc->ljs.min.y = data[4 + offset] / 4;
+		cc->ljs.center.y = data[5 + offset] / 4 == 0 ? 32 : data[5 + offset] / 4;
 
-	cc->rjs.max.x = data[6 + offset] / 8 == 0 ? 32 : data[6 + offset] / 8;
-	cc->rjs.min.x = data[7 + offset] / 8;
-	cc->rjs.center.x = data[8 + offset] / 8 == 0 ? 16 : data[8 + offset] / 8;
-	cc->rjs.max.y = data[9 + offset] / 8 == 0 ? 32 : data[9 + offset] / 8;
-	cc->rjs.min.y = data[10 + offset] / 8;
-	cc->rjs.center.y = data[11 + offset] / 8 == 0 ? 16 : data[11 + offset] / 8;
-
+		cc->rjs.max.x = data[6 + offset] / 8 == 0 ? 32 : data[6 + offset] / 8;
+		cc->rjs.min.x = data[7 + offset] / 8;
+		cc->rjs.center.x = data[8 + offset] / 8 == 0 ? 16 : data[8 + offset] / 8;
+		cc->rjs.max.y = data[9 + offset] / 8 == 0 ? 32 : data[9 + offset] / 8;
+		cc->rjs.min.y = data[10 + offset] / 8;
+		cc->rjs.center.y = data[11 + offset] / 8 == 0 ? 16 : data[11 + offset] / 8;
+	}
 	/* handshake done */
 	wm->event = WIIUSE_CLASSIC_CTRL_INSERTED;
 	wm->exp.type = EXP_CLASSIC;
@@ -123,7 +139,7 @@ int classic_ctrl_handshake(struct wiimote_t* wm, struct classic_ctrl_t* cc, ubyt
  *
  *	@param cc		A pointer to a classic_ctrl_t structure.
  */
-void classic_ctrl_disconnected(struct classic_ctrl_t* cc) 
+void classic_ctrl_disconnected(struct classic_ctrl_t* cc)
 {
 	memset(cc, 0, sizeof(struct classic_ctrl_t));
 }
@@ -144,25 +160,40 @@ void classic_ctrl_event(struct classic_ctrl_t* cc, ubyte* msg) {
 	for (i = 0; i < 6; ++i)
 		msg[i] = (msg[i] ^ 0x17) + 0x17;
 	*/
-	classic_ctrl_pressed_buttons(cc, BIG_ENDIAN_SHORT(*(short*)(msg + 4)));
+	if (cc->type==2) {
+		classic_ctrl_pressed_buttons(cc, BIG_ENDIAN_SHORT(*(short*)(msg + 8)));
 
-	/* left/right buttons */
-	cc->ls_raw = (((msg[2] & 0x60) >> 2) | ((msg[3] & 0xE0) >> 5));
-	cc->rs_raw = (msg[3] & 0x1F);
+		/* 12-bit little endian values adjusted to 8-bit */
+		cc->ljs.pos.x = (msg[0] >> 4) | (msg[1] << 4);
+		cc->rjs.pos.x = (msg[2] >> 4) | (msg[3] << 4);
+		cc->ljs.pos.y = (msg[4] >> 4) | (msg[5] << 4);
+		cc->rjs.pos.y = (msg[6] >> 4) | (msg[7] << 4);
 
-	/*
-	 *	TODO - LR range hardcoded from 0x00 to 0x1F.
-	 *	This is probably in the calibration somewhere.
-	 */
+		cc->ls_raw = cc->btns & CLASSIC_CTRL_BUTTON_FULL_L ? 0x1F : 0;
+		cc->rs_raw = cc->btns & CLASSIC_CTRL_BUTTON_FULL_R ? 0x1F : 0;
+	}
+	else {
+		classic_ctrl_pressed_buttons(cc, BIG_ENDIAN_SHORT(*(short*)(msg + 4)));
+
+		/* left/right buttons */
+		cc->ls_raw = (((msg[2] & 0x60) >> 2) | ((msg[3] & 0xE0) >> 5));
+		cc->rs_raw = (msg[3] & 0x1F);
+
+		/*
+		 *	TODO - LR range hardcoded from 0x00 to 0x1F.
+		 *	This is probably in the calibration somewhere.
+		 */
 #ifndef GEKKO
-	cc->r_shoulder = ((float)r / 0x1F);
-	cc->l_shoulder = ((float)l / 0x1F);
+		cc->r_shoulder = ((float)r / 0x1F);
+		cc->l_shoulder = ((float)l / 0x1F);
 #endif
-	/* calculate joystick orientation */
-	cc->ljs.pos.x = (msg[0] & 0x3F);
-	cc->ljs.pos.y = (msg[1] & 0x3F);
-	cc->rjs.pos.x = ((msg[0] & 0xC0) >> 3) | ((msg[1] & 0xC0) >> 5) | ((msg[2] & 0x80) >> 7);
-	cc->rjs.pos.y = (msg[2] & 0x1F);
+		/* calculate joystick orientation */
+		cc->ljs.pos.x = (msg[0] & 0x3F);
+		cc->ljs.pos.y = (msg[1] & 0x3F);
+		cc->rjs.pos.x = ((msg[0] & 0xC0) >> 3) | ((msg[1] & 0xC0) >> 5) | ((msg[2] & 0x80) >> 7);
+		cc->rjs.pos.y = (msg[2] & 0x1F);
+	}
+
 #ifndef GEKKO
 	calc_joystick_state(&cc->ljs, cc->ljs.pos.x, cc->ljs.pos.y);
 	calc_joystick_state(&cc->rjs, cc->rjs.pos.x, cc->rjs.pos.y);
