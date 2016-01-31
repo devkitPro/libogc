@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "definitions.h"
 #include "wiiuse_internal.h"
@@ -23,32 +24,45 @@ void wiiuse_handshake(struct wiimote_t *wm,ubyte *data,uword len)
 			wm->handshake_state++;
 
 			wiiuse_set_leds(wm,WIIMOTE_LED_NONE,NULL);
+			wiiuse_status(wm,wiiuse_handshake);
+			return;
 
-			buf = __lwp_wkspace_allocate(sizeof(ubyte)*8);
-			wiiuse_read_data(wm,buf,WM_MEM_OFFSET_CALIBRATION,7,wiiuse_handshake);
-			break;
 		case 1:
 			wm->handshake_state++;
+			buf = __lwp_wkspace_allocate(sizeof(ubyte)*8);
 
-			accel->cal_zero.x = ((data[0]<<2)|((data[3]>>4)&3));
-			accel->cal_zero.y = ((data[1]<<2)|((data[3]>>2)&3));
-			accel->cal_zero.z = ((data[2]<<2)|(data[3]&3));
+			if (len > 2 && data[2]&WM_CTRL_STATUS_BYTE1_ATTACHMENT) {
+				wiiuse_read_data(wm,buf,WM_EXP_ID,6,wiiuse_handshake);
+				return;
 
-			accel->cal_g.x = (((data[4]<<2)|((data[7]>>4)&3)) - accel->cal_zero.x);
-			accel->cal_g.y = (((data[5]<<2)|((data[7]>>2)&3)) - accel->cal_zero.y);
-			accel->cal_g.z = (((data[6]<<2)|(data[7]&3)) - accel->cal_zero.z);
-			__lwp_wkspace_free(data);
-			
-			WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_HANDSHAKE);
-			WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_HANDSHAKE_COMPLETE);
+		case 2:
+				if (BIG_ENDIAN_LONG(*(int*)(&data[2])) == EXP_ID_CODE_CLASSIC_WIIU_PRO) {
+					memset(data, 0, 8);
+					WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_WIIU_PRO);
+					break;
+				}
+				buf = data;
+			}
 
-			wm->event = WIIUSE_CONNECT;
-			wiiuse_status(wm,NULL);
-			break;
-		default:
-			break;
-
+			wm->handshake_state++;
+			wiiuse_read_data(wm,buf,WM_MEM_OFFSET_CALIBRATION,7,wiiuse_handshake);
+			return;
 	}
+
+	accel->cal_zero.x = ((data[0]<<2)|((data[3]>>4)&3));
+	accel->cal_zero.y = ((data[1]<<2)|((data[3]>>2)&3));
+	accel->cal_zero.z = ((data[2]<<2)|(data[3]&3));
+
+	accel->cal_g.x = (((data[4]<<2)|((data[7]>>4)&3)) - accel->cal_zero.x);
+	accel->cal_g.y = (((data[5]<<2)|((data[7]>>2)&3)) - accel->cal_zero.y);
+	accel->cal_g.z = (((data[6]<<2)|(data[7]&3)) - accel->cal_zero.z);
+	__lwp_wkspace_free(data);
+
+	WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_HANDSHAKE);
+	WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_HANDSHAKE_COMPLETE);
+
+	wm->event = WIIUSE_CONNECT;
+	wiiuse_status(wm,NULL);
 }
 
 void wiiuse_handshake_expansion_start(struct wiimote_t *wm)
@@ -101,6 +115,7 @@ void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
 				case EXP_ID_CODE_CLASSIC_CONTROLLER_GENERIC3:
 				case EXP_ID_CODE_CLASSIC_CONTROLLER_GENERIC4:
 				case EXP_ID_CODE_CLASSIC_CONTROLLER_GENERIC5:
+				case EXP_ID_CODE_CLASSIC_WIIU_PRO:
 					if(!classic_ctrl_handshake(wm,&wm->exp.classic,data,len)) return;
 					break;
 				case EXP_ID_CODE_GUITAR:
