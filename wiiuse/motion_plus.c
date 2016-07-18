@@ -13,6 +13,37 @@
 #include "events.h"
 #include "wiiboard.h"
 #include "io.h"
+#include "lwp_wkspace.h"
+
+static void wiiuse_probe_motion_plus_check2(struct wiimote_t *wm, ubyte *data, uword len)
+{
+	WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_MPLUS_PRESENT);
+	if(WIIMOTE_IS_SET(wm, WIIMOTE_STATE_EXP_HANDSHAKE))
+	{
+		WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_EXP_HANDSHAKE);
+		wiiuse_set_motion_plus(wm, 1);
+	}
+}
+
+static void wiiuse_probe_motion_plus_check1(struct wiimote_t *wm, ubyte *data, uword len)
+{
+	if (data[1] != 0x05)
+	{
+		WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_MPLUS_PRESENT);
+		WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_EXP_HANDSHAKE);
+		__lwp_wkspace_free(data);
+		return;
+	}
+	__lwp_wkspace_free(data);
+	ubyte val = 0x55;
+	wiiuse_write_data(wm, WM_EXP_MOTION_PLUS_ENABLE, &val, 1, wiiuse_probe_motion_plus_check2);
+}
+
+void wiiuse_probe_motion_plus(struct wiimote_t *wm)
+{
+	ubyte *buf = __lwp_wkspace_allocate(MAX_PAYLOAD);
+	wiiuse_read_data(wm, buf, WM_EXP_MOTION_PLUS_MODE, 2, wiiuse_probe_motion_plus_check1);
+}
 
 void wiiuse_motion_plus_check(struct wiimote_t *wm,ubyte *data,uword len)
 {
@@ -35,6 +66,7 @@ void wiiuse_motion_plus_check(struct wiimote_t *wm,ubyte *data,uword len)
 			
 			WIIMOTE_ENABLE_STATE(wm,WIIMOTE_STATE_EXP);
 			wiiuse_set_ir_mode(wm);
+			wiiuse_status(wm, NULL);
 		}
 	}
 }
@@ -58,15 +90,21 @@ static void wiiuse_set_motion_plus_clear1(struct wiimote_t *wm,ubyte *data,uword
 void wiiuse_set_motion_plus(struct wiimote_t *wm, int status)
 {
 	ubyte val;
-	
+
 	if(WIIMOTE_IS_SET(wm,WIIMOTE_STATE_EXP_HANDSHAKE))
 		return;
 	
 	WIIMOTE_ENABLE_STATE(wm, WIIMOTE_STATE_EXP_HANDSHAKE);
+	if (!WIIMOTE_IS_SET(wm, WIIMOTE_STATE_MPLUS_PRESENT))
+	{
+		wiiuse_probe_motion_plus(wm);
+		return;
+	}
+	
 	if(status)
 	{
 		val = 0x04;
-		wiiuse_write_data(wm,WM_EXP_MOTION_PLUS_ENABLE,&val,1,wiiuse_motion_plus_check);
+		wiiuse_write_data(wm,WM_EXP_MOTION_PLUS_MODE,&val,1,wiiuse_motion_plus_check);
 	}
 	else
 	{

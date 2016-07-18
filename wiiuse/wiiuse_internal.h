@@ -112,7 +112,8 @@
 #define WM_EXP_MEM_ENABLE2			0x04A400FB
 #define WM_EXP_MEM_KEY				0x04A40040
 #define WM_EXP_MEM_CALIBR			0x04A40020
-#define WM_EXP_MOTION_PLUS_ENABLE   0x04A600FE
+#define WM_EXP_MOTION_PLUS_ENABLE	0x04A600F0
+#define WM_EXP_MOTION_PLUS_MODE		0x04A600FE
 #define WM_EXP_ID					0x04A400FA
 
 #define WM_REG_IR					0x04B00030
@@ -187,26 +188,27 @@
  ********************/
 
 /* wiimote state flags - (some duplicated in wiiuse.h)*/
-#define WIIMOTE_STATE_DEV_FOUND					0x00001
-//#define WIIMOTE_STATE_DEV_REGISTER				0x00002
-#define WIIMOTE_STATE_HANDSHAKE					0x00004	/* actual connection exists but no handshake yet */
-#define WIIMOTE_STATE_HANDSHAKE_COMPLETE		0x00008	/* actual connection exists but no handshake yet */
-#define WIIMOTE_STATE_CONNECTED					0x00010
-#define WIIMOTE_STATE_EXP_HANDSHAKE				0x00020	/* actual connection exists but no handshake yet */
-#define WIIMOTE_STATE_EXP_FAILED				0x00040	/* actual connection exists but no handshake yet */
-#define WIIMOTE_STATE_RUMBLE					0x00080
-#define WIIMOTE_STATE_ACC						0x00100
-#define WIIMOTE_STATE_EXP						0x00200
-#define WIIMOTE_STATE_IR						0x00400
-#define WIIMOTE_STATE_SPEAKER					0x00800
-#define WIIMOTE_STATE_IR_SENS_LVL1				0x01000
-#define WIIMOTE_STATE_IR_SENS_LVL2				0x02000
-#define WIIMOTE_STATE_IR_SENS_LVL3				0x04000
-#define WIIMOTE_STATE_IR_SENS_LVL4				0x08000
-#define WIIMOTE_STATE_IR_SENS_LVL5				0x10000
-#define WIIMOTE_STATE_IR_INIT					0x20000
-#define WIIMOTE_STATE_SPEAKER_INIT				0x40000
-#define WIIMOTE_STATE_WIIU_PRO               0x80000
+#define WIIMOTE_STATE_DEV_FOUND					0x000001
+//#define WIIMOTE_STATE_DEV_REGISTER				0x000002
+#define WIIMOTE_STATE_HANDSHAKE					0x000004	/* actual connection exists but no handshake yet */
+#define WIIMOTE_STATE_HANDSHAKE_COMPLETE		0x000008	/* actual connection exists but no handshake yet */
+#define WIIMOTE_STATE_CONNECTED					0x000010
+#define WIIMOTE_STATE_EXP_HANDSHAKE				0x000020	/* actual connection exists but no handshake yet */
+#define WIIMOTE_STATE_EXP_FAILED				0x000040	/* actual connection exists but no handshake yet */
+#define WIIMOTE_STATE_RUMBLE					0x000080
+#define WIIMOTE_STATE_ACC						0x000100
+#define WIIMOTE_STATE_EXP						0x000200
+#define WIIMOTE_STATE_IR						0x000400
+#define WIIMOTE_STATE_SPEAKER					0x000800
+#define WIIMOTE_STATE_IR_SENS_LVL1				0x001000
+#define WIIMOTE_STATE_IR_SENS_LVL2				0x002000
+#define WIIMOTE_STATE_IR_SENS_LVL3				0x004000
+#define WIIMOTE_STATE_IR_SENS_LVL4				0x008000
+#define WIIMOTE_STATE_IR_SENS_LVL5				0x010000
+#define WIIMOTE_STATE_IR_INIT					0x020000
+#define WIIMOTE_STATE_SPEAKER_INIT				0x040000
+#define WIIMOTE_STATE_WIIU_PRO					0x080000
+#define WIIMOTE_STATE_MPLUS_PRESENT				0x100000
 
 #define WIIMOTE_INIT_STATES					(WIIMOTE_STATE_IR_SENS_LVL3)
 
