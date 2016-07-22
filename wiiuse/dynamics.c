@@ -148,7 +148,7 @@ void calculate_gforce(struct accel_t* ac, struct vec3w_t* accel, struct gforce_t
  *	@param y	The raw y-axis value.
  */
 void calc_joystick_state(struct joystick_t* js, float x, float y) {
-	float rx, ry, ang;
+	float rx, ry;
 
 	/*
 	 *	Since the joystick center may not be exactly:
@@ -181,12 +181,8 @@ void calc_joystick_state(struct joystick_t* js, float x, float y) {
 		ry = ((float)(y - js->min.y) / (float)(js->center.y - js->min.y)) - 1.0f;
 
 	/* calculate the joystick angle and magnitude */
-	ang = RAD_TO_DEGREE(atanf(ry / rx));
-	ang -= 90.0f;
-	if (rx < 0.0f)
-		ang -= 180.0f;
-	js->ang = absf(ang);
-	js->mag = (float) sqrt((rx * rx) + (ry * ry));
+	js->ang = RAD_TO_DEGREE(atan2f(rx, ry));
+	js->mag = hypotf(rx, ry);
 }
 
 
