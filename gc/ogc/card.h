@@ -332,7 +332,7 @@ s32 CARD_Close(card_file *file);
 \brief Creates a new file with the given filename and fills in the fileinformations. Synchronous version.
 \param[in] chn CARD slot
 \param[in] filename name of the file to create.
-\param[in] size size of the newly created file.
+\param[in] size size of the newly created file. This must be a multiple of the memory card's sector size.
 \param[out] file pointer to the card_file structure. It receives the fileinformations for later usage.
 
 \return \ref card_errors "card error codes"
@@ -344,7 +344,7 @@ s32 CARD_Create(s32 chn,const char *filename,u32 size,card_file *file);
 \brief Creates a new file with the given filename and fills in the fileinformations. This function returns immediately. Asynchronous version.
 \param[in] chn CARD slot
 \param[in] filename name of the file to create.
-\param[in] size size of the newly created file.
+\param[in] size size of the newly created file. This must be a multiple of the memory card's sector size.
 \param[out] file pointer to the card_file structure. It receives the fileinformations for later usage.
 \param[in] callback pointer to a callback function. This callback will be called when the create process has finished.
 
