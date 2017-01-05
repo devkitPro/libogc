@@ -23,9 +23,7 @@ int __libc_start_hook(lwp_cntrl *curr_thr,lwp_cntrl *start_thr)
 	ptr = (struct _reent*)calloc(1,sizeof(struct _reent));
 	if(!ptr) abort();
 
-#ifdef __GNUC__
 	_REENT_INIT_PTR((ptr));
-#endif
 	
 	start_thr->libc_reent = ptr;
 	return 1;
@@ -41,7 +39,6 @@ int __libc_delete_hook(lwp_cntrl *curr_thr, lwp_cntrl *delete_thr)
 		ptr = (struct _reent*)delete_thr->libc_reent;
 	
 	if(ptr && ptr!=&libc_globl_reent) {
-		_wrapup_reent(ptr);
 		_reclaim_reent(ptr);
 		free(ptr);
 	}
