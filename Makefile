@@ -14,7 +14,7 @@ export PATH	:=	$(DEVKITPPC)/bin:$(PATH)
 
 export LIBOGC_MAJOR	:= 1
 export LIBOGC_MINOR	:= 8
-export LIBOGC_PATCH	:= 15
+export LIBOGC_PATCH	:= 15-1
 
 include	$(DEVKITPPC)/base_rules
 
@@ -84,7 +84,7 @@ INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/sdcard -I$(BASEDIR)/gc/wiiuse \
 				-I$(BASEDIR)/gc/di
 
-MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -fmodulo-sched -ffunction-sections -fdata-sections
+MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -ffunction-sections -fdata-sections
 
 
 ifeq ($(PLATFORM),wii)
@@ -95,7 +95,7 @@ ifeq ($(PLATFORM),cube)
 MACHDEP		+=	-DHW_DOL
 endif
 
-CFLAGS		:= -DLIBOGC_INTERNAL -g -Os -mregnames -Wall $(MACHDEP)  -fno-strict-aliasing $(INCLUDES)
+CFLAGS		:= -DLIBOGC_INTERNAL -g -O2 -fno-strict-aliasing -mregnames -Wall $(MACHDEP) $(INCLUDES)
 ASFLAGS		:=	$(MACHDEP) -mregnames -D_LANGUAGE_ASSEMBLY $(INCLUDES)
 
 #---------------------------------------------------------------------------------
