@@ -163,7 +163,7 @@ int clock_gettime(struct timespec *tp)
 	gctime += 946684800;
 
 	tp->tv_sec = gctime;
-	tp->tv_nsec = ticks_to_nanosecs(gettick());
+	tp->tv_nsec = ticks_to_nanosecs(gettick())%1000000000;
 
 	return 0;
 }
@@ -319,7 +319,7 @@ int __libogc_gettod_r(struct _reent *ptr, struct timeval *tp, struct timezone *t
 
 	if (tp != NULL) {
 		tp->tv_sec = time(NULL);
-		tp->tv_usec = tick_microsecs(gettick());
+		tp->tv_usec = ticks_to_microsecs(gettick())%1000000;
 	}
 	if (tz != NULL) {
 		tz->tz_minuteswest = 0;
