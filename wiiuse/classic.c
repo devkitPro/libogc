@@ -74,8 +74,8 @@ int classic_ctrl_handshake(struct wiimote_t* wm, struct classic_ctrl_t* cc, ubyt
 
 	/* is this a wiiu pro? */
 	if (len > 223 && data[223] == 0x20) {
-		cc->ljs.max.x = cc->ljs.max.y = 0xFF;
-		cc->ljs.min.x = cc->ljs.min.y = 0;
+		cc->ljs.max.x = cc->ljs.max.y = 208;
+		cc->ljs.min.x = cc->ljs.min.y = 48;
 		cc->ljs.center.x = cc->ljs.center.y = 0x80;
 
 		cc->rjs = cc->ljs;
