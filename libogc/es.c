@@ -936,7 +936,7 @@ static int _ES_open_r (struct _reent *r, void *fileStruct, const char *path, int
 	return (int)file;
 }
 
-static int _ES_close_r (struct _reent *r, int fd) {
+static int _ES_close_r (struct _reent *r, void *fd) {
 	es_fd *file = (es_fd *) fd;
 
 	LWP_MutexLock(file->mutex);
@@ -954,7 +954,7 @@ static int _ES_close_r (struct _reent *r, int fd) {
 	return 0;
 }
 
-static int _ES_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
+static int _ES_read_r (struct _reent *r, void *fd, char *ptr, size_t len) {
 	es_fd *file = (es_fd *) fd;
 	int read = 0;
 	int res;
@@ -1010,7 +1010,7 @@ static int _ES_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 	return read;
 }
 
-static off_t _ES_seek_r (struct _reent *r, int fd, off_t where, int whence) {
+static off_t _ES_seek_r (struct _reent *r, void *fd, off_t where, int whence) {
 	es_fd *file = (es_fd *) fd;
 	s32 res;
 
@@ -1062,7 +1062,7 @@ static void _ES_fillstat(u64 titleID, tmd_content *content, struct stat *st) {
 	st->st_blksize = 16384;
 }
 
-static int _ES_fstat_r (struct _reent *r, int fd, struct stat *st) {
+static int _ES_fstat_r (struct _reent *r, void *fd, struct stat *st) {
 	es_fd *file = (es_fd *) fd;
 
 	LWP_MutexLock(file->mutex);

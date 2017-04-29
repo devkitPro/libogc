@@ -444,7 +444,7 @@ static void * _kbd_buf_thread_func(void *arg) {
 	return NULL;
 }
 
-static ssize_t _keyboardRead(struct _reent *r, int unused, char *ptr, size_t len)
+static ssize_t _keyboardRead(struct _reent *r, void *unused, char *ptr, size_t len)
 {
 	ssize_t count = len;
 	while ( count > 0 ) {

@@ -631,7 +631,7 @@ static int __smb_open(struct _reent *r, void *fileStruct, const char *path, int 
 	return 0;
 }
 
-static off_t __smb_seek(struct _reent *r, int fd, off_t pos, int dir)
+static off_t __smb_seek(struct _reent *r, void *fd, off_t pos, int dir)
 {
 	SMBFILESTRUCT *file = (SMBFILESTRUCT*) fd;
 	off_t position;
@@ -685,7 +685,7 @@ static off_t __smb_seek(struct _reent *r, int fd, off_t pos, int dir)
 	return position;
 }
 
-static ssize_t __smb_read(struct _reent *r, int fd, char *ptr, size_t len)
+static ssize_t __smb_read(struct _reent *r, void *fd, char *ptr, size_t len)
 {
 	size_t offset = 0;
 	size_t readsize;
@@ -772,7 +772,7 @@ retry_read:
 	return len;
 }
 
-static ssize_t __smb_write(struct _reent *r, int fd, const char *ptr, size_t len)
+static ssize_t __smb_write(struct _reent *r, void *fd, const char *ptr, size_t len)
 {
 	SMBFILESTRUCT *file = (SMBFILESTRUCT*) fd;
 	int written;
@@ -806,7 +806,7 @@ static ssize_t __smb_write(struct _reent *r, int fd, const char *ptr, size_t len
 	return written;
 }
 
-static int __smb_close(struct _reent *r, int fd)
+static int __smb_close(struct _reent *r, void *fd)
 {
 	SMBFILESTRUCT *file = (SMBFILESTRUCT*) fd;
 	int j;
@@ -1223,7 +1223,7 @@ static int __smb_stat(struct _reent *r, const char *path, struct stat *st)
 	return 0;
 }
 
-static int __smb_fstat(struct _reent *r, int fd, struct stat *st)
+static int __smb_fstat(struct _reent *r, void *fd, struct stat *st)
 {
 	SMBFILESTRUCT *filestate = (SMBFILESTRUCT *) fd;
 

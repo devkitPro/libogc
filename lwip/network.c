@@ -1462,7 +1462,7 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 	if(g_netinitiated) return 0;
 	g_netinitiated = 1;
 
-	AddDevice(&dotab_stdnet);
+//	AddDevice(&dotab_stdnet);
 #ifdef STATS
 	stats_init();
 #endif /* STATS */

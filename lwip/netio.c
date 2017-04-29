@@ -1,3 +1,4 @@
+#if 0
 #include <stdlib.h>
 #include <string.h>
 #include <reent.h>
@@ -9,33 +10,33 @@ extern int errno;
 #include "lwip/ip_addr.h"
 #include "network.h"
 int netio_open(struct _reent *r, void *fileStruct, const char *path,int flags,int mode);
-int netio_close(struct _reent *r,int fd);
-int netio_write(struct _reent *r,int fd,const char *ptr,size_t len);
-int netio_read(struct _reent *r,int fd,char *ptr,size_t len);
+int netio_close(struct _reent *r,void *fd);
+int netio_write(struct _reent *r,void *fd,const char *ptr,size_t len);
+int netio_read(struct _reent *r,void *fd,char *ptr,size_t len);
 
 //---------------------------------------------------------------------------------
 const devoptab_t dotab_stdnet = {
 //---------------------------------------------------------------------------------
-	"stdnet",		// device name
-	0,				// size of file structure
-	netio_open,		// device open
+	"stdnet",	// device name
+	0,		// size of file structure
+	netio_open,	// device open
 	netio_close,	// device close
 	netio_write,	// device write
-	netio_read,		// device read
-	NULL,			// device seek
-	NULL,			// device fstat
-	NULL,			// device stat
-	NULL,			// device link
-	NULL,			// device unlink
-	NULL,			// device chdir
-	NULL,			// device rename
-	NULL,			// device mkdir
-	0,				// dirStateSize
-	NULL,			// device diropen_r
-	NULL,			// device dirreset_r
-	NULL,			// device dirnext_r
-	NULL,			// device dirclose_r
-	NULL			// device statvfs_r
+	netio_read,	// device read
+	NULL,		// device seek
+	NULL,		// device fstat
+	NULL,		// device stat
+	NULL,		// device link
+	NULL,		// device unlink
+	NULL,		// device chdir
+	NULL,		// device rename
+	NULL,		// device mkdir
+	0,		// dirStateSize
+	NULL,		// device diropen_r
+	NULL,		// device dirreset_r
+	NULL,		// device dirnext_r
+	NULL,		// device dirclose_r
+	NULL		// device statvfs_r
 };
 
 int netio_open(struct _reent *r, void *fileStruct, const char *path,int flags,int mode)
@@ -69,7 +70,7 @@ int netio_open(struct _reent *r, void *fileStruct, const char *path,int flags,in
 	return udp_sock;
 }
 
-int netio_close(struct _reent *r,int fd)
+int netio_close(struct _reent *r,void *fd)
 {
 	if(fd<0) return -1;
 
@@ -78,7 +79,7 @@ int netio_close(struct _reent *r,int fd)
 	return 0;
 }
 
-int netio_write(struct _reent *r,int fd,const char *ptr,size_t len)
+int netio_write(struct _reent *r,void *fd,const char *ptr,size_t len)
 {
 	int ret;
 
@@ -89,7 +90,7 @@ int netio_write(struct _reent *r,int fd,const char *ptr,size_t len)
 	return ret;
 }
 
-int netio_read(struct _reent *r,int fd,char *ptr,size_t len)
+int netio_read(struct _reent *r,void *fd,char *ptr,size_t len)
 {
 	int ret;
 
@@ -99,3 +100,4 @@ int netio_read(struct _reent *r,int fd,char *ptr,size_t len)
 
 	return ret;
 }
+#endif
