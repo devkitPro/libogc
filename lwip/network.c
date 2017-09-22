@@ -1576,6 +1576,19 @@ s32 if_config(char *local_ip, char *netmask, char *gateway,bool use_dhcp, int ma
 }
 
 
+u32 net_gethostip(void)
+{
+	return g_hNetIF.ip_addr.addr;
+}
+
+s32 net_get_mac_address(void *mac_buf)
+{
+	if(mac_buf==NULL) return -EINVAL;
+	memcpy(mac_buf,g_hNetIF.hwaddr,g_hNetIF.hwaddr_len);
+	return 0;
+}
+
+
 s32 net_init()
 {
 	sys_sem sem;
