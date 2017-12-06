@@ -639,9 +639,9 @@ f32 c_guVecDotProduct(guVector *a,guVector *b)
 void c_guQuatAdd(guQuaternion *a,guQuaternion *b,guQuaternion *ab)
 {
 	ab->x = a->x + b->x;
-	ab->y = a->x + b->y;
-	ab->z = a->x + b->z;
-	ab->w = a->x + b->w;
+	ab->y = a->y + b->y;
+	ab->z = a->z + b->z;
+	ab->w = a->w + b->w;
 }
 
 #ifdef GEKKO
@@ -668,9 +668,9 @@ void ps_guQuatAdd(register guQuaternion *a,register guQuaternion *b,register guQ
 void c_guQuatSub(guQuaternion *a,guQuaternion *b,guQuaternion *ab)
 {
 	ab->x = a->x - b->x;
-	ab->y = a->x - b->y;
-	ab->z = a->x - b->z;
-	ab->w = a->x - b->w;
+	ab->y = a->y - b->y;
+	ab->z = a->z - b->z;
+	ab->w = a->w - b->w;
 }
 
 #ifdef GEKKO
