@@ -395,7 +395,7 @@ void __MaskIrq(u32 nMask)
 	_CPU_ISR_Restore(level);
 }
 
-void __irq_init()
+void __irq_init(void)
 {
 	register u32 intrStack = (u32)__intrstack_addr;
 	register u32 intrStack_end = (u32)__intrstack_end;
@@ -456,7 +456,7 @@ raw_irq_handler_t IRQ_Free(u32 nIrq)
 	return old;
 }
 
-u32 IRQ_Disable()
+u32 IRQ_Disable(void)
 {
 	u32 level;
 	_CPU_ISR_Disable(level);

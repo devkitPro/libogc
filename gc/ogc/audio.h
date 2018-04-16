@@ -122,12 +122,12 @@ void AUDIO_SetStreamVolLeft(u8 vol);
 
 
 /*! 
- * \fn u8 AUDIO_GetStreamVolLeft()
+ * \fn u8 AUDIO_GetStreamVolLeft(void)
  * \brief Get streaming volume of the left channel.
  *
  * \return level of volume.
  */
-u8 AUDIO_GetStreamVolLeft();
+u8 AUDIO_GetStreamVolLeft(void);
 
 
 /*! 
@@ -142,12 +142,12 @@ void AUDIO_SetStreamVolRight(u8 vol);
 
 
 /*! 
- * \fn u8 AUDIO_GetStreamVolRight()
+ * \fn u8 AUDIO_GetStreamVolRight(void)
  * \brief Get streaming volume of the right channel.
  *
  * \return level of volume.
  */
-u8 AUDIO_GetStreamVolRight();
+u8 AUDIO_GetStreamVolRight(void);
 
 
 /*! 
@@ -162,12 +162,12 @@ void AUDIO_SetStreamSampleRate(u32 rate);
 
 
 /*! 
- * \fn u32 AUDIO_GetStreamSampleRate()
+ * \fn u32 AUDIO_GetStreamSampleRate(void)
  * \brief Get streaming sample rate
  *
  * \return \ref ai_sample_rates "sample rate"
  */
-u32 AUDIO_GetStreamSampleRate();
+u32 AUDIO_GetStreamSampleRate(void);
 
 
 /*! 
@@ -197,16 +197,16 @@ void AUDIO_InitDMA(u32 startaddr,u32 len);
 
 
 /*! 
- * \fn u16 AUDIO_GetDMAEnableFlag()
+ * \fn u16 AUDIO_GetDMAEnableFlag(void)
  * \brief Get the audio DMA flag
  *
  * \return state of the current DMA operation.
  */
-u16 AUDIO_GetDMAEnableFlag();
+u16 AUDIO_GetDMAEnableFlag(void);
 
 
 /*! 
- * \fn void AUDIO_StartDMA()
+ * \fn void AUDIO_StartDMA(void)
  * \brief Start the audio DMA operation.
  *
  *        Starts to transfer the data from main memory to the audio interface thru DMA.<br>
@@ -214,43 +214,43 @@ u16 AUDIO_GetDMAEnableFlag();
  *
  * \return none
  */
-void AUDIO_StartDMA();
+void AUDIO_StartDMA(void);
 
 
 /*! 
- * \fn void AUDIO_StopDMA()
+ * \fn void AUDIO_StopDMA(void)
  * \brief Stop the previously started audio DMA operation.
  *
  * \return none
  */
-void AUDIO_StopDMA();
+void AUDIO_StopDMA(void);
 
 
 /*!
- * \fn u32 AUDIO_GetDMABytesLeft()
+ * \fn u32 AUDIO_GetDMABytesLeft(void)
  * \brief Get the count of bytes, left to play, from the audio DMA interface
  *
  * \return count of bytes left to play.
  */
-u32 AUDIO_GetDMABytesLeft();
+u32 AUDIO_GetDMABytesLeft(void);
 
 
 /*! 
- * \fn u32 AUDIO_GetDMALength()
+ * \fn u32 AUDIO_GetDMALength(void)
  * \brief Get the DMA transfer length configured in the audio DMA interface.
  * 
  * \return length of data loaded into the audio DMA interface.
  */
-u32 AUDIO_GetDMALength();
+u32 AUDIO_GetDMALength(void);
 
 
 /*! 
- * \fn u32 AUDIO_GetDMAStartAddr()
+ * \fn u32 AUDIO_GetDMAStartAddr(void)
  * \brief Get the main memory address for the DMA operation.
  *
  * \return start address of mainmemory loaded into the audio DMA interface.
  */
-u32 AUDIO_GetDMAStartAddr();
+u32 AUDIO_GetDMAStartAddr(void);
 
 
 /*! 
@@ -265,12 +265,12 @@ void AUDIO_SetStreamTrigger(u32 cnt);
 
 
 /*! 
- * \fn void AUDIO_ResetStreamSampleCnt()
+ * \fn void AUDIO_ResetStreamSampleCnt(void)
  * \brief Reset the stream sample count register.
  *
  * \return none
  */
-void AUDIO_ResetStreamSampleCnt();
+void AUDIO_ResetStreamSampleCnt(void);
 
 
 /*! 
@@ -285,12 +285,12 @@ void AUDIO_SetDSPSampleRate(u8 rate);
 
 
 /*! 
- * \fn u32 AUDIO_GetDSPSampleRate()
+ * \fn u32 AUDIO_GetDSPSampleRate(void)
  * \brief Get the sampling rate for the DSP interface
  *
  * \return DSP sampling rate (AI_SAMPLERATE_32KHZ,AI_SAMPLERATE_48KHZ)
  */
-u32 AUDIO_GetDSPSampleRate();
+u32 AUDIO_GetDSPSampleRate(void);
 
 
 /*! 
@@ -305,12 +305,12 @@ void AUDIO_SetStreamPlayState(u32 state);
 
 
 /*! 
- * \fn u32 AUDIO_GetStreamPlayState()
+ * \fn u32 AUDIO_GetStreamPlayState(void)
  * \brief Get the play state from the streaming audio interface
  *
  * \return playstate (AI_STREAM_STOP,AI_STREAM_START)
  */
-u32 AUDIO_GetStreamPlayState();
+u32 AUDIO_GetStreamPlayState(void);
 
 #ifdef __cplusplus
    }

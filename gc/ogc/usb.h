@@ -178,8 +178,8 @@ typedef struct _usb_device_entry {
 
 typedef s32 (*usbcallback)(s32 result,void *usrdata);
 
-s32 USB_Initialize();
-s32 USB_Deinitialize();
+s32 USB_Initialize(void);
+s32 USB_Deinitialize(void);
 
 s32 USB_OpenDevice(s32 device_id,u16 vid,u16 pid,s32 *fd);
 s32 USB_CloseDevice(s32 *fd);

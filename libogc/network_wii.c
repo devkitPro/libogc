@@ -248,7 +248,7 @@ static char __kd_fs[] ATTRIBUTE_ALIGN(32) = "/dev/net/kd/request";
 
 #define ROUNDDOWN32(v)				(((u32)(v)-0x1f)&~0x1f)
 
-static s32 NetCreateHeap()
+static s32 NetCreateHeap(void)
 {
 	u32 level;
 	void *net_heap_ptr;
@@ -635,7 +635,7 @@ s32 net_get_status(void) {
 	return _last_init_result;
 }
 
-void net_deinit() {
+void net_deinit(void) {
 	if (_init_busy) {
 		debug_printf("aborting net_init_async\n");
 		_init_abort = true;
@@ -649,7 +649,7 @@ void net_deinit() {
 	_last_init_result = -ENETDOWN;
 }
 
-void net_wc24cleanup() {
+void net_wc24cleanup(void) {
     s32 kd_fd;
     STACK_ALIGN(u8, kd_buf, 0x20, 32);
 

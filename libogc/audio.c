@@ -142,7 +142,7 @@ static void __AIDHandler(u32 nIrq,void *pCtx)
 	}
 }
 
-static void __AISRCINIT()
+static void __AISRCINIT(void)
 {
 	int done = 0;
 	u32 sample_counter;
@@ -287,7 +287,7 @@ void AUDIO_SetStreamVolLeft(u8 vol)
 	_aiReg[1] = (_aiReg[1]&~0x000000ff)|(vol&0xff);
 }
 
-u8 AUDIO_GetStreamVolLeft()
+u8 AUDIO_GetStreamVolLeft(void)
 {
 	return (u8)(_aiReg[1]&0xff);
 }
@@ -297,7 +297,7 @@ void AUDIO_SetStreamVolRight(u8 vol)
 	_aiReg[1] = (_aiReg[1]&~0x0000ff00)|(_SHIFTL(vol,8,8));
 }
 
-u8 AUDIO_GetStreamVolRight()
+u8 AUDIO_GetStreamVolRight(void)
 {
 	return (u8)(_SHIFTR(_aiReg[1],8,8));
 }
@@ -307,7 +307,7 @@ void AUDIO_SetStreamSampleRate(u32 rate)
 	_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]&~AI_AISFR)|(_SHIFTL(rate,1,1));
 }
 
-u32 AUDIO_GetStreamSampleRate()
+u32 AUDIO_GetStreamSampleRate(void)
 {
 	return _SHIFTR(_aiReg[AI_CONTROL],1,1);
 }
@@ -317,7 +317,7 @@ void AUDIO_SetStreamTrigger(u32 cnt)
 	_aiReg[3] = cnt;
 }
 
-void AUDIO_ResetStreamSampleCnt()
+void AUDIO_ResetStreamSampleCnt(void)
 {
 	_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]&~AI_SCRESET)|AI_SCRESET;
 }
@@ -347,7 +347,7 @@ void AUDIO_SetStreamPlayState(u32 state)
 	}
 }
 
-u32 AUDIO_GetStreamPlayState()
+u32 AUDIO_GetStreamPlayState(void)
 {
 	return (_aiReg[AI_CONTROL]&AI_PSTAT);
 }
@@ -376,32 +376,32 @@ void AUDIO_InitDMA(u32 startaddr,u32 len)
 	_CPU_ISR_Restore(level);
 }
 
-u16 AUDIO_GetDMAEnableFlag()
+u16 AUDIO_GetDMAEnableFlag(void)
 {
 	return (_SHIFTR(_dspReg[27],15,1));
 }
 
-void AUDIO_StartDMA()
+void AUDIO_StartDMA(void)
 {
 	_dspReg[27] = (_dspReg[27]&~0x8000)|0x8000;
 }
 
-void AUDIO_StopDMA()
+void AUDIO_StopDMA(void)
 {
 	_dspReg[27] = (_dspReg[27]&~0x8000);
 }
 
-u32 AUDIO_GetDMABytesLeft()
+u32 AUDIO_GetDMABytesLeft(void)
 {
 	return (_SHIFTL(_dspReg[29],5,15));
 }
 
-u32 AUDIO_GetDMAStartAddr()
+u32 AUDIO_GetDMAStartAddr(void)
 {
 	return (_SHIFTL((_dspReg[24]&0x1fff),16,13)|(_dspReg[25]&0xffe0));
 }
 
-u32 AUDIO_GetDMALength()
+u32 AUDIO_GetDMALength(void)
 {
 	return ((_dspReg[27]&0x7fff)<<5);
 }
@@ -421,7 +421,7 @@ void AUDIO_SetDSPSampleRate(u8 rate)
 	}
 }
 
-u32 AUDIO_GetDSPSampleRate()
+u32 AUDIO_GetDSPSampleRate(void)
 {
 	return (_SHIFTR(_aiReg[AI_CONTROL],6,1))^1;		//0^1(1) = 48Khz, 1^1(0) = 32Khz
 }

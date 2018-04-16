@@ -125,7 +125,7 @@ static vu16* const _viReg = (u16*)0xCC002000;
 
 static u32 __si_transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb);
 
-static __inline__ struct _xy* __si_getxy()
+static __inline__ struct _xy* __si_getxy(void)
 {
 	switch(VIDEO_GetCurrentTvMode()) {
 		case VI_NTSC:
@@ -140,7 +140,7 @@ static __inline__ struct _xy* __si_getxy()
 	return NULL;
 }
 
-static __inline__ void __si_cleartcinterrupt()
+static __inline__ void __si_cleartcinterrupt(void)
 {
 	_siReg[13] = (_siReg[13]|SICOMCSR_TCINT)&SICOMCSR_TCINT;
 }
@@ -163,7 +163,7 @@ static void __si_alarmhandler(syswd_t thealarm,void *cbarg)
 	}
 }
 
-static u32 __si_completetransfer()
+static u32 __si_completetransfer(void)
 {
 	u32 val,sisr,cnt,i;
 	u32 *in;
@@ -408,7 +408,7 @@ static void __si_interrupthandler(u32 irq,void *ctx)
 	}
 }
 
-u32 SI_Sync()
+u32 SI_Sync(void)
 {
 	u32 level,ret;
 
@@ -422,7 +422,7 @@ u32 SI_Sync()
 	return ret;
 }
 
-u32 SI_Busy()
+u32 SI_Busy(void)
 {
 	return (sicntrl.chan==-1)?0:1;
 }
@@ -501,7 +501,7 @@ void SI_SetSamplingRate(u32 samplingrate)
 	_CPU_ISR_Restore(level);
 }
 
-void SI_RefreshSamplingRate()
+void SI_RefreshSamplingRate(void)
 {
 	SI_SetSamplingRate(sampling_rate);
 }
@@ -660,7 +660,7 @@ u32 SI_GetTypeAsync(s32 chan,SICallback cb)
 	return type;
 }
 
-void SI_TransferCommands()
+void SI_TransferCommands(void)
 {
 	_siReg[14] = 0x80000000;
 }
@@ -737,7 +737,7 @@ u32 SI_EnablePollingInterrupt(s32 enable)
 	return ret;
 }
 
-void __si_init()
+void __si_init(void)
 {
 	u32 i;
 #ifdef _SI_DEBUG

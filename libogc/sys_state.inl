@@ -1,7 +1,7 @@
 #ifndef __SYS_STATE_INL__
 #define __SYS_STATE_INL__
 
-static __inline__ void __sys_state_init()
+static __inline__ void __sys_state_init(void)
 {
 	_sys_state_curr = SYS_STATE_BEFORE_INIT;
 }
@@ -11,7 +11,7 @@ static __inline__ void __sys_state_set(u32 sys_state)
 	_sys_state_curr = sys_state;
 }
 
-static __inline__ u32 __sys_state_get()
+static __inline__ u32 __sys_state_get(void)
 {
 	return _sys_state_curr;
 }

@@ -49,7 +49,7 @@ static ARQRequest *__ARQReqPendingHi;
 static ARQCallback __ARQCallbackLo = NULL;
 static ARQCallback __ARQCallbackHi = NULL;
 
-static __inline__ void __ARQPopTaskQueueHi()
+static __inline__ void __ARQPopTaskQueueHi(void)
 {
 	ARQRequest *req;
 
@@ -74,7 +74,7 @@ static void __ARQCallbackSync(ARQRequest *req)
 	LWP_ThreadBroadcast(__ARQSyncQueue);
 }
 
-static void __ARQServiceQueueLo()
+static void __ARQServiceQueueLo(void)
 {
 	ARQRequest *req;
 
@@ -101,7 +101,7 @@ static void __ARQServiceQueueLo()
 	}
 }
 
-static void __ARInterruptServiceRoutine()
+static void __ARInterruptServiceRoutine(void)
 {
 	if(__ARQCallbackHi) {
 		__ARQReqPendingHi->state = ARQ_TASK_FINISHED;
@@ -118,7 +118,7 @@ static void __ARInterruptServiceRoutine()
 	if(!__ARQReqPendingHi) __ARQServiceQueueLo();
 }
 
-void ARQ_Init()
+void ARQ_Init(void)
 {
 	u32 level;
 #ifdef _ARQ_DEBUG
@@ -146,7 +146,7 @@ void ARQ_Init()
 	_CPU_ISR_Restore(level);
 }
 
-void ARQ_Reset()
+void ARQ_Reset(void)
 {
 	u32 level;
 	_CPU_ISR_Disable(level);
@@ -162,12 +162,12 @@ void ARQ_SetChunkSize(u32 size)
 	_CPU_ISR_Restore(level);
 }
 
-u32 ARQ_GetChunkSize()
+u32 ARQ_GetChunkSize(void)
 {
 	return __ARQChunkSize;
 }
 
-void ARQ_FlushQueue()
+void ARQ_FlushQueue(void)
 {
 	u32 level;
 

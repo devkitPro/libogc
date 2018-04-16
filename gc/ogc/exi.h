@@ -301,12 +301,12 @@ s32 EXI_Attach(s32 nChn,EXICallback ext_cb);
 s32 EXI_Detach(s32 nChn);
 
 
-/*! \fn void EXI_ProbeReset()
+/*! \fn void EXI_ProbeReset(void)
 \brief Resets certain internal flags and counters and performs a probe on all 3 channels.
 
 \return nothing
 */
-void EXI_ProbeReset();
+void EXI_ProbeReset(void);
 
 
 /*! \fn EXICallback EXI_RegisterEXICallback(s32 nChn,EXICallback exi_cb)

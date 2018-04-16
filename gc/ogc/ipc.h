@@ -67,8 +67,8 @@ s32 iosCreateHeap(s32 size);
 void* iosAlloc(s32 hid,s32 size);
 void iosFree(s32 hid,void *ptr);
 
-void* IPC_GetBufferLo();
-void* IPC_GetBufferHi();
+void* IPC_GetBufferLo(void);
+void* IPC_GetBufferHi(void);
 void IPC_SetBufferLo(void *bufferlo);
 void IPC_SetBufferHi(void *bufferhi);
 

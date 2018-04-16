@@ -58,7 +58,7 @@ static void __lwp_dumpcontext(frame_context *ctx)
 	kprintf("LR %08x SRR0 %08x SRR1 %08x MSR %08x\n\n", ctx->LR, ctx->SRR0, ctx->SRR1,ctx->MSR);
 }
 
-void __lwp_showmsr()
+void __lwp_showmsr(void)
 {
 	register u32 msr;
 	_CPU_MSR_GET(msr);
@@ -77,7 +77,7 @@ void __lwp_getthreadlist(lwp_obj **thrs)
 	*thrs = _lwp_objects;
 }
 */
-u32 __lwp_isr_in_progress()
+u32 __lwp_isr_in_progress(void)
 {
 	register u32 isr_nest_level;
 	isr_nest_level = mfspr(272);
@@ -95,7 +95,7 @@ static inline void __lwp_msr_setlevel(u32 level)
 	_CPU_MSR_SET(msr);
 }
 
-static inline u32 __lwp_msr_getlevel()
+static inline u32 __lwp_msr_getlevel(void)
 {
 	register u32 msr;
 	_CPU_MSR_GET(msr);
@@ -152,7 +152,7 @@ void __lwp_thread_tickle_timeslice(void *arg)
 	__lwp_thread_dispatchunnest();
 }
 
-void __thread_dispatch_fp()
+void __thread_dispatch_fp(void)
 {
 	u32 level;
 	lwp_cntrl *exec;
@@ -170,7 +170,7 @@ void __thread_dispatch_fp()
 	_CPU_ISR_Restore(level);
 }
 
-void __thread_dispatch()
+void __thread_dispatch(void)
 {
 	u32 level;
 	lwp_cntrl *exec,*heir;
@@ -200,7 +200,7 @@ void __thread_dispatch()
 	_CPU_ISR_Restore(level);
 }
 
-static void __lwp_thread_handler()
+static void __lwp_thread_handler(void)
 {
 	u32 level;
 	lwp_cntrl *exec;
@@ -254,7 +254,7 @@ void __lwp_rotate_readyqueue(u32 prio)
 	_CPU_ISR_Restore(level);
 }
 
-void __lwp_thread_yield()
+void __lwp_thread_yield(void)
 {
 	u32 level;
 	lwp_cntrl *exec;
@@ -276,7 +276,7 @@ void __lwp_thread_yield()
 	_CPU_ISR_Restore(level);
 }
 
-void __lwp_thread_resettimeslice()
+void __lwp_thread_resettimeslice(void)
 {
 	u32 level;
 	lwp_cntrl *exec;
@@ -363,7 +363,7 @@ void __lwp_thread_clearstate(lwp_cntrl *thethread,u32 state)
 	_CPU_ISR_Restore(level);
 }
 
-u32 __lwp_evaluatemode()
+u32 __lwp_evaluatemode(void)
 {
 	lwp_cntrl *exec;
 	
@@ -646,7 +646,7 @@ void __lwp_thread_close(lwp_cntrl *thethread)
 	__lwp_objmgr_free(thethread->object.information,&thethread->object);
 }
 
-void __lwp_thread_closeall()
+void __lwp_thread_closeall(void)
 {
 	u32 i,level;
 	lwp_queue *header;
@@ -696,7 +696,7 @@ u32 __lwp_thread_start(lwp_cntrl *thethread,void* (*entry)(void*),void *arg)
 	return 0;
 }
 
-void __lwp_thread_startmultitasking()
+void __lwp_thread_startmultitasking(void)
 {
 	_lwp_exitfunc = NULL;
 
@@ -724,7 +724,7 @@ void __lwp_thread_stopmultitasking(void (*exitfunc)())
 	}
 }
 
-void __lwp_thread_coreinit()
+void __lwp_thread_coreinit(void)
 {
 	u32 index;
 

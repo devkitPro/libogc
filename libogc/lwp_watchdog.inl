@@ -54,7 +54,7 @@ static __inline__ u64 __lwp_wd_calc_ticks(const struct timespec *time)
 	return ticks;
 }
 
-static __inline__ void __lwp_wd_tickle_ticks()
+static __inline__ void __lwp_wd_tickle_ticks(void)
 {
 	__lwp_wd_tickle(&_wd_ticks_queue);
 }

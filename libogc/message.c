@@ -52,7 +52,7 @@ typedef struct _mqbox_st
 
 lwp_objinfo _lwp_mqbox_objects;
 
-void __lwp_mqbox_init()
+void __lwp_mqbox_init(void)
 {
 	__lwp_objmgr_initinfo(&_lwp_mqbox_objects,LWP_MAX_MQUEUES,sizeof(mqbox_st));
 }
@@ -69,7 +69,7 @@ static __inline__ void __lwp_mqbox_free(mqbox_st *mqbox)
 	__lwp_objmgr_free(&_lwp_mqbox_objects,&mqbox->object);
 }
 
-static mqbox_st* __lwp_mqbox_allocate()
+static mqbox_st* __lwp_mqbox_allocate(void)
 {
 	mqbox_st *mqbox;
 

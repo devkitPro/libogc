@@ -18,7 +18,7 @@ static u32 exi_wait_inited = 0;
 static lwpq_t time_exi_wait;
 
 extern u32 __SYS_GetRTC(u32 *gctime);
-extern syssram* __SYS_LockSram();
+extern syssram* __SYS_LockSram(void);
 extern u32 __SYS_UnlockSram(u32 write);
 
 
@@ -108,7 +108,7 @@ u32 diff_nsec(u64 start,u64 end)
 	return ticks_to_nanosecs(diff);
 }
 
-void __timesystem_init()
+void __timesystem_init(void)
 {
 	if(!exi_wait_inited) {
 		exi_wait_inited = 1;
@@ -229,7 +229,7 @@ static s32 __time_exi_unlock(s32 chn,s32 dev)
 	return 1;
 }
 
-static void __time_exi_wait()
+static void __time_exi_wait(void)
 {
 	u32 ret;
 

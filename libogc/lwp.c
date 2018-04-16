@@ -62,7 +62,7 @@ typedef struct _tqueue_st {
 lwp_objinfo _lwp_thr_objects;
 lwp_objinfo _lwp_tqueue_objects;
 
-extern int __crtmain();
+extern int __crtmain(void);
 
 extern u8 __stack_addr[],__stack_end[];
 
@@ -83,7 +83,7 @@ static __inline__ tqueue_st* __lwp_tqueue_open(lwpq_t tqueue)
 	return (tqueue_st*)__lwp_objmgr_get(&_lwp_tqueue_objects,LWP_OBJMASKID(tqueue));
 }
 
-static lwp_cntrl* __lwp_cntrl_allocate()
+static lwp_cntrl* __lwp_cntrl_allocate(void)
 {
 	lwp_cntrl *thethread;
 	
@@ -97,7 +97,7 @@ static lwp_cntrl* __lwp_cntrl_allocate()
 	return NULL;
 }
 
-static tqueue_st* __lwp_tqueue_allocate()
+static tqueue_st* __lwp_tqueue_allocate(void)
 {
 	tqueue_st *tqueue;
 
@@ -129,7 +129,7 @@ static void* idle_func(void *arg)
 	return 0;
 }
 
-void __lwp_sysinit()
+void __lwp_sysinit(void)
 {
 	__lwp_objmgr_initinfo(&_lwp_thr_objects,LWP_MAX_THREADS,sizeof(lwp_cntrl));
 	__lwp_objmgr_initinfo(&_lwp_tqueue_objects,LWP_MAX_TQUEUES,sizeof(tqueue_st));
@@ -164,7 +164,7 @@ BOOL __lwp_thread_isalive(lwp_t thr_id)
 	return FALSE;
 }
 
-lwp_t __lwp_thread_currentid()
+lwp_t __lwp_thread_currentid(void)
 {
 	return _thr_executing->object.id;
 }
@@ -249,7 +249,7 @@ s32 LWP_ResumeThread(lwp_t thethread)
 	return LWP_NOT_SUSPENDED;
 }
 
-lwp_t LWP_GetSelf()
+lwp_t LWP_GetSelf(void)
 {
 	lwp_t ret;
 
@@ -273,7 +273,7 @@ void LWP_SetThreadPriority(lwp_t thethread,u32 prio)
 	__lwp_thread_dispatchenable();
 }
 
-void LWP_YieldThread()
+void LWP_YieldThread(void)
 {
 	__lwp_thread_dispatchdisable();
 	__lwp_thread_yield();

@@ -225,7 +225,7 @@ static void __console_clear(void)
 	con->saved_row = 0;
 	con->saved_col = 0;
 }
-static void __console_clear_from_cursor() {
+static void __console_clear_from_cursor(void) {
 	console_data_s *con;
 	int cur_row;
 	
@@ -238,7 +238,7 @@ static void __console_clear_from_cursor() {
     __console_clear_line( cur_row, 0, con->con_cols );
   
 }
-static void __console_clear_to_cursor() {
+static void __console_clear_to_cursor(void) {
 	console_data_s *con;
 	int cur_row;
 	

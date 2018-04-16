@@ -64,8 +64,8 @@ struct _arq_request {
 	ARQCallback callback;
 };
 
-void ARQ_Init();
-void ARQ_Reset();
+void ARQ_Init(void);
+void ARQ_Reset(void);
 
 
 /*!
@@ -104,8 +104,8 @@ void ARQ_PostRequest(ARQRequest *req,u32 owner,u32 dir,u32 prio,u32 aram_addr,u3
 void ARQ_PostRequestAsync(ARQRequest *req,u32 owner,u32 dir,u32 prio,u32 aram_addr,u32 mram_addr,u32 len,ARQCallback cb);
 void ARQ_RemoveRequest(ARQRequest *req);
 void ARQ_SetChunkSize(u32 size);
-u32 ARQ_GetChunkSize();
-void ARQ_FlushQueue();
+u32 ARQ_GetChunkSize(void);
+void ARQ_FlushQueue(void);
 u32 ARQ_RemoveOwnerRequest(u32 owner);
 
 #ifdef __cplusplus

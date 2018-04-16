@@ -108,12 +108,12 @@ s32 LWP_ResumeThread(lwp_t thethread);
 BOOL LWP_ThreadIsSuspended(lwp_t thethread);
 
 
-/*! \fn lwp_t LWP_GetSelf()
+/*! \fn lwp_t LWP_GetSelf(void)
 \brief Return the handle to the current thread.
 
 \return thread context handle
 */
-lwp_t LWP_GetSelf();
+lwp_t LWP_GetSelf(void);
 
 
 /*! \fn void LWP_SetThreadPriority(lwp_t thethread,u32 prio)
@@ -126,12 +126,12 @@ lwp_t LWP_GetSelf();
 void LWP_SetThreadPriority(lwp_t thethread,u32 prio);
 
 
-/*! \fn void LWP_YieldThread()
+/*! \fn void LWP_YieldThread(void)
 \brief Yield the current thread to another one with higher priority or if not running at the same priority which state is runnable.
 
 \return none
 */
-void LWP_YieldThread();
+void LWP_YieldThread(void);
 
 
 /*! \fn void LWP_Reschedule(u32 prio)

@@ -253,12 +253,12 @@ s32 net_init();
 typedef s32 (*netcallback)(s32 result, void *usrdata);
 s32 net_init_async(netcallback cb, void *usrdata);
 s32 net_get_status(void);
-void net_wc24cleanup();
+void net_wc24cleanup(void);
 #endif
 s32 net_get_mac_address(void *mac_buf);
-void net_deinit();
+void net_deinit(void);
 
-u32 net_gethostip();
+u32 net_gethostip(void);
 s32 net_socket(u32 domain,u32 type,u32 protocol);
 s32 net_bind(s32 s,struct sockaddr *name,socklen_t namelen);
 s32 net_listen(s32 s,u32 backlog);

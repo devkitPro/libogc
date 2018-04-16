@@ -87,7 +87,7 @@ ARCallback AR_RegisterCallback(ARCallback callback)
 	return old;
 }
 
-u32 AR_GetDMAStatus()
+u32 AR_GetDMAStatus(void)
 {
 	u32 level,ret;
 	_CPU_ISR_Disable(level);
@@ -203,32 +203,32 @@ void AR_Clear(u32 flag)
 	}
 }
 
-BOOL AR_CheckInit()
+BOOL AR_CheckInit(void)
 {
 	return __ARInit_Flag;
 }
 
-void AR_Reset()
+void AR_Reset(void)
 {
 	__ARInit_Flag = 0;
 }
 
-u32 AR_GetSize()
+u32 AR_GetSize(void)
 {
 	return __ARSize;
 }
 
-u32 AR_GetBaseAddress()
+u32 AR_GetBaseAddress(void)
 {
 	return 0x4000;
 }
 
-u32 AR_GetInternalSize()
+u32 AR_GetInternalSize(void)
 {
 	return __ARInternalSize;
 }
 
-static __inline__ void __ARClearInterrupt()
+static __inline__ void __ARClearInterrupt(void)
 {
 	u16 cause;
 
@@ -239,7 +239,7 @@ static __inline__ void __ARClearInterrupt()
 	_dspReg[5] = (cause|DSPCR_ARINT);
 }
 
-static __inline__ void __ARWaitDma()
+static __inline__ void __ARWaitDma(void)
 {
 	while(_dspReg[5]&DSPCR_DSPDMA);
 }
@@ -310,7 +310,7 @@ static void __ARClearArea(u32 aramaddr,u32 len)
 	}
 }
 
-static void __ARCheckSize()
+static void __ARCheckSize(void)
 {
 	u32 i,arsize,arszflag;
 	static u32 test_data[8] ATTRIBUTE_ALIGN(32);

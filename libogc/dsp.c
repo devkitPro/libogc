@@ -211,7 +211,7 @@ static void __dsp_exectask(dsptask_t *exec,dsptask_t *hire)
 	while(DSP_CheckMailTo());
 }
 
-static void __dsp_def_taskcb()
+static void __dsp_def_taskcb(void)
 {
 	u32 mail;
 #ifdef _DSP_DEBUG
@@ -324,7 +324,7 @@ static void __dsp_inthandler(u32 nIrq,void *pCtx)
 	if(__dsp_intcb) __dsp_intcb();
 }
 
-void DSP_Init()
+void DSP_Init(void)
 {
 	u32 level;
 #ifdef _DSP_DEBUG
@@ -367,7 +367,7 @@ DSPCallback DSP_RegisterCallback(DSPCallback usr_cb)
 	return ret;
 }
 
-u32 DSP_CheckMailTo()
+u32 DSP_CheckMailTo(void)
 {
 	u32 sent_mail;
 	sent_mail = _SHIFTR(_dspReg[0],15,1);
@@ -377,7 +377,7 @@ u32 DSP_CheckMailTo()
 	return sent_mail;
 }
 
-u32 DSP_CheckMailFrom()
+u32 DSP_CheckMailFrom(void)
 {
 	u32 has_mail;
 	has_mail = _SHIFTR(_dspReg[2],15,1);
@@ -387,7 +387,7 @@ u32 DSP_CheckMailFrom()
 	return has_mail;
 }
 
-u32 DSP_ReadMailFrom()
+u32 DSP_ReadMailFrom(void)
 {
 	u32 mail;
 	mail = (_SHIFTL(_dspReg[2],16,16)|(_dspReg[3]&0xffff));
@@ -406,7 +406,7 @@ void DSP_SendMailTo(u32 mail)
 	_dspReg[1] = (mail&0xffff);
 }
 
-u32 DSP_ReadCPUtoDSP()
+u32 DSP_ReadCPUtoDSP(void)
 {
 	u32 cpu_dsp;
 	cpu_dsp = (_SHIFTL(_dspReg[0],16,16)|(_dspReg[1]&0xffff));
@@ -416,7 +416,7 @@ u32 DSP_ReadCPUtoDSP()
 	return cpu_dsp;
 }
 
-void DSP_AssertInt()
+void DSP_AssertInt(void)
 {
 	u32 level;
 #ifdef _DSP_DEBUG
@@ -427,7 +427,7 @@ void DSP_AssertInt()
 	_CPU_ISR_Restore(level);
 }
 
-void DSP_Reset()
+void DSP_Reset(void)
 {
 	u16 old;
 	u32 level;
@@ -438,7 +438,7 @@ void DSP_Reset()
 	_CPU_ISR_Restore(level);
 }
 
-void DSP_Halt()
+void DSP_Halt(void)
 {
 	u32 level,old;
 
@@ -448,7 +448,7 @@ void DSP_Halt()
 	_CPU_ISR_Restore(level);
 }
 
-void DSP_Unhalt()
+void DSP_Unhalt(void)
 {
 	u32 level;
 
@@ -457,7 +457,7 @@ void DSP_Unhalt()
 	_CPU_ISR_Restore(level);
 }
 
-u32 DSP_GetDMAStatus()
+u32 DSP_GetDMAStatus(void)
 {
 	return _dspReg[5]&DSPCR_DSPDMA;
 }

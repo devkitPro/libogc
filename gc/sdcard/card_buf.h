@@ -7,8 +7,8 @@
 	extern "C" {
 #endif
 
-void sdgecko_initBufferPool();
-u8*	sdgecko_allocBuffer();
+void sdgecko_initBufferPool(void);
+u8*	sdgecko_allocBuffer(void);
 void sdgecko_freeBuffer(u8 *buf);
 
 #ifdef __cplusplus

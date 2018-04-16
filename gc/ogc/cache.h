@@ -49,25 +49,25 @@ distribution.
 
 
 /*!
- * \fn void DCEnable()
+ * \fn void DCEnable(void)
  * \brief Enable L1 d-cache
  *
  * \return none
  */
-void DCEnable();
+void DCEnable(void);
 
 
 /*!
- * \fn void DCDisable()
+ * \fn void DCDisable(void)
  * \brief Disable L1 d-cache
  *
  * \return none
  */
-void DCDisable();
+void DCDisable(void);
 
 
 /*!
- * \fn void DCFreeze()
+ * \fn void DCFreeze(void)
  * \brief Current contents of the L1 d-cache are locked down and will not be cast out.
  *
  *        Hits are still serviced, but misses go straight to L2 or 60x bus.  Most cache operations, such as DCFlushRange(), will still execute regardless of whether the cache is frozen.<br>
@@ -75,11 +75,11 @@ void DCDisable();
  *
  * \return none
  */
-void DCFreeze();
+void DCFreeze(void);
 
 
 /*!
- * \fn void DCUnfreeze()
+ * \fn void DCUnfreeze(void)
  * \brief Undoes actions of DCFreeze().
  *
  *        Old cache blocks will now be cast out on subsequent L1 misses.<br>
@@ -87,11 +87,11 @@ void DCFreeze();
  *
  * \return none
  */
-void DCUnfreeze();
+void DCUnfreeze(void);
 
 
 /*!
- * \fn void DCFlashInvalidate()
+ * \fn void DCFlashInvalidate(void)
  * \brief Invalidate L1 d-cache.
  *
  *        An invalidate operation is issued that marks the state of each data cache block as invalid without writing back modified cache blocks to memory.<br>
@@ -99,7 +99,7 @@ void DCUnfreeze();
  *
  * \return none
  */
-void DCFlashInvalidate();
+void DCFlashInvalidate(void);
 
 
 /*!
@@ -198,18 +198,18 @@ void DCTouchRange(void *startaddress,u32 len);
 
 
 /*!
- * \fn void ICSync()
+ * \fn void ICSync(void)
  * \brief Performs an instruction cache synchronization.
  *
  *        This ensures that all instructions preceding this instruction have completed before this instruction completes.
  *
  * \return none
  */
-void ICSync();
+void ICSync(void);
 
 
 /*!
- * \fn void ICFlashInvalidate()
+ * \fn void ICFlashInvalidate(void)
  * \brief Invalidate the L1 i-cache.
  *
  *        An invalidate operation is issued that marks the state of each instruction cache block as invalid without writing back modified cache blocks to memory.<br>
@@ -217,29 +217,29 @@ void ICSync();
  *
  * \return none
  */
-void ICFlashInvalidate();
+void ICFlashInvalidate(void);
 
 
 /*!
- * \fn void ICEnable()
+ * \fn void ICEnable(void)
  * \brief Enable L1 i-cache
  *
  * \return none
  */
-void ICEnable();
+void ICEnable(void);
 
 
 /*!
- * \fn void ICDisable()
+ * \fn void ICDisable(void)
  * \brief Disable L1 i-cache
  *
  * \return none
  */
-void ICDisable();
+void ICDisable(void);
 
 
 /*!
- * \fn void ICFreeze()
+ * \fn void ICFreeze(void)
  * \brief Current contents of the L1 i-cache are locked down and will not be cast out.
  *
  *        Hits are still serviced, but misses go straight to L2 or 60x bus.<br>
@@ -247,11 +247,11 @@ void ICDisable();
  *
  * \return none
  */
-void ICFreeze();
+void ICFreeze(void);
 
 
 /*!
- * \fn void ICUnfreeze()
+ * \fn void ICUnfreeze(void)
  * \brief Undoes actions of ICFreeze().
  *
  *        Old cache blocks will now be cast out on subsequent L1 misses.<br>
@@ -259,7 +259,7 @@ void ICFreeze();
  *
  * \return none
  */
-void ICUnfreeze();
+void ICUnfreeze(void);
 
 
 /*!
@@ -289,7 +289,7 @@ void ICBlockInvalidate(void *startaddress);
 void ICInvalidateRange(void *startaddress,u32 len);
 
 /*!
- * \fn void L2Enhance()
+ * \fn void L2Enhance(void)
  * \brief Turn on extra L2 cache features
  *
  *        Sets the following bits in the HID4 register which affect the L2 cache:
@@ -301,18 +301,18 @@ void ICInvalidateRange(void *startaddress,u32 len);
  * \return none
  */
 #ifdef HW_RVL
-void L2Enhance();
+void L2Enhance(void);
 #endif
 
-void LCEnable();
-void LCDisable();
+void LCEnable(void);
+void LCDisable(void);
 void LCLoadBlocks(void *,void *,u32);
 void LCStoreBlocks(void *,void *,u32);
 u32 LCLoadData(void *,void *,u32);
 u32 LCStoreData(void *,void *,u32);
-u32 LCQueueLength();
+u32 LCQueueLength(void);
 u32 LCQueueWait(u32);
-void LCFlushQueue();
+void LCFlushQueue(void);
 void LCAlloc(void *,u32);
 void LCAllocNoInvalidate(void *,u32);
 void LCAllocOneTag(BOOL,void *);

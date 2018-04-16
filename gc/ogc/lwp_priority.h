@@ -20,7 +20,7 @@ typedef struct _priocntrl {
 extern vu32 _prio_major_bitmap;
 extern u32 _prio_bitmap[];
 
-void __lwp_priority_init();
+void __lwp_priority_init(void);
 
 #ifdef LIBOGC_INTERNAL
 #include <libogc/lwp_priority.inl>

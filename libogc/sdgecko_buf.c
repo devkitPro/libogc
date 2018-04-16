@@ -17,7 +17,7 @@ typedef struct _buf_node {
 static BufNode s_buf[BUF_POOL_CNT];
 static BufNode *s_freepool;
 
-void sdgecko_initBufferPool()
+void sdgecko_initBufferPool(void)
 {
 	u32 i;
 #ifdef _POOLBUFFER_DEBUG
@@ -30,7 +30,7 @@ void sdgecko_initBufferPool()
 	s_freepool = s_buf;
 }
 
-u8*	sdgecko_allocBuffer()
+u8*	sdgecko_allocBuffer(void)
 {
 	u8 *buf = NULL;
 	

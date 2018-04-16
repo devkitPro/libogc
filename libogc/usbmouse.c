@@ -160,7 +160,7 @@ static void USBMouse_Close(void)
 
 //Search for a mouse connected to the wii usb port
 //Thanks to Sven Peter usbstorage support
-static s32 USBMouse_Open()
+static s32 USBMouse_Open(void)
 {
 	usb_device_entry *buffer;
 	u8 device_count, i;

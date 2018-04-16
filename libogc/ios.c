@@ -108,7 +108,7 @@ s32 __IOS_ShutdownSubsystems(void)
 	return ret;
 }
 
-s32 IOS_GetPreferredVersion()
+s32 IOS_GetPreferredVersion(void)
 {
 	int ver = IOS_EBADVERSION;
 	s32 res;
@@ -182,7 +182,7 @@ s32 IOS_GetPreferredVersion()
 	return ver;
 }
 
-s32 IOS_GetVersion()
+s32 IOS_GetVersion(void)
 {
 	u32 vercode;
 	u16 version;
@@ -194,7 +194,7 @@ s32 IOS_GetVersion()
 	return version;
 }
 
-s32 IOS_GetRevision()
+s32 IOS_GetRevision(void)
 {
 	u32 vercode;
 	u16 rev;
@@ -205,7 +205,7 @@ s32 IOS_GetRevision()
 	return rev;
 }
 
-s32 IOS_GetRevisionMajor()
+s32 IOS_GetRevisionMajor(void)
 {
 	s32 rev;
 	rev = IOS_GetRevision();
@@ -213,7 +213,7 @@ s32 IOS_GetRevisionMajor()
 	return (rev>>8)&0xFF;
 }
 
-s32 IOS_GetRevisionMinor()
+s32 IOS_GetRevisionMinor(void)
 {
 	s32 rev;
 	rev = IOS_GetRevision();
@@ -326,7 +326,7 @@ s32 __IOS_LaunchNewIOS(int version)
 	return version;
 }
 
-s32 __attribute__((weak)) __IOS_LoadStartupIOS()
+s32 __attribute__((weak)) __IOS_LoadStartupIOS(void)
 {
 #if 0
 	int version;

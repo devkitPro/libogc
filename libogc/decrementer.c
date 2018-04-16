@@ -43,7 +43,7 @@ distribution.
 extern int printk(const char *fmt,...);
 #endif
 
-void __decrementer_init()
+void __decrementer_init(void)
 {
 #ifdef _DECEX_DEBUG
 	printf("__decrementer_init()\n\n");

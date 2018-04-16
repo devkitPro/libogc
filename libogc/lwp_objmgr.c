@@ -11,7 +11,7 @@
 static u32 _lwp_objmgr_memsize = 0;
 static lwp_obj *null_local_table = NULL;
 
-u32 __lwp_objmgr_memsize()
+u32 __lwp_objmgr_memsize(void)
 {
 	return _lwp_objmgr_memsize;
 }

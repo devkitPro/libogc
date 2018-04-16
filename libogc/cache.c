@@ -37,11 +37,11 @@ distribution.
 #define _SHIFTR(v, s, w)	\
     ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
-extern void __LCEnable();
-extern void L2GlobalInvalidate();
-extern void L2Enable();
+extern void __LCEnable(void);
+extern void L2GlobalInvalidate(void);
+extern void L2Enable(void);
 
-void LCEnable()
+void LCEnable(void)
 {
 	u32 level;
 
@@ -94,7 +94,7 @@ u32 LCStoreData(void *dstAddr,void *srcAddr,u32 nCount)
 	return blocks;
 }
 
-u32 LCQueueLength()
+u32 LCQueueLength(void)
 {
 	u32 hid2 = mfspr(920);
 	return _SHIFTR(hid2,4,4);
@@ -107,7 +107,7 @@ u32 LCQueueWait(u32 len)
 	return len;
 }
 
-void LCFlushQueue()
+void LCFlushQueue(void)
 {
 	mtspr(922,0);
 	mtspr(923,1);
@@ -142,7 +142,7 @@ void LCAllocNoInvalidate(void *addr,u32 bytes)
 	LCAllocTags(FALSE,addr,cnt);
 }
 #ifdef HW_RVL
-void L2Enhance()
+void L2Enhance(void)
 {
 	u32 level, hid4;
 	u32 *stub = (u32*)0x80001800;

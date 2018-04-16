@@ -12,18 +12,18 @@ heap_cntrl __wkspace_heap;
 static heap_iblock __wkspace_iblock;
 static u32 __wkspace_heap_size = 0;
 
-u32 __lwp_wkspace_heapsize()
+u32 __lwp_wkspace_heapsize(void)
 {
 	return __wkspace_heap_size;
 }
 
-u32 __lwp_wkspace_heapfree()
+u32 __lwp_wkspace_heapfree(void)
 {
 	__lwp_heap_getinfo(&__wkspace_heap,&__wkspace_iblock);
 	return __wkspace_iblock.free_size;
 }
 
-u32 __lwp_wkspace_heapused()
+u32 __lwp_wkspace_heapused(void)
 {
 	__lwp_heap_getinfo(&__wkspace_heap,&__wkspace_iblock);
 	return __wkspace_iblock.used_size;

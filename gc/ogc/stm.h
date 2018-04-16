@@ -49,12 +49,12 @@ distribution.
 
 typedef void (*stmcallback)(u32 event);
 
-s32 __STM_Init();
-s32 __STM_Close();
-s32 STM_ShutdownToStandby();
-s32 STM_ShutdownToIdle();
+s32 __STM_Init(void);
+s32 __STM_Close(void);
+s32 STM_ShutdownToStandby(void);
+s32 STM_ShutdownToIdle(void);
 s32 STM_SetLedMode(u32 mode);
-s32 STM_RebootSystem();
+s32 STM_RebootSystem(void);
 stmcallback STM_RegisterEventHandler(stmcallback newhandler);
 
 #ifdef __cplusplus

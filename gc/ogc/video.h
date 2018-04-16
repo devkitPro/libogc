@@ -55,26 +55,26 @@ typedef void (*VIRetraceCallback)(u32 retraceCnt);
 
 typedef void (*VIPositionCallback)(u32 posX,u32 posY);
 
-void* VIDEO_GetNextFramebuffer();
-void* VIDEO_GetCurrentFramebuffer();
+void* VIDEO_GetNextFramebuffer(void);
+void* VIDEO_GetCurrentFramebuffer(void);
 
 
 /*! 
- * \fn void VIDEO_Init()
+ * \fn void VIDEO_Init(void)
  * \brief Initializes the VIDEO subsystem. This call should be done in the early stages of your main()
  *
  * \return none
  */
-void VIDEO_Init();
+void VIDEO_Init(void);
 
 
 /*! 
- * \fn void VIDEO_Flush()
+ * \fn void VIDEO_Flush(void)
  * \brief Flush the shadow registers to the drivers video registers.
  *
  * \return none
  */
-void VIDEO_Flush();
+void VIDEO_Flush(void);
 
 
 /*!
@@ -89,30 +89,30 @@ void VIDEO_SetBlack(bool black);
 
 
 /*! 
- * \fn u32 VIDEO_GetNextField()
+ * \fn u32 VIDEO_GetNextField(void)
  * \brief Get the next field in DS mode.
  *
  * \return \ref vi_fielddef "field"
  */
-u32 VIDEO_GetNextField();
+u32 VIDEO_GetNextField(void);
 
 
 /*! 
- * \fn u32 VIDEO_GetCurrentLine()
+ * \fn u32 VIDEO_GetCurrentLine(void)
  * \brief Get current video line
  *
  * \return linenumber
  */
-u32 VIDEO_GetCurrentLine();
+u32 VIDEO_GetCurrentLine(void);
 
 
 /*! 
- * \fn u32 VIDEO_GetCurrentTvMode()
+ * \fn u32 VIDEO_GetCurrentTvMode(void)
  * \brief Get current configured TV mode
  *
  * \return \ref vi_standardtypedef "tvmode"
  */
-u32 VIDEO_GetCurrentTvMode();
+u32 VIDEO_GetCurrentTvMode(void);
 
 
 /*! 
