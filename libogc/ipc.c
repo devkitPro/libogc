@@ -175,7 +175,7 @@ extern void __UnmaskIrq(u32 nMask);
 extern void* __SYS_GetIPCBufferLo(void);
 extern void* __SYS_GetIPCBufferHi(void);
 
-extern u32 gettick();
+extern u32 gettick(void);
 
 static __inline__ u32 IPC_ReadReg(u32 reg)
 {
@@ -192,7 +192,7 @@ static __inline__ void ACR_WriteReg(u32 reg,u32 val)
 	_ipcReg[reg>>2] = val;
 }
 
-static __inline__ void* __ipc_allocreq()
+static __inline__ void* __ipc_allocreq(void)
 {
 	return iosAlloc(_ipc_hid,IPC_REQUESTSIZE);
 }
@@ -207,7 +207,7 @@ static __inline__ void __ipc_srand(u32 seed)
 	_ipc_seed = seed;
 }
 
-static __inline__ u32 __ipc_rand()
+static __inline__ u32 __ipc_rand(void)
 {
 	_ipc_seed = (214013*_ipc_seed) + 2531011;
 	return _ipc_seed;
@@ -294,7 +294,7 @@ static s32 __ipc_syncqueuerequest(struct _ipcreq *req)
 	return IPC_OK;
 }
 
-static void __ipc_sendrequest()
+static void __ipc_sendrequest(void)
 {
 	u32 cnt;
 	u32 ipc_send;
@@ -326,7 +326,7 @@ static void __ipc_sendrequest()
 	}
 }
 
-static void __ipc_replyhandler()
+static void __ipc_replyhandler(void)
 {
 	u32 ipc_ack,cnt;
 	struct _ipcreq *req = NULL;
@@ -405,7 +405,7 @@ static void __ipc_replyhandler()
 	IPC_WriteReg(1,ipc_ack);
 }
 
-static void __ipc_ackhandler()
+static void __ipc_ackhandler(void)
 {
 	u32 ipc_ack;
 #ifdef DEBUG_IPC
@@ -772,12 +772,12 @@ void iosFree(s32 hid,void *ptr)
 	__lwp_heap_free(&_ipc_heaps[hid].heap,ptr);
 }
 
-void* IPC_GetBufferLo()
+void* IPC_GetBufferLo(void)
 {
 	return _ipc_currbufferlo;
 }
 
-void* IPC_GetBufferHi()
+void* IPC_GetBufferHi(void)
 {
 	return _ipc_currbufferhi;
 }

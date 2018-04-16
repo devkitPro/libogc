@@ -254,7 +254,7 @@ static __inline__ void __lwp_syswd_free(alarm_st *alarm)
 
 #ifdef HW_DOL
 #define SOFTRESET_ADR *((vu32*)0xCC003024)
-void __reload() { SOFTRESET_ADR=0; }
+void __reload(void) { SOFTRESET_ADR=0; }
 
 void __libogc_exit(int status)
 {
@@ -262,9 +262,9 @@ void __libogc_exit(int status)
 	__lwp_thread_stopmultitasking(__reload);
 }
 #else
-static void (*reload)() = (void(*)())0x80001800;
+static void (*reload)(void) = (void(*)(void))0x80001800;
 
-static bool __stub_found()
+static bool __stub_found(void)
 {
 	u64 sig = ((u64)(*(u32*)0x80001804) << 32) + *(u32*)0x80001808;
 	if (sig == 0x5354554248415858ULL) // 'STUBHAXX'
@@ -272,7 +272,7 @@ static bool __stub_found()
 	return false;
 }
 
-void __reload()
+void __reload(void)
 {
 	if(__stub_found()) {
 		__exception_closeall();
@@ -292,7 +292,7 @@ void __libogc_exit(int status)
 
 #endif
 
-static void __init_syscall_array() {
+static void __init_syscall_array(void) {
 	__syscalls.sbrk_r = __libogc_sbrk_r;
 	__syscalls.lock_init = __libogc_lock_init;
 	__syscalls.lock_close = __libogc_lock_close;
@@ -305,7 +305,7 @@ static void __init_syscall_array() {
 
 }
 
-static alarm_st* __lwp_syswd_allocate()
+static alarm_st* __lwp_syswd_allocate(void)
 {
 	alarm_st *alarm;
 
@@ -453,7 +453,7 @@ static void __STMEventHandler(u32 event)
 void * __attribute__ ((weak)) __myArena1Lo = 0;
 void * __attribute__ ((weak)) __myArena1Hi = 0;
 
-static void __lowmem_init()
+static void __lowmem_init(void)
 {
 	u32 *_gx = (u32*)__gxregs;
 
@@ -505,14 +505,14 @@ static void __lowmem_init()
 }
 
 #if defined(HW_RVL)
-static void __ipcbuffer_init()
+static void __ipcbuffer_init(void)
 {
 	__ipcbufferlo = (void*)__ipcbufferLo;
 	__ipcbufferhi = (void*)__ipcbufferHi;
 }
 #endif
 
-static void __memprotect_init()
+static void __memprotect_init(void)
 {
 	u32 level;
 
@@ -652,12 +652,12 @@ static s32 __sram_writecallback(s32 chn,s32 dev)
 	return 1;
 }
 
-static s32 __sram_sync()
+static s32 __sram_sync(void)
 {
 	return sramcntrl.sync;
 }
 
-void __sram_init()
+void __sram_init(void)
 {
 	sramcntrl.enabled = 0;
 	sramcntrl.locked = 0;
@@ -666,7 +666,7 @@ void __sram_init()
 	sramcntrl.offset = 64;
 }
 
-static void DisableWriteGatherPipe()
+static void DisableWriteGatherPipe(void)
 {
 	mtspr(920,(mfspr(920)&~0x40000000));
 }
@@ -757,7 +757,7 @@ static void __expand_font(const u8 *src,u8 *dest)
 	DCStoreRange(dest,sys_fontdata->sheet_fullsize);
 }
 
-static void __dsp_bootstrap()
+static void __dsp_bootstrap(void)
 {
 	u16 status;
 	u32 tick;
@@ -811,7 +811,7 @@ static void __dsp_bootstrap()
 #endif
 }
 
-static void __dsp_shutdown()
+static void __dsp_shutdown(void)
 {
 	u32 tick;
 
@@ -880,12 +880,12 @@ static void decode_szp(void *src,void *dest)
 	} while(cnt<size);
 }
 
-syssram* __SYS_LockSram()
+syssram* __SYS_LockSram(void)
 {
 	return (syssram*)__locksram(0);
 }
 
-syssramex* __SYS_LockSramEx()
+syssramex* __SYS_LockSramEx(void)
 {
 	return (syssramex*)__locksram(sizeof(syssram));
 }
@@ -900,7 +900,7 @@ u32 __SYS_UnlockSramEx(u32 write)
 	return __unlocksram(write,sizeof(syssram));
 }
 
-u32 __SYS_SyncSram()
+u32 __SYS_SyncSram(void)
 {
 	return __sram_sync();
 }
@@ -954,7 +954,7 @@ void __SYS_SetTime(s64 time)
 	_CPU_ISR_Restore(level);
 }
 
-s64 __SYS_GetSystemTime()
+s64 __SYS_GetSystemTime(void)
 {
 	u32 level;
 	s64 now;
@@ -967,7 +967,7 @@ s64 __SYS_GetSystemTime()
 	return now;
 }
 
-void __SYS_SetBootTime()
+void __SYS_SetBootTime(void)
 {
 	u32 gctime;
 
@@ -992,12 +992,12 @@ u32 __SYS_LoadFont(void *src,void *dest)
 }
 
 #if defined(HW_RVL)
-void* __SYS_GetIPCBufferLo()
+void* __SYS_GetIPCBufferLo(void)
 {
 	return __ipcbufferlo;
 }
 
-void* __SYS_GetIPCBufferHi()
+void* __SYS_GetIPCBufferHi(void)
 {
 	return __ipcbufferhi;
 }
@@ -1021,7 +1021,7 @@ void __SYS_DoPowerCB(void)
 }
 #endif
 
-void __SYS_InitCallbacks()
+void __SYS_InitCallbacks(void)
 {
 #if defined(HW_RVL)
 	__POWCallback = __POWDefaultHandler;
@@ -1030,12 +1030,12 @@ void __SYS_InitCallbacks()
 	__RSWCallback = __RSWDefaultHandler;
 }
 
-void __attribute__((weak)) __SYS_PreInit()
+void __attribute__((weak)) __SYS_PreInit(void)
 {
 
 }
 
-void SYS_Init()
+void SYS_Init(void)
 {
 	u32 level;
 
@@ -1096,7 +1096,7 @@ void SYS_Init()
 }
 
 // This function gets called inside the main thread, prior to the application's main() function
-void SYS_PreMain()
+void SYS_PreMain(void)
 {
 #if defined(HW_RVL)
 	u32 i;
@@ -1112,7 +1112,7 @@ void SYS_PreMain()
 #endif
 }
 
-u32 SYS_ResetButtonDown()
+u32 SYS_ResetButtonDown(void)
 {
 	return (!(_piReg[0]&0x00010000));
 }
@@ -1264,7 +1264,7 @@ void SYS_SetArena1Lo(void *newLo)
 	_CPU_ISR_Restore(level);
 }
 
-void* SYS_GetArena1Lo()
+void* SYS_GetArena1Lo(void)
 {
 	u32 level;
 	void *arenalo;
@@ -1285,7 +1285,7 @@ void SYS_SetArena1Hi(void *newHi)
 	_CPU_ISR_Restore(level);
 }
 
-void* SYS_GetArena1Hi()
+void* SYS_GetArena1Hi(void)
 {
 	u32 level;
 	void *arenahi;
@@ -1297,7 +1297,7 @@ void* SYS_GetArena1Hi()
 	return arenahi;
 }
 
-u32 SYS_GetArena1Size()
+u32 SYS_GetArena1Size(void)
 {
 	u32 level,size;
 
@@ -1331,7 +1331,7 @@ void SYS_SetArena2Lo(void *newLo)
 	_CPU_ISR_Restore(level);
 }
 
-void* SYS_GetArena2Lo()
+void* SYS_GetArena2Lo(void)
 {
 	u32 level;
 	void *arenalo;
@@ -1352,7 +1352,7 @@ void SYS_SetArena2Hi(void *newHi)
 	_CPU_ISR_Restore(level);
 }
 
-void* SYS_GetArena2Hi()
+void* SYS_GetArena2Hi(void)
 {
 	u32 level;
 	void *arenahi;
@@ -1364,7 +1364,7 @@ void* SYS_GetArena2Hi()
 	return arenahi;
 }
 
-u32 SYS_GetArena2Size()
+u32 SYS_GetArena2Size(void)
 {
 	u32 level,size;
 
@@ -1422,7 +1422,7 @@ void* SYS_AllocateFramebuffer(GXRModeObj *rmode)
 	return memalign(32, VIDEO_GetFrameBufferSize(rmode));
 }
 
-u32 SYS_GetFontEncoding()
+u32 SYS_GetFontEncoding(void)
 {
 	u32 ret,tv_mode;
 
@@ -1651,13 +1651,13 @@ void SYS_StartPMC(u32 mcr0val,u32 mcr1val)
 	mtmmcr1(mcr1val);
 }
 
-void SYS_StopPMC()
+void SYS_StopPMC(void)
 {
 	mtmmcr0(0);
 	mtmmcr1(0);
 }
 
-void SYS_ResetPMC()
+void SYS_ResetPMC(void)
 {
 	mtpmc1(0);
 	mtpmc2(0);
@@ -1665,7 +1665,7 @@ void SYS_ResetPMC()
 	mtpmc4(0);
 }
 
-void SYS_DumpPMC()
+void SYS_DumpPMC(void)
 {
 	printf("<%lu load/stores / %lu miss cycles / %lu cycles / %lu instructions>\n",mfpmc1(),mfpmc2(),mfpmc3(),mfpmc4());
 }
@@ -1697,7 +1697,7 @@ u32 SYS_GetWirelessID(u32 chan)
 }
 
 #if defined(HW_RVL)
-u32 SYS_GetHollywoodRevision()
+u32 SYS_GetHollywoodRevision(void)
 {
 	u32 rev;
 	DCInvalidateRange((void*)0x80003138,8);
@@ -1706,7 +1706,7 @@ u32 SYS_GetHollywoodRevision()
 }
 #endif
 
-u64 SYS_Time()
+u64 SYS_Time(void)
 {
 	u64 current_time = 0;
     u32 gmtime =0;

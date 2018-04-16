@@ -716,7 +716,7 @@ s32 EXI_ProbeEx(s32 nChn)
 	return 0;
 }
 
-void EXI_ProbeReset()
+void EXI_ProbeReset(void)
 {
 	last_exi_idtime[0] = 0;
 	last_exi_idtime[1] = 0;
@@ -729,7 +729,7 @@ void EXI_ProbeReset()
 	EXI_GetID(EXI_CHANNEL_0,EXI_DEVICE_2,&exi_id_serport1);
 }
 
-void __exi_init()
+void __exi_init(void)
 {
 #ifdef _EXI_DEBUG
 	printf("__exi_init(): init expansion system.\n");
@@ -866,7 +866,7 @@ static s32 __probebarnacle(s32 chn,u32 dev,u32 *rev)
 	return 1;
 }
 
-static s32 __queuelength()
+static s32 __queuelength(void)
 {
 	u32 reg;
 	u8 len = 0;
@@ -906,7 +906,7 @@ void __SYS_EnableBarnacle(s32 chn,u32 dev)
 	exi_uart_enabled = 0xa5ff005a;
 }
 
-s32 InitializeUART()
+s32 InitializeUART(void)
 {
 	if((exi_uart_enabled+0x5a010000)==0x005a) return 0;
 

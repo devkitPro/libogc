@@ -69,7 +69,7 @@ extern u32 __PADFixBits;
 
 static void __pad_enable(u32 chan);
 static void __pad_disable(u32 chan);
-static void __pad_doreset();
+static void __pad_doreset(void);
 static s32 __pad_onreset(s32 final);
 
 static sys_resetinfo pad_resetinfo = {
@@ -446,7 +446,7 @@ static void __pad_disable(u32 chan)
 	_CPU_ISR_Restore(level);
 }
 
-static void __pad_doreset()
+static void __pad_doreset(void)
 {
 	__pad_resettingchan = cntlzw(__pad_resettingbits);
 	if(__pad_resettingchan==32) return;
@@ -481,7 +481,7 @@ u32 __PADDisableRecalibration(s32 disable)
 	return ret;
 }
 
-u32 PAD_Init()
+u32 PAD_Init(void)
 {
 	u32 chan;
 	u16 prodpads = PAD_PRODPADS;
@@ -637,7 +637,7 @@ u32 PAD_Recalibrate(u32 mask)
 	return 1;
 }
 
-u32 PAD_Sync()
+u32 PAD_Sync(void)
 {
 	u32 ret = 0;
 
@@ -709,7 +709,7 @@ void PAD_Clamp(PADStatus *status)
 	}
 }
 
-u32 PAD_ScanPads()
+u32 PAD_ScanPads(void)
 {
 	s32 i;
 	u32 resetBits;

@@ -69,15 +69,15 @@ static u32 __stm_immbufout[0x08] ATTRIBUTE_ALIGN(32) = {0,0,0,0,0,0,0,0};
 static char __stm_eh_fs[] ATTRIBUTE_ALIGN(32) = "/dev/stm/eventhook";
 static char __stm_imm_fs[] ATTRIBUTE_ALIGN(32) = "/dev/stm/immediate";
 
-s32 __STM_SetEventHook();
-s32 __STM_ReleaseEventHook();
+s32 __STM_SetEventHook(void);
+s32 __STM_ReleaseEventHook(void);
 static s32 __STMEventHandler(s32 result,void *usrdata);
 
 stmcallback __stm_eventcb = NULL;
 
 static vu16* const _viReg = (u16*)0xCC002000;
 
-s32 __STM_Init()
+s32 __STM_Init(void)
 {
 	if(__stm_initialized==1) return 1;
 #ifdef DEBUG_STM
@@ -100,7 +100,7 @@ s32 __STM_Init()
 	return 1;
 }
 
-s32 __STM_Close()
+s32 __STM_Close(void)
 {
 	s32 res;
 	s32 ret = 0;
@@ -120,7 +120,7 @@ s32 __STM_Close()
 	return ret;
 }
 
-s32 __STM_SetEventHook()
+s32 __STM_SetEventHook(void)
 {
 	s32 ret;
 	u32 level;
@@ -138,7 +138,7 @@ s32 __STM_SetEventHook()
 	return ret;
 }
 
-s32 __STM_ReleaseEventHook()
+s32 __STM_ReleaseEventHook(void)
 {
 	s32 ret;
 
@@ -186,7 +186,7 @@ stmcallback STM_RegisterEventHandler(stmcallback newhandler)
 	return old;
 }
 
-s32 STM_ShutdownToStandby()
+s32 STM_ShutdownToStandby(void)
 {
 	int res;
 	
@@ -207,7 +207,7 @@ s32 STM_ShutdownToStandby()
 	return res;
 }
 
-s32 STM_ShutdownToIdle()
+s32 STM_ShutdownToIdle(void)
 {
 	int res;
 	
@@ -254,7 +254,7 @@ s32 STM_SetLedMode(u32 mode)
 	return res;
 }
 
-s32 STM_RebootSystem()
+s32 STM_RebootSystem(void)
 {
 	int res;
 	

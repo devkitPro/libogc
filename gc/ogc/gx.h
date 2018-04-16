@@ -1590,7 +1590,7 @@ GXDrawDoneCallback GX_SetDrawDoneCallback(GXDrawDoneCallback cb);
 GXBreakPtCallback GX_SetBreakPtCallback(GXBreakPtCallback cb);
 
 /*!
- * \fn void GX_AbortFrame()
+ * \fn void GX_AbortFrame(void)
  * \brief Aborts the current frame.
  *
  * \details This command will reset the entire graphics pipeline, including any commands in the graphics FIFO.
@@ -1601,17 +1601,17 @@ GXBreakPtCallback GX_SetBreakPtCallback(GXBreakPtCallback cb);
  *
  * \return none
  */
-void GX_AbortFrame();
+void GX_AbortFrame(void);
 
 /*!
- * \fn void GX_Flush()
+ * \fn void GX_Flush(void)
  * \brief Flushes all commands to the GP.
  *
  * \details Specifically, it flushes the write-gather FIFO in the CPU to make sure that all commands are sent to the GP.
  *
  * \return none
  */
-void GX_Flush();
+void GX_Flush(void);
 
 /*!
  * \fn void GX_SetMisc(u32 token,u32 value)
@@ -1625,7 +1625,7 @@ void GX_Flush();
 void GX_SetMisc(u32 token,u32 value);
 
 /*!
- * \fn void GX_SetDrawDone()
+ * \fn void GX_SetDrawDone(void)
  * \brief Sends a DrawDone command to the GP.
  *
  * \details When all previous commands have been processed and the pipeline is empty, a <i>DrawDone</i> status bit will be set,
@@ -1638,10 +1638,10 @@ void GX_SetMisc(u32 token,u32 value);
  *
  * \return none
  */
-void GX_SetDrawDone();
+void GX_SetDrawDone(void);
 
 /*!
- * \fn void GX_WaitDrawDone()
+ * \fn void GX_WaitDrawDone(void)
  * \brief Stalls until <i>DrawDone</i> is encountered by the GP.
  *
  * \details It means all graphics commands sent before this DrawDone command have executed and the last pixel has been written to
@@ -1653,15 +1653,15 @@ void GX_SetDrawDone();
  *
  * \return none
  */
-void GX_WaitDrawDone();
+void GX_WaitDrawDone(void);
 
 /*!
- * \fn u16 GX_GetDrawSync()
+ * \fn u16 GX_GetDrawSync(void)
  * \brief Returns the value of the token register, which is written using the GX_SetDrawSync() function.
  *
  * \return the value of the token register.
  */
-u16 GX_GetDrawSync();
+u16 GX_GetDrawSync(void);
 
 /*!
  * \fn void GX_SetDrawSync(u16 token)
@@ -1692,7 +1692,7 @@ void GX_SetDrawSync(u16 token);
 GXDrawSyncCallback GX_SetDrawSyncCallback(GXDrawSyncCallback cb);
 
 /*!
- * \fn void GX_DisableBreakPt()
+ * \fn void GX_DisableBreakPt(void)
  * \brief Allows reads from the FIFO currently attached to the Graphics Processor (GP) to resume.
  *
  * \details See GX_EnableBreakPt() for an explanation of the FIFO break point feature.
@@ -1701,7 +1701,7 @@ GXDrawSyncCallback GX_SetDrawSyncCallback(GXDrawSyncCallback cb);
  *
  * \return none
  */
-void GX_DisableBreakPt();
+void GX_DisableBreakPt(void);
 
 /*!
  * \fn void GX_EnableBreakPt(void *break_pt)
@@ -1729,17 +1729,17 @@ void GX_DisableBreakPt();
 void GX_EnableBreakPt(void *break_pt);
 
 /*!
- * \fn void GX_DrawDone()
+ * \fn void GX_DrawDone(void)
  * \brief Sends a DrawDone command to the GP and stalls until its subsequent execution.
  *
  * \note This function is equivalent to calling GX_SetDrawDone() then GX_WaitDrawDone().
  *
  * \return none
  */
-void GX_DrawDone();
+void GX_DrawDone(void);
 
 /*!
- * \fn void GX_TexModeSync()
+ * \fn void GX_TexModeSync(void)
  * \brief Inserts a synchronization command into the graphics FIFO. When the Graphics Processor sees this command, it will
  * allow the texture pipeline to flush before continuing.
  *
@@ -1751,10 +1751,10 @@ void GX_DrawDone();
  *
  * \return none
  */
-void GX_TexModeSync();
+void GX_TexModeSync(void);
 
 /*!
- * \fn void GX_InvVtxCache();
+ * \fn void GX_InvVtxCache(void)
  * \brief Invalidates the vertex cache.
  *
  * \details Specifically, this functions invalidates the vertex cache tags. This function should be used whenever you relocate or modify
@@ -1767,17 +1767,17 @@ void GX_TexModeSync();
  *
  * \return none
  */
-void GX_InvVtxCache();
+void GX_InvVtxCache(void);
 
 /*!
- * \fn void GX_ClearVtxDesc()
+ * \fn void GX_ClearVtxDesc(void)
  * \brief Clears all vertex attributes of the current vertex descriptor to GX_NONE.
  *
  * \note The same functionality can be obtained using GX_SetVtxDescv(), however using GX_ClearVtxDesc() is much more efficient.
  *
  * \return none
  */
-void GX_ClearVtxDesc();
+void GX_ClearVtxDesc(void);
 
 /*!
  * \fn void GX_LoadProjectionMtx(Mtx44 mt,u8 type)
@@ -2012,7 +2012,7 @@ void GX_SetVtxDescv(GXVtxDesc *attr_list);
 void GX_GetVtxDescv(GXVtxDesc *attr_list);
 
 /*!
- * \fn u32 GX_EndDispList()
+ * \fn u32 GX_EndDispList(void)
  * \brief Ends a display list and resumes writing graphics commands to the CPU FIFO.
  *
  * \details This function returns the size of the display list written to the display list buffer since GX_BeginDispList() was called. If
@@ -2034,7 +2034,7 @@ void GX_GetVtxDescv(GXVtxDesc *attr_list);
  * \bug Specifying a display list buffer size for GX_BeginDispList() the exact size that the display list will be (after padding) will cause
  * this function to return a very large (and very incorrect) value.
  */
-u32 GX_EndDispList();
+u32 GX_EndDispList(void);
 
 /*!
  * \fn void GX_Begin(u8 primitve,u8 vtxfmt,u16 vtxcnt)
@@ -2109,12 +2109,12 @@ void GX_BeginDispList(void *list,u32 size);
 void GX_CallDispList(void *list,u32 nbytes);
 
 /*!
- * \fn static inline void GX_End()
+ * \fn static inline void GX_End(void)
  * \brief Used to end the drawing of a graphics primitive. This does nothing in libogc.
  *
  * \return none
  */
-static inline void GX_End()
+static inline void GX_End(void)
 {
 }
 
@@ -3732,7 +3732,7 @@ void GX_SetTexCopyDst(u16 wd,u16 ht,u32 fmt,u8 mipmap);
 void GX_CopyTex(void *dest,u8 clear);
 
 /*!
- * \fn void GX_PixModeSync()
+ * \fn void GX_PixModeSync(void)
  * \brief Causes the GPU to wait for the pipe to flush.
  *
  * \details This function inserts a synchronization command into the graphics FIFO. When the GPU sees this command it will allow the rest of the pipe to
@@ -3743,17 +3743,17 @@ void GX_CopyTex(void *dest,u8 clear);
  *
  * \return none
  */
-void GX_PixModeSync();
+void GX_PixModeSync(void);
 
 /*!
- * \fn void GX_ClearBoundingBox()
+ * \fn void GX_ClearBoundingBox(void)
  * \brief Clears the bounding box values before a new image is drawn.
  *
  * \details The graphics hardware keeps track of a bounding box of pixel coordinates that are drawn in the Embedded Frame Buffer (EFB).
  *
  * \return none
  */
-void GX_ClearBoundingBox();
+void GX_ClearBoundingBox(void);
 
 /*!
  * \fn GX_PokeAlphaMode(u8 func,u8 threshold)
@@ -4092,7 +4092,7 @@ void GX_GetTexObjAll(GXTexObj* obj, void** image_ptr, u16* width, u16* height, u
 u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod);
 
 /*!
- * \fn void GX_InvalidateTexAll()
+ * \fn void GX_InvalidateTexAll(void)
  * \brief Invalidates the current caches of the Texture Memory (TMEM).
  *
  * \details It takes about 512 GP clocks to invalidate all the texture caches.
@@ -4101,7 +4101,7 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod);
  *
  * \return none
  */
-void GX_InvalidateTexAll();
+void GX_InvalidateTexAll(void);
 
 /*!
  * \fn void GX_InvalidateTexRegion(GXTexRegion *region)
@@ -4886,12 +4886,12 @@ void GX_InitSpecularDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz);
  */
 void GX_InitLightSpot(GXLightObj *lit_obj,f32 cut_off,u8 spotfn);
 
-u32 GX_ReadClksPerVtx();
-u32 GX_GetOverflowCount();
-u32 GX_ResetOverflowCount();
+u32 GX_ReadClksPerVtx(void);
+u32 GX_GetOverflowCount(void);
+u32 GX_ResetOverflowCount(void);
 
 /*!
- * \fn lwp_t GX_GetCurrentGXThread()
+ * \fn lwp_t GX_GetCurrentGXThread(void)
  * \brief Returns the current GX thread.
  *
  * \details The current GX thread should be the thread that is currently responsible for generating graphics data. By default,
@@ -4903,10 +4903,10 @@ u32 GX_ResetOverflowCount();
  *
  * \return the current GX thread
  */
-lwp_t GX_GetCurrentGXThread();
+lwp_t GX_GetCurrentGXThread(void);
 
 /*!
- * \fn lwp_t GX_SetCurrentGXThread()
+ * \fn lwp_t GX_SetCurrentGXThread(void)
  * \brief Sets the current GX thread to the calling thread.
  *
  * \details The new thread should be the thread that will be responsible for generating graphics data. By default, the GX thread is
@@ -4921,10 +4921,10 @@ lwp_t GX_GetCurrentGXThread();
  *
  * \return the previous GX thread ID
  */
-lwp_t GX_SetCurrentGXThread();
+lwp_t GX_SetCurrentGXThread(void);
 
 /*!
- * \fn void GX_RestoreWriteGatherPipe()
+ * \fn void GX_RestoreWriteGatherPipe(void)
  * \brief Restores the write-gather pipe.
  *
  * \details The CPU fifo that was attached at the time GX_RedirectWriteGatherPipe() was called will be re-attached. If there is data pending
@@ -4935,7 +4935,7 @@ lwp_t GX_SetCurrentGXThread();
  *
  * \return none
  */
-void GX_RestoreWriteGatherPipe();
+void GX_RestoreWriteGatherPipe(void);
 
 /*!
  * \fn void GX_SetGPMetric(u32 perf0,u32 perf1)
@@ -4965,7 +4965,7 @@ void GX_RestoreWriteGatherPipe();
 void GX_SetGPMetric(u32 perf0,u32 perf1);
 
 /*!
- * \fn void GX_ClearGPMetric()
+ * \fn void GX_ClearGPMetric(void)
  * \brief Clears the two virtual GP performance counters to zero.
  *
  * \note The counter's function is set using GX_SetGPMetric(); the counter's value is read using GX_ReadGPMetric(). Consult these for more details.
@@ -4974,17 +4974,17 @@ void GX_SetGPMetric(u32 perf0,u32 perf1);
  *
  * \return none
  */
-void GX_ClearGPMetric();
+void GX_ClearGPMetric(void);
 
 /*!
- * \fn void GX_InitXfRasMetric()
+ * \fn void GX_InitXfRasMetric(void)
  * \brief Initialize the transformation unit (XF) rasterizer unit (RAS) to take performance measurements.
  *
  * \warning This function should be avoided; use the GP performance metric functions instead.
  *
  * \return none
  */
-void GX_InitXfRasMetric();
+void GX_InitXfRasMetric(void);
 
 /*!
  * \fn void GX_ReadXfRasMetric(u32 *xfwaitin,u32 *xfwaitout,u32 *rasbusy,u32 *clks)
@@ -5004,7 +5004,7 @@ void GX_InitXfRasMetric();
 void GX_ReadXfRasMetric(u32 *xfwaitin,u32 *xfwaitout,u32 *rasbusy,u32 *clks);
 
 /*!
- * \fn void GX_ClearVCacheMetric()
+ * \fn void GX_ClearVCacheMetric(void)
  * \brief Clears the Vertex Cache performance counter.
  *
  * \details This function clears the performance counter by sending a special clear token via the Graphics FIFO.
@@ -5013,7 +5013,7 @@ void GX_ReadXfRasMetric(u32 *xfwaitin,u32 *xfwaitout,u32 *rasbusy,u32 *clks);
  *
  * \return none
  */
-void GX_ClearVCacheMetric();
+void GX_ClearVCacheMetric(void);
 
 /*!
  * \fn void GX_ReadVCacheMetric(u32 *check,u32 *miss,u32 *stall)

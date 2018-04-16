@@ -49,7 +49,7 @@ static void __lwp_wd_settimer(wd_cntrl *wd)
 	}
 }
 
-void __lwp_watchdog_init()
+void __lwp_watchdog_init(void)
 {
 	_wd_sync_level = 0;
 	_wd_sync_count = 0;

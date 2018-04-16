@@ -54,7 +54,7 @@ typedef struct _sema_st
 
 lwp_objinfo _lwp_sema_objects;
 
-void __lwp_sema_init()
+void __lwp_sema_init(void)
 {
 	__lwp_objmgr_initinfo(&_lwp_sema_objects,LWP_MAX_SEMAS,sizeof(sema_st));
 }
@@ -71,7 +71,7 @@ static __inline__ void __lwp_sema_free(sema_st *sema)
 	__lwp_objmgr_free(&_lwp_sema_objects,&sema->object);
 }
 
-static sema_st* __lwp_sema_allocate()
+static sema_st* __lwp_sema_allocate(void)
 {
 	sema_st *sema;
 

@@ -24,7 +24,7 @@ static s32 __usbgecko_exi_unlock(s32 chan,s32 dev)
 	return 1;
 }
 
-static void __usbgecko_init()
+static void __usbgecko_init(void)
 {
 	u32 i;
 

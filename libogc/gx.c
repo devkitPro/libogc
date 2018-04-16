@@ -147,23 +147,23 @@ static sys_resetinfo __gx_resetinfo = {
 extern int printk(const char *fmt,...);
 #endif
 
-static __inline__ BOOL IsWriteGatherBufferEmpty()
+static __inline__ BOOL IsWriteGatherBufferEmpty(void)
 {
 	return !(mfwpar()&1);
 }
 
-static __inline__ void DisableWriteGatherPipe()
+static __inline__ void DisableWriteGatherPipe(void)
 {
 	mthid2((mfhid2()&~0x40000000));
 }
 
-static __inline__ void EnableWriteGatherPipe()
+static __inline__ void EnableWriteGatherPipe(void)
 {
 	mtwpar(0x0C008000);
 	mthid2((mfhid2()|0x40000000));
 }
 
-static __inline__ void __GX_ResetWriteGatherPipe()
+static __inline__ void __GX_ResetWriteGatherPipe(void)
 {
 	while(mfwpar()&1);
 	mtwpar(0x0C008000);
@@ -187,13 +187,13 @@ static __inline__ void __GX_WriteFifoIntEnable(u8 inthi, u8 intlo)
 	_cpReg[1] = __gx->cpCRreg;
 }
 
-static __inline__ void __GX_FifoReadEnable()
+static __inline__ void __GX_FifoReadEnable(void)
 {
 	__gx->cpCRreg = ((__gx->cpCRreg&~0x01)|1);
 	_cpReg[1] = __gx->cpCRreg;
 }
 
-static __inline__ void __GX_FifoReadDisable()
+static __inline__ void __GX_FifoReadDisable(void)
 {
 	__gx->cpCRreg = ((__gx->cpCRreg&~0x01)|0);
 	_cpReg[1] = __gx->cpCRreg;
@@ -209,23 +209,23 @@ static s32 __gx_onreset(s32 final)
 }
 
 #if 0
-static u32 __GX_IsGPCPUFifoLinked()
+static u32 __GX_IsGPCPUFifoLinked(void)
 {
 	return _cpgplinked;
 }
 
-static u32 __GX_IsCPUFifoReady()
+static u32 __GX_IsCPUFifoReady(void)
 {
 	return _gxcpufifoready;
 }
 #endif
 
-static u32 __GX_IsGPFifoReady()
+static u32 __GX_IsGPFifoReady(void)
 {
 	return _gxgpfifoready;
 }
 
-static u32 __GX_CPGPLinkCheck()
+static u32 __GX_CPGPLinkCheck(void)
 {
 	struct __gxfifo *gpfifo = (struct __gxfifo*)&_gpfifo;
 	struct __gxfifo *cpufifo = (struct __gxfifo*)&_cpufifo;
@@ -237,7 +237,7 @@ static u32 __GX_CPGPLinkCheck()
 	return 0;
 }
 
-static void __GX_InitRevBits()
+static void __GX_InitRevBits(void)
 {
 	s32 i;
 
@@ -281,7 +281,7 @@ static u32 __GX_ReadMemCounterU32(u32 reg)
 	return (u32)((ucnt<<16)|lcnt);
 }
 
-static void __GX_WaitAbortPixelEngine()
+static void __GX_WaitAbortPixelEngine(void)
 {
 	u32 cnt,tmp;
 
@@ -293,7 +293,7 @@ static void __GX_WaitAbortPixelEngine()
 	} while(cnt!=tmp);
 }
 
-static void __GX_Abort()
+static void __GX_Abort(void)
 {
 	if(__gx->gxFifoInited && __GX_IsGPFifoReady())
 		__GX_WaitAbortPixelEngine();
@@ -306,7 +306,7 @@ static void __GX_Abort()
 }
 #endif
 
-static void __GX_SaveFifo()
+static void __GX_SaveFifo(void)
 {
 	s32 rdwt_dst;
 	u32 level,val;
@@ -339,7 +339,7 @@ static void __GX_SaveFifo()
 	_CPU_ISR_Restore(level);
 }
 
-static void __GX_CleanGPFifo()
+static void __GX_CleanGPFifo(void)
 {
 	u32 level;
 	struct __gxfifo *gpfifo = (struct __gxfifo*)&_gpfifo;
@@ -385,7 +385,7 @@ static void __GX_CleanGPFifo()
 	_CPU_ISR_Restore(level);
 }
 
-static void __GXOverflowHandler()
+static void __GXOverflowHandler(void)
 {
 	if(!_gxoverflowsuspend) {
 		_gxoverflowsuspend = 1;
@@ -396,7 +396,7 @@ static void __GXOverflowHandler()
 	}
 }
 
-static void __GXUnderflowHandler()
+static void __GXUnderflowHandler(void)
 {
 	if(_gxoverflowsuspend) {
 		_gxoverflowsuspend = 0;
@@ -448,7 +448,7 @@ static void __GXFinishInterruptHandler(u32 irq,void *ctx)
 	LWP_ThreadBroadcast(_gxwaitfinish);
 }
 
-static void __GX_PEInit()
+static void __GX_PEInit(void)
 {
 	IRQ_Request(IRQ_PI_PETOKEN,__GXTokenInterruptHandler,NULL);
 	__UnmaskIrq(IRQMASK(IRQ_PI_PETOKEN));
@@ -459,7 +459,7 @@ static void __GX_PEInit()
 	_peReg[5] = 0x0F;
 }
 
-static void __GX_FifoInit()
+static void __GX_FifoInit(void)
 {
 	IRQ_Request(IRQ_PI_CP,__GXCPInterruptHandler,NULL);
 	__UnmaskIrq(IRQMASK(IRQ_PI_CP));
@@ -594,7 +594,7 @@ static GXTlutRegion* __GXDefTlutRegionCallback(u32 tlut_name)
 	return &__gx->tlutRegion[tlut_name];
 }
 
-static void __GX_InitGX()
+static void __GX_InitGX(void)
 {
 	s32 i;
 	u32 flag;
@@ -742,12 +742,12 @@ static void __GX_InitGX()
 	GX_ClearGPMetric();
 }
 
-static void __GX_FlushTextureState()
+static void __GX_FlushTextureState(void)
 {
 	GX_LOAD_BP_REG(__gx->tevIndMask);
 }
 
-static void __GX_XfVtxSpecs()
+static void __GX_XfVtxSpecs(void)
 {
 	u32 xfvtxspecs = 0;
 	u32 nrms,texs,cols;
@@ -785,7 +785,7 @@ static void __GX_SetMatrixIndex(u32 mtx)
 	}
 }
 
-static void __GX_SendFlushPrim()
+static void __GX_SendFlushPrim(void)
 {
 	u32 tmp,tmp2,cnt;
 
@@ -819,14 +819,14 @@ static void __GX_SendFlushPrim()
 	__gx->xfFlush = 1;
 }
 
-static void __GX_SetVCD()
+static void __GX_SetVCD(void)
 {
 	GX_LOAD_CP_REG(0x50,__gx->vcdLo);
 	GX_LOAD_CP_REG(0x60,__gx->vcdHi);
 	__GX_XfVtxSpecs();
 }
 
-static void __GX_SetVAT()
+static void __GX_SetVAT(void)
 {
 	u8 setvtx = 0;
 	s32 i;
@@ -863,7 +863,7 @@ static void __SetSURegs(u8 texmap,u8 texcoord)
 	GX_LOAD_BP_REG(__gx->suTsize[reg]);
 }
 
-static void __GX_SetSUTexRegs()
+static void __GX_SetSUTexRegs(void)
 {
 	u32 i;
 	u32 indtev,dirtev;
@@ -919,13 +919,13 @@ static void __GX_SetSUTexRegs()
 	}
 }
 
-static void __GX_SetGenMode()
+static void __GX_SetGenMode(void)
 {
 	GX_LOAD_BP_REG(__gx->genMode);
 	__gx->xfFlush = 0;
 }
 
-static void __GX_UpdateBPMask()
+static void __GX_UpdateBPMask(void)
 {
 #if defined(HW_DOL)
 	u32 i;
@@ -969,7 +969,7 @@ static void __GX_SetIndirectMask(u32 mask)
 	GX_LOAD_BP_REG(__gx->tevIndMask);
 }
 
-static void __GX_SetTexCoordGen()
+static void __GX_SetTexCoordGen(void)
 {
 	u32 i,mask;
 	u32 texcoord;
@@ -990,7 +990,7 @@ static void __GX_SetTexCoordGen()
 	}
 }
 
-static void __GX_SetChanColor()
+static void __GX_SetChanColor(void)
 {
 	if(__gx->dirtyState&0x0100)
 		GX_LOAD_XF_REG(0x100a,__gx->chnAmbColor[0]);
@@ -1002,7 +1002,7 @@ static void __GX_SetChanColor()
 		GX_LOAD_XF_REG(0x100d,__gx->chnMatColor[1]);
 }
 
-static void __GX_SetChanCntrl()
+static void __GX_SetChanCntrl(void)
 {
 	u32 i,chan,mask;
 
@@ -1020,7 +1020,7 @@ static void __GX_SetChanCntrl()
 	}
 }
 
-static void __GX_SetDirtyState()
+static void __GX_SetDirtyState(void)
 {
 	if(__gx->dirtyState&0x0001) {
 		__GX_SetSUTexRegs();
@@ -1495,24 +1495,24 @@ u8 GX_GetFifoWrap(GXFifoObj *fifo)
 	return ((struct __gxfifo*)fifo)->fifo_wrap;
 }
 
-u32 GX_GetOverflowCount()
+u32 GX_GetOverflowCount(void)
 {
 	return _gxoverflowcount;
 }
 
-u32 GX_ResetOverflowCount()
+u32 GX_ResetOverflowCount(void)
 {
 	u32 ret = _gxoverflowcount;
 	_gxoverflowcount = 0;
 	return ret;
 }
 
-lwp_t GX_GetCurrentGXThread()
+lwp_t GX_GetCurrentGXThread(void)
 {
 	return _gxcurrentlwp;
 }
 
-lwp_t GX_SetCurrentGXThread()
+lwp_t GX_SetCurrentGXThread(void)
 {
 	u32 level;
 
@@ -1550,7 +1550,7 @@ volatile void* GX_RedirectWriteGatherPipe(void *ptr)
 	return (volatile void*)0x0C008000;
 }
 
-void GX_RestoreWriteGatherPipe()
+void GX_RestoreWriteGatherPipe(void)
 {
 	u32 level;
 	struct __gxfifo *cpufifo = (struct __gxfifo*)&_cpufifo;
@@ -1581,7 +1581,7 @@ void GX_RestoreWriteGatherPipe()
 	_CPU_ISR_Restore(level);
 }
 
-void GX_Flush()
+void GX_Flush(void)
 {
 	if(__gx->dirtyState)
 		__GX_SetDirtyState();
@@ -1612,7 +1612,7 @@ void GX_EnableBreakPt(void *break_pt)
  	_CPU_ISR_Restore(level);
 }
 
-void GX_DisableBreakPt()
+void GX_DisableBreakPt(void)
 {
 	u32 level = 0;
 	_CPU_ISR_Disable(level);
@@ -1623,7 +1623,7 @@ void GX_DisableBreakPt()
 }
 
 #if defined(HW_DOL)
-void GX_AbortFrame()
+void GX_AbortFrame(void)
 {
 	_piReg[6] = 1;
 	__GX_WaitAbort(50);
@@ -1634,7 +1634,7 @@ void GX_AbortFrame()
 		__GX_CleanGPFifo();
 }
 #elif defined(HW_RVL)
-void GX_AbortFrame()
+void GX_AbortFrame(void)
 {
 	__GX_Abort();
 	if(__GX_IsGPFifoReady()) {
@@ -1657,12 +1657,12 @@ void GX_SetDrawSync(u16 token)
 	_CPU_ISR_Restore(level);
 }
 
-u16 GX_GetDrawSync()
+u16 GX_GetDrawSync(void)
 {
 	return _peReg[7];
 }
 
-void GX_SetDrawDone()
+void GX_SetDrawDone(void)
 {
 	u32 level;
 	_CPU_ISR_Disable(level);
@@ -1673,7 +1673,7 @@ void GX_SetDrawDone()
 }
 
 
-void GX_WaitDrawDone()
+void GX_WaitDrawDone(void)
 {
 	u32 level;
 #ifdef _GP_DEBUG
@@ -1685,7 +1685,7 @@ void GX_WaitDrawDone()
 	_CPU_ISR_Restore(level);
 }
 
-void GX_DrawDone()
+void GX_DrawDone(void)
 {
 	u32 level;
 
@@ -1734,12 +1734,12 @@ GXBreakPtCallback GX_SetBreakPtCallback(GXBreakPtCallback cb)
 	return ret;
 }
 
-void GX_PixModeSync()
+void GX_PixModeSync(void)
 {
 	GX_LOAD_BP_REG(__gx->peCntrl);
 }
 
-void GX_TexModeSync()
+void GX_TexModeSync(void)
 {
 	GX_LOAD_BP_REG(0x63000000);
 }
@@ -2122,7 +2122,7 @@ void GX_SetTexCopyDst(u16 wd,u16 ht,u32 fmt,u8 mipmap)
 	__gx->texCopyZTex = ((fmt&_GX_TF_ZTF)==_GX_TF_ZTF);
 }
 
-void GX_ClearBoundingBox()
+void GX_ClearBoundingBox(void)
 {
 	GX_LOAD_BP_REG(0x550003ff);
 	GX_LOAD_BP_REG(0x560003ff);
@@ -2154,7 +2154,7 @@ void GX_BeginDispList(void *list,u32 size)
 	__GX_ResetWriteGatherPipe();
 }
 
-u32 GX_EndDispList()
+u32 GX_EndDispList(void)
 {
 	u32 level;
 	u8 wrap = 0;
@@ -2939,7 +2939,7 @@ void GX_SetNumTexGens(u32 nr)
 	__gx->dirtyState |= 0x02000004;
 }
 
-void GX_InvVtxCache()
+void GX_InvVtxCache(void)
 {
 	wgPipe->U8 = 0x48; // vertex cache weg
 }
@@ -3582,7 +3582,7 @@ void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region)
 	__GX_FlushTextureState();
 }
 
-void GX_InvalidateTexAll()
+void GX_InvalidateTexAll(void)
 {
 	__GX_FlushTextureState();
 	GX_LOAD_BP_REG(0x66001000);
@@ -3730,7 +3730,7 @@ void GX_SetBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op)
 	GX_LOAD_BP_REG(__gx->peCMode0);
 }
 
-void GX_ClearVtxDesc()
+void GX_ClearVtxDesc(void)
 {
 	__gx->vcdNrms = 0;
 	__gx->vcdClear = ((__gx->vcdClear&~0x0600)|0x0200);
@@ -5042,12 +5042,12 @@ void GX_SetGPMetric(u32 perf0,u32 perf1)
 
 }
 
-void GX_ClearGPMetric()
+void GX_ClearGPMetric(void)
 {
 	_cpReg[2] = 4;
 }
 
-void GX_InitXfRasMetric()
+void GX_InitXfRasMetric(void)
 {
 	GX_LOAD_BP_REG(0x2402C022);
 	GX_LOAD_XF_REG(0x1006,0x31000);
@@ -5061,7 +5061,7 @@ void GX_ReadXfRasMetric(u32 *xfwaitin,u32 *xfwaitout,u32 *rasbusy,u32 *clks)
 	*xfwaitout = _SHIFTL(_cpReg[39],16,16)|(_cpReg[38]&0xffff);
 }
 
-u32 GX_ReadClksPerVtx()
+u32 GX_ReadClksPerVtx(void)
 {
 	GX_DrawDone();
 	_cpReg[49] = 0x1007;
@@ -5069,7 +5069,7 @@ u32 GX_ReadClksPerVtx()
 	return (_cpReg[50]<<8);
 }
 
-void GX_ClearVCacheMetric()
+void GX_ClearVCacheMetric(void)
 {
 	GX_LOAD_CP_REG(0,0);
 }

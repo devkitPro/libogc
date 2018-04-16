@@ -95,12 +95,12 @@ ARCallback AR_RegisterCallback(ARCallback callback);
 
 
 /*! 
- * \fn u32 AR_GetDMAStatus()
+ * \fn u32 AR_GetDMAStatus(void)
  * \brief Get current status of DMA
  *
  * \return zero if DMA is idle, non-zero if a DMA is in progress
  */
-u32 AR_GetDMAStatus();
+u32 AR_GetDMAStatus(void);
 
 
 /*! 
@@ -203,51 +203,51 @@ void AR_Clear(u32 flag);
 
 
 /*! 
- * \fn BOOL AR_CheckInit()
+ * \fn BOOL AR_CheckInit(void)
  * \brief Get the ARAM subsystem initialization flag
  *
  * \return TRUE if the ARAM subsystem has been initialized(via AR_Init())<br>
  *         FALSE if the ARAM subsystem has not been initialized, or has been reset(via AR_Reset())
  */
-BOOL AR_CheckInit();
+BOOL AR_CheckInit(void);
 
 
 /*!
- * \fn void AR_Reset()
+ * \fn void AR_Reset(void)
  * \brief Clears the ARAM subsystem initialization flag.
  *
  *        Calling AR_Init() after this function will cause a "real" initialization of ARAM
  *
  * \return none
  */
-void AR_Reset();
+void AR_Reset(void);
 
 
 /*! 
- * \fn u32 AR_GetSize()
+ * \fn u32 AR_GetSize(void)
  * \brief Get the total size - in bytes - of ARAM as calculated during AR_Init()
  *
  * \return size of the specified ARAM block
  */
-u32 AR_GetSize();
+u32 AR_GetSize(void);
 
 
 /*! 
- * \fn u32 AR_GetBaseAddress()
+ * \fn u32 AR_GetBaseAddress(void)
  * \brief Get the baseaddress of ARAM memory
  *
  * \return ARAM memory baseaddress
  */
-u32 AR_GetBaseAddress();
+u32 AR_GetBaseAddress(void);
 
 
 /*! 
- * \fn u32 AR_GetInternalSize()
+ * \fn u32 AR_GetInternalSize(void)
  * \brief Get the size of the internal ARAM memory
  *
  * \return ARAM internal memory size
  */
-u32 AR_GetInternalSize();
+u32 AR_GetInternalSize(void);
 
 
 /*! 

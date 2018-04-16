@@ -196,7 +196,7 @@ static s32 __sdio_setclock(u32 set)
  
 	return ret;
 }
-static s32 __sdio_getstatus()
+static s32 __sdio_getstatus(void)
 {
 	s32 ret;
 	STACK_ALIGN(u32,status,1,32);
@@ -207,7 +207,7 @@ static s32 __sdio_getstatus()
 	return *status;
 }
  
-static s32 __sdio_resetcard()
+static s32 __sdio_resetcard(void)
 {
 	s32 ret;
  	STACK_ALIGN(u32,status,1,32);
@@ -293,7 +293,7 @@ static s32 __sdio_setbuswidth(u32 bus_width)
 }
 
 #if 0
-static s32 __sd0_getstatus()
+static s32 __sd0_getstatus(void)
 {
 	s32 ret;
 	u32 status = 0;
@@ -305,7 +305,7 @@ static s32 __sd0_getstatus()
 }
 #endif
 
-static s32 __sd0_getrca()
+static s32 __sd0_getrca(void)
 {
 	s32 ret;
 	u32 rca;
@@ -317,7 +317,7 @@ static s32 __sd0_getrca()
 	return (rca&0xffff);
 }
  
-static s32 __sd0_select()
+static s32 __sd0_select(void)
 {
 	s32 ret;
  
@@ -326,7 +326,7 @@ static s32 __sd0_select()
 	return ret;
 }
  
-static s32 __sd0_deselect()
+static s32 __sd0_deselect(void)
 {
 	s32 ret;
  
@@ -361,7 +361,7 @@ static s32 __sd0_setbuswidth(u32 bus_width)
 }
 
 #if 0
-static s32 __sd0_getcsd()
+static s32 __sd0_getcsd(void)
 {
 	s32 ret;
  
@@ -371,7 +371,7 @@ static s32 __sd0_getcsd()
 }
 #endif
 
-static s32 __sd0_getcid()
+static s32 __sd0_getcid(void)
 {
 	s32 ret;
  
@@ -381,7 +381,7 @@ static s32 __sd0_getcid()
 }
 
 
-static	bool __sd0_initio()
+static	bool __sd0_initio(void)
 {
 	s32 ret;
 	s32 tries;
@@ -500,7 +500,7 @@ static	bool __sd0_initio()
 	return false;
 }
 
-bool sdio_Deinitialize()
+bool sdio_Deinitialize(void)
 {
 	if(__sd0_fd>=0)
 		IOS_Close(__sd0_fd);
@@ -510,7 +510,7 @@ bool sdio_Deinitialize()
 	return true;
 }
 
-bool sdio_Startup()
+bool sdio_Startup(void)
 {
 	if(__sdio_initialized==1) return true;
  
@@ -539,7 +539,7 @@ bool sdio_Startup()
  
  
  
-bool sdio_Shutdown()
+bool sdio_Shutdown(void)
 {
 	if(__sd0_initialized==0) return false;
 
@@ -625,18 +625,18 @@ bool sdio_WriteSectors(sec_t sector, sec_t numSectors,const void* buffer)
 	return (ret>=0);
 }
  
-bool sdio_ClearStatus()
+bool sdio_ClearStatus(void)
 {
 	return true;
 }
  
-bool sdio_IsInserted()
+bool sdio_IsInserted(void)
 {
 	return ((__sdio_getstatus() & SDIO_STATUS_CARD_INSERTED) ==
 			SDIO_STATUS_CARD_INSERTED);
 }
 
-bool sdio_IsInitialized()
+bool sdio_IsInitialized(void)
 {
 	return ((__sdio_getstatus() & SDIO_STATUS_CARD_INITIALIZED) ==
 			SDIO_STATUS_CARD_INITIALIZED);

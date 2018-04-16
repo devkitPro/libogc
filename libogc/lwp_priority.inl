@@ -35,7 +35,7 @@ static __inline__ void __lwp_priomap_removefrom(prio_cntrl *theprio)
 		_prio_major_bitmap &= theprio->block_major;
 }
 
-static __inline__ u32 __lwp_priomap_highest()
+static __inline__ u32 __lwp_priomap_highest(void)
 {
 	u32 major,minor;
 	major = cntlzw(_prio_major_bitmap);

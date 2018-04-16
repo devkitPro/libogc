@@ -56,7 +56,7 @@ lwp_objinfo _lwp_cond_objects;
 extern int clock_gettime(struct timespec *tp);
 extern void timespec_subtract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
 
-void __lwp_cond_init()
+void __lwp_cond_init(void)
 {
 	__lwp_objmgr_initinfo(&_lwp_cond_objects,LWP_MAX_CONDVARS,sizeof(cond_st));
 }
@@ -73,7 +73,7 @@ static __inline__ void __lwp_cond_free(cond_st *cond)
 	__lwp_objmgr_free(&_lwp_cond_objects,&cond->object);
 }
 
-static cond_st* __lwp_cond_allocate()
+static cond_st* __lwp_cond_allocate(void)
 {
 	cond_st *cond;
 

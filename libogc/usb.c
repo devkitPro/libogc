@@ -583,7 +583,7 @@ static u32 __find_next_endpoint(u8 *buffer,s32 size,u8 align)
 	return (buffer - ptr);
 }
 
-s32 USB_Initialize()
+s32 USB_Initialize(void)
 {
 	if(hId==-1) hId = iosCreateHeap(USB_HEAPSIZE);
 	if(hId<0) return IPC_ENOMEM;
@@ -648,7 +648,7 @@ mem_error:
 	return IPC_ENOMEM;
 }
 
-s32 USB_Deinitialize()
+s32 USB_Deinitialize(void)
 {
 	if (hid_host) {
 		if (hid_host->fd>=0) {

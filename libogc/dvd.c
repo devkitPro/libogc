@@ -432,7 +432,7 @@ static u8 convert(u32 errorcode)
 	return err_num+(err*30);
 }
 
-static void __dvd_clearwaitingqueue()
+static void __dvd_clearwaitingqueue(void)
 {
 	u32 i;
 
@@ -440,7 +440,7 @@ static void __dvd_clearwaitingqueue()
 		__lwp_queue_init_empty(&__dvd_waitingqueue[i]);
 }
 
-static s32 __dvd_checkwaitingqueue()
+static s32 __dvd_checkwaitingqueue(void)
 {
 	u32 i;
 	u32 level;
@@ -481,7 +481,7 @@ static dvdcmdblk* __dvd_popwaitingqueueprio(s32 prio)
 	return ret;
 }
 
-static dvdcmdblk* __dvd_popwaitingqueue()
+static dvdcmdblk* __dvd_popwaitingqueue(void)
 {
 	u32 i,level;
 	dvdcmdblk *ret = NULL;
@@ -599,7 +599,7 @@ static void __DoRead(void *buffer,u32 len,s64 offset,dvdcallbacklow cb)
 	__Read(buffer,len,offset,cb);
 }
 
-static u32 __ProcessNextCmd()
+static u32 __ProcessNextCmd(void)
 {
 	u32 cmd_num;
 #ifdef _DVD_DEBUG
@@ -630,7 +630,7 @@ static void __DVDLowWATypeSet(u32 workaround,u32 workaroundseek)
 	_CPU_ISR_Restore(level);
 }
 
-static void __DVDInitWA()
+static void __DVDInitWA(void)
 {
 	__dvd_nextcmdnum = 0;
 	__DVDLowWATypeSet(0,0);
@@ -1266,7 +1266,7 @@ static void __dvd_fwpatchmem(dvdcallbacklow cb)
 	return;
 }
 
-static void __dvd_handlespinup()
+static void __dvd_handlespinup(void)
 {
 #ifdef _DVD_DEBUG
 	printf("__dvd_handlespinup()\n");
@@ -1568,7 +1568,7 @@ void __dvd_statebusy(dvdcmdblk *block)
 	}
 }
 
-void __dvd_stateready()
+void __dvd_stateready(void)
 {
 	dvdcmdblk *block;
 #ifdef _DVD_DEBUG
@@ -1635,7 +1635,7 @@ void __dvd_stateready()
 	__dvd_statebusy(__dvd_executing);
 }
 
-void __dvd_statecoverclosed()
+void __dvd_statecoverclosed(void)
 {
 	dvdcmdblk *blk;
 #ifdef _DVD_DEBUG
@@ -1663,7 +1663,7 @@ void __dvd_statecoverclosed_cmd(dvdcmdblk *block)
 	DVD_LowReadId(&__dvd_tmpid0,__dvd_statecoverclosedcb);
 }
 
-void __dvd_statemotorstopped()
+void __dvd_statemotorstopped(void)
 {
 #ifdef _DVD_DEBUG
 	printf("__dvd_statemotorstopped(%d)\n",__dvd_executing->state);
@@ -1680,7 +1680,7 @@ void __dvd_stateerror(s32 result)
 	DVD_LowStopMotor(__dvd_stateerrorcb);
 }
 
-void __dvd_stategettingerror()
+void __dvd_stategettingerror(void)
 {
 #ifdef _DVD_DEBUG
 	printf("__dvd_stategettingerror()\n");
@@ -1693,7 +1693,7 @@ void __dvd_statecheckid2(dvdcmdblk *block)
 
 }
 
-void __dvd_statecheckid()
+void __dvd_statecheckid(void)
 {
 	dvdcmdblk *blk;
 #ifdef _DVD_DEBUG
@@ -1732,14 +1732,14 @@ void __dvd_statecheckid()
 	__dvd_statebusy(__dvd_executing);
 }
 
-void __dvd_statetimeout()
+void __dvd_statetimeout(void)
 {
 	__dvd_storeerror(0x01234568);
 	DVD_Reset(DVD_RESETSOFT);
 	__dvd_stateerrorcb(0);
 }
 
-void __dvd_stategotoretry()
+void __dvd_stategotoretry(void)
 {
 	DVD_LowStopMotor(__dvd_stategotoretrycb);
 }
@@ -2498,7 +2498,7 @@ s32 DVD_GetCmdBlockStatus(dvdcmdblk *block)
 	return ret;
 }
 
-s32 DVD_GetDriveStatus()
+s32 DVD_GetDriveStatus(void)
 {
 	s32 ret;
 	u32 level;
@@ -2516,7 +2516,7 @@ s32 DVD_GetDriveStatus()
 	return ret;
 }
 
-void DVD_Pause()
+void DVD_Pause(void)
 {
 	u32 level;
 
@@ -2572,7 +2572,7 @@ s32 DVD_MountAsync(dvdcmdblk *block,dvdcbcallback cb)
 	return DVD_SpinUpDriveAsync(block,callback);
 }
 
-s32 DVD_Mount()
+s32 DVD_Mount(void)
 {
 	s32 ret = 0;
 	s32 state;
@@ -2598,17 +2598,17 @@ s32 DVD_Mount()
 	return ret;
 }
 
-dvddiskid* DVD_GetCurrentDiskID()
+dvddiskid* DVD_GetCurrentDiskID(void)
 {
 	return __dvd_diskID;
 }
 
-dvddrvinfo* DVD_GetDriveInfo()
+dvddrvinfo* DVD_GetDriveInfo(void)
 {
 	return &__dvd_driveinfo;
 }
 
-void DVD_Init()
+void DVD_Init(void)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_Init()\n");
@@ -2633,7 +2633,7 @@ u32 DVD_SetAutoInvalidation(u32 auto_inv)
 	return ret;
 }
 
-static bool dvdio_Startup()
+static bool dvdio_Startup(void)
 {
 	DVD_Init();
 
@@ -2649,7 +2649,7 @@ static bool dvdio_Startup()
 	return true;
 }
 
-static bool dvdio_IsInserted()
+static bool dvdio_IsInserted(void)
 {
 	u32 status = 0;
 	DVD_LowGetStatus(&status, NULL);
@@ -2675,12 +2675,12 @@ static bool dvdio_WriteSectors(sec_t sector,sec_t numSectors,const void *buffer)
 	return true;
 }
 
-static bool dvdio_ClearStatus()
+static bool dvdio_ClearStatus(void)
 {
 	return true;
 }
 
-static bool dvdio_Shutdown()
+static bool dvdio_Shutdown(void)
 {
 	return true;
 }

@@ -253,10 +253,10 @@ static sys_resetinfo card_resetinfo = {
 	127
 };
 
-extern unsigned long gettick();
-extern long long gettime();
-extern syssram* __SYS_LockSram();
-extern syssramex* __SYS_LockSramEx();
+extern unsigned long gettick(void);
+extern long long gettime(void);
+extern syssram* __SYS_LockSram(void);
+extern syssramex* __SYS_LockSramEx(void);
 extern u32 __SYS_UnlockSram(u32 write);
 extern u32 __SYS_UnlockSramEx(u32 write);
 
@@ -2056,13 +2056,13 @@ static __inline__ void __card_srand(u32 val)
 	crand_next = val;	
 }
 
-static __inline__ u32 __card_rand()
+static __inline__ u32 __card_rand(void)
 {
 	crand_next = (crand_next*0x41C64E6D)+12345;
 	return _SHIFTR(crand_next,16,15);
 }
 
-static u32 __card_initval()
+static u32 __card_initval(void)
 {
 	u32 ticks = gettick();
 	
@@ -2070,7 +2070,7 @@ static u32 __card_initval()
 	return ((0x7FEC8000|__card_rand())&~0x00000fff);
 }
 
-static u32 __card_dummylen()
+static u32 __card_dummylen(void)
 {
 	u32 ticks = gettick();
 	u32 val = 0,cnt = 0,shift = 1;

@@ -69,7 +69,7 @@ extern void irq_exceptionhandler();
 extern void dec_exceptionhandler();
 extern void default_exceptionhandler();
 extern void VIDEO_SetFramebuffer(void *);
-extern void __reload();
+extern void __reload(void);
 
 extern s8 exceptionhandler_start[],exceptionhandler_end[],exceptionhandler_patch[];
 extern s8 systemcallhandler_start[],systemcallhandler_end[];
@@ -100,12 +100,12 @@ void __exception_load(u32 nExc,void *data,u32 len,void *patch)
 	_sync();
 }
 
-void __systemcall_init()
+void __systemcall_init(void)
 {
 	__exception_load(EX_SYS_CALL,systemcallhandler_start,(systemcallhandler_end-systemcallhandler_start),NULL);
 }
 
-void __exception_init()
+void __exception_init(void)
 {
 	s32 i;
 #ifdef _EXC_DEBUG
@@ -140,7 +140,7 @@ void __exception_close(u32 except)
 	_CPU_ISR_Restore(level);
 }
 
-void __exception_closeall()
+void __exception_closeall(void)
 {
 	s32 i;
 
@@ -195,7 +195,7 @@ void __exception_setreload(int t)
 	reload_timer = t*50;
 }
 
-static void waitForReload()
+static void waitForReload(void)
 {
 	u32 level;
 

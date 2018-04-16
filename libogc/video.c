@@ -1359,7 +1359,7 @@ static VIPositionCallback positionCB = NULL;
 
 static vu16* const _viReg = (u16*)0xCC002000;
 
-extern syssram* __SYS_LockSram();
+extern syssram* __SYS_LockSram(void);
 extern u32 __SYS_UnlockSram(u32 write);
 
 extern void __VIClearFramebuffer(void*,u32,u32);
@@ -1370,7 +1370,7 @@ extern void udelay(int us);
 static u32 messages$128 = 0;
 static u32 printregs = 1;
 
-static void printRegs()
+static void printRegs(void)
 {
 	if(!printregs) {
 		printf("displayOffsetH = %d\ndisplayOffsetV = %d\n",displayOffsetH,displayOffsetV);
@@ -1397,7 +1397,7 @@ static void printRegs()
 	}
 }
 
-static void printDebugCalculations()
+static void printDebugCalculations(void)
 {
 	if(!messages$128) {
 		messages$128 = 1;
@@ -1515,12 +1515,12 @@ static inline u32 __viSetSDA(u32 channel)
 	return 1;
 }
 
-static inline u32 __viGetSDA()
+static inline u32 __viGetSDA(void)
 {
 	return _SHIFTR(_i2cReg[50],15,1);
 }
 
-static inline void __viCheckI2C()
+static inline void __viCheckI2C(void)
 {
 	__viOpenI2C(0);
 	udelay(4);
@@ -1790,7 +1790,7 @@ static inline void __adjustPosition(u16 acv)
 	HorVer.adjustedPanSizeY = HorVer.panSizeY+(dispPosY/fact)-(dispSizeY/fact);
 }
 
-static inline void __importAdjustingValues()
+static inline void __importAdjustingValues(void)
 {
 #ifdef HW_DOL
 	syssram *sram;
@@ -2051,7 +2051,7 @@ static inline void __getCurrentDisplayPosition(u32 *px,u32 *py)
 	*py = vpos;
 }
 
-static inline u32 __getCurrentHalfLine()
+static inline u32 __getCurrentHalfLine(void)
 {
 	u32 vpos = 0;
 	u32 hpos = 0;
@@ -2065,7 +2065,7 @@ static inline u32 __getCurrentHalfLine()
 	return vpos+(hpos/currTiming->hlw);
 }
 
-static inline u32 __getCurrentFieldEvenOdd()
+static inline u32 __getCurrentFieldEvenOdd(void)
 {
 	u32 hline;
 
@@ -2075,7 +2075,7 @@ static inline u32 __getCurrentFieldEvenOdd()
 	return 0;
 }
 
-static inline u32 __VISetRegs()
+static inline u32 __VISetRegs(void)
 {
 	u32 val;
 	u64 mask;
@@ -2247,17 +2247,17 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 	LWP_ThreadBroadcast(video_queue);
 }
 
-void* VIDEO_GetNextFramebuffer()
+void* VIDEO_GetNextFramebuffer(void)
 {
 	return nextFb;
 }
 
-void* VIDEO_GetCurrentFramebuffer()
+void* VIDEO_GetCurrentFramebuffer(void)
 {
 	return currentFb;
 }
 
-void VIDEO_Init()
+void VIDEO_Init(void)
 {
 	u32 level,vimode = 0;
 
@@ -2479,7 +2479,7 @@ void VIDEO_SetNextRightFramebuffer(void *fb)
 	_CPU_ISR_Restore(level);
 }
 
-void VIDEO_Flush()
+void VIDEO_Flush(void)
 {
 	u32 level;
 	u32 val;
@@ -2516,7 +2516,7 @@ void VIDEO_SetBlack(bool black)
 	_CPU_ISR_Restore(level);
 }
 
-u32 VIDEO_GetNextField()
+u32 VIDEO_GetNextField(void)
 {
 	u32 level,nextfield;
 
@@ -2527,7 +2527,7 @@ u32 VIDEO_GetNextField()
 	return nextfield^(HorVer.adjustedDispPosY&0x0001);	//if the YOrigin is at an odd position we've to swap it again, since the Fb registers are set swapped if this rule applies
 }
 
-u32 VIDEO_GetCurrentTvMode()
+u32 VIDEO_GetCurrentTvMode(void)
 {
 	u32 mode;
 	u32 level;
@@ -2632,7 +2632,7 @@ GXRModeObj *rmode = NULL;
 
 }
 
-u32 VIDEO_GetCurrentLine()
+u32 VIDEO_GetCurrentLine(void)
 {
 	u32 level,curr_hl = 0;
 

@@ -30,7 +30,7 @@ extern "C" {
 #define __set_gqr(_reg,_val)	asm volatile("mtspr %0,%1" : : "i"(_reg), "b"(_val))
 
 // does a default init
-static inline void CAST_Init()
+static inline void CAST_Init(void)
 {
 	__asm__ __volatile__ (
 		"li		3,0x0004\n\

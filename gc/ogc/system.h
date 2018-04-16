@@ -219,8 +219,8 @@ struct _sys_fontheader {
     u8  c3;
 } ATTRIBUTE_PACKED;
 
-typedef void (*resetcallback)(void);
-typedef void (*powercallback)(void);
+typedef void (*resetcallback)();
+typedef void (*powercallback)();
 typedef s32 (*resetfunction)(s32 final);
 typedef struct _sys_resetinfo sys_resetinfo;
 
@@ -230,12 +230,12 @@ struct _sys_resetinfo {
 	u32 prio;
 };
 
-/*! \fn void SYS_Init()
+/*! \fn void SYS_Init(void)
 \deprecated Performs basic system initialization such as EXI init etc. This function is called from within the crt0 startup code.
 
 \return none
 */
-void SYS_Init();
+void SYS_Init(void);
 
 
 /*!
@@ -250,8 +250,8 @@ void* SYS_AllocateFramebuffer(GXRModeObj *rmode);
 
 void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl);
 void SYS_StartPMC(u32 mcr0val,u32 mcr1val);
-void SYS_DumpPMC();
-void SYS_StopPMC();
+void SYS_DumpPMC(void);
+void SYS_StopPMC(void);
 
 
 /*! \fn s32 SYS_CreateAlarm(syswd_t *thealarm)
@@ -306,7 +306,7 @@ s32 SYS_CancelAlarm(syswd_t thealarm);
 
 void SYS_SetWirelessID(u32 chan,u32 id);
 u32 SYS_GetWirelessID(u32 chan);
-u32 SYS_GetFontEncoding();
+u32 SYS_GetFontEncoding(void);
 u32 SYS_InitFont(sys_fontheader *font_data);
 void SYS_GetFontTexture(s32 c,void **image,s32 *xpos,s32 *ypos,s32 *width);
 void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width);
@@ -315,31 +315,31 @@ void SYS_RegisterResetFunc(sys_resetinfo *info);
 void SYS_UnregisterResetFunc(sys_resetinfo *info);
 void SYS_SwitchFiber(u32 arg0,u32 arg1,u32 arg2,u32 arg3,u32 pc,u32 newsp);
 
-void* SYS_GetArena1Lo();
+void* SYS_GetArena1Lo(void);
 void SYS_SetArena1Lo(void *newLo);
-void* SYS_GetArena1Hi();
+void* SYS_GetArena1Hi(void);
 void SYS_SetArena1Hi(void *newHi);
-u32 SYS_GetArena1Size();
+u32 SYS_GetArena1Size(void);
 
 resetcallback SYS_SetResetCallback(resetcallback cb);
 
-u32 SYS_ResetButtonDown();
+u32 SYS_ResetButtonDown(void);
 
 #if defined(HW_RVL)
-u32 SYS_GetHollywoodRevision();
-void* SYS_GetArena2Lo();
+u32 SYS_GetHollywoodRevision(void);
+void* SYS_GetArena2Lo(void);
 void SYS_SetArena2Lo(void *newLo);
-void* SYS_GetArena2Hi();
+void* SYS_GetArena2Hi(void);
 void SYS_SetArena2Hi(void *newHi);
-u32 SYS_GetArena2Size();
+u32 SYS_GetArena2Size(void);
 powercallback SYS_SetPowerCallback(powercallback cb);
 #endif
 
-/* \fn u64 SYS_Time()
+/* \fn u64 SYS_Time(void)
 \brief Returns the current time in ticks since 2000 (proper Dolphin/Wii time)
 \return ticks since 2000
 */
-u64 SYS_Time();
+u64 SYS_Time(void);
 
 void kprintf(const char *str, ...);
 

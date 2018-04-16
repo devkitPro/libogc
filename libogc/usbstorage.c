@@ -197,7 +197,7 @@ static s32 __USB_CtrlMsgTimeout(usbstorage_handle *dev, u8 bmRequestType, u8 bmR
 static u8 *arena_ptr=NULL;
 static u8 *cbw_buffer=NULL;
 
-s32 USBStorage_Initialize()
+s32 USBStorage_Initialize(void)
 {
 	u32 level;
 
@@ -666,7 +666,7 @@ s32 USBStorage_ReadCapacity(usbstorage_handle *dev, u8 lun, u32 *sector_size, u3
 	return retval;
 }
 
-s32 USBStorage_IsDVD()
+s32 USBStorage_IsDVD(void)
 {
 	u32 sectorsize, numSectors;
 
@@ -957,7 +957,7 @@ static bool __usbstorage_Shutdown(void)
 	return true;
 }
 
-void USBStorage_Deinitialize()
+void USBStorage_Deinitialize(void)
 {
 	__usbstorage_Shutdown();
 	LWP_CloseQueue(__usbstorage_waitq);

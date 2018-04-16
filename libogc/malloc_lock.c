@@ -16,7 +16,7 @@ extern int errno;
 static int initialized = 0;
 static lwp_mutex mem_lock;
 
-void __memlock_init()
+void __memlock_init(void)
 {
 	__lwp_thread_dispatchdisable();
 	if(!initialized) {

@@ -138,44 +138,44 @@ struct _dsp_task {
 };
 
 
-/*! \fn void DSP_Init()
+/*! \fn void DSP_Init(void)
 \brief Initialize DSP subsystem.
 
 \return none
 */
-void DSP_Init();
+void DSP_Init(void);
 
 
-/*! \fn u32 DSP_CheckMailTo()
+/*! \fn u32 DSP_CheckMailTo(void)
 \brief Check if mail was sent to DSP
 
 \return 1: mail sent, 0: mail on route
 */
-u32 DSP_CheckMailTo();
+u32 DSP_CheckMailTo(void);
 
 
-/*! \fn u32 DSP_CheckMailFrom()
+/*! \fn u32 DSP_CheckMailFrom(void)
 \brief Check for mail from DSP
 
 \return 1: has mail, 0: no mail
 */
-u32 DSP_CheckMailFrom();
+u32 DSP_CheckMailFrom(void);
 
 
-/*! \fn u32 DSP_ReadMailFrom()
+/*! \fn u32 DSP_ReadMailFrom(void)
 \brief Read mail from DSP
 
 \return mail value received
 */
-u32 DSP_ReadMailFrom();
+u32 DSP_ReadMailFrom(void);
 
 
-/*! \fn void DSP_AssertInt()
+/*! \fn void DSP_AssertInt(void)
 \brief Asserts the processor interface interrupt
 
 \return none
 */
-void DSP_AssertInt();
+void DSP_AssertInt(void);
 
 
 /*! \fn void DSP_SendMailTo(u32 mail)
@@ -187,12 +187,12 @@ void DSP_AssertInt();
 void DSP_SendMailTo(u32 mail);
 
 
-/*! \fn u32 DSP_ReadCPUtoDSP()
+/*! \fn u32 DSP_ReadCPUtoDSP(void)
 \brief Read back CPU->DSP mailbox
 
 \return mail value received
 */
-u32 DSP_ReadCPUtoDSP();
+u32 DSP_ReadCPUtoDSP(void);
 
 
 /*! \fn dsptask_t* DSP_AddTask(dsptask_t *task)
@@ -207,11 +207,11 @@ dsptask_t* DSP_AssertTask(dsptask_t *task);
 
 void DSP_CancelTask(dsptask_t *task);
 
-void DSP_Reset();
+void DSP_Reset(void);
 
-void DSP_Halt();
+void DSP_Halt(void);
 
-void DSP_Unhalt();
+void DSP_Unhalt(void);
 
 /*! \fn DSPCallback DSP_RegisterCallback(DSPCallback usr_cb)
 \brief Register an user's interrupt callback. This may be used to handle DSP interrupts on its own. By default a system default callback is installed on DSP_Init().

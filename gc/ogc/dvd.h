@@ -226,15 +226,15 @@ struct _dvdfileinfo {
 
 
 /*! 
- * \fn void DVD_Init()
+ * \fn void DVD_Init(void)
  * \brief Initializes the DVD subsystem
  *
  *        You must call this function before calling any other DVD function
  *
  * \return none
  */
-void DVD_Init();
-void DVD_Pause();
+void DVD_Init(void);
+void DVD_Pause(void);
 
 
 /*! 
@@ -249,15 +249,15 @@ void DVD_Reset(u32 reset_mode);
 
 
 /*! 
- * \fn s32 DVD_Mount()
+ * \fn s32 DVD_Mount(void)
  * \brief Mounts the DVD drive.
  *
  *        This is a synchronous version of DVD_MountAsync().
  *
  * \return none
  */
-s32 DVD_Mount();
-s32 DVD_GetDriveStatus();
+s32 DVD_Mount(void);
+s32 DVD_GetDriveStatus(void);
 
 
 /*! 
@@ -353,8 +353,8 @@ s32 DVD_StopStreamAtEndAsync(dvdcmdblk *block,dvdcbcallback cb);
 s32 DVD_StopStreamAtEnd(dvdcmdblk *block);
 s32 DVD_ReadDiskID(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb);
 u32 DVD_SetAutoInvalidation(u32 auto_inv);
-dvddiskid* DVD_GetCurrentDiskID();
-dvddrvinfo* DVD_GetDriveInfo();
+dvddiskid* DVD_GetCurrentDiskID(void);
+dvddrvinfo* DVD_GetDriveInfo(void);
 
 #define DVD_SetUserData(block, data) ((block)->usrdata = (data))
 #define DVD_GetUserData(block)       ((block)->usrdata)

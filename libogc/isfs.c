@@ -167,7 +167,7 @@ static s32 __isfsFunctionCB(s32 result,void *usrdata)
 	return result;
 }
 
-s32 ISFS_Initialize()
+s32 ISFS_Initialize(void)
 {
 	s32 ret = IPC_OK;
 
@@ -183,7 +183,7 @@ s32 ISFS_Initialize()
 	return ret;
 }
 
-s32 ISFS_Deinitialize()
+s32 ISFS_Deinitialize(void)
 {
 	if(_fs_fd<0) return ISFS_EINVAL;
 
@@ -366,7 +366,7 @@ s32 ISFS_OpenAsync(const char *filepath,u8 mode,isfscallback cb,void *usrdata)
 	return IOS_OpenAsync(param->filepath,mode,__isfsFunctionCB,param);
 }
 
-s32 ISFS_Format()
+s32 ISFS_Format(void)
 {
 	if(_fs_fd<0) return ISFS_EINVAL;
 

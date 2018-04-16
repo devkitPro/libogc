@@ -88,7 +88,7 @@ static u16 _ioCrc16Table[256];
 static u32 _initType[MAX_DRIVE];
 static u32 _ioAddressingType[MAX_DRIVE];
 
-extern unsigned long gettick();
+extern unsigned long gettick(void);
 
 static __inline__ u32 __check_response(s32 drv_no,u8 res)
 {
@@ -107,7 +107,7 @@ static __inline__ u32 __check_response(s32 drv_no,u8 res)
 	return ((_ioError[drv_no]&CARDIO_OP_IOERR_FATAL)?CARDIO_ERROR_INTERNAL:CARDIO_ERROR_READY);
 }
 
-static void __init_crc7()
+static void __init_crc7(void)
 {
 	s32 i,j;
 	u8 c,crc7;
@@ -172,7 +172,7 @@ static u8 __make_crc7(void *buffer,u32 len)
 	return (res<<1)&0xff;
 }
 */
-static void __init_crc16()
+static void __init_crc16(void)
 {
 	s32 i,j;
 	u16 crc16,c;
@@ -1213,7 +1213,7 @@ static void __convert_sector(s32 drv_no,u32 sector_no,u8 *arg)
 	}
 }
 
-void sdgecko_initIODefault()
+void sdgecko_initIODefault(void)
 {
 	u32 i;
 #ifdef _CARDIO_DEBUG	

@@ -66,7 +66,7 @@ static s32 __lwp_mutex_locksupp(mutex_t lock,u32 timeout,u8 block)
 	return _thr_executing->wait.ret_code;
 }
 
-void __lwp_mutex_init()
+void __lwp_mutex_init(void)
 {
 	__lwp_objmgr_initinfo(&_lwp_mutex_objects,LWP_MAX_MUTEXES,sizeof(mutex_st));
 }
@@ -84,7 +84,7 @@ static __inline__ void __lwp_mutex_free(mutex_st *lock)
 	__lwp_objmgr_free(&_lwp_mutex_objects,&lock->object);
 }
 
-static mutex_st* __lwp_mutex_allocate()
+static mutex_st* __lwp_mutex_allocate(void)
 {
 	mutex_st *lock;
 

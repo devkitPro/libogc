@@ -68,8 +68,8 @@ extern u32 _wd_ticks_since_boot;
 
 extern lwp_queue _wd_ticks_queue;
 
-extern u32 gettick();
-extern u64 gettime();
+extern u32 gettick(void);
+extern u64 gettime(void);
 extern void settime(u64);
 
 u32 diff_sec(u64 start,u64 end);
