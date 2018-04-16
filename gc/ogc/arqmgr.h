@@ -35,10 +35,10 @@ distribution.
 
 
 /*!
- * \file arqmgr.h 
- * \brief ARAM queue managemnt subsystem
+ * \file arqmgr.h
+ * \brief ARAM queue management subsystem
  *
- */ 
+ */
 
 
 #include <gctypes.h>
@@ -49,9 +49,9 @@ distribution.
 
 
 /*!
- * \typedef void (*ARQMCallback)()
- * \brief function pointer typedef for the user's callback when ARAM operation has completed
- * \param none
+ * \typedef void (*ARQMCallback)(s32 result)
+ * \brief function pointer typedef for the user's callback when an ARAM operation has completed
+ * \param[in] result The result of the ARAM operation.
  */
 typedef void (*ARQMCallback)(s32 result);
 
@@ -69,20 +69,20 @@ void ARQM_Init(u32 arambase,s32 len);
 
 
 /*!
- * \fn u32 ARQM_PushData(void *buff,s32 len)
+ * \fn u32 ARQM_PushData(void *buffer,s32 len)
  * \brief Push the data onto the ARAM queue
  *
- * \param[in] buff startaddress of buffer to be pushed onto the queue. <b><i>NOTE:</i></b> Must be 32-bytealigned.
+ * \param[in] buffer starting address of a buffer to be pushed onto the queue. <b><i>NOTE:</i></b> Must be 32 byte aligned.
  * \param[in] len length of data to be pushed onto the queue.
  *
- * \return none
+ * \return The ARAM starting address for the pushed data.
  */
 u32 ARQM_PushData(void *buffer,s32 len);
 
 void ARQM_Pop(void);
 
 /*!
- * \fn u32 ARQM_GetZeroBuffer()
+ * \fn u32 ARQM_GetZeroBuffer(void)
  * \brief Returns ARAM address of 'zero buffer'
  *
  * \return See description
@@ -91,7 +91,7 @@ u32 ARQM_GetZeroBuffer(void);
 
 
 /*!
- * \fn u32 ARQM_GetStackPointer()
+ * \fn u32 ARQM_GetStackPointer(void)
  * \brief Return the ARAM address of the next free stack pointer
  *
  * \return See description
@@ -100,7 +100,7 @@ u32 ARQM_GetStackPointer(void);
 
 
 /*!
- * \fn u32 ARQM_GetFreeSize()
+ * \fn u32 ARQM_GetFreeSize(void)
  * \brief Return Returns remaining number of bytes on stack
  *
  * \return See description
