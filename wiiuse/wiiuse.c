@@ -16,9 +16,11 @@ static struct wiimote_t** __wm = NULL;
 
 void wiiuse_send_next_command(struct wiimote_t *wm)
 {
-	struct cmd_blk_t *cmd = wm->cmd_head;
+	struct cmd_blk_t *cmd;
 
 	if(!wm || !WIIMOTE_IS_CONNECTED(wm)) return;
+
+	cmd = wm->cmd_head;
 
 	if(!cmd) return;
 	if(cmd->state!=CMD_READY) return;
