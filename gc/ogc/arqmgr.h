@@ -87,7 +87,7 @@ void ARQM_Pop(void);
  *
  * \return See description
  */
-u32 ARQM_GetZeroBuffer();
+u32 ARQM_GetZeroBuffer(void);
 
 
 /*!
@@ -96,7 +96,7 @@ u32 ARQM_GetZeroBuffer();
  *
  * \return See description
  */
-u32 ARQM_GetStackPointer();
+u32 ARQM_GetStackPointer(void);
 
 
 /*!
@@ -105,7 +105,7 @@ u32 ARQM_GetStackPointer();
  *
  * \return See description
  */
-u32 ARQM_GetFreeSize();
+u32 ARQM_GetFreeSize(void);
 
 #ifdef __cplusplus
    }
