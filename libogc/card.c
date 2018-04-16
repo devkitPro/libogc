@@ -2448,7 +2448,7 @@ s32 CARD_Init(const char *gamecode,const char *company)
 
 	if(card_inited) return CARD_ERROR_READY;
 #ifdef _CARD_DEBUG
-	printf("CARD_Init(%s,%s,%d)\n",gamecode,company);
+	printf("CARD_Init(%s,%s)\n",gamecode,company);
 #endif
 	if(gamecode && strlen(gamecode)<=4) memcpy(card_gamecode,gamecode,4);
 	if(company && strlen(company)<=2) memcpy(card_company,company,2);
