@@ -114,7 +114,7 @@ u32 ARQM_PushData(void *buffer,s32 len)
 	return 0;
 }
 
-void ARQM_Pop()
+void ARQM_Pop(void)
 {
 	u32 level;
 

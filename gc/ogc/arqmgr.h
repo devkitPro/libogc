@@ -79,6 +79,7 @@ void ARQM_Init(u32 arambase,s32 len);
  */
 u32 ARQM_PushData(void *buffer,s32 len);
 
+void ARQM_Pop(void);
 
 /*!
  * \fn u32 ARQM_GetZeroBuffer()
