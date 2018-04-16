@@ -127,12 +127,12 @@ void ARQM_Pop(void)
 	_CPU_ISR_Restore(level);
 }
 
-u32 ARQM_GetZeroBuffer()
+u32 ARQM_GetZeroBuffer(void)
 {
 	return __ARQMStackPointer[0];
 }
 
-u32 ARQM_GetStackPointer()
+u32 ARQM_GetStackPointer(void)
 {
 	u32 level,tmp;
 
@@ -143,7 +143,7 @@ u32 ARQM_GetStackPointer()
 	return tmp;
 }
 
-u32 ARQM_GetFreeSize()
+u32 ARQM_GetFreeSize(void)
 {
 	u32 level,tmp;
 
