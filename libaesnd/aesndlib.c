@@ -359,7 +359,7 @@ static void __dsp_donecallback(dsptask_t *task)
 	__aesnddspabrequested = 0;
 }
 
-static void __audio_dma_callback()
+static void __audio_dma_callback(void)
 {
 	void *ptr;
 
@@ -415,7 +415,7 @@ static void __aesndloaddsptask(dsptask_t *task,const void *dsp_code,u32 dsp_code
 	DSP_AddTask(task);
 }
 
-void AESND_Init()
+void AESND_Init(void)
 {
 	u32 i,level;
 
@@ -461,7 +461,7 @@ void AESND_Init()
 	_CPU_ISR_Restore(level);
 }
 
-void AESND_Reset()
+void AESND_Reset(void)
 {
 	u32 level;
 
@@ -491,7 +491,7 @@ void AESND_Pause(bool pause)
 	_CPU_ISR_Restore(level);
 }
 
-u32 AESND_GetDSPProcessTime()
+u32 AESND_GetDSPProcessTime(void)
 {
 	u32 level;
 	u32 time = 0;
@@ -503,7 +503,7 @@ u32 AESND_GetDSPProcessTime()
 	return time;
 }
 
-f32 AESND_GetDSPProcessUsage()
+f32 AESND_GetDSPProcessUsage(void)
 {
 	u32 level;
 	f32 usage = 0.0f;
