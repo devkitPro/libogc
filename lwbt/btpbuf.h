@@ -32,7 +32,7 @@ struct pbuf {
 	u16_t ref;
 };
 
-void btpbuf_init();
+void btpbuf_init(void);
 struct pbuf* btpbuf_alloc(pbuf_layer layer,u16_t len,pbuf_flag flag);
 u8_t btpbuf_free(struct pbuf *p);
 void btpbuf_realloc(struct pbuf *p,u16_t new_len);

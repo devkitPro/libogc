@@ -40,7 +40,7 @@ static void plug_holes(struct mem *rmem)
 	}
 }
 
-void btmemr_init()
+void btmemr_init(void)
 {
 	u32 level;
 	struct mem *rmem;

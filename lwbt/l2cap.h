@@ -217,7 +217,7 @@ struct l2cap_pcb_listen {
 
 #define l2cap_psm(pcb) ((pcb)->psm)
 
-void l2cap_init();
+void l2cap_init(void);
 struct l2cap_pcb* l2cap_new(void);
 
 void lp_connect_ind(struct bd_addr *bdaddr);
@@ -230,7 +230,7 @@ err_t l2ca_datawrite(struct l2cap_pcb *pcb, struct pbuf *p);
 err_t l2ca_ping(struct bd_addr *bdaddr, struct l2cap_pcb *tpcb,err_t (* l2ca_pong)(void *arg, struct l2cap_pcb *pcb, u8_t result));
 err_t l2ca_connect_req(struct l2cap_pcb *pcb, struct bd_addr *bdaddr, u16_t psm, u8_t role_switch, err_t (* l2ca_connect_cfm)(void *arg, struct l2cap_pcb *lpcb,u16_t result, u16_t status));
 
-void l2cap_tmr();
+void l2cap_tmr(void);
 void l2cap_input(struct pbuf *p, struct bd_addr *bdaddr);
 err_t l2cap_close(struct l2cap_pcb *pcb);
 void l2cap_reset_all(void);

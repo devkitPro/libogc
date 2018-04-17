@@ -365,7 +365,7 @@ void hci_reset_all(void);
 void hci_event_handler(struct pbuf *p);
 void hci_acldata_handler(struct pbuf *p);
 
-err_t hci_reset();
+err_t hci_reset(void);
 err_t hci_read_bd_addr(void);
 err_t hci_set_hc_to_h_fc(void);
 err_t hci_read_buffer_size(void);
@@ -391,14 +391,14 @@ err_t hci_host_num_comp_packets(u16_t conhdl, u16_t num_complete);
 err_t hci_sniff_mode(struct bd_addr *bdaddr, u16_t max_interval, u16_t min_interval, u16_t attempt, u16_t timeout);
 err_t hci_write_link_policy_settings(struct bd_addr *bdaddr, u16_t link_policy);
 err_t hci_periodic_inquiry(u32_t lap,u16_t min_period,u16_t max_period,u8_t inq_len,u8_t num_resp,err_t (*inq_complete)(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result));
-err_t hci_exit_periodic_inquiry();
+err_t hci_exit_periodic_inquiry(void);
 err_t hci_accecpt_conn_request(struct bd_addr *bdaddr,u8_t role);
 err_t hci_set_event_mask(u64_t ev_mask);
 err_t hci_read_local_version(void);
 err_t hci_read_local_features(void);
 err_t hci_write_local_name(u8_t *name,u8_t len);
 err_t hci_write_pin_type(u8_t type);
-err_t hci_read_stored_link_key();
+err_t hci_read_stored_link_key(void);
 err_t hci_read_remote_name(struct bd_addr *bdaddr);
 err_t hci_vendor_specific_command(u8_t ocf,u8_t ogf,void *data,u8_t len);
 
@@ -413,7 +413,7 @@ void hci_link_key_not(err_t (* link_key_not)(void *arg, struct bd_addr *bdaddr, 
 void hci_wlp_complete(err_t (* wlp_complete)(void *arg, struct bd_addr *bdaddr));
 void hci_conn_req(err_t (*conn_req)(void *arg,struct bd_addr *bdaddr,u8_t *cod,u8_t link_type));
 
-u16_t lp_pdu_maxsize();
+u16_t lp_pdu_maxsize(void);
 u8_t lp_is_connected(struct bd_addr *bdaddr);
 err_t lp_acl_write(struct bd_addr *bdaddr,struct pbuf *p,u16_t len,u8_t pb);
 err_t lp_connect_req(struct bd_addr *bdaddr, u8_t allow_role_switch);

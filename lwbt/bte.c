@@ -363,7 +363,7 @@ static err_t bte_process_input(void *arg,struct l2cap_pcb *pcb,struct pbuf *p,er
 	return ERR_OK;
 }
 
-void BTE_Init()
+void BTE_Init(void)
 {
 	u32 level;
 	struct timespec tb;
@@ -394,7 +394,7 @@ void BTE_Init()
 	SYS_SetPeriodicAlarm(btstate.timer_svc,&tb,&tb,bt_alarmhandler, NULL);
 }
 
-void BTE_Shutdown()
+void BTE_Shutdown(void)
 {
 	u32 level;
 
@@ -503,7 +503,7 @@ void (*BTE_SetDisconnectCallback(void (*callback)(struct bd_addr *bdaddr,u8 reas
 	return l2cap_disconnect_bb(callback);
 }
 
-struct bte_pcb* bte_new()
+struct bte_pcb* bte_new(void)
 {
 	struct bte_pcb *pcb;
 

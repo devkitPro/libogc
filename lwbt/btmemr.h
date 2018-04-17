@@ -3,7 +3,7 @@
 
 #include <gctypes.h>
 
-void btmemr_init();
+void btmemr_init(void);
 void* btmemr_malloc(u32 size);
 void btmemr_free(void *ptr);
 void* btmemr_realloc(void *ptr,u32 newsize);
