@@ -197,11 +197,11 @@ int ANote2Freq(int note, int freq_base,int note_base);
 
 /*! \brief Initializes the ASND lib and fixes the hardware sample rate to 48000.
  * \return None. */
-void ASND_Init();
+void ASND_Init(void);
 
 /*! \brief De-initializes the ASND lib.
  * \return None. */
-void ASND_End();
+void ASND_End(void);
 
 /*! \brief Used to pause (or unpause) the sound.
  * \note The sound starts paused when ASND_Init() is called.
@@ -211,22 +211,22 @@ void ASND_Pause(s32 paused);
 
 /*! \brief Returns sound paused status.
  * \return 1 if paused, 0 if unpaused. */
-s32 ASND_Is_Paused();
+s32 ASND_Is_Paused(void);
 
 /*! \brief Returns the global time.
  * \details The time is updated from the IRQ.
  * \return The current time, in milliseconds. */
-u32 ASND_GetTime();
+u32 ASND_GetTime(void);
 
 /*! \brief Retrieves the global sample counter.
  * \details This counter is updated from the IRQ in steps of ASND_GetSamplesPerTick().
  * \note You can use this to implement one timer with high precision.
  * \return Current sample. */
-u32 ASND_GetSampleCounter();
+u32 ASND_GetSampleCounter(void);
 
 /*! \brief Retrieves the samples sent from the IRQ in one tick.
  * \return Samples per tick. */
-u32 ASND_GetSamplesPerTick();
+u32 ASND_GetSamplesPerTick(void);
 
 /*! \brief Set the global time.
  * \details This time is updated from the IRQ.
@@ -238,12 +238,12 @@ void ASND_SetTime(u32 time);
  * \details This callback is called from the IRQ.
  * \param[in] callback Callback function to assign.
  * \return None. */
-void ASND_SetCallback(void (*callback)());
+void ASND_SetCallback(void (*callback)(void));
 
 /*! \brief Returns the current audio rate.
  * \note This function is implemented for compatibility with SNDLIB.
  * \return Audio rate (48000). */
-s32 ASND_GetAudioRate();
+s32 ASND_GetAudioRate(void);
 
 /*! @} */
 
@@ -310,7 +310,7 @@ s32 ASND_StatusVoice(s32 voice);
  * \note Voice 0 is the last possible voice that can be returned. The idea is that this voice is reserved for a MOD/OGG/MP3/etc. player. With this in mind,
  * you can use this function to determine that the rest of the voices are working if the return value is < 1.
  * \return SND_INVALID or the first free voice from 0 to (MAX_SND_VOICES-1). */
-s32 ASND_GetFirstUnusedVoice();
+s32 ASND_GetFirstUnusedVoice(void);
 
 /*! \brief Changes the voice pitch in real-time.
  * \details This function can be used to create audio effects such as Doppler effect emulation.
@@ -369,9 +369,9 @@ s32 ASND_TestVoiceBufferReady(s32 voice);
 /*! \brief Returns the DSP usage.
  * \details The value is a percentage of DSP usage.
  * \return DSP usage, in percent. */
-u32 ASND_GetDSP_PercentUse();
+u32 ASND_GetDSP_PercentUse(void);
 
-u32 ASND_GetDSP_ProcessTime();
+u32 ASND_GetDSP_ProcessTime(void);
 
 /*! @} */
 

@@ -94,7 +94,7 @@ static vs32 global_pause = 1;
 static vu32 global_counter = 0;
 
 static vu32 DSP_DI_HANDLER = 1;
-static void (*global_callback)()=NULL;
+static void (*global_callback)(void) = NULL;
 
 static u32 asnd_inited = 0;
 static t_sound_data sound_data[MAX_SND_VOICES];
@@ -257,7 +257,7 @@ static void __dsp_donecallback(dsptask_t *task)
 	dsp_done = 1;
 }
 
-static void audio_dma_callback()
+static void audio_dma_callback(void)
 {
 	u32 n;
 
@@ -348,7 +348,7 @@ static void audio_dma_callback()
 	}
 }
 
-void ASND_Init()
+void ASND_Init(void)
 {
 	u32 i,level;
 
@@ -396,7 +396,7 @@ void ASND_Init()
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-void ASND_End()
+void ASND_End(void)
 {
    if(asnd_inited) {
        AUDIO_StopDMA();
@@ -702,28 +702,28 @@ void ASND_Pause(s32 pause)
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-s32 ASND_Is_Paused()
+s32 ASND_Is_Paused(void)
 {
 	return global_pause;
 }
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-u32 ASND_GetTime()
+u32 ASND_GetTime(void)
 {
 	return (global_counter * SND_BUFFERSIZE/4)/48;
 }
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-u32 ASND_GetSampleCounter()
+u32 ASND_GetSampleCounter(void)
 {
 	return (global_counter * SND_BUFFERSIZE/4);
 }
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-u32 ASND_GetSamplesPerTick()
+u32 ASND_GetSamplesPerTick(void)
 {
 	return (SND_BUFFERSIZE/4);
 }
@@ -737,21 +737,21 @@ void ASND_SetTime(u32 time)
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-void ASND_SetCallback(void (*callback)())
+void ASND_SetCallback(void (*callback)(void))
 {
 	global_callback=callback;
 }
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-s32 ASND_GetAudioRate()
+s32 ASND_GetAudioRate(void)
 {
 	return 48000;
 }
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-s32 ASND_GetFirstUnusedVoice()
+s32 ASND_GetFirstUnusedVoice(void)
 {
 
 	s32 n;
@@ -785,12 +785,12 @@ s32 ASND_ChangePitchVoice(s32 voice, s32 pitch)
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-u32 ASND_GetDSP_PercentUse()
+u32 ASND_GetDSP_PercentUse(void)
 {
 	return (time_of_process)*100/21333; // time_of_process = nanoseconds , 1024 samples= 21333 nanoseconds
 }
 
-u32 ASND_GetDSP_ProcessTime()
+u32 ASND_GetDSP_ProcessTime(void)
 {
 	u32 level,ret;
 
