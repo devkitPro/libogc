@@ -1460,7 +1460,7 @@ static void __dvd_unlockdrivecb(s32 result)
 	_diReg[7] = DVD_DI_START;
 }
 
-void __dvd_resetasync(dvdcbcallback cb)
+static void __dvd_resetasync(dvdcbcallback cb)
 {
 	u32 level;
 
@@ -1687,7 +1687,7 @@ static void __dvd_stategettingerror(void)
 	DVD_LowRequestError(__dvd_stategettingerrorcb);
 }
 
-void __dvd_statecheckid2(dvdcmdblk *block)
+static void __dvd_statecheckid2(dvdcmdblk *block)
 {
 
 }
@@ -1925,7 +1925,7 @@ static s32 DVD_LowSetStatus(u32 status,dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowGetStatus(u32 *status,dvdcallbacklow cb)
+static s32 DVD_LowGetStatus(u32 *status,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowSetStatus(%08x)\n",status);
@@ -2542,7 +2542,7 @@ void DVD_Reset(u32 reset_mode)
 	__dvd_internalretries = 0;
 }
 
-void callback(s32 result,dvdcmdblk *block)
+static void callback(s32 result,dvdcmdblk *block)
 {
 #ifdef _DVD_DEBUG
 	printf("callback(%d)\n",result);
