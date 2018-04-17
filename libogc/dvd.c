@@ -360,41 +360,40 @@ static u32 __dvd_errortable[] = {
 	0x00100007, 0x00000000
 };
 
-void __dvd_statecheckid(void);
-void __dvd_stategettingerror(void);
-void __dvd_statecoverclosed(void);
-void __dvd_stateready(void);
-void __dvd_statemotorstopped(void);
-void __dvd_statetimeout(void);
-void __dvd_stategotoretry(void);
-void __dvd_stateerror(s32 result);
-void __dvd_statecoverclosed_cmd(dvdcmdblk *block);
-void __dvd_statebusy(dvdcmdblk *block);
-void DVD_LowReset(u32 reset_mode);
-s32 DVD_LowSeek(s64 offset,dvdcallbacklow cb);
-s32 DVD_LowRead(void *buf,u32 len,s64 offset,dvdcallbacklow cb);
-s32 DVD_LowReadId(dvddiskid *diskID,dvdcallbacklow cb);
-s32 DVD_LowRequestError(dvdcallbacklow cb);
-s32 DVD_LowStopMotor(dvdcallbacklow cb);
-s32 DVD_LowInquiry(dvddrvinfo *info,dvdcallbacklow cb);
-s32 DVD_LowWaitCoverClose(dvdcallbacklow cb);
-s32 DVD_LowAudioStream(u32 subcmd,u32 len,s64 offset,dvdcallbacklow cb);
-s32 DVD_LowAudioBufferConfig(s32 enable,u32 size,dvdcallbacklow cb);
-s32 DVD_LowRequestAudioStatus(u32 subcmd,dvdcallbacklow cb);
-s32 DVD_LowEnableExtensions(u8 enable,dvdcallbacklow cb);
-s32 DVD_LowSpinMotor(u32 mode,dvdcallbacklow cb);
-s32 DVD_LowSetStatus(u32 status,dvdcallbacklow cb);
-s32 DVD_LowUnlockDrive(dvdcallbacklow cb);
-s32 DVD_LowPatchDriveCode(dvdcallbacklow cb);
-s32 DVD_LowSpinUpDrive(dvdcallbacklow cb);
-s32 DVD_LowControlMotor(u32 mode,dvdcallbacklow cb);
-s32 DVD_LowFuncCall(u32 address,dvdcallbacklow cb);
-s32 DVD_LowReadmem(u32 address,void *buffer,dvdcallbacklow cb);
-s32 DVD_LowSetGCMOffset(s64 offset,dvdcallbacklow cb);
-s32 DVD_LowSetOffset(s64 offset,dvdcallbacklow cb);
-s32 DVD_ReadAbsAsyncPrio(dvdcmdblk *block,void *buf,u32 len,s64 offset,dvdcbcallback cb,s32 prio);
-s32 DVD_ReadDiskID(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb);
-s32 __issuecommand(s32 prio,dvdcmdblk *block);
+static void __dvd_statecheckid(void);
+static void __dvd_stategettingerror(void);
+static void __dvd_statecoverclosed(void);
+static void __dvd_stateready(void);
+static void __dvd_statemotorstopped(void);
+static void __dvd_statetimeout(void);
+static void __dvd_stategotoretry(void);
+static void __dvd_stateerror(s32 result);
+static void __dvd_statecoverclosed_cmd(dvdcmdblk *block);
+static void __dvd_statebusy(dvdcmdblk *block);
+static s32 __issuecommand(s32 prio,dvdcmdblk *block);
+
+static void DVD_LowReset(u32 reset_mode);
+static s32 DVD_LowSeek(s64 offset,dvdcallbacklow cb);
+static s32 DVD_LowRead(void *buf,u32 len,s64 offset,dvdcallbacklow cb);
+static s32 DVD_LowReadId(dvddiskid *diskID,dvdcallbacklow cb);
+static s32 DVD_LowRequestError(dvdcallbacklow cb);
+static s32 DVD_LowStopMotor(dvdcallbacklow cb);
+static s32 DVD_LowInquiry(dvddrvinfo *info,dvdcallbacklow cb);
+static s32 DVD_LowWaitCoverClose(dvdcallbacklow cb);
+static s32 DVD_LowAudioStream(u32 subcmd,u32 len,s64 offset,dvdcallbacklow cb);
+static s32 DVD_LowAudioBufferConfig(s32 enable,u32 size,dvdcallbacklow cb);
+static s32 DVD_LowRequestAudioStatus(u32 subcmd,dvdcallbacklow cb);
+static s32 DVD_LowEnableExtensions(u8 enable,dvdcallbacklow cb);
+static s32 DVD_LowSpinMotor(u32 mode,dvdcallbacklow cb);
+static s32 DVD_LowSetStatus(u32 status,dvdcallbacklow cb);
+static s32 DVD_LowUnlockDrive(dvdcallbacklow cb);
+static s32 DVD_LowPatchDriveCode(dvdcallbacklow cb);
+static s32 DVD_LowSpinUpDrive(dvdcallbacklow cb);
+static s32 DVD_LowControlMotor(u32 mode,dvdcallbacklow cb);
+static s32 DVD_LowFuncCall(u32 address,dvdcallbacklow cb);
+static s32 DVD_LowReadmem(u32 address,void *buffer,dvdcallbacklow cb);
+static s32 DVD_LowSetGCMOffset(s64 offset,dvdcallbacklow cb);
+static s32 DVD_LowSetOffset(s64 offset,dvdcallbacklow cb);
 
 extern void udelay(int us);
 extern u32 diff_msec(unsigned long long start,unsigned long long end);
@@ -1475,7 +1474,7 @@ void __dvd_resetasync(dvdcbcallback cb)
 	_CPU_ISR_Restore(level);
 }
 
-void __dvd_statebusy(dvdcmdblk *block)
+static void __dvd_statebusy(dvdcmdblk *block)
 {
 	u32 len;
 #ifdef _DVD_DEBUG
@@ -1568,7 +1567,7 @@ void __dvd_statebusy(dvdcmdblk *block)
 	}
 }
 
-void __dvd_stateready(void)
+static void __dvd_stateready(void)
 {
 	dvdcmdblk *block;
 #ifdef _DVD_DEBUG
@@ -1635,7 +1634,7 @@ void __dvd_stateready(void)
 	__dvd_statebusy(__dvd_executing);
 }
 
-void __dvd_statecoverclosed(void)
+static void __dvd_statecoverclosed(void)
 {
 	dvdcmdblk *blk;
 #ifdef _DVD_DEBUG
@@ -1655,7 +1654,7 @@ void __dvd_statecoverclosed(void)
 	}
 }
 
-void __dvd_statecoverclosed_cmd(dvdcmdblk *block)
+static void __dvd_statecoverclosed_cmd(dvdcmdblk *block)
 {
 #ifdef _DVD_DEBUG
 	printf("__dvd_statecoverclosed_cmd(%d)\n",__dvd_currcmd);
@@ -1663,7 +1662,7 @@ void __dvd_statecoverclosed_cmd(dvdcmdblk *block)
 	DVD_LowReadId(&__dvd_tmpid0,__dvd_statecoverclosedcb);
 }
 
-void __dvd_statemotorstopped(void)
+static void __dvd_statemotorstopped(void)
 {
 #ifdef _DVD_DEBUG
 	printf("__dvd_statemotorstopped(%d)\n",__dvd_executing->state);
@@ -1671,7 +1670,7 @@ void __dvd_statemotorstopped(void)
 	DVD_LowWaitCoverClose(__dvd_statemotorstoppedcb);
 }
 
-void __dvd_stateerror(s32 result)
+static void __dvd_stateerror(s32 result)
 {
 #ifdef _DVD_DEBUG
 	printf("__dvd_stateerror(%08x)\n",result);
@@ -1680,7 +1679,7 @@ void __dvd_stateerror(s32 result)
 	DVD_LowStopMotor(__dvd_stateerrorcb);
 }
 
-void __dvd_stategettingerror(void)
+static void __dvd_stategettingerror(void)
 {
 #ifdef _DVD_DEBUG
 	printf("__dvd_stategettingerror()\n");
@@ -1693,7 +1692,7 @@ void __dvd_statecheckid2(dvdcmdblk *block)
 
 }
 
-void __dvd_statecheckid(void)
+static void __dvd_statecheckid(void)
 {
 	dvdcmdblk *blk;
 #ifdef _DVD_DEBUG
@@ -1732,19 +1731,19 @@ void __dvd_statecheckid(void)
 	__dvd_statebusy(__dvd_executing);
 }
 
-void __dvd_statetimeout(void)
+static void __dvd_statetimeout(void)
 {
 	__dvd_storeerror(0x01234568);
 	DVD_Reset(DVD_RESETSOFT);
 	__dvd_stateerrorcb(0);
 }
 
-void __dvd_stategotoretry(void)
+static void __dvd_stategotoretry(void)
 {
 	DVD_LowStopMotor(__dvd_stategotoretrycb);
 }
 
-s32 __issuecommand(s32 prio,dvdcmdblk *block)
+static s32 __issuecommand(s32 prio,dvdcmdblk *block)
 {
 	s32 ret;
 	u32 level;
@@ -1764,7 +1763,7 @@ s32 __issuecommand(s32 prio,dvdcmdblk *block)
 	return ret;
 }
 
-s32 DVD_LowUnlockDrive(dvdcallbacklow cb)
+static s32 DVD_LowUnlockDrive(dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowUnlockDrive()\n");
@@ -1781,7 +1780,7 @@ s32 DVD_LowUnlockDrive(dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowPatchDriveCode(dvdcallbacklow cb)
+static s32 DVD_LowPatchDriveCode(dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowPatchDriveCode(%08x)\n",__dvd_driveinfo.rel_date);
@@ -1812,7 +1811,7 @@ s32 DVD_LowPatchDriveCode(dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowSetOffset(s64 offset,dvdcallbacklow cb)
+static s32 DVD_LowSetOffset(s64 offset,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowSetOffset(%08x)\n",offset);
@@ -1828,7 +1827,7 @@ s32 DVD_LowSetOffset(s64 offset,dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowSetGCMOffset(s64 offset,dvdcallbacklow cb)
+static s32 DVD_LowSetGCMOffset(s64 offset,dvdcallbacklow cb)
 {
 	static s64 loc_offset = 0;
 #ifdef _DVD_DEBUG
@@ -1844,7 +1843,7 @@ s32 DVD_LowSetGCMOffset(s64 offset,dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowReadmem(u32 address,void *buffer,dvdcallbacklow cb)
+static s32 DVD_LowReadmem(u32 address,void *buffer,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowReadmem(0x%08x,%p)\n",address,buffer);
@@ -1862,7 +1861,7 @@ s32 DVD_LowReadmem(u32 address,void *buffer,dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowFuncCall(u32 address,dvdcallbacklow cb)
+static s32 DVD_LowFuncCall(u32 address,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowFuncCall(0x%08x)\n",address);
@@ -1878,7 +1877,7 @@ s32 DVD_LowFuncCall(u32 address,dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowSpinMotor(u32 mode,dvdcallbacklow cb)
+static s32 DVD_LowSpinMotor(u32 mode,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowSpinMotor(%08x)\n",mode);
@@ -1894,7 +1893,7 @@ s32 DVD_LowSpinMotor(u32 mode,dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowEnableExtensions(u8 enable,dvdcallbacklow cb)
+static s32 DVD_LowEnableExtensions(u8 enable,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowEnableExtensions(%02x)\n",enable);
@@ -1910,7 +1909,7 @@ s32 DVD_LowEnableExtensions(u8 enable,dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowSetStatus(u32 status,dvdcallbacklow cb)
+static s32 DVD_LowSetStatus(u32 status,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowSetStatus(%08x)\n",status);
@@ -1938,7 +1937,7 @@ s32 DVD_LowGetStatus(u32 *status,dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowControlMotor(u32 mode,dvdcallbacklow cb)
+static s32 DVD_LowControlMotor(u32 mode,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowControlMotor(%08x)\n",mode);
@@ -1952,7 +1951,7 @@ s32 DVD_LowControlMotor(u32 mode,dvdcallbacklow cb)
 
 }
 
-s32 DVD_LowSpinUpDrive(dvdcallbacklow cb)
+static s32 DVD_LowSpinUpDrive(dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowSpinUpDrive()\n");
@@ -1963,7 +1962,7 @@ s32 DVD_LowSpinUpDrive(dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowRead(void *buf,u32 len,s64 offset,dvdcallbacklow cb)
+static s32 DVD_LowRead(void *buf,u32 len,s64 offset,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowRead(%p,%d,%d)\n",buf,len,offset);
@@ -1977,7 +1976,7 @@ s32 DVD_LowRead(void *buf,u32 len,s64 offset,dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowSeek(s64 offset,dvdcallbacklow cb)
+static s32 DVD_LowSeek(s64 offset,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowSeek(%d)\n",offset);
@@ -1998,7 +1997,7 @@ s32 DVD_LowSeek(s64 offset,dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowReadId(dvddiskid *diskID,dvdcallbacklow cb)
+static s32 DVD_LowReadId(dvddiskid *diskID,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowReadId(%p)\n",diskID);
@@ -2022,7 +2021,7 @@ s32 DVD_LowReadId(dvddiskid *diskID,dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowRequestError(dvdcallbacklow cb)
+static s32 DVD_LowRequestError(dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowRequestError()\n");
@@ -2042,7 +2041,7 @@ s32 DVD_LowRequestError(dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowStopMotor(dvdcallbacklow cb)
+static s32 DVD_LowStopMotor(dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowStopMotor()\n");
@@ -2062,7 +2061,7 @@ s32 DVD_LowStopMotor(dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowInquiry(dvddrvinfo *info,dvdcallbacklow cb)
+static s32 DVD_LowInquiry(dvddrvinfo *info,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowInquiry(%p)\n",info);
@@ -2085,7 +2084,7 @@ s32 DVD_LowInquiry(dvddrvinfo *info,dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowWaitCoverClose(dvdcallbacklow cb)
+static s32 DVD_LowWaitCoverClose(dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowWaitCoverClose()\n");
@@ -2097,7 +2096,7 @@ s32 DVD_LowWaitCoverClose(dvdcallbacklow cb)
 	return 1;
 }
 
-void DVD_LowReset(u32 reset_mode)
+static void DVD_LowReset(u32 reset_mode)
 {
 	u32 val;
 
@@ -2116,7 +2115,7 @@ void DVD_LowReset(u32 reset_mode)
 	__dvd_drivestate |= DVD_DRIVERESET;
 }
 
-s32 DVD_LowAudioStream(u32 subcmd,u32 len,s64 offset,dvdcallbacklow cb)
+static s32 DVD_LowAudioStream(u32 subcmd,u32 len,s64 offset,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowAudioStream(%08x,%d,%08x,%p)\n",subcmd,len,offset,cb);
@@ -2138,7 +2137,7 @@ s32 DVD_LowAudioStream(u32 subcmd,u32 len,s64 offset,dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowAudioBufferConfig(s32 enable,u32 size,dvdcallbacklow cb)
+static s32 DVD_LowAudioBufferConfig(s32 enable,u32 size,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowAudioBufferConfig(%02x,%d,%p)\n",enable,size,cb);
@@ -2165,7 +2164,7 @@ s32 DVD_LowAudioBufferConfig(s32 enable,u32 size,dvdcallbacklow cb)
 	return 1;
 }
 
-s32 DVD_LowRequestAudioStatus(u32 subcmd,dvdcallbacklow cb)
+static s32 DVD_LowRequestAudioStatus(u32 subcmd,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowRequestAudioStatus(%08x,%p)\n",subcmd,cb);
