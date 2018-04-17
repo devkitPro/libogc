@@ -90,24 +90,24 @@ typedef int(*read_func_async)(void*,uint32_t,uint32_t,ipccallback);
 extern int di_fd;
 extern const DISC_INTERFACE __io_wiidvd;
 
-int DI_Init();
+int DI_Init(void);
 void DI_LoadDVDX(bool load);
 void DI_UseCache(bool use);
 void DI_SetInitCallback(di_callback cb);
-void DI_Mount();
-void DI_Close();
-int DI_GetStatus();
+void DI_Mount(void);
+void DI_Close(void);
+int DI_GetStatus(void);
 
 int DI_Identify(DI_DriveID* id);
-int DI_CheckDVDSupport();
+int DI_CheckDVDSupport(void);
 int DI_ReadDiscID(u64 *id);
 int DI_GetError(uint32_t* error);
 int DI_GetCoverRegister(uint32_t* status);
-int DI_Reset();
+int DI_Reset(void);
 
-int DI_StopMotor();
-int DI_Eject();
-int DI_KillDrive();
+int DI_StopMotor(void);
+int DI_Eject(void);
+int DI_KillDrive(void);
 
 int DI_ReadDVD(void* buf, uint32_t len, uint32_t lba);
 int DI_ReadDVDAsync(void* buf, uint32_t len, uint32_t lba, ipccallback ipc_cb);

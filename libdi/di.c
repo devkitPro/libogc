@@ -196,7 +196,7 @@ typedef struct
 } cache_page;
 static cache_page *cache_read = NULL;
 
-static void CreateDVDCache()
+static void CreateDVDCache(void)
 {
 	if (cache_read != NULL)
 		return;
@@ -252,7 +252,7 @@ u32 __di_check_ahbprot(void) {
 	return ((*(vu32*)0xcd800064 == 0xFFFFFFFF) ? 1 : 0);
 }
 
-int DI_Init() {
+int DI_Init(void) {
 	if(di_fd >= 0)
 		return 1;
 
@@ -285,7 +285,7 @@ void DI_UseCache(bool use) {
 	use_dvd_cache = use;
 }
 
-void DI_Mount() {
+void DI_Mount(void) {
 	if(di_fd < 0)
 		return;
 
@@ -308,7 +308,7 @@ void DI_Mount() {
 		cache_read->block = CACHE_FREE; // reset cache
 }
 
-void DI_Close(){
+void DI_Close(void) {
 	if(di_fd < 0)
 		return;
 
@@ -444,7 +444,7 @@ static s32 _cover_callback(s32 ret, void* usrdata){
 }
 
 /* Get current status, will return the API status */
-int DI_GetStatus(){
+int DI_GetStatus(void) {
 	return state;
 }
 
@@ -477,7 +477,7 @@ int DI_Identify(DI_DriveID* id){
 	return (ret == 1)? 0 : -ret;
 }
 
-int DI_CheckDVDSupport() {
+int DI_CheckDVDSupport(void) {
 	DI_DriveID id;
 
 	if(DI_Identify(&id) == 0 && id.rel_date <= 0x20080714)
@@ -515,7 +515,7 @@ int DI_GetError(uint32_t* error){
 /*
 Reset the drive.
 */
-int DI_Reset(){
+int DI_Reset(void) {
 	if(di_fd < 0)
 		return -ENXIO;
 
@@ -765,12 +765,12 @@ static int _DI_SetMotor(int flag){
 }
 
 /* Stop the drives motor */
-int DI_StopMotor(){
+int DI_StopMotor(void) {
 	return _DI_SetMotor(0);
 }
 
 /* Stop the motor, and eject the disc. Also needs a reset afterwards for normal operation */
-int DI_Eject(){
+int DI_Eject(void) {
 	return _DI_SetMotor(1);
 }
 
@@ -780,11 +780,11 @@ will not take in or eject the disc. Your drive will be d - e - d, dead.
 I deem this function to be harmless, as normal operation will resume after a reset.
 However, I am not liable for anyones drive exploding as a result from using this function.
 */
-int DI_KillDrive(){
+int DI_KillDrive(void) {
 	return _DI_SetMotor(2);
 }
 
-int DI_ClosePartition() {
+int DI_ClosePartition(void) {
 	if(di_fd < 0)
 		return -ENXIO;
 
@@ -913,7 +913,7 @@ int DI_ReadDiscID(uint64_t *id)
 	return(ret == 1)? 0 : -ret;
 }
 
-static bool diio_Startup()
+static bool diio_Startup(void)
 {
 	u64 t1,t2;
 
@@ -937,7 +937,7 @@ static bool diio_Startup()
 	return false;
 }
 
-static bool diio_IsInserted()
+static bool diio_IsInserted(void)
 {
 	u32 val;
 
@@ -963,12 +963,12 @@ static bool diio_WriteSectors(sec_t sector,sec_t numSectors,const void *buffer)
 	return true;
 }
 
-static bool diio_ClearStatus()
+static bool diio_ClearStatus(void)
 {
 	return true;
 }
 
-static bool diio_Shutdown()
+static bool diio_Shutdown(void)
 {
 	DI_StopMotor();
 	return true;
