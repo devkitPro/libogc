@@ -64,10 +64,10 @@ static int reload_timer = -1;
 void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
 
 extern void udelay(int us);
-extern void fpu_exceptionhandler();
-extern void irq_exceptionhandler();
-extern void dec_exceptionhandler();
-extern void default_exceptionhandler();
+extern void fpu_exceptionhandler(frame_context*);
+extern void irq_exceptionhandler(frame_context*);
+extern void dec_exceptionhandler(frame_context*);
+extern void default_exceptionhandler(frame_context*);
 extern void VIDEO_SetFramebuffer(void *);
 extern void __reload(void);
 
