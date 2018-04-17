@@ -977,10 +977,10 @@ static bool diio_Shutdown(void)
 const DISC_INTERFACE __io_wiidvd = {
 	DEVICE_TYPE_WII_DVD,
 	FEATURE_MEDIUM_CANREAD | FEATURE_WII_DVD,
-	(FN_MEDIUM_STARTUP)&diio_Startup,
-	(FN_MEDIUM_ISINSERTED)&diio_IsInserted,
-	(FN_MEDIUM_READSECTORS)&diio_ReadSectors,
-	(FN_MEDIUM_WRITESECTORS)&diio_WriteSectors,
-	(FN_MEDIUM_CLEARSTATUS)&diio_ClearStatus,
-	(FN_MEDIUM_SHUTDOWN)&diio_Shutdown
+	diio_Startup,
+	diio_IsInserted,
+	diio_ReadSectors,
+	diio_WriteSectors,
+	diio_ClearStatus,
+	diio_Shutdown
 };
