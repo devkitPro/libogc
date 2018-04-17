@@ -437,7 +437,9 @@ static void __STMEventHandler(u32 event)
 		if(ret) {
 			_CPU_ISR_Disable(level);
 			__sys_resetdown = 1;
-			__RSWCallback(IRQ_PI_RSW, NULL);
+			if(__RSWCallback) {
+				__RSWCallback(IRQ_PI_RSW, NULL);
+			}
 			_CPU_ISR_Restore(level);
 		}
 	}
