@@ -34,11 +34,11 @@ typedef struct aesndpb_t AESNDPB;
 typedef void (*AESNDVoiceCallback)(AESNDPB *pb,u32 state);
 typedef void (*AESNDAudioCallback)(void *audio_buffer,u32 len);
 
-void AESND_Init();
-void AESND_Reset();
+void AESND_Init(void);
+void AESND_Reset(void);
 void AESND_Pause(bool pause);
-u32 AESND_GetDSPProcessTime();
-f32 AESND_GetDSPProcessUsage();
+u32 AESND_GetDSPProcessTime(void);
+f32 AESND_GetDSPProcessUsage(void);
 AESNDAudioCallback AESND_RegisterAudioCallback(AESNDAudioCallback cb);
 
 AESNDPB* AESND_AllocateVoice(AESNDVoiceCallback cb);
