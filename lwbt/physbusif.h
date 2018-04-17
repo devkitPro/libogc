@@ -20,10 +20,10 @@ struct _usb_p
 	pbcallback unregcb;		
 };
 
-void physbusif_init();
-void physbusif_close();
-void physbusif_shutdown();
-void physbusif_reset_all();
+void physbusif_init(void);
+void physbusif_close(void);
+void physbusif_shutdown(void);
+void physbusif_reset_all(void);
 void physbusif_output(struct pbuf *p,u16_t len);
 
 #endif

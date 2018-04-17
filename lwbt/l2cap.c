@@ -46,7 +46,7 @@ MEMB(l2cap_segs,sizeof(struct l2cap_seg),MEMB_NUM_L2CAP_SEG);
  * Initializes the L2CAP layer.
  */
 /*-----------------------------------------------------------------------------------*/
-void l2cap_init()
+void l2cap_init(void)
 {
 	btmemb_init(&l2cap_pcbs);
 	btmemb_init(&l2cap_listenpcbs);
@@ -75,7 +75,7 @@ void l2cap_init()
  * time. It also includes a configuration timer.
  */
 /*-----------------------------------------------------------------------------------*/
-void l2cap_tmr()
+void l2cap_tmr(void)
 {
 	struct l2cap_sig *sig;
 	struct l2cap_pcb *pcb;

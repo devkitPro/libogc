@@ -118,8 +118,8 @@ struct bte_pcb
 
 typedef s32 (*btecallback)(s32 result,void *userdata);
 
-void BTE_Init();
-void BTE_Shutdown();
+void BTE_Init(void);
+void BTE_Shutdown(void);
 s32 BTE_InitCore(btecallback cb);
 s32 BTE_ApplyPatch(btecallback cb);
 s32 BTE_InitSub(btecallback cb);
@@ -127,7 +127,7 @@ s32 BTE_ReadStoredLinkKey(struct linkkey_info *keys,u8 max_cnt,btecallback cb);
 s32 BTE_ReadBdAddr(struct bd_addr *bdaddr, btecallback cb);
 void (*BTE_SetDisconnectCallback(void (*callback)(struct bd_addr *bdaddr,u8 reason)))(struct bd_addr *bdaddr,u8 reason);
 
-struct bte_pcb* bte_new();
+struct bte_pcb* bte_new(void);
 void bte_arg(struct bte_pcb *pcb,void *arg);
 void bte_received(struct bte_pcb *pcb, s32 (*recv)(void *arg,void *buffer,u16 len));
 void bte_disconnected(struct bte_pcb *pcb,s32 (disconn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));

@@ -356,7 +356,7 @@ err_t hci_read_local_features(void)
 	return ERR_OK;
 }
 
-err_t hci_read_stored_link_key()
+err_t hci_read_stored_link_key(void)
 {
 	struct pbuf *p = NULL;
 	struct hci_link_key *tmpres;
@@ -549,7 +549,7 @@ err_t hci_periodic_inquiry(u32_t lap,u16_t min_period,u16_t max_period,u8_t inq_
 	return ERR_OK;
 }
 
-err_t hci_exit_periodic_inquiry()
+err_t hci_exit_periodic_inquiry(void)
 {
 	struct pbuf *p = NULL;
 
@@ -1178,7 +1178,7 @@ err_t hci_host_num_comp_packets(u16_t conhdl, u16_t num_complete)
  * ACL packet that the Host Controller can buffer.
  */
 /*-----------------------------------------------------------------------------------*/
-u16_t lp_pdu_maxsize()
+u16_t lp_pdu_maxsize(void)
 {
 	return hci_dev->acl_mtu;
 }

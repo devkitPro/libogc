@@ -42,10 +42,10 @@ static struct memb_blks aclbufs;
 static u8 __ppc_btstack1[STACKSIZE] ATTRIBUTE_ALIGN(8);
 static u8 __ppc_btstack2[STACKSIZE] ATTRIBUTE_ALIGN(8);
 
-static s32 __issue_bulkread();
-static s32 __issue_intrread();
+static s32 __issue_bulkread(void);
+static s32 __issue_intrread(void);
 
-extern u32 __IPC_ClntInit();
+extern u32 __IPC_ClntInit(void);
 
 static s32 __usb_closeCB(s32 result,void *usrdata)
 {
@@ -125,7 +125,7 @@ static s32 __readintrdataCB(s32 result,void *usrdata)
 	return __issue_intrread();
 }
 
-static s32 __issue_intrread()
+static s32 __issue_intrread(void)
 {
 	s32 ret;
 	u32 len;
@@ -147,7 +147,7 @@ static s32 __issue_intrread()
 	return ret;
 }
 
-static s32 __issue_bulkread()
+static s32 __issue_bulkread(void)
 {
 	s32 ret;
 	u32 len;
@@ -278,7 +278,7 @@ void __ntd_set_pid_vid(u16 vid,u16 pid)
 }
 
 
-void physbusif_init()
+void physbusif_init(void)
 {
 	s32 ret;
 
@@ -288,7 +288,7 @@ void physbusif_init()
 	__usb_open(NULL);
 }
 
-void physbusif_close()
+void physbusif_close(void)
 {
 	if(__usbdev.openstate!=0x0002) return;
 
@@ -296,13 +296,13 @@ void physbusif_close()
 	__wait4hci = 1;
 }
 
-void physbusif_shutdown()
+void physbusif_shutdown(void)
 {
 	if(__usbdev.openstate!=0x0004) return;
 	USB_CloseDeviceAsync(&__usbdev.fd,__usb_closeCB,NULL);
 }
 
-void physbusif_reset_all()
+void physbusif_reset_all(void)
 {
 	return;
 }

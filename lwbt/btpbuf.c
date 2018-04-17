@@ -14,7 +14,7 @@
 MEMB(pool_pbufs,sizeof(struct pbuf)+PBUF_POOL_BUFSIZE,PBUF_POOL_NUM);
 MEMB(rom_pbufs,sizeof(struct pbuf),PBUF_ROM_NUM);
 
-void btpbuf_init()
+void btpbuf_init(void)
 {
 	btmemb_init(&pool_pbufs);
 	btmemb_init(&rom_pbufs);
