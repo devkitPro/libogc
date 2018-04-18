@@ -2419,12 +2419,37 @@ void GX_LoadPosMtxIdx(u16 mtxidx,u32 pnidx);
  * \note The matrix data is copied from main memory or the CPU cache into the Graphics FIFO, so matrices loaded by this function are always coherent
  * with the CPU cache.<br><br>
  *
+ * \note To load a normal matrix from a 3x3 matrix, use GX_LoadNrmMtxImm3x3().
+ *
  * \param[in] mt the matrix to load
  * \param[in] pnidx \ref pnmtx to load into
  *
  * \return none
  */
 void GX_LoadNrmMtxImm(Mtx mt,u32 pnidx);
+
+/*!
+ * \fn void GX_LoadNrmMtxImm3x3(Mtx33 mt,u32 pnidx)
+ * \brief Used to load a normal transform matrix into matrix memory at location \a pnidx from the 3x3 matrix \a mt.
+ *
+ * \details This matrix is used to transform normals in model space to view space, either by making it the current matrix (see GX_SetCurrentMtx()),
+ * or by setting a matrix pnidx for each vertex. The parameter \a mt is a pointer to a 3x3 (row x column) matrix. The translation terms
+ * in the 3x3 matrix are not needed for normal rotation and are ignored during the load. The parameter \a pnidx is used to refer to the
+ * matrix location (see \ref pnmtx) in matrix memory.
+ *
+ * \note You can also load a position matrix (GX_LoadPosMtxImm()) to the same \a pnidx. Normally, the normal matrix will be the inverse transpose of
+ * the position (modelview) matrix and is used during vertex lighting. In cases where the modelview and the inverse transpose of the modelview
+ * matrix (excluding translation) are the same, the same matrix can be loaded for both normal and position matrices.<br><br>
+ *
+ * \note The matrix data is copied from main memory or the CPU cache into the Graphics FIFO, so matrices loaded by this function are always coherent
+ * with the CPU cache.<br><br>
+ *
+ * \param[in] mt the matrix to load
+ * \param[in] pnidx \ref pnmtx to load into
+ *
+ * \return none
+ */
+void GX_LoadNrmMtxImm3x3(Mtx33 mt,u32 pnidx);
 
 /*!
  * \fn void GX_LoadNrmMtxIdx3x3(u16 mtxidx,u32 pnidx)
