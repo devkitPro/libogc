@@ -643,12 +643,12 @@ static bool sdio_IsInitialized(void)
 const DISC_INTERFACE __io_wiisd = {
 	DEVICE_TYPE_WII_SD,
 	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_WII_SD,
-	(FN_MEDIUM_STARTUP)&sdio_Startup,
-	(FN_MEDIUM_ISINSERTED)&sdio_IsInserted,
-	(FN_MEDIUM_READSECTORS)&sdio_ReadSectors,
-	(FN_MEDIUM_WRITESECTORS)&sdio_WriteSectors,
-	(FN_MEDIUM_CLEARSTATUS)&sdio_ClearStatus,
-	(FN_MEDIUM_SHUTDOWN)&sdio_Shutdown
+	sdio_Startup,
+	sdio_IsInserted,
+	sdio_ReadSectors,
+	sdio_WriteSectors,
+	sdio_ClearStatus,
+	sdio_Shutdown
 };
 
 #endif
