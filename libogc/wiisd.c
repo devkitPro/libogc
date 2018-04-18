@@ -500,7 +500,7 @@ static	bool __sd0_initio(void)
 	return false;
 }
 
-bool sdio_Deinitialize(void)
+static bool sdio_Deinitialize(void)
 {
 	if(__sd0_fd>=0)
 		IOS_Close(__sd0_fd);
@@ -510,7 +510,7 @@ bool sdio_Deinitialize(void)
 	return true;
 }
 
-bool sdio_Startup(void)
+static bool sdio_Startup(void)
 {
 	if(__sdio_initialized==1) return true;
  
@@ -537,9 +537,7 @@ bool sdio_Startup(void)
 	return true;
 }
  
- 
- 
-bool sdio_Shutdown(void)
+static bool sdio_Shutdown(void)
 {
 	if(__sd0_initialized==0) return false;
 
@@ -548,8 +546,8 @@ bool sdio_Shutdown(void)
 	__sd0_initialized = 0;
 	return true;
 }
- 
-bool sdio_ReadSectors(sec_t sector, sec_t numSectors,void* buffer)
+
+static bool sdio_ReadSectors(sec_t sector, sec_t numSectors,void* buffer)
 {
 	s32 ret;
 	u8 *ptr;
@@ -586,8 +584,8 @@ bool sdio_ReadSectors(sec_t sector, sec_t numSectors,void* buffer)
  
 	return (ret>=0);
 }
- 
-bool sdio_WriteSectors(sec_t sector, sec_t numSectors,const void* buffer)
+
+static bool sdio_WriteSectors(sec_t sector, sec_t numSectors,const void* buffer)
 {
 	s32 ret;
 	u8 *ptr;
@@ -624,19 +622,19 @@ bool sdio_WriteSectors(sec_t sector, sec_t numSectors,const void* buffer)
  
 	return (ret>=0);
 }
- 
-bool sdio_ClearStatus(void)
+
+static bool sdio_ClearStatus(void)
 {
 	return true;
 }
- 
-bool sdio_IsInserted(void)
+
+static bool sdio_IsInserted(void)
 {
 	return ((__sdio_getstatus() & SDIO_STATUS_CARD_INSERTED) ==
 			SDIO_STATUS_CARD_INSERTED);
 }
 
-bool sdio_IsInitialized(void)
+static bool sdio_IsInitialized(void)
 {
 	return ((__sdio_getstatus() & SDIO_STATUS_CARD_INITIALIZED) ==
 			SDIO_STATUS_CARD_INITIALIZED);
