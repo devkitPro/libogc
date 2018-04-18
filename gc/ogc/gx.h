@@ -4559,6 +4559,8 @@ void GX_InitTexObjLOD(GXTexObj *obj,u8 minfilt,u8 magfilt,f32 minlod,f32 maxlod,
  */
 void GX_SetTexCoordScaleManually(u8 texcoord,u8 enable,u16 ss,u16 ts);
 
+void GX_SetTexCoordCylWrap(u8 texcoord,u8 s_enable,u8 t_enable);
+
 /*!
  * \fn void GX_SetTexCoordBias(u8 texcoord,u8 s_enable,u8 t_enable)
  * \brief Sets the texture coordinate bias of a particular texture.
