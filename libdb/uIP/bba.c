@@ -369,7 +369,7 @@ static __inline__ u32 __linkstate()
 	return 0;
 }
 
-static u32 __bba_getlink_state_async()
+static u32 __bba_getlink_state_async(void)
 {
 	u32 ret;
 
@@ -381,7 +381,7 @@ static u32 __bba_getlink_state_async()
 }
 
 
-static u32 __bba_read_cid()
+static u32 __bba_read_cid(void)
 {
 	u16 cmd = 0;
 	u32 cid = 0;
@@ -395,7 +395,7 @@ static u32 __bba_read_cid()
 
 	return cid;
 }
-static void __bba_reset()
+static void __bba_reset(void)
 {
 	bba_out8(0x60,0x00);
 	udelay(10000);
@@ -405,7 +405,7 @@ static void __bba_reset()
 	bba_out8(BBA_NCRA,0x00);
 }
 
-static void __bba_recv_init()
+static void __bba_recv_init(void)
 {
 	bba_out8(BBA_NCRB,(BBA_NCRB_CA|BBA_NCRB_AB));
 	bba_out8(BBA_MISC2,(BBA_MISC2_AUTORCVR));
@@ -551,7 +551,7 @@ static inline void bba_interrupt(u16 *pstatus)
 	*pstatus |= status;
 }
 
-static s8_t bba_dochallengeresponse()
+static s8_t bba_dochallengeresponse(void)
 {
 	u16 status;
 	s32 cnt;

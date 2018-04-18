@@ -252,7 +252,7 @@ lwp_cntrl* gdbstub_indextoid(s32 thread)
 	return NULL;
 }
 
-s32 gdbstub_getcurrentthread()
+s32 gdbstub_getcurrentthread(void)
 {
 	return gdbstub_idtoindex(_thr_executing->object.id);
 }

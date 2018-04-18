@@ -33,7 +33,7 @@ struct uip_pbuf {
 	u16_t ref;
 };
 
-void uip_pbuf_init();
+void uip_pbuf_init(void);
 struct uip_pbuf* uip_pbuf_alloc(uip_pbuf_layer layer,u16_t len,uip_pbuf_flag flag);
 u8_t uip_pbuf_free(struct uip_pbuf *p);
 void uip_pbuf_realloc(struct uip_pbuf *p,u16_t new_len);

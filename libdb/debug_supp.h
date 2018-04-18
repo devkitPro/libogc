@@ -11,7 +11,7 @@ struct gdbstub_threadinfo {
 	char name[256];
 };
 
-s32 gdbstub_getcurrentthread();
+s32 gdbstub_getcurrentthread(void);
 s32 hstr2nibble(const char *buf,s32 *nibble);
 char* int2vhstr(char *buf,s32 val);
 char* mem2hstr(char *buf,const char *mem,s32 count);

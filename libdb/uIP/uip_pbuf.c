@@ -29,7 +29,7 @@ struct uip_stats uip_stat;
 MEMB(uip_pool_pbufs,sizeof(struct uip_pbuf)+UIP_PBUF_POOL_BUFSIZE,UIP_PBUF_POOL_NUM);
 MEMB(uip_rom_pbufs,sizeof(struct uip_pbuf),UIP_PBUF_ROM_NUM);
 
-void uip_pbuf_init()
+void uip_pbuf_init(void)
 {
 	memb_init(&uip_pool_pbufs);
 	memb_init(&uip_rom_pbufs);
