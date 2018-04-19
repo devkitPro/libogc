@@ -28,6 +28,7 @@ distribution.
 
 -------------------------------------------------------------*/
 #include <gctypes.h>
+#include <texconv.h>
 
 void MakeTexture565(const void *src,void *dst,s32 width,s32 height)
 {
