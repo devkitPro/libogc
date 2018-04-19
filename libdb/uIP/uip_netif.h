@@ -52,7 +52,7 @@ struct uip_netif {
 extern struct uip_netif *uip_netif_list;
 extern struct uip_netif *uip_netif_default;
 
-void uip_netif_init();
+void uip_netif_init(void);
 void uip_netif_setup(struct uip_netif *netif);
 void uip_netif_setaddr(struct uip_netif *netif,struct uip_ip_addr *ipaddr,struct uip_ip_addr *netmask,struct uip_ip_addr *gw);
 void uip_netif_setipaddr(struct uip_netif *netif,struct uip_ip_addr *ipaddr);

@@ -135,7 +135,7 @@ u16_t uip_chksum_pseudo(struct uip_pbuf *p,struct uip_ip_addr *src,struct uip_ip
 
 
 
-extern void tcpip_tmr_needed();
+extern void tcpip_tmr_needed(void);
 #define tcp_tmr_needed		tcpip_tmr_needed
 
 #if UIP_LIBC_MEMFUNCREPLACE

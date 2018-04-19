@@ -44,7 +44,7 @@ static void plug_holes(struct mem *rmem)
 	}
 }
 
-void memr_init()
+void memr_init(void)
 {
 	struct mem *rmem;
 

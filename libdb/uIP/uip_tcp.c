@@ -64,7 +64,7 @@ static s8_t uip_tcpinput_listen(struct uip_tcp_pcb_listen *pcb);
 static s8_t uip_tcpinput_timewait(struct uip_tcp_pcb *pcb);
 static s8_t uip_tcpprocess(struct uip_tcp_pcb *pcb);
 static void uip_tcpreceive(struct uip_tcp_pcb *pcb);
-static u16_t uip_tcp_newport();
+static u16_t uip_tcp_newport(void);
 
 s8_t uip_tcp_sendctrl(struct uip_tcp_pcb *pcb,u8_t flags)
 {
@@ -436,14 +436,14 @@ s8_t uip_tcpoutput(struct uip_tcp_pcb *pcb)
 	return UIP_ERR_OK;
 }
 
-void uip_tcp_tmr()
+void uip_tcp_tmr(void)
 {
 	uip_tcp_fasttmr();
 
 	if(++uip_tcp_timer&1) uip_tcp_slowtmr();
 }
 
-void uip_tcp_init()
+void uip_tcp_init(void)
 {
 	memb_init(&uip_tcp_pcbs);
 	memb_init(&uip_listen_tcp_pcbs);
@@ -789,7 +789,7 @@ void uip_tcp_rexmit_rto(struct uip_tcp_pcb *pcb)
 	uip_tcpoutput(pcb);
 }
 
-void uip_tcp_fasttmr()
+void uip_tcp_fasttmr(void)
 {
 	struct uip_tcp_pcb *pcb;
 
@@ -801,7 +801,7 @@ void uip_tcp_fasttmr()
 	}
 }
 
-void uip_tcp_slowtmr()
+void uip_tcp_slowtmr(void)
 {
 	struct uip_tcp_pcb *prev,*pcb,*pcb2;
 	u32 eff_wnd;
@@ -903,7 +903,7 @@ void uip_tcp_slowtmr()
 	}
 }
 
-u32_t uip_tcpiss_next()
+u32_t uip_tcpiss_next(void)
 {
 	static u32_t iss = 6510;
 	iss += uip_tcp_ticks;

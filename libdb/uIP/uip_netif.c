@@ -31,7 +31,7 @@ struct uip_stats uip_stat;
 struct uip_netif *uip_netif_list;
 struct uip_netif *uip_netif_default;
 
-void uip_netif_init()
+void uip_netif_init(void)
 {
 	uip_netif_list = uip_netif_default = NULL;
 }

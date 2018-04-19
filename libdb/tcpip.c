@@ -49,7 +49,7 @@ static struct uip_netif netif;
 static struct dbginterface netif_device;
 static struct tcpip_sock *tcpip_accepted_sockets = NULL;
 
-extern s64 gettime();
+extern s64 gettime(void);
 extern u32 diff_msec(s64 start,s64 end);
 
 static s32_t tcpip_allocsocket(struct uip_tcp_pcb *pcb)
@@ -209,7 +209,7 @@ static s8_t tcpip_accept_func(void *arg,struct uip_tcp_pcb *newpcb,s8_t err)
 	return UIP_ERR_OK;
 }
 
-static void __tcpip_poll()
+static void __tcpip_poll(void)
 {
 	u32 diff;
 	s64 now;
@@ -229,7 +229,7 @@ static void __tcpip_poll()
 		tcpip_time = 0;
 }
 
-void tcpip_tmr_needed()
+void tcpip_tmr_needed(void)
 {
 	if(!tcpip_time && (uip_tcp_active_pcbs || uip_tcp_tw_pcbs)) {
 		tcpip_time = gettime();
@@ -286,7 +286,7 @@ struct dbginterface* tcpip_init(struct uip_ip_addr *localip,struct uip_ip_addr *
 	return NULL;
 }
 
-s32_t tcpip_socket()
+s32_t tcpip_socket(void)
 {
 	s32_t s;
 	struct tcpip_sock *sock;

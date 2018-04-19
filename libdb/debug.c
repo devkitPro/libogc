@@ -80,15 +80,15 @@ static struct bp_entry {
 static struct bp_entry *p_bpentries = NULL;
 static frame_context current_thread_registers;
 
-void __breakinst();
+void __breakinst(void);
 void c_debug_handler(frame_context *ctx);
 
-extern void dbg_exceptionhandler();
+extern void dbg_exceptionhandler(frame_context*);
 extern void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
 
-extern void __clr_iabr();
-extern void __enable_iabr();
-extern void __disable_iabr();
+extern void __clr_iabr(void);
+extern void __enable_iabr(void);
+extern void __disable_iabr(void);
 extern void __set_iabr(void *);
 
 extern const char *tcp_localip;
@@ -97,7 +97,7 @@ extern const char *tcp_gateway;
 extern u8 __text_start[],__data_start[],__bss_start[];
 extern u8 __text_fstart[],__data_fstart[],__bss_fstart[];
 
-static __inline__ void bp_init()
+static __inline__ void bp_init(void)
 {
 	s32 i;
 
@@ -204,7 +204,7 @@ static u32 remove_bp(void *mem)
 	return 1;
 }
 
-static char getdbgchar()
+static char getdbgchar(void)
 {
 	char ch = 0;
 	s32 len = 0;

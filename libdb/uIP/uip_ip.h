@@ -121,7 +121,7 @@ struct uip_netif;
 struct ip_addr;
 
 
-void uip_ipinit();
+void uip_ipinit(void);
 
 u32_t uip_ipaddr(const u8_t *cp);
 s32_t uip_ipaton(const u8_t *cp,struct in_addr *addr);

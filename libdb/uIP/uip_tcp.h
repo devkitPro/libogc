@@ -219,10 +219,10 @@ extern struct uip_tcp_pcb *uip_tcp_active_pcbs;
 extern struct uip_tcp_pcb *uip_tcp_tw_pcbs;
 extern union uip_tcp_listen_pcbs_t uip_tcp_listen_pcbs;
 
-void uip_tcp_tmr();
-void uip_tcp_slowtmr();
-void uip_tcp_fasttmr();
-void uip_tcp_init();
+void uip_tcp_tmr(void);
+void uip_tcp_slowtmr(void);
+void uip_tcp_fasttmr(void);
+void uip_tcp_init(void);
 void uip_tcp_rst(u32_t seqno,u32_t ackno,struct uip_ip_addr *lipaddr,struct uip_ip_addr *ripaddr,u16_t lport,u16_t rport);
 void uip_tcp_abort(struct uip_tcp_pcb *pcb);
 void uip_tcp_pcbremove(struct uip_tcp_pcb **pcblist,struct uip_tcp_pcb *pcb);
@@ -241,7 +241,7 @@ s8_t uip_tcp_close(struct uip_tcp_pcb *pcb);
 s8_t uip_tcp_bind(struct uip_tcp_pcb *pcb,struct uip_ip_addr *ipaddr,u16_t port);
 s8_t uip_tcp_write(struct uip_tcp_pcb *pcb,const void *arg,u16_t len,u8_t copy);
 struct uip_tcp_pcb* uip_tcp_listen(struct uip_tcp_pcb *pcb);
-struct uip_tcp_pcb* uip_tcp_new();
+struct uip_tcp_pcb* uip_tcp_new(void);
 struct uip_tcp_pcb* uip_tcp_pcballoc(u8_t prio);
 
 s8_t uip_tcp_sendctrl(struct uip_tcp_pcb *pcb,u8_t flags);
@@ -249,7 +249,7 @@ s8_t uip_tcpoutput(struct uip_tcp_pcb *pcb);
 s8_t uip_tcpenqueue(struct uip_tcp_pcb *pcb,void *arg,u16_t len,u8_t flags,u8_t copy,u8_t *optdata,u8_t optlen);
 u8_t uip_tcpseg_free(struct uip_tcpseg *seg);
 u8_t uip_tcpsegs_free(struct uip_tcpseg *seg);
-u32_t uip_tcpiss_next();
+u32_t uip_tcpiss_next(void);
 void uip_tcpinput(struct uip_pbuf *p,struct uip_netif *inp);
 struct uip_tcpseg* uip_tcpseg_copy(struct uip_tcpseg *seg);
 
