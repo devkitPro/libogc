@@ -3018,7 +3018,7 @@ s32 CARD_GetErrorCode(s32 chn)
 	return card->result;
 }
 
-s32 __card_findnext(card_dir *dir) 
+static s32 __card_findnext(card_dir *dir) 
 { 
 	s32 ret; 
 	struct card_dat *dirblock = NULL; 
