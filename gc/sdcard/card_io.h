@@ -18,6 +18,12 @@
 #define C_SIZE(drv_no)						((u16)(((g_CSD[drv_no][6]&0x03)<<10)|(g_CSD[drv_no][7]<<2)|((g_CSD[drv_no][8]>>6)&0x03)))
 #define C_SIZE_MULT(drv_no)					((u8)((g_CSD[drv_no][9]&0x03)<<1)|((g_CSD[drv_no][10]>>7)&0x01))
 
+/* Addressing Types */
+typedef enum {
+    CARD_IO_SECTOR_ADDRESSING = 0,
+    CARD_IO_BYTE_ADDRESSING = 1,
+} card_addressing_type_t;
+
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
@@ -42,6 +48,13 @@ s32 sdgecko_doUnmount(s32 drv_no);
 
 void sdgecko_insertedCB(s32 drv_no);
 void sdgecko_ejectedCB(s32 drv_no);
+
+void sdgecko_setSpeed(u32 freq);
+
+u32 sdgecko_getPageSize(s32 drv_no);
+u32 sdgecko_setPageSize(s32 drv_no, int size);
+
+card_addressing_type_t sdgecko_getAddressingType(s32 drv_no);
 
 
 #ifdef __cplusplus
