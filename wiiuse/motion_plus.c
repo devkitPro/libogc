@@ -14,6 +14,7 @@
 #include "wiiboard.h"
 #include "io.h"
 #include "lwp_wkspace.h"
+#include "motion_plus.h"
 
 static void wiiuse_probe_motion_plus_check2(struct wiimote_t *wm, ubyte *data, uword len)
 {
