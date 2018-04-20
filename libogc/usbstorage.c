@@ -920,7 +920,7 @@ static bool __usbstorage_IsInserted(void)
 	return __mounted;
 }
 
-static bool __usbstorage_ReadSectors(u32 sector, u32 numSectors, void *buffer)
+static bool __usbstorage_ReadSectors(sec_t sector, sec_t numSectors, void *buffer)
 {
 	s32 retval;
 
@@ -932,7 +932,7 @@ static bool __usbstorage_ReadSectors(u32 sector, u32 numSectors, void *buffer)
 	return retval >= 0;
 }
 
-static bool __usbstorage_WriteSectors(u32 sector, u32 numSectors, const void *buffer)
+static bool __usbstorage_WriteSectors(sec_t sector, sec_t numSectors, const void *buffer)
 {
 	s32 retval;
 
