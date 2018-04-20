@@ -83,7 +83,7 @@ static lwpq_t thQueue;
 static s32 (*mp3read)(void*,void *,s32);
 static void (*mp3filterfunc)(struct mad_stream *,struct mad_frame *);
 
-static void DataTransferCallback();
+static void DataTransferCallback(s32);
 static void Init3BandState(EQState *es,s32 lowfreq,s32 highfreq,s32 mixfreq);
 static s16 Do3Band(EQState *es,s16 sample);
 static void Resample(struct mad_pcm *Pcm,EQState eqs[2],u32 stereo,u32 src_samplerate);
@@ -215,7 +215,7 @@ static s32 _mp3ramcopy(void *usr_data,void *buffer,s32 len)
 	return len;
 }
 
-void MP3Player_Init()
+void MP3Player_Init(void)
 {
 	if(!init_done) {
 		init_done = 1;
@@ -259,7 +259,7 @@ s32 MP3Player_PlayFile(void *cb_data,s32 (*reader)(void *,void *,s32),void (*fil
 	return 0;
 }
 
-void MP3Player_Stop()
+void MP3Player_Stop(void)
 {
 	if(thr_running==FALSE) return;
 
@@ -267,7 +267,7 @@ void MP3Player_Stop()
 	LWP_JoinThread(hStreamPlay,NULL);
 }
 
-BOOL MP3Player_IsPlaying()
+BOOL MP3Player_IsPlaying(void)
 {
 	return thr_running;
 }
@@ -444,7 +444,7 @@ static s16 Do3Band(EQState *es,s16 sample)
 	return (s16)(l+m+h);
 }
 
-static void DataTransferCallback()
+static void DataTransferCallback(s32 voice)
 {
 #ifndef __SNDLIB_H__
 	AUDIO_InitDMA((u32)OutputBuffer[CurrentBuffer],ADMA_BUFFERSIZE);
