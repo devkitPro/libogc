@@ -1074,7 +1074,7 @@ err_t bte_read_bd_addr_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,
 }
 
 /* new init with patching */
-err_t bte_hci_initcore_complete2(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result)
+static err_t bte_hci_initcore_complete2(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result)
 {
 	err_t err = ERR_OK;
 	u8_t dev_cod[] = {0x04, 0x02,0x40};

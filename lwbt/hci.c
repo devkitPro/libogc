@@ -97,7 +97,7 @@ struct hci_link* hci_new(void)
 	return link;
 }
 
-struct hci_link* hci_get_link(struct bd_addr *bdaddr)
+static struct hci_link* hci_get_link(struct bd_addr *bdaddr)
 {
 	struct hci_link *link;
 	
@@ -260,7 +260,7 @@ err_t hci_reg_dev_info(struct bd_addr *bdaddr,u8_t *cod,u8_t psrm,u8_t psm,u16_t
 	return ERR_MEM;
 }
 
-struct pbuf* hci_cmd_ass(struct pbuf *p,u8_t ocf,u8_t ogf,u8_t len)
+static struct pbuf* hci_cmd_ass(struct pbuf *p,u8_t ocf,u8_t ogf,u8_t len)
 {
 	((u8_t*)p->payload)[0] = HCI_COMMAND_DATA_PACKET; /* cmd packet type */
 	((u8_t*)p->payload)[1] = (ocf&0xff); /* OCF & OGF */
