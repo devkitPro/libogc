@@ -155,20 +155,20 @@ static bool __gcsdb_shutdown(void)
 const DISC_INTERFACE __io_gcsda = {
 	DEVICE_TYPE_GC_SD,
 	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_GAMECUBE_SLOTA,
-	(FN_MEDIUM_STARTUP)&__gcsda_startup,
-	(FN_MEDIUM_ISINSERTED)&__gcsda_isInserted,
-	(FN_MEDIUM_READSECTORS)&__gcsda_readSectors,
-	(FN_MEDIUM_WRITESECTORS)&__gcsda_writeSectors,
-	(FN_MEDIUM_CLEARSTATUS)&__gcsda_clearStatus,
-	(FN_MEDIUM_SHUTDOWN)&__gcsda_shutdown
-} ;
+	__gcsda_startup,
+	__gcsda_isInserted,
+	__gcsda_readSectors,
+	__gcsda_writeSectors,
+	__gcsda_clearStatus,
+	__gcsda_shutdown
+};
 const DISC_INTERFACE __io_gcsdb = {
 	DEVICE_TYPE_GC_SD,
 	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_GAMECUBE_SLOTB,
-	(FN_MEDIUM_STARTUP)&__gcsdb_startup,
-	(FN_MEDIUM_ISINSERTED)&__gcsdb_isInserted,
-	(FN_MEDIUM_READSECTORS)&__gcsdb_readSectors,
-	(FN_MEDIUM_WRITESECTORS)&__gcsdb_writeSectors,
-	(FN_MEDIUM_CLEARSTATUS)&__gcsdb_clearStatus,
-	(FN_MEDIUM_SHUTDOWN)&__gcsdb_shutdown
-} ;
+	__gcsdb_startup,
+	__gcsdb_isInserted,
+	__gcsdb_readSectors,
+	__gcsdb_writeSectors,
+	__gcsdb_clearStatus,
+	__gcsdb_shutdown
+};

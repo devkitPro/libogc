@@ -997,12 +997,12 @@ s32 USBStorage_ioctl(int request, ...)
 DISC_INTERFACE __io_usbstorage = {
 	DEVICE_TYPE_WII_USB,
 	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_WII_USB,
-	(FN_MEDIUM_STARTUP)&__usbstorage_Startup,
-	(FN_MEDIUM_ISINSERTED)&__usbstorage_IsInserted,
-	(FN_MEDIUM_READSECTORS)&__usbstorage_ReadSectors,
-	(FN_MEDIUM_WRITESECTORS)&__usbstorage_WriteSectors,
-	(FN_MEDIUM_CLEARSTATUS)&__usbstorage_ClearStatus,
-	(FN_MEDIUM_SHUTDOWN)&__usbstorage_Shutdown
+	__usbstorage_Startup,
+	__usbstorage_IsInserted,
+	__usbstorage_ReadSectors,
+	__usbstorage_WriteSectors,
+	__usbstorage_ClearStatus,
+	__usbstorage_Shutdown
 };
 
 #endif /* HW_RVL */
