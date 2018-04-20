@@ -213,6 +213,8 @@ void DSP_Halt(void);
 
 void DSP_Unhalt(void);
 
+u32 DSP_GetDMAStatus(void);
+
 /*! \fn DSPCallback DSP_RegisterCallback(DSPCallback usr_cb)
 \brief Register an user's interrupt callback. This may be used to handle DSP interrupts on its own. By default a system default callback is installed on DSP_Init().
 \param[in] user_cb pointer to the user's interrupt callback function.
