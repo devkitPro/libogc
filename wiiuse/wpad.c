@@ -652,7 +652,7 @@ void __wpad_disconnectCB(struct bd_addr *offaddr, u8 reason)
 	}
 }
 
-s32 WPAD_Init()
+s32 WPAD_Init(void)
 {
 	u32 level;
 	struct timespec tb;
@@ -993,7 +993,7 @@ s32 WPAD_SetVRes(s32 chan,u32 xres,u32 yres)
 	return WPAD_ERR_NONE;
 }
 
-s32 WPAD_GetStatus()
+s32 WPAD_GetStatus(void)
 {
 	s32 ret;
 	u32 level;
@@ -1109,7 +1109,7 @@ s32 WPAD_Disconnect(s32 chan)
 	return WPAD_ERR_NONE;
 }
 
-void WPAD_Shutdown()
+void WPAD_Shutdown(void)
 {
 	s32 i;
 	u32 level;
@@ -1146,7 +1146,7 @@ void WPAD_SetIdleTimeout(u32 seconds)
 	_CPU_ISR_Restore(level);
 }
 
-s32 WPAD_ScanPads()
+s32 WPAD_ScanPads(void)
 {
 	return WPAD_ReadPending(WPAD_CHAN_ALL, NULL);
 }
