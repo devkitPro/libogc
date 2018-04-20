@@ -2687,10 +2687,10 @@ static bool dvdio_Shutdown(void)
 const DISC_INTERFACE __io_gcdvd = {
 	DEVICE_TYPE_GAMECUBE_DVD,
 	FEATURE_MEDIUM_CANREAD | FEATURE_GAMECUBE_DVD,
-	(FN_MEDIUM_STARTUP)&dvdio_Startup,
-	(FN_MEDIUM_ISINSERTED)&dvdio_IsInserted,
-	(FN_MEDIUM_READSECTORS)&dvdio_ReadSectors,
-	(FN_MEDIUM_WRITESECTORS)&dvdio_WriteSectors,
-	(FN_MEDIUM_CLEARSTATUS)&dvdio_ClearStatus,
-	(FN_MEDIUM_SHUTDOWN)&dvdio_Shutdown
+	dvdio_Startup,
+	dvdio_IsInserted,
+	dvdio_ReadSectors,
+	dvdio_WriteSectors,
+	dvdio_ClearStatus,
+	dvdio_Shutdown
 };
