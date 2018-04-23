@@ -1,7 +1,7 @@
 #include <gu.h>
 #include <math.h>
 
-extern void __ps_guMtxRotAxisRadInternal(register Mtx mt,const register guVector *axis,register f32 sT,register f32 cT);
+extern void __ps_guMtxRotAxisRadInternal(register Mtx mt,register const guVector *axis,register f32 sT,register f32 cT);
 
 void guFrustum(Mtx44 mt,f32 t,f32 b,f32 l,f32 r,f32 n,f32 f)
 {
@@ -213,7 +213,7 @@ void c_guMtxRotRad(Mtx mt,const char axis,f32 rad)
 }
 
 #ifdef GEKKO
-void ps_guMtxRotRad(register Mtx mt,const register char axis,register f32 rad)
+void ps_guMtxRotRad(register Mtx mt,register const char axis,register f32 rad)
 {
 	register f32 sinA,cosA;
 
