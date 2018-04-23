@@ -325,7 +325,7 @@ void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_str
 	setvbuf(stderr, NULL , _IONBF, 0);
 }
 
-static int __console_parse_escsequence(char *pchr)
+static int __console_parse_escsequence(const char *pchr)
 {
 	char chr;
 	console_data_s *con;
@@ -502,7 +502,7 @@ static int __console_parse_escsequence(char *pchr)
 int __console_write(struct _reent *r,void *fd,const char *ptr,size_t len)
 {
 	size_t i = 0;
-	char *tmp = (char*)ptr;
+	const char *tmp = ptr;
 	console_data_s *con;
 	char chr;
 
