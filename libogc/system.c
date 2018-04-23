@@ -776,9 +776,9 @@ static void __dsp_bootstrap(void)
 	_dspReg[0] = 0;
 	while((_SHIFTL(_dspReg[2],16,16)|(_dspReg[3]&0xffff))&0x80000000);
 
-	((u32*)_dspReg)[8] = 0x01000000;
-	((u32*)_dspReg)[9] = 0;
-	((u32*)_dspReg)[10] = 32;
+	((vu32*)_dspReg)[8] = 0x01000000;
+	((vu32*)_dspReg)[9] = 0;
+	((vu32*)_dspReg)[10] = 32;
 
 	status = _dspReg[5];
 	while(!(status&DSPCR_ARINT)) status = _dspReg[5];
@@ -787,9 +787,9 @@ static void __dsp_bootstrap(void)
 	tick = gettick();
 	while((gettick()-tick)<2194);
 
-	((u32*)_dspReg)[8] = 0x01000000;
-	((u32*)_dspReg)[9] = 0;
-	((u32*)_dspReg)[10] = 32;
+	((vu32*)_dspReg)[8] = 0x01000000;
+	((vu32*)_dspReg)[9] = 0;
+	((vu32*)_dspReg)[10] = 32;
 
 	status = _dspReg[5];
 	while(!(status&DSPCR_ARINT)) status = _dspReg[5];
