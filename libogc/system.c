@@ -219,7 +219,7 @@ u8 *__argvArena1Lo = (u8*)0xdeadbeef;
 
 static u32 __sys_inIPL = (u32)__isIPL;
 
-static u32 _dsp_initcode[] =
+static const u32 _dsp_initcode[] =
 {
 	0x029F0010,0x029F0033,0x029F0034,0x029F0035,
 	0x029F0036,0x029F0037,0x029F0038,0x029F0039,
