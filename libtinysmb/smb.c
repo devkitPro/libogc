@@ -283,7 +283,7 @@ size_t utf8_to_utf16(char* dst, char* src, size_t len)
 	tempChar = (char*) &tempWChar;
 	memset(&ps, 0, sizeof(mbstate_t));
 
-	while (count < len - 1 && src != '\0')
+	while (count < len - 1 && *src != '\0')
 	{
 		bytes = mbrtowc(&tempWChar, src, MB_CUR_MAX, &ps);
 		if (bytes > 0)
