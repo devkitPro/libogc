@@ -14,7 +14,7 @@ export PATH	:=	$(DEVKITPPC)/bin:$(PATH)
 
 export LIBOGC_MAJOR	:= 1
 export LIBOGC_MINOR	:= 8
-export LIBOGC_PATCH	:= 17
+export LIBOGC_PATCH	:= 18
 
 include	$(DEVKITPPC)/base_rules
 
