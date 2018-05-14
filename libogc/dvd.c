@@ -1699,7 +1699,7 @@ static void __dvd_statecheckid(void)
 	printf("__dvd_statecheckid(%02x)\n",__dvd_currcmd);
 #endif
 	if(__dvd_currcmd==0x0003) {
-		if(memcmp(&__dvd_dummycmdblk,&__dvd_executing,sizeof(dvdcmdblk))) {
+		if(memcmp(&__dvd_dummycmdblk,__dvd_executing,sizeof(dvdcmdblk))) {
 			DVD_LowStopMotor(__dvd_statecheckid1cb);
 			return;
 		}
