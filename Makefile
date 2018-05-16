@@ -14,7 +14,7 @@ export PATH	:=	$(DEVKITPPC)/bin:$(PATH)
 
 export LIBOGC_MAJOR	:= 1
 export LIBOGC_MINOR	:= 8
-export LIBOGC_PATCH	:= 18
+export LIBOGC_PATCH	:= 19
 
 include	$(DEVKITPPC)/base_rules
 
@@ -259,23 +259,23 @@ $(WIIUSELIB).a: $(WIIUSEOBJ)
 #---------------------------------------------------------------------------------
 install-headers:
 #---------------------------------------------------------------------------------
-	@mkdir -p $(DESTDIR)$(INCDIR)
-	@mkdir -p $(DESTDIR)$(INCDIR)/ogc/machine
-	@mkdir -p $(DESTDIR)$(INCDIR)/bte
-	@mkdir -p $(DESTDIR)$(INCDIR)/wiiuse
-	@mkdir -p $(DESTDIR)$(INCDIR)/modplay
-	@mkdir -p $(DESTDIR)$(INCDIR)/sdcard
-	@mkdir -p $(DESTDIR)$(INCDIR)/di
-	@mkdir -p $(DESTDIR)$(INCDIR)/wiikeyboard
-	@cp ./gc/*.h $(DESTDIR)$(INCDIR)
-	@cp ./gc/ogc/*.h $(DESTDIR)$(INCDIR)/ogc
-	@cp ./gc/ogc/machine/*.h $(DESTDIR)$(INCDIR)/ogc/machine
-	@cp ./gc/bte/*.h $(DESTDIR)$(INCDIR)/bte
-	@cp ./gc/wiiuse/*.h $(DESTDIR)$(INCDIR)/wiiuse
-	@cp ./gc/modplay/*.h $(DESTDIR)$(INCDIR)/modplay
-	@cp ./gc/sdcard/*.h $(DESTDIR)$(INCDIR)/sdcard
-	@cp ./gc/di/*.h $(DESTDIR)$(INCDIR)/di
-	@cp ./gc/wiikeyboard/*.h $(DESTDIR)$(INCDIR)/wiikeyboard
+	@mkdir -p $(INCDIR)
+	@mkdir -p $(INCDIR)/ogc/machine
+	@mkdir -p $(INCDIR)/bte
+	@mkdir -p $(INCDIR)/wiiuse
+	@mkdir -p $(INCDIR)/modplay
+	@mkdir -p $(INCDIR)/sdcard
+	@mkdir -p $(INCDIR)/di
+	@mkdir -p $(INCDIR)/wiikeyboard
+	@cp ./gc/*.h $(INCDIR)
+	@cp ./gc/ogc/*.h $(INCDIR)/ogc
+	@cp ./gc/ogc/machine/*.h $(INCDIR)/ogc/machine
+	@cp ./gc/bte/*.h $(INCDIR)/bte
+	@cp ./gc/wiiuse/*.h $(INCDIR)/wiiuse
+	@cp ./gc/modplay/*.h $(INCDIR)/modplay
+	@cp ./gc/sdcard/*.h $(INCDIR)/sdcard
+	@cp ./gc/di/*.h $(INCDIR)/di
+	@cp ./gc/wiikeyboard/*.h $(INCDIR)/wiikeyboard
 
 #---------------------------------------------------------------------------------
 install: wii cube install-headers
