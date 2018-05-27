@@ -788,7 +788,7 @@ static s32 __card_allocblock(s32 chn,u32 blocksneed,cardcallback callback)
 		  wrong.
 		*/
 		count++;
-		if(count>=(card->blocks-CARD_SYSAREA)) return CARD_ERROR_BROKEN;
+		if(count>(card->blocks-CARD_SYSAREA)) return CARD_ERROR_BROKEN;
 	
 		currblock++;
 	    if(currblock<CARD_SYSAREA || currblock>=card->blocks) currblock = CARD_SYSAREA;
