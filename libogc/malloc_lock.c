@@ -23,7 +23,7 @@ void __memlock_init(void)
 		lwp_mutex_attr attr;
 
 		initialized = 1;
-		
+
 		attr.mode = LWP_MUTEX_FIFO;
 		attr.nest_behavior = LWP_MUTEX_NEST_ACQUIRE;
 		attr.onlyownerrelease = TRUE;
@@ -34,19 +34,17 @@ void __memlock_init(void)
 }
 
 #ifndef REENTRANT_SYSCALLS_PROVIDED
-void _DEFUN(__libogc_malloc_lock,(r),
-			struct _reent *r)
+void __libogc_malloc_lock(struct _reent *r)
 {
 	u32 level;
-	
+
 	if(!initialized) return;
 
 	_CPU_ISR_Disable(level);
 	__lwp_mutex_seize(&mem_lock,MEMLOCK_MUTEX_ID,TRUE,LWP_THREADQ_NOTIMEOUT,level);
 }
 
-void _DEFUN(__libogc_malloc_unlock,(r),
-			struct _reent *r)
+void __libogc_malloc_unlock(struct _reent *r)
 {
 	if(!initialized) return;
 
@@ -56,11 +54,10 @@ void _DEFUN(__libogc_malloc_unlock,(r),
 }
 
 #else
-void _DEFUN(__libogc_malloc_lock,(ptr),
-			struct _reent *ptr)
+void __libogc_malloc_lock(struct _reent *ptr)
 {
 	unsigned int level;
-	
+
 	if(!initialized) return;
 
 	_CPU_ISR_Disable(level);
@@ -68,8 +65,7 @@ void _DEFUN(__libogc_malloc_lock,(ptr),
 	ptr->_errno = _thr_executing->wait.ret_code;
 }
 
-void _DEFUN(__libogc_malloc_unlock,(ptr),
-			struct _reent *ptr)
+void __libogc_malloc_unlock(struct _reent *ptr)
 {
 	if(!initialized) return;
 

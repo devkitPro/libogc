@@ -194,7 +194,6 @@ extern u32 __PADDisableRecalibration(s32 disable);
 
 extern void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_stride,int con_xres,int con_yres,int con_stride);
 
-extern int clock_gettime(struct timespec *tp);
 extern void timespec_subtract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
 
 

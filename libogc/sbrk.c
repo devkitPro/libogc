@@ -13,9 +13,7 @@
 u32 MALLOC_MEM2 __attribute__((weak)) = 1;
 #endif
 
-void* _DEFUN(__libogc_sbrk_r,(ptr,incr),
-			 struct _reent *ptr _AND
-			 ptrdiff_t incr)
+void* __libogc_sbrk_r( struct _reent *ptr, ptrdiff_t incr)
 {
 	u32 level;
 	char *heap_end = 0;
@@ -88,5 +86,5 @@ void* _DEFUN(__libogc_sbrk_r,(ptr,incr),
 #endif
 	_CPU_ISR_Restore(level);
 
-	return (void*)prev_heap;	
+	return (void*)prev_heap;
 }

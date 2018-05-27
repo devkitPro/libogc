@@ -53,7 +53,6 @@ typedef struct _cond_st {
 
 lwp_objinfo _lwp_cond_objects;
 
-extern int clock_gettime(struct timespec *tp);
 extern void timespec_subtract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
 
 void __lwp_cond_init(void)

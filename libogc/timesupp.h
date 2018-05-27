@@ -11,7 +11,6 @@
 #define TB_HRSPERDAY				24
 #define TB_SECSPERDAY				(TB_SECSPERMIN*TB_MINSPERHR*TB_HRSPERDAY)
 #define TB_SECSPERNYR				(365*TB_SECSPERDAY)
-								
 #define TB_MSPERSEC					1000
 #define TB_USPERSEC					1000000
 #define TB_NSPERSEC					1000000000
@@ -22,6 +21,5 @@
 #include <sys/types.h>
 
 time_t time(time_t *timer);
-unsigned int nanosleep(struct timespec *tb);
 
 #endif

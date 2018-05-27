@@ -28,14 +28,4 @@
 #define TB_SECSPERDAY					(TB_SECSPERMIN*TB_MINSPERHR*TB_HRSPERDAY)
 #define TB_SECSPERNYR					(365*TB_SECSPERDAY)
 
-#ifdef __cplusplus
-	extern "C" {
-#endif
-
-int nanosleep(struct timespec *tb);
-
-#ifdef __cplusplus
-	}
-#endif
-
 #endif

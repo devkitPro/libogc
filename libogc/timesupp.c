@@ -23,9 +23,7 @@ extern u32 __SYS_UnlockSram(u32 write);
 
 
 
-u32 _DEFUN(gettick,(),
-	_NOARGS)
-
+u32 gettick(void)
 {
 	u32 result;
 	__asm__ __volatile__ (
@@ -36,15 +34,14 @@ u32 _DEFUN(gettick,(),
 }
 
 
-u64 _DEFUN(gettime,(),
-						  _NOARGS)
+u64 gettime(void)
 {
 	u32 tmp;
 	union uulc {
 		u64 ull;
 		u32 ul[2];
 	} v;
-	
+
 	__asm__ __volatile__(
 		"1:	mftbu	%0\n\
 		    mftb	%1\n\
@@ -56,8 +53,7 @@ u64 _DEFUN(gettime,(),
 	return v.ull;
 }
 
-void _DEFUN(settime,(t),
-			u64 t)
+void settime(u64 t)
 {
 	u32 tmp;
 	union uulc {
@@ -141,7 +137,7 @@ unsigned long long timespec_to_ticks(const struct timespec *tp)
 {
 	return __lwp_wd_calc_ticks(tp);
 }
-
+/*
 int clock_gettime(struct timespec *tp)
 {
 	u32 gctime;
@@ -167,10 +163,10 @@ int clock_gettime(struct timespec *tp)
 
 	return 0;
 }
+*/
 
 // this function spins till timeout is reached
-void _DEFUN(udelay,(us),
-			unsigned us)
+void udelay(unsigned us)
 {
 	unsigned long long start, end;
 	start = gettime();
@@ -182,8 +178,7 @@ void _DEFUN(udelay,(us),
 	}
 }
 
-unsigned int _DEFUN(nanosleep,(tb),
-           struct timespec *tb)
+int nanosleep(const struct timespec *tb, struct timespec *rem)
 {
 	u64 timeout;
 
@@ -263,8 +258,7 @@ static u32 __getRTC(u32 *gctime)
 	return 0;
 }
 
-time_t _DEFUN(time,(timer),
-			  time_t *timer)
+time_t time(time_t *timer)
 {
 	time_t gctime = 0;
 #if defined(HW_RVL)
@@ -287,18 +281,16 @@ time_t _DEFUN(time,(timer),
 	return gctime;
 }
 
-unsigned int _DEFUN(sleep,(s),
-		   unsigned int s)
+unsigned int sleep(unsigned int s)
 {
 	struct timespec tb;
 
 	tb.tv_sec = s;
 	tb.tv_nsec = 0;
-	return nanosleep(&tb);
+	return nanosleep(&tb, NULL);
 }
 
-unsigned int _DEFUN(usleep,(us),
-           unsigned int us)
+unsigned int usleep(unsigned int us)
 {
 	u32 sec,rem;
 	struct timespec tb;
@@ -308,7 +300,7 @@ unsigned int _DEFUN(usleep,(us),
 
 	tb.tv_sec = sec;
 	tb.tv_nsec = rem*TB_NSPERUS;
-	return nanosleep(&tb);
+	return nanosleep(&tb, NULL);
 }
 
 clock_t clock(void) {
@@ -324,7 +316,7 @@ int __libogc_gettod_r(struct _reent *ptr, struct timeval *tp, struct timezone *t
 	if (tz != NULL) {
 		tz->tz_minuteswest = 0;
 		tz->tz_dsttime = 0;
-		
+
 	}
 	return 0;
 }
