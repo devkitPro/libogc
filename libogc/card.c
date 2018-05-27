@@ -821,6 +821,8 @@ static s32 __card_freeblock(s32 chn,u16 block,cardcallback callback)
 	
 	fatblock = __card_getbatblock(card);
 	next = fatblock->fat[block-CARD_SYSAREA];
+	fatblock->fat[block-CARD_SYSAREA] = 0;
+	fatblock->freeblocks++;
 	while(1) {
 		if(next==0xffff) break;
 		if(next<CARD_SYSAREA || next>=card->blocks) return CARD_ERROR_BROKEN;
