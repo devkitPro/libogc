@@ -307,11 +307,13 @@ clock_t clock(void) {
 	return -1;
 }
 
-int __libogc_gettod_r(struct _reent *ptr, struct timeval *tp, struct timezone *tz) {
-
+int __libogc_gettod_r(struct _reent *ptr, struct timeval *tp, struct timezone *tz)
+{
+	u64 now;
 	if (tp != NULL) {
-		tp->tv_sec = time(NULL);
-		tp->tv_usec = ticks_to_microsecs(gettick())%1000000;
+		now = gettime();
+		tp->tv_sec = ticks_to_secs(now) + 946684800;
+		tp->tv_usec = tick_microsecs(now);
 	}
 	if (tz != NULL) {
 		tz->tz_minuteswest = 0;
