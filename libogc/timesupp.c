@@ -260,12 +260,14 @@ static u32 __getRTC(u32 *gctime)
 
 time_t time(time_t *timer)
 {
-	time_t gctime = 0;
+	time_t gctime;
+	u32 rtctime;
 #if defined(HW_RVL)
 	u32 wii_bias = 0;
 #endif
 
-	if(__getRTC((u32*)&gctime)==0) return (time_t)0;
+	if(__getRTC(&rtctime)==0) return (time_t)0;
+	gctime = rtctime;
 
 #if defined(HW_DOL)
 	syssram* sram = __SYS_LockSram();
