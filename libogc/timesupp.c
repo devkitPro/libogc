@@ -151,7 +151,7 @@ void udelay(unsigned us)
 	}
 }
 
-int nanosleep(const struct timespec *tb, struct timespec *rem)
+int __libogc_nanosleep(const struct timespec *tb, struct timespec *rem)
 {
 	u64 timeout;
 
@@ -164,28 +164,6 @@ int nanosleep(const struct timespec *tb, struct timespec *rem)
 
 	__lwp_thread_dispatchenable();
 	return TB_SUCCESSFUL;
-}
-
-unsigned int sleep(unsigned int s)
-{
-	struct timespec tb;
-
-	tb.tv_sec = s;
-	tb.tv_nsec = 0;
-	return nanosleep(&tb, NULL);
-}
-
-unsigned int usleep(unsigned int us)
-{
-	u32 sec,rem;
-	struct timespec tb;
-
-	sec = us/TB_USPERSEC;
-	rem = us - (sec*TB_USPERSEC);
-
-	tb.tv_sec = sec;
-	tb.tv_nsec = rem*TB_NSPERUS;
-	return nanosleep(&tb, NULL);
 }
 
 clock_t clock(void) {
