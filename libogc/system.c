@@ -204,6 +204,7 @@ extern int __libogc_lock_acquire(int *lock);
 extern void __libogc_exit(int status);
 extern void * __libogc_sbrk_r(struct _reent *ptr, ptrdiff_t incr);
 extern int __libogc_gettod_r(struct _reent *ptr, struct timeval *tp, struct timezone *tz);
+extern int __libogc_nanosleep(const struct timespec *tb, struct timespec *rem);
 
 extern u8 __gxregs[];
 extern u8 __text_start[];
@@ -301,6 +302,7 @@ static void __init_syscall_array(void) {
 	__syscalls.malloc_unlock = __libogc_malloc_unlock;
 	__syscalls.exit = __libogc_exit;
 	__syscalls.gettod_r = __libogc_gettod_r;
+	__syscalls.nanosleep = __libogc_nanosleep;
 
 }
 
