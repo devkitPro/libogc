@@ -137,33 +137,6 @@ unsigned long long timespec_to_ticks(const struct timespec *tp)
 {
 	return __lwp_wd_calc_ticks(tp);
 }
-/*
-int clock_gettime(struct timespec *tp)
-{
-	u32 gctime;
-#if defined(HW_RVL)
-	u32 wii_bias = 0;
-#endif
-
-	if(!tp) return -1;
-
-	if(!__SYS_GetRTC(&gctime)) return -1;
-
-#if defined(HW_DOL)
-	syssram* sram = __SYS_LockSram();
-	gctime += sram->counter_bias;
-	__SYS_UnlockSram(0);
-#else
-	if(CONF_GetCounterBias(&wii_bias)>=0) gctime += wii_bias;
-#endif
-	gctime += 946684800;
-
-	tp->tv_sec = gctime;
-	tp->tv_nsec = ticks_to_nanosecs(gettick())%1000000000;
-
-	return 0;
-}
-*/
 
 // this function spins till timeout is reached
 void udelay(unsigned us)
@@ -191,94 +164,6 @@ int nanosleep(const struct timespec *tb, struct timespec *rem)
 
 	__lwp_thread_dispatchenable();
 	return TB_SUCCESSFUL;
-}
-
-static u32 __getrtc(u32 *gctime)
-{
-	u32 ret;
-	u32 cmd;
-	u32 time;
-
-	if(EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED8MHZ)==0) {
-		return 0;
-	}
-
-	ret = 0;
-	time = 0;
-	cmd = 0x20000000;
-	if(EXI_Imm(EXI_CHANNEL_0,&cmd,4,EXI_WRITE,NULL)==0) ret |= 0x01;
-	if(EXI_Sync(EXI_CHANNEL_0)==0) ret |= 0x02;
-	if(EXI_Imm(EXI_CHANNEL_0,&time,4,EXI_READ,NULL)==0) ret |= 0x04;
-	if(EXI_Sync(EXI_CHANNEL_0)==0) ret |= 0x08;
-	if(EXI_Deselect(EXI_CHANNEL_0)==0) ret |= 0x10;
-
-	*gctime = time;
-	if(ret) return 0;
-
-	return 1;
-}
-
-static s32 __time_exi_unlock(s32 chn,s32 dev)
-{
-	LWP_ThreadBroadcast(time_exi_wait);
-	return 1;
-}
-
-static void __time_exi_wait(void)
-{
-	u32 ret;
-
-	do {
-		if((ret=EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_1,__time_exi_unlock))==1) break;
-		LWP_ThreadSleep(time_exi_wait);
-	}while(ret==0);
-}
-
-static u32 __getRTC(u32 *gctime)
-{
-	u32 cnt,time1,time2;
-
-	__time_exi_wait();
-
-	cnt = 0;
-
-	while(cnt<16) {
-		if(__getrtc(&time1)==0
-			|| __getrtc(&time2)==0) {
-			EXI_Unlock(EXI_CHANNEL_0);
-			break;
-		}
-		if(time1==time2) {
-			*gctime = time1;
-			EXI_Unlock(EXI_CHANNEL_0);
-			return 1;
-		}
-		cnt++;
-	}
-	return 0;
-}
-
-time_t time(time_t *timer)
-{
-	time_t gctime = 0;
-#if defined(HW_RVL)
-	u32 wii_bias = 0;
-#endif
-
-	if(__getRTC((u32*)&gctime)==0) return (time_t)0;
-
-#if defined(HW_DOL)
-	syssram* sram = __SYS_LockSram();
-	gctime += sram->counter_bias;
-	__SYS_UnlockSram(0);
-#else
-	if(CONF_GetCounterBias(&wii_bias)>=0) gctime += wii_bias;
-#endif
-
-	gctime += 946684800;
-
-	if(timer) *timer = gctime;
-	return gctime;
 }
 
 unsigned int sleep(unsigned int s)
