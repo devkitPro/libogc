@@ -369,7 +369,7 @@ wskbd_get_mapentry(mapdata, kc, mapentry)
 						break;
 				}
 				if (l > 4) {
-					fprintf(stderr, "wskbd_get_mapentry: %lu(%d): bad entry",
+					fprintf(stderr, "wskbd_get_mapentry: %u(%d): bad entry",
 					      mp->name, *kp);
 					return;
 				}
@@ -429,7 +429,7 @@ wskbd_load_keymap(mapdata, map, maplen)
 		}
 
 		if (stack_ptr == sizeof(stack)/sizeof(stack[0])) {
-			fprintf(stderr, "wskbd_load_keymap: %lu: recursion too deep",
+			fprintf(stderr, "wskbd_load_keymap: %u: recursion too deep",
 			      mapdata->layout);
 			return(EINVAL);
 		}
@@ -457,7 +457,7 @@ wskbd_load_keymap(mapdata, map, maplen)
 		for (kp = mp->map; kp < mp->map + mp->map_size; ) {
 			ksg = KS_GROUP(*kp);
 			if (ksg != KS_GROUP_Keycode) {
-				fprintf(stderr, "wskbd_load_keymap: %lu(%d): bad entry",
+				fprintf(stderr, "wskbd_load_keymap: %u(%d): bad entry",
 				      mp->name, *kp);
 				return(EINVAL);
 			}
@@ -478,7 +478,7 @@ wskbd_load_keymap(mapdata, map, maplen)
 			}
 
 			if (i > 4) {
-				fprintf(stderr, "wskbd_load_keymap: %lu(%d): bad entry",
+				fprintf(stderr, "wskbd_load_keymap: %u(%d): bad entry",
 				      mp->name, *kp);
 				return(EINVAL);
 			}
