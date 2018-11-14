@@ -941,43 +941,9 @@ u32 __SYS_GetRTC(u32 *gctime)
 	return 0;
 }
 
-void __SYS_SetTime(s64 time)
-{
-	u32 level;
-	s64 now;
-	s64 *pBootTime = (s64*)0x800030d8;
-
-	_CPU_ISR_Disable(level);
-	now = gettime();
-	now -= time;
-	now += *pBootTime;
-	*pBootTime = now;
-	settime(now);
-	EXI_ProbeReset();
-	_CPU_ISR_Restore(level);
-}
-
-s64 __SYS_GetSystemTime(void)
-{
-	u32 level;
-	s64 now;
-	s64 *pBootTime = (s64*)0x800030d8;
-
-	_CPU_ISR_Disable(level);
-	now = gettime();
-	now += *pBootTime;
-	_CPU_ISR_Restore(level);
-	return now;
-}
-
 void __SYS_SetBootTime(void)
 {
-	u32 gctime;
-
-	__SYS_LockSram();
-	__SYS_GetRTC(&gctime);
-	__SYS_SetTime(secs_to_ticks(gctime));
-	__SYS_UnlockSram(0);
+	settime(SYS_Time());
 }
 
 u32 __SYS_LoadFont(void *src,void *dest)
@@ -1082,9 +1048,6 @@ void SYS_Init(void)
 	if(!__sys_inIPL)
 		__memprotect_init();
 
-#ifdef SDLOADER_FIX
-	__SYS_SetBootTime();
-#endif
 	DisableWriteGatherPipe();
 	__SYS_InitCallbacks();
 #if defined(HW_RVL)
@@ -1111,6 +1074,7 @@ void SYS_PreMain(void)
 	__IOS_InitializeSubsystems();
 	STM_RegisterEventHandler(__STMEventHandler);
 	CONF_Init();
+	__SYS_SetBootTime();
 	WII_Initialize();
 #endif
 }
