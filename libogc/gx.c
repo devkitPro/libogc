@@ -5066,7 +5066,7 @@ u32 GX_ReadClksPerVtx(void)
 	GX_DrawDone();
 	_cpReg[49] = 0x1007;
 	_cpReg[48] = 0x1007;
-	return (_cpReg[50]<<8);
+	return (_cpReg[50]>>8);
 }
 
 void GX_ClearVCacheMetric(void)
