@@ -1928,7 +1928,9 @@ static s32 DVD_LowSetStatus(u32 status,dvdcallbacklow cb)
 static s32 DVD_LowGetStatus(u32 *status,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
-	printf("DVD_LowSetStatus(%08x)\n",status);
+	if (status) {
+		printf("DVD_LowGetStatus(%08x)\n", *status);
+	}
 #endif
 	__dvd_finalstatuscb = cb;
 	__dvd_usrdata = status;
