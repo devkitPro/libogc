@@ -350,9 +350,9 @@ static vu32* const _piReg = (u32*)0xCC003000;
 	static vu32* const _diReg = (u32*)0xCC006000;
 #endif
 
-static u8 __dvd_unlockcmd$221[12] = {0xff,0x01,'M','A','T','S','H','I','T','A',0x02,0x00};
-static u8 __dvd_unlockcmd$222[12] = {0xff,0x00,'D','V','D','-','G','A','M','E',0x03,0x00};
-static u32 __dvd_errortable[] = {
+static const u8 __dvd_unlockcmd$221[12] = {0xff,0x01,'M','A','T','S','H','I','T','A',0x02,0x00};
+static const u8 __dvd_unlockcmd$222[12] = {0xff,0x00,'D','V','D','-','G','A','M','E',0x03,0x00};
+static const u32 __dvd_errortable[] = {
 	0x00000000, 0x00023a00, 0x00062800, 0x00030200,
 	0x00031100, 0x00052000, 0x00052001, 0x00052100,
 	0x00052400, 0x00052401, 0x00052402, 0x000B5A01,
@@ -1456,7 +1456,7 @@ static void __dvd_unlockdrivecb(s32 result)
 #endif
 	__dvd_callback = __dvd_finalunlockcb;
 	_diReg[1] = _diReg[1];
-	for(i=0;i<3;i++) _diReg[2+i] = ((u32*)__dvd_unlockcmd$222)[i];
+	for(i=0;i<3;i++) _diReg[2+i] = ((const u32*)__dvd_unlockcmd$222)[i];
 	_diReg[7] = DVD_DI_START;
 }
 
@@ -1774,7 +1774,7 @@ static s32 DVD_LowUnlockDrive(dvdcallbacklow cb)
 	__dvd_finalunlockcb = cb;
 	__dvd_stopnextint = 0;
 
-	for(i=0;i<3;i++) _diReg[2+i] = ((u32*)__dvd_unlockcmd$221)[i];
+	for(i=0;i<3;i++) _diReg[2+i] = ((const u32*)__dvd_unlockcmd$221)[i];
 	_diReg[7] = DVD_DI_START;
 
 	return 1;
