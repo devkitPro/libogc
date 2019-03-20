@@ -49,39 +49,41 @@ static inline void CAST_Init(void)
 	);
 }
 
-static inline void CAST_SetGQR2(u32 type,u32 scale)
+#define GQR_SCALE_MASK (0x3f << 8)
+
+static inline void CAST_SetGQR2(u32 type,s32 scale)
 {
-	register u32 val = (((((scale)<<8)|(type))<<16)|(((scale)<<8)|(type)));
+	register u32 val = ((((((scale)<<8)&GQR_SCALE_MASK)|(type))<<16)|((((scale)<<8)&GQR_SCALE_MASK)|(type)));
 	__set_gqr(GQR2,val);
 }
 
-static inline void CAST_SetGQR3(u32 type,u32 scale)
+static inline void CAST_SetGQR3(u32 type,s32 scale)
 {
-	register u32 val = (((((scale)<<8)|(type))<<16)|(((scale)<<8)|(type)));
+	register u32 val = ((((((scale)<<8)&GQR_SCALE_MASK)|(type))<<16)|((((scale)<<8)&GQR_SCALE_MASK)|(type)));
 	__set_gqr(GQR3,val);
 }
 
-static inline void CAST_SetGQR4(u32 type,u32 scale)
+static inline void CAST_SetGQR4(u32 type,s32 scale)
 {
-	register u32 val = (((((scale)<<8)|(type))<<16)|(((scale)<<8)|(type)));
+	register u32 val = ((((((scale)<<8)&GQR_SCALE_MASK)|(type))<<16)|((((scale)<<8)&GQR_SCALE_MASK)|(type)));
 	__set_gqr(GQR4,val);
 }
 
-static inline void CAST_SetGQR5(u32 type,u32 scale)
+static inline void CAST_SetGQR5(u32 type,s32 scale)
 {
-	register u32 val = (((((scale)<<8)|(type))<<16)|(((scale)<<8)|(type)));
+	register u32 val = ((((((scale)<<8)&GQR_SCALE_MASK)|(type))<<16)|((((scale)<<8)&GQR_SCALE_MASK)|(type)));
 	__set_gqr(GQR5,val);
 }
 
-static inline void CAST_SetGQR6(u32 type,u32 scale)
+static inline void CAST_SetGQR6(u32 type,s32 scale)
 {
-	register u32 val = (((((scale)<<8)|(type))<<16)|(((scale)<<8)|(type)));
+	register u32 val = ((((((scale)<<8)&GQR_SCALE_MASK)|(type))<<16)|((((scale)<<8)&GQR_SCALE_MASK)|(type)));
 	__set_gqr(GQR6,val);
 }
 
-static inline void CAST_SetGQR7(u32 type,u32 scale)
+static inline void CAST_SetGQR7(u32 type,s32 scale)
 {
-	register u32 val = (((((scale)<<8)|(type))<<16)|(((scale)<<8)|(type)));
+	register u32 val = ((((((scale)<<8)&GQR_SCALE_MASK)|(type))<<16)|((((scale)<<8)&GQR_SCALE_MASK)|(type)));
 	__set_gqr(GQR7,val);
 }
 
