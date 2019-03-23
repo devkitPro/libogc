@@ -152,6 +152,38 @@ static bool __gcsdb_shutdown(void)
 	return __gcsd_shutdown(1);
 }
 
+
+
+static bool __gcsd2_startup(void)
+{
+	return __gcsd_startup(2);
+}
+
+static bool __gcsd2_isInserted(void)
+{
+	return __gcsd_isInserted(2);
+}
+
+static bool __gcsd2_readSectors(sec_t sector, sec_t numSectors, void *buffer)
+{
+	return __gcsd_readSectors(2, sector, numSectors, buffer);
+}
+
+static bool __gcsd2_writeSectors(sec_t sector, sec_t numSectors, const void *buffer)
+{
+	return __gcsd_writeSectors(2, sector, numSectors, buffer);
+}
+
+static bool __gcsd2_clearStatus(void)
+{
+	return __gcsd_clearStatus(2);
+}
+
+static bool __gcsd2_shutdown(void)
+{
+	return __gcsd_shutdown(2);
+}
+
 const DISC_INTERFACE __io_gcsda = {
 	DEVICE_TYPE_GC_SD,
 	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_GAMECUBE_SLOTA,
@@ -172,3 +204,13 @@ const DISC_INTERFACE __io_gcsdb = {
 	__gcsdb_clearStatus,
 	__gcsdb_shutdown
 };
+const DISC_INTERFACE __io_gcsd2 = {
+	DEVICE_TYPE_GC_SD,
+	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_GAMECUBE_PORT2,
+	__gcsd2_startup,
+	__gcsd2_isInserted,
+	__gcsd2_readSectors,
+	__gcsd2_writeSectors,
+	__gcsd2_clearStatus,
+	__gcsd2_shutdown
+} ;

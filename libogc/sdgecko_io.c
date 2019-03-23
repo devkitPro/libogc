@@ -1173,6 +1173,7 @@ static bool __card_check(s32 drv_no)
 #ifdef _CARDIO_DEBUG	
 	printf("__card_check(%d)\n",drv_no);
 #endif
+	if(drv_no==2) return TRUE;
 	while((ret=EXI_ProbeEx(drv_no))==0);
 	if(ret!=1) return FALSE;
 
@@ -1311,7 +1312,7 @@ s32 sdgecko_readCID(s32 drv_no)
 {
 	s32 ret;
 
-	if(drv_no<EXI_CHANNEL_0 || drv_no>=EXI_CHANNEL_2) return CARDIO_ERROR_NOCARD;
+	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 #ifdef _CARDIO_DEBUG
 	printf("sdgecko_readCID(%d)\n",drv_no);
 #endif
@@ -1460,7 +1461,7 @@ s32 sdgecko_doUnmount(s32 drv_no)
 exit:
 	if(_ioCardInserted[drv_no]==TRUE) {
 		_ioCardInserted[drv_no] = FALSE;
-		EXI_Detach(drv_no);
+		if(drv_no!=2) EXI_Detach(drv_no);
 	}
 	if(_ioRetryCB) 
 		return _ioRetryCB(drv_no);
