@@ -1969,6 +1969,11 @@ static void __VIWriteI2CRegisterBuf(u8 reg, int size, u8 *data)
 	udelay(2);
 }
 
+static void __VISetOverSampling(u8 mode)
+{
+	__VIWriteI2CRegister8(0x65, mode);
+}
+
 static void __VISetYUVSEL(u8 dtvstatus)
 {
 	if(currTvMode==VI_NTSC) vdacFlagRegion = 0x0000;
@@ -2007,7 +2012,7 @@ static void __VISetupEncoder(void)
 	memset(macrobuf, 0, 0x1a);
 
 	__VIWriteI2CRegister8(0x6a, 1);
-	__VIWriteI2CRegister8(0x65, 1);
+	__VISetOverSampling(3);
 	__VISetYUVSEL(dtv);
 	__VIWriteI2CRegister8(0x00, 0);
 	__VIWriteI2CRegister16(0x71, 0x8e8e);
