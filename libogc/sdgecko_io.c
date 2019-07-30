@@ -279,9 +279,8 @@ static void __exi_wait(s32 drv_no)
 static s32 __card_exthandler(s32 chn,s32 dev)
 {
 	_ioCardInserted[chn] = FALSE;
-	sdgecko_doUnmount(chn);
+	_ioFlag[chn] = NOT_INITIALIZED;
 	sdgecko_ejectedCB(chn);
-	EXI_Unlock(chn);
 	return 1;
 }
 
@@ -406,14 +405,11 @@ static s32 __card_writecmd(s32 drv_no,void *buf,s32 len)
 static s32 __card_readresponse(s32 drv_no,void *buf,s32 len)
 {
 	u8 *ptr;
-	s32 startT,ret;
+	u32 cnt;
+	s32 ret;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
-	ret = CARDIO_ERROR_READY;
-	ptr = buf;
-	*ptr = _ioClrFlag;
-	
 	__exi_wait(drv_no);
 
 	if(EXI_Select(drv_no,EXI_DEVICE_0,_ioCardFreq)==0) {
@@ -421,17 +417,9 @@ static s32 __card_readresponse(s32 drv_no,void *buf,s32 len)
 		return CARDIO_ERROR_NOCARD;
 	}
 
-	if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
-		EXI_Deselect(drv_no);
-		EXI_Unlock(drv_no);
-		return CARDIO_ERROR_IOERROR;
-	}
-#ifdef _CARDIO_DEBUG
-	printf("sd response: %02x\n",((u8*)buf)[0]);
-#endif
-
-	startT = gettick();
-	while(*ptr&0x80) {
+	ret = CARDIO_ERROR_READY;
+	ptr = buf;
+	for(cnt=0;cnt<16;cnt++) {
 		*ptr = _ioClrFlag;
 		if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
 			EXI_Deselect(drv_no);
@@ -442,20 +430,8 @@ static s32 __card_readresponse(s32 drv_no,void *buf,s32 len)
 		printf("sd response: %02x\n",((u8*)buf)[0]);
 #endif
 		if(!(*ptr&0x80)) break;
-		if(__card_checktimeout(drv_no,startT,500)!=0) {
-			*ptr = _ioClrFlag;
-			if(EXI_ImmEx(drv_no,ptr,1,EXI_READWRITE)==0) {
-				EXI_Deselect(drv_no);
-				EXI_Unlock(drv_no);
-				return CARDIO_ERROR_IOERROR;
-			}
-#ifdef _CARDIO_DEBUG
-			printf("sd response: %02x\n",((u8*)buf)[0]);
-#endif
-			if(*ptr&0x80) ret = CARDIO_ERROR_IOTIMEOUT;
-			break;
-		}
 	}
+	if(cnt>=16) ret = CARDIO_ERROR_IOTIMEOUT;
 	if(len>1 && ret==CARDIO_ERROR_READY) {
 		*(++ptr) = _ioClrFlag;
 		if(EXI_ImmEx(drv_no,ptr,len-1,EXI_READWRITE)==0) ret = CARDIO_ERROR_IOERROR;
@@ -1342,7 +1318,7 @@ s32 sdgecko_readStatus(s32 drv_no)
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 #ifdef _CARDIO_DEBUG
-	printf("sdgecko_readCSD(%d)\n",drv_no);
+	printf("sdgecko_readStatus(%d)\n",drv_no);
 #endif
 	ret = sdgecko_preIO(drv_no);
 	if(ret!=0) return ret;
@@ -1444,26 +1420,15 @@ s32 sdgecko_writeSectors(s32 drv_no,u32 sector_no,u32 num_sectors,const void *bu
 
 s32 sdgecko_doUnmount(s32 drv_no)
 {
-	s32 ret;
-
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
-		
-	if(__card_check(drv_no)==TRUE && _ioFlag[drv_no]!=NOT_INITIALIZED) {
-		if((ret=__card_sendappcmd(drv_no))!=0) goto exit;
-		if((ret=__card_sendcmd(drv_no,0x2a,NULL))!=0) goto exit;
-		ret = __card_response1(drv_no);
-#ifdef _CARDIO_DEBUG
-		printf("sdgecko_doUnmount(%d) disconnected 50KOhm pull-up(%d)\n",drv_no,ret);
-#endif
-	}
-	_ioFlag[drv_no] = NOT_INITIALIZED;
 
-exit:
 	if(_ioCardInserted[drv_no]==TRUE) {
 		_ioCardInserted[drv_no] = FALSE;
+		_ioFlag[drv_no] = NOT_INITIALIZED;
 		if(drv_no!=2) EXI_Detach(drv_no);
+		sdgecko_ejectedCB(drv_no);
 	}
-	if(_ioRetryCB) 
+	if(_ioRetryCB)
 		return _ioRetryCB(drv_no);
 
 	return CARDIO_ERROR_READY;
