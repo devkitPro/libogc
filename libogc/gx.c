@@ -1795,12 +1795,12 @@ void GX_SetViewport(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ)
 }
 
 void GX_GetViewport(f32* xOrig,f32* yOrig,f32* wd,f32* ht,f32* nearZ,f32* farZ){
-    xOrig = &(_gx_viewport[0]);
-    yOrig = &(_gx_viewport[1]);
-    wd = &(_gx_viewport[2]);
-    ht = &(_gx_viewport[3]);
-    nearZ = &(_gx_viewport[4]);
-    farZ = &(_gx_viewport[5]);
+    *xOrig = _gx_viewport[0];
+    *yOrig = _gx_viewport[1];
+    *wd = _gx_viewport[2];
+    *ht = _gx_viewport[3];
+    *nearZ = _gx_viewport[4];
+    *farZ = _gx_viewport[5];
 }
 
 void GX_GetViewportv(f32* vp){
