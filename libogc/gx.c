@@ -130,6 +130,7 @@ static const u32 _gxtexregionaddrtable[48] =
 };
 #endif
 
+static f32 _gx_viewport[6];
 
 extern u8 __gxregs[];
 static struct __gx_regdef *__gx = (struct __gx_regdef*)__gxregs;
@@ -1765,33 +1766,50 @@ void GX_SetMisc(u32 token,u32 value)
 
 void GX_SetViewportJitter(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ,u32 field)
 {
-	f32 x0,y0,x1,y1,n,f,z;
 	static const f32 Xfactor = 0.5f;
 	static const f32 Yfactor = 342.0f;
 	static const f32 Zfactor = 16777215.0f;
 
 	if(!field) yOrig -= Xfactor;
 
-	x0 = wd*Xfactor;
-	y0 = (-ht)*Xfactor;
-	x1 = (xOrig+(wd*Xfactor))+Yfactor;
-	y1 = (yOrig+(ht*Xfactor))+Yfactor;
-	n = Zfactor*nearZ;
-	f = Zfactor*farZ;
-	z = f-n;
+	_gx_viewport[0] = wd * Xfactor;
+	_gx_viewport[1] = (-ht) * Xfactor;
+	_gx_viewport[2] = (xOrig + (wd * Xfactor)) + Yfactor;
+	_gx_viewport[3] = (yOrig + (ht*Xfactor)) + Yfactor;
+	_gx_viewport[4] = Zfactor * nearZ;
+	_gx_viewport[5] = Zfactor * farZ;
+	_gx_viewport[6] = _gx_viewport[5] - _gx_viewport[4];
 
 	GX_LOAD_XF_REGS(0x101a,6);
-	wgPipe->F32 = x0;
-	wgPipe->F32 = y0;
-	wgPipe->F32 = z;
-	wgPipe->F32 = x1;
-	wgPipe->F32 = y1;
-	wgPipe->F32 = f;
+	wgPipe->F32 = _gx_viewport[0];
+	wgPipe->F32 = _gx_viewport[1];
+	wgPipe->F32 = _gx_viewport[6];
+	wgPipe->F32 = _gx_viewport[2];
+	wgPipe->F32 = _gx_viewport[3];
+	wgPipe->F32 = _gx_viewport[5];
 }
 
 void GX_SetViewport(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ)
 {
 	GX_SetViewportJitter(xOrig,yOrig,wd,ht,nearZ,farZ,1);
+}
+
+void GX_GetViewport(f32* xOrig,f32* yOrig,f32* wd,f32* ht,f32* nearZ,f32* farZ){
+    xOrig = &(_gx_viewport[0]);
+    yOrig = &(_gx_viewport[1]);
+    wd = &(_gx_viewport[2]);
+    ht = &(_gx_viewport[3]);
+    nearZ = &(_gx_viewport[4]);
+    farZ = &(_gx_viewport[5]);
+}
+
+void GX_GetViewportv(f32* vp){
+    vp[0] = _gx_viewport[0];
+    vp[1] = _gx_viewport[1];
+    vp[2] = _gx_viewport[2];
+    vp[3] = _gx_viewport[3])
+    vp[4] = _gx_viewport[4];
+    vp[5] = _gx_viewport[5];
 }
 
 void GX_LoadProjectionMtx(Mtx44 mt,u8 type)

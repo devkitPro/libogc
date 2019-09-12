@@ -1837,6 +1837,36 @@ void GX_SetViewport(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ);
 void GX_SetViewportJitter(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ,u32 field);
 
 /*!
+ * \fn void GX_GetViewport(f32* xOrig,f32* yOrig,f32* wd,f32* ht,f32* nearZ,f32* farZ)
+ * \brief Gets the current viewport rectangle in screen coordinates.
+ *
+ * \details The screen origin (\a xOrig = 0.0f, \a yOrig = 0.0f) is at the top left corner of the display. The viewport depth parameters are normalized coordinates
+ * from 0.0f - 1.0f.
+ *
+ * \param[in] xOrig left-most X coordinate, in pixels
+ * \param[in] yOrig top-most Y coordinate, in pixels
+ * \param[in] wd width of the viewport, in pixels
+ * \param[in] ht height of the viewport, in pixels
+ * \param[in] nearZ value normalized from 0.0 - 1.0
+ * \param[in] farZ value normalized from 0.0 - 1.0
+ *
+ * \return none
+ */
+void GX_GetViewport(f32* xOrig,f32* yOrig,f32* wd,f32* ht,f32* nearZ,f32* farZ);
+
+/*!
+ * \fn void GX_GetViewportv(f32* vp)
+ * \brief Gets the current viewport rectangle in screen coordinates and places them in an array of minimum size 6.
+ *
+ * \details The order of parameters returned will be the same as the order of GX_SetViewport().
+ *
+ * \param[in] vp A pointer to a floating point array of minimum size 6.
+ *
+ * \return none
+ */
+void GX_GetViewportv(f32* vp);
+
+/*!
  * \fn void GX_SetChanCtrl(s32 channel,u8 enable,u8 ambsrc,u8 matsrc,u8 litmask,u8 diff_fn,u8 attn_fn)
  * \brief Sets the lighting controls for a particular color channel.
  *
