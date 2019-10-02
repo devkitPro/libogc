@@ -16,7 +16,7 @@
 
 
 static u32 usbgecko_inited = 0;
-static lwpq_t wait_exi_queue[2];
+static lwpq_t wait_exi_queue[3];
 
 static s32 __usbgecko_exi_unlock(s32 chan,s32 dev)
 {
@@ -28,7 +28,7 @@ static void __usbgecko_init(void)
 {
 	u32 i;
 
-	for(i=0;i<EXI_CHANNEL_2;i++) {
+	for(i=0;i<EXI_CHANNEL_MAX;i++) {
 		LWP_InitQueue(&wait_exi_queue[i]);
 	}
 	usbgecko_inited = 1;

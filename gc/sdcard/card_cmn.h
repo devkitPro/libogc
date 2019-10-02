@@ -34,7 +34,7 @@
 #define CARDIO_ERROR_INVALIDPARAM		-127
 #define CARDIO_ERROR_FATALERROR			-128
 
-#define MAX_DRIVE						2
+#define MAX_DRIVE						3
 #define SECTOR_SIZE						512
 
 #define NOT_INITIALIZED					0

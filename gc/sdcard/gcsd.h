@@ -41,5 +41,6 @@
 
 extern const DISC_INTERFACE __io_gcsda;
 extern const DISC_INTERFACE __io_gcsdb;
+extern const DISC_INTERFACE __io_gcsd2;
 
 #endif
