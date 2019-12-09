@@ -40,19 +40,30 @@ static int __gcsd_init = 0;
 
 static bool __gcsd_isInserted(int n)
 {
-	if(sdgecko_readStatus(n) == CARDIO_ERROR_NOCARD)
-		return false;
-	return true;
+	s32 ret;
+
+	ret = sdgecko_readStatus(n);
+	if(ret == CARDIO_ERROR_READY)
+		return true;
+
+	return false;
 }
 
 static bool __gcsd_startup(int n)
 {
-	if(__gcsd_init == 1)
-		return __gcsd_isInserted(n);
-	sdgecko_initBufferPool();
-	sdgecko_initIODefault();
-	__gcsd_init = 1;
-	return __gcsd_isInserted(n);
+	s32 ret;
+
+	if(!__gcsd_init) {
+		sdgecko_initBufferPool();
+		sdgecko_initIODefault();
+		__gcsd_init = 1;
+	}
+
+	ret = sdgecko_preIO(n);
+	if(ret == CARDIO_ERROR_READY)
+		return true;
+
+	return false;
 }
 
 
