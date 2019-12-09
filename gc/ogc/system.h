@@ -174,7 +174,7 @@ struct _syssram {
  * \param wirelessPad_id[4] 16bit device ID of last connected pad.
  * \param dvderr_code last non-recoverable error from DVD interface
  * \param __padding0 padding
- * \param flashID_chksum[2] 16bit checksum of unlock flash ID
+ * \param flashID_chksum[2] 8bit checksum of unlock flash ID
  * \param __padding1[4] padding
  */
 typedef struct _syssramex syssramex;
@@ -185,7 +185,7 @@ struct _syssramex {
 	u16 wirelessPad_id[4];
 	u8 dvderr_code;
 	u8 __padding0;
-	u16 flashID_chksum[2];
+	u8 flashID_chksum[2];
 	u8 __padding1[4];
 } ATTRIBUTE_PACKED;
 
