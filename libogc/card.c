@@ -1287,7 +1287,7 @@ static void __read_callback(s32 chn,s32 result)
 					ret = CARD_ERROR_BROKEN;
 					goto exit;
 				}
-				len = file->len<card->sector_size?card->sector_size:file->len;
+				len = file->len<card->sector_size?file->len:card->sector_size;
 				if(__card_read(chn,(file->iblock*card->sector_size),len,card->cmd_usr_buf,__read_callback)>=0) return;
 				
 			}
@@ -1983,7 +1983,7 @@ static s32 __card_domount(s32 chn)
 						cnt++;
 					}
 					sum = (sum^-1)&0xff;
-					sramex->flashID_chksum[chn] = (sum<<8)|sum;
+					sramex->flashID_chksum[chn] = sum;
 					__SYS_UnlockSramEx(1);
 					return ret;
 				}
@@ -2000,7 +2000,6 @@ static s32 __card_domount(s32 chn)
 				__SYS_UnlockSramEx(0);
 				
 				sum = (sum^-1)&0xff;
-				sum |= (sum<<8);
 				if(cnt!=sum) {
 					ret = CARD_ERROR_IOERROR;
 					goto exit;
