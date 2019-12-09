@@ -622,8 +622,10 @@ void __lwp_thread_close(lwp_cntrl *thethread)
 	__lwp_thread_setstate(thethread,LWP_STATES_TRANSIENT);
 	
 	if(!__lwp_threadqueue_extractproxy(thethread)) {
-		if(__lwp_wd_isactive(&thethread->timer))
+		if(__lwp_wd_isactive(&thethread->timer)) {
+			__lwp_wd_deactivate(&thethread->timer);
 			__lwp_wd_remove_ticks(&thethread->timer);
+		}
 	}
 	
 	_CPU_ISR_Disable(level);
