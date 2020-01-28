@@ -1128,22 +1128,26 @@ static s32 __card_softreset(s32 drv_no)
 
 static bool __card_check(s32 drv_no)
 {
+	u32 id = 0;
 	s32 ret;
 	
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return FALSE;
 #ifdef _CARDIO_DEBUG	
 	printf("__card_check(%d)\n",drv_no);
 #endif
-	if(drv_no==2) return TRUE;
 	while((ret=EXI_ProbeEx(drv_no))==0);
 	if(ret!=1) return FALSE;
+	EXI_GetID(drv_no,EXI_DEVICE_0,&id);
+	if(id!=-1) return FALSE;
 
-	if(!(EXI_GetState(drv_no)&EXI_FLAG_ATTACH)) {
-		if(EXI_Attach(drv_no,__card_exthandler)==0) return FALSE;
+	if(drv_no!=2) {
+		if(!(EXI_GetState(drv_no)&EXI_FLAG_ATTACH)) {
+			if(EXI_Attach(drv_no,__card_exthandler)==0) return FALSE;
 #ifdef _CARDIO_DEBUG	
-		printf("__card_check(%d, attached)\n",drv_no);
+			printf("__card_check(%d, attached)\n",drv_no);
 #endif
-		sdgecko_insertedCB(drv_no);
+			sdgecko_insertedCB(drv_no);
+		}
 	}
 	return TRUE;
 }
@@ -1196,10 +1200,6 @@ void sdgecko_initIODefault(void)
 s32 sdgecko_initIO(s32 drv_no)
 {
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
-
-	u32 id = 0;
-	EXI_GetID(drv_no,EXI_DEVICE_0,&id);
-	if ( id != -1 ) return CARDIO_ERROR_NOCARD;
 
 	if(_ioRetryCnt>5) {
 		_ioRetryCnt = 0;
@@ -1406,8 +1406,10 @@ s32 sdgecko_doUnmount(s32 drv_no)
 	if(_ioCardInserted[drv_no]==TRUE) {
 		_ioCardInserted[drv_no] = FALSE;
 		_ioFlag[drv_no] = NOT_INITIALIZED;
-		if(drv_no!=2) EXI_Detach(drv_no);
-		sdgecko_ejectedCB(drv_no);
+		if(drv_no!=2) {
+			sdgecko_ejectedCB(drv_no);
+			EXI_Detach(drv_no);
+		}
 	}
 	if(_ioRetryCB)
 		return _ioRetryCB(drv_no);

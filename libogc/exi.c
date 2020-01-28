@@ -171,6 +171,7 @@ static s32 __exi_probe(s32 nChn)
 #ifdef _EXI_DEBUG
 	printf("__exi_probe(%d)\n",nChn);
 #endif
+	if(nChn==EXI_CHANNEL_2) return ret;
 	_CPU_ISR_Disable(level);
 	val = _exiReg[nChn*5];
 	if(!(exi->flags&EXI_FLAG_ATTACH)) {
