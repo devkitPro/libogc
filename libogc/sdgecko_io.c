@@ -1138,7 +1138,7 @@ static bool __card_check(s32 drv_no)
 	while((ret=EXI_ProbeEx(drv_no))==0);
 	if(ret!=1) return FALSE;
 	EXI_GetID(drv_no,EXI_DEVICE_0,&id);
-	if(id!=-1) return FALSE;
+	if(!id || id!=(0xffffffffu>>cntlzw(id))) return FALSE;
 
 	if(drv_no!=2) {
 		if(!(EXI_GetState(drv_no)&EXI_FLAG_ATTACH)) {

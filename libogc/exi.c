@@ -892,7 +892,7 @@ void __SYS_EnableBarnacle(s32 chn,u32 dev)
 	if(EXI_GetID(chn,dev,&id)==0) return;
 
 	if(id==0x01020000 || id==0x0004 || id==0x80000010 || id==0x80000008
-		|| id==0x80000004 || id==0xffff || id==0x80000020 || id==0x0020
+		|| id==0x80000004 || id==0xffffffff || id==0x80000020 || id==0x0020
 		|| id==0x0010 || id==0x0008 || id==0x01010000 || id==0x04040404
 		|| id==0x04021000 || id==0x03010000 || id==0x02020000
 		|| id==0x04020300 || id==0x04020200 || id==0x04130000
