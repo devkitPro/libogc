@@ -384,7 +384,7 @@ u16 AUDIO_GetDMAEnableFlag(void)
 
 void AUDIO_StartDMA(void)
 {
-	_dspReg[27] = (_dspReg[27]&~0x8000)|0x8000;
+	_dspReg[27] = (_dspReg[27]|0x8000);
 }
 
 void AUDIO_StopDMA(void)
