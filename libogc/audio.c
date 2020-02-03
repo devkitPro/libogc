@@ -339,7 +339,7 @@ void AUDIO_SetStreamPlayState(u32 state)
 		_CPU_ISR_Disable(level);
 		__AISRCINIT();
 		_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]&~AI_SCRESET)|AI_SCRESET;
-		_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]&~0x01)|0x01;
+		_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]|0x01);
 		_CPU_ISR_Restore(level);
 		AUDIO_SetStreamVolRight(volright);
 		AUDIO_SetStreamVolLeft(volleft);
