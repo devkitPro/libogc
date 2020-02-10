@@ -142,7 +142,7 @@ static __inline__ struct _xy* __si_getxy(void)
 
 static __inline__ void __si_cleartcinterrupt(void)
 {
-	_siReg[13] = (_siReg[13]|SICOMCSR_TCINT)&SICOMCSR_TCINT;
+	_siReg[13] = (_siReg[13]|SICOMCSR_TCINT)&~SICOMCSR_TSTART;
 }
 
 static void __si_alarmhandler(syswd_t thealarm,void *cbarg)
@@ -190,7 +190,7 @@ static u32 __si_completetransfer(void)
 #endif
 	if(_siReg[13]&SICOMCSR_COMERR) {
 		sisr = (sisr>>((3-sicntrl.chan)*8))&0x0f;
-		if(sisr&SISR_NORESPONSE && !(si_type[sicntrl.chan]&SI_ERR_BUSY)) si_type[sicntrl.chan] = SI_ERROR_NO_RESPONSE;
+		if(sisr&SISR_NORESPONSE && !(si_type[sicntrl.chan]&SI_ERROR_BUSY)) si_type[sicntrl.chan] = SI_ERROR_NO_RESPONSE;
 		if(!sisr) sisr = SISR_COLLISION;
 	} else {
 		typeTime[sicntrl.chan] = gettime();
@@ -272,7 +272,7 @@ static void __si_gettypecallback(s32 chan,u32 type)
 {
 	u32 sipad_en,id;
 
-	si_type[chan] = (si_type[chan]&~SI_ERR_BUSY)|type;
+	si_type[chan] = (si_type[chan]&~SI_ERROR_BUSY)|type;
 	typeTime[chan] = gettime();
 #ifdef _SI_DEBUG
 	printf("__si_gettypecallback(%d,%08x,%08x)\n",chan,type,si_type[chan]);
@@ -293,7 +293,7 @@ static void __si_gettypecallback(s32 chan,u32 type)
 #endif
 	if(sipad_en && id&SI_WIRELESS_FIX_ID) {
 		cmdfixdevice[chan] = 0x4e100000|(id&0x00CFFF00);
-		si_type[chan] = SI_ERR_BUSY;
+		si_type[chan] = SI_ERROR_BUSY;
 		SI_Transfer(chan,&cmdfixdevice[chan],3,&si_type[chan],3,__si_gettypecallback,0);
 		return;
 	}
@@ -305,7 +305,7 @@ static void __si_gettypecallback(s32 chan,u32 type)
 			SYS_SetWirelessID(chan,_SHIFTR(id,8,16));
 		}
 		cmdfixdevice[chan] = 0x4e000000|id;
-		si_type[chan] = SI_ERR_BUSY;
+		si_type[chan] = SI_ERROR_BUSY;
 		SI_Transfer(chan,&cmdfixdevice[chan],3,&si_type[chan],3,__si_gettypecallback,0);
 		return;
 	}
@@ -315,7 +315,7 @@ static void __si_gettypecallback(s32 chan,u32 type)
 		SYS_SetWirelessID(chan,_SHIFTR(id,8,16));
 
 		cmdfixdevice[chan] = 0x4e000000|id;
-		si_type[chan] = SI_ERR_BUSY;
+		si_type[chan] = SI_ERROR_BUSY;
 		SI_Transfer(chan,&cmdfixdevice[chan],3,&si_type[chan],3,__si_gettypecallback,0);
 		return;
 	}
@@ -375,7 +375,7 @@ static void __si_interrupthandler(u32 irq,void *ctx)
 
 		_siReg[14] &= SISR_ERRORMASK(chn);
 
-		if(si_type[chn]==SI_ERR_BUSY && !SI_IsChanBusy(chn)) SI_Transfer(chn,&cmdtypeandstatus$47,1,&si_type[chn],3,__si_gettypecallback,65);
+		if(si_type[chn]==SI_ERROR_BUSY && !SI_IsChanBusy(chn)) SI_Transfer(chn,&cmdtypeandstatus$47,1,&si_type[chn],3,__si_gettypecallback,65);
 	}
 
 	if(csr.csrmap.rdstintmsk && csr.csrmap.rdstint) {
@@ -512,7 +512,7 @@ u32 SI_GetStatus(s32 chan)
 
 	_CPU_ISR_Disable(level);
 	sisr = (_siReg[14]>>((3-chan)<<3));
-	if(sisr&SISR_NORESPONSE && !(si_type[chan]&SI_ERR_BUSY)) si_type[chan] = SI_ERROR_NO_RESPONSE;
+	if(sisr&SISR_NORESPONSE && !(si_type[chan]&SI_ERROR_BUSY)) si_type[chan] = SI_ERROR_NO_RESPONSE;
 	_CPU_ISR_Restore(level);
 	return sisr;
 }
@@ -619,12 +619,12 @@ u32 SI_GetType(s32 chan)
 			_CPU_ISR_Restore(level);
 			return type;
 		}
-		si_type[chan] = type = SI_ERR_BUSY;
-	} else if(diff==millisecs_to_ticks(50) && type!=SI_ERROR_NO_RESPONSE) {
+		si_type[chan] = type = SI_ERROR_BUSY;
+	} else if(diff<=millisecs_to_ticks(50) && type!=SI_ERROR_NO_RESPONSE) {
 		_CPU_ISR_Restore(level);
 		return type;
-	} else if(diff==millisecs_to_ticks(75)) si_type[chan] = SI_ERR_BUSY;
-	else si_type[chan] = type = SI_ERR_BUSY;
+	} else if(diff<=millisecs_to_ticks(75)) si_type[chan] = SI_ERROR_BUSY;
+	else si_type[chan] = type = SI_ERROR_BUSY;
 
 	typeTime[chan] = gettime();
 
@@ -643,7 +643,7 @@ u32 SI_GetTypeAsync(s32 chan,SICallback cb)
 #endif
 	_CPU_ISR_Disable(level);
 	type = SI_GetType(chan);
-	if(si_type[chan]&SI_ERR_BUSY) {
+	if(si_type[chan]&SI_ERROR_BUSY) {
 		i=0;
 		for(i=0;i<4;i++) {
 			if(!typeCallback[chan][i] && typeCallback[chan][i]!=cb) {
@@ -657,6 +657,45 @@ u32 SI_GetTypeAsync(s32 chan,SICallback cb)
 
 	cb(chan,type);
 	_CPU_ISR_Restore(level);
+	return type;
+}
+
+u32 SI_DecodeType(u32 type)
+{
+	if(type&SI_ERROR_NO_RESPONSE) return SI_ERROR_NO_RESPONSE;
+	if(type&0x0f) return SI_ERROR_UNKNOWN;
+	if(type&0xff) return SI_ERROR_BUSY;
+
+	type &= ~0xffff;
+	switch(type&SI_TYPE_MASK) {
+		case SI_TYPE_N64:
+			switch(type) {
+				case SI_N64_CONTROLLER:
+				case SI_N64_MIC:
+				case SI_N64_KEYBOARD:
+				case SI_N64_MOUSE:
+				case SI_GBA:
+					return type;
+			}
+			break;
+		case SI_TYPE_GC:
+			if(type==SI_GC_STEERING) return SI_GC_STEERING;
+			if(type==SI_GC_KEYBOARD) return SI_GC_KEYBOARD;
+			if((type&SI_GC_WIRELESS) && !(type&SI_WIRELESS_IR)) {
+				if((type&SI_GC_WAVEBIRD)==SI_GC_WAVEBIRD) return SI_GC_WAVEBIRD;
+				else if(!(type&SI_WIRELESS_STATE)) return SI_GC_RECEIVER;
+			}
+			if((type&SI_GC_CONTROLLER)==SI_GC_CONTROLLER) return SI_GC_CONTROLLER;
+			break;
+	}
+	return SI_ERROR_UNKNOWN;
+}
+
+u32 SI_Probe(s32 chan)
+{
+	u32 type;
+	type = SI_GetType(chan);
+	type = SI_DecodeType(type);
 	return type;
 }
 
