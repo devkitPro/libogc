@@ -21,8 +21,8 @@
 #define SI_ERROR_NO_RESPONSE    0x0008
 #define SI_ERROR_WRST           0x0010
 #define SI_ERROR_RDST           0x0020
-#define SI_ERR_UNKNOWN			0x0040
-#define SI_ERR_BUSY				0x0080
+#define SI_ERROR_UNKNOWN        0x0040
+#define SI_ERROR_BUSY           0x0080
 
 //
 // CMD_TYPE_AND_STATUS response data
@@ -82,8 +82,10 @@ u32 SI_GetResponseRaw(s32 chan);
 void SI_SetSamplingRate(u32 samplingrate);
 void SI_RefreshSamplingRate(void);
 u32 SI_Transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb,u32 us_delay);
+u32 SI_DecodeType(u32 type);
 u32 SI_GetTypeAsync(s32 chan,SICallback cb);
 u32 SI_GetType(s32 chan);
+u32 SI_Probe(s32 chan);
 u32 SI_GetCommand(s32 chan);
 void SI_TransferCommands(void);
 u32 SI_RegisterPollingHandler(RDSTHandler handler);
