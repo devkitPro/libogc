@@ -913,7 +913,8 @@ void __SYS_ReadROM(void *buf,u32 len,u32 offset)
 	u32 cpy_cnt;
 
 	while(len>0) {
-		cpy_cnt = (len>256)?256:len;
+		cpy_cnt = 256-(offset%256);
+		cpy_cnt = (len>cpy_cnt)?cpy_cnt:len;
 		while(__read_rom(buf,cpy_cnt,offset)==0);
 		offset += cpy_cnt;
 		buf += cpy_cnt;
