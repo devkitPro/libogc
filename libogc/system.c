@@ -554,7 +554,7 @@ static u32 __read_rom(void *buf,u32 len,u32 offset)
 	DCInvalidateRange(buf,len);
 
 	if(EXI_Lock(EXI_CHANNEL_0,EXI_DEVICE_1,NULL)==0) return 0;
-	if(EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED8MHZ)==0) {
+	if(EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_1,EXI_SPEED32MHZ)==0) {
 		EXI_Unlock(EXI_CHANNEL_0);
 		return 0;
 	}
@@ -913,7 +913,8 @@ void __SYS_ReadROM(void *buf,u32 len,u32 offset)
 	u32 cpy_cnt;
 
 	while(len>0) {
-		cpy_cnt = (len>256)?256:len;
+		cpy_cnt = 1024-(offset%1024);
+		cpy_cnt = (len>cpy_cnt)?cpy_cnt:len;
 		while(__read_rom(buf,cpy_cnt,offset)==0);
 		offset += cpy_cnt;
 		buf += cpy_cnt;
