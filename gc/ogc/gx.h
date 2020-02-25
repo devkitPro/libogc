@@ -56,8 +56,8 @@
 /*! \addtogroup mtxtype Matrix type
  * @{
  */
-#define GX_MTX2x4			0
-#define GX_MTX3x4			1
+#define GX_MTX3x4			0
+#define GX_MTX2x4			1
 /*! @} */
 
 /*! \addtogroup vtxfmt Vertex format index
@@ -362,9 +362,9 @@
 /*! \addtogroup texgentyp Texture coordinate generation type
  * @{
  */
-#define GX_TG_MTX3x4		0			/*!< 2x4 matrix multiply on the input attribute and generate S,T texture coordinates. */
-#define GX_TG_MTX2x4		1			/*!< 3x4 matrix multiply on the input attribute and generate S,T,Q coordinates; S,T are then divided
+#define GX_TG_MTX3x4		0			/*!< 3x4 matrix multiply on the input attribute and generate S,T,Q coordinates; S,T are then divided
 										* by Q to produce the actual 2D texture coordinates. */
+#define GX_TG_MTX2x4		1			/*!< 2x4 matrix multiply on the input attribute and generate S,T texture coordinates. */
 #define GX_TG_BUMP0			2			/*!< Use light 0 in the bump map calculation. */
 #define GX_TG_BUMP1			3			/*!< Use light 1 in the bump map calculation. */
 #define GX_TG_BUMP2			4			/*!< Use light 2 in the bump map calculation. */
