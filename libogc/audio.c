@@ -65,10 +65,11 @@ distribution.
 #define AI_SCRESET			0x20
 #define AI_DMAFR			0x40
 
+
 #define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
+    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s))) //mask the first w bits of v before lshifting
 #define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
+    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))  //rshift v and mask the first w bits afterwards
 
 #if defined(HW_DOL)
 	static vu32* const _aiReg = (u32*)0xCC006C00;
@@ -338,7 +339,7 @@ void AUDIO_SetStreamPlayState(u32 state)
 		_CPU_ISR_Disable(level);
 		__AISRCINIT();
 		_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]&~AI_SCRESET)|AI_SCRESET;
-		_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]&~0x01)|0x01;
+		_aiReg[AI_CONTROL] = (_aiReg[AI_CONTROL]|0x01);
 		_CPU_ISR_Restore(level);
 		AUDIO_SetStreamVolRight(volright);
 		AUDIO_SetStreamVolLeft(volleft);
@@ -383,7 +384,7 @@ u16 AUDIO_GetDMAEnableFlag(void)
 
 void AUDIO_StartDMA(void)
 {
-	_dspReg[27] = (_dspReg[27]&~0x8000)|0x8000;
+	_dspReg[27] = (_dspReg[27]|0x8000);
 }
 
 void AUDIO_StopDMA(void)
@@ -398,7 +399,7 @@ u32 AUDIO_GetDMABytesLeft(void)
 
 u32 AUDIO_GetDMAStartAddr(void)
 {
-	return (_SHIFTL((_dspReg[24]&0x1fff),16,13)|(_dspReg[25]&0xffe0));
+	return (_SHIFTL((_dspReg[24],16,13)|(_dspReg[25]&0xffe0));
 }
 
 u32 AUDIO_GetDMALength(void)
