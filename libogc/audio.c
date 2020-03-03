@@ -399,7 +399,7 @@ u32 AUDIO_GetDMABytesLeft(void)
 
 u32 AUDIO_GetDMAStartAddr(void)
 {
-	return (_SHIFTL((_dspReg[24],16,13)|(_dspReg[25]&0xffe0));
+	return _SHIFTL(_dspReg[24],16,13) | (_dspReg[25]&0xffe0);
 }
 
 u32 AUDIO_GetDMALength(void)
