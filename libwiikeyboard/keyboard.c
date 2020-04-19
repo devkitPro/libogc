@@ -559,7 +559,7 @@ s32 KEYBOARD_Init(keyPressCallback keypress_cb)
 		// start the keyboard thread
 		_kbd_thread_quit = false;
 
-		memset(_kbd_stack, 0, KBD_THREAD_STACKSIZE);
+		memset(_kbd_stack, 0, KBD_THREAD_STACKSIZE * sizeof(_kbd_stack[0]));
 
 		s32 res = LWP_CreateThread(&_kbd_thread, _kbd_thread_func, NULL,
 									_kbd_stack, KBD_THREAD_STACKSIZE,
