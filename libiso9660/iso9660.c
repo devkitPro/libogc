@@ -167,11 +167,8 @@ static void stat_entry(DIR_ENTRY *entry, struct stat *st)
 	st->st_rdev = st->st_dev;
 	st->st_size = entry->size;
 	st->st_atime = 0;
-	st->st_spare1 = 0;
 	st->st_mtime = 0;
-	st->st_spare2 = 0;
 	st->st_ctime = 0;
-	st->st_spare3 = 0;
 	st->st_blksize = SECTOR_SIZE;
 	st->st_blocks = (entry->size + SECTOR_SIZE - 1) / SECTOR_SIZE;
 	st->st_spare4[0] = 0;
