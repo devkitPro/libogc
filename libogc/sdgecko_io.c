@@ -1331,7 +1331,7 @@ s32 sdgecko_readSectors(s32 drv_no,u32 sector_no,u32 num_sectors,void *buf)
 {
 	u32 i;
 	s32 ret;
-	u8 arg[4];
+	u8 arg[4] = {0};
 	char *ptr = (char*)buf;
 
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
