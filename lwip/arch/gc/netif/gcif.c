@@ -204,7 +204,7 @@ struct bba_priv {
 static lwpq_t wait_exi_queue;
 static struct bba_descr cur_descr;
 static struct netif *gc_netif = NULL;
-static const struct eth_addr ethbroadcast = {{0xffU,0xffU,0xffU,0xffU,0xffU,0xffU}};
+//static const struct eth_addr ethbroadcast = {{0xffU,0xffU,0xffU,0xffU,0xffU,0xffU}};
 
 static err_t __bba_link_tx(struct netif *dev,struct pbuf *p);
 static u32 __bba_rx_err(u8 status,struct bba_priv *priv);

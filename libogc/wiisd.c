@@ -634,11 +634,12 @@ static bool sdio_IsInserted(void)
 			SDIO_STATUS_CARD_INSERTED);
 }
 
-static bool sdio_IsInitialized(void)
+/*static bool sdio_IsInitialized(void)
 {
 	return ((__sdio_getstatus() & SDIO_STATUS_CARD_INITIALIZED) ==
 			SDIO_STATUS_CARD_INITIALIZED);
 }
+*/
 
 const DISC_INTERFACE __io_wiisd = {
 	DEVICE_TYPE_WII_SD,

@@ -190,7 +190,7 @@ static dvddrvinfo __dvd_driveinfo ATTRIBUTE_ALIGN(32);
 static dvdcallbacklow __dvd_callback = NULL;
 static dvdcallbacklow __dvd_resetcovercb = NULL;
 static dvdcallbacklow __dvd_finalunlockcb = NULL;
-static dvdcallbacklow __dvd_finalreadmemcb = NULL;
+//static dvdcallbacklow __dvd_finalreadmemcb = NULL;
 static dvdcallbacklow __dvd_finalsudcb = NULL;
 static dvdcallbacklow __dvd_finalstatuscb = NULL;
 static dvdcallbacklow __dvd_finaladdoncb = NULL;
@@ -391,7 +391,7 @@ static s32 DVD_LowPatchDriveCode(dvdcallbacklow cb);
 static s32 DVD_LowSpinUpDrive(dvdcallbacklow cb);
 static s32 DVD_LowControlMotor(u32 mode,dvdcallbacklow cb);
 static s32 DVD_LowFuncCall(u32 address,dvdcallbacklow cb);
-static s32 DVD_LowReadmem(u32 address,void *buffer,dvdcallbacklow cb);
+//static s32 DVD_LowReadmem(u32 address,void *buffer,dvdcallbacklow cb);
 static s32 DVD_LowSetGCMOffset(s64 offset,dvdcallbacklow cb);
 static s32 DVD_LowSetOffset(s64 offset,dvdcallbacklow cb);
 
@@ -1082,7 +1082,7 @@ static void __dvd_getstatuscb(s32 result)
 	__dvd_stategettingerror();
 }
 
-static void __dvd_readmemcb(s32 result)
+/*static void __dvd_readmemcb(s32 result)
 {
 	u32 val,*pn_data;
 	dvdcallbacklow cb;
@@ -1107,6 +1107,7 @@ static void __dvd_readmemcb(s32 result)
 	}
 	__dvd_stategettingerror();
 }
+*/
 
 static void __dvd_cntrldrivecb(s32 result)
 {
@@ -1460,7 +1461,7 @@ static void __dvd_unlockdrivecb(s32 result)
 	_diReg[7] = DVD_DI_START;
 }
 
-static void __dvd_resetasync(dvdcbcallback cb)
+/*static void __dvd_resetasync(dvdcbcallback cb)
 {
 	u32 level;
 
@@ -1473,6 +1474,7 @@ static void __dvd_resetasync(dvdcbcallback cb)
 	}
 	_CPU_ISR_Restore(level);
 }
+*/
 
 static void __dvd_statebusy(dvdcmdblk *block)
 {
@@ -1843,7 +1845,7 @@ static s32 DVD_LowSetGCMOffset(s64 offset,dvdcallbacklow cb)
 	return 1;
 }
 
-static s32 DVD_LowReadmem(u32 address,void *buffer,dvdcallbacklow cb)
+/*static s32 DVD_LowReadmem(u32 address,void *buffer,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG
 	printf("DVD_LowReadmem(0x%08x,%p)\n",address,buffer);
@@ -1860,7 +1862,7 @@ static s32 DVD_LowReadmem(u32 address,void *buffer,dvdcallbacklow cb)
 
 	return 1;
 }
-
+*/
 static s32 DVD_LowFuncCall(u32 address,dvdcallbacklow cb)
 {
 #ifdef _DVD_DEBUG

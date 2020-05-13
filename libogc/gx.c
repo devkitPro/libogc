@@ -101,7 +101,6 @@ static GXTlutRegionCallback tlut_regionCB = NULL;
 static vu32* const _piReg = (u32*)0xCC003000;
 static vu16* const _cpReg = (u16*)0xCC000000;
 static vu16* const _peReg = (u16*)0xCC001000;
-static vu16* const _memReg = (u16*)0xCC004000;
 
 static const u8 _gxtevcolid[9] = {0,1,0,1,0,1,7,5,6};
 static const u8 _gxtexmode0ids[8] = {0x80,0x81,0x82,0x83,0xA0,0xA1,0xA2,0xA3};
@@ -113,6 +112,9 @@ static const u8 _gxteximg3ids[8] = {0x94,0x95,0x96,0x97,0xB4,0xB5,0xB6,0xB7};
 static const u8 _gxtextlutids[8] = {0x98,0x99,0x9A,0x9B,0xB8,0xB9,0xBA,0xBB};
 
 #if defined(HW_RVL)
+
+static vu16* const _memReg = (u16*)0xCC004000;
+
 static const u32 _gxtexregionaddrtable[48] =
 {
 	0x00000000,0x00010000,0x00020000,0x00030000,

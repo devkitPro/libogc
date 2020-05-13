@@ -62,8 +62,8 @@ static u32 __pad_cmdprobedevice[PAD_CHANMAX];
 static keyinput __pad_keys[PAD_CHANMAX];
 static u8 __pad_clampregion[8] = {30, 180, 15, 72, 40, 15, 59, 31};
 
-static vu32* const _siReg = (u32*)0xCC006400;
-static vu16* const _viReg = (u16*)0xCC002000;
+//static vu32* const _siReg = (u32*)0xCC006400;
+//static vu16* const _viReg = (u16*)0xCC002000;
 
 extern u32 __PADFixBits;
 
