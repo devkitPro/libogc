@@ -67,7 +67,7 @@ struct __gx_regdef
 	u8 gxFifoUnlinked;
 	u8 texCopyZTex;
 	u8 _pad;
-} __attribute__((packed));
+};
 
 struct __gxfifo {
 	vu32 buf_start;
@@ -82,7 +82,7 @@ struct __gxfifo {
 	vu8 cpufifo_ready;
 	vu8 gpfifo_ready;
 	u8 _pad[93];
-} __attribute__((packed));
+};
 
 struct __gx_litobj
 {

@@ -185,7 +185,7 @@ struct bba_priv {
 #define X(a,b)  b,a
 struct bba_descr {
 	u32 X(X(next_packet_ptr:12, packet_len:12), status:8);
-} __attribute((packed));
+};
 
 #define _SHIFTL(v, s, w)	\
     ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))

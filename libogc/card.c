@@ -69,7 +69,7 @@ struct card_header {
 	u8 padding[0x1d6];
 	u16 chksum1;
 	u16 chksum2;
-} ATTRIBUTE_PACKED;
+};
 
 struct card_direntry {
 	u8 gamecode[4];
@@ -98,7 +98,7 @@ struct card_dircntrl {
 	u16 updated;
 	u16 chksum1;
 	u16 chksum2;
-} ATTRIBUTE_PACKED;
+};
 
 struct card_bat {
 	u16 chksum1;
@@ -107,7 +107,7 @@ struct card_bat {
 	u16 freeblocks;
 	u16 lastalloc;
 	u16 fat[0xffc];
-} ATTRIBUTE_PACKED;
+};
 
 typedef struct _card_block {
 	u8 cmd[9];

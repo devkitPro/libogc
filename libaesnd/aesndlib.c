@@ -57,7 +57,7 @@ struct aesndpb_t
 	AESNDVoiceCallback cb;
 	
 	AESNDAudioCallback audioCB;
-} ATTRIBUTE_PACKED;
+};
 
 static dsptask_t __aesnddsptask;
 

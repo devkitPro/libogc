@@ -110,7 +110,7 @@ struct _ipcreq
 	lwpq_t syncqueue;	//44
 	u32 magic;			//48 - used to avoid spurious responses, like from zelda.
 	u8 pad1[12];		//52 - 60
-} ATTRIBUTE_PACKED;
+};
 
 struct _ipcreqres
 {
