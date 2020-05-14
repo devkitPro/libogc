@@ -90,6 +90,173 @@ void guOrtho(Mtx44 mt,f32 t,f32 b,f32 l,f32 r,f32 n,f32 f)
 	mt[3][3] = 1.0f;
 }
 
+void guMtx44Identity(Mtx44 mt)
+{
+	s32 i,j;
+
+	for(i=0;i<4;i++) {
+		for(j=0;j<4;j++) {
+			if(i==j) mt[i][j] = 1.0;
+			else mt[i][j] = 0.0;
+		}
+	}
+}
+
+void guMtx44Copy(Mtx44 src,Mtx44 dst)
+{
+	if(src==dst) return;
+
+	dst[0][0] = src[0][0]; dst[0][1] = src[0][1]; dst[0][2] = src[0][2]; dst[0][3] = src[0][3];
+	dst[1][0] = src[1][0]; dst[1][1] = src[1][1]; dst[1][2] = src[1][2]; dst[1][3] = src[1][3];
+	dst[2][0] = src[2][0]; dst[2][1] = src[2][1]; dst[2][2] = src[2][2]; dst[2][3] = src[2][3];
+	dst[3][0] = src[3][0]; dst[3][1] = src[3][1]; dst[3][2] = src[3][2]; dst[3][3] = src[3][3];
+}
+
+u32 guMtx44Inverse(Mtx44 src,Mtx44 inv)
+{
+    f32 det;
+
+    inv[0][0] =  (src[1][1] * src[2][2] * src[3][3]) -
+                 (src[1][1] * src[2][3] * src[3][2]) -
+                 (src[2][1] * src[1][2] * src[3][3]) +
+                 (src[2][1] * src[1][3] * src[3][2]) +
+                 (src[3][1] * src[1][2] * src[2][3]) -
+                 (src[3][1] * src[1][3] * src[2][2]);
+
+    inv[0][1] = -(src[0][1] * src[2][2] * src[3][3]) +
+                 (src[0][1] * src[2][3] * src[3][2]) +
+                 (src[2][1] * src[0][2] * src[3][3]) -
+                 (src[2][1] * src[0][3] * src[3][2]) -
+                 (src[3][1] * src[0][2] * src[2][3]) +
+                 (src[3][1] * src[0][3] * src[2][2]);
+
+    inv[0][2] =  (src[0][1] * src[1][2] * src[3][3]) -
+                 (src[0][1] * src[1][3] * src[3][2]) -
+                 (src[1][1] * src[0][2] * src[3][3]) +
+                 (src[1][1] * src[0][3] * src[3][2]) +
+                 (src[3][1] * src[0][2] * src[1][3]) -
+                 (src[3][1] * src[0][3] * src[1][2]);
+
+    inv[0][3] = -(src[0][1] * src[1][2] * src[2][3]) +
+                 (src[0][1] * src[1][3] * src[2][2]) +
+                 (src[1][1] * src[0][2] * src[2][3]) -
+                 (src[1][1] * src[0][3] * src[2][2]) -
+                 (src[2][1] * src[0][2] * src[1][3]) +
+                 (src[2][1] * src[0][3] * src[1][2]);
+
+    inv[1][0] = -(src[1][0] * src[2][2] * src[3][3]) +
+                 (src[1][0] * src[2][3] * src[3][2]) +
+                 (src[2][0] * src[1][2] * src[3][3]) -
+                 (src[2][0] * src[1][3] * src[3][2]) -
+                 (src[3][0] * src[1][2] * src[2][3]) +
+                 (src[3][0] * src[1][3] * src[2][2]);
+
+    inv[1][1] =  (src[0][0] * src[2][2] * src[3][3]) -
+                 (src[0][0] * src[2][3] * src[3][2]) -
+                 (src[2][0] * src[0][2] * src[3][3]) +
+                 (src[2][0] * src[0][3] * src[3][2]) +
+                 (src[3][0] * src[0][2] * src[2][3]) -
+                 (src[3][0] * src[0][3] * src[2][2]);
+
+    inv[1][2] = -(src[0][0] * src[1][2] * src[3][3]) +
+                 (src[0][0] * src[1][3] * src[3][2]) +
+                 (src[1][0] * src[0][2] * src[3][3]) -
+                 (src[1][0] * src[0][3] * src[3][2]) -
+                 (src[3][0] * src[0][2] * src[1][3]) +
+                 (src[3][0] * src[0][3] * src[1][2]);
+
+    inv[1][3] =  (src[0][0] * src[1][2] * src[2][3]) -
+                 (src[0][0] * src[1][3] * src[2][2]) -
+                 (src[1][0] * src[0][2] * src[2][3]) +
+                 (src[1][0] * src[0][3] * src[2][2]) +
+                 (src[2][0] * src[0][2] * src[1][3]) -
+                 (src[2][0] * src[0][3] * src[1][2]);
+
+    inv[2][0] =  (src[1][0] * src[2][1] * src[3][3]) -
+                 (src[1][0] * src[2][3] * src[3][1]) -
+                 (src[2][0] * src[1][1] * src[3][3]) +
+                 (src[2][0] * src[1][3] * src[3][1]) +
+                 (src[3][0] * src[1][1] * src[2][3]) -
+                 (src[3][0] * src[1][3] * src[2][1]);
+
+    inv[2][1] = -(src[0][0] * src[2][1] * src[3][3]) +
+                 (src[0][0] * src[2][3] * src[3][1]) +
+                 (src[2][0] * src[0][1] * src[3][3]) -
+                 (src[2][0] * src[0][3] * src[3][1]) -
+                 (src[3][0] * src[0][1] * src[2][3]) +
+                 (src[3][0] * src[0][3] * src[2][1]);
+
+    inv[2][2] =  (src[0][0] * src[1][1] * src[3][3]) -
+                 (src[0][0] * src[1][3] * src[3][1]) -
+                 (src[1][0] * src[0][1] * src[3][3]) +
+                 (src[1][0] * src[0][3] * src[3][1]) +
+                 (src[3][0] * src[0][1] * src[1][3]) -
+                 (src[3][0] * src[0][3] * src[1][1]);
+
+    inv[2][3] = -(src[0][0] * src[1][1] * src[2][3]) +
+                 (src[0][0] * src[1][3] * src[2][1]) +
+                 (src[1][0] * src[0][1] * src[2][3]) -
+                 (src[1][0] * src[0][3] * src[2][1]) -
+                 (src[2][0] * src[0][1] * src[1][3]) +
+                 (src[2][0] * src[0][3] * src[1][1]);
+
+    inv[3][0] = -(src[1][0] * src[2][1] * src[3][2]) +
+                 (src[1][0] * src[2][2] * src[3][1]) +
+                 (src[2][0] * src[1][1] * src[3][2]) -
+                 (src[2][0] * src[1][2] * src[3][1]) -
+                 (src[3][0] * src[1][1] * src[2][2]) +
+                 (src[3][0] * src[1][2] * src[2][1]);
+
+    inv[3][1] =  (src[0][0] * src[2][1] * src[3][2]) -
+                 (src[0][0] * src[2][2] * src[3][1]) -
+                 (src[2][0] * src[0][1] * src[3][2]) +
+                 (src[2][0] * src[0][2] * src[3][1]) +
+                 (src[3][0] * src[0][1] * src[2][2]) -
+                 (src[3][0] * src[0][2] * src[2][1]);
+
+    inv[3][2] = -(src[0][0] * src[1][1] * src[3][2]) +
+                 (src[0][0] * src[1][2] * src[3][1]) +
+                 (src[1][0] * src[0][1] * src[3][2]) -
+                 (src[1][0] * src[0][2] * src[3][1]) -
+                 (src[3][0] * src[0][1] * src[1][2]) +
+                 (src[3][0] * src[0][2] * src[1][1]);
+
+    inv[3][3] =  (src[0][0] * src[1][1] * src[2][2]) -
+                 (src[0][0] * src[1][2] * src[2][1]) -
+                 (src[1][0] * src[0][1] * src[2][2]) +
+                 (src[1][0] * src[0][2] * src[2][1]) +
+                 (src[2][0] * src[0][1] * src[1][2]) -
+                 (src[2][0] * src[0][2] * src[1][1]);
+
+    det = src[0][0] * inv[0][0] + src[0][1] * inv[1][0] + src[0][2] * inv[2][0] + src[0][3] * inv[3][0];
+
+    if(det == 0.0f) return 0;
+
+    det = 1.0f / det;
+
+    inv[0][0] *= det;
+    inv[0][1] *= det;
+    inv[0][2] *= det;
+    inv[0][3] *= det;
+
+    inv[1][0] *= det;
+    inv[1][1] *= det;
+    inv[1][2] *= det;
+    inv[1][3] *= det;
+
+    inv[2][0] *= det;
+    inv[2][1] *= det;
+    inv[2][2] *= det;
+    inv[2][3] *= det;
+
+    inv[3][0] *= det;
+    inv[3][1] *= det;
+    inv[3][2] *= det;
+    inv[3][3] *= det;
+
+    return 1;
+}
+
 void guLightPerspective(Mtx mt,f32 fovY,f32 aspect,f32 scaleS,f32 scaleT,f32 transS,f32 transT)
 {
 	f32 angle;

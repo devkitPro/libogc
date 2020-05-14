@@ -417,6 +417,10 @@ void ps_guMtxRotAxisRad(register Mtx mt,register guVector *axis,register f32 tmp
 void ps_guMtxReflect(register Mtx m,register guVector *p,register guVector *n);
 #endif	//GEKKO
 
+void guMtx44Identity(Mtx44 mt);
+void guMtx44Copy(Mtx44 src,Mtx44 dst);
+u32 guMtx44Inverse(Mtx44 src,Mtx44 inv);
+
 #ifdef MTX_USE_C
 
 #define guVecAdd				c_guVecAdd
