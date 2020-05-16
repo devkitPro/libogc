@@ -292,18 +292,45 @@ void __libogc_exit(int status)
 
 #endif
 
-static void __init_syscall_array(void) {
-	__syscalls.sbrk_r = __libogc_sbrk_r;
-	__syscalls.lock_init = __libogc_lock_init;
-	__syscalls.lock_close = __libogc_lock_close;
-	__syscalls.lock_release = __libogc_lock_release;
-	__syscalls.lock_acquire = __libogc_lock_acquire;
-	__syscalls.malloc_lock = __libogc_malloc_lock;
-	__syscalls.malloc_unlock = __libogc_malloc_unlock;
-	__syscalls.exit = __libogc_exit;
-	__syscalls.gettod_r = __libogc_gettod_r;
-	__syscalls.nanosleep = __libogc_nanosleep;
 
+void *__syscall_sbrk_r(struct _reent *ptr, ptrdiff_t incr) {
+	return __libogc_sbrk_r(ptr, incr);
+}
+
+int __syscall_lock_init(int *lock, int recursive) {
+	return __libogc_lock_init(lock,recursive);
+}
+
+int __syscall_lock_close(int *lock) {
+	return __libogc_lock_close(lock);
+}
+
+int __syscall_lock_release(int *lock) {
+	return __libogc_lock_release(lock);
+}
+
+int __syscall_lock_acquire(int *lock) {
+	return __libogc_lock_acquire(lock);
+}
+
+void __syscall_malloc_lock(struct _reent *ptr) {
+	return __libogc_malloc_lock(ptr);
+}
+
+void __syscall_malloc_unlock(struct _reent *ptr) {
+	return __libogc_malloc_unlock(ptr);
+}
+
+void __syscall_exit(int rc) {
+	return __libogc_exit(rc);
+}
+
+int  __syscall_gettod_r(struct _reent *ptr, struct timeval *tp, struct timezone *tz){
+	return __libogc_gettod_r(ptr,tp,tz);
+}
+
+int __syscall_nanosleep(const struct timespec *req, struct timespec *rem){
+	return __libogc_nanosleep(req, rem);
 }
 
 static alarm_st* __lwp_syswd_allocate(void)
@@ -1020,7 +1047,6 @@ void SYS_Init(void)
 
 	_V_EXPORTNAME();
 
-	__init_syscall_array();
 	__lowmem_init();
 #if defined(HW_RVL)
 	__ipcbuffer_init();
