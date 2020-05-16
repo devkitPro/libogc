@@ -12,9 +12,9 @@ endif
 
 export PATH	:=	$(DEVKITPPC)/bin:$(PATH)
 
-export LIBOGC_MAJOR	:= 1
-export LIBOGC_MINOR	:= 8
-export LIBOGC_PATCH	:= 24
+export LIBOGC_MAJOR	:= 2
+export LIBOGC_MINOR	:= 0
+export LIBOGC_PATCH	:= 0
 
 include	$(DEVKITPPC)/base_rules
 
