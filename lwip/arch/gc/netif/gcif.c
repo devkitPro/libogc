@@ -573,7 +573,7 @@ static u32 __bba_tx_err(u8 status,struct bba_priv *priv)
 
 static u32 __bba_rx_err(u8 status,struct bba_priv *priv)
 {
-	u32 last_errors = priv->txrx_stats.tx_errors;
+	u32 last_errors = priv->txrx_stats.rx_errors;
 
 	if(status&0xff) {
 		priv->txrx_stats.rx_overerrors++;
@@ -664,8 +664,6 @@ static err_t __bba_link_tx(struct netif *dev,struct pbuf *p)
 	}
 
 	LWIP_DEBUGF(NETIF_DEBUG,("__bba_link_tx(%d,%p)\n",p->tot_len,LWP_GetSelf()));
-
-	bba_out12(BBA_TXFIFOCNT,p->tot_len);
 
 	bba_select();
 	bba_outsregister(BBA_WRTXFIFOD);

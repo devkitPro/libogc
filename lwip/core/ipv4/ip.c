@@ -378,7 +378,7 @@ ip_output_if(struct pbuf *p, struct ip_addr *src, struct ip_addr *dest,
              u8_t proto, struct netif *netif)
 {
   struct ip_hdr *iphdr;
-  u16_t ip_id = 0;
+  static u16_t ip_id = 0;
 
   snmp_inc_ipoutrequests();
 
