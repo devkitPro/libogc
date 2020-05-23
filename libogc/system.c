@@ -64,9 +64,18 @@ distribution.
 #endif
 #define KERNEL_HEAP					(1*1024*1024)
 
+// SRAM bits
+#define SRAM_FLAG_VIDEO_MODE 	0x03
+#define SRAM_FLAG_AUDIO_MODE 	0x04
+#define SRAM_FLAG_OOBE_DONE		0x08
+#define SRAM_FLAG_UNKNOWN1 		0x10
+#define SRAM_FLAG_UNKNOWN2 		0x20
+#define SRAM_FLAG_BOOTIPL	 	0x40
+#define SRAM_FLAG_PROGSCAN 		0x80
+
 // DSPCR bits
 #define DSPCR_DSPRESET			    0x0800        // Reset DSP
-#define DSPCR_DSPDMA				    0x0200        // ARAM dma in progress, if set
+#define DSPCR_DSPDMA				0x0200        // ARAM dma in progress, if set
 #define DSPCR_DSPINTMSK			    0x0100        // * interrupt mask   (RW)
 #define DSPCR_DSPINT			    0x0080        // * interrupt active (RWC)
 #define DSPCR_ARINTMSK			    0x0040
@@ -706,7 +715,7 @@ static u32 __unlocksram(u32 write,u32 loc)
 
 	if(write) {
 		if(!loc) {
-			if((sram->flags&0x03)>0x02) sram->flags = (sram->flags&~0x03);
+			if((sram->flags&SRAM_FLAG_VIDEO_MODE)>0x02) sram->flags &= ~SRAM_FLAG_VIDEO_MODE;
 			__buildchecksum((u16*)sramcntrl.srambuf,&sram->checksum,&sram->checksum_inv);
 		}
 		if(loc<sramcntrl.offset) sramcntrl.offset = loc;
@@ -1101,7 +1110,7 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 
 	if(reset==SYS_HOTRESET && force_menu==TRUE) {
 		sram = __SYS_LockSram();
-		sram->flags |= 0x40;
+		sram->flags |= SRAM_FLAG_BOOTIPL;
 		__SYS_UnlockSram(TRUE);
 		while(!__SYS_SyncSram());
 	}
@@ -1636,6 +1645,50 @@ void SYS_ResetPMC(void)
 void SYS_DumpPMC(void)
 {
 	printf("<%u load/stores / %u miss cycles / %u cycles / %u instructions>\n",mfpmc1(),mfpmc2(),mfpmc3(),mfpmc4());
+}
+
+u8 SYS_GetLanguage(void)
+{
+	syssram *sram = __SYS_LockSram();
+	u8 lang = sram->lang;
+	__SYS_UnlockSram(0);
+	return lang;
+}
+
+u8 SYS_GetVideoMode(void)
+{
+	syssram *sram = __SYS_LockSram();
+	u8 mode = sram->flags & SRAM_FLAG_VIDEO_MODE;
+	__SYS_UnlockSram(0);
+	
+	return mode;
+}
+
+u8 SYS_GetAudioMode(void)
+{
+	syssram *sram = __SYS_LockSram();
+	u8 flag = sram->flags & SRAM_FLAG_AUDIO_MODE;
+	__SYS_UnlockSram(0);
+	
+	return (flag != 0);
+}
+
+u8 SYS_ProgressiveScanEnabled(void)
+{
+	syssram *sram = __SYS_LockSram();
+	u8 flag = sram->flags & SRAM_FLAG_PROGSCAN;
+	__SYS_UnlockSram(0);
+	
+	return (flag != 0);
+}
+
+u8 SYS_Pal60Enabled(void)
+{
+	syssram *sram = __SYS_LockSram();
+	u8 enabled = _SHIFTR(sram->ntd, 6 , 1);
+	__SYS_UnlockSram(0);
+	
+	return enabled;
 }
 
 void SYS_SetWirelessID(u32 chan,u32 id)

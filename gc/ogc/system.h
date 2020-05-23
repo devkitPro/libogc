@@ -95,6 +95,32 @@ distribution.
 #define SYS_PROTECTRDWR					(SYS_PROTECTREAD|SYS_PROTECTWRITE)	/*!< Read and write operations on protected region is permitted */
 
 /*!
+ * \sram language flags
+ */
+
+#define SYS_LANG_ENGLISH	0
+#define SYS_LANG_GERMAN		1
+#define SYS_LANG_FRENCH		2
+#define SYS_LANG_SPANISH	3
+#define SYS_LANG_ITALIAN	4
+#define SYS_LANG_DUTCH		5
+
+/*!
+ * \sram video flags
+ */
+ 
+#define SYS_VIDEO_NTSC 0
+#define SYS_VIDEO_PAL 1
+#define SYS_VIDEO_MPAL 2
+
+/*!
+ * \sram audio flags
+ */
+ 
+#define SYS_AUDIO_MONO 0
+#define SYS_AUDIO_STEREO 1
+
+/*!
  *@}
  */
 
@@ -147,7 +173,7 @@ typedef u32 syswd_t;
  * \param ead1 unknown attribute
  * \param counter_bias bias value for the realtime clock
  * \param display_offsetH pixel offset for the VI
- * \param ntd unknown attribute
+ * \param ntd mostly unknown attribute
  * \param lang language of system
  * \param flags device and operations flag
  */
@@ -303,7 +329,11 @@ s32 SYS_RemoveAlarm(syswd_t thealarm);
 */
 s32 SYS_CancelAlarm(syswd_t thealarm);
 
-
+u8 SYS_GetAudioMode(void);
+u8 SYS_GetLanguage(void);
+u8 SYS_GetVideoMode(void);
+u8 SYS_Pal60Enabled(void);
+u8 SYS_ProgressiveScanEnabled(void);
 void SYS_SetWirelessID(u32 chan,u32 id);
 u32 SYS_GetWirelessID(u32 chan);
 u32 SYS_GetFontEncoding(void);
