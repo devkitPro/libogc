@@ -667,6 +667,8 @@ void __sram_init(void)
 	sramcntrl.sync = __sram_read(sramcntrl.srambuf);
 
 	sramcntrl.offset = 64;
+
+	SYS_SetGBSMode(SYS_GetGBSMode());
 }
 
 static void DisableWriteGatherPipe(void)
@@ -1662,6 +1664,32 @@ u32 SYS_GetWirelessID(u32 chan)
 	id = sram->wirelessPad_id[chan];
 	__SYS_UnlockSramEx(0);
 	return id;
+}
+
+void SYS_SetGBSMode(u16 mode)
+{
+	u32 write;
+	syssramex *sramex;
+
+	write = 0;
+	sramex = __SYS_LockSramEx();
+	if(_SHIFTR(mode,10,5)>=20 || _SHIFTR(mode,6,2)==0x3 || (mode&0x3f)>=60) mode = 0;
+	if(sramex->gbs!=mode) {
+		sramex->gbs = mode;
+		write = 1;
+	}
+	__SYS_UnlockSramEx(write);
+}
+
+u16 SYS_GetGBSMode(void)
+{
+	u16 mode;
+	syssramex *sramex;
+
+	sramex = __SYS_LockSramEx();
+	mode = sramex->gbs;
+	__SYS_UnlockSramEx(0);
+	return mode;
 }
 
 #if defined(HW_RVL)
