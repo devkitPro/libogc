@@ -12,10 +12,10 @@
 #define PB_STRUCT_SIZE			64
 #define DSP_DRAMSIZE			8192
 
-#define VOICE_PAUSE				0x00000004
-#define VOICE_LOOP				0x00000008
-#define VOICE_ONCE				0x00000010
-#define VOICE_STREAM			0x00000020
+#define VOICE_PAUSE				0x00000008
+#define VOICE_LOOP				0x00000010
+#define VOICE_ONCE				0x00000020
+#define VOICE_STREAM			0x00000040
 
 #define VOICE_FINISHED			0x00100000
 #define VOICE_STOPPED			0x00200000
@@ -129,14 +129,18 @@ static __inline__ void __aesndcopycommand(AESNDPB *dst,AESNDPB *src)
 
 static __inline__ void __aesndsetvoiceformat(AESNDPB *pb,u32 format)
 {
-	pb->flags = (pb->flags&~0x03)|(format&0x03);
-	switch((format&0x03)) {
+	pb->flags = (pb->flags&~0x07)|(format&0x07);
+	switch((format&0x07)) {
 		case VOICE_MONO8:
 		case VOICE_STEREO8:
+		case VOICE_MONO8_UNSIGNED:
+		case VOICE_STEREO8_UNSIGNED:
 			pb->shift = 0;
 			break;
 		case VOICE_MONO16:
 		case VOICE_STEREO16:
+		case VOICE_MONO16_UNSIGNED:
+		case VOICE_STEREO16_UNSIGNED:
 			pb->shift = 1;
 			break;
 	}
@@ -149,9 +153,9 @@ static __inline__ void __aesndsetvoicebuffer(AESNDPB *pb,void* buffer,u32 len)
 	pb->mram_end = (u32)buffer + len;
 }
 
-static __inline__ void __aesndsetvoicefreq(AESNDPB *pb,u32 freq)
+static __inline__ void __aesndsetvoicefreq(AESNDPB *pb,f32 freq)
 {
-	register u32 ratio = 0x00010000*((f32)freq/(f32)DSP_DEFAULT_FREQ);
+	register u32 ratio = 0x00010000*(freq/DSP_DEFAULT_FREQ)+0.5f;
 	pb->freq_h = (u16)(ratio>>16);
 	pb->freq_l = (u16)(ratio&0xffff);
 }
@@ -544,8 +548,8 @@ AESNDPB* AESND_AllocateVoice(AESNDVoiceCallback cb)
 			pb->buf_curr = 0;
 			pb->buf_end = 0;
 			pb->counter = 0;
-			pb->volume_l = 255;
-			pb->volume_r = 255;
+			pb->volume_l = 0x0100;
+			pb->volume_r = 0x0100;
 			pb->freq_h = 0x0001;
 			pb->freq_l = 0x0000;
 			pb->cb = cb;
@@ -567,7 +571,7 @@ void AESND_FreeVoice(AESNDPB *pb)
 	_CPU_ISR_Restore(level);
 }
 
-void AESND_PlayVoice(AESNDPB *pb,u32 format,const void *buffer,u32 len,u32 freq,u32 delay,bool looped)
+void AESND_PlayVoice(AESNDPB *pb,u32 format,const void *buffer,u32 len,f32 freq,u32 delay,bool looped)
 {
 	u32 level;
 	void *ptr = (void*)buffer;
@@ -619,7 +623,7 @@ void AESND_SetVoiceVolume(AESNDPB *pb,u16 volume_l,u16 volume_r)
 	_CPU_ISR_Restore(level);
 }
 
-void AESND_SetVoiceFrequency(AESNDPB *pb,u32 freq)
+void AESND_SetVoiceFrequency(AESNDPB *pb,f32 freq)
 {
 	u32 level;
 	
@@ -673,6 +677,15 @@ void AESND_SetVoiceStop(AESNDPB *pb,bool stop)
 		pb->flags |= VOICE_STOPPED;
 	else
 		pb->flags &= ~VOICE_STOPPED;
+	_CPU_ISR_Restore(level);
+}
+
+void AESND_SetVoiceDelay(AESNDPB *pb,u32 delay)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	pb->delay = (delay*48);
 	_CPU_ISR_Restore(level);
 }
 

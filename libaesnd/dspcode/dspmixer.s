@@ -82,9 +82,9 @@ PB_STURCT_SIZE:		equ		64
 NUM_SAMPLES:		equ		96						//process 2ms of sample data
 DEF_FREQ_INT:		equ		0x0001
 
-VOICE_FLAGL_PAUSE:	equ		0x0004
-VOICE_FLAGL_LOOP:	equ		0x0008
-VOICE_FLAGL_ONCE:	equ		0x0010
+VOICE_FLAGL_PAUSE:	equ		0x0008
+VOICE_FLAGL_LOOP:	equ		0x0010
+VOICE_FLAGL_ONCE:	equ		0x0020
 
 VOICE_FLAGH_END:	equ		0x0010
 VOICE_FLAGH_STOP:	equ		0x0020
@@ -299,7 +299,7 @@ no_change_buffer:
 	call	setup_accl
 	
 	mrr		$acc1.m,$acc1.l
-	andi	$acc1.m,#0x03
+	andi	$acc1.m,#0x07
 	addi	$acc1.m,#select_mixer
 	mrr		$ar3,$acc1.m
 	ilrr	$acc1.m,@$ar3
@@ -359,34 +359,38 @@ no_delay:
 
 	jmp		no_mix
 		
-mono_8bits:
-	bloop	$acx0.l,mono_8bits_end
+mono_unsigned_mix:
+	bloop	$acx0.l,mono_unsigned_mix_end
 	lrs		$acc0.m,@ACDAT			//right channel
-mono_8bits_end:
+mono_unsigned_mix_end:
 	mrr		$acc1.m,$acc0.m			//left channel
+	xori	$acc0.m,#0x8000
+	xori	$acc1.m,#0x8000
 	
 	jmp		mix_samples
 
-stereo_8bits:
-	bloop	$acx0.l,stereo_8bits_end
+mono_mix:
+	bloop	$acx0.l,mono_mix_end
 	lrs		$acc0.m,@ACDAT			//right channel
-stereo_8bits_end:
+mono_mix_end:
+	mrr		$acc1.m,$acc0.m			//left channel
+
+	jmp		mix_samples
+	
+stereo_unsigned_mix:
+	bloop	$acx0.l,stereo_unsigned_mix_end
+	lrs		$acc0.m,@ACDAT			//right channel
+stereo_unsigned_mix_end:
 	lrs		$acc1.m,@ACDAT			//left channel
+	xori	$acc0.m,#0x8000
+	xori	$acc1.m,#0x8000
 
 	jmp		mix_samples
 	
-mono_16bits:
-	bloop	$acx0.l,mono_16bits_end
+stereo_mix:
+	bloop	$acx0.l,stereo_mix_end
 	lrs		$acc0.m,@ACDAT			//right channel
-mono_16bits_end:
-	mrr		$acc1.m,$acc0.m			//left channel
-
-	jmp		mix_samples
-	
-stereo_16bits:
-	bloop	$acx0.l,stereo_16bits_end
-	lrs		$acc0.m,@ACDAT			//right channel
-stereo_16bits_end:
+stereo_mix_end:
 	lrs		$acc1.m,@ACDAT			//left channel
 
 mix_samples:
@@ -563,10 +567,14 @@ exception7:		// External interrupt (message from CPU)
 	rti
 
 select_mixer:
-	cw		mono_8bits
-	cw		stereo_8bits
-	cw		mono_16bits
-	cw		stereo_16bits
+	cw		mono_mix
+	cw		stereo_mix
+	cw		mono_mix
+	cw		stereo_mix
+	cw		mono_unsigned_mix
+	cw		stereo_unsigned_mix
+	cw		mono_unsigned_mix
+	cw		stereo_unsigned_mix
 
 select_format:
 	cw		ACCL_FMT_8BIT
