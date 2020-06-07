@@ -80,6 +80,14 @@ s32 LWP_SemDestroy(sem_t sem);
 */
 s32 LWP_SemWait(sem_t sem);
 
+/*! \fn s32 LWP_SemGetValue(sem_t sem, u32* value)
+\brief return the current semaphore count
+\param[in] sem handle to the sem_t structure.
+\param[out] the current value of the semaphore
+
+\return 0 on success, <0 on error
+*/
+s32 LWP_SemGetValue(sem_t sem, u32* value);
 
 /*! \fn s32 LWP_SemPost(sem_t sem)
 \brief Count up semaphore counter and release lock if counter >0
