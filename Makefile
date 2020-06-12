@@ -173,10 +173,10 @@ WIIUSEOBJ	:=	classic.o dynamics.o events.o guitar_hero_3.o io.o io_wii.o ir.o \
 TINYSMBOBJ	:=	des.o md4.o ntlm.o smb.o smb_devoptab.o
 
 #---------------------------------------------------------------------------------
-ASNDLIBOBJ	:=	asndlib.o
+ASNDLIBOBJ	:=	asndlib.o asnd_dsp_mixer.bin.o
 
 #---------------------------------------------------------------------------------
-AESNDLIBOBJ	:=	aesndlib.o
+AESNDLIBOBJ	:=	aesndlib.o aesnd_dsp_mixer.bin.o
 
 #---------------------------------------------------------------------------------
 ISOLIBOBJ	:=	iso9660.o
@@ -223,6 +223,24 @@ gc/ogc/libversion.h : Makefile
 	@echo '#define _V_STRING "libOGC Release '$(LIBOGC_MAJOR).$(LIBOGC_MINOR).$(LIBOGC_PATCH)'"' >> $@
 	@echo >> $@
 	@echo "#endif // __LIBVERSION_H__" >> $@
+
+#---------------------------------------------------------------------------------
+aesnd_dsp_mixer.bin.o aesnd_mixer_bin.h: aesnd_dsp_mixer.bin
+	@echo $(notdir $<)
+	$(bin2o)
+
+#---------------------------------------------------------------------------------
+aesnd_dsp_mixer.bin: $(LIBAESNDDIR)/dspcode/dspmixer.s
+	  gcdsptool -c $< -o $@
+
+#---------------------------------------------------------------------------------
+asnd_dsp_mixer.bin.o asnd_mixer_bin.h: asnd_dsp_mixer.bin
+	@echo $(notdir $<)
+	$(bin2o)
+
+#---------------------------------------------------------------------------------
+asnd_dsp_mixer.bin: $(LIBASNDDIR)/dsp_mixer/dsp_mixer.s
+	  gcdsptool -c $< -o $@
 
 #---------------------------------------------------------------------------------
 $(BBALIB).a: $(LWIPOBJ)
