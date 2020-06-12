@@ -226,23 +226,28 @@ gc/ogc/libversion.h : Makefile
 	@echo >> $@
 	@echo "#endif // __LIBVERSION_H__" >> $@
 
+asndlib.o: asnd_dsp_mixer.bin.o
+aesndlib.o: aesnd_dsp_mixer.bin.o
+
 #---------------------------------------------------------------------------------
-aesnd_dsp_mixer.bin.o aesnd_mixer_bin.h: aesnd_dsp_mixer.bin
+aesnd_dsp_mixer_bin.h aesnd_dsp_mixer.bin.o: aesnd_dsp_mixer.bin
 	@echo $(notdir $<)
-	$(bin2o)
+	@$(bin2o)
 
 #---------------------------------------------------------------------------------
 aesnd_dsp_mixer.bin: $(LIBAESNDDIR)/dspcode/dspmixer.s
-	  gcdsptool -c $< -o $@
+	@echo $(notdir $<)
+	@gcdsptool -c $< -o $@
 
 #---------------------------------------------------------------------------------
-asnd_dsp_mixer.bin.o asnd_mixer_bin.h: asnd_dsp_mixer.bin
+asnd_dsp_mixer_bin.h asnd_dsp_mixer.bin.o: asnd_dsp_mixer.bin
 	@echo $(notdir $<)
-	$(bin2o)
+	@$(bin2o)
 
 #---------------------------------------------------------------------------------
 asnd_dsp_mixer.bin: $(LIBASNDDIR)/dsp_mixer/dsp_mixer.s
-	  gcdsptool -c $< -o $@
+	@echo $(notdir $<)
+	@gcdsptool -c $< -o $@
 
 #---------------------------------------------------------------------------------
 $(BBALIB).a: $(LWIPOBJ)
