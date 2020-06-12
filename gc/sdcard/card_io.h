@@ -49,10 +49,11 @@ s32 sdgecko_doUnmount(s32 drv_no);
 void sdgecko_insertedCB(s32 drv_no);
 void sdgecko_ejectedCB(s32 drv_no);
 
-void sdgecko_setSpeed(u32 freq);
+u32 sdgecko_getSpeed(s32 drv_no);
+void sdgecko_setSpeed(s32 drv_no, u32 freq);
 
 u32 sdgecko_getPageSize(s32 drv_no);
-u32 sdgecko_setPageSize(s32 drv_no, int size);
+s32 sdgecko_setPageSize(s32 drv_no, u32 size);
 
 card_addressing_type_t sdgecko_getAddressingType(s32 drv_no);
 
