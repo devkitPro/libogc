@@ -78,6 +78,29 @@ static struct netif g_hLoopIF;
 static struct netsocket sockets[NUM_SOCKETS];
 static struct netselect_cb *selectcb_list = NULL;
 
+static const s32 err_to_errno_table[] = {
+  0,             /* ERR_OK          0      No error, everything OK. */
+  ENOMEM,        /* ERR_MEM        -1      Out of memory error.     */
+  ENOBUFS,       /* ERR_BUF        -2      Buffer error.            */
+  ECONNABORTED,  /* ERR_ABRT       -3      Connection aborted.      */
+  ECONNRESET,    /* ERR_RST        -4      Connection reset.        */
+  ENOTCONN,      /* ERR_CLSD       -5      Connection closed.       */
+  ENOTCONN,      /* ERR_CONN       -6      Not connected.           */
+  EINVAL,        /* ERR_VAL        -7      Illegal value.           */
+  EIO,           /* ERR_ARG        -8      Illegal argument.        */
+  EHOSTUNREACH,  /* ERR_RTE        -9      Routing problem.         */
+  EADDRINUSE,    /* ERR_USE        -10     Address in use.          */
+  ENXIO,         /* ERR_IF         -11     Low-level netif error    */
+  EISCONN        /* ERR_ISCONN     -12     Already connected.       */
+};
+
+#define ERR_TO_ERRNO_TABLE_SIZE \
+  (sizeof(err_to_errno_table)/sizeof(err_to_errno_table[0]))
+
+#define err_to_errno(err) \
+  ((unsigned)(-(err)) < ERR_TO_ERRNO_TABLE_SIZE ? \
+    err_to_errno_table[-(err)] : EIO)
+
 static sys_sem netsocket_sem;
 static sys_sem sockselect_sem;
 static sys_mbox netthread_mbox;
@@ -273,7 +296,7 @@ static struct netconn* netconn_new_with_callback(enum netconn_type t,void (*cb)(
 
 static struct netconn* netconn_new_with_proto_and_callback(enum netconn_type t,u16 proto,void (*cb)(struct netconn *,enum netconn_evt,u32))
 {
-	u32 dummy = 0;
+	u32 dummy;
 	struct netconn *conn;
 	struct api_msg *msg;
 
@@ -325,7 +348,7 @@ static struct netconn* netconn_new_with_proto_and_callback(enum netconn_type t,u
 
 static err_t netconn_delete(struct netconn *conn)
 {
-	u32 dummy = 0;
+	u32 dummy;
 	struct api_msg *msg;
 	sys_mbox mbox;
 	void *mem;
@@ -415,7 +438,7 @@ static err_t netconn_peer(struct netconn *conn,struct ip_addr *addr,u16 *port)
 
 static err_t netconn_bind(struct netconn *conn,struct ip_addr *addr,u16 port)
 {
-	u32 dummy = 0;
+	u32 dummy;
 	struct api_msg *msg;
 
 	LWIP_DEBUGF(API_LIB_DEBUG, ("netconn_bind(%p)\n", conn));
@@ -440,7 +463,7 @@ static err_t netconn_bind(struct netconn *conn,struct ip_addr *addr,u16 port)
 
 static err_t netconn_listen(struct netconn *conn)
 {
-	u32 dummy = 0;
+	u32 dummy;
 	struct api_msg *msg;
 	
 	LWIP_DEBUGF(API_LIB_DEBUG, ("netconn_listen(%p)\n", conn));
@@ -461,7 +484,7 @@ static err_t netconn_listen(struct netconn *conn)
 
 static struct netbuf* netconn_recv(struct netconn *conn)
 {
-	u32 dummy = 0;
+	u32 dummy;
 	struct api_msg *msg;
 	struct netbuf *buf;
 	struct pbuf *p;
@@ -536,7 +559,7 @@ static struct netbuf* netconn_recv(struct netconn *conn)
 
 static err_t netconn_send(struct netconn *conn,struct netbuf *buf)
 {
-	u32 dummy = 0;
+	u32 dummy;
 	struct api_msg *msg;
 
 	if(conn==NULL) return ERR_VAL;
@@ -555,7 +578,7 @@ static err_t netconn_send(struct netconn *conn,struct netbuf *buf)
 
 static err_t netconn_write(struct netconn *conn,const void *dataptr,u32 size,u8 copy)
 {
-	u32 dummy = 0;
+	u32 dummy;
 	struct api_msg *msg;
 	u16 len,snd_buf;
 	
@@ -612,7 +635,7 @@ ret:
 
 static err_t netconn_connect(struct netconn *conn,struct ip_addr *addr,u16 port)
 {
-	u32 dummy = 0;
+	u32 dummy;
 	struct api_msg *msg;
 
 	if(conn==NULL) return -1;
@@ -634,7 +657,7 @@ static err_t netconn_connect(struct netconn *conn,struct ip_addr *addr,u16 port)
 
 static err_t netconn_disconnect(struct netconn *conn)
 {
-	u32 dummy = 0;
+	u32 dummy;
 	struct api_msg *msg;
 	
 	if(conn==NULL) return ERR_VAL;
@@ -668,7 +691,7 @@ static u8_t recv_raw(void *arg,struct raw_pcb *pcb,struct pbuf *p,struct ip_addr
 		conn->recvavail += p->tot_len;
 		if(conn->callback)
 			(*conn->callback)(conn,NETCONN_EVTRCVPLUS,p->tot_len);
-		MQ_Send(conn->recvmbox,buf,MQ_MSG_BLOCK);
+		MQ_Send(conn->recvmbox,(mqmsg_t)buf,MQ_MSG_BLOCK);
 	}
 	return 0;
 }
@@ -698,7 +721,7 @@ static void recv_udp(void *arg,struct udp_pcb *pcb,struct pbuf *p,struct ip_addr
 		if(conn->callback)
 			(*conn->callback)(conn,NETCONN_EVTRCVPLUS,p->tot_len);
 		
-		MQ_Send(conn->recvmbox,buf,MQ_MSG_BLOCK);
+		MQ_Send(conn->recvmbox,(mqmsg_t)buf,MQ_MSG_BLOCK);
 	}
 }
 
@@ -724,14 +747,13 @@ static err_t recv_tcp(void *arg,struct tcp_pcb *pcb,struct pbuf *p,err_t err)
 		if(conn->callback)
 			(*conn->callback)(conn,NETCONN_EVTRCVPLUS,len);
 
-		MQ_Send(conn->recvmbox,p,MQ_MSG_BLOCK);
+		MQ_Send(conn->recvmbox,(mqmsg_t)p,MQ_MSG_BLOCK);
 	}
 	return ERR_OK;
 }
 
 static void err_tcp(void *arg,err_t err)
 {
-	u32 dummy = 0;
 	struct netconn *conn = (struct netconn*)arg;
 	
 	LWIP_DEBUGF(API_MSG_DEBUG, ("api_msg: err_tcp: %d\n",err));
@@ -740,14 +762,14 @@ static void err_tcp(void *arg,err_t err)
 		conn->pcb.tcp = NULL;
 		if(conn->recvmbox!=SYS_MBOX_NULL) {
 			if(conn->callback) (*conn->callback)(conn,NETCONN_EVTRCVPLUS,0);
-			MQ_Send(conn->recvmbox,&dummy,MQ_MSG_BLOCK);
+			MQ_Send(conn->recvmbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 		}
 		if(conn->mbox!=SYS_MBOX_NULL) {
-			MQ_Send(conn->mbox,&dummy,MQ_MSG_BLOCK);
+			MQ_Send(conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 		}
 		if(conn->acceptmbox!=SYS_MBOX_NULL) {
 			if(conn->callback) (*conn->callback)(conn,NETCONN_EVTRCVPLUS,0);
-			MQ_Send(conn->acceptmbox,&dummy,MQ_MSG_BLOCK);
+			MQ_Send(conn->acceptmbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 		}
 		if(conn->sem!=SYS_SEM_NULL) {
 			LWP_SemPost(conn->sem);
@@ -835,16 +857,14 @@ static err_t accept_func(void *arg,struct tcp_pcb *newpcb,err_t err)
 	newconn->socket = -1;
 	newconn->recvavail = 0;
 
-	MQ_Send(mbox,newconn,MQ_MSG_BLOCK);
+	MQ_Send(mbox,(mqmsg_t)newconn,MQ_MSG_BLOCK);
 	return ERR_OK;
 }
 
 static void do_newconn(struct apimsg_msg *msg)
 {
-	u32 dummy = 0;
-
 	if(msg->conn->pcb.tcp) {
-		MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+		MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 		return;
 	}
 
@@ -891,13 +911,11 @@ static void do_newconn(struct apimsg_msg *msg)
 		default:
 			break;
 	}
-	MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+	MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 }
 
 static void do_delconn(struct apimsg_msg *msg)
 {
-	u32 dummy = 0;
-
 	if(msg->conn->pcb.tcp) {
 		switch(msg->conn->type) {
 			case NETCONN_RAW:
@@ -933,13 +951,11 @@ static void do_delconn(struct apimsg_msg *msg)
 		(*msg->conn->callback)(msg->conn,NETCONN_EVTSENDPLUS,0);
 	}
 	if(msg->conn->mbox!=SYS_MBOX_NULL)
-		MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+		MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 }
 
 static void do_bind(struct apimsg_msg *msg)
 {
-	u32 dummy = 0;
-
 	if(msg->conn->pcb.tcp==NULL) {
 		switch(msg->conn->type) {
 			case NETCONN_RAW:
@@ -983,12 +999,11 @@ static void do_bind(struct apimsg_msg *msg)
 		default:
 			break;
 	}
-	MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+	MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 }
 
 static err_t do_connected(void *arg,struct tcp_pcb *pcb,err_t err)
 {
-	u32 dummy = 0;
 	struct netconn *conn = (struct netconn*)arg;
 
 	if(!conn) return ERR_VAL;
@@ -996,14 +1011,12 @@ static err_t do_connected(void *arg,struct tcp_pcb *pcb,err_t err)
 	conn->err = err;
 	if(conn->type==NETCONN_TCP && err==ERR_OK) setuptcp(conn);
 	
-	MQ_Send(conn->mbox,&dummy,MQ_MSG_BLOCK);
+	MQ_Send(conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 	return ERR_OK;
 }
 
 static void do_connect(struct apimsg_msg *msg)
 {
-	u32 dummy = 0;
-
 	if(!msg->conn->pcb.tcp) {
 		switch(msg->conn->type) {
 			case NETCONN_RAW:
@@ -1014,7 +1027,7 @@ static void do_connect(struct apimsg_msg *msg)
 				msg->conn->pcb.udp = udp_new();
 				if(!msg->conn->pcb.udp) {
 					msg->conn->err = ERR_MEM;
-					MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+					MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 					return;
 				}
 				udp_setflags(msg->conn->pcb.udp,UDP_FLAGS_UDPLITE);
@@ -1024,7 +1037,7 @@ static void do_connect(struct apimsg_msg *msg)
 				msg->conn->pcb.udp = udp_new();
 				if(!msg->conn->pcb.udp) {
 					msg->conn->err = ERR_MEM;
-					MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+					MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 					return;
 				}
 				udp_setflags(msg->conn->pcb.udp,UDP_FLAGS_NOCHKSUM);
@@ -1034,7 +1047,7 @@ static void do_connect(struct apimsg_msg *msg)
 				msg->conn->pcb.udp = udp_new();
 				if(!msg->conn->pcb.udp) {
 					msg->conn->err = ERR_MEM;
-					MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+					MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 					return;
 				}
 				udp_recv(msg->conn->pcb.udp,recv_udp,msg->conn);
@@ -1043,7 +1056,7 @@ static void do_connect(struct apimsg_msg *msg)
 				msg->conn->pcb.tcp = tcp_new();
 				if(!msg->conn->pcb.tcp) {
 					msg->conn->err = ERR_MEM;
-					MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+					MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 					return;
 				}
 				break;
@@ -1054,13 +1067,13 @@ static void do_connect(struct apimsg_msg *msg)
 	switch(msg->conn->type) {
 		case NETCONN_RAW:
 			raw_connect(msg->conn->pcb.raw,msg->msg.bc.ipaddr);
-			MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+			MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 			break;
 		case NETCONN_UDPLITE:
 		case NETCONN_UDPNOCHKSUM:
 		case NETCONN_UDP:
 			udp_connect(msg->conn->pcb.udp,msg->msg.bc.ipaddr,msg->msg.bc.port);
-			MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+			MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 			break;
 		case NETCONN_TCP:
 			setuptcp(msg->conn);
@@ -1073,8 +1086,6 @@ static void do_connect(struct apimsg_msg *msg)
 	
 static void do_disconnect(struct apimsg_msg *msg)
 {
-	u32 dummy = 0;
-
 	switch(msg->conn->type) {
 		case NETCONN_RAW:
 			break;
@@ -1086,13 +1097,11 @@ static void do_disconnect(struct apimsg_msg *msg)
 		case NETCONN_TCP:
 			break;
 	}
-	MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+	MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 }
 
 static void do_listen(struct apimsg_msg *msg)
 {
-	u32 dummy = 0;
-
 	if(msg->conn->pcb.tcp!=NULL) {
 		switch(msg->conn->type) {
 			case NETCONN_RAW:
@@ -1122,7 +1131,7 @@ static void do_listen(struct apimsg_msg *msg)
 				break;
 		}
 	}
-	MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+	MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 }
 
 static void do_accept(struct apimsg_msg *msg)
@@ -1145,8 +1154,6 @@ static void do_accept(struct apimsg_msg *msg)
 
 static void do_send(struct apimsg_msg *msg)
 {
-	u32 dummy = 0;
-
 	if(msg->conn->pcb.tcp) {
 		switch(msg->conn->type) {
 			case NETCONN_RAW:
@@ -1161,23 +1168,20 @@ static void do_send(struct apimsg_msg *msg)
 				break;
 		}
 	}
-	MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+	MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 }
 
 static void do_recv(struct apimsg_msg *msg)
 {
-	u32 dummy = 0;
-
 	if(msg->conn->pcb.tcp && msg->conn->type==NETCONN_TCP) {
 		tcp_recved(msg->conn->pcb.tcp,msg->msg.len);
 	}
-	MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+	MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 }
 
 static void do_write(struct apimsg_msg *msg)
 {
 	err_t err;
-	u32 dummy = 0;
 
 	if(msg->conn->pcb.tcp) {
 		switch(msg->conn->type) {
@@ -1206,12 +1210,11 @@ static void do_write(struct apimsg_msg *msg)
 				break;
 		}
 	}
-	MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+	MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 }
 
 static void do_close(struct apimsg_msg *msg)
 {
-	u32 dummy = 0;
 	err_t err = ERR_OK;
 
 	if(msg->conn->pcb.tcp) {
@@ -1232,7 +1235,7 @@ static void do_close(struct apimsg_msg *msg)
 				break;
 		}
 	}
-	MQ_Send(msg->conn->mbox,&dummy,MQ_MSG_BLOCK);
+	MQ_Send(msg->conn->mbox,(mqmsg_t)NULL,MQ_MSG_BLOCK);
 }
 
 static void apimsg_input(struct api_msg *msg)
@@ -1261,7 +1264,7 @@ static err_t net_input(struct pbuf *p,struct netif *inp)
 	msg->type = NETMSG_INPUT;
 	msg->msg.inp.p = p;
 	msg->msg.inp.net = inp;
-	MQ_Send(netthread_mbox,msg,MQ_MSG_BLOCK);
+	MQ_Send(netthread_mbox,(mqmsg_t)msg,MQ_MSG_BLOCK);
 	return ERR_OK;
 }
 
@@ -1278,7 +1281,7 @@ static void net_apimsg(struct api_msg *apimsg)
 
 	msg->type = NETMSG_API;
 	msg->msg.apimsg = apimsg;
-	MQ_Send(netthread_mbox,msg,MQ_MSG_BLOCK);
+	MQ_Send(netthread_mbox,(mqmsg_t)msg,MQ_MSG_BLOCK);
 }
 
 static err_t net_callback(void (*f)(void *),void *ctx)
@@ -1295,7 +1298,7 @@ static err_t net_callback(void (*f)(void *),void *ctx)
 	msg->type = NETMSG_CALLBACK;
 	msg->msg.cb.f = f;
 	msg->msg.cb.ctx = ctx;
-	MQ_Send(netthread_mbox,msg,MQ_MSG_BLOCK);
+	MQ_Send(netthread_mbox,(mqmsg_t)msg,MQ_MSG_BLOCK);
 	return ERR_OK;
 }
 
@@ -1485,7 +1488,7 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 	if(use_dhcp==FALSE) {
 		if( !gateway || gateway->s_addr==0
 			|| !local_ip || local_ip->s_addr==0
-			|| !netmask || netmask->s_addr==0 ) return -EINVAL;
+			|| !netmask || netmask->s_addr==0 ) return -1;
 			loc_ip.addr = local_ip->s_addr;
 			mask.addr = netmask->s_addr;
 			gw.addr = gateway->s_addr;
@@ -1516,7 +1519,7 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 		}
 #endif
 	} else
-		return -ENXIO;
+		return -1;
 	
 	// setup loopinterface
 	IP4_ADDR(&loc_ip, 127, 0, 0, 1);
@@ -1542,7 +1545,7 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 			if ( gateway != NULL ) gateway->s_addr = g_hNetIF.gw.addr;
 			if ( netmask != NULL ) netmask->s_addr = g_hNetIF.netmask.addr;
 		} else {
-			ret = -ETIMEDOUT;
+			ret = -2;
 		}
 	}
 
@@ -1649,14 +1652,14 @@ s32 net_socket(u32 domain,u32 type,u32 protocol)
 			conn = netconn_new_with_callback(NETCONN_TCP,evt_callback);
 			break;
 		default:
-			return -1;
+			return -EINVAL;
 	}
-	if(!conn) return -1;
+	if(!conn) return -ENOBUFS;
 	
 	i = alloc_socket(conn);
 	if(i==-1) {
 		netconn_delete(conn);
-		return -1;
+		return -ENFILE;
 	}
 	
 	conn->socket = i;
@@ -1692,7 +1695,7 @@ s32 net_accept(s32 s,struct sockaddr *addr,socklen_t *addrlen)
 	newsock = alloc_socket(newconn);
 	if(newsock==-1) {
 		netconn_delete(newconn);
-		return -1;
+		return -ENFILE;
 	}
 
 	newconn->callback = evt_callback;
@@ -1720,7 +1723,7 @@ s32 net_bind(s32 s,struct sockaddr *name,socklen_t namelen)
 	loc_port = ((struct sockaddr_in*)name)->sin_port;
 
 	err = netconn_bind(sock->conn,&loc_addr,ntohs(loc_port));
-	if(err!=ERR_OK) return -1;
+	if(err!=ERR_OK) return -err_to_errno(err);
 
 	return 0;
 }
@@ -1737,7 +1740,7 @@ s32 net_listen(s32 s,u32 backlog)
 	err = netconn_listen(sock->conn);
 	if(err!=ERR_OK) {
 	    LWIP_DEBUGF(SOCKETS_DEBUG, ("net_listen(%d) failed, err=%d\n", s, err));
-		return -1;
+		return -err_to_errno(err);
 	}
 	return 0;
 }
@@ -1761,7 +1764,7 @@ s32 net_recvfrom(s32 s,void *mem,s32 len,u32 flags,struct sockaddr *from,socklen
 	else {
 		if(((flags&MSG_DONTWAIT) || (sock->flags&O_NONBLOCK)) && !sock->rcvevt) {
 			LWIP_DEBUGF(SOCKETS_DEBUG, ("net_recvfrom(%d): returning EWOULDBLOCK\n", s));
-			return -EAGAIN;
+			return -EWOULDBLOCK;
 		}
 		buf = netconn_recv(sock->conn);
 		if(!buf) {
@@ -1893,7 +1896,7 @@ s32 net_send(s32 s,const void *data,s32 len,u32 flags)
 	}
 	if(err!=ERR_OK) {
 		LWIP_DEBUGF(SOCKETS_DEBUG, ("net_send(%d) err=%d\n", s, err));
-		return -1;
+		return -err_to_errno(err);
 	}
 
 	LWIP_DEBUGF(SOCKETS_DEBUG, ("net_send(%d) ok size=%d\n", s, len));
@@ -1931,11 +1934,11 @@ s32 net_connect(s32 s,struct sockaddr *name,socklen_t namelen)
 	}
 	if(err!=ERR_OK) {
 	    LWIP_DEBUGF(SOCKETS_DEBUG, ("net_connect(%d) failed, err=%d\n", s, err));
-		return -1;
+		return -err_to_errno(err);
 	}
 
 	LWIP_DEBUGF(SOCKETS_DEBUG, ("net_connect(%d) succeeded\n", s));
-	return -EISCONN;
+	return 0;
 }
 
 s32 net_close(s32 s)
@@ -2176,7 +2179,7 @@ s32 net_setsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optl
 			LWIP_DEBUGF(SOCKETS_DEBUG, ("net_setsockopt(%d, level=0x%x, UNIMPL: optname=0x%x, ..)\n", s, level, optname));
 			err = ENOPROTOOPT;
 	}
-	if(err!=0) return -1;
+	if(err) return -err;
 
 	switch(level) {
 		case SOL_SOCKET:
@@ -2228,7 +2231,7 @@ s32 net_setsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optl
 			}
 		}
 	}
-	return err?-1:0;
+	return 0;
 }
 
 s32 net_ioctl(s32 s, u32 cmd, void *argp)
