@@ -89,10 +89,12 @@ MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -ffun
 
 ifeq ($(PLATFORM),wii)
 MACHDEP		+=	-DHW_RVL
+INCLUDES	+=	-I$(BASEDIR)/wii
 endif
 
 ifeq ($(PLATFORM),cube)
 MACHDEP		+=	-DHW_DOL
+INCLUDES	+=	-I$(BASEDIR)/cube
 endif
 
 CFLAGS		:= -DLIBOGC_INTERNAL -g -O2 -fno-strict-aliasing -Wall $(MACHDEP) $(INCLUDES)

@@ -35,7 +35,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ogc/machine/processor.h>
 
 #include "asndlib.h"
-#include "dsp_mixer.h"
+#include "asnd_dsp_mixer_bin.h"
 
 #undef SND_BUFFERSIZE
 
@@ -377,8 +377,8 @@ void ASND_Init(void)
 			snd_set0w((s32*)&sound_data[i],sizeof(t_sound_data)/4);
 
 		dsp_task.prio = 255;
-		dsp_task.iram_maddr = (u16*)MEM_VIRTUAL_TO_PHYSICAL(dsp_mixer);
-		dsp_task.iram_len = dsp_mixer_size;
+		dsp_task.iram_maddr = (u16*)MEM_VIRTUAL_TO_PHYSICAL(asnd_dsp_mixer_bin);
+		dsp_task.iram_len = asnd_dsp_mixer_bin_size;
 		dsp_task.iram_addr = 0x0000;
 		dsp_task.init_vec = 0x10;
 		dsp_task.res_cb = NULL;
