@@ -544,8 +544,8 @@ AESNDPB* AESND_AllocateVoice(AESNDVoiceCallback cb)
 			pb->buf_curr = 0;
 			pb->buf_end = 0;
 			pb->counter = 0;
-			pb->volume_l = 255;
-			pb->volume_r = 255;
+			pb->volume_l = 0x100;
+			pb->volume_r = 0x100;
 			pb->freq_h = 0x0001;
 			pb->freq_l = 0x0000;
 			pb->cb = cb;
