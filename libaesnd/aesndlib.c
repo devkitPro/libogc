@@ -694,3 +694,13 @@ AESNDVoiceCallback AESND_RegisterVoiceCallback(AESNDPB *pb,AESNDVoiceCallback cb
 
 	return rcb;
 }
+
+void AESND_SetVoiceDelay(AESNDPB *pb,u32 delay)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	pb->delay = (delay*48);
+	_CPU_ISR_Restore(level);
+}
+
