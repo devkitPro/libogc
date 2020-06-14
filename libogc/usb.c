@@ -64,8 +64,10 @@ distribution.
 #define USBV0_IOCTL_DEVREMOVALHOOK              26
 #define USBV0_IOCTL_DEVINSERTHOOK               27
 #define USBV0_IOCTL_DEVICECLASSCHANGE           28
+#define USBV0_IOCTL_RESETDEVICE					29
 
 #define USBV4_IOCTL_GETVERSION                   6 // returns 0x40001
+#define USBV4_IOCTL_CANCELINTERRUPT				 8
 
 #define USBV5_IOCTL_GETVERSION                   0 // should return 0x50001
 #define USBV5_IOCTL_GETDEVICECHANGE              1
@@ -1430,7 +1432,7 @@ s32 USB_SetAlternativeInterface(s32 fd, u8 interface, u8 alternateSetting)
 	return __usb_control_message(fd, (USB_CTRLTYPE_DIR_HOST2DEVICE | USB_CTRLTYPE_TYPE_STANDARD | USB_CTRLTYPE_REC_INTERFACE), USB_REQ_SETINTERFACE, alternateSetting, interface, 0, NULL, NULL, NULL);
 }
 
-static s32 USBV5_CancelEndpoint(s32 device_id, u8 endpoint)
+static s32 USBV5_CancelEndpoint(s32 device_id)
 {
 	s32 ret;
 	s32 fd;
@@ -1446,17 +1448,34 @@ static s32 USBV5_CancelEndpoint(s32 device_id, u8 endpoint)
 	if (buf==NULL) return IPC_ENOMEM;
 
 	buf[0] = device_id;
-	buf[2] = endpoint;
+	
+	//Cancel all control messages
+	buf[2] = 0x00;
 	ret = IOS_Ioctl(fd, USBV5_IOCTL_CANCELENDPOINT, buf, 32, NULL, 0);
+	if(ret < 0)
+		goto ret;
+	
+	//Cancel all incoming interrupts
+	buf[2] = 0x01 << 24;
+	ret = IOS_Ioctl(fd, USBV5_IOCTL_CANCELENDPOINT, buf, 32, NULL, 0);
+	if(ret < 0)
+		goto ret;
+	
+	//Cancel all outgoing interrupts
+	buf[2] = 0x02 << 24;
+	ret = IOS_Ioctl(fd, USBV5_IOCTL_CANCELENDPOINT, buf, 32, NULL, 0);
+	if(ret < 0)
+		goto ret;
+	
+ret:
 	iosFree(hId, buf);
-
 	return ret;
 }
 
 s32 USB_ClearHalt(s32 fd, u8 endpoint)
 {
 	if (fd>=0x20 || fd<-1)
-		return USBV5_CancelEndpoint(fd, endpoint);
+		return USBV5_CancelEndpoint(fd);	
 	return __usb_control_message(fd, (USB_CTRLTYPE_DIR_HOST2DEVICE | USB_CTRLTYPE_TYPE_STANDARD | USB_CTRLTYPE_REC_ENDPOINT), USB_REQ_CLEARFEATURE, USB_FEATURE_ENDPOINT_HALT, endpoint, 0, NULL, NULL, NULL);
 }
 
