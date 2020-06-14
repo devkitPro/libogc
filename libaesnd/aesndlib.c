@@ -12,10 +12,11 @@
 #define PB_STRUCT_SIZE			64
 #define DSP_DRAMSIZE			8192
 
-#define VOICE_PAUSE				0x00000004
-#define VOICE_LOOP				0x00000008
-#define VOICE_ONCE				0x00000010
-#define VOICE_STREAM			0x00000020
+
+#define VOICE_PAUSE    0x00000008
+#define VOICE_LOOP     0x00000010
+#define VOICE_ONCE     0x00000020
+#define VOICE_STREAM   0x00000040
 
 #define VOICE_FINISHED			0x00100000
 #define VOICE_STOPPED			0x00200000
@@ -127,16 +128,21 @@ static __inline__ void __aesndcopycommand(AESNDPB *dst,AESNDPB *src)
 	dst->cb = src->cb;
 }
 
+
 static __inline__ void __aesndsetvoiceformat(AESNDPB *pb,u32 format)
 {
-	pb->flags = (pb->flags&~0x03)|(format&0x03);
-	switch((format&0x03)) {
+	pb->flags = (pb->flags&~0x07)|(format&0x07);
+	switch((format&0x07)) {
 		case VOICE_MONO8:
 		case VOICE_STEREO8:
+		case VOICE_MONO8_UNSIGNED:
+		case VOICE_STEREO8_UNSIGNED:
 			pb->shift = 0;
 			break;
 		case VOICE_MONO16:
 		case VOICE_STEREO16:
+		case VOICE_MONO16_UNSIGNED:
+		case VOICE_STEREO16_UNSIGNED:
 			pb->shift = 1;
 			break;
 	}
