@@ -31,6 +31,7 @@ distribution.
 
 #include <stdlib.h>
 #include <stdio.h>
+#include "gcutil.h"
 #include "asm.h"
 #include "processor.h"
 #include "irq.h"
@@ -51,10 +52,6 @@ distribution.
 #define DSPCR_PIINT         0x0002        // assert DSP PI interrupt
 #define DSPCR_RES           0x0001        // reset DSP
 
-#define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
-#define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
 static u32 __dsp_inited = FALSE;
 static u32 __dsp_rudetask_pend = FALSE;

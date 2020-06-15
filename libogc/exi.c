@@ -36,6 +36,7 @@ distribution.
 #include "processor.h"
 #include "spinlock.h"
 #include "exi.h"
+#include "gcutil.h"
 
 //#define _EXI_DEBUG
 
@@ -52,11 +53,6 @@ distribution.
 #define EXI_TC_IRQ					0x0008
 #define EXI_EXT_IRQ					0x0800
 #define EXI_EXT_BIT					0x1000
-
-#define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
-#define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
 
 struct _lck_dev {

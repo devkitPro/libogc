@@ -30,6 +30,7 @@ distribution.
 
 
 #include <stdlib.h>
+#include "gcutil.h"
 #include "asm.h"
 #include "processor.h"
 #include "irq.h"
@@ -64,12 +65,6 @@ distribution.
 #define AI_AIINTVLD			0x10
 #define AI_SCRESET			0x20
 #define AI_DMAFR			0x40
-
-
-#define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s))) //mask the first w bits of v before lshifting
-#define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))  //rshift v and mask the first w bits afterwards
 
 #if defined(HW_DOL)
 	static vu32* const _aiReg = (u32*)0xCC006C00;

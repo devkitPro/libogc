@@ -28,14 +28,10 @@ distribution.
 -------------------------------------------------------------*/
 
 
-#include <asm.h>
-#include <processor.h>
+#include "gcutil.h"
+#include "asm.h"
+#include "processor.h"
 #include "cache.h"
-
-#define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
-#define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
 extern void __LCEnable(void);
 extern void L2GlobalInvalidate(void);

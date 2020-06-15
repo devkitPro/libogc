@@ -14,11 +14,6 @@
 
 #define PAD_PRODPADS		6
 
-#define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
-#define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
-
 #define PAD_ENABLEDMASK(chan)		(0x80000000>>chan);
 
 typedef struct _keyinput {

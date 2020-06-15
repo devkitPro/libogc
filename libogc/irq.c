@@ -43,11 +43,6 @@ distribution.
 #define CPU_STACK_ALIGNMENT				8
 #define CPU_MINIMUM_STACK_FRAME_SIZE	16
 
-#define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
-#define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
-
 struct irq_handler_s {
 	raw_irq_handler_t pHndl;
 	void *pCtx;

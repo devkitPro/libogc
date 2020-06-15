@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "gcutil.h"
 #include "asm.h"
 #include "processor.h"
 #include "exi.h"
@@ -187,10 +188,6 @@ struct bba_descr {
 	u32 X(X(next_packet_ptr:12, packet_len:12), status:8);
 };
 
-#define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
-#define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
 /* new functions */
 #define bba_select()		EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_2,EXI_SPEED32MHZ)

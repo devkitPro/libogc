@@ -25,11 +25,6 @@
 	#define LARGE_NUMBER	(-1.0e+18f)
 #endif
 
-#define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
-#define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
-
 #define GX_LOAD_BP_REG(x)				\
 	do {								\
 		wgPipe->U8 = 0x61;				\

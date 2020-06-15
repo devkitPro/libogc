@@ -50,11 +50,6 @@ video.c -- VIDEO subsystem
 
 #define VIDEO_MQ					1
 
-#define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
-#define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
-
 #define VI_REGCHANGE(_reg)	\
 	((u64)0x01<<(63-_reg))
 

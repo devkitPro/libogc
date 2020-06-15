@@ -31,6 +31,7 @@ distribution.
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "gcutil.h"
 #include "asm.h"
 #include "processor.h"
 #include "aram.h"
@@ -53,11 +54,6 @@ distribution.
 #define DSPCR_RES           0x0001        // reset DSP
 
 #define AR_ARAMEXPANSION	2
-
-#define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
-#define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
 static vu16* const _dspReg = (u16*)0xCC005000;
 

@@ -52,13 +52,6 @@ distribution.
 #define CARD_SYSBAT					0x6000
 #define CARD_SYSBAT_BACK			0x8000
 
-#define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
-#define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
-#define _ROTL(v,s)			\
-	(((u32)v<<s)|((u32)v>>(0x20-s)))
-
 #define CARD_STATUS_UNLOCKED			0x40
 
 struct card_header {

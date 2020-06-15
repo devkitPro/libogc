@@ -41,11 +41,6 @@
 #define CARDIO_OP_IOERR_ILL					0x0001
 #define CARDIO_OP_IOERR_FATAL				(CARDIO_OP_IOERR_PARAM|CARDIO_OP_IOERR_WRITE|CARDIO_OP_IOERR_ADDR|CARDIO_OP_IOERR_CRC|CARDIO_OP_IOERR_ILL)
 
-#define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
-#define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
-
 typedef s32 (*cardiocallback)(s32 drv_no);
 
 u8 g_CID[MAX_DRIVE][16];

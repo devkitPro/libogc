@@ -131,11 +131,6 @@ distribution.
 #define cpu_to_le32(x)					(((x>>24)&0x000000ff) | ((x>>8)&0x0000ff00) | ((x<<8)&0x00ff0000) | ((x<<24)&0xff000000))
 #define dvd_may_retry(s)				(DVD_STATUS(s) == DVD_STATUS_READY || DVD_STATUS(s) == DVD_STATUS_DISK_ID_NOT_READ)
 
-#define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
-#define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
-
 typedef void (*dvdcallbacklow)(s32);
 typedef void (*dvdstatecb)(dvdcmdblk *);
 

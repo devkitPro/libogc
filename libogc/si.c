@@ -13,11 +13,6 @@
 
 //#define _SI_DEBUG
 
-#define _SHIFTL(v, s, w)	\
-    ((u32) (((u32)(v) & ((0x01 << (w)) - 1)) << (s)))
-#define _SHIFTR(v, s, w)	\
-    ((u32)(((u32)(v) >> (s)) & ((0x01 << (w)) - 1)))
-
 #define SISR_ERRORMASK(chn)			(0x0f000000>>((chn)<<3))
 #define SIPOLL_ENABLE(chn)			(0x80000000>>((chn)+24))
 
