@@ -12,7 +12,9 @@
 #define USB_FAILED						1
 
 #define USB_CLASS_HID					0x03
+#define USB_SUBCLASS_NONE				0x00
 #define USB_SUBCLASS_BOOT				0x01
+#define USB_PROTOCOL_NONE				0x00
 #define USB_PROTOCOL_KEYBOARD			0x01
 #define USB_PROTOCOL_MOUSE				0x02
 
@@ -66,6 +68,7 @@
 #define USB_DT_ENDPOINT_SIZE			7
 #define USB_DT_ENDPOINT_AUDIO_SIZE		9	/* Audio extension */
 #define USB_DT_HID_SIZE					9
+#define USB_DT_MINREPORT_SIZE			8
 #define USB_DT_HUB_NONVAR_SIZE			7
 
 /* control message request type bitmask */
@@ -190,6 +193,8 @@ void USB_FreeDescriptors(usb_devdesc *udd);
 
 s32 USB_GetGenericDescriptor(s32 fd,u8 type,u8 index,u8 interface,void *data,u32 size);
 s32 USB_GetHIDDescriptor(s32 fd,u8 interface,usb_hiddesc *uhd,u32 size);
+s32 USB_GetReportDescriptorSize(s32 fd, u8 interface);
+s32 USB_GetReportDescriptor(s32 fd, u8 interface, void* data, u16 size);
 
 s32 USB_GetDeviceDescription(s32 fd,usb_devdesc *devdesc);
 s32 USB_DeviceRemovalNotifyAsync(s32 fd,usbcallback cb,void *userdata);

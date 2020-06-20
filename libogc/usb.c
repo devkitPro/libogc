@@ -1085,6 +1085,41 @@ s32 USB_GetHIDDescriptor(s32 fd,u8 interface,usb_hiddesc *uhd,u32 size)
 	return retval;
 }
 
+s32 USB_GetReportDescriptorSize(s32 fd, u8 interface)
+{	
+	//Retrieve complete HID descriptor
+	//in testing it was always 9 bytes, but in the HID specifications it says it can be more (if the device has more than 1 descriptor).
+	//currently we only support 1 thou
+	usb_hiddesc hiddesc;
+	s32 retval = USB_GetHIDDescriptor(fd, interface, &hiddesc, USB_DT_HID_SIZE);
+	
+	if(retval < 0)
+		return retval;
+	
+	if(hiddesc.bLength > USB_DT_HID_SIZE)
+		return -1;
+	
+	retval = -2;
+	for(int i = 0; i < hiddesc.bNumDescriptors; i++)
+	{
+		if(hiddesc.descr[i].bDescriptorType == USB_DT_REPORT)
+		{
+			retval = hiddesc.descr[i].wDescriptorLength;
+			break;
+		}
+	}
+	
+	return retval;
+}
+
+s32 USB_GetReportDescriptor(s32 fd, u8 interface, void* data, u16 size)
+{
+	if (data == NULL || size < USB_DT_MINREPORT_SIZE)
+		return IPC_EINVAL;
+
+	return USB_GetGenericDescriptor(fd, USB_DT_REPORT, 0, interface, data, size);
+}
+
 void USB_FreeDescriptors(usb_devdesc *udd)
 {
 	int iConf, iInterface;
