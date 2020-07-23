@@ -55,7 +55,8 @@ distribution.
 #define  DVD_STATE_COVER_OPEN			5 
 #define  DVD_STATE_WRONG_DISK			6 
 #define  DVD_STATE_MOTOR_STOPPED		7 
-#define  DVD_STATE_IGNORED				8 
+#define  DVD_STATE_PAUSING				8
+#define  DVD_STATE_IGNORED				9
 #define  DVD_STATE_CANCELED				10 
 #define  DVD_STATE_RETRY				11 
 
@@ -338,11 +339,15 @@ s32 DVD_SetGCMOffset(dvdcmdblk *block,s64 offset);
  */
 s32 DVD_SetGCMOffsetAsync(dvdcmdblk *block,s64 offset,dvdcbcallback cb);
 
+s32 DVD_GcodeRead(dvdcmdblk *block,void *buf,u32 len,u32 offset);
+s32 DVD_GcodeReadAsync(dvdcmdblk *block,void *buf,u32 len,u32 offset,dvdcbcallback cb);
 s32 DVD_GetCmdBlockStatus(dvdcmdblk *block);
 s32 DVD_SpinUpDrive(dvdcmdblk *block);
 s32 DVD_SpinUpDriveAsync(dvdcmdblk *block,dvdcbcallback cb);
 s32 DVD_Inquiry(dvdcmdblk *block,dvddrvinfo *info);
 s32 DVD_InquiryAsync(dvdcmdblk *block,dvddrvinfo *info,dvdcbcallback cb);
+s32 DVD_StopMotor(dvdcmdblk *block);
+s32 DVD_StopMotorAsync(dvdcmdblk *block,dvdcbcallback cb);
 s32 DVD_ReadPrio(dvdcmdblk *block,void *buf,u32 len,s64 offset,s32 prio);
 s32 DVD_ReadAbsAsyncPrio(dvdcmdblk *block,void *buf,u32 len,s64 offset,dvdcbcallback cb,s32 prio);
 s32 DVD_ReadAbsAsyncForBS(dvdcmdblk *block,void *buf,u32 len,s64 offset,dvdcbcallback cb);
@@ -361,6 +366,7 @@ dvddrvinfo* DVD_GetDriveInfo(void);
 
 #define DEVICE_TYPE_GAMECUBE_DVD		(('G'<<24)|('D'<<16)|('V'<<8)|'D')
 extern const DISC_INTERFACE __io_gcdvd;
+extern const DISC_INTERFACE __io_gcode;
 
 #ifdef __cplusplus
    }
