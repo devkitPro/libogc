@@ -27,7 +27,7 @@ extern "C" {
 
 #ifdef GEKKO
 
-#define __set_gqr(_reg,_val)	asm volatile("mtspr %0,%1" : : "i"(_reg), "b"(_val))
+#define __set_gqr(_reg,_val)	__asm__ __volatile__ ("mtspr %0,%1" : : "i"(_reg), "b"(_val))
 
 // does a default init
 static inline void CAST_Init(void)
