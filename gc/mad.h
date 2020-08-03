@@ -385,10 +385,10 @@ mad_fixed_t mad_f_mul_inline(mad_fixed_t x, mad_fixed_t y)
  */
 #  define MAD_F_MLX(hi, lo, x, y)  \
     do {  \
-      asm ("mullw %0,%1,%2"  \
+      __asm__ ("mullw %0,%1,%2"  \
 	   : "=r" (lo)  \
 	   : "%r" (x), "r" (y));  \
-      asm ("mulhw %0,%1,%2"  \
+      __asm__ ("mulhw %0,%1,%2"  \
 	   : "=r" (hi)  \
 	   : "%r" (x), "r" (y));  \
     }  \
@@ -402,7 +402,7 @@ mad_fixed_t mad_f_mul_inline(mad_fixed_t x, mad_fixed_t y)
     ({ mad_fixed64hi_t __hi;  \
        mad_fixed64lo_t __lo;  \
        MAD_F_MLX(__hi, __lo, (x), (y));  \
-       asm ("addc %0,%2,%3\n\t"  \
+       __asm__ ("addc %0,%2,%3\n\t"  \
 	    "adde %1,%4,%5"  \
 	    : "=r" (lo), "=r" (hi)  \
 	    : "%r" (lo), "r" (__lo),  \
@@ -417,16 +417,16 @@ mad_fixed_t mad_f_mul_inline(mad_fixed_t x, mad_fixed_t y)
  */
 #   define mad_f_scale64(hi, lo)  \
     ({ mad_fixed_t __result, __round;  \
-       asm ("rotrwi %0,%1,%2"  \
+       __asm__ ("rotrwi %0,%1,%2"  \
 	    : "=r" (__result)  \
 	    : "r" (lo), "i" (MAD_F_SCALEBITS));  \
-       asm ("extrwi %0,%1,1,0"  \
+       __asm__ ("extrwi %0,%1,1,0"  \
 	    : "=r" (__round)  \
 	    : "r" (__result));  \
-       asm ("insrwi %0,%1,%2,0"  \
+       __asm__ ("insrwi %0,%1,%2,0"  \
 	    : "+r" (__result)  \
 	    : "r" (hi), "i" (MAD_F_SCALEBITS));  \
-       asm ("add %0,%1,%2"  \
+       __asm__ ("add %0,%1,%2"  \
 	    : "=r" (__result)  \
 	    : "%r" (__result), "r" (__round));  \
        __result;  \
@@ -434,10 +434,10 @@ mad_fixed_t mad_f_mul_inline(mad_fixed_t x, mad_fixed_t y)
 #  else
 #   define mad_f_scale64(hi, lo)  \
     ({ mad_fixed_t __result;  \
-       asm ("rotrwi %0,%1,%2"  \
+       __asm__ ("rotrwi %0,%1,%2"  \
 	    : "=r" (__result)  \
 	    : "r" (lo), "i" (MAD_F_SCALEBITS));  \
-       asm ("insrwi %0,%1,%2,0"  \
+       __asm__ ("insrwi %0,%1,%2,0"  \
 	    : "+r" (__result)  \
 	    : "r" (hi), "i" (MAD_F_SCALEBITS));  \
        __result;  \

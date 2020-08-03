@@ -10,42 +10,42 @@
 #define STACK_ALIGN(type, name, cnt, alignment)		u8 _al__##name[((sizeof(type)*(cnt)) + (alignment) + (((sizeof(type)*(cnt))%(alignment)) > 0 ? ((alignment) - ((sizeof(type)*(cnt))%(alignment))) : 0))]; \
 													type *name = (type*)(((u32)(_al__##name)) + ((alignment) - (((u32)(_al__##name))&((alignment)-1))))
 
-#define _sync() asm volatile("sync")
-#define _nop() asm volatile("nop")
-#define ppcsync() asm volatile("sc")
-#define ppchalt() ({					\
-	asm volatile("sync");				\
-	while(1) {							\
-		asm volatile("nop");			\
-		asm volatile("li 3,0");			\
-		asm volatile("nop");			\
-	}									\
+#define _sync() __asm__ __volatile__ ("sync")
+#define _nop() __asm__ __volatile__ ("nop")
+#define ppcsync() __asm__ __volatile__ ("sc")
+#define ppchalt() ({						\
+	__asm__ __volatile__ ("sync");			\
+	while(1) {								\
+		__asm__ __volatile__ ("nop");		\
+		__asm__ __volatile__ ("li 3,0");	\
+		__asm__ __volatile__ ("nop");		\
+	}										\
 })
 
 #define mfpvr() ({register u32 _rval; \
-		asm volatile("mfpvr %0" : "=r"(_rval)); _rval;})
+		__asm__ __volatile__ ("mfpvr %0" : "=r"(_rval)); _rval;})
 
 #define mfdcr(_rn) ({register u32 _rval; \
-		asm volatile("mfdcr %0," __stringify(_rn) \
+		__asm__ __volatile__ ("mfdcr %0," __stringify(_rn) \
              : "=r" (_rval)); _rval;})
-#define mtdcr(rn, val)  asm volatile("mtdcr " __stringify(rn) ",%0" : : "r" (val))
+#define mtdcr(rn, val)  __asm__ __volatile__ ("mtdcr " __stringify(rn) ",%0" : : "r" (val))
 
 #define mfmsr()   ({register u32 _rval; \
-		asm volatile("mfmsr %0" : "=r" (_rval)); _rval;})
-#define mtmsr(val)  asm volatile("mtmsr %0" : : "r" (val))
+		__asm__ __volatile__ ("mfmsr %0" : "=r" (_rval)); _rval;})
+#define mtmsr(val)  __asm__ __volatile__ ("mtmsr %0" : : "r" (val))
 
 #define mfdec()   ({register u32 _rval; \
-		asm volatile("mfdec %0" : "=r" (_rval)); _rval;})
-#define mtdec(_val)  asm volatile("mtdec %0" : : "r" (_val))
+		__asm__ __volatile__ ("mfdec %0" : "=r" (_rval)); _rval;})
+#define mtdec(_val)  __asm__ __volatile__ ("mtdec %0" : : "r" (_val))
 
 #define mfspr(_rn) \
 ({	register u32 _rval = 0; \
-	asm volatile("mfspr %0," __stringify(_rn) \
+	__asm__ __volatile__ ("mfspr %0," __stringify(_rn) \
 	: "=r" (_rval));\
 	_rval; \
 })
 
-#define mtspr(_rn, _val) asm volatile("mtspr " __stringify(_rn) ",%0" : : "r" (_val))
+#define mtspr(_rn, _val) __asm__ __volatile__ ("mtspr " __stringify(_rn) ",%0" : : "r" (_val))
 
 #define mfwpar()		mfspr(WPAR)
 #define mtwpar(_val)	mtspr(WPAR,_val)
@@ -90,16 +90,16 @@
 	__asm__ volatile ("stwbrx	%0,%1,%2" : : "r"(value), "b%"(index), "r"(base) : "memory")
 
 #define cntlzw(_val) ({register u32 _rval; \
-					  asm volatile("cntlzw %0, %1" : "=r"((_rval)) : "r"((_val))); _rval;})
+					  __asm__ __volatile__ ("cntlzw %0, %1" : "=r"((_rval)) : "r"((_val))); _rval;})
 
 #define _CPU_MSR_GET( _msr_value ) \
   do { \
     _msr_value = 0; \
-    asm volatile ("mfmsr %0" : "=&r" ((_msr_value)) : "0" ((_msr_value))); \
+    __asm__ __volatile__  ("mfmsr %0" : "=&r" ((_msr_value)) : "0" ((_msr_value))); \
   } while (0)
 
 #define _CPU_MSR_SET( _msr_value ) \
-{ asm volatile ("mtmsr %0" : "=&r" ((_msr_value)) : "0" ((_msr_value))); }
+{ __asm__ __volatile__  ("mtmsr %0" : "=&r" ((_msr_value)) : "0" ((_msr_value))); }
 
 #define _CPU_ISR_Enable() \
 	{ register u32 _val = 0; \
@@ -156,13 +156,13 @@
 
 #define _CPU_FPR_Enable() \
 { register u32 _val = 0; \
-	  asm volatile ("mfmsr %0; ori %0,%0,0x2000; mtmsr %0" : \
+	  __asm__ __volatile__  ("mfmsr %0; ori %0,%0,0x2000; mtmsr %0" : \
 					"=&r" (_val) : "0" (_val));\
 }
 
 #define _CPU_FPR_Disable() \
 { register u32 _val = 0; \
-	  asm volatile ("mfmsr %0; rlwinm %0,%0,0,19,17; mtmsr %0" : \
+	  __asm__ __volatile__  ("mfmsr %0; rlwinm %0,%0,0,19,17; mtmsr %0" : \
 					"=&r" (_val) : "0" (_val));\
 }
 
@@ -201,13 +201,13 @@ static inline u64 bswap64(u64 val)
 static inline u32 read32(u32 addr)
 {
 	u32 x;
-	asm volatile("lwz %0,0(%1) ; sync" : "=r"(x) : "b"(0xc0000000 | addr));
+	__asm__ __volatile__ ("lwz %0,0(%1) ; sync" : "=r"(x) : "b"(0xc0000000 | addr));
 	return x;
 }
 
 static inline void write32(u32 addr, u32 x)
 {
-	asm("stw %0,0(%1) ; eieio" : : "r"(x), "b"(0xc0000000 | addr));
+	__asm__ ("stw %0,0(%1) ; eieio" : : "r"(x), "b"(0xc0000000 | addr));
 }
 
 static inline void mask32(u32 addr, u32 clear, u32 set)
@@ -218,30 +218,30 @@ static inline void mask32(u32 addr, u32 clear, u32 set)
 static inline u16 read16(u32 addr)
 {
 	u16 x;
-	asm volatile("lhz %0,0(%1) ; sync" : "=r"(x) : "b"(0xc0000000 | addr));
+	__asm__ __volatile__ ("lhz %0,0(%1) ; sync" : "=r"(x) : "b"(0xc0000000 | addr));
 	return x;
 }
 
 static inline void write16(u32 addr, u16 x)
 {
-	asm("sth %0,0(%1) ; eieio" : : "r"(x), "b"(0xc0000000 | addr));
+	__asm__ ("sth %0,0(%1) ; eieio" : : "r"(x), "b"(0xc0000000 | addr));
 }
 
 static inline u8 read8(u32 addr)
 {
 	u8 x;
-	asm volatile("lbz %0,0(%1) ; sync" : "=r"(x) : "b"(0xc0000000 | addr));
+	__asm__ __volatile__ ("lbz %0,0(%1) ; sync" : "=r"(x) : "b"(0xc0000000 | addr));
 	return x;
 }
 
 static inline void write8(u32 addr, u8 x)
 {
-	asm("stb %0,0(%1) ; eieio" : : "r"(x), "b"(0xc0000000 | addr));
+	__asm__ ("stb %0,0(%1) ; eieio" : : "r"(x), "b"(0xc0000000 | addr));
 }
 
 static inline void writef32(u32 addr, f32 x)
 {
-	asm("stfs %0,0(%1) ; eieio" : : "f"(x), "b"(0xc0000000 | addr));
+	__asm__ ("stfs %0,0(%1) ; eieio" : : "f"(x), "b"(0xc0000000 | addr));
 }
 
 #ifdef __cplusplus
