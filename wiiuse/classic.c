@@ -47,6 +47,7 @@
 #include "classic.h"
 #include "io.h"
 
+static void fix_bad_calibration_values(struct joystick_t* js, short right_stick);
 static void classic_ctrl_pressed_buttons(struct classic_ctrl_t* cc, short now);
 
 /**
@@ -88,16 +89,14 @@ int classic_ctrl_handshake(struct wiimote_t* wm, struct classic_ctrl_t* cc, ubyt
 			*	Sometimes the data returned here is not correct.
 			*	This might happen because the wiimote is lagging
 			*	behind our initialization sequence.
-			*	To fix this just request the handshake again.
+			*	We won't request the handshake again - instead, we'll just use default calibration values.
 			*
 			*	Other times it's just the first 16 bytes are 0xFF,
 			*	but since the next 16 bytes are the same, just use
 			*	those.
 			*/
 			if (data[offset + 16] == 0xFF) {
-				/* get the calibration data again */
-				WIIUSE_DEBUG("Classic controller handshake appears invalid, trying again.");
-				wiiuse_read_data(wm, data, WM_EXP_MEM_CALIBR, EXP_HANDSHAKE_LEN, wiiuse_handshake_expansion);
+				// don't get the calibration data again
 			} else
 				offset += 16;
 		}
@@ -121,6 +120,9 @@ int classic_ctrl_handshake(struct wiimote_t* wm, struct classic_ctrl_t* cc, ubyt
 		cc->rjs.max.y = data[9 + offset] / 8 == 0 ? 32 : data[9 + offset] / 8;
 		cc->rjs.min.y = data[10 + offset] / 8;
 		cc->rjs.center.y = data[11 + offset] / 8 == 0 ? 16 : data[11 + offset] / 8;
+
+		fix_bad_calibration_values(&cc->ljs, 0);
+		fix_bad_calibration_values(&cc->rjs, 1);
 	}
 	/* handshake done */
 	wm->event = WIIUSE_CLASSIC_CTRL_INSERTED;
@@ -200,6 +202,18 @@ void classic_ctrl_event(struct classic_ctrl_t* cc, ubyte* msg) {
 #endif
 }
 
+static void fix_bad_calibration_values(struct joystick_t* js, short right_stick) {
+	if ((js->min.x >= js->center.x) || (js->max.x <= js->center.x)) {
+		js->min.x = 0;
+		js->max.x = right_stick ? 32 : 64;
+		js->center.x = right_stick ? 16 : 32;
+	}
+	if ((js->min.y >= js->center.y) || (js->max.y <= js->center.y)) {
+		js->min.y = 0;
+		js->max.y = right_stick ? 32 : 64;
+		js->center.y = right_stick ? 16 : 32;
+	}
+}
 
 /**
  *	@brief Find what buttons are pressed.
