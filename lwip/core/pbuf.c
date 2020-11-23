@@ -133,6 +133,7 @@ pbuf_init(void)
  * @internal only called from pbuf_alloc()
  */
 static struct pbuf *
+__attribute__ ((noinline))
 pbuf_pool_alloc(void)
 {
   struct pbuf *p = NULL;
