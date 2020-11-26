@@ -136,7 +136,7 @@ u32 ARQM_GetStackPointer(void)
 {
 	u32 level,tmp;
 
-	_CPU_ISR_Disable(level)
+	_CPU_ISR_Disable(level);
 	tmp = __ARQMStackPointer[__ARQMStackLocation];
 	_CPU_ISR_Restore(level);
 
@@ -147,7 +147,7 @@ u32 ARQM_GetFreeSize(void)
 {
 	u32 level,tmp;
 
-	_CPU_ISR_Disable(level)
+	_CPU_ISR_Disable(level);
 	tmp = __ARQMFreeBytes;
 	_CPU_ISR_Restore(level);
 

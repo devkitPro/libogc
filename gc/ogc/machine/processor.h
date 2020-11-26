@@ -102,7 +102,7 @@
 { __asm__ __volatile__  ("mtmsr %0" : "=&r" ((_msr_value)) : "0" ((_msr_value))); }
 
 #define _CPU_ISR_Enable() \
-	{ \
+	do { \
 		register u32 _val = 0; \
 		__asm__ __volatile__ ( \
 			"mfmsr %0\n" \
@@ -111,10 +111,10 @@
 			: "=&r" ((_val)) : "0" ((_val)) \
 			: : "memory" \
 		); \
-	}
+	} while (0)
 
 #define _CPU_ISR_Disable( _isr_cookie ) \
-	{ \
+	do { \
 		register u32 _disable_mask = 0; \
 		_isr_cookie = 0; \
 		__asm__ __volatile__ ( \
@@ -126,10 +126,10 @@
 			: "0" ((_isr_cookie)), "1" ((_disable_mask)) \
 			: "memory" \
 		); \
-	}
+	} while (0)
 
 #define _CPU_ISR_Restore( _isr_cookie )  \
-	{ \
+	do { \
 		register u32 _enable_mask = 0; \
 		__asm__ __volatile__ ( \
 			"cmpwi %0,0\n" \
@@ -142,10 +142,10 @@
 			: "0"((_isr_cookie)),"1" ((_enable_mask)) \
 			: "memory" \
 		); \
-	}
+	} while (0)
 
 #define _CPU_ISR_Flash( _isr_cookie ) \
-	{ \
+	do { \
 		register u32 _flash_mask = 0; \
 		__asm__ __volatile__ ( \
 			"cmpwi %0,0\n" \
@@ -160,7 +160,7 @@
 			: "0" ((_isr_cookie)), "1" ((_flash_mask)) \
 			: "memory" \
 		); \
-	}
+	} while (0)
 
 #define _CPU_FPR_Enable() \
 { register u32 _val = 0; \
