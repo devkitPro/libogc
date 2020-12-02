@@ -2193,7 +2193,7 @@ s32 net_getsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optl
 				case SO_KEEPALIVE:
 				case SO_REUSEADDR:
 				case SO_REUSEPORT:
-					(*(u32*)optval) = sock->conn->pcb.tcp->so_options & optname;
+					(*(u32*)optval) = (sock->conn->pcb.tcp->so_options & optname) ? 1 : 0;
 					break;
 			}
 		}
@@ -2216,7 +2216,7 @@ s32 net_getsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optl
 		{
 			switch(optname) {
 				case TCP_NODELAY:
-					(*(u32*)optval) = sock->conn->pcb.tcp->flags & TF_NODELAY;
+					(*(u32*)optval) = (sock->conn->pcb.tcp->flags & TF_NODELAY) ? 1 : 0;
 					break;
 				case TCP_KEEPALIVE:
 					(*(u32*)optval) = sock->conn->pcb.tcp->keepalive;
