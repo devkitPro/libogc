@@ -64,6 +64,7 @@ static const u16_t memp_sizes[MEMP_MAX] = {
   sizeof(struct netconn),
   sizeof(struct api_msg),
   sizeof(struct net_msg),
+  sizeof(struct pbuf) + PBUF_POOL_BUFSIZE,
   sizeof(struct sys_timeout)
 };
 
@@ -78,6 +79,7 @@ static const u16_t memp_num[MEMP_MAX] = {
   MEMP_NUM_NETCONN,
   MEMP_NUM_API_MSG,
   MEMP_NUM_TCPIP_MSG,
+  PBUF_POOL_SIZE,
   MEMP_NUM_SYS_TIMEOUT
 };
 
@@ -111,6 +113,11 @@ static u8_t memp_memory[(MEMP_NUM_PBUF *
       MEMP_NUM_TCPIP_MSG *
        MEM_ALIGN_SIZE(sizeof(struct net_msg) +
           sizeof(struct memp)) +
+      PBUF_POOL_SIZE *
+       MEM_ALIGN_SIZE(sizeof(struct pbuf) +
+          sizeof(struct memp)) +
+      PBUF_POOL_SIZE *
+       MEM_ALIGN_SIZE(PBUF_POOL_BUFSIZE) +
       MEMP_NUM_SYS_TIMEOUT *
        MEM_ALIGN_SIZE(sizeof(struct sys_timeout) +
           sizeof(struct memp)))];

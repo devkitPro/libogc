@@ -73,15 +73,6 @@
 #include "lwip/sys.h"
 #include "arch/perf.h"
 
-static u8_t pbuf_pool_memory[MEM_ALIGNMENT - 1 + PBUF_POOL_SIZE * MEM_ALIGN_SIZE(PBUF_POOL_BUFSIZE + sizeof(struct pbuf))];
-
-#if !SYS_LIGHTWEIGHT_PROT
-static volatile u8_t pbuf_pool_free_lock, pbuf_pool_alloc_lock;
-static sys_sem pbuf_pool_free_sem;
-#endif
-
-static struct pbuf *pbuf_pool = NULL;
-
 /**
  * Initializes the pbuf module.
  *
@@ -97,85 +88,6 @@ static struct pbuf *pbuf_pool = NULL;
 void
 pbuf_init(void)
 {
-  struct pbuf *p, *q = NULL;
-  u16_t i;
-
-  pbuf_pool = (struct pbuf *)MEM_ALIGN(pbuf_pool_memory);
-
-#if PBUF_STATS
-  lwip_stats.pbuf.avail = PBUF_POOL_SIZE;
-#endif /* PBUF_STATS */
-
-  /* Set up ->next pointers to link the pbufs of the pool together */
-  p = pbuf_pool;
-
-  for(i = 0; i < PBUF_POOL_SIZE; ++i) {
-    p->next = (struct pbuf *)((u8_t *)p + PBUF_POOL_BUFSIZE + sizeof(struct pbuf));
-    p->len = p->tot_len = PBUF_POOL_BUFSIZE;
-    p->payload = MEM_ALIGN((void *)((u8_t *)p + sizeof(struct pbuf)));
-    p->flags = PBUF_FLAG_POOL;
-    q = p;
-    p = p->next;
-  }
-
-  /* The ->next pointer of last pbuf is NULL to indicate that there
-     are no more pbufs in the pool */
-  q->next = NULL;
-
-#if !SYS_LIGHTWEIGHT_PROT
-  pbuf_pool_alloc_lock = 0;
-  pbuf_pool_free_lock = 0;
-  LWP_SemInit(&pbuf_pool_free_sem,1,1);
-#endif
-}
-
-/**
- * @internal only called from pbuf_alloc()
- */
-static struct pbuf *
-pbuf_pool_alloc(void)
-{
-  struct pbuf *p = NULL;
-
-  SYS_ARCH_DECL_PROTECT(old_level);
-  SYS_ARCH_PROTECT(old_level);
-
-#if !SYS_LIGHTWEIGHT_PROT
-  /* Next, check the actual pbuf pool, but if the pool is locked, we
-     pretend to be out of buffers and return NULL. */
-  if (pbuf_pool_free_lock) {
-#if PBUF_STATS
-    ++lwip_stats.pbuf.alloc_locked;
-#endif /* PBUF_STATS */
-    return NULL;
-  }
-  pbuf_pool_alloc_lock = 1;
-  if (!pbuf_pool_free_lock) {
-#endif /* SYS_LIGHTWEIGHT_PROT */
-    p = pbuf_pool;
-    if (p) {
-      pbuf_pool = p->next;
-    }
-#if !SYS_LIGHTWEIGHT_PROT
-#if PBUF_STATS
-  } else {
-    ++lwip_stats.pbuf.alloc_locked;
-#endif /* PBUF_STATS */
-  }
-  pbuf_pool_alloc_lock = 0;
-#endif /* SYS_LIGHTWEIGHT_PROT */
-
-#if PBUF_STATS
-  if (p != NULL) {
-    ++lwip_stats.pbuf.used;
-    if (lwip_stats.pbuf.used > lwip_stats.pbuf.max) {
-      lwip_stats.pbuf.max = lwip_stats.pbuf.used;
-    }
-  }
-#endif /* PBUF_STATS */
-
-  SYS_ARCH_UNPROTECT(old_level);
-  return p;
 }
 
 
@@ -241,7 +153,7 @@ pbuf_alloc(pbuf_layer l, u16_t length, pbuf_flag flag)
   switch (flag) {
   case PBUF_POOL:
     /* allocate head of pbuf chain into p */
-    p = pbuf_pool_alloc();
+    p = memp_malloc(MEMP_PBUF_POOL);
     LWIP_DEBUGF(PBUF_DEBUG | DBG_TRACE | 3, ("pbuf_alloc: allocated pbuf %p\n", (void *)p));
     if (p == NULL) {
 #if PBUF_STATS
@@ -249,6 +161,7 @@ pbuf_alloc(pbuf_layer l, u16_t length, pbuf_flag flag)
 #endif /* PBUF_STATS */
       return NULL;
     }
+    p->flags = PBUF_FLAG_POOL;
     p->next = NULL;
 
     /* make the payload pointer point 'offset' bytes into pbuf data memory */
@@ -270,7 +183,7 @@ pbuf_alloc(pbuf_layer l, u16_t length, pbuf_flag flag)
     rem_len = length - p->len;
     /* any remaining pbufs to be allocated? */
     while (rem_len > 0) {
-      q = pbuf_pool_alloc();
+      q = memp_malloc(MEMP_PBUF_POOL);
       if (q == NULL) {
        LWIP_DEBUGF(PBUF_DEBUG | 2, ("pbuf_alloc: Out of pbufs in pool.\n"));
 #if PBUF_STATS
@@ -281,6 +194,7 @@ pbuf_alloc(pbuf_layer l, u16_t length, pbuf_flag flag)
         /* bail out unsuccesfully */
         return NULL;
       }
+      q->flags = PBUF_FLAG_POOL;
       q->next = NULL;
       /* make previous pbuf point to this pbuf */
       r->next = q;
@@ -342,33 +256,6 @@ pbuf_alloc(pbuf_layer l, u16_t length, pbuf_flag flag)
   return p;
 }
 
-
-#if PBUF_STATS
-#define DEC_PBUF_STATS do { --lwip_stats.pbuf.used; } while (0)
-#else /* PBUF_STATS */
-#define DEC_PBUF_STATS
-#endif /* PBUF_STATS */
-
-#define PBUF_POOL_FAST_FREE(p)  do {                                    \
-                                  p->next = pbuf_pool;                  \
-                                  pbuf_pool = p;                        \
-                                  DEC_PBUF_STATS;                       \
-                                } while (0)
-
-#if SYS_LIGHTWEIGHT_PROT
-#define PBUF_POOL_FREE(p)  do {                                         \
-                                SYS_ARCH_DECL_PROTECT(old_level);       \
-                                SYS_ARCH_PROTECT(old_level);            \
-                                PBUF_POOL_FAST_FREE(p);                 \
-                                SYS_ARCH_UNPROTECT(old_level);          \
-                               } while (0)
-#else /* SYS_LIGHTWEIGHT_PROT */
-#define PBUF_POOL_FREE(p)  do {                                         \
-                             LWP_SemWait(pbuf_pool_free_sem);          \
-                             PBUF_POOL_FAST_FREE(p);                    \
-                             LWP_SemPost(pbuf_pool_free_sem);        \
-                           } while (0)
-#endif /* SYS_LIGHTWEIGHT_PROT */
 
 /**
  * Shrink a pbuf chain to a desired length.
@@ -581,9 +468,7 @@ pbuf_free(struct pbuf *p)
       LWIP_DEBUGF( PBUF_DEBUG | 2, ("pbuf_free: deallocating %p\n", (void *)p));
       /* is this a pbuf from the pool? */
       if (p->flags == PBUF_FLAG_POOL) {
-        p->len = p->tot_len = PBUF_POOL_BUFSIZE;
-        p->payload = (void *)((u8_t *)p + sizeof(struct pbuf));
-        PBUF_POOL_FREE(p);
+        memp_free(MEMP_PBUF_POOL, p);
       /* is this a ROM or RAM referencing pbuf? */
       } else if (p->flags == PBUF_FLAG_ROM || p->flags == PBUF_FLAG_REF) {
         memp_free(MEMP_PBUF, p);
