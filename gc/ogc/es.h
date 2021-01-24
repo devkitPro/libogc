@@ -126,16 +126,16 @@ typedef struct _tmd_content {
 
 typedef struct _tmd {
 	sig_issuer issuer;              //0x140
-	u8 version;                             //0x180
+	u8 version;                     //0x180
 	u8 ca_crl_version;              //0x181
-	u8 signer_crl_version;  //0x182
-	u8 fill2;                               //0x183
+	u8 signer_crl_version;          //0x182
+	u8 vwii_title;                  //0x183
 	u64 sys_version;                //0x184
 	u64 title_id;                   //0x18c
 	u32 title_type;                 //0x194
 	u16 group_id;                   //0x198
-	u16 zero;                               //0x19a
-	u16 region;                             //0x19c
+	u16 zero;                       //0x19a
+	u16 region;                     //0x19c
 	u8 ratings[16];                 //0x19e
 	u8 reserved[12];                //0x1ae
 	u8 ipc_mask[12];
