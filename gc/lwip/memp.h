@@ -47,7 +47,7 @@ typedef enum {
   MEMP_NETCONN,
   MEMP_API_MSG,
   MEMP_TCPIP_MSG,
-
+  MEMP_PBUF_POOL,
   MEMP_SYS_TIMEOUT,
   
   MEMP_MAX
