@@ -64,9 +64,18 @@ distribution.
 #endif
 #define KERNEL_HEAP					(1*1024*1024)
 
+// SRAM bits
+#define SRAM_VIDEO_MODE_BITS		0x03
+#define SRAM_SOUND_MODE_BIT 		0x04
+#define SRAM_OOBE_DONE_BIT			0x08
+#define SRAM_UNKNOWN1_BIT 			0x10
+#define SRAM_UNKNOWN2_BIT 			0x20
+#define SRAM_BOOTIPL_BIT	 		0x40
+#define SRAM_PROGSCAN_BIT 			0x80
+
 // DSPCR bits
 #define DSPCR_DSPRESET			    0x0800        // Reset DSP
-#define DSPCR_DSPDMA				    0x0200        // ARAM dma in progress, if set
+#define DSPCR_DSPDMA				0x0200        // ARAM dma in progress, if set
 #define DSPCR_DSPINTMSK			    0x0100        // * interrupt mask   (RW)
 #define DSPCR_DSPINT			    0x0080        // * interrupt active (RWC)
 #define DSPCR_ARINTMSK			    0x0040
@@ -731,7 +740,7 @@ static u32 __unlocksram(u32 write,u32 loc)
 
 	if(write) {
 		if(!loc) {
-			if((sram->flags&0x03)>0x02) sram->flags = (sram->flags&~0x03);
+			if((sram->flags&SRAM_VIDEO_MODE_BITS) > 0x02) sram->flags &= ~SRAM_VIDEO_MODE_BITS;
 			__buildchecksum((u16*)sramcntrl.srambuf,&sram->checksum,&sram->checksum_inv);
 		}
 		if(loc<sramcntrl.offset) sramcntrl.offset = loc;
@@ -1125,7 +1134,7 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 
 	if(reset==SYS_HOTRESET && force_menu==TRUE) {
 		sram = __SYS_LockSram();
-		sram->flags |= 0x40;
+		sram->flags |= SRAM_BOOTIPL_BIT;
 		__SYS_UnlockSram(TRUE);
 		while(!__SYS_SyncSram());
 	}
@@ -1662,30 +1671,215 @@ void SYS_DumpPMC(void)
 	printf("<%u load/stores / %u miss cycles / %u cycles / %u instructions>\n",mfpmc1(),mfpmc2(),mfpmc3(),mfpmc4());
 }
 
-void SYS_SetWirelessID(u32 chan,u32 id)
+u32 SYS_GetCounterBias(void)
+{
+	u32 bias;
+	syssram *sram;
+
+	sram = __SYS_LockSram();
+	bias = sram->counter_bias;
+	__SYS_UnlockSram(0);
+	return bias;
+}
+
+void SYS_SetCounterBias(u32 bias)
 {
 	u32 write;
-	syssramex *sram;
+	syssram *sram;
 
 	write = 0;
-	sram = __SYS_LockSramEx();
-	if(sram->wirelessPad_id[chan]!=(u16)id) {
-		sram->wirelessPad_id[chan] = (u16)id;
+	sram = __SYS_LockSram();
+	if(sram->counter_bias!=bias) {
+		sram->counter_bias = bias;
+		write = 1;
+	}
+	__SYS_UnlockSram(write);
+}
+
+s8 SYS_GetDisplayOffsetH(void)
+{
+	s8 offset;
+	syssram *sram;
+
+	sram = __SYS_LockSram();
+	offset = sram->display_offsetH;
+	__SYS_UnlockSram(0);
+	return offset;
+}
+
+void SYS_SetDisplayOffsetH(s8 offset)
+{
+	u32 write;
+	syssram *sram;
+
+	write = 0;
+	sram = __SYS_LockSram();
+	if(sram->display_offsetH!=offset) {
+		sram->display_offsetH = offset;
+		write = 1;
+	}
+	__SYS_UnlockSram(write);
+}
+
+u8 SYS_GetEuRGB60(void)
+{
+	u8 enable;
+	syssram *sram;
+
+	sram = __SYS_LockSram();
+	enable = _SHIFTR(sram->ntd,6,1);
+	__SYS_UnlockSram(0);
+	return enable;
+}
+
+void SYS_SetEuRGB60(u8 enable)
+{
+	u32 write;
+	syssram *sram;
+
+	write = 0;
+	sram = __SYS_LockSram();
+	if(_SHIFTR(sram->ntd,6,1)!=enable) {
+		sram->ntd = (sram->ntd&~0x40)|(_SHIFTL(enable,6,1));
+		write = 1;
+	}
+	__SYS_UnlockSram(write);
+}
+
+u8 SYS_GetLanguage(void)
+{
+	u8 lang;
+	syssram *sram;
+
+	sram = __SYS_LockSram();
+	lang = sram->lang;
+	__SYS_UnlockSram(0);
+	return lang;
+}
+
+void SYS_SetLanguage(u8 lang)
+{
+	u32 write;
+	syssram *sram;
+
+	write = 0;
+	sram = __SYS_LockSram();
+	if(sram->lang!=lang) {
+		sram->lang = lang;
+		write = 1;
+	}
+	__SYS_UnlockSram(write);
+}
+
+u8 SYS_GetProgressiveScan(void)
+{
+	u8 enable;
+	syssram *sram;
+
+	sram = __SYS_LockSram();
+	enable = ( sram->flags & SRAM_PROGSCAN_BIT );
+	__SYS_UnlockSram(0);
+	return enable != 0;
+}
+
+void SYS_SetProgressiveScan(u8 enable)
+{
+	u32 write;
+	syssram *sram;
+
+	write = 0;
+	sram = __SYS_LockSram();
+	if(_SHIFTR(sram->flags,7,1)!=enable) {
+		sram->flags = ( sram->flags & ~SRAM_PROGSCAN_BIT ) | ( _SHIFTL(enable,7,1) );
+		write = 1;
+	}
+	__SYS_UnlockSram(write);
+}
+
+u8 SYS_GetSoundMode(void)
+{
+	u8 mode;
+	syssram *sram;
+
+	sram = __SYS_LockSram();
+	mode = ( sram->flags & SRAM_SOUND_MODE_BIT );
+	__SYS_UnlockSram(0);
+	return mode != 0;
+}
+
+void SYS_SetSoundMode(u8 mode)
+{
+	u32 write;
+	syssram *sram;
+
+	write = 0;
+	sram = __SYS_LockSram();
+	if(_SHIFTR(sram->flags,2,1)!=mode) {
+		sram->flags = ( sram->flags & ~SRAM_SOUND_MODE_BIT )| ( _SHIFTL(mode,2,1) );
+		write = 1;
+	}
+	__SYS_UnlockSram(write);
+}
+
+u8 SYS_GetVideoMode(void)
+{
+	u8 mode;
+	syssram *sram;
+
+	sram = __SYS_LockSram();
+	mode = ( sram->flags & SRAM_VIDEO_MODE_BITS );
+	__SYS_UnlockSram(0);
+	return mode;
+}
+
+void SYS_SetVideoMode(u8 mode)
+{
+	u32 write;
+	syssram *sram;
+
+	write = 0;
+	sram = __SYS_LockSram();
+	if((sram->flags&SRAM_VIDEO_MODE_BITS)!=mode) {
+		sram->flags = ( sram->flags & ~SRAM_VIDEO_MODE_BITS )|(mode & SRAM_VIDEO_MODE_BITS);
+		write = 1;
+	}
+	__SYS_UnlockSram(write);
+}
+
+u16 SYS_GetWirelessID(u32 chan)
+{
+	u16 id;
+	syssramex *sramex;
+
+	sramex = __SYS_LockSramEx();
+	id = sramex->wirelessPad_id[chan];
+	__SYS_UnlockSramEx(0);
+	return id;
+}
+
+void SYS_SetWirelessID(u32 chan,u16 id)
+{
+	u32 write;
+	syssramex *sramex;
+
+	write = 0;
+	sramex = __SYS_LockSramEx();
+	if(sramex->wirelessPad_id[chan]!=id) {
+		sramex->wirelessPad_id[chan] = id;
 		write = 1;
 	}
 	__SYS_UnlockSramEx(write);
 }
 
-u32 SYS_GetWirelessID(u32 chan)
+u16 SYS_GetGBSMode(void)
 {
-	u16 id;
-	syssramex *sram;
+	u16 mode;
+	syssramex *sramex;
 
-	id = 0;
-	sram = __SYS_LockSramEx();
-	id = sram->wirelessPad_id[chan];
+	sramex = __SYS_LockSramEx();
+	mode = sramex->gbs;
 	__SYS_UnlockSramEx(0);
-	return id;
+	return mode;
 }
 
 void SYS_SetGBSMode(u16 mode)
@@ -1701,17 +1895,6 @@ void SYS_SetGBSMode(u16 mode)
 		write = 1;
 	}
 	__SYS_UnlockSramEx(write);
-}
-
-u16 SYS_GetGBSMode(void)
-{
-	u16 mode;
-	syssramex *sramex;
-
-	sramex = __SYS_LockSramEx();
-	mode = sramex->gbs;
-	__SYS_UnlockSramEx(0);
-	return mode;
 }
 
 #if defined(HW_RVL)

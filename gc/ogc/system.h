@@ -95,12 +95,37 @@ distribution.
 #define SYS_PROTECTRDWR					(SYS_PROTECTREAD|SYS_PROTECTWRITE)	/*!< Read and write operations on protected region is permitted */
 
 /*!
+ * \sram language flags
+ */
+
+#define SYS_LANG_ENGLISH				0
+#define SYS_LANG_GERMAN					1
+#define SYS_LANG_FRENCH					2
+#define SYS_LANG_SPANISH				3
+#define SYS_LANG_ITALIAN				4
+#define SYS_LANG_DUTCH					5
+
+/*!
+ * \sram video flags
+ */
+ 
+#define SYS_VIDEO_NTSC					0
+#define SYS_VIDEO_PAL					1
+#define SYS_VIDEO_MPAL					2
+
+/*!
+ * \sram audio flags
+ */
+ 
+#define SYS_SOUND_MONO					0
+#define SYS_SOUND_STEREO				1
+
+/*!
  *@}
  */
 
 #define SYS_FONTSIZE_ANSI				(288 + 131072)
 #define SYS_FONTSIZE_SJIS				(3840 + 1179648)
-
 
 
 /*!
@@ -147,7 +172,7 @@ typedef u32 syswd_t;
  * \param ead1 unknown attribute
  * \param counter_bias bias value for the realtime clock
  * \param display_offsetH pixel offset for the VI
- * \param ntd unknown attribute
+ * \param ntd mostly unknown attribute
  * \param lang language of system
  * \param flags device and operations flag
  */
@@ -305,11 +330,24 @@ s32 SYS_RemoveAlarm(syswd_t thealarm);
 */
 s32 SYS_CancelAlarm(syswd_t thealarm);
 
-
-void SYS_SetWirelessID(u32 chan,u32 id);
-u32 SYS_GetWirelessID(u32 chan);
-void SYS_SetGBSMode(u16 mode);
+u32 SYS_GetCounterBias(void);
+void SYS_SetCounterBias(u32 bias);
+s8 SYS_GetDisplayOffsetH(void);
+void SYS_SetDisplayOffsetH(s8 offset);
+u8 SYS_GetEuRGB60(void);
+void SYS_SetEuRGB60(u8 enable);
+u8 SYS_GetLanguage(void);
+void SYS_SetLanguage(u8 lang);
+u8 SYS_GetProgressiveScan(void);
+void SYS_SetProgressiveScan(u8 enable);
+u8 SYS_GetSoundMode(void);
+void SYS_SetSoundMode(u8 mode);
+u8 SYS_GetVideoMode(void);
+void SYS_SetVideoMode(u8 mode);
+u16 SYS_GetWirelessID(u32 chan);
+void SYS_SetWirelessID(u32 chan,u16 id);
 u16 SYS_GetGBSMode(void);
+void SYS_SetGBSMode(u16 mode);
 u32 SYS_GetFontEncoding(void);
 u32 SYS_InitFont(sys_fontheader *font_data);
 void SYS_GetFontTexture(s32 c,void **image,s32 *xpos,s32 *ypos,s32 *width);
