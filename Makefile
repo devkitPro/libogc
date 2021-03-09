@@ -30,7 +30,6 @@ export BASEDIR		:= $(CURDIR)
 export LWIPDIR		:= $(BASEDIR)/lwip
 export OGCDIR		:= $(BASEDIR)/libogc
 export MODDIR		:= $(BASEDIR)/libmodplay
-export MADDIR		:= $(BASEDIR)/libmad
 export SAMPLEDIR	:= $(BASEDIR)/libsamplerate
 export DBDIR		:= $(BASEDIR)/libdb
 export DIDIR		:= $(BASEDIR)/libdi
@@ -63,7 +62,6 @@ endif
 BBALIB		:= $(LIBDIR)/libbba
 OGCLIB		:= $(LIBDIR)/libogc
 MODLIB		:= $(LIBDIR)/libmodplay
-MADLIB		:= $(LIBDIR)/libmad
 DBLIB		:= $(LIBDIR)/libdb
 DILIB		:= $(LIBDIR)/libdi
 BTELIB		:= $(LIBDIR)/libbte
@@ -109,7 +107,6 @@ VPATH :=	$(LWIPDIR)				\
 			$(LWIPDIR)/netif	\
 			$(OGCDIR)			\
 			$(MODDIR)			\
-			$(MADDIR)			\
 			$(SAMPLEDIR)			\
 			$(DBDIR)			\
 			$(DBDIR)/uIP		\
@@ -151,11 +148,6 @@ OGCOBJ		:=	\
 
 #---------------------------------------------------------------------------------
 MODOBJ		:=	freqtab.o mixer.o modplay.o semitonetab.o gcmodplay.o
-
-#---------------------------------------------------------------------------------
-MADOBJ		:=	mp3player.o bit.o decoder.o fixed.o frame.o huffman.o \
-			layer12.o layer3.o stream.o synth.o timer.o \
-			version.o
 
 #---------------------------------------------------------------------------------
 DBOBJ		:=	uip_ip.o uip_tcp.o uip_pbuf.o uip_netif.o uip_arp.o uip_arch.o \
@@ -260,8 +252,6 @@ $(MP3LIB).a: $(MP3OBJ)
 #---------------------------------------------------------------------------------
 $(MODLIB).a: $(MODOBJ)
 #---------------------------------------------------------------------------------
-$(MADLIB).a: $(MADOBJ)
-#---------------------------------------------------------------------------------
 $(DBLIB).a: $(DBOBJ)
 #---------------------------------------------------------------------------------
 $(DILIB).a: $(DIOBJ)
@@ -322,7 +312,7 @@ dist: wii cube install-headers
 	@tar -cvjf libogc-$(VERSTRING).tar.bz2 include lib libogc_license.txt
 
 
-LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(MADLIB).a $(DBLIB).a \
+LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(DBLIB).a \
 				$(TINYSMBLIB).a $(ASNDLIB).a $(AESNDLIB).a $(ISOLIB).a
 
 ifeq ($(PLATFORM),cube)
