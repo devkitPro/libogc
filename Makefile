@@ -13,7 +13,7 @@ endif
 export PATH	:=	$(DEVKITPPC)/bin:$(PATH)
 
 export LIBOGC_MAJOR	:= 2
-export LIBOGC_MINOR	:= 1
+export LIBOGC_MINOR	:= 2
 export LIBOGC_PATCH	:= 0
 
 include	$(DEVKITPPC)/base_rules
