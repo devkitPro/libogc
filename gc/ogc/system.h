@@ -39,6 +39,7 @@ distribution.
 */
 
 #include <gctypes.h>
+#include <gcbool.h>
 #include <gcutil.h>
 #include <time.h>
 #include <ogc/lwp_queue.h>

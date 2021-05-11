@@ -11,6 +11,7 @@
 #include "asm.h"
 #include "processor.h"
 #include "mutex.h"
+#include <gcbool.h>
 
 
 int __libogc_lock_init(int *lock,int recursive)

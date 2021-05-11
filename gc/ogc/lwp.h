@@ -39,6 +39,7 @@ distribution.
 */ 
 
 #include <gctypes.h>
+#include <gcbool.h>
 
 #define LWP_CLOSED					-1
 #define LWP_SUCCESSFUL				0

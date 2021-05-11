@@ -32,6 +32,7 @@ distribution.
 #include <stdlib.h>
 #include <stdio.h>
 #include "gcutil.h"
+#include <gcbool.h>
 #include "asm.h"
 #include "processor.h"
 #include "irq.h"

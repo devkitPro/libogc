@@ -2,6 +2,8 @@
 #define __LWP_WATCHDOG_H__
 
 #include <gctypes.h>
+#include <gcbool.h>
+
 #include "lwp_queue.h"
 #include <time.h>
 
