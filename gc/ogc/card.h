@@ -598,6 +598,22 @@ s32 CARD_SetCompany(const char *company);
 */
 s32 CARD_SetGamecode(const char *gamecode);
 
+/*! \fn s32 CARD_GetSerialNo(s32 chn, u32 *serial1, u32 *serial2)
+\brief Get the encrypted serial numbers of the memory card
+\param[in] chn CARD slot.
+\param[in] serial1 & serial2 CARD slot.
+\return \ref card_errors "card error codes" or free blocks
+*/
+s32 CARD_GetSerialNo(s32 chn,u32 *serial1,u32 *serial2);
+
+/*! \fn s32 CARD_GetFreeBlocks(s32 chn, u16* freeblocks)
+\brief Get the free blocks in memory card
+\param[in] chn CARD slot.
+\param[in] freeblocks pointer to receive freeblocks value.
+\return \ref card_errors "card error codes" or free blocks
+*/
+s32 CARD_GetFreeBlocks(s32 chn, u16* freeblocks);
+
 #ifdef __cplusplus
    }
 #endif /* __cplusplus */

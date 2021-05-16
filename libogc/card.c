@@ -3260,3 +3260,39 @@ s32 CARD_SetGamecode(const char *gamecode)
 	
 	return CARD_ERROR_READY;
 }
+
+s32 CARD_GetSerialNo(s32 chn,u32 *serial1,u32 *serial2)
+{
+	s32 ret;
+	card_block *card = NULL;
+	struct card_header *header;
+
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
+	if(serial1 == NULL || serial2 == NULL) return CARD_ERROR_FATAL_ERROR;
+	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
+
+	header = card->workarea;
+
+	*serial1 = header->serial[0]^header->serial[2]^header->serial[4]^header->serial[6];
+	*serial2 = header->serial[1]^header->serial[3]^header->serial[5]^header->serial[7];
+
+	return __card_putcntrlblock(card,ret);
+}
+
+s32 CARD_GetFreeBlocks(s32 chn, u16* freeblocks)
+{
+	s32 ret;
+	card_block *card = NULL;
+	struct card_bat *fatblock = NULL;
+	
+	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
+	if(freeblocks == NULL) return CARD_ERROR_FATAL_ERROR;
+	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
+
+	fatblock = __card_getbatblock(card);
+	*freeblocks = fatblock->freeblocks;
+
+	ret = __card_putcntrlblock(card,CARD_ERROR_READY);
+
+	return ret;
+}
