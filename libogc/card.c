@@ -2701,7 +2701,7 @@ s32 CARD_CreateAsync(s32 chn,const char *filename,u32 size,card_file *file,cardc
 	for(i=0;i<CARD_MAXFILES;i++) {
 		if(entry[i].gamecode[0]==0xff) {
 			if(filenum==-1) filenum = i;
-		} else if(memcmp(entry[i].filename,filename,len)==0) {
+		} else if(memcmp(entry[i].filename,filename,CARD_FILENAMELEN)==0) {
 			if((card_gamecode[0]==0xff || card_company[0]==0xff)
 				|| ((card_gamecode[0]!=0xff && memcmp(entry[i].gamecode,card_gamecode,4)==0)
 				&& (card_company[0]!=0xff && memcmp(entry[i].company,card_company,2)==0))) {
@@ -2775,7 +2775,7 @@ s32 CARD_CreateEntryAsync(s32 chn,card_dir *direntry,card_file *file,cardcallbac
 	for(i=0;i<CARD_MAXFILES;i++) {
 		if(entry[i].gamecode[0]==0xff) {
 			if(filenum==-1) filenum = i;
-		} else if(memcmp(entry[i].filename,direntry->filename,len)==0) {
+		} else if(memcmp(entry[i].filename,direntry->filename,CARD_FILENAMELEN)==0) {
 			if((entry->gamecode[0]==0xff || entry->company[0]==0xff)
 				|| ((entry->gamecode[0]!=0xff && memcmp(entry[i].gamecode,entry->gamecode,4)==0)
 				&& (entry->company[0]!=0xff && memcmp(entry[i].company,entry->company,2)==0))) {
