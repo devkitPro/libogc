@@ -213,14 +213,15 @@ static card_block cardmap[2];
 static void __card_mountcallback(s32 chn,s32 result);
 static void __erase_callback(s32 chn,s32 result);
 static s32 __dounlock(s32 chn,u32 *key);
-static s32 __card_readsegment(s32 chn,cardcallback callback);
-static s32 __card_read(s32 chn,u32 address,u32 block_len,void *buffer,cardcallback callback);
 static s32 __card_updatefat(s32 chn,struct card_bat *fatblock,cardcallback callback);
 static s32 __card_updatedir(s32 chn,cardcallback callback);
-static s32 __card_write(s32 chn,u32 address,u32 block_len,void *buffer,cardcallback callback);
-static s32 __card_writepage(s32 chn,cardcallback callback);
-static s32 __card_sectorerase(s32 chn,u32 sector,cardcallback callback);
 static s32 __card_onreset(s32 final);
+s32 ogc_card_write(s32 chn,u32 address,u32 block_len,void *buffer,cardcallback callback);
+s32 ogc_card_writepage(s32 chn,cardcallback callback);
+s32 ogc_card_sectorerase(s32 chn,u32 sector,cardcallback callback);
+s32 ogc_card_sync(s32 chn);
+s32 ogc_card_read(s32 chn,u32 address,u32 block_len,void *buffer,cardcallback callback);
+s32 ogc_card_readsegment(s32 chn,cardcallback callback);
 
 static sys_resetinfo card_resetinfo = {
 	{},
@@ -311,7 +312,7 @@ static __inline__ struct card_bat* __card_getbatblock(card_block *card)
 	return card->curr_fat;
 }
 
-static s32 __card_sync(s32 chn)
+s32 ogc_card_sync(s32 chn)
 {
 	s32 ret;
 	u32 level;
@@ -325,12 +326,12 @@ static s32 __card_sync(s32 chn)
 	return ret;
 }
 
-static void __card_synccallback(s32 chn,s32 result)
+static void ogc_card_synccallback(s32 chn,s32 result)
 {
 	u32 level;
 	card_block *card = &cardmap[chn];
 #ifdef _CARD_DEBUG
-	printf("__card_synccallback(%d,%d,%d)\n",chn,result,card->result);
+	printf("ogc_card_synccallback(%d,%d,%d)\n",chn,result,card->result);
 #endif
 	_CPU_ISR_Disable(level);
 	LWP_ThreadBroadcast(card->wait_sync_queue);
@@ -489,8 +490,8 @@ static s32 __card_setstatusex(s32 chn,s32 fileno,card_direntry *entry)
 {
 	s32 ret;
 
-	if((ret=__card_setstatusexasync(chn,fileno,entry,__card_synccallback))>=0) {
-		ret = __card_sync(chn);
+	if((ret=__card_setstatusexasync(chn,fileno,entry,ogc_card_synccallback))>=0) {
+		ret = ogc_card_sync(chn);
 	}
 	return ret;
 }
@@ -828,7 +829,7 @@ static s32 __card_unlockedhandler(s32 chn,s32 dev)
 	return CARD_ERROR_UNLOCKED;
 }
 
-static s32 __card_readstatus(s32 chn,u8 *pstatus)
+s32 ogc_card_readstatus(s32 chn,u8 *pstatus)
 {
 	u8 val[2];
 	u32 err;
@@ -848,7 +849,7 @@ static s32 __card_readstatus(s32 chn,u8 *pstatus)
 	if(err) ret = CARD_ERROR_NOCARD;
 	else ret = CARD_ERROR_READY;
 #ifdef _CARD_DEBUG
-	printf("__card_readstatus(%d,%08x)\n",chn,*pstatus);
+	printf("ogc_card_readstatus(%d,%08x)\n",chn,*pstatus);
 #endif
 	return ret;
 }
@@ -1102,7 +1103,7 @@ static s32 __card_exihandler(s32 chn,s32 dev)
 	SYS_CancelAlarm(card->timeout_svc);
 	if(card->attached) {
 		if(EXI_Lock(chn,EXI_DEVICE_0,NULL)==1) {
-			if((ret=__card_readstatus(chn,&status))>=0
+			if((ret=ogc_card_readstatus(chn,&status))>=0
 				&& (ret=__card_clearstatus(chn))>=0) {
 				if(status&0x18) ret = CARD_ERROR_IOERROR;
 				else ret = CARD_ERROR_READY;
@@ -1193,7 +1194,7 @@ static void __write_callback(s32 chn,s32 result)
 					ret = CARD_ERROR_BROKEN;
 					goto exit;
 				}
-				if((ret=__card_sectorerase(chn,(file->iblock*card->sector_size),__erase_callback))>=0) return;
+				if((ret=ogc_card_sectorerase(chn,(file->iblock*card->sector_size),__erase_callback))>=0) return;
 			}
 		} else
 			ret = CARD_ERROR_CANCELED;
@@ -1218,7 +1219,7 @@ static void __erase_callback(s32 chn,s32 result)
 	ret = result;
 	if(ret>=0) {
 		file = card->curr_file;
-		if((ret=__card_write(chn,(file->iblock*card->sector_size),card->sector_size,card->cmd_usr_buf,__write_callback))>=0) return;
+		if((ret=ogc_card_write(chn,(file->iblock*card->sector_size),card->sector_size,card->cmd_usr_buf,__write_callback))>=0) return;
 	}
 	
 	cb = card->card_api_cb;
@@ -1261,7 +1262,7 @@ static void __read_callback(s32 chn,s32 result)
 					goto exit;
 				}
 				len = file->len<card->sector_size?file->len:card->sector_size;
-				if(__card_read(chn,(file->iblock*card->sector_size),len,card->cmd_usr_buf,__read_callback)>=0) return;
+				if(ogc_card_read(chn,(file->iblock*card->sector_size),len,card->cmd_usr_buf,__read_callback)>=0) return;
 				
 			}
 		} else
@@ -1302,11 +1303,11 @@ static void __format_callback(s32 chn,s32 result)
 	ret = result;
 	if(ret>=0) {
 		if((++card->format_step)<CARD_SYSAREA) {
-			if((ret=__card_sectorerase(chn,(card->format_step*card->sector_size),__format_callback))>=0) return;
+			if((ret=ogc_card_sectorerase(chn,(card->format_step*card->sector_size),__format_callback))>=0) return;
 			goto exit;
 		}
 		if(card->format_step<10) {
-			if((ret=__card_write(chn,((card->format_step-CARD_SYSAREA)*card->sector_size),8192,card->workarea+((card->format_step-CARD_SYSAREA)<<13),__format_callback))>=0) return;
+			if((ret=ogc_card_write(chn,((card->format_step-CARD_SYSAREA)*card->sector_size),8192,card->workarea+((card->format_step-CARD_SYSAREA)<<13),__format_callback))>=0) return;
 			goto exit;
 		}
 
@@ -1337,7 +1338,7 @@ static void __blockwritecallback(s32 chn,s32 result)
 		card->cmd_sector_addr += 128;
 		card->cmd_usr_buf += 128;
 		if((--card->cmd_blck_cnt)>0) {
-			if((ret=__card_writepage(chn,__blockwritecallback))>=CARD_ERROR_READY) return;
+			if((ret=ogc_card_writepage(chn,__blockwritecallback))>=CARD_ERROR_READY) return;
 		}
 	}
 
@@ -1364,7 +1365,7 @@ static void __blockreadcallback(s32 chn,s32 result)
 		card->cmd_sector_addr += CARD_READSIZE;
 		card->cmd_usr_buf += CARD_READSIZE;
 		if((--card->cmd_blck_cnt)>0) {
-			if((ret=__card_readsegment(chn,__blockreadcallback))>=CARD_ERROR_READY) return;
+			if((ret=ogc_card_readsegment(chn,__blockreadcallback))>=CARD_ERROR_READY) return;
 		}
 	}
 
@@ -1456,12 +1457,12 @@ static s32 __card_start(s32 chn,cardcallback tx_cb,cardcallback exi_cb)
 	return CARD_ERROR_READY;
 }
 
-static s32 __card_writepage(s32 chn,cardcallback callback)
+s32 ogc_card_writepage(s32 chn,cardcallback callback)
 {
 	s32 ret;
 	card_block *card = NULL;
 #ifdef _CARD_DEBUG
-	printf("__card_writepage(%d,%p)\n",chn,callback);
+	printf("ogc_card_writepage(%d,%p)\n",chn,callback);
 #endif
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
 	card = &cardmap[chn];
@@ -1487,13 +1488,13 @@ static s32 __card_writepage(s32 chn,cardcallback callback)
 	return CARD_ERROR_NOCARD;
 }
 
-static s32 __card_readsegment(s32 chn,cardcallback callback)
+s32 ogc_card_readsegment(s32 chn,cardcallback callback)
 {
 	u32 err;
 	s32 ret;
 	card_block *card = NULL;
 #ifdef _CARD_DEBUG
-	printf("__card_readsegment(%d,%p)\n",chn,callback);
+	printf("ogc_card_readsegment(%d,%p)\n",chn,callback);
 #endif
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
 	card = &cardmap[chn];
@@ -1588,12 +1589,12 @@ static void __card_dirwritecallback(s32 chn,s32 result)
 	}
 }
 
-static s32 __card_write(s32 chn,u32 address,u32 block_len,void *buffer,cardcallback callback)
+s32 ogc_card_write(s32 chn,u32 address,u32 block_len,void *buffer,cardcallback callback)
 {
 	s32 ret;
 	card_block *card = NULL;
 #ifdef _CARD_DEBUG
-	printf("__card_write(%d,%08x,%d,%p,%p)\n",chn,address,block_len,buffer,callback);
+	printf("ogc_card_write(%d,%08x,%d,%p,%p)\n",chn,address,block_len,buffer,callback);
 #endif
 	if(chn<EXI_CHANNEL_0 || chn>= EXI_CHANNEL_2) return CARD_ERROR_FATAL_ERROR;
 	card = &cardmap[chn];
@@ -1604,17 +1605,17 @@ static s32 __card_write(s32 chn,u32 address,u32 block_len,void *buffer,cardcallb
 	card->cmd_sector_addr = address;
 	card->cmd_usr_buf = buffer;
 	card->card_xfer_cb = callback;
-	ret = __card_writepage(chn,__blockwritecallback);
+	ret = ogc_card_writepage(chn,__blockwritecallback);
 
 	return ret;
 }
 
-static s32 __card_read(s32 chn,u32 address,u32 block_len,void *buffer,cardcallback callback)
+s32 ogc_card_read(s32 chn,u32 address,u32 block_len,void *buffer,cardcallback callback)
 {
 	s32 ret;
 	card_block *card = NULL;
 #ifdef _CARD_DEBUG
-	printf("__card_read(%d,%08x,%d,%p,%p)\n",chn,address,block_len,buffer,callback);
+	printf("ogc_card_read(%d,%08x,%d,%p,%p)\n",chn,address,block_len,buffer,callback);
 #endif
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
 	card = &cardmap[chn];
@@ -1623,7 +1624,7 @@ static s32 __card_read(s32 chn,u32 address,u32 block_len,void *buffer,cardcallba
 	card->cmd_blck_cnt = block_len>>9;
 	card->cmd_usr_buf = buffer;
 	card->card_xfer_cb = callback;
-	ret = __card_readsegment(chn,__blockreadcallback);
+	ret = ogc_card_readsegment(chn,__blockreadcallback);
 	
 	return ret;
 }
@@ -1709,18 +1710,18 @@ static s32 __card_formatregion(s32 chn,u32 encode,cardcallback callback)
 	DCStoreRange(card->workarea,0xA000);
 	
 	card->format_step = 0;
-	if((ret=__card_sectorerase(chn,(card->sector_size*card->format_step),__format_callback))>=0) return ret;
+	if((ret=ogc_card_sectorerase(chn,(card->sector_size*card->format_step),__format_callback))>=0) return ret;
 
 	__card_putcntrlblock(card,ret);
 	return ret;
 }
 
-static s32 __card_sectorerase(s32 chn,u32 sector,cardcallback callback)
+s32 ogc_card_sectorerase(s32 chn,u32 sector,cardcallback callback)
 {
 	s32 ret;
 	card_block *card = NULL;
 #ifdef _CARD_DEBUG
-	printf("__card_sectorerase(%d,%08x,%p)\n",chn,sector,callback);
+	printf("ogc_card_sectorerase(%d,%08x,%p)\n",chn,sector,callback);
 #endif
 	if(chn<EXI_CHANNEL_0 || chn>= EXI_CHANNEL_2) return CARD_ERROR_FATAL_ERROR;
 	card = &cardmap[chn];
@@ -1759,7 +1760,7 @@ static void __card_faterasecallback(s32 chn,s32 result)
 	ret = result;
 	if(ret>=0) {
 		fatblock = __card_getbatblock(card);
-		if((ret=__card_write(chn,(((u32)fatblock-(u32)card->workarea)>>13)*card->sector_size,8192,fatblock,__card_fatwritecallback))>=0) return;
+		if((ret=ogc_card_write(chn,(((u32)fatblock-(u32)card->workarea)>>13)*card->sector_size,8192,fatblock,__card_fatwritecallback))>=0) return;
 	}
 	if(!card->card_api_cb) __card_putcntrlblock(card,ret);
 
@@ -1782,7 +1783,7 @@ static void __card_direrasecallback(s32 chn,s32 result)
 	ret = result;
 	if(ret>=0) {
 		dirblock = __card_getdirblock(card);
-		if((ret=__card_write(chn,(((u32)dirblock-(u32)card->workarea)>>13)*card->sector_size,8192,dirblock,__card_dirwritecallback))>=0) return;
+		if((ret=ogc_card_write(chn,(((u32)dirblock-(u32)card->workarea)>>13)*card->sector_size,8192,dirblock,__card_dirwritecallback))>=0) return;
 	}
 	if(!card->card_api_cb) __card_putcntrlblock(card,ret);
 
@@ -1852,7 +1853,7 @@ static s32 __card_updatefat(s32 chn,struct card_bat *fatblock,cardcallback callb
 	DCStoreRange(fatblock,8192);
 	card->card_erase_cb = callback;
 
-	return __card_sectorerase(chn,(((u32)fatblock-(u32)card->workarea)>>13)*card->sector_size,__card_faterasecallback);
+	return ogc_card_sectorerase(chn,(((u32)fatblock-(u32)card->workarea)>>13)*card->sector_size,__card_faterasecallback);
 }
 
 static s32 __card_updatedir(s32 chn,cardcallback callback)
@@ -1875,7 +1876,7 @@ static s32 __card_updatedir(s32 chn,cardcallback callback)
 	DCStoreRange(dirblock,0x2000);
 	card->card_erase_cb = callback;
 	
-	return __card_sectorerase(chn,(((u32)dirblock-(u32)card->workarea)>>13)*card->sector_size,__card_direrasecallback);
+	return ogc_card_sectorerase(chn,(((u32)dirblock-(u32)card->workarea)>>13)*card->sector_size,__card_direrasecallback);
 }
 
 static void __card_dounmount(s32 chn,s32 result)
@@ -1934,7 +1935,7 @@ static s32 __card_domount(s32 chn)
 				card->latency = card_latency[idx>>2];
 
 				if((ret=__card_clearstatus(chn))<0) goto exit;
-				if((ret=__card_readstatus(chn,&status))<0) goto exit;
+				if((ret=ogc_card_readstatus(chn,&status))<0) goto exit;
 				
 				if(EXI_Probe(chn)==0) {
 					ret = CARD_ERROR_NOCARD;
@@ -1989,7 +1990,7 @@ static s32 __card_domount(s32 chn)
 		DCInvalidateRange(card->workarea,0xA000);
 	}
 
-	if((ret=__card_read(chn,(card->sector_size*(card->mount_step-2)),card->sector_size,card->workarea+((card->mount_step-2)<<13),__card_mountcallback))<0) goto exit;
+	if((ret=ogc_card_read(chn,(card->sector_size*(card->mount_step-2)),card->sector_size,card->workarea+((card->mount_step-2)<<13),__card_mountcallback))<0) goto exit;
 	return ret;	
 	
 exit:
@@ -2136,14 +2137,14 @@ static u32 bitrev(u32 val)
 	return ret;
 }
 
-static s32 __card_readarrayunlock(s32 chn,u32 address,void *buffer,u32 len,u32 flag)
+s32 ogc_card_readarrayunlock(s32 chn,u32 address,void *buffer,u32 len,u32 flag)
 {
 	s32 ret;
 	u32 err;
 	u8 regbuf[5];
 	card_block *card = &cardmap[chn];
 #ifdef _CARD_DEBUG
-	printf("__card_readarrayunlock(%d,%d,%p,%d,%d)\n",chn,address,buffer,len,flag);
+	printf("ogc_card_readarrayunlock(%d,%d,%p,%d,%d)\n",chn,address,buffer,len,flag);
 #endif
 	if(EXI_Select(chn,EXI_DEVICE_0,EXI_SPEED16MHZ)==0) return CARD_ERROR_NOCARD;
 	
@@ -2220,7 +2221,7 @@ static void __dsp_donecallback(dsptask_t *task)
 
 	val = (key^card->cipher)&~0xffff;
 	len = __card_dummylen();
-	if(__card_readarrayunlock(chn,val,tmp_buffer,len,1)<0) {
+	if(ogc_card_readarrayunlock(chn,val,tmp_buffer,len,1)<0) {
 		EXI_Unlock(chn);
 		__card_mountcallback(chn,CARD_ERROR_NOCARD);
 		return;
@@ -2241,13 +2242,13 @@ static void __dsp_donecallback(dsptask_t *task)
 
 	val = ((key<<16)^card->cipher)&~0xffff;
 	len = __card_dummylen();
-	if(__card_readarrayunlock(chn,val,tmp_buffer,len,1)<0) {
+	if(ogc_card_readarrayunlock(chn,val,tmp_buffer,len,1)<0) {
 		EXI_Unlock(chn);
 		__card_mountcallback(chn,CARD_ERROR_NOCARD);
 		return;
 	}
 
-	ret = __card_readstatus(chn,&status);
+	ret = ogc_card_readstatus(chn,&status);
 	if(EXI_Probe(chn)==0) {
 		EXI_Unlock(chn);
 		__card_mountcallback(chn,CARD_ERROR_NOCARD);
@@ -2274,7 +2275,7 @@ static s32 __dounlock(s32 chn,u32 *key)
 	array_addr = __card_initval();
 	len = __card_dummylen();
 	
-	if(__card_readarrayunlock(chn,array_addr,tmp_buffer,len,0)<0) return CARD_ERROR_NOCARD;
+	if(ogc_card_readarrayunlock(chn,array_addr,tmp_buffer,len,0)<0) return CARD_ERROR_NOCARD;
 	
 
 	val = exnor_1st(array_addr,(len<<3)+1);
@@ -2293,7 +2294,7 @@ static s32 __dounlock(s32 chn,u32 *key)
 
 	array_addr = 0;
 	len = __card_dummylen();
-	if(__card_readarrayunlock(chn,array_addr,tmp_buffer,len+20,1)<0) return CARD_ERROR_NOCARD;
+	if(ogc_card_readarrayunlock(chn,array_addr,tmp_buffer,len+20,1)<0) return CARD_ERROR_NOCARD;
 
 	a = ((u32*)tmp_buffer)[0];
 	b = ((u32*)tmp_buffer)[1];
@@ -2570,8 +2571,8 @@ s32 CARD_Mount(s32 chn,void *workarea,cardcallback detach_cb)
 #ifdef _CARD_DEBUG
 	printf("CARD_Mount(%d,%p,%p)\n",chn,workarea,detach_cb);
 #endif
-	if((ret=CARD_MountAsync(chn,workarea,detach_cb,__card_synccallback))>=0) {
-		ret = __card_sync(chn);
+	if((ret=CARD_MountAsync(chn,workarea,detach_cb,ogc_card_synccallback))>=0) {
+		ret = ogc_card_sync(chn);
 	}
 	return ret;
 }
@@ -2606,7 +2607,7 @@ s32 CARD_ReadAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback 
 
 	if(len>=(card->sector_size-(file->offset&(card->sector_size-1)))) len = (card->sector_size-(file->offset&(card->sector_size-1)));
 	
-	if((ret=__card_read(file->chn,(file->iblock*card->sector_size),len,buffer,__read_callback))<0) {
+	if((ret=ogc_card_read(file->chn,(file->iblock*card->sector_size),len,buffer,__read_callback))<0) {
 		__card_putcntrlblock(card,ret);
 		return ret;
 	}
@@ -2617,8 +2618,8 @@ s32 CARD_Read(card_file *file,void *buffer,u32 len,u32 offset)
 {
 	s32 ret;
 
-	if((ret=CARD_ReadAsync(file,buffer,len,offset,__card_synccallback))>=0) {
-		ret = __card_sync(file->chn);
+	if((ret=CARD_ReadAsync(file,buffer,len,offset,ogc_card_synccallback))>=0) {
+		ret = ogc_card_sync(file->chn);
 	}
 	return ret;
 }
@@ -2641,7 +2642,7 @@ s32 CARD_WriteAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback
 	card->card_api_cb = cb;
 
 	card->cmd_usr_buf = buffer;
-	if((ret=__card_sectorerase(file->chn,(file->iblock*card->sector_size),__erase_callback))>=0) return ret;
+	if((ret=ogc_card_sectorerase(file->chn,(file->iblock*card->sector_size),__erase_callback))>=0) return ret;
 	__card_putcntrlblock(card,ret);
 	return ret;
 }
@@ -2650,8 +2651,8 @@ s32 CARD_Write(card_file *file,void *buffer,u32 len,u32 offset)
 {
 	s32 ret;
 
-	if((ret=CARD_WriteAsync(file,buffer,len,offset,__card_synccallback))>=0) {
-		ret = __card_sync(file->chn);
+	if((ret=CARD_WriteAsync(file,buffer,len,offset,ogc_card_synccallback))>=0) {
+		ret = ogc_card_sync(file->chn);
 	}
 	return ret;
 }
@@ -2724,8 +2725,8 @@ s32 CARD_Create(s32 chn,const char *filename,u32 size,card_file *file)
 {
 	s32 ret;
 
-	if((ret=CARD_CreateAsync(chn,filename,size,file,__card_synccallback))>=0) {
-		ret = __card_sync(chn);
+	if((ret=CARD_CreateAsync(chn,filename,size,file,ogc_card_synccallback))>=0) {
+		ret = ogc_card_sync(chn);
 	}
 	return ret;
 }
@@ -2798,8 +2799,8 @@ s32 CARD_CreateEntry(s32 chn,card_dir *direntry,card_file *file)
 {
 	s32 ret;
 
-	if((ret=CARD_CreateEntryAsync(chn,direntry,file,__card_synccallback))>=0) {
-		ret = __card_sync(chn);
+	if((ret=CARD_CreateEntryAsync(chn,direntry,file,ogc_card_synccallback))>=0) {
+		ret = ogc_card_sync(chn);
 	}
 	return ret;
 }
@@ -2916,8 +2917,8 @@ s32 CARD_Delete(s32 chn,const char *filename)
 #ifdef _CARD_DEBUG
 	printf("CARD_Delete(%d,%s)\n",chn,filename);
 #endif
-	if((ret=CARD_DeleteAsync(chn,filename,__card_synccallback))>=0) {
-		ret = __card_sync(chn);
+	if((ret=CARD_DeleteAsync(chn,filename,ogc_card_synccallback))>=0) {
+		ret = ogc_card_sync(chn);
 	}
 	return ret;
 }
@@ -2957,8 +2958,8 @@ s32 CARD_DeleteEntry(s32 chn,card_dir *dir_entry)
 #ifdef _CARD_DEBUG
 	printf("CARD_DeleteEntry(%p)\n",dir_entry);
 #endif
-	if((ret=CARD_DeleteEntryAsync(chn,dir_entry,__card_synccallback))>=0) {
-		ret = __card_sync(chn);
+	if((ret=CARD_DeleteEntryAsync(chn,dir_entry,ogc_card_synccallback))>=0) {
+		ret = ogc_card_sync(chn);
 	}
 	return ret;
 }
@@ -2977,8 +2978,8 @@ s32 CARD_Format(s32 chn)
 	u32 enc;
 
 	enc = SYS_GetFontEncoding();
-	if((ret=__card_formatregion(chn,enc,__card_synccallback))>=0) {
-		ret = __card_sync(chn);
+	if((ret=__card_formatregion(chn,enc,ogc_card_synccallback))>=0) {
+		ret = ogc_card_sync(chn);
 	}
 	return ret;
 }
@@ -3184,8 +3185,8 @@ s32 CARD_SetStatus(s32 chn,s32 fileno,card_stat *stats)
 {
 	s32 ret;
 
-	if((ret=CARD_SetStatusAsync(chn,fileno,stats,__card_synccallback))>=0) {
-		ret = __card_sync(chn);
+	if((ret=CARD_SetStatusAsync(chn,fileno,stats,ogc_card_synccallback))>=0) {
+		ret = ogc_card_sync(chn);
 	}
 	return ret;
 }
@@ -3223,8 +3224,8 @@ s32 CARD_SetAttributes(s32 chn,s32 fileno,u8 attr)
 {
 	s32 ret;
 
-	if((ret=CARD_SetAttributesAsync(chn,fileno,attr,__card_synccallback))>=0) {
-		ret = __card_sync(chn);
+	if((ret=CARD_SetAttributesAsync(chn,fileno,attr,ogc_card_synccallback))>=0) {
+		ret = ogc_card_sync(chn);
 	}
 	return ret;
 }
