@@ -14,7 +14,7 @@ typedef struct {
 
 static __inline__ u32 _test_and_set(u32 *atomic)
 {
-	 register u32 ret;
+	 u32 ret;
 
 	__asm__ __volatile__ ("1: lwarx %0,0,%1\n"
 						  "   cmpwi   0,%0,0\n"
@@ -31,7 +31,7 @@ static __inline__ u32 _test_and_set(u32 *atomic)
 
 static __inline__ u32 atomic_inc(u32 *pint)
 {
-	register u32 ret;
+    u32 ret;
 	__asm__ __volatile__(
 		"1:	lwarx	%0,0,%1\n\
 			addi	%0,%0,1\n\
@@ -45,7 +45,7 @@ static __inline__ u32 atomic_inc(u32 *pint)
 
 static __inline__ u32 atomic_dec(u32 *pint)
 {
-	register u32 ret;
+	u32 ret;
 	__asm__ __volatile__(
 		"1:	lwarx	%0,0,%1\n\
 			addi	%0,%0,-1\n\
@@ -59,7 +59,7 @@ static __inline__ u32 atomic_dec(u32 *pint)
 
 static __inline__ void spin_lock(spinlock_t *lock)
 {
-        register u32 tmp;
+        u32 tmp;
 
         __asm__ __volatile__(
 	   "b       1f                      # spin_lock\n\
@@ -79,8 +79,8 @@ static __inline__ void spin_lock(spinlock_t *lock)
 
 static __inline__ void spin_lock_irqsave(spinlock_t *lock,register u32 *p_isr_level)
 {
-	register u32 level;
-    register u32 tmp;
+	u32 level;
+    u32 tmp;
 
 	_CPU_ISR_Disable(level);
 		
@@ -128,7 +128,7 @@ typedef struct {
 
 static __inline__ void read_lock(rwlock_t *rw)
 {
-        register u32 tmp;
+        u32 tmp;
 
         __asm__ __volatile__(
         "b              2f              # read_lock\n\
@@ -148,7 +148,7 @@ static __inline__ void read_lock(rwlock_t *rw)
 
 static __inline__ void read_unlock(rwlock_t *rw)
 {
-        register u32 tmp;
+        u32 tmp;
 
         __asm__ __volatile__(
         "eieio                          # read_unlock\n\
@@ -163,7 +163,7 @@ static __inline__ void read_unlock(rwlock_t *rw)
 
 static __inline__ void write_lock(rwlock_t *rw)
 {
-        register u32 tmp;
+        u32 tmp;
 
         __asm__ __volatile__(
         "b              2f              # write_lock\n\

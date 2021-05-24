@@ -22,24 +22,24 @@
 	}										\
 })
 
-#define mfpvr() ({register u32 _rval; \
+#define mfpvr() ({u32 _rval; \
 		__asm__ __volatile__ ("mfpvr %0" : "=r"(_rval)); _rval;})
 
-#define mfdcr(_rn) ({register u32 _rval; \
+#define mfdcr(_rn) ({u32 _rval; \
 		__asm__ __volatile__ ("mfdcr %0," __stringify(_rn) \
              : "=r" (_rval)); _rval;})
 #define mtdcr(rn, val)  __asm__ __volatile__ ("mtdcr " __stringify(rn) ",%0" : : "r" (val))
 
-#define mfmsr()   ({register u32 _rval; \
+#define mfmsr()   ({u32 _rval; \
 		__asm__ __volatile__ ("mfmsr %0" : "=r" (_rval)); _rval;})
 #define mtmsr(val)  __asm__ __volatile__ ("mtmsr %0" : : "r" (val))
 
-#define mfdec()   ({register u32 _rval; \
+#define mfdec()   ({u32 _rval; \
 		__asm__ __volatile__ ("mfdec %0" : "=r" (_rval)); _rval;})
 #define mtdec(_val)  __asm__ __volatile__ ("mtdec %0" : : "r" (_val))
 
 #define mfspr(_rn) \
-({	register u32 _rval = 0; \
+({	u32 _rval = 0; \
 	__asm__ __volatile__ ("mfspr %0," __stringify(_rn) \
 	: "=r" (_rval));\
 	_rval; \
@@ -74,12 +74,12 @@
 #define mthid4(_val)	mtspr(HID4,_val)
 
 #define __lhbrx(base,index)			\
-({	register u16 res;				\
+({	u16 res;				\
 	__asm__ volatile ("lhbrx	%0,%1,%2" : "=r"(res) : "b%"(index), "r"(base) : "memory"); \
 	res; })
 
 #define __lwbrx(base,index)			\
-({	register u32 res;				\
+({	u32 res;				\
 	__asm__ volatile ("lwbrx	%0,%1,%2" : "=r"(res) : "b%"(index), "r"(base) : "memory"); \
 	res; })
 
@@ -89,7 +89,7 @@
 #define __stwbrx(base,index,value)	\
 	__asm__ volatile ("stwbrx	%0,%1,%2" : : "r"(value), "b%"(index), "r"(base) : "memory")
 
-#define cntlzw(_val) ({register u32 _rval; \
+#define cntlzw(_val) ({u32 _rval; \
 					  __asm__ __volatile__ ("cntlzw %0, %1" : "=r"((_rval)) : "r"((_val))); _rval;})
 
 #define _CPU_MSR_GET( _msr_value ) \
@@ -103,7 +103,7 @@
 
 #define _CPU_ISR_Enable() \
 	do { \
-		register u32 _val = 0; \
+		u32 _val = 0; \
 		__asm__ __volatile__ ( \
 			"mfmsr %0\n" \
 			"ori %0,%0,0x8000\n" \
@@ -115,7 +115,7 @@
 
 #define _CPU_ISR_Disable( _isr_cookie ) \
 	do { \
-		register u32 _disable_mask = 0; \
+		u32 _disable_mask = 0; \
 		_isr_cookie = 0; \
 		__asm__ __volatile__ ( \
 			"mfmsr %0\n" \
@@ -130,7 +130,7 @@
 
 #define _CPU_ISR_Restore( _isr_cookie )  \
 	do { \
-		register u32 _enable_mask = 0; \
+		u32 _enable_mask = 0; \
 		__asm__ __volatile__ ( \
 			"cmpwi %0,0\n" \
 			"beq 1f\n" \
@@ -146,7 +146,7 @@
 
 #define _CPU_ISR_Flash( _isr_cookie ) \
 	do { \
-		register u32 _flash_mask = 0; \
+		u32 _flash_mask = 0; \
 		__asm__ __volatile__ ( \
 			"cmpwi %0,0\n" \
 			"beq 1f\n" \
@@ -163,13 +163,13 @@
 	} while (0)
 
 #define _CPU_FPR_Enable() \
-{ register u32 _val = 0; \
+{ u32 _val = 0; \
 	  __asm__ __volatile__  ("mfmsr %0; ori %0,%0,0x2000; mtmsr %0" : \
 					"=&r" (_val) : "0" (_val));\
 }
 
 #define _CPU_FPR_Disable() \
-{ register u32 _val = 0; \
+{ u32 _val = 0; \
 	  __asm__ __volatile__  ("mfmsr %0; rlwinm %0,%0,0,19,17; mtmsr %0" : \
 					"=&r" (_val) : "0" (_val));\
 }
