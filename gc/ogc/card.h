@@ -156,6 +156,41 @@ typedef struct _card_dir {
       bool showall;
 } card_dir; 
 
+/*! \typedef struct card_direntry
+\brief structure to hold the information of the save file entry ( aka GCI )
+\param gamecode[4] string identifier <=4.
+\param company[2] string identifier <=2.
+\param padding always 0xFF.
+\param banner_fmt format of banner. 
+\param filename[CARD_FILENAMELEN] name of the file on card.
+\param last_modified last time it was modified,in seconds since 1970 in seconds. 
+\param icon_addr icon image address in file.
+\param icon_fmt icon image format.
+\param icon_speed speed of an animated icon.
+\param permission permissions of the save file.
+\param copy_times how many times the save file has been copied.
+\param block starting block of the save file.
+\param length size of the save file..
+\param padding always 0xFFFF.
+\param comment_addr address in file of the comment block.
+*/
+typedef struct _card_direntry {
+	u8 gamecode[4];
+	u8 company[2];
+	u8 pad_00;
+	u8 banner_fmt;
+	u8 filename[CARD_FILENAMELEN];
+	u32 last_modified;
+	u32 icon_addr;
+	u16 icon_fmt;
+	u16 icon_speed;
+	u8 permission;
+	u8 copy_times;
+	u16 block;
+	u16 length;
+	u16 pad_01;
+	u32 comment_addr;
+} card_direntry;
 
 /*! \typedef struct card_stat
 \brief structure to hold the additional statistical informations.
@@ -165,6 +200,7 @@ typedef struct _card_dir {
 \param company[2] string identifier <=2.
 \param banner_fmt format of banner. 
 \param icon_addr icon image address in file.
+\param icon_fmt icon image format.
 \param icon_speed speed of an animated icon.
 \param comment_addr address in file of the comment block.
 \param offset_banner offset in file to the banner's image data.
@@ -514,6 +550,15 @@ s32 CARD_GetBlockCount(s32 chn,u32 *block_count);
 */
 s32 CARD_GetStatus(s32 chn,s32 fileno,card_stat *stats);
 
+/*! \fn s32 CARD_GetStatusEx(s32 chn, s32 fileno, card_direntry *entry)
+\brief Get the directory entry (GCI header)
+\param[in] chn CARD slot.
+\param[in] fileno file index. returned by a previous call to CARD_Open().
+\param[out] entry pointer to receive the directory entry.
+
+\return \ref card_errors "card error codes"
+*/
+s32 CARD_GetStatusEx(s32 chn, s32 fileno, card_direntry *entry);
 
 /*! \fn s32 CARD_SetStatus(s32 chn,s32 fileno,card_stat *stats)
 \brief Set additional file statistic informations. Synchronous version.
@@ -537,6 +582,14 @@ s32 CARD_SetStatus(s32 chn,s32 fileno,card_stat *stats);
 */
 s32 CARD_SetStatusAsync(s32 chn,s32 fileno,card_stat *stats,cardcallback callback);
 
+/*! \fn s32 CARD_SetStatusEx(s32 chn, s32 fileno, card_direntry *entry)
+\brief Set the directory entry (preferably from a GCI header), except block index and lenght
+\param[in] chn CARD slot.
+\param[in] fileno file index. returned by a previous call to CARD_Open().
+\param[out] entry pointer to a directory entry structure (or GCI header).
+\return \ref card_errors "card error codes"
+*/
+s32 CARD_SetStatusEx(s32 chn, s32 fileno, card_direntry *entry);
 
 /*! \fn s32 CARD_GetAttributes(s32 chn,s32 fileno,u8 *attr)
 \brief Get additional file attributes. Synchronous version.
@@ -597,6 +650,22 @@ s32 CARD_SetCompany(const char *company);
 \return \ref card_errors "card error codes"
 */
 s32 CARD_SetGamecode(const char *gamecode);
+
+/*! \fn s32 CARD_GetSerialNo(s32 chn, u32 *serial1, u32 *serial2)
+\brief Get the encrypted serial numbers of the memory card
+\param[in] chn CARD slot.
+\param[in] serial1 & serial2 CARD slot.
+\return \ref card_errors "card error codes" or free blocks
+*/
+s32 CARD_GetSerialNo(s32 chn,u32 *serial1,u32 *serial2);
+
+/*! \fn s32 CARD_GetFreeBlocks(s32 chn, u16* freeblocks)
+\brief Get the free blocks in memory card
+\param[in] chn CARD slot.
+\param[in] freeblocks pointer to receive freeblocks value.
+\return \ref card_errors "card error codes" or free blocks
+*/
+s32 CARD_GetFreeBlocks(s32 chn, u16* freeblocks);
 
 #ifdef __cplusplus
    }
