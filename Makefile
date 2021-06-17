@@ -84,6 +84,8 @@ INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/sdcard -I$(BASEDIR)/gc/wiiuse \
 				-I$(BASEDIR)/gc/di
 
+FALSE_POSITIVES := -Wno-array-bounds -Wno-stringop-overflow -Wno-stringop-overread
+
 MACHDEP		:= -DBIGENDIAN -DGEKKO -mcpu=750 -meabi -msdata=eabi -mhard-float -ffunction-sections -fdata-sections
 
 
@@ -97,8 +99,8 @@ MACHDEP		+=	-DHW_DOL
 INCLUDES	+=	-I$(BASEDIR)/cube
 endif
 
-CFLAGS		:= -DLIBOGC_INTERNAL -g -O2 -fno-strict-aliasing -Wall $(MACHDEP) $(INCLUDES)
-ASFLAGS		:=	$(MACHDEP) -mregnames -D_LANGUAGE_ASSEMBLY $(INCLUDES)
+CFLAGS		:= $(FALSE_POSITIVES) -DLIBOGC_INTERNAL -g -O2 -fno-strict-aliasing -Wall $(MACHDEP) $(INCLUDES)
+ASFLAGS		:= $(MACHDEP) -mregnames -D_LANGUAGE_ASSEMBLY $(INCLUDES)
 
 #---------------------------------------------------------------------------------
 VPATH :=	$(LWIPDIR)				\
