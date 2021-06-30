@@ -71,8 +71,8 @@ static struct _outbuffer_s OutputRingBuffer;
 static u32 init_done = 0;
 static u32 CurrentBuffer = 0;
 static f32 VSA = (1.0/4294967295.0);
-static BOOL thr_running = FALSE;
-static BOOL MP3Playing = FALSE;
+static bool thr_running = false;
+static bool MP3Playing = false;
 static void *mp3cb_data = NULL;
 
 static void* StreamPlay(void *);
@@ -231,7 +231,7 @@ void MP3Player_Init(void)
 
 s32 MP3Player_PlayBuffer(const void *buffer,s32 len,void (*filterfunc)(struct mad_stream *,struct mad_frame *))
 {
-	if(thr_running==TRUE) return -1;
+	if(thr_running) return -1;
 
 	rambuffer.buf_addr = buffer;
 	rambuffer.len = len;
@@ -248,7 +248,7 @@ s32 MP3Player_PlayBuffer(const void *buffer,s32 len,void (*filterfunc)(struct ma
 
 s32 MP3Player_PlayFile(void *cb_data,s32 (*reader)(void *,void *,s32),void (*filterfunc)(struct mad_stream *,struct mad_frame *))
 {
-	if(thr_running==TRUE) return -1;
+	if(thr_running) return -1;
 
 	mp3cb_data = cb_data;
 	mp3read = reader;
@@ -261,20 +261,20 @@ s32 MP3Player_PlayFile(void *cb_data,s32 (*reader)(void *,void *,s32),void (*fil
 
 void MP3Player_Stop(void)
 {
-	if(thr_running==FALSE) return;
+	if(!thr_running) return;
 
-	thr_running = FALSE;
+	thr_running = false;
 	LWP_JoinThread(hStreamPlay,NULL);
 }
 
-BOOL MP3Player_IsPlaying(void)
+bool MP3Player_IsPlaying(void)
 {
 	return thr_running;
 }
 
 static void *StreamPlay(void *arg)
 {
-	BOOL atend;
+	bool atend;
 	u8 *GuardPtr = NULL;
 	struct mad_stream Stream;
 	struct mad_frame Frame;
@@ -282,7 +282,7 @@ static void *StreamPlay(void *arg)
 	mad_timer_t Timer;
 	EQState eqs[2];
 
-	thr_running = TRUE;
+	thr_running = true;
 
 	CurrentBuffer = 0;
 	memset(OutputBuffer[0],0,ADMA_BUFFERSIZE);
@@ -303,9 +303,9 @@ static void *StreamPlay(void *arg)
 	mad_synth_init(&Synth);
 	mad_timer_reset(&Timer);
 
-	atend = FALSE;
-	MP3Playing = FALSE;
-	while(atend==FALSE && thr_running==TRUE) {
+	atend = false;
+	MP3Playing = false;
+	while(!atend && thr_running) {
 		if(Stream.buffer==NULL || Stream.error==MAD_ERROR_BUFLEN) {
 			u8 *ReadStart;
 			s32 ReadSize, Remaining;
@@ -327,14 +327,14 @@ static void *StreamPlay(void *arg)
 				GuardPtr = ReadStart;
 				memset(GuardPtr,0,MAD_BUFFER_GUARD);
 				ReadSize = MAD_BUFFER_GUARD;
-				atend = TRUE;
+				atend = true;
 			}
 
 			mad_stream_buffer(&Stream,InputBuffer,(ReadSize + Remaining));
 			//Stream.error = 0;
 		}
 
-		while (!mad_frame_decode(&Frame,&Stream) && thr_running==TRUE) {
+		while (!mad_frame_decode(&Frame,&Stream) && thr_running) {
 			if(mp3filterfunc)
 				mp3filterfunc(&Stream,&Frame);
 
@@ -357,7 +357,7 @@ static void *StreamPlay(void *arg)
 	mad_frame_finish(&Frame);
 	mad_stream_finish(&Stream);
 
-	while(MP3Playing==TRUE)
+	while(MP3Playing)
 		LWP_ThreadSleep(thQueue);
 
 #ifndef __SNDLIB_H__
@@ -369,7 +369,7 @@ static void *StreamPlay(void *arg)
 
 	LWP_CloseQueue(thQueue);
 
-	thr_running = FALSE;
+	thr_running = false;
 
 	return 0;
 }
@@ -452,7 +452,7 @@ static void DataTransferCallback(s32 voice)
 	CurrentBuffer = (CurrentBuffer+1)%3;
 	MP3Playing = (buf_get(&OutputRingBuffer,OutputBuffer[CurrentBuffer],ADMA_BUFFERSIZE)>0);
 #else
-	if(thr_running!=TRUE) {
+	if(!thr_running) {
 		MP3Playing = (buf_get(&OutputRingBuffer,OutputBuffer[CurrentBuffer],ADMA_BUFFERSIZE)>0);
 		return;
 	}
