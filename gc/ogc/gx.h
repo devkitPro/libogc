@@ -3419,6 +3419,20 @@ void GX_SetTevIndBumpXYZ(u8 tevstage,u8 indstage,u8 mtx_sel);
 void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 tilespacing_x,u16 tilespacing_y,u8 indtexfmt,u8 indtexmtx,u8 bias_sel,u8 alpha_sel);
 
 /*!
+ * \fn void GX_SetTevIndWarp(u8 tevstage, u8 indtexid, u8 bias_flag, u8 replace_tex, u8 mtxid)
+ * \brief Used to warp a normal texture lookup using an indirect texture map with 8-bit offsets.
+ *
+ * \param[in] tevstage \ref tevstage that is being affected
+ * \param[in] indtexid \ref indtexstage results to use with this TEV stage
+ * \param[in] bias_flag biases the indirect texture map offsets by -128 if the value is GX_TRUE
+ * \param[in] replace_tex GX_TRUE makes the indirect texture map offsets replace the input texture coordinates rather than offset them as with GX_FALSE
+ * \param[in] mtxid which \ref indtexmtx to use for warping the texture
+ * \return none
+ */
+	   
+void GX_SetTevIndWarp(u8 tevstage, u8 indtexid, u8 bias_flag, u8 replace_tex, u8 mtxid);
+	   
+/*!
  * \fn void GX_SetTevIndRepeat(u8 tevstage)
  * \brief Set a given TEV stage to use the same texture coordinates as were computed in the previous stage.
  *

@@ -4174,6 +4174,21 @@ void GX_SetIndTexCoordScale(u8 indtexid,u8 scale_s,u8 scale_t)
 	}
 }
 
+void GX_SetTevIndWarp(u8 tevstage, u8 indtexid, u8 bias_flag, u8 replace_tex, u8 mtxid)
+{
+	u8 wrap = GX_ITW_OFF;
+	u8 bias = GX_ITB_NONE;
+	if(replace_tex)
+	{
+		wrap = GX_ITW_0;
+	}
+	if(bias_flag)
+	{
+		bias = GX_ITB_STU;
+	}
+	GX_SetTevIndirect(tevstage, indtexid, GX_ITF_8, bias, mtxid, wrap, wrap, GX_FALSE, GX_FALSE, GX_ITBA_OFF);
+}
+
 void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 tilespacing_x,u16 tilespacing_y,u8 indtexfmt,u8 indtexmtx,u8 bias_sel,u8 alpha_sel)
 {
 	s32 wrap_s,wrap_t;
