@@ -48,22 +48,22 @@ const devoptab_t dotab_stdout = {
 //color table
 static const unsigned int color_table[] =
 {
-  0x00800080,		// 30 normal black
-  0x246A24BE,		// 31 normal red
-  0x4856484B,		// 32 normal green
-  0x6D416D8A,		// 33 normal yellow
-  0x0DBE0D75,		// 34 normal blue
-  0x32A932B4,		// 35 normal magenta
-  0x56955641,		// 36 normal cyan
-  0xC580C580,		// 37 normal white
-  0x7B807B80,		// 30 bright black
-  0x4C544CFF,		// 31 bright red
-  0x95299512,		// 32 bright green
-  0xE200E294,		// 33 bright yellow
-  0x1CFF1C6B,		// 34 bright blue
-  0x69D669ED,		// 35 bright magenta
-  0xB2ABB200,		// 36 bright cyan
-  0xFF80FF80,		// 37 bright white
+  0x10801080,		// 30 normal black
+  0x316D31B8,		// 31 normal red
+  0x515B5151,		// 32 normal green
+  0x71487189,		// 33 normal yellow
+  0x1DB81D77,		// 34 normal blue
+  0x3DA53DAF,		// 35 normal magenta
+  0x5D935D48,		// 36 normal cyan
+  0xB580B580,		// 37 normal white
+  0x7E807E80,		// 30 bright black
+  0x515A51F0,		// 31 bright red
+  0x91369122,		// 32 bright green
+  0xD210D292,		// 33 bright yellow
+  0x29F0296E,		// 34 bright blue
+  0x6ACA6ADE,		// 35 bright magenta
+  0xAAA6AA10,		// 36 bright cyan
+  0xEB80EB80,		// 37 bright white
 };
 
 static u32 do_xfb_copy = FALSE;
