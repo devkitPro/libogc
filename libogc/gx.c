@@ -1281,7 +1281,7 @@ void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr)
 	_CPU_ISR_Restore(level);
 }
 
-void GX_GetFifoPtrs(GXFifoObj *fifo,void **rd_ptr,void **wt_ptr)
+void GX_GetFifoPtrs(GXFifoObj *const fifo,void **rd_ptr,void **wt_ptr)
 {
 	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
 	*rd_ptr = (void*)ptr->rd_ptr;
@@ -1472,22 +1472,22 @@ void GX_GetGPFifo(GXFifoObj *fifo)
 	ptr->cpufifo_ready = gpfifo->cpufifo_ready;
 }
 
-void* GX_GetFifoBase(GXFifoObj *fifo)
+void* GX_GetFifoBase(GXFifoObj *const fifo)
 {
 	return (void*)((struct __gxfifo*)fifo)->buf_start;
 }
 
-u32 GX_GetFifoSize(GXFifoObj *fifo)
+u32 GX_GetFifoSize(GXFifoObj *const fifo)
 {
 	return ((struct __gxfifo*)fifo)->size;
 }
 
-u32 GX_GetFifoCount(GXFifoObj *fifo)
+u32 GX_GetFifoCount(GXFifoObj *const fifo)
 {
 	return ((struct __gxfifo*)fifo)->rdwt_dst;
 }
 
-u8 GX_GetFifoWrap(GXFifoObj *fifo)
+u8 GX_GetFifoWrap(GXFifoObj *const fifo)
 {
 	return ((struct __gxfifo*)fifo)->fifo_wrap;
 }
@@ -2993,42 +2993,42 @@ static void __GetTexTileShift(u32 fmt,u32 *xshift,u32 *yshift)
 }
 #endif
 
-u32 GX_GetTexObjFmt(GXTexObj *obj)
+u32 GX_GetTexObjFmt(GXTexObj *const obj)
 {
 	return ((struct __gx_texobj*)obj)->tex_fmt;
 }
 
-u32 GX_GetTexObjMipMap(GXTexObj *obj)
+u32 GX_GetTexObjMipMap(GXTexObj *const obj)
 {
 	return (((struct __gx_texobj*)obj)->tex_flag&0x01);
 }
-void* GX_GetTexObjData(GXTexObj *obj)
+void* GX_GetTexObjData(GXTexObj *const obj)
 {
 	return (void*)(_SHIFTL(((struct __gx_texobj*)obj)->tex_maddr & 0x00ffffff,5,24));
 }
 
-u8 GX_GetTexObjWrapS(GXTexObj* obj)
+u8 GX_GetTexObjWrapS(GXTexObj *const obj)
 {
 	return ((struct __gx_texobj*)obj)->tex_filt & 0x03;
 }
 
-u8 GX_GetTexObjWrapT(GXTexObj* obj)
+u8 GX_GetTexObjWrapT(GXTexObj *const obj)
 {
 	return _SHIFTR(((struct __gx_texobj*)obj)->tex_filt & 0x0c, 2, 2);
 }
 
-u16 GX_GetTexObjHeight(GXTexObj* obj)
+u16 GX_GetTexObjHeight(GXTexObj *const obj)
 {
 	return _SHIFTR(((struct __gx_texobj*)obj)->tex_size & 0xffc00, 10, 10) + 1;
 }
 
-u16 GX_GetTexObjWidth(GXTexObj* obj)
+u16 GX_GetTexObjWidth(GXTexObj *const obj)
 {
 	return (((struct __gx_texobj*)obj)->tex_size & 0x3ff) + 1;
 }
 
 
-void GX_GetTexObjAll(GXTexObj* obj, void** image_ptr, u16* width, u16* height,
+void GX_GetTexObjAll(GXTexObj *const obj, void** image_ptr, u16* width, u16* height,
                      u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap)
 {
 	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
@@ -3389,7 +3389,7 @@ void GX_InitTexObjUserData(GXTexObj *obj,void *userdata)
 	ptr->usr_data = (u32)userdata;
 }
 
-void* GX_GetTexObjUserData(GXTexObj *obj)
+void* GX_GetTexObjUserData(GXTexObj *const obj)
 {
 	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
 	return (void*)ptr->usr_data;
