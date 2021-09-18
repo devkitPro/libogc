@@ -4548,11 +4548,11 @@ void GX_InitLightColor(GXLightObj *lit_obj,GXColor col)
 	lit->col = ((_SHIFTL(col.r,24,8))|(_SHIFTL(col.g,16,8))|(_SHIFTL(col.b,8,8))|(col.a&0xff));
 }
 
-void GX_LoadLightObj(GXLightObj *lit_obj,u8 lit_id)
+void GX_LoadLightObj(const GXLightObj *lit_obj,u8 lit_id)
 {
 	u32 id;
 	u16 reg;
-	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
+	const struct __gx_litobj *lit = (const struct __gx_litobj*)lit_obj;
 
 	switch(lit_id) {
 		case GX_LIGHT0:

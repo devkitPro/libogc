@@ -4677,7 +4677,7 @@ void GX_InitLightColor(GXLightObj *lit_obj,GXColor col);
 void GX_InitLightDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz);
 
 /*!
- * \fn void GX_LoadLightObj(GXLightObj *lit_obj,u8 lit_id)
+ * \fn void GX_LoadLightObj(const GXLightObj *lit_obj,u8 lit_id)
  * \brief Loads a light object into a set of hardware registers associated with a \ref lightid.
  *
  * \details This function copies the light object data into the graphics FIFO through the CPU write-gather buffer mechanism. This guarantees that
@@ -4692,7 +4692,7 @@ void GX_InitLightDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz);
  *
  * \return none
  */
-void GX_LoadLightObj(GXLightObj *lit_obj,u8 lit_id);
+void GX_LoadLightObj(const GXLightObj *lit_obj,u8 lit_id);
 
 /*!
  * \fn void GX_LoadLightObjIdx(u32 litobjidx,u8 litid)
