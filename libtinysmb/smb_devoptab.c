@@ -1456,7 +1456,7 @@ bool smbInitDevice(const char* name, const char *user, const char *password, con
 {
 	int i;
 
-	if(!name || strlen(name) > 9)
+	if(!name || strlen(name) > 8)
 		return false;
 
 	char devname[10];
