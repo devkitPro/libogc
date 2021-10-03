@@ -47,8 +47,9 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #define MIX_SAMPLES \
-				accum = (s32)b[i] + (s32)((((s32)data[playpos.aword.high]*volume)>>6) << shiftval); \
-				if(accum<-32768) accum = -32768; if(accum>32767) accum = 32767; \
+                accum = (s32)b[i] + (s32)((((s32)data[playpos.aword.high]*volume)>>6) << shiftval); \
+                if(accum<-32768) accum = -32768; \
+                if(accum>32767) accum = 32767; \
                 b[i] = accum; \
                 playpos.adword+=incval; \
                 if ( playpos.adword>=loop_end ) \
