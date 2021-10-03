@@ -157,6 +157,8 @@ static const unsigned char encrypt_rotate_tab[16] = {
 		1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1
 };
 
+
+#if 0 // unused
 /*
  * Table with weak DES keys sorted in ascending order.  In DES there
  * are 64 known keys which are weak. They are weak because they
@@ -230,6 +232,7 @@ static const unsigned char weak_keys[64][8] = {
 		{0xfe, 0xfe, 0xe0, 0xe0, 0xfe, 0xfe, 0xf0, 0xf0},
 		{0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe}	/*w */
 };
+#endif
 
 /*
  * Macro to swap bits across two words.
