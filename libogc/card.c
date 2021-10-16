@@ -42,6 +42,7 @@ distribution.
 #include "cache.h"
 #include "dsp.h"
 #include "lwp.h"
+#include "lwp_watchdog.h"
 #include "exi.h"
 #include "card.h"
 
@@ -82,7 +83,7 @@ struct card_bat {
 	u16 updated;
 	u16 freeblocks;
 	u16 lastalloc;
-	u16 fat[0xffc];
+	u16 fat[0xffb];
 };
 
 typedef struct _card_block {
@@ -198,7 +199,7 @@ static u32 card_latency[] =
 	0x00000008,
 	0x00000010,
 	0x00000020,
-	0x00000030,
+	0x00000040,
 	0x00000080,
 	0x00000100,
 	0x00000200
@@ -241,8 +242,8 @@ static vu16* const _viReg = (u16*)0xCC002000;
 static s32 __card_onreset(s32 final)
 {
 	if(final==FALSE) {
-		if(CARD_Unmount(CARD_SLOTA)==-1) return 0;
-		if(CARD_Unmount(CARD_SLOTB)==-1) return 0;
+		if(CARD_Unmount(CARD_SLOTA)==CARD_ERROR_BUSY) return 0;
+		if(CARD_Unmount(CARD_SLOTB)==CARD_ERROR_BUSY) return 0;
 	}
 	return 1;
 }
@@ -509,7 +510,7 @@ static s32 __card_getfilenum(card_block *card,const char *filename,const char *g
 	entries = dirblock->entries;
 	for(i=0;i<CARD_MAXFILES;i++) {
 		if(entries[i].gamecode[0]!=0xff) {
-			if(strcmp(filename,(const char*)entries[i].filename)==0) {
+			if(strncmp(filename,(const char*)entries[i].filename,CARD_FILENAMELEN)==0) {
 				if((gamecode && gamecode[0]!=0xff && memcmp(entries[i].gamecode,gamecode,4)!=0)
 					|| (company && company[0]!=0xff && memcmp(entries[i].company,company,2)!=0)) continue;
 
@@ -550,7 +551,7 @@ static s32 __card_seek(card_file *file,s32 len,s32 offset,card_block **rcard)
 #endif
 	if(entry->gamecode[0]!=0xff) {
 		entry_len = entry->length*card->sector_size;
-		if(entry_len<offset || entry_len<(offset+len)) {
+		if(entry_len<=offset || entry_len<(offset+len)) {
 			__card_putcntrlblock(card,CARD_ERROR_LIMIT);
 			return CARD_ERROR_LIMIT;
 		}
@@ -1017,9 +1018,9 @@ static void __setuptimeout(card_block *card)
 
 	if(card->cmd[0]==0xf1 || card->cmd[0]==0xf4) {
 #ifdef _CARD_DEBUG
-		printf("__setuptimeout(%02x, %dsec)\n",card->cmd[0],1*(card->sector_size/8192));
+		printf("__setuptimeout(%02x, %dsec)\n",card->cmd[0],2*(card->sector_size/8192));
 #endif
-		tb.tv_sec = 1*(card->sector_size/8192);
+		tb.tv_sec = 2*(card->sector_size/8192);
 		tb.tv_nsec = 0;
 		SYS_SetAlarm(card->timeout_svc,&tb,__timeouthandler,NULL);
 	} else if(card->cmd[0]==0xf2) {
@@ -1138,9 +1139,11 @@ static s32 __card_exthandler(s32 chn,s32 dev)
 	card = &cardmap[chn];
 
 	if(card->attached) {
+#ifdef _CARD_DEBUG
 		if(card->card_tx_cb) {
 			printf("error: card->card_tx_cb!=NULL\n");
 		}
+#endif
 		card->attached = 0;
 		EXI_RegisterEXICallback(chn,NULL);
 		SYS_CancelAlarm(card->timeout_svc);
@@ -1451,7 +1454,7 @@ static s32 __card_start(s32 chn,cardcallback tx_cb,cardcallback exi_cb)
 	_CPU_ISR_Restore(level);
 
 #ifdef _CARD_DEBUG
-		printf("__card_start(done CARD_ERROR_READY)\n");
+	printf("__card_start(done CARD_ERROR_READY)\n");
 #endif
 	return CARD_ERROR_READY;
 }
@@ -1535,8 +1538,8 @@ static void __card_fatwritecallback(s32 chn,s32 result)
 #endif
 	ret = result;
 	if(ret>=0) {
-		fat1 = (card->workarea+0x6000);
-		fat2 = (card->workarea+0x8000);
+		fat1 = (card->workarea+CARD_SYSBAT);
+		fat2 = (card->workarea+CARD_SYSBAT_BACK);
 		if(card->curr_fat==fat1) {
 			card->curr_fat = fat2;
 			memcpy(fat2,fat1,8192);
@@ -1567,8 +1570,8 @@ static void __card_dirwritecallback(s32 chn,s32 result)
 #endif
 	ret = result;
 	if(ret>=0) {
-		dir1 = (card->workarea+0x2000);
-		dir2 = (card->workarea+0x4000);
+		dir1 = (card->workarea+CARD_SYSDIR);
+		dir2 = (card->workarea+CARD_SYSDIR_BACK);
 		if(card->curr_dir==dir1) {
 			card->curr_dir = dir2;
 			memcpy(dir2,dir1,8192);
@@ -1706,7 +1709,7 @@ static s32 __card_formatregion(s32 chn,u32 encode,cardcallback callback)
 	if(!cb) cb = __card_defaultapicallback;
 	card->card_api_cb = cb;
 	
-	DCStoreRange(card->workarea,0xA000);
+	DCStoreRange(card->workarea,CARD_WORKAREA_SIZE);
 	
 	card->format_step = 0;
 	if((ret=ogc_card_sectorerase(chn,(card->sector_size*card->format_step),__format_callback))>=0) return ret;
@@ -1986,10 +1989,10 @@ static s32 __card_domount(s32 chn)
 		EXI_RegisterEXICallback(chn,__card_exihandler);
 		EXI_Unlock(chn);
 
-		DCInvalidateRange(card->workarea,0xA000);
+		DCInvalidateRange(card->workarea,CARD_WORKAREA_SIZE);
 	}
 
-	if((ret=ogc_card_read(chn,(card->sector_size*(card->mount_step-2)),card->sector_size,card->workarea+((card->mount_step-2)<<13),__card_mountcallback))<0) goto exit;
+	if((ret=ogc_card_read(chn,(card->sector_size*(card->mount_step-2)),8192,card->workarea+((card->mount_step-2)<<13),__card_mountcallback))<0) goto exit;
 	return ret;	
 	
 exit:
@@ -2388,7 +2391,7 @@ static s32 __dounlock(s32 chn,u32 *key)
 	cipher1[1] = e;
 	workarea[0] = (u32)cipher1;
 	workarea[1] = 8;
-#ifdef HW_RVL
+#if defined(HW_RVL)
 	workarea[2] = 0x10000000; // use MEM2 base
 #else
 	workarea[2] = 0; // use ARAM base
@@ -2742,7 +2745,7 @@ s32 CARD_CreateEntryAsync(s32 chn,card_dir *direntry,card_file *file,cardcallbac
 #ifdef _CARD_DEBUG
 	printf("CARD_CreateEntryAsync(%d,%p,%p,%p)\n",chn,direntry,file,callback);
 #endif
-	len = strlen((const char*)direntry->filename);
+	len = strlen(direntry->filename);
 	if(len>CARD_FILENAMELEN) return CARD_ERROR_NAMETOOLONG;
 	
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
@@ -2819,7 +2822,7 @@ s32 CARD_Open(s32 chn,const char *filename,card_file *file)
 		return ret;
 	}
 	dirblock = __card_getdirblock(card);
-	if(dirblock->entries[fileno].block<5 || dirblock->entries[fileno].block>=card->blocks) {
+	if(dirblock->entries[fileno].block<CARD_SYSAREA || dirblock->entries[fileno].block>=card->blocks) {
 		__card_putcntrlblock(card,CARD_ERROR_BROKEN);
 		return CARD_ERROR_BROKEN;
 	}
@@ -2843,19 +2846,19 @@ s32 CARD_OpenEntry(s32 chn,card_dir *entry,card_file *file)
 	
 	file->filenum = -1;
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
-	if((ret=__card_getfilenum(card,(const char*)entry->filename,(const char*)entry->gamecode,(const char*)entry->company,&fileno))<0) {
+	if((ret=__card_getfilenum(card,entry->filename,(const char*)entry->gamecode,(const char*)entry->company,&fileno))<0) {
 		__card_putcntrlblock(card,ret);
 		return ret;
 	}
 
 	dirblock = __card_getdirblock(card);
-	if(dirblock->entries[fileno].block<5 || dirblock->entries[fileno].block>=card->blocks) {
+	if(dirblock->entries[fileno].block<CARD_SYSAREA || dirblock->entries[fileno].block>=card->blocks) {
 		__card_putcntrlblock(card,CARD_ERROR_BROKEN);
 		return CARD_ERROR_BROKEN;
 	}
 
 	file->chn = chn;
-	file->filenum = entry->fileno;
+	file->filenum = fileno;
 	file->offset = 0;
 	file->len = dirblock->entries[fileno].length*card->sector_size;
 	file->iblock = dirblock->entries[fileno].block;	
