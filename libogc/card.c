@@ -2927,19 +2927,22 @@ s32 CARD_Delete(s32 chn,const char *filename)
 
 s32 CARD_DeleteEntryAsync(s32 chn,card_dir *dir_entry,cardcallback callback)
 {
-	s32 ret;
+	s32 ret,fileno;
 	cardcallback cb = NULL;
 	card_block *card = NULL;
 	struct card_dat *dirblock = NULL;
 	card_direntry *entry = NULL;
 #ifdef _CARD_DEBUG
-	printf("CARD_DeleteEntryAsync(%p,%p)\n",dir_entry,callback);
+	printf("CARD_DeleteEntryAsync(%d,%p,%p)\n",chn,dir_entry,callback);
 #endif
-	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
+	if((ret=__card_getfilenum(card,dir_entry->filename,(const char*)dir_entry->gamecode,(const char*)dir_entry->company,&fileno))<0) {
+		__card_putcntrlblock(card,ret);
+		return ret;
+	}
 	
 	dirblock = __card_getdirblock(card);
-	entry = &dirblock->entries[dir_entry->fileno];
+	entry = &dirblock->entries[fileno];
 	
 	card->curr_fileblock = entry->block;
 	memset(entry,-1,sizeof(card_direntry));
@@ -2958,7 +2961,7 @@ s32 CARD_DeleteEntry(s32 chn,card_dir *dir_entry)
 {
 	s32 ret;
 #ifdef _CARD_DEBUG
-	printf("CARD_DeleteEntry(%p)\n",dir_entry);
+	printf("CARD_DeleteEntry(%d,%p)\n",chn,dir_entry);
 #endif
 	if((ret=CARD_DeleteEntryAsync(chn,dir_entry,ogc_card_synccallback))>=0) {
 		ret = ogc_card_sync(chn);
