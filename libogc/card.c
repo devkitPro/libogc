@@ -1468,10 +1468,10 @@ s32 ogc_card_writepage(s32 chn,cardcallback callback)
 	card = &cardmap[chn];
 
 	card->cmd[0] = 0xf2;
-	card->cmd[1] = (card->cmd_sector_addr>>17)&0x3f;
-	card->cmd[2] = (card->cmd_sector_addr>>9)&0xff;
-	card->cmd[3] = (card->cmd_sector_addr>>7)&3;
-	card->cmd[4] = card->cmd_sector_addr&0x7f;
+	card->cmd[1] = (card->cmd_sector_addr&0xFE0000)>>17;
+	card->cmd[2] = (card->cmd_sector_addr&0x01FE00)>>9;
+	card->cmd[3] = (card->cmd_sector_addr&0x000180)>>7;
+	card->cmd[4] = (card->cmd_sector_addr&0x00007F);
 	card->cmd_len = 5;
 	card->cmd_mode = EXI_WRITE;
 	card->cmd_retries = 3;
