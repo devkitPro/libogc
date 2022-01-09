@@ -144,7 +144,7 @@ typedef struct _tmd {
 	u16 title_version;
 	u16 num_contents;
 	u16 boot_index;
-	u16 fill2;
+	u16 fill3;
 	// content records follow
 	// C99 flexible array
 	tmd_content contents[];
