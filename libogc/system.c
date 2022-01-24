@@ -446,14 +446,14 @@ static void __RSWHandler(u32 irq, void* ctx)
 	do  {
 		now = gettime();
 		if(diff_usec(hold_down,now)>=100) break;
-	} while(!(_piReg[0]&0x10000));
+	} while(!SYS_ResetButtonDown());
 
-	if(_piReg[0]&0x10000) {
+	if(SYS_ResetButtonDown()){
 		__MaskIrq(IRQMASK(IRQ_PI_RSW));
-
 		if(__RSWCallback) {
 			__RSWCallback(irq, ctx);
 		}
+		__UnmaskIrq(IRQMASK(IRQ_PI_RSW));
 	}
 	_piReg[0] = 2;
 }
