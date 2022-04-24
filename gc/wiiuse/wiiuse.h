@@ -44,7 +44,7 @@
 #define WIIMOTE_BUTTON_UNKNOWN			0x8000
 #define WIIMOTE_BUTTON_ALL				0x1F9F
 
-/* nunchul button codes */
+/* nunchuk button codes */
 #define NUNCHUK_BUTTON_Z				0x01
 #define NUNCHUK_BUTTON_C				0x02
 #define NUNCHUK_BUTTON_ALL				0x03
