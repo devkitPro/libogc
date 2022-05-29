@@ -35,7 +35,9 @@
 
 typedef struct aesndpb_t AESNDPB;
 
+typedef void (*AESNDVoiceCallbackArg)(AESNDPB *pb,u32 state,void *cbArg);
 typedef void (*AESNDVoiceCallback)(AESNDPB *pb,u32 state);
+typedef void (*AESNDAudioCallbackArg)(void *audio_buffer,u32 len,void *cbArg);
 typedef void (*AESNDAudioCallback)(void *audio_buffer,u32 len);
 
 void AESND_Init(void);
@@ -43,9 +45,17 @@ void AESND_Reset(void);
 void AESND_Pause(bool pause);
 u32 AESND_GetDSPProcessTime(void);
 f32 AESND_GetDSPProcessUsage(void);
-AESNDAudioCallback AESND_RegisterAudioCallback(AESNDAudioCallback cb);
+AESNDAudioCallbackArg AESND_RegisterAudioCallbackWithArg(AESNDAudioCallbackArg cb, void *cbArg);
+static inline AESNDAudioCallback AESND_RegisterAudioCallback(AESNDAudioCallback cb)
+{
+	return (AESNDAudioCallback)AESND_RegisterAudioCallbackWithArg((AESNDAudioCallbackArg)cb,NULL);
+}
 
-AESNDPB* AESND_AllocateVoice(AESNDVoiceCallback cb);
+AESNDPB* AESND_AllocateVoiceWithArg(AESNDVoiceCallbackArg cb, void *cbArg);
+static inline AESNDPB* AESND_AllocateVoice(AESNDVoiceCallback cb)
+{
+	return AESND_AllocateVoiceWithArg((AESNDVoiceCallbackArg)cb,NULL);
+}
 void AESND_FreeVoice(AESNDPB *pb);
 void AESND_SetVoiceStop(AESNDPB *pb,bool stop);
 void AESND_SetVoiceMute(AESNDPB *pb,bool mute);
@@ -57,7 +67,11 @@ void AESND_SetVoiceVolume(AESNDPB *pb,u16 volume_l,u16 volume_r);
 void AESND_SetVoiceDelay(AESNDPB *pb,u32 delay);
 void AESND_SetVoiceBuffer(AESNDPB *pb,const void *buffer,u32 len);
 void AESND_PlayVoice(AESNDPB *pb,u32 format,const void *buffer,u32 len,f32 freq,u32 delay,bool looped);
-AESNDVoiceCallback AESND_RegisterVoiceCallback(AESNDPB *pb,AESNDVoiceCallback cb);
+AESNDVoiceCallbackArg AESND_RegisterVoiceCallbackWithArg(AESNDPB *pb,AESNDVoiceCallbackArg cb,void *cbArg);
+static inline AESNDVoiceCallback AESND_RegisterVoiceCallback(AESNDPB *pb,AESNDVoiceCallback cb)
+{
+	return (AESNDVoiceCallback)AESND_RegisterVoiceCallbackWithArg(pb,(AESNDVoiceCallbackArg)cb,NULL);
+}
 
 #ifdef __cplusplus
 	}
