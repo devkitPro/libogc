@@ -94,6 +94,23 @@
 #define USB_ENDPOINT_IN					0x80
 #define USB_ENDPOINT_OUT				0x00
 
+#define USB_REPORT_USAGE_PAGE           	0x04
+#define USB_REPORT_USAGE                	0x08
+#define USB_REPORT_LOGICAL_MINIMUM      	0x14
+#define USB_REPORT_USAGE_MINIMUM        	0x18
+#define USB_REPORT_LOGICAL_MAXIMUM      	0x24
+#define USB_REPORT_USAGE_MAXIMUM        	0x28
+#define USB_REPORT_PHYSICAL_MINIMUM     	0x34
+#define USB_REPORT_PHYSICAL_MAXIMUM     	0x44
+#define USB_REPORT_UNIT                 	0x64
+#define USB_REPORT_INPUT                	0x80
+#define USB_REPORT_REPORT_SIZE          	0x74
+#define USB_REPORT_OUTPUT               	0x90
+#define USB_REPORT_REPORT_COUNT         	0x94
+#define USB_REPORT_COLLECTION_START			0xA0
+#define USB_REPORT_FEATURE					0xB0
+#define USB_REPORT_COLLECTION_END			0xC0
+
 #define USB_OH0_DEVICE_ID				0x00000000				// for completion
 #define USB_OH1_DEVICE_ID				0x00200000
 
