@@ -39,8 +39,6 @@ distribution.
 #define AES_IOCTLV_ENCRYPT 2
 #define AES_IOCTLV_DECRYPT 3
 
-#define AES_BLOCK_SIZE 128
-
 static s32 __aes_fd = -1;
 static s32 __aes_hid = -1;
 
