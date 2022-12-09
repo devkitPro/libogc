@@ -35,7 +35,7 @@ distribution.
 #include <gctypes.h>
 #include <gcutil.h>
 
-#define AES_BLOCK_SIZE 128
+#define AES_BLOCK_SIZE 0x10000
 
 #ifdef __cplusplus
 	extern "C" {
