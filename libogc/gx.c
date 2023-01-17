@@ -1281,9 +1281,9 @@ void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr)
 	_CPU_ISR_Restore(level);
 }
 
-void GX_GetFifoPtrs(GXFifoObj *fifo,void **rd_ptr,void **wt_ptr)
+void GX_GetFifoPtrs(const GXFifoObj *fifo,void **rd_ptr,void **wt_ptr)
 {
-	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
+	const struct __gxfifo *ptr = (const struct __gxfifo*)fifo;
 	*rd_ptr = (void*)ptr->rd_ptr;
 	*wt_ptr = (void*)ptr->wt_ptr;
 }
@@ -1472,24 +1472,24 @@ void GX_GetGPFifo(GXFifoObj *fifo)
 	ptr->cpufifo_ready = gpfifo->cpufifo_ready;
 }
 
-void* GX_GetFifoBase(GXFifoObj *fifo)
+void* GX_GetFifoBase(const GXFifoObj *fifo)
 {
-	return (void*)((struct __gxfifo*)fifo)->buf_start;
+	return (void*)((const struct __gxfifo*)fifo)->buf_start;
 }
 
-u32 GX_GetFifoSize(GXFifoObj *fifo)
+u32 GX_GetFifoSize(const GXFifoObj *fifo)
 {
-	return ((struct __gxfifo*)fifo)->size;
+	return ((const struct __gxfifo*)fifo)->size;
 }
 
-u32 GX_GetFifoCount(GXFifoObj *fifo)
+u32 GX_GetFifoCount(const GXFifoObj *fifo)
 {
-	return ((struct __gxfifo*)fifo)->rdwt_dst;
+	return ((const struct __gxfifo*)fifo)->rdwt_dst;
 }
 
-u8 GX_GetFifoWrap(GXFifoObj *fifo)
+u8 GX_GetFifoWrap(const GXFifoObj *fifo)
 {
-	return ((struct __gxfifo*)fifo)->fifo_wrap;
+	return ((const struct __gxfifo*)fifo)->fifo_wrap;
 }
 
 u32 GX_GetOverflowCount(void)
@@ -2993,45 +2993,45 @@ static void __GetTexTileShift(u32 fmt,u32 *xshift,u32 *yshift)
 }
 #endif
 
-u32 GX_GetTexObjFmt(GXTexObj *obj)
+u32 GX_GetTexObjFmt(const GXTexObj *obj)
 {
-	return ((struct __gx_texobj*)obj)->tex_fmt;
+	return ((const struct __gx_texobj*)obj)->tex_fmt;
 }
 
-u32 GX_GetTexObjMipMap(GXTexObj *obj)
+u32 GX_GetTexObjMipMap(const GXTexObj *obj)
 {
-	return (((struct __gx_texobj*)obj)->tex_flag&0x01);
+	return (((const struct __gx_texobj*)obj)->tex_flag&0x01);
 }
-void* GX_GetTexObjData(GXTexObj *obj)
+void* GX_GetTexObjData(const GXTexObj *obj)
 {
-	return (void*)(_SHIFTL(((struct __gx_texobj*)obj)->tex_maddr & 0x00ffffff,5,24));
-}
-
-u8 GX_GetTexObjWrapS(GXTexObj* obj)
-{
-	return ((struct __gx_texobj*)obj)->tex_filt & 0x03;
+	return (void*)(_SHIFTL(((const struct __gx_texobj*)obj)->tex_maddr & 0x00ffffff,5,24));
 }
 
-u8 GX_GetTexObjWrapT(GXTexObj* obj)
+u8 GX_GetTexObjWrapS(const GXTexObj *obj)
 {
-	return _SHIFTR(((struct __gx_texobj*)obj)->tex_filt & 0x0c, 2, 2);
+	return ((const struct __gx_texobj*)obj)->tex_filt & 0x03;
 }
 
-u16 GX_GetTexObjHeight(GXTexObj* obj)
+u8 GX_GetTexObjWrapT(const GXTexObj *obj)
 {
-	return _SHIFTR(((struct __gx_texobj*)obj)->tex_size & 0xffc00, 10, 10) + 1;
+	return _SHIFTR(((const struct __gx_texobj*)obj)->tex_filt & 0x0c, 2, 2);
 }
 
-u16 GX_GetTexObjWidth(GXTexObj* obj)
+u16 GX_GetTexObjHeight(const GXTexObj *obj)
 {
-	return (((struct __gx_texobj*)obj)->tex_size & 0x3ff) + 1;
+	return _SHIFTR(((const struct __gx_texobj*)obj)->tex_size & 0xffc00, 10, 10) + 1;
+}
+
+u16 GX_GetTexObjWidth(const GXTexObj *obj)
+{
+	return (((const struct __gx_texobj*)obj)->tex_size & 0x3ff) + 1;
 }
 
 
-void GX_GetTexObjAll(GXTexObj* obj, void** image_ptr, u16* width, u16* height,
+void GX_GetTexObjAll(const GXTexObj *obj, void** image_ptr, u16* width, u16* height,
                      u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap)
 {
-	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
 	*image_ptr = (void*)(_SHIFTL(ptr->tex_maddr & 0x00ffffff,5,24));
 	*width = (ptr->tex_size & 0x3ff) + 1;
 	*height = _SHIFTR(ptr->tex_size & 0xffc00, 10, 10) + 1;
@@ -3389,9 +3389,9 @@ void GX_InitTexObjUserData(GXTexObj *obj,void *userdata)
 	ptr->usr_data = (u32)userdata;
 }
 
-void* GX_GetTexObjUserData(GXTexObj *obj)
+void* GX_GetTexObjUserData(const GXTexObj *obj)
 {
-	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
 	return (void*)ptr->usr_data;
 }
 
@@ -4548,11 +4548,11 @@ void GX_InitLightColor(GXLightObj *lit_obj,GXColor col)
 	lit->col = ((_SHIFTL(col.r,24,8))|(_SHIFTL(col.g,16,8))|(_SHIFTL(col.b,8,8))|(col.a&0xff));
 }
 
-void GX_LoadLightObj(GXLightObj *lit_obj,u8 lit_id)
+void GX_LoadLightObj(const GXLightObj *lit_obj,u8 lit_id)
 {
 	u32 id;
 	u16 reg;
-	struct __gx_litobj *lit = (struct __gx_litobj*)lit_obj;
+	const struct __gx_litobj *lit = (const struct __gx_litobj*)lit_obj;
 
 	switch(lit_id) {
 		case GX_LIGHT0:

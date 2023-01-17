@@ -1229,9 +1229,9 @@ typedef struct _gx_tlutobj {
  *
  * \details This structure contains precompiled register state setting commands and data. The application must use the
  * GX_InitTexCacheRegion() function to initialize or change this object. The proper size of the object is returned by
- * 
+ *
  * \code sizeof(GXTexRegion) \endcode
- * 
+ *
  * \details but the internal data representation is not visible to the application.
  */
 typedef struct _gx_texreg {
@@ -1445,7 +1445,7 @@ void GX_InitFifoLimits(GXFifoObj *fifo,u32 hiwatermark,u32 lowatermark);
 void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr);
 
 /*!
- * \fn void GX_GetFifoPtrs(GXFifoObj *fifo,void **rd_ptr,void **wt_ptr)
+ * \fn void GX_GetFifoPtrs(const GXFifoObj *fifo,void **rd_ptr,void **wt_ptr)
  * \brief Returns the current value of the Graphics FIFO read and write pointers.
  *
  * \note See GX_EnableBreakPt() for an example of why you would do this.
@@ -1456,7 +1456,7 @@ void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr);
  *
  * \return none
  */
-void GX_GetFifoPtrs(GXFifoObj *fifo,void **rd_ptr,void **wt_ptr);
+void GX_GetFifoPtrs(const GXFifoObj *fifo,void **rd_ptr,void **wt_ptr);
 
 /*!
  * \fn void GX_SetCPUFifo(GXFifoObj *fifo)
@@ -1515,17 +1515,17 @@ void GX_GetCPUFifo(GXFifoObj *fifo);
 void GX_GetGPFifo(GXFifoObj *fifo);
 
 /*!
- * \fn void* GX_GetFifoBase(GXFifoObj *fifo)
+ * \fn void* GX_GetFifoBase(const GXFifoObj *fifo)
  * \brief Get the base address for a given \a fifo.
  *
  * \param[in] fifo the object to get the address from
  *
  * \return pointer to the base address of the FIFO in main memory.
  */
-void* GX_GetFifoBase(GXFifoObj *fifo);
+void* GX_GetFifoBase(const GXFifoObj *fifo);
 
 /*!
- * \fn u32 GX_GetFifoCount(GXFifoObj *fifo)
+ * \fn u32 GX_GetFifoCount(const GXFifoObj *fifo)
  * \brief Returns number of cache lines in the FIFO.
  *
  * \note The count is incorrect if an overflow has occurred (i.e. you have written more data than the size of the fifo), as the
@@ -1535,20 +1535,20 @@ void* GX_GetFifoBase(GXFifoObj *fifo);
  *
  * \return number of cache lines in the FIFO
  */
-u32 GX_GetFifoCount(GXFifoObj *fifo);
+u32 GX_GetFifoCount(const GXFifoObj *fifo);
 
 /*!
- * \fn u32 GX_GetFifoSize(GXFifoObj *fifo)
+ * \fn u32 GX_GetFifoSize(const GXFifoObj *fifo)
  * \brief Get the size of a given \a fifo.
  *
  * \param[in] fifo the object to get the size from
  *
  * \return size of the FIFO, in bytes
  */
-u32 GX_GetFifoSize(GXFifoObj *fifo);
+u32 GX_GetFifoSize(const GXFifoObj *fifo);
 
 /*!
- * \fn u8 GX_GetFifoWrap(GXFifoObj *fifo)
+ * \fn u8 GX_GetFifoWrap(const GXFifoObj *fifo)
  * \brief Returns a non-zero value if the write pointer has passed the TOP of the FIFO.
  *
  * \details Returns true only if the FIFO is attached to the CPU and the FIFO write pointer has passed the top of the FIFO. Use the
@@ -1561,7 +1561,7 @@ u32 GX_GetFifoSize(GXFifoObj *fifo);
  *
  * \return wrap value
  */
-u8 GX_GetFifoWrap(GXFifoObj *fifo);
+u8 GX_GetFifoWrap(const GXFifoObj *fifo);
 
 /*!
  * \fn GXDrawDoneCallback GX_SetDrawDoneCallback(GXDrawDoneCallback cb)
@@ -1747,7 +1747,7 @@ void GX_DrawDone(void);
  * It makes sure that the texture pipeline is finished with that area of the texture memory prior to changing its usage.
  * This function should be called prior to drawing any primitives that uses the texture memory region in its new mode. It is not
  * necessary to call this command when changing texture memory regions from cached to preloaded (or TLUT), since the commands to
- * load the regions with data will cause the necessary synchronization to happen automatically. 
+ * load the regions with data will cause the necessary synchronization to happen automatically.
  *
  * \return none
  */
@@ -2775,7 +2775,7 @@ void GX_SetTexCoordGen2(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc,u32 no
  * to the current 16-bit Z format before comparing with the EFB's Z.
  *
  * \note The Z-texture calculation is done before the fog range calculation.<br><br>
- * 
+ *
  * \note GX_Init() disables Z texturing.
  *
  * \param[in] op \ref ztexop to perform
@@ -3525,7 +3525,7 @@ void GX_SetDstAlpha(u8 enable,u8 a);
  * \fn void GX_SetFieldMask(u8 even_mask,u8 odd_mask)
  * \brief selectively enables and disables interlacing of the frame buffer image.
  *
- * \details This function is used when rendering fields to an interlaced Embedded Frame Buffer (EFB). 
+ * \details This function is used when rendering fields to an interlaced Embedded Frame Buffer (EFB).
  *
  * \note When the mask is <tt>GX_FALSE</tt>, that field will not be written to the EFB, but the other field will be computed. In other words, you pay the
  * fill rate price of a frame to produce a field.
@@ -3971,7 +3971,7 @@ void GX_PeekZ(u16 x,u16 y,u32 *z);
  * When \a comp_enable is set to <tt>GX_DISABLE</tt>, poke Z buffering is disabled and the Z buffer is not updated. The \a func parameter determines the
  * comparison that is performed. In the comparison function, the poked Z value is on the left while the Z value from the Z buffer is on the
  * right. If the result of the comparison is false, the poked Z value is discarded. The parameter \a update_enable determines whether or not the
- * Z buffer is updated with the new Z value after a comparison is performed. 
+ * Z buffer is updated with the new Z value after a comparison is performed.
  *
  * \note The normal rendering Z mode (set by GX_SetZMode()) is not affected by this function.<br><br>
  *
@@ -3986,7 +3986,7 @@ void GX_PeekZ(u16 x,u16 y,u32 *z);
 void GX_PokeZMode(u8 comp_enable,u8 func,u8 update_enable);
 
 /*!
- * \fn u32 GX_GetTexObjFmt(GXTexObj *obj)
+ * \fn u32 GX_GetTexObjFmt(const GXTexObj *obj)
  * \brief Returns the texture format described by texture object \a obj.
  *
  * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture format.
@@ -3995,22 +3995,22 @@ void GX_PokeZMode(u8 comp_enable,u8 func,u8 update_enable);
  *
  * \return texture format of the given texture object
  */
-u32 GX_GetTexObjFmt(GXTexObj *obj);
+u32 GX_GetTexObjFmt(const GXTexObj *obj);
 
 /*!
- * \fn u32 GX_GetTexObjMipMap(GXTexObj *obj)
+ * \fn u32 GX_GetTexObjMipMap(const GXTexObj *obj)
  * \brief Returns the texture mipmap enable described by texture object \a obj.
- * 
+ *
  * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture mipmap enable.
  *
  * \param[in] obj ptr to a texture object
  *
  * \return mipmap enable flag
  */
-u32 GX_GetTexObjMipMap(GXTexObj *obj);
+u32 GX_GetTexObjMipMap(const GXTexObj *obj);
 
 /*!
- * \fn void* GX_GetTexObjUserData(GXTexObj *obj)
+ * \fn void* GX_GetTexObjUserData(const GXTexObj *obj)
  * \brief Used to get a pointer to user data from the \ref GXTexObj structure.
  *
  * \details You can use this function to retrieve private data structures from the texture object. This pointer is set using GX_InitTexObjUserData().
@@ -4019,10 +4019,10 @@ u32 GX_GetTexObjMipMap(GXTexObj *obj);
  *
  * \return Pointer to user data.
  */
-void* GX_GetTexObjUserData(GXTexObj *obj);
+void* GX_GetTexObjUserData(const GXTexObj *obj);
 
 /*!
- * \fn void* GX_GetTexObjData(GXTexObj *obj)
+ * \fn void* GX_GetTexObjData(const GXTexObj *obj)
  * \brief Used to get a pointer to texture data from the \ref GXTexObj structure.
  *
  * \note The returned pointer is a physical address.
@@ -4031,10 +4031,10 @@ void* GX_GetTexObjUserData(GXTexObj *obj);
  *
  * \return Physical pointer to texture data.
  */
-void* GX_GetTexObjData(GXTexObj *obj);
+void* GX_GetTexObjData(const GXTexObj *obj);
 
 /*!
- * \fn u8 GX_GetTexObjWrapS(GXTexObj* obj)
+ * \fn u8 GX_GetTexObjWrapS(const GXTexObj* obj)
  * \brief Returns the texture wrap s mode described by texture object \a obj.
  *
  * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture wrap s mode.
@@ -4043,10 +4043,10 @@ void* GX_GetTexObjData(GXTexObj *obj);
  *
  * \return wrap s mode
  */
-u8 GX_GetTexObjWrapS(GXTexObj* obj);
+u8 GX_GetTexObjWrapS(const GXTexObj* obj);
 
 /*!
- * \fn u8 GX_GetTexObjWrapT(GXTexObj* obj)
+ * \fn u8 GX_GetTexObjWrapT(const GXTexObj* obj)
  * \brief Returns the texture wrap t mode described by texture object \a obj.
  *
  * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture wrap t mode.
@@ -4055,10 +4055,10 @@ u8 GX_GetTexObjWrapS(GXTexObj* obj);
  *
  * \return wrap t mode
  */
-u8 GX_GetTexObjWrapT(GXTexObj* obj);
+u8 GX_GetTexObjWrapT(const GXTexObj* obj);
 
 /*!
- * \fn u16 GX_GetTexObjHeight(GXTexObj* obj)
+ * \fn u16 GX_GetTexObjHeight(const GXTexObj* obj)
  * \brief Returns the texture height described by texture object \a obj.
  *
  * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture height.
@@ -4067,10 +4067,10 @@ u8 GX_GetTexObjWrapT(GXTexObj* obj);
  *
  * \return texture height
  */
-u16 GX_GetTexObjHeight(GXTexObj* obj);
+u16 GX_GetTexObjHeight(const GXTexObj* obj);
 
 /*!
- * \fn u16 GX_GetTexObjWidth(GXTexObj* obj)
+ * \fn u16 GX_GetTexObjWidth(const GXTexObj* obj)
  * \brief Returns the texture width described by texture object \a obj.
  *
  * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture width.
@@ -4079,10 +4079,10 @@ u16 GX_GetTexObjHeight(GXTexObj* obj);
  *
  * \return texture width
  */
-u16 GX_GetTexObjWidth(GXTexObj* obj);
+u16 GX_GetTexObjWidth(const GXTexObj* obj);
 
 /*!
- * \fn void GX_GetTexObjAll(GXTexObj* obj, void** image_ptr, u16* width, u16* height, u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap);
+ * \fn void GX_GetTexObjAll(const GXTexObj* obj, void** image_ptr, u16* width, u16* height, u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap);
  * \brief Returns the parameters described by a texture object. Texture objects are used to describe all the parameters associated with a texture, including size, format, wrap modes, filter modes, etc. Texture objects are initialized using either GX_InitTexObj() or, for color index format textures, GX_InitTexObjCI().
  *
  * \param[in] obj ptr to a texture object
@@ -4094,7 +4094,7 @@ u16 GX_GetTexObjWidth(GXTexObj* obj);
  *
  * \return none
  */
-void GX_GetTexObjAll(GXTexObj* obj, void** image_ptr, u16* width, u16* height, u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap);
+void GX_GetTexObjAll(const GXTexObj* obj, void** image_ptr, u16* width, u16* height, u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap);
 
 /*!
  * \fn u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
@@ -4677,7 +4677,7 @@ void GX_InitLightColor(GXLightObj *lit_obj,GXColor col);
 void GX_InitLightDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz);
 
 /*!
- * \fn void GX_LoadLightObj(GXLightObj *lit_obj,u8 lit_id)
+ * \fn void GX_LoadLightObj(const GXLightObj *lit_obj,u8 lit_id)
  * \brief Loads a light object into a set of hardware registers associated with a \ref lightid.
  *
  * \details This function copies the light object data into the graphics FIFO through the CPU write-gather buffer mechanism. This guarantees that
@@ -4692,7 +4692,7 @@ void GX_InitLightDir(GXLightObj *lit_obj,f32 nx,f32 ny,f32 nz);
  *
  * \return none
  */
-void GX_LoadLightObj(GXLightObj *lit_obj,u8 lit_id);
+void GX_LoadLightObj(const GXLightObj *lit_obj,u8 lit_id);
 
 /*!
  * \fn void GX_LoadLightObjIdx(u32 litobjidx,u8 litid)
