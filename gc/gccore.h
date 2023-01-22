@@ -67,6 +67,7 @@ distribution.
 
 #if defined(HW_RVL)
 #include "ogc/ipc.h"
+#include "ogc/sha.h"
 #include "ogc/aes.h"
 #include "ogc/es.h"
 #include "ogc/stm.h"
