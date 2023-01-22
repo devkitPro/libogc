@@ -2129,6 +2129,117 @@ s32 net_select(s32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset,st
 	return nready;
 }
 
+s32 net_getsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optlen)
+{
+	s32 err = 0;
+	struct netsocket *sock;
+
+	sock = get_socket(s);
+	if(sock==NULL) return -ENOTSOCK;
+	if(optval==NULL) return -EINVAL;
+
+	switch(level) {
+		case SOL_SOCKET:
+		{
+			switch(optname) {
+				case SO_ERROR:
+				case SO_BROADCAST:
+				case SO_KEEPALIVE:
+				case SO_REUSEADDR:
+				case SO_REUSEPORT:
+					if(optlen<sizeof(u32)) err = EINVAL;
+					break;
+				default:
+					LWIP_DEBUGF(SOCKETS_DEBUG, ("net_getsockopt(%d, SOL_SOCKET, UNIMPL: optname=0x%x, ..)\n", s, optname));
+					err = ENOPROTOOPT;
+			}
+		}
+		break;
+
+		case IPPROTO_IP:
+		{
+			switch(optname) {
+				case IP_TTL:
+				case IP_TOS:
+					if(optlen<sizeof(u32)) err = EINVAL;
+					break;
+				default:
+					LWIP_DEBUGF(SOCKETS_DEBUG, ("net_getsockopt(%d, IPPROTO_IP, UNIMPL: optname=0x%x, ..)\n", s, optname));
+					err = ENOPROTOOPT;
+			}
+		}
+		break;
+
+		case  IPPROTO_TCP:
+		{
+			if(optlen<sizeof(u32)) {
+				err = EINVAL;
+				break;
+			}
+			if(sock->conn->type!=NETCONN_TCP) return 0;
+			switch(optname) {
+				case TCP_NODELAY:
+				case TCP_KEEPALIVE:
+					break;
+				default:
+					LWIP_DEBUGF(SOCKETS_DEBUG, ("net_getsockopt(%d, IPPROTO_TCP, UNIMPL: optname=0x%x, ..)\n", s, optname));
+					err = ENOPROTOOPT;
+			}
+		}
+		break;
+
+		default:
+			LWIP_DEBUGF(SOCKETS_DEBUG, ("net_getsockopt(%d, level=0x%x, UNIMPL: optname=0x%x, ..)\n", s, level, optname));
+			err = ENOPROTOOPT;
+	}
+	if(err) return -err;
+
+	switch(level) {
+		case SOL_SOCKET:
+		{
+			switch(optname) {
+				case SO_ERROR:
+					(*(u32*)optval) = sock->conn->err;
+					sock->conn->err = 0;
+					break;
+				case SO_BROADCAST:
+				case SO_KEEPALIVE:
+				case SO_REUSEADDR:
+				case SO_REUSEPORT:
+					(*(u32*)optval) = (sock->conn->pcb.tcp->so_options & optname) ? 1 : 0;
+					break;
+			}
+		}
+		break;
+
+		case IPPROTO_IP:
+		{
+			switch(optname) {
+				case IP_TTL:
+					(*(u32*)optval) = sock->conn->pcb.tcp->ttl;
+					break;
+				case IP_TOS:
+					(*(u32*)optval) = sock->conn->pcb.tcp->tos;
+					break;
+			}
+		}
+		break;
+
+		case  IPPROTO_TCP:
+		{
+			switch(optname) {
+				case TCP_NODELAY:
+					(*(u32*)optval) = (sock->conn->pcb.tcp->flags & TF_NODELAY) ? 1 : 0;
+					break;
+				case TCP_KEEPALIVE:
+					(*(u32*)optval) = sock->conn->pcb.tcp->keepalive;
+					break;
+			}
+		}
+	}
+	return 0;
+}
+
 s32 net_setsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optlen)
 {
 	s32 err = 0;
