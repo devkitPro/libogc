@@ -545,23 +545,24 @@ AESNDPB* AESND_AllocateVoiceWithArg(AESNDVoiceCallbackArg cb,void *cbArg)
 
 	_CPU_ISR_Disable(level);
 	for(i=0;i<MAX_VOICES;i++) {
-		if(!(__aesndvoicepb[i].flags&VOICE_USED)) {
-			pb = &__aesndvoicepb[i];
-			pb->voiceno = i;
-			pb->flags = (VOICE_USED|VOICE_STOPPED);
-			pb->pds = pb->yn1 = pb->yn2 = 0;
-			pb->buf_start = 0;
-			pb->buf_curr = 0;
-			pb->buf_end = 0;
-			pb->counter = 0;
-			pb->volume_l = 0x100;
-			pb->volume_r = 0x100;
-			pb->freq_h = 0x0001;
-			pb->freq_l = 0x0000;
-			pb->cb = cb;
-			pb->cbArg = cbArg;
-			break;
-		}
+		if(__aesndvoicepb[i].flags&VOICE_USED)
+			continue;
+
+		pb = &__aesndvoicepb[i];
+		pb->voiceno = i;
+		pb->flags = (VOICE_USED|VOICE_STOPPED);
+		pb->pds = pb->yn1 = pb->yn2 = 0;
+		pb->buf_start = 0;
+		pb->buf_curr = 0;
+		pb->buf_end = 0;
+		pb->counter = 0;
+		pb->volume_l = 0x100;
+		pb->volume_r = 0x100;
+		pb->freq_h = 0x0001;
+		pb->freq_l = 0x0000;
+		pb->cb = cb;
+		pb->cbArg = cbArg;
+		break;
 	}
 	_CPU_ISR_Restore(level);
 
