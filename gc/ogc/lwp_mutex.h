@@ -46,7 +46,9 @@ u32 __lwp_mutex_surrender(lwp_mutex *mutex);
 void __lwp_mutex_seize_irq_blocking(lwp_mutex *mutex,u64 timeout);
 void __lwp_mutex_flush(lwp_mutex *mutex,u32 status);
 
+#ifdef LIBOGC_INTERNAL
 static __inline__ u32 __lwp_mutex_seize_irq_trylock(lwp_mutex *mutex,u32 *isr_level);
+#endif
 
 #define __lwp_mutex_seize(_mutex_t,_id,_wait,_timeout,_level) \
 	do { \
