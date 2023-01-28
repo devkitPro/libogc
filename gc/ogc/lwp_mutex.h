@@ -46,10 +46,6 @@ u32 __lwp_mutex_surrender(lwp_mutex *mutex);
 void __lwp_mutex_seize_irq_blocking(lwp_mutex *mutex,u64 timeout);
 void __lwp_mutex_flush(lwp_mutex *mutex,u32 status);
 
-#ifdef LIBOGC_INTERNAL
-#include <libogc/lwp_mutex.inl>
-#endif
-
 #ifdef __cplusplus
 	}
 #endif

@@ -68,10 +68,6 @@ u32 __lwpmq_flush(mq_cntrl *mqueue);
 u32 __lwpmq_flush_support(mq_cntrl *mqueue);
 void __lwpmq_flush_waitthreads(mq_cntrl *mqueue);
 
-#ifdef LIBOGC_INTERNAL
-#include <libogc/lwp_messages.inl>
-#endif
-
 #ifdef __cplusplus
 	}
 #endif

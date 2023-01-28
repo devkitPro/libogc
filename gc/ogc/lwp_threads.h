@@ -96,10 +96,6 @@ void __lwp_rotate_readyqueue(u32);
 void __lwp_thread_delayended(void *);
 void __lwp_thread_tickle_timeslice(void *);
 
-#ifdef LIBOGC_INTERNAL
-#include <libogc/lwp_threads.inl>
-#endif
-
 #ifdef __cplusplus
 	}
 #endif

@@ -30,10 +30,6 @@ void __lwp_queue_append(lwp_queue *,lwp_node *);
 void __lwp_queue_extract(lwp_node *);
 void __lwp_queue_insert(lwp_node *,lwp_node *);
 
-#ifdef LIBOGC_INTERNAL
-#include <libogc/lwp_queue.inl>
-#endif
-
 #ifdef __cplusplus
 	}
 #endif

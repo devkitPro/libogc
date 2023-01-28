@@ -1,8 +1,6 @@
 #ifndef ___LWP_STATES_H__
 #define ___LWP_STATES_H__
 
-#include <gctypes.h>
-
 #define LWP_STATES_READY					0x00000000
 #define LWP_STATES_DORMANT					0x00000001
 #define LWP_STATES_SUSPENDED				0x00000002
@@ -32,17 +30,5 @@
 #define LWP_STATES_BLOCKED					(LWP_STATES_DELAYING | LWP_STATES_WAITING_FOR_TIME |	\
 											 LWP_STATES_WAITING_FOR_PERIOD | LWP_STATES_WAITING_FOR_EVENT |	\
 											 LWP_STATES_WAITING_ON_THREADQ | LWP_STATES_INTERRUPTIBLE_BY_SIGNAL)
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef LIBOGC_INTERNAL
-#include <libogc/lwp_states.inl>
-#endif
-	
-#ifdef __cplusplus
-	}
-#endif
 
 #endif

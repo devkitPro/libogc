@@ -33,10 +33,6 @@ u32 __lwp_sema_surrender(lwp_sema *sema,u32 id);
 u32 __lwp_sema_seize(lwp_sema *sema,u32 id,u32 wait,u64 timeout);
 void __lwp_sema_flush(lwp_sema *sema,u32 status);
 
-#ifdef LIBOGC_INTERNAL
-#include <libogc/lwp_sema.inl>
-#endif
-
 #ifdef __cplusplus
 	}
 #endif
