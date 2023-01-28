@@ -13,6 +13,7 @@
 #include "btmemb.h"
 #include "physbusif.h"
 
+#include "lwp_thread.inl"
 
 #define STACKSIZE						32768
 #define MQ_BOX_SIZE						256

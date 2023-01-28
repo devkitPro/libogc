@@ -38,6 +38,8 @@ distribution.
 #include <ogc/usbmouse.h>
 #include <ogc/semaphore.h>
 
+#include "lwp_queue.inl"
+
 #define MOUSE_THREAD_STACKSIZE		(1024 * 4)
 #define MOUSE_THREAD_PRIO			65
 

@@ -47,6 +47,8 @@ distribution.
 
 #include "wsksymvar.h"
 
+#include "lwp_queue.inl"
+
 #define KBD_THREAD_STACKSIZE (1024 * 4)
 #define KBD_THREAD_PRIO 64
 #define KBD_THREAD_UDELAY (1000 * 10)

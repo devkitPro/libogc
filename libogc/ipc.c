@@ -48,6 +48,8 @@ distribution.
 #include "lwp_heap.h"
 #include "lwp_wkspace.h"
 
+#include "lwp_wkspace.inl"
+
 //#define DEBUG_IPC
 
 #define IPC_HEAP_SIZE			4096

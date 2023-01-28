@@ -3,6 +3,11 @@
 #include "asm.h"
 #include "lwp_threadq.h"
 
+#include "lwp_queue.inl"
+#include "lwp_states.inl"
+#include "lwp_threads.inl"
+#include "lwp_watchdog.inl"
+
 //#define _LWPTHRQ_DEBUG
 
 static void __lwp_threadqueue_timeout(void *usr_data)

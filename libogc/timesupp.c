@@ -13,6 +13,9 @@
 #include <stdio.h>
 #include <sys/time.h>
 
+#include "lwp_threads.inl"
+#include "lwp_watchdog.inl"
+
 /* time variables */
 static u32 exi_wait_inited = 0;
 static lwpq_t time_exi_wait;

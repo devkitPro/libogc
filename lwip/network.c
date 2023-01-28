@@ -33,6 +33,9 @@
 
 #include "network.h"
 
+#include "lwp_threads.inl"
+#include "lwp_watchdog.inl"
+
 //#define _NET_DEBUG
 #define ARP_TIMER_ID			0x00070041
 #define TCP_TIMER_ID			0x00070042

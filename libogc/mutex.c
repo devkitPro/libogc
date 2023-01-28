@@ -36,6 +36,10 @@ distribution.
 #include "lwp_config.h"
 #include "mutex.h"
 
+#include "lwp_mutex.inl"
+#include "lwp_objmgr.inl"
+#include "lwp_threads.inl"
+
 #define LWP_OBJTYPE_MUTEX			3
 
 #define LWP_CHECK_MUTEX(hndl)		\

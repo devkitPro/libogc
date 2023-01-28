@@ -12,6 +12,8 @@
 #include "io.h"
 #include "lwp_wkspace.h"
 
+#include "lwp_wkspace.inl"
+
 void wiiuse_handshake(struct wiimote_t *wm,ubyte *data,uword len)
 {
 	ubyte *buf = NULL;

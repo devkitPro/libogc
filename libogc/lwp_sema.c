@@ -1,6 +1,9 @@
 #include "asm.h"
 #include "lwp_sema.h"
 
+#include "lwp_sema.inl"
+#include "lwp_threadq.inl"
+
 void __lwp_sema_initialize(lwp_sema *sema,lwp_semattr *attrs,u32 init_count)
 {
 	sema->attrs = *attrs;

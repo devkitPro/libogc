@@ -11,6 +11,8 @@
 #include "io.h"
 #include "lwp_wkspace.h"
 
+#include "lwp_wkspace.inl"
+
 #define MAX_COMMANDS					0x100
 #define MAX_WIIMOTES					5
 

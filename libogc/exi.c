@@ -38,6 +38,8 @@ distribution.
 #include "exi.h"
 #include "gcutil.h"
 
+#include "lwp_queue.h"
+
 //#define _EXI_DEBUG
 
 #define EXI_LOCK_DEVS				32

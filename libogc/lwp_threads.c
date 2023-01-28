@@ -9,6 +9,15 @@
 #include "lwp_threadq.h"
 #include "lwp_watchdog.h"
 
+#include "lwp_objmgr.inl"
+#include "lwp_priority.inl"
+#include "lwp_queue.inl"
+#include "lwp_stack.inl"
+#include "lwp_states.inl"
+#include "lwp_threads.inl"
+#include "lwp_watchdog.inl"
+#include "sys_state.inl"
+
 #define LWP_MAXPRIORITIES		256
 
 /* new one */

@@ -1,6 +1,9 @@
 #include "asm.h"
 #include "lwp_mutex.h"
 
+#include "lwp_mutex.inl"
+#include "lwp_threads.inl"
+
 void __lwp_mutex_initialize(lwp_mutex *mutex,lwp_mutex_attr *attrs,u32 init_lock)
 {
 	mutex->atrrs = *attrs;

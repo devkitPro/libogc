@@ -37,6 +37,8 @@ distribution.
 #include "lwp_watchdog.h"
 #include "context.h"
 
+#include "lwp_watchdog.inl"
+
 //#define _DECEX_DEBUG
 
 #ifdef _DECEX_DEBUG

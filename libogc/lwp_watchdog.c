@@ -4,6 +4,9 @@
 #include "lwp_threads.h"
 #include "lwp_watchdog.h"
 
+#include "lwp_queue.inl"
+#include "lwp_watchdog.inl"
+
 //#define _LWPWD_DEBUG
 
 #ifdef _LWPWD_DEBUG

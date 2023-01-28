@@ -48,6 +48,8 @@
 
 #include "lwp_watchdog.h"
 
+#include "lwp_watchdog.inl"
+
 #define LOOP_TIMER_ID			0x00070045
 
 static u64 loopif_ticks;

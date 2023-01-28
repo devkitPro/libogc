@@ -8,6 +8,10 @@
 
 #include "lwp_objmgr.h"
 
+#include "lwp_queue.inl"
+#include "lwp_threads.inl"
+#include "lwp_wkspace.inl"
+
 static u32 _lwp_objmgr_memsize = 0;
 static lwp_obj *null_local_table = NULL;
 

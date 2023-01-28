@@ -12,6 +12,8 @@
 #include "wiiuse_internal.h"
 #include "io.h"
 
+#include "lwp_wkspace.inl"
+
 static struct wiimote_t** __wm = NULL;
 
 void wiiuse_send_next_command(struct wiimote_t *wm)

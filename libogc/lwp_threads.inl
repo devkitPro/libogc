@@ -1,6 +1,9 @@
 #ifndef __LWP_INL__
 #define __LWP_INL__
 
+#include "lwp_priority.inl"
+#include "lwp_watchdog.inl"
+
 static __inline__ u32 __lwp_thread_isexec(lwp_cntrl *thethread)
 {
 	return (thethread==_thr_executing);

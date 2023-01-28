@@ -4,6 +4,8 @@
 #include "sys_state.h"
 #include "lwp_threads.h"
 
+#include "lwp_threads.inl"
+
 int libc_reentrant;
 struct _reent libc_globl_reent;
 

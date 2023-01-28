@@ -21,6 +21,8 @@
 #include "debug_if.h"
 #include "debug_supp.h"
 
+#include "lwp_threads.inl"
+
 #define GEKKO_MAX_BP	256
 
 #define SP_REGNUM		1			//register no. for stackpointer

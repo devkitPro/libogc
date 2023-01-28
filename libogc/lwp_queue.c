@@ -3,6 +3,8 @@
 #include "processor.h"
 #include "lwp_queue.h"
 
+#include "lwp_queue.inl"
+
 void __lwp_queue_initialize(lwp_queue *queue,void *start_addr,u32 num_nodes,u32 node_size)
 {
 	u32 count;

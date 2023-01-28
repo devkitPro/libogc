@@ -58,6 +58,12 @@ distribution.
 #include "lwp_config.h"
 #include "libversion.h"
 
+#include "lwp_objmgr.inl"
+#include "lwp_queue.inl"
+#include "lwp_threads.inl"
+#include "lwp_watchdog.inl"
+#include "sys_state.inl"
+
 #define SYSMEM1_SIZE				0x01800000
 #if defined(HW_RVL)
 #define SYSMEM2_SIZE				0x04000000
