@@ -1,0 +1,85 @@
+{
+	"name": "libogc-selffork",
+	"folders":
+	[
+		{
+//			"name": "",
+			"path": "..",
+			"file_exclude_patterns":
+			[
+				"Doxyfile",
+//				"*.ii",
+
+				// extraneous files in basedir
+				".cvsignore",
+				".doozer.json",
+				"CNAME",
+				"gcsdk.*",
+				"libogc.prj"
+			],
+			"folder_exclude_patterns":
+			[
+				".git"
+			],
+			"follow_symlinks": false
+		}
+	],
+	"build_systems":
+	[
+		{
+			"name": "Project Build System",
+			"shell_cmd": "make",
+			"working_dir": "${folder:${project_path:${file_path}}}",
+			"syntax": "Make Output.sublime-syntax",
+			"windows":{"env":
+			{
+				// so it doesnt take 10 years to look for echo.exe twice in a row
+				"PATH": "%CODEFOLDER%\\sdk\\devkitpro\\msys2\\usr\\bin;%CODEFOLDER%\\prog\\doxygen-1.9.2\\bin",
+			}},
+			"variants":
+			[
+				// make and friends
+				
+				{
+					"name": "Build Library",
+					"shell_cmd": "make build",
+				},
+				{
+					"name": "Rebuild Library",
+					"shell_cmd": "make rebuild",
+				},
+				{
+					"name": "Build Library and Load",
+					"shell_cmd": "make all",
+				},
+				{
+					"name": "Load Library into Test Project",
+					"shell_cmd": "make install",
+				},
+				{
+					"name": "Clean",
+					"shell_cmd": "make clean",
+				},
+
+				// Doxygen
+				{
+					"name": "Open Doxywizard",
+					"shell_cmd": "doxywizard Doxyfile",
+				},
+				{
+					"name": "Generate Doxygen",
+					"shell_cmd": "make docs",
+				},
+				{
+					"name": "Open Doxygen",
+					"windows":{
+						"shell_cmd":"${folder:${project_path:${file_path}}}\\docs\\html\\index.html"
+					},
+/*					"linux":{
+						"shell_cmd":"${folder:${project_path:${file_path}}}/docs/html/index.html"
+					}
+*/				}
+			],
+		}
+	],
+}
