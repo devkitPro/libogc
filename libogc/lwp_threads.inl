@@ -1,6 +1,8 @@
 #ifndef __LWP_INL__
 #define __LWP_INL__
 
+#include "lwp_threads.h"
+
 #include "lwp_priority.inl"
 #include "lwp_watchdog.inl"
 

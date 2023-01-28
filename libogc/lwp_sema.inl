@@ -1,6 +1,8 @@
 #ifndef __LWP_SEMA_INL__
 #define __LWP_SEMA_INL__
 
+#include "lwp_sema.h"
+
 #include "lwp_threadq.inl"
 #include "lwp_threads.inl"
 

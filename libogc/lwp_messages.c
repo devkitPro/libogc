@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "asm.h"
-#include "lwp_messages.h"
-#include "lwp_wkspace.h"
+
+
 
 #include "lwp_messages.inl"
 #include "lwp_queue.inl"

@@ -1,5 +1,5 @@
 #include "asm.h"
-#include "lwp_sema.h"
+
 
 #include "lwp_sema.inl"
 #include "lwp_threadq.inl"

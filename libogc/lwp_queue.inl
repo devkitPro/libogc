@@ -1,6 +1,8 @@
 #ifndef __LWP_QUEUE_INL__
 #define __LWP_QUEUE_INL__
 
+#include "lwp_queue.h"
+
 static __inline__ lwp_node* __lwp_queue_head(lwp_queue *queue)
 {
 	return (lwp_node*)queue;

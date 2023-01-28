@@ -1,6 +1,8 @@
 #ifndef __LWP_WATCHDOG_INL__
 #define __LWP_WATCHDOG_INL__
 
+#include "lwp_watchdog.h"
+
 static __inline__ void __lwp_wd_initialize(wd_cntrl *wd,wd_service_routine routine,u32 id,void *usr_data)
 {
 	wd->state = LWP_WD_INACTIVE;

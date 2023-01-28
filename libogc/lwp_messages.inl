@@ -1,6 +1,8 @@
 #ifndef __MESSAGE_INL__
 #define __MESSAGE_INL__
 
+#include "lwp_messages.h"
+
 #include "lwp_queue.inl"
 
 static __inline__ void __lwpmq_set_notify(mq_cntrl *mqueue,mq_notifyhandler handler,void *arg)

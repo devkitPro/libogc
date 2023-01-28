@@ -4,7 +4,7 @@
 #include "asm.h"
 #include "processor.h"
 #include "lwp.h"
-#include "lwp_threadq.h"
+
 #include "timesupp.h"
 #include "exi.h"
 #include "system.h"

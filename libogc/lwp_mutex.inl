@@ -1,7 +1,9 @@
 #ifndef __LWP_MUTEX_INL__
 #define __LWP_MUTEX_INL__
 
+#include "lwp_mutex.h"
 #include "lwp_threads.h"
+
 #include "lwp_threads.inl"
 #include "lwp_threadq.inl"
 

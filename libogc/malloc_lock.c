@@ -9,7 +9,7 @@ extern int errno;
 
 #include "asm.h"
 #include "processor.h"
-#include "lwp_mutex.h"
+
 
 #include "lwp_threads.inl"
 #include "lwp_mutex.inl"

@@ -1,10 +1,10 @@
 #include <stdlib.h>
 #include <system.h>
 #include <processor.h>
-#include <sys_state.h>
-#include <lwp_config.h>
 
-#include "lwp_heap.h"
+
+
+
 
 #include "lwp_heap.inl"
 #include "sys_state.inl"

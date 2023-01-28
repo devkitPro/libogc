@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <lwp_threads.h>
-#include <lwp_wkspace.h>
-#include <lwp_config.h>
 
-#include "lwp_objmgr.h"
+
+
+
+
 
 #include "lwp_queue.inl"
 #include "lwp_threads.inl"
