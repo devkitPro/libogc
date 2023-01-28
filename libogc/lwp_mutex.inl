@@ -1,6 +1,7 @@
 #ifndef __LWP_MUTEX_INL__
 #define __LWP_MUTEX_INL__
 
+#include "lwp_threads.h"
 #include "lwp_threads.inl"
 #include "lwp_threadq.inl"
 
@@ -88,21 +89,21 @@ static __inline__ u32 __lwp_mutex_seize_irq_trylock(lwp_mutex *mutex,u32 *isr_le
 	return 1;
 }
 
-#define __lwp_mutex_seize(_mutex_t,_id,_wait,_timeout,_level) \
-	do { \
-		if(__lwp_mutex_seize_irq_trylock(_mutex_t,&_level)) { \
-			if(!_wait) {	\
-				_CPU_ISR_Restore(_level); \
-				_thr_executing->wait.ret_code = LWP_MUTEX_UNSATISFIED_NOWAIT; \
-			} else { \
-				__lwp_threadqueue_csenter(&(_mutex_t)->wait_queue); \
-				_thr_executing->wait.queue = &(_mutex_t)->wait_queue; \
-				_thr_executing->wait.id = _id; \
-				__lwp_thread_dispatchdisable(); \
-				_CPU_ISR_Restore(_level); \
-				__lwp_mutex_seize_irq_blocking(_mutex_t,(u64)_timeout); \
-			} \
-		} \
-	} while(0)
+static __inline__ void __lwp_mutex_seize(lwp_mutex *mutex,s32 id,u8 wait,u32 timeout,u32 level)
+{
+	if(__lwp_mutex_seize_irq_trylock(mutex,&level)) {
+		if(!wait) {
+			_CPU_ISR_Restore(level);
+			_thr_executing->wait.ret_code = LWP_MUTEX_UNSATISFIED_NOWAIT;
+		} else {
+			__lwp_threadqueue_csenter(&(mutex)->wait_queue);
+			_thr_executing->wait.queue = &(mutex)->wait_queue;
+			_thr_executing->wait.id = id;
+			__lwp_thread_dispatchdisable();
+			_CPU_ISR_Restore(level);
+			__lwp_mutex_seize_irq_blocking(mutex,(u64)timeout);
+		}
+	}
+}
 
 #endif
