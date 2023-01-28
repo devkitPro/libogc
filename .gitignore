@@ -7,4 +7,3 @@ gc/ogc/libversion.h
 *.bz2
 docs
 warn.log
-sublime/
