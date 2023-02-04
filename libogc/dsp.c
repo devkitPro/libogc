@@ -248,7 +248,7 @@ static void __dsp_def_taskcb(void)
 					while(DSP_CheckMailTo());
 
 					__dsp_exectask(__dsp_currtask,__dsp_rudetask);
-					__dsp_currtask->flags = DSPTASK_YIELD;
+					__dsp_currtask->state = DSPTASK_YIELD;
 					__dsp_currtask = __dsp_rudetask;
 					__dsp_rudetask = NULL;
 					__dsp_rudetask_pend = FALSE;
