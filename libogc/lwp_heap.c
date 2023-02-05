@@ -2,6 +2,7 @@
 #include <system.h>
 #include <processor.h>
 
+#include "lwp_heap.h"
 
 
 

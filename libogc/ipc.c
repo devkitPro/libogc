@@ -45,6 +45,7 @@ distribution.
 #include "ipc.h"
 #include "cache.h"
 #include "system.h"
+#include "lwp_heap.h"
 
 
 

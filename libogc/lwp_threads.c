@@ -3,11 +3,12 @@
 #include <string.h>
 #include "asm.h"
 #include "processor.h"
-
-
+#include "sys_state.h"
+#include "lwp_stack.h"
+#include "lwp_threads.h"
 
 #include "lwp_threadq.h"
-
+#include "lwp_watchdog.h"
 
 #include "lwp_objmgr.inl"
 #include "lwp_priority.inl"

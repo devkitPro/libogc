@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "asm.h"
+#include "lwp_messages.h"
 
 
 
