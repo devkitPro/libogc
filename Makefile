@@ -76,7 +76,7 @@ WIIKEYBLIB	:= $(LIBDIR)/libwiikeyboard
 STUBSLIB	:= $(LIBDIR)/libgclibstubs
 
 #---------------------------------------------------------------------------------
-DEFINCS		:= -I$(BASEDIR) -I$(BASEDIR)/gc
+DEFINCS		:= -I$(BASEDIR) -I$(BASEDIR)/gc -I$(OGCDIR)
 INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/ogc -I$(BASEDIR)/gc/ogc/machine \
 				-I$(BASEDIR)/gc/modplay \
