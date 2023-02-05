@@ -42,8 +42,8 @@
 #include <gccore.h>
 #include <network.h>
 #include <processor.h>
-#include <lwp_threads.h>
 #include <lwp_objmgr.h>
+
 #include <ogc/lwp_watchdog.h>
 #include <sys/statvfs.h>
 #include <errno.h>

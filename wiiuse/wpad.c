@@ -45,7 +45,7 @@ distribution.
 #include "wiiboard.h"
 #include "wiiuse_internal.h"
 #include "wiiuse/wpad.h"
-#include "lwp_threads.h"
+
 #include "ogcsys.h"
 
 #include "lwp_threads.inl"

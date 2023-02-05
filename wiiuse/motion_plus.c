@@ -13,7 +13,7 @@
 #include "events.h"
 #include "wiiboard.h"
 #include "io.h"
-#include "lwp_wkspace.h"
+
 #include "motion_plus.h"
 
 #include "lwp_wkspace.inl"

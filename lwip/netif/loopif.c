@@ -31,7 +31,7 @@
  */
 
 #include <time.h>
-#include "lwp_watchdog.h"
+
 #include "lwip/opt.h"
 
 #if LWIP_HAVE_LOOPIF

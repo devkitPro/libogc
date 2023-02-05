@@ -4,7 +4,6 @@
 #include <malloc.h>
 #include <ogcsys.h>
 #include <gccore.h>
-#include <lwp_threads.h>
 
 #include "bt.h"
 #include "bte.h"
@@ -13,7 +12,7 @@
 #include "btmemb.h"
 #include "physbusif.h"
 
-#include "lwp_thread.inl"
+#include "lwp_threads.inl"
 
 #define STACKSIZE						32768
 #define MQ_BOX_SIZE						256

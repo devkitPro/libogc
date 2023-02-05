@@ -9,7 +9,7 @@
 #include "wiiuse_internal.h"
 #include "events.h"
 #include "io.h"
-#include "lwp_wkspace.h"
+
 
 #include "lwp_wkspace.inl"
 

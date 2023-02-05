@@ -10,7 +10,7 @@
 #include "wiiboard.h"
 #include "motion_plus.h"
 #include "io.h"
-#include "lwp_wkspace.h"
+
 
 #include "lwp_wkspace.inl"
 
