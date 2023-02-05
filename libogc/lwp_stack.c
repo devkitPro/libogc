@@ -1,7 +1,6 @@
 #include <stdlib.h>
+
 #include "lwp_stack.h"
-
-
 
 #include "lwp_stack.inl"
 #include "lwp_wkspace.inl"

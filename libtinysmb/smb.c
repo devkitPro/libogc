@@ -43,14 +43,14 @@
 #include <network.h>
 #include <processor.h>
 #include <lwp_objmgr.h>
+#include <lwp_watchdog.h>
 
-#include <ogc/lwp_watchdog.h>
+#include <lwp_objmgr.inl>
+
 #include <sys/statvfs.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <smb.h>
-
-#include "lwp_objmgr.inl"
 
 #define IOS_O_NONBLOCK				0x04
 #define RECV_TIMEOUT				3000  // in ms

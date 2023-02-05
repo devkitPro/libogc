@@ -7,6 +7,8 @@
 	#include <Winsock2.h>
 #endif
 
+#include <lwp_wkspace.inl>
+
 #include "definitions.h"
 #include "wiiuse_internal.h"
 #include "dynamics.h"
@@ -15,8 +17,6 @@
 #include "io.h"
 
 #include "motion_plus.h"
-
-#include "lwp_wkspace.inl"
 
 static void wiiuse_probe_motion_plus_check2(struct wiimote_t *wm, ubyte *data, uword len)
 {

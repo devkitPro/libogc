@@ -5,10 +5,6 @@
 
 #include "lwp_objmgr.h"
 
-
-
-
-
 #include "lwp_queue.inl"
 #include "lwp_threads.inl"
 #include "lwp_wkspace.inl"

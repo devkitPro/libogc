@@ -11,6 +11,9 @@
 #include <processor.h>
 #include <lwp_watchdog.h>
 
+#include <lwp_threads.inl>
+#include <lwp_watchdog.inl>
+
 #include <lwip/debug.h>
 #include <lwip/opt.h>
 #include <lwip/mem.h>
@@ -32,9 +35,6 @@
 #include <sys/iosupport.h>
 
 #include "network.h"
-
-#include "lwp_threads.inl"
-#include "lwp_watchdog.inl"
 
 //#define _NET_DEBUG
 #define ARP_TIMER_ID			0x00070041

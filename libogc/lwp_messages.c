@@ -2,8 +2,6 @@
 #include "asm.h"
 #include "lwp_messages.h"
 
-
-
 #include "lwp_messages.inl"
 #include "lwp_queue.inl"
 #include "lwp_threadq.inl"

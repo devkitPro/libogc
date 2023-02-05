@@ -51,9 +51,6 @@ distribution.
 #include "system.h"
 #include "lwp_threads.h"
 #include "lwp_priority.h"
-
-
-
 #include "lwp_watchdog.h"
 #include "lwp_wkspace.h"
 #include "lwp_objmgr.h"

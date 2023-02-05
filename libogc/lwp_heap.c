@@ -4,9 +4,6 @@
 
 #include "lwp_heap.h"
 
-
-
-
 #include "lwp_heap.inl"
 #include "sys_state.inl"
 

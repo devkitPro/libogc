@@ -8,20 +8,17 @@
 #include "spinlock.h"
 #include "lwp.h"
 #include "lwp_threads.h"
-
 #include "context.h"
 #include "cache.h"
 #include "video.h"
 #include "ogcsys.h"
 
-
+#include "lwp_threads.inl"
 
 #include "tcpip.h"
 #include "geckousb.h"
 #include "debug_if.h"
 #include "debug_supp.h"
-
-#include "lwp_threads.inl"
 
 #define GEKKO_MAX_BP	256
 

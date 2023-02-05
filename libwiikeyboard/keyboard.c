@@ -42,12 +42,12 @@ distribution.
 #include <ogc/usb.h>
 #include <ogc/lwp_queue.h>
 
+#include <lwp_queue.inl>
+
 #include <wiikeyboard/usbkeyboard.h>
 #include <wiikeyboard/keyboard.h>
 
 #include "wsksymvar.h"
-
-#include "lwp_queue.inl"
 
 #define KBD_THREAD_STACKSIZE (1024 * 4)
 #define KBD_THREAD_PRIO 64

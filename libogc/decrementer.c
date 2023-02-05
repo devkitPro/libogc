@@ -33,8 +33,6 @@ distribution.
 #include <stdlib.h>
 #include "asm.h"
 #include "processor.h"
-
-
 #include "context.h"
 
 #include "lwp_watchdog.inl"
