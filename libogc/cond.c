@@ -37,6 +37,11 @@ distribution.
 #include "lwp_config.h"
 #include "cond.h"
 
+#include "lwp_objmgr.inl"
+#include "lwp_threadq.inl"
+#include "lwp_threads.inl"
+#include "lwp_watchdog.inl"
+
 #define LWP_OBJTYPE_COND				5
 
 #define LWP_CHECK_COND(hndl)		\

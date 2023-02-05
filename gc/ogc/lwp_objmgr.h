@@ -38,10 +38,6 @@ lwp_obj* __lwp_objmgr_get(lwp_objinfo *info,u32 id);
 lwp_obj* __lwp_objmgr_getisrdisable(lwp_objinfo *info,u32 id,u32 *p_level);
 lwp_obj* __lwp_objmgr_getnoprotection(lwp_objinfo *info,u32 id);
 
-#ifdef LIBOGC_INTERNAL
-#include <libogc/lwp_objmgr.inl>
-#endif
-
 #ifdef __cplusplus
 	}
 #endif

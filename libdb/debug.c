@@ -8,13 +8,12 @@
 #include "spinlock.h"
 #include "lwp.h"
 #include "lwp_threads.h"
-#include "sys_state.h"
 #include "context.h"
 #include "cache.h"
 #include "video.h"
 #include "ogcsys.h"
 
-#include "lwp_config.h"
+#include "lwp_threads.inl"
 
 #include "tcpip.h"
 #include "geckousb.h"

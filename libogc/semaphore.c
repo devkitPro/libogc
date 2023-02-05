@@ -37,6 +37,9 @@ distribution.
 #include "lwp_config.h"
 #include "semaphore.h"
 
+#include "lwp_objmgr.inl"
+#include "lwp_threads.inl"
+
 #define LWP_OBJTYPE_SEM				4
 
 #define LWP_CHECK_SEM(hndl)		\

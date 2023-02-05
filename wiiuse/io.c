@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <lwp_wkspace.inl>
+
 #include "definitions.h"
 #include "wiiuse_internal.h"
 #include "nunchuk.h"
@@ -10,7 +12,6 @@
 #include "wiiboard.h"
 #include "motion_plus.h"
 #include "io.h"
-#include "lwp_wkspace.h"
 
 void wiiuse_handshake(struct wiimote_t *wm,ubyte *data,uword len)
 {

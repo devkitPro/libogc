@@ -2,11 +2,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <lwp_threads.h>
-#include <lwp_wkspace.h>
-#include <lwp_config.h>
 
 #include "lwp_objmgr.h"
+
+#include "lwp_queue.inl"
+#include "lwp_threads.inl"
+#include "lwp_wkspace.inl"
 
 static u32 _lwp_objmgr_memsize = 0;
 static lwp_obj *null_local_table = NULL;

@@ -76,7 +76,7 @@ WIIKEYBLIB	:= $(LIBDIR)/libwiikeyboard
 STUBSLIB	:= $(LIBDIR)/libgclibstubs
 
 #---------------------------------------------------------------------------------
-DEFINCS		:= -I$(BASEDIR) -I$(BASEDIR)/gc
+DEFINCS		:= -I$(BASEDIR) -I$(BASEDIR)/gc -I$(OGCDIR)
 INCLUDES	:=	$(DEFINCS) -I$(BASEDIR)/gc/netif -I$(BASEDIR)/gc/ipv4 \
 				-I$(BASEDIR)/gc/ogc -I$(BASEDIR)/gc/ogc/machine \
 				-I$(BASEDIR)/gc/modplay \
@@ -99,7 +99,7 @@ MACHDEP		+=	-DHW_DOL
 INCLUDES	+=	-I$(BASEDIR)/cube
 endif
 
-CFLAGS		:= $(FALSE_POSITIVES) -DLIBOGC_INTERNAL -g -O2 -fno-strict-aliasing -Wall $(MACHDEP) $(INCLUDES)
+CFLAGS		:= $(FALSE_POSITIVES) -g -O2 -fno-strict-aliasing -Wall $(MACHDEP) $(INCLUDES)
 ASFLAGS		:= $(MACHDEP) -mregnames -D_LANGUAGE_ASSEMBLY $(INCLUDES)
 
 #---------------------------------------------------------------------------------

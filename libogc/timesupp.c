@@ -4,7 +4,7 @@
 #include "asm.h"
 #include "processor.h"
 #include "lwp.h"
-#include "lwp_threadq.h"
+
 #include "timesupp.h"
 #include "exi.h"
 #include "system.h"
@@ -12,6 +12,9 @@
 
 #include <stdio.h>
 #include <sys/time.h>
+
+#include "lwp_threads.inl"
+#include "lwp_watchdog.inl"
 
 /* time variables */
 static u32 exi_wait_inited = 0;

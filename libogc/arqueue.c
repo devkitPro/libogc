@@ -36,6 +36,8 @@ distribution.
 #include "processor.h"
 #include "arqueue.h"
 
+#include "lwp_queue.inl"
+
 //#define _ARQ_DEBUG
 
 static u32 __ARQChunkSize;

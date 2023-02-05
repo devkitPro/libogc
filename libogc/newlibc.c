@@ -1,8 +1,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/reent.h>
-#include "sys_state.h"
+
 #include "lwp_threads.h"
+
+#include "lwp_threads.inl"
 
 int libc_reentrant;
 struct _reent libc_globl_reent;

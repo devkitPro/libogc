@@ -49,7 +49,6 @@ distribution.
 #include "cache.h"
 #include "video.h"
 #include "system.h"
-#include "sys_state.h"
 #include "lwp_threads.h"
 #include "lwp_priority.h"
 #include "lwp_watchdog.h"
@@ -57,6 +56,12 @@ distribution.
 #include "lwp_objmgr.h"
 #include "lwp_config.h"
 #include "libversion.h"
+
+#include "lwp_objmgr.inl"
+#include "lwp_queue.inl"
+#include "lwp_threads.inl"
+#include "lwp_watchdog.inl"
+#include "sys_state.inl"
 
 #define SYSMEM1_SIZE				0x01800000
 #if defined(HW_RVL)

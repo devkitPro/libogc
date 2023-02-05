@@ -1,6 +1,8 @@
 #ifndef __LWP_HEAP_INL__
 #define __LWP_HEAP_INL__
 
+#include "lwp_heap.h"
+
 static __inline__ heap_block* __lwp_heap_head(heap_cntrl *theheap)
 {
 	return (heap_block*)&theheap->start;

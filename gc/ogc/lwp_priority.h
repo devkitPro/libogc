@@ -22,10 +22,6 @@ extern u32 _prio_bitmap[];
 
 void __lwp_priority_init(void);
 
-#ifdef LIBOGC_INTERNAL
-#include <libogc/lwp_priority.inl>
-#endif
-
 #ifdef __cplusplus
 	}
 #endif

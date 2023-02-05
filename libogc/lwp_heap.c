@@ -1,11 +1,11 @@
 #include <stdlib.h>
 #include <system.h>
 #include <processor.h>
-#include <sys_state.h>
-#include <lwp_config.h>
 
 #include "lwp_heap.h"
 
+#include "lwp_heap.inl"
+#include "sys_state.inl"
 
 u32 __lwp_heap_init(heap_cntrl *theheap,void *start_addr,u32 size,u32 pg_size)
 {

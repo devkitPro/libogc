@@ -5,11 +5,12 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <lwp_wkspace.inl>
+
 #include "definitions.h"
 #include "wiiuse_internal.h"
 #include "events.h"
 #include "io.h"
-#include "lwp_wkspace.h"
 
 #define MAX_COMMANDS					0x100
 #define MAX_WIIMOTES					5

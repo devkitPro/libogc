@@ -9,8 +9,11 @@
 #include <cond.h>
 #include <semaphore.h>
 #include <processor.h>
-#include <lwp_threads.h>
 #include <lwp_watchdog.h>
+
+#include <lwp_threads.inl>
+#include <lwp_watchdog.inl>
+
 #include <lwip/debug.h>
 #include <lwip/opt.h>
 #include <lwip/mem.h>

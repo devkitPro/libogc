@@ -42,6 +42,8 @@ distribution.
 #include <ogc/usb.h>
 #include <ogc/lwp_queue.h>
 
+#include <lwp_queue.inl>
+
 #include <wiikeyboard/usbkeyboard.h>
 #include <wiikeyboard/keyboard.h>
 

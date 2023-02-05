@@ -42,9 +42,11 @@
 #include <gccore.h>
 #include <network.h>
 #include <processor.h>
-#include <lwp_threads.h>
 #include <lwp_objmgr.h>
-#include <ogc/lwp_watchdog.h>
+#include <lwp_watchdog.h>
+
+#include <lwp_objmgr.inl>
+
 #include <sys/statvfs.h>
 #include <errno.h>
 #include <fcntl.h>

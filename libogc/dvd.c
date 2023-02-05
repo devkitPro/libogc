@@ -46,6 +46,8 @@ distribution.
 #include "system.h"
 #include "dvd.h"
 
+#include "lwp_queue.inl"
+
 //#define _DVD_DEBUG
 
 #define DVD_BRK							(1<<0)

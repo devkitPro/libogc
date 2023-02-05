@@ -11,6 +11,9 @@ extern int errno;
 #include "processor.h"
 #include "lwp_mutex.h"
 
+#include "lwp_threads.inl"
+#include "lwp_mutex.inl"
+
 #define MEMLOCK_MUTEX_ID			0x00030040
 
 static int initialized = 0;

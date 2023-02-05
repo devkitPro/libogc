@@ -49,10 +49,6 @@ void* __lwp_heap_allocate(heap_cntrl *theheap,u32 size);
 BOOL __lwp_heap_free(heap_cntrl *theheap,void *ptr);
 u32 __lwp_heap_getinfo(heap_cntrl *theheap,heap_iblock *theinfo);
 
-#ifdef LIBOGC_INTERNAL
-#include <libogc/lwp_heap.inl>
-#endif
-
 #ifdef __cplusplus
 	}
 #endif

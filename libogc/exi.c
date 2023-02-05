@@ -37,6 +37,9 @@ distribution.
 #include "spinlock.h"
 #include "exi.h"
 #include "gcutil.h"
+#include "lwp_queue.h"
+
+#include "lwp_queue.inl"
 
 //#define _EXI_DEBUG
 

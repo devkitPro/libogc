@@ -1,7 +1,12 @@
 #include <stdio.h>
-#include <lwp_watchdog.h>
+
 #include "asm.h"
 #include "lwp_threadq.h"
+
+#include "lwp_queue.inl"
+#include "lwp_states.inl"
+#include "lwp_threads.inl"
+#include "lwp_watchdog.inl"
 
 //#define _LWPTHRQ_DEBUG
 

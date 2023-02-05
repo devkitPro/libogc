@@ -1,7 +1,11 @@
 #include <stdlib.h>
 #include "asm.h"
 #include "lwp_messages.h"
-#include "lwp_wkspace.h"
+
+#include "lwp_messages.inl"
+#include "lwp_queue.inl"
+#include "lwp_threadq.inl"
+#include "lwp_wkspace.inl"
 
 void __lwpmq_msg_insert(mq_cntrl *mqueue,mq_buffercntrl *msg,u32 type)
 {

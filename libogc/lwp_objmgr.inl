@@ -1,6 +1,8 @@
 #ifndef __LWP_OBJMGR_INL__
 #define __LWP_OBJMGR_INL__
 
+#include "lwp_objmgr.h"
+
 static __inline__ void __lwp_objmgr_setlocal(lwp_objinfo *info,u32 idx,lwp_obj *object)
 {
 	if(idx<info->max_nodes) info->local_table[idx] = object;

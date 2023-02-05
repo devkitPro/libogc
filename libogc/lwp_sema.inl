@@ -1,6 +1,11 @@
 #ifndef __LWP_SEMA_INL__
 #define __LWP_SEMA_INL__
 
+#include "lwp_sema.h"
+
+#include "lwp_threadq.inl"
+#include "lwp_threads.inl"
+
 static __inline__ u32 __lwp_sema_ispriority(lwp_semattr *attr)
 {
 	return (attr->mode==LWP_SEMA_MODEPRIORITY);

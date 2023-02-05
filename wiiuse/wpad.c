@@ -45,8 +45,10 @@ distribution.
 #include "wiiboard.h"
 #include "wiiuse_internal.h"
 #include "wiiuse/wpad.h"
-#include "lwp_threads.h"
+
 #include "ogcsys.h"
+
+#include "lwp_threads.inl"
 
 #define MAX_STREAMDATA_LEN			20
 #define EVENTQUEUE_LENGTH			16

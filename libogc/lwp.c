@@ -32,12 +32,17 @@ distribution.
 #include <errno.h>
 #include "asm.h"
 #include "processor.h"
+#include "lwp.h"
 #include "lwp_threadq.h"
 #include "lwp_threads.h"
 #include "lwp_wkspace.h"
 #include "lwp_objmgr.h"
 #include "lwp_config.h"
-#include "lwp.h"
+
+#include "lwp_objmgr.inl"
+#include "lwp_states.inl"
+#include "lwp_threadq.inl"
+#include "lwp_threads.inl"
 
 #define LWP_OBJTYPE_THREAD			1
 #define LWP_OBJTYPE_TQUEUE			2

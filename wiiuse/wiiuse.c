@@ -8,6 +8,8 @@
 	#include <Winsock2.h>
 #endif
 
+#include <lwp_wkspace.inl>
+
 #include "definitions.h"
 #include "wiiuse_internal.h"
 #include "io.h"

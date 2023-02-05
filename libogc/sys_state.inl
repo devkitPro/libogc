@@ -1,6 +1,8 @@
 #ifndef __SYS_STATE_INL__
 #define __SYS_STATE_INL__
 
+#include "sys_state.h"
+
 static __inline__ void __sys_state_init(void)
 {
 	_sys_state_curr = SYS_STATE_BEFORE_INIT;

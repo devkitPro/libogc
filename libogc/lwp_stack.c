@@ -1,6 +1,9 @@
 #include <stdlib.h>
+
 #include "lwp_stack.h"
-#include "lwp_wkspace.h"
+
+#include "lwp_stack.inl"
+#include "lwp_wkspace.inl"
 
 u32 __lwp_stack_allocate(lwp_cntrl *thethread,u32 size)
 {

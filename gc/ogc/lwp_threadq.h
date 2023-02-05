@@ -28,10 +28,6 @@ void __lwp_threadqueue_extractfifo(lwp_thrqueue *queue,lwp_cntrl *thethread);
 void __lwp_threadqueue_extractpriority(lwp_thrqueue *queue,lwp_cntrl *thethread);
 u32 __lwp_threadqueue_extractproxy(lwp_cntrl *thethread);
 
-#ifdef LIBOGC_INTERNAL
-#include <libogc/lwp_threadq.inl>
-#endif
-
 #ifdef __cplusplus
 	}
 #endif
