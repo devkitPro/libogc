@@ -199,6 +199,14 @@ u32 VIDEO_HaveComponentCable(void);
 
 GXRModeObj * VIDEO_GetPreferredMode(GXRModeObj *mode);
 
+/*! 
+ * \fn u32 VIDEO_GetVideoScanMode(void)
+ * \brief Get video scan mode. This function returns 0 when interlaced, 1 when non interlaced and 2 when progressive
+ *
+ * \return 0 when interlaced, 1 when non interlaced and 2 when progressive
+ */
+u32 VIDEO_GetVideoScanMode(void);
+
 #ifdef __cplusplus
    }
 #endif /* __cplusplus */

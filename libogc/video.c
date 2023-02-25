@@ -2963,3 +2963,20 @@ u32 VIDEO_HaveComponentCable(void)
 {
 	return (_viReg[55]&0x01);
 }
+
+u32 VIDEO_GetVideoScanMode(void)
+{
+	u32 level;
+	u32 mode;
+
+	_CPU_ISR_Disable(level);
+
+	// Check Clock Select Register for progressive clock
+	if (_viReg[54] & 1)
+		mode = VI_PROGRESSIVE;
+	else
+		mode = (_viReg[1] >> 2 & 1) ? VI_NON_INTERLACE : VI_INTERLACE;
+
+	_CPU_ISR_Restore(level);
+	return mode;
+}
