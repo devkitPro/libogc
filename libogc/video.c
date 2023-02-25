@@ -2090,7 +2090,12 @@ static void __VIInit(u32 vimode)
 	//reset the interface
 	cnt = 0;
 	_viReg[1] = 0x02;
-	while(cnt<1000) cnt++;
+	while(cnt<1000) 
+	{
+		__asm__ __volatile__ ("" ::: "memory");
+		cnt++;
+	}
+		
 	_viReg[1] = 0x00;
 
 	// now begin to setup the interface
