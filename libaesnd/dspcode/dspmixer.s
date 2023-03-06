@@ -157,6 +157,9 @@ recv_cmd:
 	cmpi	$acc1.m,#0x0100
 	jeq		send_samples
 	
+	// cmpi sign-extends the immediate #0xdead to the value of 0xff'dead'0000,
+	// which fails when comparing against the termination mail 0x00'dead'0000;
+	// lri loads the value and cmp compares the values without sign-extension.
 	lri		$acc1.m,#0xdead
 	cmp
 	jeq		task_terminate
