@@ -485,7 +485,12 @@ void AESND_Reset(void)
 		do {
 			_CPU_ISR_Flash(level);
 		} while(__aesnddspinit);
-
+		
+#if defined(HW_DOL)
+		u32 i=0;
+		for(;i<MAX_VOICES;i++) 
+			AR_Free(NULL);
+#endif
 		__aesndinit = 0;
 	}
 	_CPU_ISR_Restore(level);
