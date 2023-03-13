@@ -2090,7 +2090,12 @@ static void __VIInit(u32 vimode)
 	//reset the interface
 	cnt = 0;
 	_viReg[1] = 0x02;
-	while(cnt<1000) cnt++;
+	while(cnt<1000) 
+	{
+		__asm__ __volatile__ ("" ::: "memory");
+		cnt++;
+	}
+		
 	_viReg[1] = 0x00;
 
 	// now begin to setup the interface
@@ -2957,4 +2962,21 @@ void VIDEO_ClearFrameBuffer(GXRModeObj *rmode,void *fb,u32 color)
 u32 VIDEO_HaveComponentCable(void)
 {
 	return (_viReg[55]&0x01);
+}
+
+u32 VIDEO_GetVideoScanMode(void)
+{
+	u32 level;
+	u32 mode;
+
+	_CPU_ISR_Disable(level);
+
+	// Check Clock Select Register for progressive clock
+	if (_viReg[54] & 1)
+		mode = VI_PROGRESSIVE;
+	else
+		mode = (_viReg[1] >> 2 & 1) ? VI_NON_INTERLACE : VI_INTERLACE;
+
+	_CPU_ISR_Restore(level);
+	return mode;
 }
