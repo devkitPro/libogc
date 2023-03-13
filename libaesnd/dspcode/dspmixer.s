@@ -156,8 +156,9 @@ recv_cmd:
 	
 	cmpi	$acc1.m,#0x0100
 	jeq		send_samples
-	
-	cmpi	$acc1.m,#0xdead
+
+	lri		$acc0.m,#0xdead
+	cmp
 	jeq		task_terminate
 	
 wait_commands:
