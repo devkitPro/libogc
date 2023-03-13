@@ -1,6 +1,7 @@
 #ifndef __LWP_WATCHDOG_INL__
 #define __LWP_WATCHDOG_INL__
 
+#include "system.h"
 #include "lwp_watchdog.h"
 
 static __inline__ void __lwp_wd_initialize(wd_cntrl *wd,wd_service_routine routine,u32 id,void *usr_data)
@@ -63,7 +64,7 @@ static __inline__ void __lwp_wd_tickle_ticks(void)
 
 static __inline__ void __lwp_wd_insert_ticks(wd_cntrl *wd,s64 interval)
 {
-	wd->start = gettime();
+	wd->start = SYS_Time();
 	wd->fire = (wd->start+LWP_WD_ABS(interval));
 	__lwp_wd_insert(&_wd_ticks_queue,wd);
 }

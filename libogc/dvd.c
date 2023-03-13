@@ -394,7 +394,6 @@ static s32 DVD_LowSetOffset(s64 offset,dvdcallbacklow cb);
 
 extern void udelay(int us);
 extern u32 diff_msec(unsigned long long start,unsigned long long end);
-extern long long gettime(void);
 extern void __MaskIrq(u32);
 extern void __UnmaskIrq(u32);
 extern syssramex* __SYS_LockSramEx(void);
@@ -1345,7 +1344,7 @@ static void __DVDInterruptHandler(u32 nIrq,void *pCtx)
 
 	_diReg[0] = (ir|irm);
 
-	now = gettime();
+	now = SYS_Time();
 	diff = diff_msec(__dvd_lastresetend,now);
 	if(__dvd_resetoccured && diff>200) {
 		status = _diReg[1];
@@ -2112,7 +2111,7 @@ static void DVD_LowReset(u32 reset_mode)
 	_piReg[9] = val;
 
 	__dvd_resetoccured = 1;
-	__dvd_lastresetend = gettime();
+	__dvd_lastresetend = SYS_Time();
 	__dvd_drivestate |= DVD_DRIVERESET;
 }
 

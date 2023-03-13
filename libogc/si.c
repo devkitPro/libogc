@@ -117,7 +117,6 @@ static syswd_t si_alarm[4];
 #endif
 
 static vu16* const _viReg = (u16*)0xCC002000;
-
 static u32 __si_transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb);
 
 static __inline__ struct _xy* __si_getxy(void)
@@ -171,7 +170,7 @@ static u32 __si_completetransfer(void)
 
 	if(sicntrl.chan==-1) return sisr;
 
-	xferTime[sicntrl.chan] = gettime();
+	xferTime[sicntrl.chan] = SYS_Time();
 
 	in = (u32*)sicntrl.in;
 	cnt = (sicntrl.in_bytes/4);
@@ -188,7 +187,7 @@ static u32 __si_completetransfer(void)
 		if(sisr&SISR_NORESPONSE && !(si_type[sicntrl.chan]&SI_ERROR_BUSY)) si_type[sicntrl.chan] = SI_ERROR_NO_RESPONSE;
 		if(!sisr) sisr = SISR_COLLISION;
 	} else {
-		typeTime[sicntrl.chan] = gettime();
+		typeTime[sicntrl.chan] = SYS_Time();
 		sisr = 0;
 	}
 
@@ -268,7 +267,7 @@ static void __si_gettypecallback(s32 chan,u32 type)
 	u32 sipad_en,id;
 
 	si_type[chan] = (si_type[chan]&~SI_ERROR_BUSY)|type;
-	typeTime[chan] = gettime();
+	typeTime[chan] = SYS_Time();
 #ifdef _SI_DEBUG
 	printf("__si_gettypecallback(%d,%08x,%08x)\n",chan,type,si_type[chan]);
 #endif
@@ -336,7 +335,7 @@ static void __si_transfernext(u32 chan)
 		printf("__si_transfernext(chan = %d,sipacket.chan = %d)\n",chan,sipacket[chan].chan);
 #endif
 		if(sipacket[chan].chan!=-1) {
-			now = gettime();
+			now = SYS_Time();
 			diff = (now - sipacket[chan].fire);
 			if(diff>=0) {
 				if(!__si_transfer(sipacket[chan].chan,sipacket[chan].out,sipacket[chan].out_bytes,sipacket[chan].in,sipacket[chan].in_bytes,sipacket[chan].callback)) break;
@@ -570,7 +569,7 @@ u32 SI_Transfer(s32 chan,void *out,u32 out_len,void *in,u32 in_len,SICallback cb
 	_CPU_ISR_Disable(level);
 	if(sipacket[chan].chan==-1 && sicntrl.chan!=chan) {
 		ret = 1;
-		fire = now = gettime();
+		fire = now = SYS_Time();
 		if(us_delay) fire = xferTime[chan]+microsecs_to_ticks(us_delay);
 		diff = (now - fire);
 		if(diff<0) {
@@ -605,12 +604,12 @@ u32 SI_GetType(s32 chan)
 	printf("SI_GetType(%d)\n",chan);
 #endif
 	_CPU_ISR_Disable(level);
-	now = gettime();
+	now = SYS_Time();
 	type = si_type[chan];
 	diff = (now - typeTime[chan]);
 	if(sicntrl.poll&(0x80>>chan)) {
 		if(type!=SI_ERROR_NO_RESPONSE) {
-			typeTime[chan] = gettime();
+			typeTime[chan] = SYS_Time();
 			_CPU_ISR_Restore(level);
 			return type;
 		}
@@ -621,7 +620,7 @@ u32 SI_GetType(s32 chan)
 	} else if(diff<=millisecs_to_ticks(75)) si_type[chan] = SI_ERROR_BUSY;
 	else si_type[chan] = type = SI_ERROR_BUSY;
 
-	typeTime[chan] = gettime();
+	typeTime[chan] = SYS_Time();
 
 	SI_Transfer(chan,&cmdtypeandstatus$223,1,&si_type[chan],3,__si_gettypecallback,65);
 	_CPU_ISR_Restore(level);

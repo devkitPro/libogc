@@ -212,7 +212,7 @@ typedef struct _card_direntry {
 typedef struct _card_stat {
 	u8 filename[CARD_FILENAMELEN];
 	u32 len;
-	u32 time;		//time since 1970 in seconds
+	u32 time;		//time since 2000 in seconds
 	u8 gamecode[4];
 	u8 company[2];
 	u8 banner_fmt;
