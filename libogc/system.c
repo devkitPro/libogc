@@ -209,12 +209,6 @@ extern void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int 
 extern void timespec_subtract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
 
 
-extern int __libogc_lock_init(int *lock,int recursive);
-extern int __libogc_lock_close(int *lock);
-extern int __libogc_lock_release(int *lock);
-extern int __libogc_lock_acquire(int *lock);
-extern void __libogc_exit(int status);
-extern void * __libogc_sbrk_r(struct _reent *ptr, ptrdiff_t incr);
 extern int __libogc_gettod_r(struct _reent *ptr, struct timeval *tp, struct timezone *tz);
 extern int __libogc_nanosleep(const struct timespec *tb, struct timespec *rem);
 extern u64 gettime(void);
@@ -270,7 +264,7 @@ static __inline__ void __lwp_syswd_free(alarm_st *alarm)
 #define SOFTRESET_ADR *((vu32*)0xCC003024)
 void __reload(void) { SOFTRESET_ADR=0; }
 
-void __libogc_exit(int status)
+void __syscall_exit(int status)
 {
 	SYS_ResetSystem(SYS_SHUTDOWN,0,0);
 	__lwp_thread_stopmultitasking(__reload);
@@ -295,7 +289,7 @@ void __reload(void)
 	SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
 }
 
-void __libogc_exit(int status)
+void __syscall_exit(int status)
 {
 	if(__stub_found()) {
 		SYS_ResetSystem(SYS_SHUTDOWN,0,0);
@@ -307,36 +301,12 @@ void __libogc_exit(int status)
 #endif
 
 
-void *__syscall_sbrk_r(struct _reent *ptr, ptrdiff_t incr) {
-	return __libogc_sbrk_r(ptr, incr);
-}
-
-int __syscall_lock_init(int *lock, int recursive) {
-	return __libogc_lock_init(lock,recursive);
-}
-
-int __syscall_lock_close(int *lock) {
-	return __libogc_lock_close(lock);
-}
-
-int __syscall_lock_release(int *lock) {
-	return __libogc_lock_release(lock);
-}
-
-int __syscall_lock_acquire(int *lock) {
-	return __libogc_lock_acquire(lock);
-}
-
 void __syscall_malloc_lock(struct _reent *ptr) {
 	return __libogc_malloc_lock(ptr);
 }
 
 void __syscall_malloc_unlock(struct _reent *ptr) {
 	return __libogc_malloc_unlock(ptr);
-}
-
-void __syscall_exit(int rc) {
-	return __libogc_exit(rc);
 }
 
 int  __syscall_gettod_r(struct _reent *ptr, struct timeval *tp, struct timezone *tz){

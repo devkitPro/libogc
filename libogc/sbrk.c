@@ -13,7 +13,7 @@
 u32 MALLOC_MEM2 __attribute__((weak)) = 1;
 #endif
 
-void* __libogc_sbrk_r( struct _reent *ptr, ptrdiff_t incr)
+void* _sbrk_r( struct _reent *ptr, ptrdiff_t incr)
 {
 	u32 level;
 	char *heap_end = 0;
