@@ -245,6 +245,9 @@ static sys_resetinfo mem_resetinfo = {
 	127
 };
 
+const void *__libogc_sbrk = _sbrk_r;
+const void *__libogc_lock_init  = __syscall_lock_init;
+
 static const char *__sys_versiondate;
 static const char *__sys_versionbuild;
 
