@@ -586,7 +586,7 @@ static void clear_network(s32 s,u8 *ptr)
  */
 static s32 SMBCheck(u8 command,SMBHANDLE *handle)
 {
-	s32 ret;
+	s32 ret = SMB_ERROR;
 	u8 *ptr = handle->message.smb;
 	NBTSMB *nbt = &handle->message;
 	u32 readlen;
@@ -600,8 +600,7 @@ static s32 SMBCheck(u8 command,SMBHANDLE *handle)
 
 	/*keep going till we get a NBT session message*/
 	do{
-		ret=smb_recv(handle->sck_server, (u8*)nbt, 4);
-		if(ret!=4) goto failed;
+		if(smb_recv(handle->sck_server, (u8*)nbt, 4) !=4 ) goto failed;
 
 		if(nbt->msg!=NBT_SESSISON_MSG)
 		{
@@ -621,23 +620,19 @@ static s32 SMBCheck(u8 command,SMBHANDLE *handle)
 	readlen=(u32)((nbt->length_high<<16)|nbt->length);
 
 	// Get server message block
-	ret=smb_recv(handle->sck_server, ptr, readlen);
-	if(readlen!=ret) goto failed;
+	if( readlen != smb_recv(handle->sck_server, ptr, readlen) ) goto failed;
 
 	/*** Do basic SMB Header checks ***/
-	ret = getUInt(ptr,SMB_OFFSET_PROTO);
-	if(ret!=SMB_PROTO) goto failed;
+	if(getUInt(ptr,SMB_OFFSET_PROTO) != SMB_PROTO){ret = SMB_BAD_PROTOCOL; goto failed;}
 
-	ret = getUChar(ptr, SMB_OFFSET_CMD);
-	if(ret!=command) goto failed;
+	if(getUChar(ptr, SMB_OFFSET_CMD) != command){ret = SMB_BAD_COMMAND; goto failed;}
 
-	ret = getUInt(ptr,SMB_OFFSET_NTSTATUS);
-	if(ret) goto failed;
-
+	if(getUInt(ptr,SMB_OFFSET_NTSTATUS)) goto failed;
+	
 	return SMB_SUCCESS;
 failed:
     clear_network(handle->sck_server,ptr);
-    return SMB_ERROR;
+    return ret;
 }
 
 /**
