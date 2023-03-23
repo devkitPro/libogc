@@ -601,7 +601,7 @@ static int __smb_open(struct _reent *r, void *fileStruct, const char *path, int 
 
 	if ((flags & O_CREAT) && !fileExists)
 		smb_mode = SMB_OF_CREATE;
-	if (!(flags & O_APPEND) && fileExists && ((flags & 0x03) != O_RDONLY))
+	if ((flags & O_TRUNC) && fileExists && ((flags & 0x03) != O_RDONLY))
 		smb_mode = SMB_OF_TRUNCATE;
 	file->handle = SMB_OpenFile(fixedpath, access, smb_mode, env->smbconn);
 	if (!file->handle)
