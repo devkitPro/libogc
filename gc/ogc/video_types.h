@@ -54,6 +54,7 @@ distribution.
 #define VI_INTERLACE                0		/*!< Video mode INTERLACED. */
 #define VI_NON_INTERLACE            1		/*!< Video mode NON INTERLACED */
 #define VI_PROGRESSIVE              2		/*!< Video mode PROGRESSIVE. Special mode for higher quality */
+#define VI_3D                       3		/*!< Video mode 3D */
 
 /*!
  * @}
@@ -119,6 +120,7 @@ distribution.
 #define VI_TVMODE_NTSC_INT			VI_TVMODE(VI_NTSC,        VI_INTERLACE)
 #define VI_TVMODE_NTSC_DS			VI_TVMODE(VI_NTSC,        VI_NON_INTERLACE)
 #define VI_TVMODE_NTSC_PROG			VI_TVMODE(VI_NTSC,        VI_PROGRESSIVE)
+#define VI_TVMODE_NTSC_3D			VI_TVMODE(VI_NTSC,        VI_3D)
 
 #define VI_TVMODE_PAL_INT			VI_TVMODE(VI_PAL,         VI_INTERLACE)
 #define VI_TVMODE_PAL_DS			VI_TVMODE(VI_PAL,         VI_NON_INTERLACE)
