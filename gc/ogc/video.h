@@ -90,7 +90,7 @@ void VIDEO_SetBlack(bool black);
 
 /*! 
  * \fn u32 VIDEO_GetNextField(void)
- * \brief Get the next field in DS mode.
+ * \brief Get the next field
  *
  * \return \ref vi_fielddef "field"
  */
@@ -206,6 +206,22 @@ GXRModeObj * VIDEO_GetPreferredMode(GXRModeObj *mode);
  * \return 0 when interlaced, 1 when non interlaced and 2 when progressive
  */
 u32 VIDEO_GetVideoScanMode(void);
+
+/*! 
+ * \fn u32 VIDEO_SetAdjustingValues(s16 hor,s16 ver)
+ * \brief Set video adjustment values
+ *
+ * \return none
+ */
+void VIDEO_SetAdjustingValues(s16 hor,s16 ver);
+
+/*! 
+ * \fn u32 VIDEO_GetAdjustingValues(s16 hor,s16 ver)
+ * \brief Get video adjustment values
+ *
+ * \return none
+ */
+void VIDEO_GetAdjustingValues(s16 *hor,s16 *ver);
 
 #ifdef __cplusplus
    }

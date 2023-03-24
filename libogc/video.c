@@ -1521,6 +1521,8 @@ static const struct _timing {
 	u16 nhlines,hlw;
 	u8 hsy,hcs,hce,hbe640;
 	u16 hbs640;
+	u8 hbeCCIR656;
+	u16 hbsCCIR656;
 } video_timing[] = {
 	{
 		0x06,0x00F0,
@@ -1529,7 +1531,8 @@ static const struct _timing {
 		0x0208,0x0207,0x0208,0x0207,
 		0x020D,0x01AD,
 		0x40,0x47,0x69,0xA2,
-		0x0175
+		0x0175,
+		0x7A,0x019C
 	},
 	{
 		0x06,0x00F0,
@@ -1538,7 +1541,8 @@ static const struct _timing {
 		0x0208,0x0208,0x0208,0x0208,
 		0x020E,0x01AD,
 		0x40,0x47,0x69,0xA2,
-		0x0175
+		0x0175,
+		0x7A,0x019C
 	},
 	{
 		0x05,0x0120,
@@ -1547,7 +1551,8 @@ static const struct _timing {
 		0x026B,0x026A,0x0269,0x026C,
 		0x0271,0x01B0,
 		0x40,0x4B,0x6A,0xAC,
-		0x017C
+		0x017C,
+		0x85,0x01A4
 	},
 	{
 		0x05,0x0120,
@@ -1556,7 +1561,8 @@ static const struct _timing {
 		0x026B,0x026D,0x026B,0x026D,
 		0x0270,0x01B0,
 		0x40,0x4B,0x6A,0xAC,
-		0x017C
+		0x017C,
+		0x85,0x01A4
 	},
 	{
 		0x06,0x00F0,
@@ -1565,7 +1571,8 @@ static const struct _timing {
 		0x0206,0x0205,0x0204,0x0207,
 		0x020D,0x01AD,
 		0x40,0x4E,0x70,0xA2,
-		0x0175
+		0x0175,
+		0x7A,0x019C
 	},
 	{
 		0x06,0x00F0,
@@ -1574,7 +1581,8 @@ static const struct _timing {
 		0x0206,0x0208,0x0206,0x0208,
 		0x020E,0x01AD,
 		0x40,0x4E,0x70,0xA2,
-		0x0175
+		0x0175,
+		0x7A,0x019C
 	},
 	{
 		0x0C,0x01E0,
@@ -1583,7 +1591,18 @@ static const struct _timing {
 		0x040E,0x040E,0x040E,0x040E,
 		0x041A,0x01AD,
 		0x40,0x47,0x69,0xA2,
-		0x0175
+		0x0175,
+		0x7A,0x019C
+	},
+	{
+		0x0C,0x01E0,
+		0x002C,0x002C,0x000A,0x000A,
+		0x18,0x18,0x18,0x18,
+		0x040E,0x040E,0x040E,0x040E,
+		0x041A,0x01AD,
+		0x40,0x47,0x69,0xA8,
+		0x017B,
+		0x7A,0x019C
 	},
 	{
 		0x0A,0x0240,
@@ -1592,7 +1611,8 @@ static const struct _timing {
 		0x04D8,0x04D8,0x04D8,0x04D8,
 		0x04E2,0x01B0,
 		0x40,0x4B,0x6A,0xAC,
-		0x017C
+		0x017C,
+		0x85,0x01A4
 	}
 };
 
@@ -1600,14 +1620,14 @@ static const struct _timing {
 static u32 vdacFlagRegion;
 static u32 i2cIdentFirst = 0;
 static u32 i2cIdentFlag = 1;
-static u32 oldTvStatus = 0x03e7;
+static u32 oldTvMode = 0x03e7;
 static u32 oldDtvStatus = 0x03e7;
 static vu32* const _i2cReg = (u32*)0xCD800000;
 #endif
 
 static u16 regs[60];
 static u16 shdw_regs[60];
-static u32 fbSet = 0;
+static u32 encoderType,fbSet;
 static s16 displayOffsetH;
 static s16 displayOffsetV;
 static u32 currTvMode,changeMode;
@@ -1624,9 +1644,6 @@ static VIRetraceCallback postRetraceCB = NULL;
 static VIPositionCallback positionCB = NULL;
 
 static vu16* const _viReg = (u16*)0xCC002000;
-
-extern syssram* __SYS_LockSram(void);
-extern u32 __SYS_UnlockSram(u32 write);
 
 extern void __VIClearFramebuffer(void*,u32,u32);
 
@@ -1718,22 +1735,20 @@ static const struct _timing* __gettiming(u32 vimode)
 {
 	switch(vimode) {
 		case VI_TVMODE_NTSC_INT:
-			return &video_timing[0];
-			break;
-		case VI_TVMODE_NTSC_DS:
-			return &video_timing[1];
-			break;
-		case VI_TVMODE_PAL_INT:
-			return &video_timing[2];
-			break;
-		case VI_TVMODE_PAL_DS:
-			return &video_timing[3];
-			break;
 		case VI_TVMODE_EURGB60_INT:
 			return &video_timing[0];
 			break;
+		case VI_TVMODE_NTSC_DS:
 		case VI_TVMODE_EURGB60_DS:
 			return &video_timing[1];
+			break;
+		case VI_TVMODE_PAL_INT:
+		case VI_TVMODE_DEBUG_PAL_INT:
+			return &video_timing[2];
+			break;
+		case VI_TVMODE_PAL_DS:
+		case VI_TVMODE_DEBUG_PAL_DS:
+			return &video_timing[3];
 			break;
 		case VI_TVMODE_MPAL_INT:
 			return &video_timing[4];
@@ -1742,20 +1757,20 @@ static const struct _timing* __gettiming(u32 vimode)
 			return &video_timing[5];
 			break;
 		case VI_TVMODE_NTSC_PROG:
-			return &video_timing[6];
-			break;
-		case VI_TVMODE_PAL_PROG:
-			return &video_timing[7];
-			break;
+		case VI_TVMODE_MPAL_PROG:
 		case VI_TVMODE_EURGB60_PROG:
 			return &video_timing[6];
 			break;
-		case VI_TVMODE_MPAL_PROG:
-			return &video_timing[6];
+		case VI_TVMODE_NTSC_3D:
+			return &video_timing[7];
+			break;
+		case VI_TVMODE_PAL_PROG:
+			return &video_timing[8];
 			break;
 		default:
-			return NULL;
+			break;
 	}
+	return NULL;
 }
 
 #if defined(HW_RVL)
@@ -1888,7 +1903,7 @@ static inline void __calcFbbs(u32 bufAddr,u16 panPosX,u16 panPosY,u8 wordperline
 
 	panPosX &= 0xfff0;
 	bytesPerLine = (wordperline<<5)&0x1fe0;
-	*tfbb = bufAddr+((panPosX<<5)+(panPosY*bytesPerLine));
+	*tfbb = bufAddr+((panPosX*VI_DISPLAY_PIX_SZ)+(panPosY*bytesPerLine));
 	*bfbb = *tfbb;
 	if(xfbMode==VI_XFBMODE_DF) *bfbb = *tfbb+bytesPerLine;
 
@@ -1969,14 +1984,14 @@ static inline void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u
 
 	div1 = 2;
 	div2 = 1;
-	if(equ>=10) {
+	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==VI_3D) {
 		div1 = 1;
 		div2 = 2;
 	}
 
 	prb = div2*dispPosY;
 	psb = div2*(((acv*div1)-dispSizeY)-dispPosY);
-	if(dispPosY%2) {
+	if(prb%2) {
 		prbodd = prbEven+prb;
 		psbodd = psbEven+psb;
 		prbeven = prbOdd+prb;
@@ -2013,7 +2028,7 @@ static inline void __setVerticalRegs(u16 dispPosY,u16 dispSizeY,u8 equ,u16 acv,u
 
 static inline void __adjustPosition(u16 acv)
 {
-	u32 fact,field;
+	s32 fact,field;
 	s16 dispPosX,dispPosY;
 	s16 dispSizeY,maxDispSizeY;
 
@@ -2026,14 +2041,14 @@ static inline void __adjustPosition(u16 acv)
 	fact = 1;
 	if(HorVer.fbMode==VI_XFBMODE_SF) fact = 2;
 
-	field = HorVer.dispPosY&0x0001;
 	dispPosY = HorVer.dispPosY+displayOffsetV;
+	field = dispPosY&0x0001;
 	if(dispPosY>field) HorVer.adjustedDispPosY = dispPosY;
 	else HorVer.adjustedDispPosY = field;
 
 	dispSizeY = HorVer.dispPosY+HorVer.dispSizeY+displayOffsetV;
 	maxDispSizeY = ((acv<<1)-field);
-	if(dispSizeY>maxDispSizeY) dispSizeY -= (acv<<1)-field;
+	if(dispSizeY>maxDispSizeY) dispSizeY -= maxDispSizeY;
 	else dispSizeY = 0;
 
 	dispPosY = HorVer.dispPosY+displayOffsetV;
@@ -2059,11 +2074,7 @@ static inline void __adjustPosition(u16 acv)
 static inline void __importAdjustingValues(void)
 {
 #ifdef HW_DOL
-	syssram *sram;
-
-	sram = __SYS_LockSram();
-	displayOffsetH = sram->display_offsetH;
-	__SYS_UnlockSram(0);
+	displayOffsetH = SYS_GetDisplayOffsetH();
 #else
 	s8 offset;
 	if ( CONF_GetDisplayOffsetH(&offset) == 0 ) {
@@ -2275,8 +2286,7 @@ static void __VISetupEncoder(void)
 	u8 dtv, tv;
 
 	tv = VIDEO_GetCurrentTvMode();
-	dtv = (_viReg[55]&0x01);
-	oldDtvStatus = dtv;
+	dtv = VIDEO_HaveComponentCable();
 
 	// SetRevolutionModeSimple
 
@@ -2306,8 +2316,6 @@ static void __VISetupEncoder(void)
 
 	if(tv==VI_EURGB60) __VISetFilterEURGB60(1);
 	else __VISetFilterEURGB60(0);
-	oldTvStatus = tv;
-
 }
 #endif
 
@@ -2385,7 +2393,7 @@ static void __VIDisplayPositionToXY(s32 xpos,s32 ypos,s32 *px,s32 *py)
 	hline = ((vpos<<1)+(hpos/currTiming->hlw));
 
 	*px = (s32)hpos;
-	if(HorVer.nonInter==0x0000) {
+	if(HorVer.nonInter==VI_INTERLACE) {
 		if(hline<currTiming->nhlines) {
 			val = currTiming->prbOdd+(currTiming->equ*3);
 			if(hline>=val) {
@@ -2397,7 +2405,7 @@ static void __VIDisplayPositionToXY(s32 xpos,s32 ypos,s32 *px,s32 *py)
 			} else
 				*py = -1;
 		} else {
-			hline -= currTiming->psbOdd;
+			hline -= currTiming->nhlines;
 			val = (currTiming->prbEven+(currTiming->equ*3));
 			if(hline>=val) {
 				val = (currTiming->nhlines-currTiming->psbEven);
@@ -2408,7 +2416,7 @@ static void __VIDisplayPositionToXY(s32 xpos,s32 ypos,s32 *px,s32 *py)
 			} else
 				*py = -1;
 		}
-	} else if(HorVer.nonInter==0x0001) {
+	} else if(HorVer.nonInter==VI_NON_INTERLACE) {
 		if(hline>=currTiming->nhlines) hline -= currTiming->nhlines;
 
 		val = (currTiming->prbOdd+(currTiming->equ*3));
@@ -2420,7 +2428,7 @@ static void __VIDisplayPositionToXY(s32 xpos,s32 ypos,s32 *px,s32 *py)
 				*py = -1;
 		} else
 			*py = -1;
-	} else if(HorVer.nonInter==0x0002) {
+	} else if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==VI_3D) {
 		if(hline<currTiming->nhlines) {
 			val = currTiming->prbOdd+(currTiming->equ*3);
 			if(hline>=val) {
@@ -2432,7 +2440,7 @@ static void __VIDisplayPositionToXY(s32 xpos,s32 ypos,s32 *px,s32 *py)
 			} else
 				*py = -1;
 		} else {
-			hline -= currTiming->psbOdd;
+			hline -= currTiming->nhlines;
 			val = (currTiming->prbEven+(currTiming->equ*3));
 			if(hline>=val) {
 				val = (currTiming->nhlines-currTiming->psbEven);
@@ -2493,6 +2501,7 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 			__VIGetCurrentPosition(&xpos,&ypos);
 			positionCB(xpos,ypos);
 		}
+		return;
 	}
 
 	retraceCount++;
@@ -2507,15 +2516,16 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 	}
 #if defined(HW_RVL)
 	tv = VIDEO_GetCurrentTvMode();
-	dtv = (_viReg[55]&0x01);
-	if(dtv!=oldDtvStatus || tv!=oldTvStatus) __VISetYUVSEL(dtv);
+	dtv = VIDEO_HaveComponentCable();
+
+	if(dtv!=oldDtvStatus || tv!=oldTvMode) __VISetYUVSEL(dtv);
 	oldDtvStatus = dtv;
 
-	if(tv!=oldTvStatus) {
+	if(tv!=oldTvMode) {
 		if(tv==VI_EURGB60) __VISetFilterEURGB60(1);
 		else __VISetFilterEURGB60(0);
 	}
-	oldTvStatus = tv;
+	oldTvMode = tv;
 #endif
 	if(postRetraceCB)
 		postRetraceCB(retraceCount);
@@ -2547,6 +2557,7 @@ void VIDEO_Init(void)
 	shdw_changed = 0;
 	shdw_changeMode = 0;
 	flushFlag = 0;
+	encoderType = 1;
 
 	_viReg[38] = ((taps[1]>>6)|(taps[2]<<4));
 	_viReg[39] = (taps[0]|_SHIFTL(taps[1],10,6));
@@ -2566,7 +2577,7 @@ void VIDEO_Init(void)
 
 	__importAdjustingValues();
 
-	HorVer.nonInter = _SHIFTR(_viReg[1],2,1);
+	HorVer.nonInter = VIDEO_GetVideoScanMode();
 	HorVer.tv = _SHIFTR(_viReg[1],8,2);
 
 	vimode = HorVer.nonInter;
@@ -2624,9 +2635,9 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	const struct _timing *curtiming;
 #ifdef _VIDEO_DEBUG
 	if(rmode->viHeight&0x0001) printf("VIDEO_Configure(): Odd number(%d) is specified to viHeight\n",rmode->viHeight);
-	if((rmode->xfbMode==VI_XFBMODE_DF || rmode->viTVMode==VI_TVMODE_NTSC_PROG || rmode->viTVMode==VI_TVMODE_NTSC_PROG_DS)
+	if((rmode->xfbMode==VI_XFBMODE_DF || rmode->viTVMode==VI_TVMODE_NTSC_PROG || rmode->viTVMode==VI_TVMODE_NTSC_3D)
 		&& rmode->xfbHeight!=rmode->viHeight) printf("VIDEO_Configure(): xfbHeight(%d) is not equal to viHeight(%d) when DF XFB mode or progressive mode is specified\n",rmode->xfbHeight,rmode->viHeight);
-	if(rmode->xfbMode==VI_XFBMODE_SF && !(rmode->viTVMode==VI_TVMODE_NTSC_PROG || rmode->viTVMode==VI_TVMODE_NTSC_PROG_DS)
+	if(rmode->xfbMode==VI_XFBMODE_SF && !(rmode->viTVMode==VI_TVMODE_NTSC_PROG || rmode->viTVMode==VI_TVMODE_NTSC_3D)
 		&& (rmode->xfbHeight<<1)!=rmode->viHeight) printf("VIDEO_Configure(): xfbHeight(%d) is not as twice as viHeight(%d) when SF XFB mode is specified\n",rmode->xfbHeight,rmode->viHeight);
 #endif
 	_CPU_ISR_Disable(level);
@@ -2635,7 +2646,7 @@ void VIDEO_Configure(GXRModeObj *rmode)
 		changeMode = 1;
 		HorVer.nonInter = nonint;
 	}
-	HorVer.tv = _SHIFTR(rmode->viTVMode,2,3);
+	HorVer.tv = (rmode->viTVMode>>2);
 	HorVer.dispPosX = rmode->viXOrigin;
 	HorVer.dispPosY = rmode->viYOrigin;
 	if(HorVer.nonInter==VI_NON_INTERLACE) HorVer.dispPosY = HorVer.dispPosY<<1;
@@ -2649,11 +2660,11 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	HorVer.panPosX = 0;
 	HorVer.panPosY = 0;
 
-	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) HorVer.dispSizeY = HorVer.panSizeY;
+	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==VI_3D) HorVer.dispSizeY = HorVer.panSizeY;
 	else if(HorVer.fbMode==VI_XFBMODE_SF) HorVer.dispSizeY = HorVer.panSizeY<<1;
 	else HorVer.dispSizeY = HorVer.panSizeY;
 
-	if(HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) HorVer.threeD = 1;
+	if(HorVer.nonInter==VI_3D) HorVer.threeD = 1;
 	else HorVer.threeD = 0;
 
 	vimode = VI_TVMODE(HorVer.tv,HorVer.nonInter);
@@ -2665,19 +2676,20 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	if(rmode->viXOrigin>((curtiming->hlw+40)-curtiming->hbe640)) printf("VIDEO_Configure(): viXOrigin(%d) cannot be greater than %d in this TV mode\n",rmode->viXOrigin,((curtiming->hlw+40)-curtiming->hbe640));
 	if((rmode->viXOrigin+rmode->viWidth)<(680-curtiming->hbs640)) printf("VIDEO_Configure(): viXOrigin + viWidth(%d) cannot be less than %d in this TV mode\n",(rmode->viXOrigin+rmode->viWidth),(680-curtiming->hbs640));
 #endif
+	if(!encoderType) HorVer.tv = VI_DEBUG;
 
 	__setInterruptRegs(curtiming);
 
 	dcr = regs[1]&~0x030c;
 	dcr |= _SHIFTL(HorVer.threeD,3,1);
-	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) dcr |= 0x0004;
+	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==VI_3D) dcr |= 0x0004;
 	else dcr |= _SHIFTL(HorVer.nonInter,2,1);
-	if(!(HorVer.tv==VI_EURGB60)) dcr |= _SHIFTL(HorVer.tv,8,2);
+	if(HorVer.tv<VI_DEBUG_PAL) dcr |= _SHIFTL(HorVer.tv,8,2);
 	regs[1] = dcr;
 	changed |= VI_REGCHANGE(1);
 
 	regs[54] &= ~0x0001;
-	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) regs[54] |= 0x0001;
+	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==VI_3D) regs[54] |= 0x0001;
 	changed |= VI_REGCHANGE(54);
 
 	__setScalingRegs(HorVer.panSizeX,HorVer.dispSizeX,HorVer.threeD);
@@ -2691,6 +2703,32 @@ void VIDEO_Configure(GXRModeObj *rmode)
 #ifdef _VIDEO_DEBUG
 	printDebugCalculations();
 #endif
+	_CPU_ISR_Restore(level);
+}
+
+void VIDEO_ConfigurePan(u16 xOrg,u16 yOrg,u16 width,u16 height)
+{
+	u32 level;
+	const struct _timing *curtiming;
+
+	_CPU_ISR_Disable(level);
+	HorVer.panPosX = xOrg;
+	HorVer.panPosY = yOrg;
+	HorVer.panSizeX = width;
+	HorVer.panSizeY = height;
+
+	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==VI_3D) HorVer.dispSizeY = HorVer.panSizeY;
+	else if(HorVer.fbMode==VI_XFBMODE_SF) HorVer.dispSizeY = HorVer.panSizeY<<1;
+	else HorVer.dispSizeY = HorVer.panSizeY;
+
+	curtiming = HorVer.timing;
+	__adjustPosition(curtiming->acv);
+	__setScalingRegs(HorVer.panSizeX,HorVer.dispSizeX,HorVer.threeD);
+	__setPicConfig(HorVer.fbSizeX,HorVer.fbMode,HorVer.panPosX,HorVer.panSizeX,&HorVer.wordPerLine,&HorVer.std,&HorVer.wpl,&HorVer.xof);
+
+	if(fbSet) __setFbbRegs(&HorVer,&HorVer.tfbb,&HorVer.bfbb,&HorVer.rtfbb,&HorVer.rbfbb);
+
+	__setVerticalRegs(HorVer.adjustedDispPosY,HorVer.adjustedDispSizeY,curtiming->equ,curtiming->acv,curtiming->prbOdd,curtiming->prbEven,curtiming->psbOdd,curtiming->psbEven,HorVer.black);
 	_CPU_ISR_Restore(level);
 }
 
@@ -2805,18 +2843,15 @@ u32 VIDEO_GetNextField(void)
 
 u32 VIDEO_GetCurrentTvMode(void)
 {
-	u32 mode;
 	u32 level;
 	u32 tv;
 
 	_CPU_ISR_Disable(level);
-	mode = currTvMode;
-
-	if(mode==VI_DEBUG) tv = VI_NTSC;
-	else if(mode==VI_EURGB60) tv = VI_EURGB60;
-	else if(mode==VI_MPAL) tv = VI_MPAL;
-	else if(mode==VI_NTSC) tv = VI_NTSC;
-	else tv = VI_PAL;
+	if(currTvMode==VI_PAL) tv = VI_PAL;
+	else if(currTvMode==VI_DEBUG_PAL) tv = VI_PAL;
+	else if(currTvMode==VI_EURGB60) tv = VI_EURGB60;
+	else if(currTvMode==VI_MPAL) tv = VI_MPAL;
+	else tv = VI_NTSC;
 	_CPU_ISR_Restore(level);
 
 	return tv;
@@ -2924,32 +2959,34 @@ u32 VIDEO_GetCurrentLine(void)
 
 VIRetraceCallback VIDEO_SetPreRetraceCallback(VIRetraceCallback callback)
 {
-	u32 level = 0;
-	VIRetraceCallback ret = preRetraceCB;
+	u32 level;
+	VIRetraceCallback old;
+
 	_CPU_ISR_Disable(level);
+	old = preRetraceCB;
 	preRetraceCB = callback;
 	_CPU_ISR_Restore(level);
-	return ret;
+	return old;
 }
 
 VIRetraceCallback VIDEO_SetPostRetraceCallback(VIRetraceCallback callback)
 {
-	u32 level = 0;
-	VIRetraceCallback ret = postRetraceCB;
+	u32 level;
+	VIRetraceCallback old;
+
 	_CPU_ISR_Disable(level);
+	old = postRetraceCB;
 	postRetraceCB = callback;
 	_CPU_ISR_Restore(level);
-	return ret;
+	return old;
 }
 
-u32 VIDEO_GetFrameBufferSize(GXRModeObj *rmode) {
+u32 VIDEO_GetFrameBufferSize(GXRModeObj *rmode)
+{
 	u16 w, h;
 
 	w = VIDEO_PadFramebufferWidth(rmode->fbWidth);
 	h = rmode->xfbHeight;
-
-	if (rmode->aa)
-		h += 4;
 
 	return w * h * VI_DISPLAY_PIX_SZ;
 }
@@ -2979,4 +3016,33 @@ u32 VIDEO_GetVideoScanMode(void)
 
 	_CPU_ISR_Restore(level);
 	return mode;
+}
+
+void VIDEO_SetAdjustingValues(s16 hor,s16 ver)
+{
+	u32 level;
+	const struct _timing *curtiming;
+
+	_CPU_ISR_Disable(level);
+	displayOffsetH = hor;
+	displayOffsetV = ver;
+
+	curtiming = HorVer.timing;
+	__adjustPosition(curtiming->acv);
+	__setHorizontalRegs(curtiming,HorVer.adjustedDispPosX,HorVer.dispSizeX);
+
+	if(fbSet) __setFbbRegs(&HorVer,&HorVer.tfbb,&HorVer.bfbb,&HorVer.rtfbb,&HorVer.rbfbb);
+
+	__setVerticalRegs(HorVer.adjustedDispPosY,HorVer.adjustedDispSizeY,curtiming->equ,curtiming->acv,curtiming->prbOdd,curtiming->prbEven,curtiming->psbOdd,curtiming->psbEven,HorVer.black);
+	_CPU_ISR_Restore(level);
+}
+
+void VIDEO_GetAdjustingValues(s16 *hor,s16 *ver)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	*hor = displayOffsetH;
+	*ver = displayOffsetV;
+	_CPU_ISR_Restore(level);
 }
