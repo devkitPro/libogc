@@ -36,6 +36,7 @@ distribution.
 #include <gcutil.h>
 #include "asm.h"
 #include "processor.h"
+#include "lwp_watchdog.h"
 #include "system.h"
 #include "ogcsys.h"
 #include "cache.h"
@@ -229,8 +230,6 @@ static sys_resetinfo card_resetinfo = {
 	127
 };
 
-extern unsigned long gettick(void);
-extern long long gettime(void);
 extern syssram* __SYS_LockSram(void);
 extern syssramex* __SYS_LockSramEx(void);
 extern u32 __SYS_UnlockSram(u32 write);
@@ -1182,7 +1181,7 @@ static void __write_callback(s32 chn,s32 result)
 			if(file->len<=0) {
 				dirblock = __card_getdirblock(card);
 				entry = &dirblock->entries[file->filenum];
-				entry->last_modified = time(NULL);
+				entry->last_modified = ticks_to_secs(gettime());
 				cb = card->card_api_cb;
 				card->card_api_cb = NULL;
 				if((ret=__card_updatedir(chn,cb))>=0) return;
@@ -1826,7 +1825,7 @@ static void __card_createfatcallback(s32 chn,s32 result)
 	entry->icon_speed = 0;
 	entry->pad_01 = 0xffff;
 	entry->icon_speed = (entry->icon_speed&~CARD_SPEED_MASK)|CARD_SPEED_FAST;
-	entry->last_modified = time(NULL);
+	entry->last_modified = ticks_to_secs(gettime());
 
 	file->offset = 0;
 	file->iblock = card->curr_fileblock;
@@ -3174,7 +3173,7 @@ s32 CARD_SetStatusAsync(s32 chn,s32 fileno,card_stat *stats,cardcallback callbac
 		
 		if(entry->icon_addr==-1) entry->icon_fmt = ((entry->icon_fmt&~CARD_ICON_MASK)|CARD_ICON_CI);
 
-		entry->last_modified = time(NULL);
+		entry->last_modified = ticks_to_secs(gettime());
 		if((ret=__card_updatedir(chn,callback))>=0) return ret;
 	}
 

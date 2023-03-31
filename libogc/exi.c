@@ -35,6 +35,7 @@ distribution.
 #include "irq.h"
 #include "processor.h"
 #include "spinlock.h"
+#include "system.h"
 #include "exi.h"
 #include "gcutil.h"
 #include "lwp_queue.h"
@@ -179,7 +180,7 @@ static s32 __exi_probe(s32 nChn)
 			last_exi_idtime[nChn] = 0;
 		}
 		if(_exiReg[nChn*5]&EXI_EXT_BIT) {
-			time = gettime();
+			time = SYS_Time();
 			if(last_exi_idtime[nChn]==0) last_exi_idtime[nChn] = time;
 			if((val=diff_usec(last_exi_idtime[nChn],time)+10)<30) ret = 0;
 			else ret = 1;

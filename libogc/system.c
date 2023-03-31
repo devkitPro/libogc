@@ -33,6 +33,7 @@ distribution.
 #include <string.h>
 #include <stdio.h>
 #include <malloc.h>
+#include <time.h>
 #include <sys/iosupport.h>
 
 #include "asm.h"
@@ -155,6 +156,7 @@ static powercallback __POWCallback = NULL;
 static u32 __sys_resetdown = 0;
 #endif
 
+static vu64* const _bootTime = (u64*)0x800030d8;
 static vu16* const _viReg = (u16*)0xCC002000;
 static vu32* const _piReg = (u32*)0xCC003000;
 static vu16* const _memReg = (u16*)0xCC004000;
@@ -215,6 +217,8 @@ extern void __libogc_exit(int status);
 extern void * __libogc_sbrk_r(struct _reent *ptr, ptrdiff_t incr);
 extern int __libogc_gettod_r(struct _reent *ptr, struct timeval *tp, struct timezone *tz);
 extern int __libogc_nanosleep(const struct timespec *tb, struct timespec *rem);
+extern u64 gettime(void);
+extern void settime(u64);
 
 extern u8 __gxregs[];
 extern u8 __text_start[];
@@ -981,9 +985,39 @@ u32 __SYS_GetRTC(u32 *gctime)
 	return 0;
 }
 
+static void __SYS_SetTime(s64 time)
+{
+	u32 level;
+	s64 now;
+
+	_CPU_ISR_Disable(level);
+	now = gettime();
+	now -= time;
+	now += *_bootTime;
+	*_bootTime = now;
+	settime(time);
+	EXI_ProbeReset();
+	_CPU_ISR_Restore(level);
+}
+
 void __SYS_SetBootTime(void)
 {
-	settime(SYS_Time());
+	u32 gctime;
+#if defined(HW_RVL)
+	u32 bias;
+#endif
+
+	if(__SYS_GetRTC(&gctime)!=1)
+		return;
+	
+#if defined(HW_RVL)
+	if(CONF_GetCounterBias(&bias) >= 0) 
+		gctime += bias;
+#else
+	gctime += SYS_GetCounterBias();
+#endif
+
+	__SYS_SetTime(secs_to_ticks(gctime));
 }
 
 u32 __SYS_LoadFont(void *src,void *dest)
@@ -1113,9 +1147,10 @@ void SYS_PreMain(void)
 	__IOS_InitializeSubsystems();
 	STM_RegisterEventHandler(__STMEventHandler);
 	CONF_Init();
-	__SYS_SetBootTime();
 	WII_Initialize();
 #endif
+
+	__SYS_SetBootTime();
 }
 
 u32 SYS_ResetButtonDown(void)
@@ -1914,18 +1949,12 @@ u32 SYS_GetHollywoodRevision(void)
 
 u64 SYS_Time(void)
 {
-	u64 current_time = 0;
-    u32 gmtime =0;
-    __SYS_GetRTC(&gmtime);
-    current_time = gmtime;
-#ifdef HW_RVL
-	u32 bias;
-	if (CONF_GetCounterBias(&bias) >= 0)
-		current_time += bias;
-#else
-	syssram* sram = __SYS_LockSram();
-	current_time += sram->counter_bias;
-	__SYS_UnlockSram(0);
-#endif
-	return (TB_TIMER_CLOCK * 1000) * current_time;
+	u32 level;
+	s64 now;
+
+	_CPU_ISR_Disable(level);
+	now = gettime();
+	now += *_bootTime;
+	_CPU_ISR_Restore(level);
+	return now;
 }
