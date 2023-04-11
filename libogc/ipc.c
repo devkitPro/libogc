@@ -343,7 +343,7 @@ static void __ipc_replyhandler(void)
 	ACR_WriteReg(48,0x40000000);
 
 	req = MEM_PHYSICAL_TO_K0(req);
-	DCInvalidateRange(req,32);
+	if ((u32)req & 0x80000000) DCInvalidateRange(req,32);
 
 	if(req->magic==IPC_REQ_MAGIC) {
 #ifdef DEBUG_IPC
@@ -352,18 +352,18 @@ static void __ipc_replyhandler(void)
 		if(req->req_cmd==IOS_READ) {
 			if(req->read.data!=NULL) {
 				req->read.data = MEM_PHYSICAL_TO_K0(req->read.data);
-				if(req->result>0) DCInvalidateRange(req->read.data,req->result);
+				if(req->result>0 && (u32)req->read.data & 0x80000000) DCInvalidateRange(req->read.data,req->result);
 			}
 		} else if(req->req_cmd==IOS_IOCTL) {
 			if(req->ioctl.buffer_io!=NULL) {
 				req->ioctl.buffer_io = MEM_PHYSICAL_TO_K0(req->ioctl.buffer_io);
-				DCInvalidateRange(req->ioctl.buffer_io,req->ioctl.len_io);
+				if ((u32)req->ioctl.buffer_io & 0x80000000) DCInvalidateRange(req->ioctl.buffer_io,req->ioctl.len_io);
 			}
-			DCInvalidateRange(req->ioctl.buffer_in,req->ioctl.len_in);
+			if ((u32)req->ioctl.buffer_in & 0x80000000) DCInvalidateRange(req->ioctl.buffer_in,req->ioctl.len_in);
 		} else if(req->req_cmd==IOS_IOCTLV) {
 			if(req->ioctlv.argv!=NULL) {
 				req->ioctlv.argv = MEM_PHYSICAL_TO_K0(req->ioctlv.argv);
-				DCInvalidateRange(req->ioctlv.argv,((req->ioctlv.argcin+req->ioctlv.argcio)*sizeof(struct _ioctlv)));
+				if ((u32)req->ioctlv.argv & 0x80000000) DCInvalidateRange(req->ioctlv.argv,((req->ioctlv.argcin+req->ioctlv.argcio)*sizeof(struct _ioctlv)));
 			}
 
 			cnt = 0;
@@ -371,7 +371,7 @@ static void __ipc_replyhandler(void)
 			while(cnt<(req->ioctlv.argcin+req->ioctlv.argcio)) {
 				if(v[cnt].data!=NULL) {
 					v[cnt].data = MEM_PHYSICAL_TO_K0(v[cnt].data);
-					DCInvalidateRange(v[cnt].data,v[cnt].len);
+					if ((u32)v[cnt].data & 0x80000000) DCInvalidateRange(v[cnt].data,v[cnt].len);
 				}
 				cnt++;
 			}
