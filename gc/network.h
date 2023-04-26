@@ -159,6 +159,8 @@ void net_wc24cleanup(void);
 s32 net_get_mac_address(void *mac_buf);
 void net_deinit(void);
 
+s32 _net_convert_error(s32 ios_retval);
+
 u32 net_gethostip(void);
 s32 net_socket(u32 domain,u32 type,u32 protocol);
 s32 net_bind(s32 s,struct sockaddr *name,socklen_t namelen);
