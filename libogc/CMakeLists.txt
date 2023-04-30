@@ -22,6 +22,7 @@ add_library(ogc STATIC
 	ogc_sockets/soc_fcntl.c
 	ogc_sockets/soc_getsockopt.c
 	ogc_sockets/soc_setsockopt.c
+	ogc_sockets/soc_gethostbyname.c
 
 	console.c
 	lwp_queue.c
