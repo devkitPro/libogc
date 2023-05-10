@@ -35,7 +35,7 @@ int __libc_delete_hook(lwp_cntrl *curr_thr, lwp_cntrl *delete_thr)
 	struct _reent *ptr;
 
 	if(curr_thr==delete_thr)
-		ptr = _REENT;
+		ptr = _impure_ptr;
 	else
 		ptr = (struct _reent*)delete_thr->libc_reent;
 
@@ -45,7 +45,7 @@ int __libc_delete_hook(lwp_cntrl *curr_thr, lwp_cntrl *delete_thr)
 	}
 	delete_thr->libc_reent = 0;
 
-	if(curr_thr==delete_thr) _REENT = 0;
+	if(curr_thr==delete_thr) _impure_ptr = 0;
 
 	return 1;
 }
@@ -53,10 +53,10 @@ int __libc_delete_hook(lwp_cntrl *curr_thr, lwp_cntrl *delete_thr)
 void __libc_init(int reentrant)
 {
 	libc_globl_reent = (struct _reent)_REENT_INIT((libc_globl_reent));
-	_REENT = &libc_globl_reent;
+	_impure_ptr = &libc_globl_reent;
 
 	if(reentrant) {
-		__lwp_thread_setlibcreent((void*)&_REENT);
+		__lwp_thread_setlibcreent((void*)&_impure_ptr);
 		libc_reentrant = reentrant;
 	}
 }
