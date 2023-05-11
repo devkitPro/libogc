@@ -84,7 +84,7 @@ void __lwp_dumpcontext_fp(lwp_cntrl *thrA,lwp_cntrl *thrB)
 
 struct _reent* __SYSCALL(getreent)()
 {
-	if ( _thr_executing == NULL || _thr_executing->libc_reent == NULL) return &_impure_data;
+	if ( _thr_executing == NULL || _thr_executing->libc_reent == NULL) return _GLOBAL_REENT;
 
 	return _thr_executing->libc_reent;
 }
