@@ -186,7 +186,7 @@ extern void __irq_init(void);
 extern void __lwp_start_multitasking(void);
 extern void __timesystem_init(void);
 extern void __memlock_init(void);
-extern void __libc_init(int);
+//extern void __libc_init(int);
 
 extern void __libogc_malloc_lock( struct _reent *ptr );
 extern void __libogc_malloc_unlock( struct _reent *ptr );
@@ -1102,7 +1102,7 @@ void SYS_Init(void)
 	IRQ_Request(IRQ_PI_RSW,__RSWHandler,NULL);
 	__MaskIrq(IRQMASK(IRQ_PI_RSW));
 #endif
-	__libc_init(1);
+	//__libc_init(1);
 	__lwp_thread_startmultitasking();
 	_CPU_ISR_Restore(level);
 }

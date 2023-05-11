@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/iosupport.h>
+
 #include "asm.h"
 #include "processor.h"
 #include "lwp_stack.h"
@@ -35,7 +37,7 @@ vu32 _thread_dispatch_disable_level;
 
 wd_cntrl _lwp_wd_timeslice;
 u32 _lwp_ticks_per_timeslice = 0;
-void **__lwp_thr_libc_reent = NULL;
+//void **__lwp_thr_libc_reent = NULL;
 lwp_queue _lwp_thr_ready[LWP_MAXPRIORITIES];
 
 static void (*_lwp_exitfunc)(void);
@@ -47,9 +49,9 @@ extern void _cpu_context_restore(void *);
 extern void _cpu_context_save_fp(void *);
 extern void _cpu_context_restore_fp(void *);
 
-extern int __libc_create_hook(lwp_cntrl *,lwp_cntrl *);
-extern int __libc_start_hook(lwp_cntrl *,lwp_cntrl *);
-extern int __libc_delete_hook(lwp_cntrl *, lwp_cntrl *);
+//extern int __libc_create_hook(lwp_cntrl *,lwp_cntrl *);
+//extern int __libc_start_hook(lwp_cntrl *,lwp_cntrl *);
+//extern int __libc_delete_hook(lwp_cntrl *, lwp_cntrl *);
 
 extern void kprintf(const char *str, ...);
 
@@ -79,6 +81,13 @@ void __lwp_dumpcontext_fp(lwp_cntrl *thrA,lwp_cntrl *thrB)
 	kprintf("_cpu_contextfp_dump(%p,%p)\n",thrA,thrB);
 }
 #endif
+
+struct _reent* __SYSCALL(getreent)()
+{
+	if ( _thr_executing == NULL || _thr_executing->libc_reent == NULL) return &_impure_data;
+
+	return _thr_executing->libc_reent;
+}
 
 /*
 void __lwp_getthreadlist(lwp_obj **thrs)
@@ -193,10 +202,11 @@ void __thread_dispatch(void)
 		_thr_executing = heir;
 		_CPU_ISR_Restore(level);
 
-		if(__lwp_thr_libc_reent) {
+/*		if(__lwp_thr_libc_reent) {
 			exec->libc_reent = *__lwp_thr_libc_reent;
 			*__lwp_thr_libc_reent = heir->libc_reent;
 		}
+*/
 #ifdef _DEBUG
 		_cpu_context_switch_ex((void*)&exec->context,(void*)&heir->context);
 #else
@@ -617,7 +627,7 @@ u32 __lwp_thread_init(lwp_cntrl *thethread,void *stack_area,u32 stack_size,u32 p
 	thethread->res_cnt = 0;
 	__lwp_thread_setpriority(thethread,prio);
 
-	__libc_create_hook(_thr_executing,thethread);
+	//__libc_create_hook(_thr_executing,thethread);
 
 	return 1;
 }
@@ -646,7 +656,11 @@ void __lwp_thread_close(lwp_cntrl *thethread)
 	thethread->budget_algo = LWP_CPU_BUDGET_ALGO_NONE;
 	_CPU_ISR_Restore(level);
 
-	__libc_delete_hook(_thr_executing,thethread);
+	//__libc_delete_hook(_thr_executing,thethread);
+	struct _reent *ptr = thethread->libc_reent;
+	_reclaim_reent(ptr);
+	free(ptr);
+	thethread->libc_reent = NULL;
 
 	if(__lwp_thread_isallocatedfp(thethread))
 		__lwp_thread_deallocatefp();
@@ -701,7 +715,13 @@ u32 __lwp_thread_start(lwp_cntrl *thethread,void* (*entry)(void*),void *arg)
 		thethread->arg = arg;
 		__lwp_thread_loadenv(thethread);
 		__lwp_thread_ready(thethread);
-		__libc_start_hook(_thr_executing,thethread);
+		//__libc_start_hook(_thr_executing,thethread);
+		struct _reent *ptr= (struct _reent*)calloc(1,sizeof(struct _reent));
+		if(!ptr) abort();
+
+		_REENT_INIT_PTR((ptr));
+
+		thethread->libc_reent = ptr;
 		return 1;
 	}
 	return 0;

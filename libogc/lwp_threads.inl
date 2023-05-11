@@ -60,7 +60,7 @@ static __inline__ void __lwp_thread_unblock(lwp_cntrl *thethread)
 	__lwp_thread_clearstate(thethread,LWP_STATES_BLOCKED);
 }
 
-static __inline__ void** __lwp_thread_getlibcreent(void)
+/*static __inline__ void** __lwp_thread_getlibcreent(void)
 {
 	return __lwp_thr_libc_reent;
 }
@@ -69,7 +69,7 @@ static __inline__ void __lwp_thread_setlibcreent(void **libc_reent)
 {
 	__lwp_thr_libc_reent = libc_reent;
 }
-
+*/
 static __inline__ bool __lwp_thread_isswitchwant(void)
 {
 
