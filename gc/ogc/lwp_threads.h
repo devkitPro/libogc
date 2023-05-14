@@ -66,7 +66,6 @@ extern vu32 _context_switch_want;
 extern vu32 _thread_dispatch_disable_level;
 
 extern wd_cntrl _lwp_wd_timeslice;
-extern void **__lwp_thr_libc_reent;
 extern lwp_queue _lwp_thr_ready[];
 
 void __thread_dispatch();
