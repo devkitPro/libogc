@@ -6,6 +6,7 @@ jobs:
   build:
     name: Build documentation
     runs-on: ubuntu-latest
+    container: devkitpro/devkitppc:latest
 
     steps:
       - uses: actions/checkout@v3.5.2
