@@ -1,0 +1,31 @@
+name: Build documentation
+
+on:
+  push:
+    tags: [ v* ]
+
+jobs:
+  build:
+    name: Build documentation
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitppc:latest
+
+    steps:
+      - uses: actions/checkout@v3.5.2
+        with:
+          persist-credentials: false
+
+      - name: Display Doxygen version
+        run: echo "Doxygen version $(doxygen -v)"
+
+      - name: Build documentation
+        run: |
+               OGC_VERSION=${{ github.ref_name }} doxygen Doxyfile
+
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@v4.4.1
+        with:
+          BRANCH: gh-pages
+          FOLDER: docs/html
+          CLEAN: true
+          SINGLE_COMMIT: true
