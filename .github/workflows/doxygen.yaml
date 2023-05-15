@@ -1,6 +1,8 @@
 name: Build documentation
 
-on: [push, pull_request]
+on:
+  push:
+    tags: [ v* ]
 
 jobs:
   build:
