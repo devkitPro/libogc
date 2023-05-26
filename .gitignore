@@ -1,6 +1,6 @@
 cube
 deps
-include
+/include
 lib
 wii
 build
