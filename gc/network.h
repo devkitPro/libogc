@@ -5,6 +5,12 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
 #define INVALID_SOCKET	(~0)
 #define SOCKET_ERROR	(-1)
 
@@ -41,15 +47,6 @@
 #define  SO_TYPE			0x1008    /* get socket type */
 
 
-
-/*
- * Structure used for manipulating linger option.
- */
-struct linger {
-       int l_onoff;                /* option on/off */
-       int l_linger;               /* linger time */
-};
-
 /*
  * Level number for (get/set)sockopt() to apply to socket itself.
  */
@@ -64,17 +61,11 @@ struct linger {
 #define IPPROTO_TCP			6
 #define IPPROTO_UDP			17
 
-#define INADDR_ANY			0
-#define INADDR_BROADCAST	0xffffffff
-
-/* Flags we can use with send and recv. */
-#define MSG_DONTWAIT		0x40            /* Nonblocking i/o for this operation only */
-
 /*
  * Options for level IPPROTO_IP
  */
-#define IP_TOS				1
-#define IP_TTL				2
+//#define IP_TOS				1
+//#define IP_TTL				2
 
 
 #define IPTOS_TOS_MASK      0x1E
@@ -98,48 +89,6 @@ struct linger {
 #define IPTOS_PREC_IMMEDIATE            0x40
 #define IPTOS_PREC_PRIORITY             0x20
 #define IPTOS_PREC_ROUTINE              0x00
-
-
-/*
- * Commands for ioctlsocket(),  taken from the BSD file fcntl.h.
- *
- *
- * Ioctl's have the command encoded in the lower word,
- * and the size of any in or out parameters in the upper
- * word.  The high 2 bits of the upper word are used
- * to encode the in/out status of the parameter; for now
- * we restrict parameters to at most 128 bytes.
- */
-#if !defined(FIONREAD) || !defined(FIONBIO)
-#define IOCPARM_MASK    0x7f            /* parameters must be < 128 bytes */
-#define IOC_VOID        0x20000000      /* no parameters */
-#define IOC_OUT         0x40000000      /* copy out parameters */
-#define IOC_IN          0x80000000      /* copy in parameters */
-#define IOC_INOUT       (IOC_IN|IOC_OUT)
-                                        /* 0x20000000 distinguishes new &
-                                           old ioctl's */
-#define _IO(x,y)        (IOC_VOID|((x)<<8)|(y))
-
-#define _IOR(x,y,t)     (IOC_OUT|(((long)sizeof(t)&IOCPARM_MASK)<<16)|((x)<<8)|(y))
-
-#define _IOW(x,y,t)     (IOC_IN|(((long)sizeof(t)&IOCPARM_MASK)<<16)|((x)<<8)|(y))
-#endif
-
-#ifndef FIONREAD
-#define FIONREAD    _IOR('f', 127, unsigned long) /* get # bytes to read */
-#endif
-#ifndef FIONBIO
-#define FIONBIO     _IOW('f', 126, unsigned long) /* set/clear non-blocking i/o */
-#endif
-
-/* Socket I/O Controls */
-#ifndef SIOCSHIWAT
-#define SIOCSHIWAT  _IOW('s',  0, unsigned long)  /* set high watermark */
-#define SIOCGHIWAT  _IOR('s',  1, unsigned long)  /* get high watermark */
-#define SIOCSLOWAT  _IOW('s',  2, unsigned long)  /* set low watermark */
-#define SIOCGLOWAT  _IOR('s',  3, unsigned long)  /* get low watermark */
-#define SIOCATMARK  _IOR('s',  7, unsigned long)  /* at oob mark? */
-#endif
 
 #ifndef O_NONBLOCK
 #define O_NONBLOCK			04000U
@@ -195,49 +144,9 @@ struct linger {
 #define ip4_addr4(ipaddr) ((u32)(ntohl((ipaddr)->s_addr)) & 0xff)
 #endif
 
-#define POLLRDNORM			0x0001
-#define POLLRDBAND			0x0002
-#define POLLPRI				0x0004
-#define POLLWRNORM			0x0008
-#define POLLWRBAND			0x0010
-#define POLLERR				0x0020
-#define POLLHUP				0x0040
-#define POLLNVAL			0x0080
-#define POLLIN				(POLLRDNORM|POLLRDBAND)
-#define POLLOUT				POLLWRNORM
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#ifndef HAVE_IN_ADDR
-#define HAVE_IN_ADDR
-struct in_addr {
-  u32 s_addr;
-};
-#endif
-
-struct sockaddr_in {
-  u8 sin_len;
-  u8 sin_family;
-  u16 sin_port;
-  struct in_addr sin_addr;
-  s8 sin_zero[8];
-};
-
-struct sockaddr {
-  u8 sa_len;
-  u8 sa_family;
-  s8 sa_data[14];
-};
-
-struct hostent {
-  char    *h_name;        /* official name of host */
-  char    **h_aliases;    /* alias list */
-  u16     h_addrtype;     /* host address type */
-  u16     h_length;       /* length of address */
-  char    **h_addr_list;  /* list of addresses from name server */
-};
 
 struct pollsd {
 	s32 socket;
@@ -246,8 +155,6 @@ struct pollsd {
 };
 
 u32 inet_addr(const char *cp);
-s8 inet_aton(const char *cp, struct in_addr *addr);
-char *inet_ntoa(struct in_addr addr); /* returns ptr to static buffer; not reentrant! */
 
 s32 if_config( char *local_ip, char *netmask, char *gateway,bool use_dhcp, int max_retries);
 s32 if_configex(struct in_addr *local_ip, struct in_addr *netmask, struct in_addr *gateway, bool use_dhcp, int max_retries);

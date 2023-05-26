@@ -32,6 +32,8 @@
 #ifndef __LWIP_INET_H__
 #define __LWIP_INET_H__
 
+#include <arpa/inet.h>
+
 #include "lwip/arch.h"
 
 #include "lwip/opt.h"
@@ -47,41 +49,6 @@ u16_t inet_chksum_pseudo(struct pbuf *p,
        struct ip_addr *src, struct ip_addr *dest,
        u8_t proto, u16_t proto_len);
 
-u32_t inet_addr(const char *cp);
-s8_t inet_aton(const char *cp, struct in_addr *addr);
-char *inet_ntoa(struct in_addr addr); /* returns ptr to static buffer; not reentrant! */
-
-#ifdef htons
-#undef htons
-#endif /* htons */
-#ifdef htonl
-#undef htonl
-#endif /* htonl */
-#ifdef ntohs
-#undef ntohs
-#endif /* ntohs */
-#ifdef ntohl
-#undef ntohl
-#endif /* ntohl */
-
-#if BYTE_ORDER == BIG_ENDIAN
-#define htons(x) (x)
-#define ntohs(x) (x)
-#define htonl(x) (x)
-#define ntohl(x) (x)
-#else
-#ifdef LWIP_PREFIX_BYTEORDER_FUNCS
-/* workaround for naming collisions on some platforms */
-#define htons lwip_htons
-#define ntohs lwip_ntohs
-#define htonl lwip_htonl
-#define ntohl lwip_ntohl
-#endif
-u16_t htons(u16_t x);
-u16_t ntohs(u16_t x);
-u32_t htonl(u32_t x);
-u32_t ntohl(u32_t x);
-#endif
 
 #endif /* __LWIP_INET_H__ */
 

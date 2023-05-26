@@ -29,6 +29,7 @@ target_include_directories(libogc_inc INTERFACE
 	gc/sdcard
 	gc/wiiuse
 	gc/di
+	external/bsd/include
 )
 
 target_compile_options(libogc_inc INTERFACE
@@ -86,4 +87,11 @@ install(
 		PATTERN "*.h"
 		PATTERN "*.hpp"
 		PATTERN "*.inc"
+)
+
+install(
+	DIRECTORY ${PROJECT_SOURCE_DIR}/external/bsd/include/
+	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+	FILES_MATCHING
+		PATTERN "*.h"
 )

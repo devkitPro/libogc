@@ -113,7 +113,7 @@ icmp_input(struct pbuf *p, struct netif *inp)
     snmp_inc_icmpoutechoreps();
 
     pbuf_header(p, hlen);
-    ip_output_if(p, &(iphdr->src), IP_HDRINCL,
+    ip_output_if(p, &(iphdr->src), NULL,
 		 IPH_TTL(iphdr), 0, IP_PROTO_ICMP, inp);
     break;
   default:

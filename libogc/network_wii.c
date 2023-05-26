@@ -50,7 +50,8 @@ distribution.
 #include <unistd.h>
 #include <fcntl.h>
 #include <malloc.h>
-
+#include <poll.h>
+	
 #include "ipc.h"
 #include "processor.h"
 #include "network.h"

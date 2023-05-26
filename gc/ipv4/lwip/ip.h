@@ -57,15 +57,6 @@ err_t ip_output_if(struct pbuf *p, struct ip_addr *src, struct ip_addr *dest,
 #define IP_PROTO_UDPLITE 170
 #define IP_PROTO_TCP 6
 
-/* This is passed as the destination address to ip_output_if (not
-   to ip_output), meaning that an IP header already is constructed
-   in the pbuf. This is used when TCP retransmits. */
-#ifdef IP_HDRINCL
-#undef IP_HDRINCL
-#endif /* IP_HDRINCL */
-#define IP_HDRINCL  NULL
-
-
 /* This is the common part of all PCB types. It needs to be at the
    beginning of a PCB type definition. It is located here so that
    changes to this common part are made in one location instead of

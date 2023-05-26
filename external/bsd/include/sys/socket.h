@@ -406,7 +406,7 @@ struct msghdr {
 #define	MSG_CTRUNC	 0x00000020	/* control data lost before delivery */
 #define	MSG_WAITALL	 0x00000040	/* wait for full request or error */
 #if __BSD_VISIBLE
-#define	MSG_DONTWAIT	 0x00000080	/* this message should be nonblocking */
+#define	MSG_DONTWAIT	 0x00000040	/* this message should be nonblocking */
 #define	MSG_EOF		 0x00000100	/* data completes connection */
 /*			 0x00000200	   unused */
 /*			 0x00000400	   unused */

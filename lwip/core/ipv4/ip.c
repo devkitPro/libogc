@@ -382,7 +382,7 @@ ip_output_if(struct pbuf *p, struct ip_addr *src, struct ip_addr *dest,
 
   snmp_inc_ipoutrequests();
 
-  if (dest != IP_HDRINCL) {
+  if (dest != NULL) {
     if (pbuf_header(p, IP_HLEN)) {
       LWIP_DEBUGF(IP_DEBUG | 2, ("ip_output: not enough room for IP header in pbuf\n"));
 

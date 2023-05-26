@@ -3,6 +3,8 @@
 
 #include "uip.h"
 
+#include <netinet/in.h>
+
 #define UIP_INADDR_NONE			((u32_t) 0xffffffff)  /* 255.255.255.255 */
 #define UIP_INADDR_LOOPBACK		((u32_t) 0x7f000001)  /* 127.0.0.1 */
 
@@ -70,13 +72,6 @@
 #define ip4_addr3(ipaddr) ((u16_t)(ntohl((ipaddr)->addr) >> 8) & 0xff)
 #define ip4_addr4(ipaddr) ((u16_t)(ntohl((ipaddr)->addr)) & 0xff)
 	
-#ifndef HAVE_IN_ADDR
-#define HAVE_IN_ADDR
-struct in_addr {
-  u32 s_addr;
-};
-#endif
-
 /* The IP Address */
 PACK_STRUCT_BEGIN
 struct uip_ip_addr {

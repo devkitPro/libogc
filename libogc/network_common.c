@@ -38,7 +38,7 @@
   */
  /*  */
  /* inet_aton */
- s8_t
+ int
  inet_aton(const char *cp, struct in_addr *addr)
  {
      u32_t val;
