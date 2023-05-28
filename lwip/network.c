@@ -372,7 +372,7 @@ static err_t netconn_delete(struct netconn *conn)
 	mbox = conn->recvmbox;
 	conn->recvmbox = SYS_MBOX_NULL;
 	if(mbox!=SYS_MBOX_NULL) {
-		while(MQ_Receive(mbox,(mqmsg_t)&mem,MQ_MSG_NOBLOCK)==TRUE) {
+		while(MQ_Receive(mbox,(mqmsg_t)&mem,MQ_MSG_NOBLOCK)==true) {
 			if(mem!=NULL) {
 				if(conn->type==NETCONN_TCP)
 					pbuf_free((struct pbuf*)mem);
@@ -386,7 +386,7 @@ static err_t netconn_delete(struct netconn *conn)
 	mbox = conn->acceptmbox;
 	conn->acceptmbox = SYS_MBOX_NULL;
 	if(mbox!=SYS_MBOX_NULL) {
-		while(MQ_Receive(mbox,(mqmsg_t)&mem,MQ_MSG_NOBLOCK)==TRUE) {
+		while(MQ_Receive(mbox,(mqmsg_t)&mem,MQ_MSG_NOBLOCK)==true) {
 			if(mem!=NULL) netconn_delete((struct netconn*)mem);
 		}
 		MQ_Close(mbox);
@@ -1493,7 +1493,7 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 	gw.addr = 0;
 
 	if (g_netinitiated < 3) {
-		if(use_dhcp==FALSE) {
+		if(use_dhcp==false) {
 			if( !gateway || gateway->s_addr==0
 				|| !local_ip || local_ip->s_addr==0
 				|| !netmask || netmask->s_addr==0 ) return -1;
@@ -1507,7 +1507,7 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 			netif_set_up(pnet);
 			netif_set_default(pnet);
 	#if (LWIP_DHCP)
-			if(use_dhcp==TRUE) {
+			if(use_dhcp==true) {
 				//setup coarse timer
 				tb.tv_sec = DHCP_COARSE_TIMER_SECS;
 				tb.tv_nsec = 0;
@@ -1542,7 +1542,7 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 		ret = net_init();
 
 		if (ret >= 0) {
-			if (use_dhcp == TRUE) {
+			if (use_dhcp == true) {
 				int retries = max_retries;
 				// wait for dhcp to bind
 				while ( g_hNetIF.dhcp->state != DHCP_BOUND && retries > 0 ) {
@@ -1585,7 +1585,7 @@ s32 if_config(char *local_ip, char *netmask, char *gateway,bool use_dhcp, int ma
 
 	if (ret<0) return ret;
 
-	if ( use_dhcp == TRUE ) {
+	if ( use_dhcp == true ) {
 		//copy back network addresses
 		if ( local_ip != NULL ) strcpy(local_ip, inet_ntoa( loc_ip ));
 		if ( netmask != NULL ) strcpy(netmask, inet_ntoa( mask));
@@ -2059,7 +2059,7 @@ s32 net_select(s32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset,st
 			return 0;
 		}
 
-		LWP_MutexInit(&sel_cb.cond_lck,FALSE);
+		LWP_MutexInit(&sel_cb.cond_lck,false);
 		LWP_CondInit(&sel_cb.cond);
 		sel_cb.next = selectcb_list;
 		selectcb_list = &sel_cb;

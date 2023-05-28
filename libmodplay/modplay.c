@@ -260,12 +260,12 @@ void MOD_Free ( MOD * mod )
 
     MEM_SET ( mod, 0, sizeof(MOD) );
     
-    mod->loaded = FALSE;
+    mod->loaded = false;
   }
 #else
 void MOD_Free ( MOD * mod )
   {
-    mod->set = FALSE;
+    mod->set = false;
 
     if (!mod->loaded)
       return;
@@ -275,7 +275,7 @@ void MOD_Free ( MOD * mod )
     
     MEM_SET ( mod, 0, sizeof(MOD) );
     
-    mod->loaded = FALSE;
+    mod->loaded = false;
   }
 #endif
 
@@ -380,10 +380,10 @@ s32 MOD_SetMOD ( MOD * mod, u8 * mem )
         mod->instrument[i].loop_end = tmp + mod->instrument[i].loop_start;
 
         /* Is the sample looped ? */
-        mod->instrument[i].looped = TRUE;
+        mod->instrument[i].looped = true;
         if (tmp<=2)
           { /* No ! */
-            mod->instrument[i].looped = FALSE;
+            mod->instrument[i].looped = false;
             mod->instrument[i].loop_start = mod->instrument[i].loop_end =
               mod->instrument[i].length;
           }
@@ -422,7 +422,7 @@ s32 MOD_SetMOD ( MOD * mod, u8 * mem )
           }
       }
 
-    mod->set = TRUE;
+    mod->set = true;
 
     return 0;
   } 
@@ -490,7 +490,7 @@ s32 MOD_Load ( MOD * mod, const char * fname )
         MOD_Free ( mod );
         return -1;
       }
-    mod->loaded = TRUE;
+    mod->loaded = true;
 
     return 0;
   }
@@ -524,19 +524,19 @@ u8 getEffectOp ( MOD * mod, s32 patternline, s32 channel )
     return (data[3]);
   }
 
-BOOL triggerNote ( MOD * mod, s32 i, u8 instrument, u16 note, u8 effect )
+bool triggerNote ( MOD * mod, s32 i, u8 instrument, u16 note, u8 effect )
   {
-    BOOL ret = FALSE;
+    bool ret = false;
     if ((instrument!=0) && (note!=0) && (effect!=3) && (effect!=5))
       {
         mod->playpos[i] = 0;
         mod->instnum[i] = instrument-1;
         mod->sintabpos[i] = 0;
-        ret = TRUE;
+        ret = true;
       }
     if (note!=0)
       {
-        ret = TRUE;
+        ret = true;
         mod->channote[i] = note;
         if ((effect==3) || (effect==5))
           mod->portamento_to[i] = note;
@@ -550,7 +550,7 @@ BOOL triggerNote ( MOD * mod, s32 i, u8 instrument, u16 note, u8 effect )
       }
     if (instrument != 0)
       {
-        ret = TRUE;
+        ret = true;
         mod->volume[i] = mod->instrument[mod->instnum[i]].volume;
       }
     return ret;
@@ -745,7 +745,7 @@ u32 effect_handler ( MOD * mod )
                               {
                                 mod->retrigger_counter[i] = 0;
                                 mod->playpos[i] = 0;
-                                mod->channel_active[i] = TRUE;
+                                mod->channel_active[i] = true;
                                 retval |= 1<<i;
                               }
                           }
@@ -763,7 +763,7 @@ u32 effect_handler ( MOD * mod )
                             if (mod->speedcounter == (mod->effectop[i]&0x0f))
                               {
                                 triggerNote ( mod, i, mod->nextinstr[i], mod->nextnote[i], mod->effect[i] );
-                                mod->channel_active[i] = TRUE;
+                                mod->channel_active[i] = true;
                                 retval |= 1<<i;
                               }
                           }
@@ -779,8 +779,8 @@ u32 process ( MOD * mod )
   {
     s32 i;
     u32 retval = 0;
-    BOOL doPatternBreak=FALSE;
-    BOOL doPatternLoop=FALSE;
+    bool doPatternBreak=false;
+    bool doPatternLoop=false;
     u8 * patternData = getCurPatternData ( mod, mod->patternline, 0 );
 
     for (i=0;i<mod->num_voices;++i)
@@ -816,7 +816,7 @@ u32 process ( MOD * mod )
             if (triggerNote ( mod, i, mod->nextinstr[i], mod->nextnote[i], effect ))
               {
                 retval |= 1<<i;
-                mod->channel_active[i] = TRUE;
+                mod->channel_active[i] = true;
               }
           }
 
@@ -877,7 +877,7 @@ u32 process ( MOD * mod )
             case 0x0b:
               if (effect_operand<128)
                 {
-				  if(mod->notify) *mod->notify = TRUE;
+				  if(mod->notify) *mod->notify = true;
                   mod->songpos = effect_operand;
                   mod->patternline = 0;
                   return retval;
@@ -889,7 +889,7 @@ u32 process ( MOD * mod )
               mod->volume[i] = effect_operand;
               break;
             case 0x0d:
-              doPatternBreak=TRUE;
+              doPatternBreak=true;
               break;
             case 0x0e:
               switch ( (effect_operand>>4)&0x0f )
@@ -906,10 +906,10 @@ u32 process ( MOD * mod )
                     break;
                   case 0x03:
                     if ( (effect_operand&0x0f) == 0x00 )
-                      mod->glissando[i] = FALSE;
+                      mod->glissando[i] = false;
                     else
                     if ( (effect_operand&0x0f) == 0x01 )
-                      mod->glissando[i] = TRUE;
+                      mod->glissando[i] = true;
                     break;
                   case 0x04:
                     if ( (effect_operand&0x0f) < 8 )
@@ -923,14 +923,14 @@ u32 process ( MOD * mod )
                       mod->patternline_jumpto = mod->patternline;
                     else
                       {
-                        doPatternLoop = TRUE;
+                        doPatternLoop = true;
                         if (mod->patternline_jumpcount==0)
                           {
                             mod->patternline_jumpcount = effect_operand&0x0f;
                           } else
                           {
                             if (--mod->patternline_jumpcount==0)
-                              doPatternLoop = FALSE;
+                              doPatternLoop = false;
                           }
                       }
                     break;
@@ -986,7 +986,7 @@ u32 process ( MOD * mod )
         mod->patternline = 0;
         if (mod->songpos>=mod->song_length)
           {
-			if(mod->notify) *mod->notify = TRUE;
+			if(mod->notify) *mod->notify = true;
             mod->songpos = 0;
             mod->patternline = 0;
           }
@@ -1008,7 +1008,7 @@ u32 process ( MOD * mod )
           }
         if (mod->songpos>=mod->song_length)
           {
-			if(mod->notify) *mod->notify = TRUE;
+			if(mod->notify) *mod->notify = true;
             mod->songpos = 0;
             mod->patternline = 0;
           }
@@ -1032,10 +1032,10 @@ void MOD_Start ( MOD * mod )
         mod->vib_freq[i] = 0;
         mod->vib_depth[i] = 0;
         mod->last_effect[i] = 0;
-        mod->glissando[i] = FALSE;
+        mod->glissando[i] = false;
         mod->trem_wave[i] = 0;
         mod->vib_wave[i] = 0;
-        mod->channel_active[i] = FALSE;
+        mod->channel_active[i] = false;
       }
 
     mod->songpos = 0;
@@ -1167,7 +1167,7 @@ s32 MOD_TriggerNote ( MOD * mod, s32 channel, u8 instnum, u16 freq, u8 vol )
 
     if (instnum!=0xff)
       {
-        mod->channel_active[channel] = TRUE;
+        mod->channel_active[channel] = true;
         mod->playpos[channel] = 0;
         mod->instnum[channel] = instnum;
       }

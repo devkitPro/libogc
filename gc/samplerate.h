@@ -140,7 +140,7 @@ int src_set_ratio (SRC_STATE *state, double new_ratio) ;
 int src_reset (SRC_STATE *state) ;
 
 /*
-** Return TRUE if ratio is a valid conversion ratio, FALSE
+** Return true if ratio is a valid conversion ratio, false
 ** otherwise.
 */
 

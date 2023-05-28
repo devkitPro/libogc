@@ -37,7 +37,6 @@ distribution.
 */ 
 
 #include <gctypes.h>
-#include <gcbool.h>
 
 #define MQ_BOX_NULL				0xffffffff
 
@@ -93,7 +92,7 @@ void MQ_Close(mqbox_t mqbox);
 
 \return bool result
 */
-BOOL MQ_Send(mqbox_t mqbox,mqmsg_t msg,u32 flags);
+bool MQ_Send(mqbox_t mqbox,mqmsg_t msg,u32 flags);
 
 
 /*! \fn BOOL MQ_Jam(mqbox_t mqbox,mqmsg_t msg,u32 flags)
@@ -104,7 +103,7 @@ BOOL MQ_Send(mqbox_t mqbox,mqmsg_t msg,u32 flags);
 
 \return bool result
 */
-BOOL MQ_Jam(mqbox_t mqbox,mqmsg_t msg,u32 flags);
+bool MQ_Jam(mqbox_t mqbox,mqmsg_t msg,u32 flags);
 
 
 /*! \fn BOOL MQ_Receive(mqbox_t mqbox,mqmsg_t *msg,u32 flags)
@@ -115,7 +114,7 @@ BOOL MQ_Jam(mqbox_t mqbox,mqmsg_t msg,u32 flags);
 
 \return bool result
 */
-BOOL MQ_Receive(mqbox_t mqbox,mqmsg_t *msg,u32 flags);
+bool MQ_Receive(mqbox_t mqbox,mqmsg_t *msg,u32 flags);
 
 #ifdef __cplusplus
 	}

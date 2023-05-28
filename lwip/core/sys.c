@@ -244,7 +244,7 @@ sswt_handler(void *arg)
 {
     struct sswt_cb *sswt_cb = (struct sswt_cb *) arg;
 
-    /* Timeout. Set flag to TRUE and signal semaphore */
+    /* Timeout. Set flag to true and signal semaphore */
     sswt_cb->timeflag = 1;
     sys_sem_signal(*(sswt_cb->psem));
 }
