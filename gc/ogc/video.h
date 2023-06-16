@@ -87,6 +87,24 @@ void VIDEO_Flush(void);
  */
 void VIDEO_SetBlack(bool black);
 
+/*!
+ * \fn void VIDEO_Set3D(bool enable3d)
+ * \brief control the 3D bits in video
+ *
+ * \param[in] Boolean to indicate to enable 3D or not
+ *
+ * \return none
+ */
+void VIDEO_Set3D(bool enable3d);
+
+/*! 
+ * \fn u32 VIDEO_GetRetraceCount(void)
+ * \brief Get current retrace count
+ *
+ * \return retracecount
+ */
+u32 VIDEO_GetRetraceCount(void);
+
 
 /*! 
  * \fn u32 VIDEO_GetNextField(void)
@@ -116,14 +134,16 @@ u32 VIDEO_GetCurrentTvMode(void);
 
 
 /*! 
- * \fn void VIDEO_Configure(GXRModeObj *rmode)
+ * \fn void VIDEO_Configure(const GXRModeObj *rmode)
  * \brief Configure the VI with the given render mode object
  *
  * \param[in] rmode pointer to the video/render mode \ref gxrmode_obj "configuration".
  *
  * \return none
  */
-void VIDEO_Configure(GXRModeObj *rmode);
+void VIDEO_Configure(const GXRModeObj *rmode);
+
+void VIDEO_ConfigurePan(u16 xOrg,u16 yOrg,u16 width,u16 height);
 
 u32 VIDEO_GetFrameBufferSize(GXRModeObj *rmode);
 
