@@ -2365,7 +2365,7 @@ static inline u32 __VISetRegs(void)
 	u64 mask;
 
 	if(shdw_changeMode==1){
-		if(!__getCurrentFieldEvenOdd()) return 0;
+		if(__getCurrentHalfLine()) return 0;
 	}
 
 	while(shdw_changed) {
@@ -2628,7 +2628,7 @@ void VIDEO_Init(void)
 	_CPU_ISR_Restore(level);
 }
 
-void VIDEO_Configure(GXRModeObj *rmode)
+void VIDEO_Configure(const GXRModeObj *rmode)
 {
 	u16 dcr;
 	u32 nonint,vimode,level;
@@ -2826,8 +2826,25 @@ void VIDEO_SetBlack(bool black)
 	_CPU_ISR_Disable(level);
 	HorVer.black = black;
 	curtiming = HorVer.timing;
-	__setVerticalRegs(HorVer.adjustedDispPosY,HorVer.dispSizeY,curtiming->equ,curtiming->acv,curtiming->prbOdd,curtiming->prbEven,curtiming->psbOdd,curtiming->psbEven,HorVer.black);
+	__setVerticalRegs(HorVer.adjustedDispPosY,HorVer.adjustedDispSizeY,curtiming->equ,curtiming->acv,curtiming->prbOdd,curtiming->prbEven,curtiming->psbOdd,curtiming->psbEven,HorVer.black);
 	_CPU_ISR_Restore(level);
+}
+
+void VIDEO_Set3D(bool enable3d)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	HorVer.threeD = enable3d;
+	regs[1] = (regs[1]&~0x0008)|(_SHIFTL(enable3d,3,1));
+	changed |= VI_REGCHANGE(1);
+	__setScalingRegs(HorVer.panSizeX,HorVer.dispSizeX,HorVer.threeD);
+	_CPU_ISR_Restore(level);
+}
+
+u32 VIDEO_GetRetraceCount(void)
+{
+	return retraceCount;
 }
 
 u32 VIDEO_GetNextField(void)
@@ -2866,67 +2883,61 @@ GXRModeObj *rmode = NULL;
 	u32 tvmode = CONF_GetVideo();
 	if (CONF_GetProgressiveScan() > 0 && VIDEO_HaveComponentCable()) {
 		switch (tvmode) {
-			case CONF_VIDEO_NTSC:
-				rmode = &TVNtsc480Prog;
-				break;
 			case CONF_VIDEO_PAL:
-				if (CONF_GetEuRGB60() > 0)
-					rmode = &TVEurgb60Hz480Prog;
-				else rmode = &TVPal576ProgScale;
+				rmode = CONF_GetEuRGB60() > 0 ? &TVEurgb60Hz480Prog : &TVPal576ProgScale;
 				break;
+			//GCVideo-DVI might misbehave with MPAL, thinking its PAL50. 
+			//removing this case fixes that, but then we loose the specific timings/config
 			case CONF_VIDEO_MPAL:
 				rmode = &TVMpal480Prog;
 				break;
 			default:
+			case CONF_VIDEO_NTSC:
 				rmode = &TVNtsc480Prog;
+				break;
 		}
 	} else {
 		switch (tvmode) {
+			case CONF_VIDEO_PAL:
+				rmode = CONF_GetEuRGB60() > 0 ? &TVEurgb60Hz480IntDf : &TVPal576IntDfScale;
+				break;
+			case CONF_VIDEO_MPAL:
+				rmode = VIDEO_HaveComponentCable() > 0 ? &TVNtsc480IntDf : &TVMpal480IntDf;
+				break;
+			default:
 			case CONF_VIDEO_NTSC:
 				rmode = &TVNtsc480IntDf;
 				break;
-			case CONF_VIDEO_PAL:
-				if (CONF_GetEuRGB60() > 0)
-					rmode = &TVEurgb60Hz480IntDf;
-				else rmode = &TVPal576IntDfScale;
-				break;
-			case CONF_VIDEO_MPAL:
-				rmode = &TVMpal480IntDf;
-				break;
-			default:
-				rmode = &TVNtsc480IntDf;
 		}
 	}
 #else
-	u32 tvmode = VIDEO_GetCurrentTvMode();
-	if (VIDEO_HaveComponentCable()) {
+	u32 tvmode = SYS_GetVideoMode();
+	if (SYS_GetProgressiveScan() && VIDEO_HaveComponentCable()) {
 		switch (tvmode) {
-			case VI_NTSC:
-				rmode = &TVNtsc480Prog;
+			case SYS_VIDEO_PAL:
+				rmode = SYS_GetEuRGB60() ? &TVEurgb60Hz480Prog : &TVPal576ProgScale;
 				break;
-			case VI_PAL:
-				rmode = &TVPal576ProgScale;
-				break;
-			case VI_MPAL:
+			//GCVideo-DVI might misbehave with MPAL, thinking its PAL50. 
+			//removing this case fixes that, but then we loose the specific timings/config
+			case SYS_VIDEO_MPAL:
 				rmode = &TVMpal480Prog;
 				break;
-			case VI_EURGB60:
-				rmode = &TVEurgb60Hz480Prog;
+			default:
+			case SYS_VIDEO_NTSC:
+				rmode = &TVNtsc480Prog;
 				break;
 		}
 	} else {
 		switch (tvmode) {
-			case VI_NTSC:
+			case SYS_VIDEO_PAL:
+				rmode = SYS_GetEuRGB60() > 0 ? &TVEurgb60Hz480IntDf : &TVPal576IntDfScale;
+				break;
+			case SYS_VIDEO_MPAL:
+				rmode = VIDEO_HaveComponentCable() > 0 ? &TVNtsc480IntDf : &TVMpal480IntDf;
+				break;
+			default:
+			case SYS_VIDEO_NTSC:
 				rmode = &TVNtsc480IntDf;
-				break;
-			case VI_PAL:
-				rmode = &TVPal576IntDfScale;
-				break;
-			case VI_MPAL:
-				rmode = &TVMpal480IntDf;
-				break;
-			case VI_EURGB60:
-				rmode = &TVEurgb60Hz480IntDf;
 				break;
 		}
 	}
@@ -2998,7 +3009,16 @@ void VIDEO_ClearFrameBuffer(GXRModeObj *rmode,void *fb,u32 color)
 
 u32 VIDEO_HaveComponentCable(void)
 {
-	return (_viReg[55]&0x01);
+	u32 dtv,level;
+    _CPU_ISR_Disable(level);
+
+    dtv = (_viReg[55]&0x0001);
+#if defined(HW_DOL)
+    dtv |= (_viReg[54]&0x0001);
+#endif
+
+	_CPU_ISR_Restore(level);
+    return dtv;
 }
 
 u32 VIDEO_GetVideoScanMode(void)
