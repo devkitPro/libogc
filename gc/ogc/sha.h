@@ -38,7 +38,7 @@ distribution.
 	extern "C" {
 #endif /* __cplusplus */
 
-#define SHA_BLOCK_SIZE 0x10000
+#define SHA_MSGBLOCK_SIZE 0x10000
 
 typedef struct
 {
