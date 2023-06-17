@@ -945,10 +945,11 @@
 
 
 /*! \addtogroup copymode EFB copy mode
- * \brief Controls whether all lines, only even lines, or only odd lines are copied from the EFB.
+ * \brief Controls whether all lines, no lines, only even lines, or only odd lines are copied from the EFB.
  * @{
  */
 #define GX_COPY_PROGRESSIVE				0
+#define GX_COPY_NONE					1
 #define GX_COPY_INTLC_EVEN				2
 #define GX_COPY_INTLC_ODD				3
 /*! @} */
@@ -1174,6 +1175,7 @@ typedef union _wgpipe
 	vu32 U32;
 	vs32 S32;
 	vf32 F32;
+	vf64 F64;
 } WGPipe;
 
 /*! \typedef struct _gx_color GXColor
@@ -1337,11 +1339,11 @@ typedef void (*GXDrawDoneCallback)(void);
  */
 typedef void (*GXDrawSyncCallback)(u16 token);
 
-/*! \typedef GXTexRegion* (*GXTexRegionCallback)(GXTexObj *obj,u8 mapid)
+/*! \typedef GXTexRegion* (*GXTexRegionCallback)(const GXTexObj *obj,u8 mapid)
  * \brief function pointer typedef for the texture region callback
  * \param[out] token tokenvalue most recently encountered.
  */
-typedef GXTexRegion* (*GXTexRegionCallback)(GXTexObj *obj,u8 mapid);
+typedef GXTexRegion* (*GXTexRegionCallback)(const GXTexObj *obj,u8 mapid);
 
 /*! \typedef GXTlutRegion* (*GXTlutRegionCallback)(u32 tlut_name)
  * \brief function pointer typedef for the TLUT region callback
@@ -1459,7 +1461,7 @@ void GX_InitFifoPtrs(GXFifoObj *fifo,void *rd_ptr,void *wt_ptr);
 void GX_GetFifoPtrs(const GXFifoObj *fifo,void **rd_ptr,void **wt_ptr);
 
 /*!
- * \fn void GX_SetCPUFifo(GXFifoObj *fifo)
+ * \fn void GX_SetCPUFifo(const GXFifoObj *fifo)
  * \brief Attaches a FIFO to the CPU.
  *
  * \note If the FIFO being attached is one already attached to the GP, the FIFO can be considered to be in immediate mode. If not,
@@ -1469,10 +1471,10 @@ void GX_GetFifoPtrs(const GXFifoObj *fifo,void **rd_ptr,void **wt_ptr);
  *
  * \return none
  */
-void GX_SetCPUFifo(GXFifoObj *fifo);
+void GX_SetCPUFifo(const GXFifoObj *fifo);
 
 /*!
- * \fn void GX_SetGPFifo(GXFifoObj *fifo)
+ * \fn void GX_SetGPFifo(const GXFifoObj *fifo)
  * \brief Attaches \a fifo to the GP.
  *
  * \note If the FIFO is also attached to the CPU, the system is in immediate-mode, and the fifo acts like a true FIFO. In immediate-mode,
@@ -1492,7 +1494,7 @@ void GX_SetCPUFifo(GXFifoObj *fifo);
  *
  * \return none
  */
-void GX_SetGPFifo(GXFifoObj *fifo);
+void GX_SetGPFifo(const GXFifoObj *fifo);
 
 /*!
  * \fn void GX_GetCPUFifo(GXFifoObj *fifo)
@@ -1780,7 +1782,7 @@ void GX_InvVtxCache(void);
 void GX_ClearVtxDesc(void);
 
 /*!
- * \fn void GX_LoadProjectionMtx(Mtx44 mt,u8 type)
+ * \fn void GX_LoadProjectionMtx(const Mtx44 mt,u8 type)
  * \brief Sets the projection matrix.
  *
  * \note Only two types of projection matrices are supported: <tt>GX_PERSPECTIVE</tt> or <tt>GX_ORTHOGRAPHIC</tt>.
@@ -1790,7 +1792,7 @@ void GX_ClearVtxDesc(void);
  *
  * \return none
  */
-void GX_LoadProjectionMtx(Mtx44 mt,u8 type);
+void GX_LoadProjectionMtx(const Mtx44 mt,u8 type);
 
 /*!
  * \fn void GX_SetViewport(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ)
@@ -1898,7 +1900,7 @@ void GX_SetChanAmbColor(s32 channel,GXColor color);
 void GX_SetChanMatColor(s32 channel,GXColor color);
 
 /*!
- * \fn void GX_SetArray(u32 attr,void *ptr,u8 stride)
+ * \fn void GX_SetArray(u32 attr,const void *ptr,u8 stride)
  * \brief Sets the array base pointer and stride for a single attribute.
  *
  * \details The array base and stride are used to compute the address of indexed attribute data using the equation:<br><br>
@@ -1925,7 +1927,7 @@ void GX_SetChanMatColor(s32 channel,GXColor color);
  *
  * \return none
  */
-void GX_SetArray(u32 attr,void *ptr,u8 stride);
+void GX_SetArray(u32 attr,const void *ptr,u8 stride);
 
 /*!
  * \fn void GX_SetVtxAttrFmt(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac)
@@ -1954,7 +1956,7 @@ void GX_SetArray(u32 attr,void *ptr,u8 stride);
 void GX_SetVtxAttrFmt(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac);
 
 /*!
- * \fn void GX_SetVtxAttrFmtv(u8 vtxfmt,GXVtxAttrFmt *attr_list)
+ * \fn void GX_SetVtxAttrFmtv(u8 vtxfmt,const GXVtxAttrFmt *attr_list)
  * \brief Sets multiple attribute formats within a single vertex format.
  *
  * \details This is useful when you need to set all the attributes in a vertex format at once (e.g., during graphics initialization).
@@ -1966,7 +1968,7 @@ void GX_SetVtxAttrFmt(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac);
  *
  * \return none
  */
-void GX_SetVtxAttrFmtv(u8 vtxfmt,GXVtxAttrFmt *attr_list);
+void GX_SetVtxAttrFmtv(u8 vtxfmt,const GXVtxAttrFmt *attr_list);
 
 /*!
  * \fn void GX_SetVtxDesc(u8 attr,u8 type)
@@ -1984,7 +1986,7 @@ void GX_SetVtxAttrFmtv(u8 vtxfmt,GXVtxAttrFmt *attr_list);
 void GX_SetVtxDesc(u8 attr,u8 type);
 
 /*!
- * \fn void GX_SetVtxDescv(GXVtxDesc *attr_list)
+ * \fn void GX_SetVtxDescv(const GXVtxDesc *attr_list)
  * \brief Sets the type of multiple attributes.
  *
  * \details This function is used when more than one attribute needs to be set (e.g., during initialization of geometry).
@@ -1995,7 +1997,7 @@ void GX_SetVtxDesc(u8 attr,u8 type);
  *
  * \return none
  */
-void GX_SetVtxDescv(GXVtxDesc *attr_list);
+void GX_SetVtxDescv(const GXVtxDesc *attr_list);
 
 /*!
  * \fn void GX_GetVtxDescv(GXVtxDesc *attr_list)
@@ -2088,7 +2090,7 @@ void GX_Begin(u8 primitve,u8 vtxfmt,u16 vtxcnt);
 void GX_BeginDispList(void *list,u32 size);
 
 /*!
- * \fn void GX_CallDispList(void *list,u32 nbytes)
+ * \fn void GX_CallDispList(const void *list,u32 nbytes)
  * \brief Causes the GP to execute graphics commands from the display \a list instead of from the GP FIFO.
  *
  * \details When the number of bytes specified by \a nbytes have been read, the graphics processor will resume executing
@@ -2106,7 +2108,7 @@ void GX_BeginDispList(void *list,u32 size);
  *
  * \return none
  */
-void GX_CallDispList(void *list,u32 nbytes);
+void GX_CallDispList(const void *list,u32 nbytes);
 
 /*!
  * \fn static inline void GX_End(void)
@@ -2337,7 +2339,7 @@ static inline void GX_MatrixIndex1x8(u8 index)
 }
 
 /*!
- * \fn void GX_AdjustForOverscan(GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver)
+ * \fn void GX_AdjustForOverscan(const GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver)
  * \brief Takes a given render mode and returns a version that is reduced in size to account for overscan.
  *
  * \details The number of pixels specified by \a hor is subtracted from each side of the screen, and the number of pixels specified
@@ -2355,10 +2357,10 @@ static inline void GX_MatrixIndex1x8(u8 index)
  *
  * \returns none
  */
-void GX_AdjustForOverscan(GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver);
+void GX_AdjustForOverscan(const GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver);
 
 /*!
- * \fn void GX_LoadPosMtxImm(Mtx mt,u32 pnidx)
+ * \fn void GX_LoadPosMtxImm(const Mtx mt,u32 pnidx)
  * \brief Used to load a 3x4 modelview matrix \a mt into matrix memory at location \a pnidx.
  *
  * \details This matrix can be used to transform positions in model space to view space, either by making the matrix the current one (see
@@ -2378,7 +2380,7 @@ void GX_AdjustForOverscan(GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver);
  *
  * \return none
  */
-void GX_LoadPosMtxImm(Mtx mt,u32 pnidx);
+void GX_LoadPosMtxImm(const Mtx mt,u32 pnidx);
 
 /*!
  * \fn void GX_LoadPosMtxIdx(u16 mtxidx,u32 pnidx)
@@ -2404,7 +2406,7 @@ void GX_LoadPosMtxImm(Mtx mt,u32 pnidx);
 void GX_LoadPosMtxIdx(u16 mtxidx,u32 pnidx);
 
 /*!
- * \fn void GX_LoadNrmMtxImm(Mtx mt,u32 pnidx)
+ * \fn void GX_LoadNrmMtxImm(const Mtx mt,u32 pnidx)
  * \brief Used to load a normal transform matrix into matrix memory at location \a pnidx from the 4x3 matrix \a mt.
  *
  * \details This matrix is used to transform normals in model space to view space, either by making it the current matrix (see GX_SetCurrentMtx()),
@@ -2426,10 +2428,10 @@ void GX_LoadPosMtxIdx(u16 mtxidx,u32 pnidx);
  *
  * \return none
  */
-void GX_LoadNrmMtxImm(Mtx mt,u32 pnidx);
+void GX_LoadNrmMtxImm(const Mtx mt,u32 pnidx);
 
 /*!
- * \fn void GX_LoadNrmMtxImm3x3(Mtx33 mt,u32 pnidx)
+ * \fn void GX_LoadNrmMtxImm3x3(const Mtx33 mt,u32 pnidx)
  * \brief Used to load a normal transform matrix into matrix memory at location \a pnidx from the 3x3 matrix \a mt.
  *
  * \details This matrix is used to transform normals in model space to view space, either by making it the current matrix (see GX_SetCurrentMtx()),
@@ -2449,7 +2451,7 @@ void GX_LoadNrmMtxImm(Mtx mt,u32 pnidx);
  *
  * \return none
  */
-void GX_LoadNrmMtxImm3x3(Mtx33 mt,u32 pnidx);
+void GX_LoadNrmMtxImm3x3(const Mtx33 mt,u32 pnidx);
 
 /*!
  * \fn void GX_LoadNrmMtxIdx3x3(u16 mtxidx,u32 pnidx)
@@ -2476,7 +2478,7 @@ void GX_LoadNrmMtxImm3x3(Mtx33 mt,u32 pnidx);
 void GX_LoadNrmMtxIdx3x3(u16 mtxidx,u32 pnidx);
 
 /*!
- * \fn void GX_LoadTexMtxImm(Mtx mt,u32 texidx,u8 type)
+ * \fn void GX_LoadTexMtxImm(const Mtx mt,u32 texidx,u8 type)
  * \brief Loads a texture matrix \a mt into the matrix memory at location \a texidx.
  *
  * \details The matrix loaded can be either a 2x4 or 3x4 matrix as indicated by \a type. You can use the loaded matrix to
@@ -2499,7 +2501,7 @@ void GX_LoadNrmMtxIdx3x3(u16 mtxidx,u32 pnidx);
  *
  * \return none
  */
-void GX_LoadTexMtxImm(Mtx mt,u32 texidx,u8 type);
+void GX_LoadTexMtxImm(const Mtx mt,u32 texidx,u8 type);
 
 /*!
  * \fn void GX_LoadTexMtxIdx(u16 mtxidx,u32 texidx,u8 type)
@@ -2967,6 +2969,19 @@ void GX_SetClipMode(u8 mode);
 void GX_SetScissor(u32 xOrigin,u32 yOrigin,u32 wd,u32 ht);
 
 /*!
+ * \fn void GX_GetScissor(u32 *xOrigin,u32 *yOrigin,u32 *wd,u32 *ht)
+ * \brief This function returns the scissor box in the current screen coordinates.
+ *
+ * \param[out] xOrigin Returns the left-most coordinate of the scissor box in screen coordinates
+ * \param[out] yOrigin Returns the top-most coordinate of the scissor box in screen coordinates
+ * \param[out] wd Returns the width of the scissor box width in screen coordinates
+ * \param[out] ht Returns the height of the scissor box in screen coordinates
+ *
+ * \return none
+ */
+void GX_GetScissor(u32 *xOrigin,u32 *yOrigin,u32 *wd,u32 *ht);
+
+/*!
  * \fn void GX_SetScissorBoxOffset(s32 xoffset,s32 yoffset)
  * \brief Repositions the scissorbox rectangle within the Embedded Frame Buffer (EFB) memory space.
  *
@@ -3287,7 +3302,7 @@ void GX_SetIndTexCoordScale(u8 indtexid,u8 scale_s,u8 scale_t);
 void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col);
 
 /*!
- * \fn void GX_SetFogRangeAdj(u8 enable,u16 center,GXFogAdjTbl *table)
+ * \fn void GX_SetFogRangeAdj(u8 enable,u16 center,const GXFogAdjTbl *table)
  * \brief Enables or disables horizontal fog-range adjustment.
  *
  * \details This adjustment is a factor that is multiplied by the eye-space Z used for fog computation; it is based upon the X position of the pixels being
@@ -3305,7 +3320,7 @@ void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col);
  *
  * \return none
  */
-void GX_SetFogRangeAdj(u8 enable,u16 center,GXFogAdjTbl *table);
+void GX_SetFogRangeAdj(u8 enable,u16 center,const GXFogAdjTbl *table);
 
 /*!
  * \fn GX_SetFogColor(GXColor color)
@@ -3318,7 +3333,7 @@ void GX_SetFogRangeAdj(u8 enable,u16 center,GXFogAdjTbl *table);
 void GX_SetFogColor(GXColor color);
 
 /*!
- * \fn void GX_InitFogAdjTable(GXFogAdjTbl *table,u16 width,f32 projmtx[4][4])
+ * \fn void GX_InitFogAdjTable(GXFogAdjTbl *table,u16 width,const f32 projmtx[4][4])
  * \brief Generates the standard range adjustment table and puts the results into \a table.
  *
  * \details This table can be used by GX_SetFogRangeAdj() to adjust the eye-space Z used for fog based upon the X position of the pixels being rendered.
@@ -3332,10 +3347,10 @@ void GX_SetFogColor(GXColor color);
  * \param[in] width width of the viewport
  * \param[in] projmtx projection matrix used to render into the viewport
  */
-void GX_InitFogAdjTable(GXFogAdjTbl *table,u16 width,f32 projmtx[4][4]);
+void GX_InitFogAdjTable(GXFogAdjTbl *table,u16 width,const f32 projmtx[4][4]);
 
 /*!
- * \fn void GX_SetIndTexMatrix(u8 indtexmtx,f32 offset_mtx[2][3],s8 scale_exp)
+ * \fn void GX_SetIndTexMatrix(u8 indtexmtx,const f32 offset_mtx[2][3],s8 scale_exp)
  * \brief Sets one of the three static indirect matrices and the associated scale factor.
  *
  * \details The indirect matrix and scale is used to process the results of an indirect lookup in order to produce offsets to use during a regular lookup.
@@ -3352,7 +3367,7 @@ void GX_InitFogAdjTable(GXFogAdjTbl *table,u16 width,f32 projmtx[4][4]);
  *
  * \return none
  */
-void GX_SetIndTexMatrix(u8 indtexmtx,f32 offset_mtx[2][3],s8 scale_exp);
+void GX_SetIndTexMatrix(u8 indtexmtx,const f32 offset_mtx[2][3],s8 scale_exp);
 
 /*!
  * \fn void GX_SetTevIndBumpST(u8 tevstage,u8 indstage,u8 mtx_sel)
@@ -3394,6 +3409,24 @@ void GX_SetTevIndBumpST(u8 tevstage,u8 indstage,u8 mtx_sel);
 void GX_SetTevIndBumpXYZ(u8 tevstage,u8 indstage,u8 mtx_sel);
 
 /*!
+ * \fn void GX_SetTevIndWarp(u8 tevstage,u8 indstage,u8 signed_offset,u8 replace_mode,u8 mtx_sel)
+ * \brief Allows an indirect map to warp or distort the texture coordinates used with a regular TEV stage lookup.
+ *
+ * \details The indirect map should have 8-bit offsets, which may be signed or unsigned. "Signed" actually means "biased," and thus if \a signed_offset is <tt>GX_TRUE</tt>,
+ * 128 is subtracted from the values looked up from the indirect map. The indirect results can either modify or completely replace the regular texture coordinates.
+ * One may use the indirect matrix and scale to modify the indirect offsets.
+ *
+ * \param[in] tevstage \ref tevstage that is being affected
+ * \param[in] indstage \ref indtexstage results to use with this TEV stage
+ * \param[in] signed_offset whether the 8-bit offsets should be signed/biased (<tt>GX_TRUE</tt>) or unsigned (<tt>GX_FALSE</tt>)
+ * \param[in] replace_mode whether the offsets should replace (<tt>GX_TRUE</tt>) or be added to (<tt>GX_FALSE</tt>) the regular texture coordinates
+ * \param[in] mtx_sel which \ref indtexmtx to multiply the offsets with
+ *
+ * \return none
+ */
+void GX_SetTevIndWarp(u8 tevstage,u8 indstage,u8 signed_offset,u8 replace_mode,u8 mtx_sel);
+
+/*!
  * \fn void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 tilespacing_x,u16 tilespacing_y,u8 indtexfmt,u8 indtexmtx,u8 bias_sel,u8 alpha_sel)
  * \brief Used to implement tiled texturing using indirect textures.
  *
@@ -3418,20 +3451,6 @@ void GX_SetTevIndBumpXYZ(u8 tevstage,u8 indstage,u8 mtx_sel);
  */
 void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 tilespacing_x,u16 tilespacing_y,u8 indtexfmt,u8 indtexmtx,u8 bias_sel,u8 alpha_sel);
 
-/*!
- * \fn void GX_SetTevIndWarp(u8 tevstage, u8 indtexid, u8 bias_flag, u8 replace_tex, u8 mtxid)
- * \brief Used to warp a normal texture lookup using an indirect texture map with 8-bit offsets.
- *
- * \param[in] tevstage \ref tevstage that is being affected
- * \param[in] indtexid \ref indtexstage results to use with this TEV stage
- * \param[in] bias_flag biases the indirect texture map offsets by -128 if the value is GX_TRUE
- * \param[in] replace_tex GX_TRUE makes the indirect texture map offsets replace the input texture coordinates rather than offset them as with GX_FALSE
- * \param[in] mtxid which \ref indtexmtx to use for warping the texture
- * \return none
- */
-	   
-void GX_SetTevIndWarp(u8 tevstage, u8 indtexid, u8 bias_flag, u8 replace_tex, u8 mtxid);
-	   
 /*!
  * \fn void GX_SetTevIndRepeat(u8 tevstage)
  * \brief Set a given TEV stage to use the same texture coordinates as were computed in the previous stage.
@@ -3575,6 +3594,17 @@ void GX_SetFieldMask(u8 even_mask,u8 odd_mask);
 void GX_SetFieldMode(u8 field_mode,u8 half_aspect_ratio);
 
 /*!
+ * \fn u16 GX_GetNumXfbLines(u16 efbHeight,f32 yscale)
+ * \brief Calculates the number of lines copied to the XFB, based on given EFB height and Y scale.
+ *
+ * \param[in] efbHeight Height of embedded framebuffer. Range from 2 to 528. Should be a multiple of 2.
+ * \param[in] yscale Vertical scale value. Range from 1.0 to 256.0.
+ *
+ * \return Number of lines that will be copied.
+ */
+u16 GX_GetNumXfbLines(u16 efbHeight,f32 yscale);
+
+/*!
  * \fn f32 GX_GetYScaleFactor(u16 efbHeight,u16 xfbHeight)
  * \brief Calculates an appropriate Y scale factor value for GX_SetDispCopyYScale() based on the height of the EFB and
  *        the height of the XFB.
@@ -3647,7 +3677,7 @@ void GX_SetCopyClamp(u8 clamp);
 void GX_SetDispCopyGamma(u8 gamma);
 
 /*!
- * \fn void GX_SetCopyFilter(u8 aa,u8 sample_pattern[12][2],u8 vf,u8 vfilter[7])
+ * \fn void GX_SetCopyFilter(u8 aa,const u8 sample_pattern[12][2],u8 vf,const u8 vfilter[7])
  * \brief Sets the subpixel sample patterns and vertical filter coefficients used to filter subpixels into pixels.
  *
  * \details This function normally uses the \a aa, \a sample_pattern and \a vfilter provided by the render mode struct:<br><br>
@@ -3665,7 +3695,7 @@ void GX_SetDispCopyGamma(u8 gamma);
  *
  * \return none
  */
-void GX_SetCopyFilter(u8 aa,u8 sample_pattern[12][2],u8 vf,u8 vfilter[7]);
+void GX_SetCopyFilter(u8 aa,const u8 sample_pattern[12][2],u8 vf,const u8 vfilter[7]);
 
 /*!
  * \fn void GX_SetDispCopyFrame2Field(u8 mode)
@@ -4000,7 +4030,43 @@ void GX_PeekZ(u16 x,u16 y,u32 *z);
 void GX_PokeZMode(u8 comp_enable,u8 func,u8 update_enable);
 
 /*!
- * \fn u32 GX_GetTexObjFmt(const GXTexObj *obj)
+ * \fn void* GX_GetTexObjData(const GXTexObj *obj)
+ * \brief Used to get a pointer to texture data from the \ref GXTexObj structure.
+ *
+ * \note The returned pointer is a physical address.
+ *
+ * \param[in] obj ptr to a texture object
+ *
+ * \return Physical pointer to texture data.
+ */
+void* GX_GetTexObjData(const GXTexObj *obj);
+
+/*!
+ * \fn u16 GX_GetTexObjWidth(const GXTexObj *obj)
+ * \brief Returns the texture width described by texture object \a obj.
+ *
+ * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture width.
+ *
+ * \param[in] obj ptr to a texture object
+ *
+ * \return texture width
+ */
+u16 GX_GetTexObjWidth(const GXTexObj *obj);
+
+/*!
+ * \fn u16 GX_GetTexObjHeight(const GXTexObj *obj)
+ * \brief Returns the texture height described by texture object \a obj.
+ *
+ * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture height.
+ *
+ * \param[in] obj ptr to a texture object
+ *
+ * \return texture height
+ */
+u16 GX_GetTexObjHeight(const GXTexObj *obj);
+
+/*!
+ * \fn u8 GX_GetTexObjFmt(const GXTexObj *obj)
  * \brief Returns the texture format described by texture object \a obj.
  *
  * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture format.
@@ -4009,10 +4075,34 @@ void GX_PokeZMode(u8 comp_enable,u8 func,u8 update_enable);
  *
  * \return texture format of the given texture object
  */
-u32 GX_GetTexObjFmt(const GXTexObj *obj);
+u8 GX_GetTexObjFmt(const GXTexObj *obj);
 
 /*!
- * \fn u32 GX_GetTexObjMipMap(const GXTexObj *obj)
+ * \fn u8 GX_GetTexObjWrapS(const GXTexObj *obj)
+ * \brief Returns the texture wrap s mode described by texture object \a obj.
+ *
+ * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture wrap s mode.
+ *
+ * \param[in] obj ptr to a texture object
+ *
+ * \return wrap s mode
+ */
+u8 GX_GetTexObjWrapS(const GXTexObj *obj);
+
+/*!
+ * \fn u8 GX_GetTexObjWrapT(const GXTexObj *obj)
+ * \brief Returns the texture wrap t mode described by texture object \a obj.
+ *
+ * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture wrap t mode.
+ *
+ * \param[in] obj ptr to a texture object
+ *
+ * \return wrap t mode
+ */
+u8 GX_GetTexObjWrapT(const GXTexObj *obj);
+
+/*!
+ * \fn u8 GX_GetTexObjMipMap(const GXTexObj *obj)
  * \brief Returns the texture mipmap enable described by texture object \a obj.
  *
  * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture mipmap enable.
@@ -4021,7 +4111,7 @@ u32 GX_GetTexObjFmt(const GXTexObj *obj);
  *
  * \return mipmap enable flag
  */
-u32 GX_GetTexObjMipMap(const GXTexObj *obj);
+u8 GX_GetTexObjMipMap(const GXTexObj *obj);
 
 /*!
  * \fn void* GX_GetTexObjUserData(const GXTexObj *obj)
@@ -4036,79 +4126,81 @@ u32 GX_GetTexObjMipMap(const GXTexObj *obj);
 void* GX_GetTexObjUserData(const GXTexObj *obj);
 
 /*!
- * \fn void* GX_GetTexObjData(const GXTexObj *obj)
- * \brief Used to get a pointer to texture data from the \ref GXTexObj structure.
+ * \fn u32 GX_GetTexObjTlut(const GXTexObj *obj)
+ * \brief Returns the TLUT name associated with texture object \a obj.
  *
- * \note The returned pointer is a physical address.
+ * \note Use GX_InitTexObjCI() to initialize a texture object with the desired TLUT name.
  *
- * \param[in] obj ptr to a texture object
- *
- * \return Physical pointer to texture data.
- */
-void* GX_GetTexObjData(const GXTexObj *obj);
-
-/*!
- * \fn u8 GX_GetTexObjWrapS(const GXTexObj* obj)
- * \brief Returns the texture wrap s mode described by texture object \a obj.
- *
- * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture wrap s mode.
+ * \note Use GX_InitTexObjTlut() to modify the TLUT associated with an existing texture object.
  *
  * \param[in] obj ptr to a texture object
  *
- * \return wrap s mode
+ * \return TLUT name associated with this texture object
  */
-u8 GX_GetTexObjWrapS(const GXTexObj* obj);
+u32 GX_GetTexObjTlut(const GXTexObj *obj);
 
 /*!
- * \fn u8 GX_GetTexObjWrapT(const GXTexObj* obj)
- * \brief Returns the texture wrap t mode described by texture object \a obj.
- *
- * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture wrap t mode.
- *
- * \param[in] obj ptr to a texture object
- *
- * \return wrap t mode
- */
-u8 GX_GetTexObjWrapT(const GXTexObj* obj);
-
-/*!
- * \fn u16 GX_GetTexObjHeight(const GXTexObj* obj)
- * \brief Returns the texture height described by texture object \a obj.
- *
- * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture height.
- *
- * \param[in] obj ptr to a texture object
- *
- * \return texture height
- */
-u16 GX_GetTexObjHeight(const GXTexObj* obj);
-
-/*!
- * \fn u16 GX_GetTexObjWidth(const GXTexObj* obj)
- * \brief Returns the texture width described by texture object \a obj.
- *
- * \note Use GX_InitTexObj() or GX_InitTexObjCI() to initialize the texture width.
- *
- * \param[in] obj ptr to a texture object
- *
- * \return texture width
- */
-u16 GX_GetTexObjWidth(const GXTexObj* obj);
-
-/*!
- * \fn void GX_GetTexObjAll(const GXTexObj* obj, void** image_ptr, u16* width, u16* height, u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap);
+ * \fn void GX_GetTexObjAll(const GXTexObj *obj,void **img_ptr,u16 *wd,u16 *ht,u8 *fmt,u8 *wrap_s,u8 *wrap_t,u8 *mipmap);
  * \brief Returns the parameters described by a texture object. Texture objects are used to describe all the parameters associated with a texture, including size, format, wrap modes, filter modes, etc. Texture objects are initialized using either GX_InitTexObj() or, for color index format textures, GX_InitTexObjCI().
  *
  * \param[in] obj ptr to a texture object
- * \param[out] image_ptr Returns a physical pointer to the image data for a texture.
- * \param[out] width Returns the width of the texture or LOD 0 for mipmaps
- * \param[out] height Returns the height of the texture or LOD 0 for mipmaps
- * \param[out] format Returns the texel format
+ * \param[out] img_ptr Returns a physical pointer to the image data for a texture.
+ * \param[out] wd Returns the width of the texture or LOD 0 for mipmaps
+ * \param[out] ht Returns the height of the texture or LOD 0 for mipmaps
+ * \param[out] fmt Returns the texel format
+ * \param[out] wrap_s Returns the mode which describes how texture coordinates will be wrapped in the S direction
+ * \param[out] wrap_t Returns the mode which describes how texture coordinates will be wrapped in the T direction
  * \param[out] mipmap Returns the mipmap enable flag.
  *
  * \return none
  */
-void GX_GetTexObjAll(const GXTexObj* obj, void** image_ptr, u16* width, u16* height, u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap);
+void GX_GetTexObjAll(const GXTexObj *obj,void **img_ptr,u16 *wd,u16 *ht,u8 *fmt,u8 *wrap_s,u8 *wrap_t,u8 *mipmap);
+
+/*!
+ * \fn void GX_GetTexObjLODAll(const GXTexObj *obj,u8 *minfilt,u8 *magfilt,f32 *minlod,f32 *maxlod,f32 *lodbias,u8 *biasclamp,u8 *edgelod,u8 *maxaniso)
+ * \brief Returns the LOD-related parameters described by a texture object. Texture objects are used to describe all the parameters associated with a texture, including size, format, wrap modes, filter modes, etc. Texture objects are initialized using either GX_InitTexObj() or, for color index format textures, GXInitTexObjCI(). The LOD-related parameters are set using GX_InitTexObjLOD().
+ *
+ * \param[in] obj ptr to a texture object
+ * \param[out] minfilt Returns the minification filter from the texture object
+ * \param[out] magfilt Returns the magnification filter
+ * \param[out] minlod Returns the minimum LOD bound
+ * \param[out] maxlod Returns the maximum LOD bound
+ * \param[out] lodbias Returns the LOD bias control
+ * \param[out] biasclamp Returns the LOD bias clamping parameter
+ * \param[out] edgelod Returns whether or not edge LOD has been enabled
+ * \param[out] maxaniso Returns the anisotropic filtering setting
+ *
+ * \return none
+ */
+void GX_GetTexObjLODAll(const GXTexObj *obj,u8 *minfilt,u8 *magfilt,f32 *minlod,f32 *maxlod,f32 *lodbias,u8 *biasclamp,u8 *edgelod,u8 *maxaniso);
+
+u8 GX_GetTexObjMinFilt(const GXTexObj *obj);
+u8 GX_GetTexObjMagFilt(const GXTexObj *obj);
+f32 GX_GetTexObjMinLOD(const GXTexObj *obj);
+f32 GX_GetTexObjMaxLOD(const GXTexObj *obj);
+f32 GX_GetTexObjLODBias(const GXTexObj *obj);
+u8 GX_GetTexObjBiasClamp(const GXTexObj *obj);
+u8 GX_GetTexObjEdgeLOD(const GXTexObj *obj);
+u8 GX_GetTexObjMaxAniso(const GXTexObj *obj);
+
+void* GX_GetTlutObjData(const GXTlutObj *obj);
+u8 GX_GetTlutObjFmt(const GXTlutObj *obj);
+u16 GX_GetTlutObjNumEntries(const GXTlutObj *obj);
+
+/*!
+ * \fn void GX_GetTlutObjAll(const GXTlutObj *obj,void **lut,u8 *fmt,u16 *entries)
+ * \brief Returns all the parameters describing a Texture Look-Up Table (TLUT) object.
+ *
+ * \details The TLUT object describes the location of the TLUT in main memory, its format and the number of entries.
+ *
+ * \param[in] obj ptr to a TLUT object
+ * \param[out] lut Returns a physical pointer to the look-up table data
+ * \param[out] fmt Returns the format of the entries in the TLUT
+ * \param[out] entries Returns the number of entries in the TLUT
+ *
+ * \return none
+ */
+void GX_GetTlutObjAll(const GXTlutObj *obj,void **lut,u8 *fmt,u16 *entries);
 
 /*!
  * \fn u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
@@ -4143,7 +4235,7 @@ u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod);
 void GX_InvalidateTexAll(void);
 
 /*!
- * \fn void GX_InvalidateTexRegion(GXTexRegion *region)
+ * \fn void GX_InvalidateTexRegion(const GXTexRegion *region)
  * \brief Invalidates the texture cache in Texture Memory (TMEM) described by \a region.
  *
  * \details This function should be called when the CPU is used to modify a texture in main memory, or a new texture is loaded into main memory that
@@ -4159,7 +4251,7 @@ void GX_InvalidateTexAll(void);
  *
  * \return none
  */
-void GX_InvalidateTexRegion(GXTexRegion *region);
+void GX_InvalidateTexRegion(const GXTexRegion *region);
 
 /*!
  * \fn void GX_InitTexCacheRegion(GXTexRegion *region,u8 is32bmipmap,u32 tmem_even,u8 size_even,u32 tmem_odd,u8 size_odd)
@@ -4409,7 +4501,7 @@ void GX_InitTexObjMaxAniso(GXTexObj *obj,u8 maxaniso);
 void GX_InitTexObjUserData(GXTexObj *obj,void *userdata);
 
 /*!
- * \fn void GX_LoadTexObj(GXTexObj *obj,u8 mapid)
+ * \fn void GX_LoadTexObj(const GXTexObj *obj,u8 mapid)
  * \brief Loads the state describing a texture into one of eight hardware register sets.
  *
  * \details Before this happens, the texture object \a obj should be initialized using GX_InitTexObj() or GX_InitTexObjCI(). The \a id parameter refers to
@@ -4425,10 +4517,10 @@ void GX_InitTexObjUserData(GXTexObj *obj,void *userdata);
  *
  * \return none
  */
-void GX_LoadTexObj(GXTexObj *obj,u8 mapid);
+void GX_LoadTexObj(const GXTexObj *obj,u8 mapid);
 
 /*!
- * \fn void GX_LoadTlut(GXTlutObj *obj,u32 tlut_name)
+ * \fn void GX_LoadTlut(const GXTlutObj *obj,u32 tlut_name)
  * \brief Copies a Texture Look-Up Table (TLUT) from main memory to Texture Memory (TMEM).
  *
  * \details The \a tlut_name parameter is the name of a pre-allocated area of TMEM. The callback function set by GX_SetTlutRegionCallback() converts
@@ -4445,10 +4537,10 @@ void GX_LoadTexObj(GXTexObj *obj,u8 mapid);
  *
  * \return none
  */
-void GX_LoadTlut(GXTlutObj *obj,u32 tlut_name);
+void GX_LoadTlut(const GXTlutObj *obj,u32 tlut_name);
 
 /*!
- * \fn void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid)
+ * \fn void GX_LoadTexObjPreloaded(const GXTexObj *obj,const GXTexRegion *region,u8 mapid)
  * \brief Loads the state describing a preloaded texture into one of eight hardware register sets.
  *
  * \details Before this happens, the texture object \a obj should be initialized using GX_InitTexObj() or GX_InitTexObjCI(). The \a mapid parameter refers to
@@ -4468,10 +4560,10 @@ void GX_LoadTlut(GXTlutObj *obj,u32 tlut_name);
  *
  * \return none
  */
-void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid);
+void GX_LoadTexObjPreloaded(const GXTexObj *obj,const GXTexRegion *region,u8 mapid);
 
 /*!
- * \fn void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region)
+ * \fn void GX_PreloadEntireTexture(const GXTexObj *obj,const GXTexRegion *region)
  * \brief Loads a given texture from DRAM into the texture memory.
  *
  * \details Accesses to this texture will bypass the texture cache tag look-up and instead read the texels directly from texture memory. The
@@ -4486,7 +4578,7 @@ void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid);
  *
  * \return none
  */
-void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region);
+void GX_PreloadEntireTexture(const GXTexObj *obj,const GXTexRegion *region);
 
 /*!
  * \fn void GX_InitTlutObj(GXTlutObj *obj,void *lut,u8 fmt,u16 entries)
