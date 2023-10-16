@@ -41,6 +41,8 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ASND_LIB 0x100
 #define SND_LIB  (ASND_LIB+2)
 
+#define MAX_SND_VOICES			16
+
 #include <gctypes.h>
 
 #ifdef __cplusplus
