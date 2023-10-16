@@ -47,6 +47,8 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 extern "C" {
 #endif
 
+#define MAX_SND_VOICES			16
+
 /*! \addtogroup sndretvals SND return values
  * @{
  */
