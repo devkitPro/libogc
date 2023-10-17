@@ -335,7 +335,7 @@ static alarm_st* __lwp_syswd_allocate(void)
 
 static s32 __mem_onreset(s32 final)
 {
-	if(final==TRUE) {
+	if(final==true) {
 		_memReg[8] = 255;
 		__UnmaskIrq(IM_MEM0|IM_MEM1|IM_MEM2|IM_MEM3);
 	}
@@ -1138,20 +1138,20 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 	__dsp_shutdown();
 
 	if(reset==SYS_SHUTDOWN) {
-		ret = __PADDisableRecalibration(TRUE);
+		ret = __PADDisableRecalibration(true);
 	}
 
-	while(__call_resetfuncs(FALSE)==0);
+	while(__call_resetfuncs(false)==0);
 
-	if(reset==SYS_HOTRESET && force_menu==TRUE) {
+	if(reset==SYS_HOTRESET && force_menu==true) {
 		sram = __SYS_LockSram();
 		sram->flags |= SRAM_BOOTIPL_BIT;
-		__SYS_UnlockSram(TRUE);
+		__SYS_UnlockSram(true);
 		while(!__SYS_SyncSram());
 	}
 
 	__exception_closeall();
-	__call_resetfuncs(TRUE);
+	__call_resetfuncs(true);
 
 	LCDisable();
 
@@ -1186,10 +1186,10 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 	__dsp_shutdown();
 
 	if(reset==SYS_SHUTDOWN) {
-		ret = __PADDisableRecalibration(TRUE);
+		ret = __PADDisableRecalibration(true);
 	}
 
-	while(__call_resetfuncs(FALSE)==0);
+	while(__call_resetfuncs(false)==0);
 
 	switch(reset) {
 		case SYS_RESTART:
@@ -1223,7 +1223,7 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 	__IOS_ShutdownSubsystems();
 
 	__exception_closeall();
-	__call_resetfuncs(TRUE);
+	__call_resetfuncs(true);
 
 	LCDisable();
 

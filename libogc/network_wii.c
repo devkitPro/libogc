@@ -279,7 +279,7 @@ static void* net_malloc(u32 size)
 	return __lwp_heap_allocate(&__net_heap, size);
 }
 
-static BOOL net_free(void *ptr)
+static bool net_free(void *ptr)
 {
 	return __lwp_heap_free(&__net_heap, ptr);
 }
