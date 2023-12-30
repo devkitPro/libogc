@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------
 
-osreport.c -- Bulk-only USB mass storage support
+sys_report.c -- Support for printing to Dolphin debug UART
 
 Copyright (C) 2023
 Dave Murphy (WinterMute) <davem@devkitpro.org>
