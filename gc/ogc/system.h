@@ -322,7 +322,6 @@ s32 SYS_SetPeriodicAlarm(syswd_t thealarm,const struct timespec *tp_start,const 
 */
 s32 SYS_RemoveAlarm(syswd_t thealarm);
 
-
 /*! \fn s32 SYS_CancelAlarm(syswd_t thealarm)
 \brief Cancel the alarm, but do not remove from the list of contexts.
 \param[in] thealarm identifier to the alram context to be canceled
@@ -330,6 +329,22 @@ s32 SYS_RemoveAlarm(syswd_t thealarm);
 \return 0 on succuess, non-zero on error
 */
 s32 SYS_CancelAlarm(syswd_t thealarm);
+
+/* \fn void SYS_STDIO_Report(bool use_stdout)
+\brief redirect stderr to Dolphin OSReport uart
+\param[in] use_stdout also redirect stdout for use of printf
+
+*/
+void SYS_STDIO_Report(bool use_stdout);
+
+/*! \fn void SYS_Report (char const *const fmt_, ...)
+\brief write formatted string to Dolphin OSReport uart
+
+*/
+
+void SYS_Report (char const *const fmt_, ...);
+
+
 
 u32 SYS_GetCounterBias(void);
 void SYS_SetCounterBias(u32 bias);
