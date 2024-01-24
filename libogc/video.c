@@ -2240,30 +2240,75 @@ static void __VIWriteI2CRegisterBuf(u8 reg, int size, u8 *data)
 	udelay(2);
 }
 
-static void __VISetOverSampling(u8 mode)
+
+static void __VISetTiming(u8 mode)
 {
-	__VIWriteI2CRegister8(0x65, mode);
+	__VIWriteI2CRegister8(0x00, mode);
 }
 
-static void __VISetYUVSEL(u8 dtvstatus)
+static void __VISetOutputMode(u8 dtvstatus)
 {
-	if(currTvMode==VI_NTSC) vdacFlagRegion = 0x0000;
-	else if(currTvMode==VI_PAL || currTvMode==VI_EURGB60) vdacFlagRegion = 0x0002;
-	else if(currTvMode==VI_MPAL) vdacFlagRegion = 0x0001;
-	else vdacFlagRegion = 0x0000;
+	switch (currTvMode)
+	{
+	case VI_NTSC:
+	default:
+		vdacFlagRegion = 0; break;
+	case VI_MPAL:
+		vdacFlagRegion = 1; break;
+	case VI_PAL:
+	case VI_EURGB60:
+		vdacFlagRegion = 2; break;
+	case VI_DEBUG:
+	case VI_DEBUG_PAL:
+		vdacFlagRegion = 3; break;
+	}
 
 	__VIWriteI2CRegister8(0x01, _SHIFTL(dtvstatus,5,3)|(vdacFlagRegion&0x1f));
 }
 
-static void __VISetFilterEURGB60(u8 enable)
+static void __VISetVBlankData(bool cgms, bool wss, bool captions)
 {
-	__VIWriteI2CRegister8(0x6e, enable);
+	u8 data = (captions ? 0 : 1) | (cgms ? 0 : 1) << 1 | (cgms ? 0 : 1) << 2;
+	__VIWriteI2CRegister8(0x02, data);
 }
 
-static void __VISetupEncoder(void)
+static void __VISetTrapFilter(bool enable)
 {
-	u8 macrobuf[0x1a];
+	__VIWriteI2CRegister8(0x03, enable ? 1 : 0);
+}
 
+static void __VISetOutputEnable(bool enable)
+{
+	__VIWriteI2CRegister8(0x04, enable ? 1 : 0);
+}
+
+static void __VISetCGMSData(u8 param1, u8 param2, u8 param3)
+{
+	__VIWriteI2CRegister16(0x05, (param1 & 3) << 8 | (param2 & 0xf) << 10 | param3);
+}
+
+static void __VIResetCGMSData(void)
+{
+	__VISetCGMSData(0, 0, 0);
+}
+
+static void __VISetWSSData(u8 param1, u8 param2, u8 param3, u8 param4)
+{
+	__VIWriteI2CRegister16(0x08, (param1 & 0xf) << 8 | (param2 & 0xf) << 12 | (param3 & 0x7) << 3 | (param4 & 0x7));
+}
+
+static void __VIResetWSSData(void)
+{
+	__VISetWSSData(0, 0, 0, 0);
+}
+
+static void __VISetOverDrive(bool enable, u8 level)
+{
+	__VIWriteI2CRegister8(0x0A, (level << 1) | (enable ? 1 : 0));
+}
+
+static void __VISetGamma(void)
+{
 	u8 gamma[0x21] = {
 		0x10, 0x00, 0x10, 0x00, 0x10, 0x00, 0x10, 0x00,
 		0x10, 0x00, 0x10, 0x00, 0x10, 0x20, 0x40, 0x60,
@@ -2271,6 +2316,54 @@ static void __VISetupEncoder(void)
 		0x00, 0x60, 0x00, 0x80, 0x00, 0xa0, 0x00, 0xeb,
 		0x00
 	};
+	__VIWriteI2CRegisterBuf(0x10, sizeof(gamma), gamma);
+}
+
+static void __VISetMacroVision(u8 tv)
+{
+	u8 macrobuf[0x1a];
+
+	memset(macrobuf, 0, sizeof(macrobuf));
+	__VIWriteI2CRegisterBuf(0x40, sizeof(macrobuf), macrobuf);
+}
+
+static void __VISetOverSampling(u8 mode)
+{
+	__VIWriteI2CRegister8(0x65, mode);
+}
+
+static void __VISetClosedCaptionMode(u8 mode)
+{
+	__VIWriteI2CRegister8(0x6A, mode);
+}
+
+static void __VISetRGBFilter(bool enable)
+{
+	__VIWriteI2CRegister8(0x6e, enable ? 1 : 0);
+}
+
+static void __VISetAudioVolume(u8 left_chan, u8 right_chan)
+{
+	u16 data = (left_chan << 8) | right_chan;
+	__VIWriteI2CRegister16(0x71, data);
+}
+
+static void __VISetClosedCaptionData(u8 param1, u8 param2, u8 param3, u8 param4)
+{
+	u32 data = (param1 & 0x7f) << 24 | (param2 & 0x7f) << 16 | (param3 & 0x7f) << 8 | (param4 & 0x7f);
+	__VIWriteI2CRegister32(0x7A, data);
+}
+
+static void __VIResetClosedCaptionData(void)
+{
+	__VISetClosedCaptionData(0, 0, 0, 0);
+}
+
+static u32 __VISetupEncoder(void)
+{
+	if (!shdw_changeEncoder)
+		return 0;
+	shdw_changeEncoder = 0;
 
 	u8 dtv, tv;
 
@@ -2278,34 +2371,30 @@ static void __VISetupEncoder(void)
 	dtv = (_viReg[55]&0x01);
 	oldDtvStatus = dtv;
 
-	// SetRevolutionModeSimple
-
-	memset(macrobuf, 0, 0x1a);
-
-	__VIWriteI2CRegister8(0x6a, 1);
+	__VISetClosedCaptionMode(1);
 	__VISetOverSampling(3);
-	__VISetYUVSEL(dtv);
-	__VIWriteI2CRegister8(0x00, 0);
-	__VIWriteI2CRegister16(0x71, 0x8e8e);
-	__VIWriteI2CRegister8(0x02, 7);
-	__VIWriteI2CRegister16(0x05, 0x0000);
-	__VIWriteI2CRegister16(0x08, 0x0000);
-	__VIWriteI2CRegister32(0x7A, 0x00000000);
+	__VISetOutputMode(dtv);
+	__VISetTiming(0);
+	__VISetAudioVolume(0x8e, 0x8e);
+	__VISetVBlankData(false, false, false);
+	__VIResetCGMSData();
+	__VIResetWSSData();
+	__VIResetClosedCaptionData();
 
 	// Macrovision crap
-	__VIWriteI2CRegisterBuf(0x40, sizeof(macrobuf), macrobuf);
+	__VISetMacroVision();
 
 	// Sometimes 1 in RGB mode? (reg 1 == 3)
-	__VIWriteI2CRegister8(0x0A, 0);
+	__VISetOverDrive(false, 0);
 
-	__VIWriteI2CRegister8(0x03, 1);
+	__VISetTrapFilter(true);
 
-	__VIWriteI2CRegisterBuf(0x10, sizeof(gamma), gamma);
+	__VISetGamma();
 
-	__VIWriteI2CRegister8(0x04, 1);
+	__VISetOutputEnable(true);
 
-	if(tv==VI_EURGB60) __VISetFilterEURGB60(1);
-	else __VISetFilterEURGB60(0);
+	if(tv==VI_EURGB60) __VISetRGBFilter(true);
+	else __VISetRGBFilter(false);
 	oldTvStatus = tv;
 
 }
@@ -2508,7 +2597,7 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 #if defined(HW_RVL)
 	tv = VIDEO_GetCurrentTvMode();
 	dtv = (_viReg[55]&0x01);
-	if(dtv!=oldDtvStatus || tv!=oldTvStatus) __VISetYUVSEL(dtv);
+	if(dtv!=oldDtvStatus || tv!=oldTvStatus) __VISetOutputMode(dtv);
 	oldDtvStatus = dtv;
 
 	if(tv!=oldTvStatus) {
