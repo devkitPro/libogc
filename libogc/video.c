@@ -1545,6 +1545,111 @@ GXRModeObj TVEurgb60Hz480ProgAa =
 	}
 };
 
+GXRModeObj TVRgb480Prog =
+{
+    VI_TVMODE_DEBUG_PROG,     // viDisplayMode
+    640,             // fbWidth
+    480,             // efbHeight
+    480,             // xfbHeight
+    (VI_MAX_WIDTH_DEBUG - 640)/2,        // viXOrigin
+    (VI_MAX_HEIGHT_DEBUG - 480)/2,       // viYOrigin
+    640,             // viWidth
+    480,             // viHeight
+    VI_XFBMODE_SF,   // xFBmode
+    GX_TRUE,         // rgb
+    GX_FALSE,        // field_rendering
+    GX_FALSE,        // aa
+
+    // sample points arranged in increasing Y order
+    {
+		{6,6},{6,6},{6,6},  // pix 0, 3 sample points, 1/12 units, 4 bits each
+		{6,6},{6,6},{6,6},  // pix 1
+		{6,6},{6,6},{6,6},  // pix 2
+		{6,6},{6,6},{6,6}   // pix 3
+    },
+
+    // vertical filter[7], 1/64 units, 6 bits each
+    {
+          0,         // line n-1
+          0,         // line n-1
+         21,         // line n
+         22,         // line n
+         21,         // line n
+          0,         // line n+1
+          0          // line n+1
+    }
+};
+
+GXRModeObj TVRgb480ProgSoft =
+{
+    VI_TVMODE_DEBUG_PROG,     // viDisplayMode
+    640,             // fbWidth
+    480,             // efbHeight
+    480,             // xfbHeight
+    (VI_MAX_WIDTH_DEBUG - 640)/2,        // viXOrigin
+    (VI_MAX_HEIGHT_DEBUG - 480)/2,       // viYOrigin
+    640,             // viWidth
+    480,             // viHeight
+    VI_XFBMODE_SF,   // xFBmode
+    GX_TRUE,         // rgb
+    GX_FALSE,        // field_rendering
+    GX_FALSE,        // aa
+
+    // sample points arranged in increasing Y order
+    {
+		{6,6},{6,6},{6,6},  // pix 0, 3 sample points, 1/12 units, 4 bits each
+		{6,6},{6,6},{6,6},  // pix 1
+		{6,6},{6,6},{6,6},  // pix 2
+		{6,6},{6,6},{6,6}   // pix 3
+    },
+
+    // vertical filter[7], 1/64 units, 6 bits each
+    {
+          8,         // line n-1
+          8,         // line n-1
+         10,         // line n
+         12,         // line n
+         10,         // line n
+          8,         // line n+1
+          8          // line n+1
+    }
+};
+
+GXRModeObj TVRgb480ProgAa =
+{
+    VI_TVMODE_DEBUG_PROG,     // viDisplayMode
+    640,             // fbWidth
+    480,             // efbHeight
+    480,             // xfbHeight
+    (VI_MAX_WIDTH_DEBUG - 640)/2,        // viXOrigin
+    (VI_MAX_HEIGHT_DEBUG - 480)/2,       // viYOrigin
+    640,             // viWidth
+    480,             // viHeight
+    VI_XFBMODE_SF,   // xFBmode
+    GX_TRUE,         // rgb
+    GX_FALSE,        // field_rendering
+    GX_TRUE,         // aa
+
+    // sample points arranged in increasing Y order
+    {
+		{3,2},{9,6},{3,10},  // pix 0, 3 sample points, 1/12 units, 4 bits each
+		{3,2},{9,6},{3,10},  // pix 1
+		{9,2},{3,6},{9,10},  // pix 2
+		{9,2},{3,6},{9,10}   // pix 3
+    },
+
+    // vertical filter[7], 1/64 units, 6 bits each
+    {
+          4,         // line n-1
+          8,         // line n-1
+         12,         // line n
+         16,         // line n
+         12,         // line n
+          8,         // line n+1
+          4          // line n+1
+    }
+};
+
 
 static const u16 taps[26] = {
 	0x01F0,0x01DC,0x01AE,0x0174,0x0129,0x00DB,
@@ -1762,9 +1867,11 @@ static const struct _timing* __gettiming(u32 vimode)
 {
 	switch(vimode) {
 		case VI_TVMODE_NTSC_INT:
+		case VI_TVMODE_EURGB60_INT:
 			return &video_timing[0];
 			break;
 		case VI_TVMODE_NTSC_DS:
+		case VI_TVMODE_EURGB60_DS:
 			return &video_timing[1];
 			break;
 		case VI_TVMODE_PAL_INT:
@@ -1773,12 +1880,6 @@ static const struct _timing* __gettiming(u32 vimode)
 		case VI_TVMODE_PAL_DS:
 			return &video_timing[3];
 			break;
-		case VI_TVMODE_EURGB60_INT:
-			return &video_timing[0];
-			break;
-		case VI_TVMODE_EURGB60_DS:
-			return &video_timing[1];
-			break;
 		case VI_TVMODE_MPAL_INT:
 			return &video_timing[4];
 			break;
@@ -1786,16 +1887,13 @@ static const struct _timing* __gettiming(u32 vimode)
 			return &video_timing[5];
 			break;
 		case VI_TVMODE_NTSC_PROG:
+		case VI_TVMODE_EURGB60_PROG:
+		case VI_TVMODE_MPAL_PROG:
+		case VI_TVMODE_DEBUG_PROG:
 			return &video_timing[6];
 			break;
 		case VI_TVMODE_PAL_PROG:
 			return &video_timing[7];
-			break;
-		case VI_TVMODE_EURGB60_PROG:
-			return &video_timing[6];
-			break;
-		case VI_TVMODE_MPAL_PROG:
-			return &video_timing[6];
 			break;
 		default:
 			return NULL;
