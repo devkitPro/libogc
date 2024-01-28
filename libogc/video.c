@@ -2363,12 +2363,18 @@ static void __VISetGamma(void)
 	__VIWriteI2CRegisterBuf(0x10, sizeof(gamma), gamma);
 }
 
-static void __VISetMacroVision(u8 tv)
+static void __VISetMacroVision(u8 rgb)
 {
 	u8 macrobuf[0x1a];
 
 	memset(macrobuf, 0, sizeof(macrobuf));
 	__VIWriteI2CRegisterBuf(0x40, sizeof(macrobuf), macrobuf);
+	if (rgb) __VIWriteI2CRegister8(0x59, 1);
+}
+
+static void __VISetRGBChannelSwap(bool enable)
+{
+	__VIWriteI2CRegister8(0x62, enable ? 1 : 0);
 }
 
 static void __VISetOverSampling(u8 mode)
@@ -2411,17 +2417,16 @@ static u32 __VISetupEncoder(void)
 
 	u8 dtv, tv, rgb;
 
-	if (!shdw_changeEncoder)
-		return 0;
-	shdw_changeEncoder = 0;
-
 	tv = VIDEO_GetCurrentTvMode();
 	dtv = (_viReg[55]&0x01);
 	rgb = currRgb;
 	oldDtvStatus = dtv;
 
+	__VISetOutputEnable(false);
+
+	__VISetRGBChannelSwap(rgb ? true : false);
 	__VISetClosedCaptionMode(1);
-	__VISetOverSampling(3);
+	__VISetOverSampling(rgb ? 1 : 3);
 	__VISetOutputMode(dtv);
 	__VISetTiming(0);
 	__VISetAudioVolume(0x8e, 0x8e);
@@ -2431,18 +2436,18 @@ static u32 __VISetupEncoder(void)
 	__VIResetClosedCaptionData();
 
 	// Macrovision crap
-	__VISetMacroVision();
+	__VISetMacroVision(rgb);
 
-	// Sometimes 1 in RGB mode? (reg 1 == 3)
-	__VISetOverDrive(false, 0);
+	__VISetOverDrive(rgb ? true : false, 0);
 
 	__VISetTrapFilter(true);
 
 	__VISetGamma();
 
-	__VISetOutputEnable(true);
-
 	__VISetRGBFilter(rgb ? true : false);
+	if (rgb) __VIWriteI2CRegister8(0x67, 1);
+
+	__VISetOutputEnable(true);
 	oldTvStatus = tv;
 
 	return 1;
