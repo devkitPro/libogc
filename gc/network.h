@@ -1,7 +1,7 @@
 #ifndef __NETWORK_H__
 #define __NETWORK_H__
 
-#include <gctypes.h>
+
 #include <sys/time.h>
 #include <sys/types.h>
 
@@ -10,6 +10,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+
+#include "gctypes.h"
 
 #define INVALID_SOCKET	(~0)
 #define SOCKET_ERROR	(-1)
@@ -117,19 +119,6 @@
 
 #ifndef socklen_t
 #define socklen_t u32
-#endif
-
-#ifndef htons
-#define htons(x) (x)
-#endif
-#ifndef ntohs
-#define ntohs(x) (x)
-#endif
-#ifndef htonl
-#define htonl(x) (x)
-#endif
-#ifndef ntohl
-#define ntohl(x) (x)
 #endif
 
 #ifndef h_addr
