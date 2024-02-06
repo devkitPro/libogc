@@ -7,22 +7,22 @@
 
 static inline uint32_t htonl(uint32_t hostlong)
 {
-    return __builtin_bswap32(hostlong);
+    return hostlong;
 }
 
 static inline uint16_t htons(uint16_t hostshort)
 {
-    return __builtin_bswap16(hostshort);
+    return hostshort;
 }
 
 static inline uint32_t ntohl(uint32_t netlong)
 {
-    return __builtin_bswap32(netlong);
+    return netlong;
 }
 
 static inline uint16_t ntohs(uint16_t netshort)
 {
-    return __builtin_bswap16(netshort);
+    return netshort;
 }
 
 #ifdef __cplusplus
