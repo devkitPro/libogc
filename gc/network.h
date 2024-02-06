@@ -12,6 +12,7 @@
 #include <netdb.h>
 
 #include "gctypes.h"
+#include "ogc/if_config.h"
 
 #define INVALID_SOCKET	(~0)
 #define SOCKET_ERROR	(-1)
