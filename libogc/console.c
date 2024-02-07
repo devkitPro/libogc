@@ -10,7 +10,7 @@
 #include "video.h"
 #include "system.h"
 
-#include "console.h"
+#include "console_internal.h"
 #include "consol.h"
 #include "usbgecko.h"
 

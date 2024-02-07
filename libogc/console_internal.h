@@ -1,5 +1,5 @@
-#ifndef __CONSOLE_H__
-#define __CONSOLE_H__
+#ifndef __CONSOLE_INTERNAL_H__
+#define __CONSOLE_INTERNAL_H__
 
 
 #define FONT_XSIZE		8
