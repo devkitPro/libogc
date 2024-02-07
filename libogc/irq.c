@@ -36,7 +36,6 @@ distribution.
 #include "processor.h"
 #include "lwp_threads.h"
 #include "irq.h"
-#include "console.h"
 
 //#define _IRQ_DEBUG
 
