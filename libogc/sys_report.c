@@ -26,11 +26,13 @@ distribution.
 
 -------------------------------------------------------------*/
 
+#include <stddef.h>
 #include <sys/iosupport.h>
 #include <stdio.h>
 #include <stdarg.h>
 
 #include "exi.h"
+
 
 static ssize_t __uart_write(const char *buffer,size_t len)
 {
@@ -53,9 +55,30 @@ static ssize_t __uart_write(const char *buffer,size_t len)
 	return len;
 }
 
+#define __outsz 256
+
+
+static char __outstr[__outsz];
+
 static ssize_t __uart_stdio_write(struct _reent *r, void *fd, const char *ptr, size_t len)
 {
-	__uart_write(ptr,len);
+	// translate \n and \r\n to \r for Dolphin handling
+	const char *p = ptr;
+	size_t left = len;
+	while(left>0) {
+		char *buf = __outstr;
+		size_t buflen = len;
+		if (buflen > __outsz) buflen = __outsz;
+		left -= buflen;
+		while(buflen>0) {
+			char ch = *p++;
+			if(ch=='\r' && *p == '\n') continue;
+			if (ch=='\n') ch = '\r';
+			*buf++ = ch;
+			buflen--;
+		}
+		__uart_write(__outstr,len);
+	}
 	return len;
 }
 static const devoptab_t dotab_uart = {
@@ -76,12 +99,11 @@ void SYS_STDIO_Report(bool use_stdout)
 	}
 }
 
-static char __outstr[256];
 
 void SYS_Report (char const *const fmt_, ...)
 {
 
-	int len;
+	size_t len;
 
 	va_list args;
 
@@ -89,7 +111,7 @@ void SYS_Report (char const *const fmt_, ...)
 	len=vsnprintf(__outstr,256,fmt_,args);
 	va_end(args);
 
-	__uart_write(__outstr, len);
+	__uart_stdio_write(NULL, 0, __outstr, len);
 
 }
 
