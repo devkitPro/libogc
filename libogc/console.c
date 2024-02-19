@@ -113,14 +113,41 @@ static const u8 grayScale[] = {
 };
 
 static bool do_xfb_copy = false;
-static struct _console_data_s stdcon;
-static struct _console_data_s *currentConsole = NULL;
 static void *_console_buffer = NULL;
 
 static s32 __gecko_status = -1;
 static u32 __gecko_safe = 0;
 
 extern u8 console_font_8x16[];
+
+PrintConsole defaultConsole =
+{
+	//Font:
+	{
+		(u8*)console_font_8x16, //font gfx
+		0, //first ascii character in the set
+		256 //number of characters in the font set
+	},
+	(u16*)NULL,
+	0,0,	//cursorX cursorY
+	0,0,	//prevcursorX prevcursorY
+	80,		//console width
+	30,		//console height
+	0,		//window x
+	0,		//window y
+	80,		//window width
+	30,		//window height
+	3,		//tab size
+	7,		// foreground color
+	0,		// background color
+	0,		// flags
+	0,		//print callback
+	false	//console initialized
+};
+
+PrintConsole currentCopy;
+
+PrintConsole* currentConsole = &currentCopy;
 
 static u32 __console_get_offset()
 {
@@ -153,7 +180,7 @@ void __console_vipostcb(u32 retraceCnt)
 
 static void __console_drawc(int c)
 {
-	console_data_s *con;
+	PrintConsole *con;
 	int ay;
 	unsigned int *ptr;
 	unsigned char *pbits;
@@ -165,10 +192,15 @@ static void __console_drawc(int c)
 	if(do_xfb_copy==true) return;
 	if(!currentConsole) return;
 	con = currentConsole;
+	c -= con->font.asciiOffset;
+	if (c<0 || c>con->font.numChars) return;
 
-	ptr = (unsigned int*)(con->destbuffer + ( con->con_stride * con->cursorY * FONT_YSIZE ) + ((con->cursorX * FONT_XSIZE / 2) * 4) 
-						+ __console_get_offset());
-	pbits = &con->font[c * FONT_YSIZE];
+	ptr = (unsigned int*)(con->destbuffer \
+		+ ( con->con_stride * (con->windowY - 1 + con->cursorY - 1) * FONT_YSIZE ) \
+		+ (((con->cursorX - 1 + con->windowX - 1) * FONT_XSIZE / 2) * 4) \
+		+ __console_get_offset());
+
+	pbits = &con->font.gfx[c * FONT_YSIZE];
 	nextline = con->con_stride/4 - 4;
 
 	fgcolor = currentConsole->fg;
@@ -256,20 +288,26 @@ static void __console_drawc(int c)
 
 static void __console_clear_line(int line, int from, int to ) 
 {
-	console_data_s *con;
+	PrintConsole *con;
 	u8* p;
-	// Each character is FONT_XSIZE * VI_DISPLAY_PIX_SZ wide
-	const u32 line_width = (to - from) * (FONT_XSIZE * VI_DISPLAY_PIX_SZ);
+
 
 	if( !(con = currentConsole) ) return;
 
+	// Each character is FONT_XSIZE * VI_DISPLAY_PIX_SZ wide
+	const u32 line_width = (to - from + 1) * (FONT_XSIZE * VI_DISPLAY_PIX_SZ);
+
 	unsigned int bgcolor = con->bg;
+
 	if (!(currentConsole->flags & CONSOLE_BG_CUSTOM)) {
 		bgcolor = colorTable[bgcolor];
 	}
 
 	//add the given row & column to the offset & assign the pointer
-	const u32 offset = __console_get_offset() + (line * con->con_stride * FONT_YSIZE) + (from * FONT_XSIZE * VI_DISPLAY_PIX_SZ);
+	const u32 offset = __console_get_offset() \
+		+ ((line - 1 + con->windowY - 1) * con->con_stride * FONT_YSIZE) \
+		+ ((from - 1 + con->windowX - 1) * FONT_XSIZE * VI_DISPLAY_PIX_SZ);
+
 	p = (u8*)((u32)con->destbuffer + offset);
 
 	// Clears 1 line of pixels at a time
@@ -284,7 +322,7 @@ static void __console_clear_line(int line, int from, int to )
 
 static void __console_clear(void)
 {
-	console_data_s *con;
+	PrintConsole *con;
 	u8* p;
 
 	if( !(con = currentConsole) ) return;
@@ -295,52 +333,54 @@ static void __console_clear(void)
 	}
 
 	//get console pointer
-	p = (u8*)((u32)con->destbuffer + __console_get_offset());
+	p = (u8*)((u32)con->destbuffer + __console_get_offset()) + ((con->windowY - 1 ) * con->con_stride * FONT_YSIZE);
 
 	// Clears 1 line of pixels at a time
-	for(u16 ycnt = 0; ycnt < con->con_yres; ycnt++)
+	for(u16 ycnt = con->windowY * 16; ycnt < (con->windowHeight + con->windowY) * 16; ycnt++)
 	{
-		for(u32 xcnt = 0; xcnt < con->con_xres * VI_DISPLAY_PIX_SZ; xcnt+=4)
+		for(u32 xcnt = (con->windowX - 1) * 8 * VI_DISPLAY_PIX_SZ; xcnt < (con->windowWidth + con->windowX -1) * 8 * VI_DISPLAY_PIX_SZ; xcnt+=4)
 			*(u32*)((u32)p + xcnt) = bgcolor;
 
 		p += con->con_stride;
 	}
 
-	con->cursorY = 0;
-	con->cursorX = 0;
-	con->prevCursorX = 0;
-	con->prevCursorY = 0;
+	con->cursorY = 1;
+	con->cursorX = 1;
+	con->prevCursorX = 1;
+	con->prevCursorY = 1;
 }
 
 static void __console_clear_from_cursor(void) {
-	console_data_s *con;
+	PrintConsole *con;
 	int cur_row;
 	
 	if( !(con = currentConsole) ) return;
+
 	cur_row = con->cursorY;
 	
-	__console_clear_line( cur_row, con->cursorX, con->con_cols );
+	__console_clear_line( cur_row, con->cursorX, con->windowWidth );
 
-	while( cur_row++ < con->con_rows )
-		__console_clear_line( cur_row, 0, con->con_cols );
+	while( cur_row++ < (con->windowY + con->windowHeight) )
+		__console_clear_line( cur_row, 1, con->windowWidth );
 
 }
+
 static void __console_clear_to_cursor(void) {
-	console_data_s *con;
+	PrintConsole *con;
 	int cur_row;
 	
 	if( !(con = currentConsole) ) return;
 	cur_row = con->cursorY;
 
-	__console_clear_line( cur_row, 0, con->cursorX );
+	__console_clear_line( cur_row, 1, con->cursorX - 1);
 
 	while( cur_row-- )
-		__console_clear_line( cur_row, 0, con->con_cols );
+		__console_clear_line( cur_row, 1, con->windowWidth );
 }
 
 static void __set_default_console(void *destbuffer,int xstart,int ystart, int tgt_stride, int con_xres,int con_yres,int con_stride)
 {
-	console_data_s *con = &stdcon;
+	PrintConsole *con = &defaultConsole;
 
 	con->destbuffer = destbuffer;
 	con->target_x = xstart;
@@ -349,14 +389,18 @@ static void __set_default_console(void *destbuffer,int xstart,int ystart, int tg
 	con->con_yres = con_yres;
 	con->tgt_stride = tgt_stride;
 	con->con_stride = con_stride;
-	con->con_cols = con_xres / FONT_XSIZE;
-	con->con_rows = con_yres / FONT_YSIZE;
-	con->cursorY = 0;
-	con->cursorX = 0;
-	con->prevCursorX = 0;
-	con->prevCursorY = 0;
+	con->con_cols = con->windowWidth = con_xres / FONT_XSIZE;
+	con->con_rows = con->windowHeight = con_yres / FONT_YSIZE;
+	con->windowX = 1;
+	con->windowY = 1;
+	con->cursorY = 1;
+	con->cursorX = 1;
+	con->prevCursorX = 1;
+	con->prevCursorY = 1;
 
-	con->font = console_font_8x16;
+	con->font.gfx = console_font_8x16;
+	con->font.asciiOffset = 0;
+	con->font.numChars = 256;
 
 	con->fg = CONSOLE_COLOR_WHITE;
 	con->bg = CONSOLE_COLOR_BLACK;
@@ -450,13 +494,13 @@ static void consoleClearLine(int mode) {
 
 	switch(mode) {
 	case 0:
-		 __console_clear_line( currentConsole->cursorY, currentConsole->cursorX, currentConsole->con_cols );
+		 __console_clear_line( currentConsole->cursorY, currentConsole->cursorX, currentConsole->windowWidth );
 		break;
 	case 1:
-		__console_clear_line( currentConsole->cursorY, 0, currentConsole->cursorX );
+		__console_clear_line( currentConsole->cursorY, 1, currentConsole->cursorX - 1);
 		break;
 	case 2:
-		__console_clear_line( currentConsole->cursorY, 0, currentConsole->con_cols);
+		__console_clear_line( currentConsole->cursorY, 1, currentConsole->windowWidth);
 		break;
 	}
 }
@@ -494,9 +538,8 @@ static inline void consolePosition(int x, int y) {
 	if(y > currentConsole->con_rows)
 		y = currentConsole->con_rows;
 
-	// 1-based adjustment
-	currentConsole->cursorX = x - 1;
-	currentConsole->cursorY = y - 1;
+	currentConsole->cursorX = x;
+	currentConsole->cursorY = y;
 }
 
 static void consoleHandleColorEsc(int code)
@@ -742,24 +785,22 @@ void newRow()
 
 	currentConsole->cursorY++;
 	/* if bottom border reached, scroll */
-	if( currentConsole->cursorY >= currentConsole->con_rows)
+	if( currentConsole->cursorY > currentConsole->windowHeight)
 	{
-		const u8* console = (u8*)((u32)currentConsole->destbuffer + __console_get_offset());
-		const u32 last_console_row = currentConsole->con_rows == 0
-			? 0
-			: (currentConsole->con_rows-1);
+		const u8* console = (u8*)((u32)currentConsole->destbuffer + __console_get_offset()) \
+			+ ((currentConsole->windowY - 1 ) * currentConsole->con_stride * FONT_YSIZE);
 
 		//copy lines upwards
 		u8* ptr = (u8*)console;
-		for(u32 ycnt = 0; ycnt < (last_console_row * FONT_YSIZE); ycnt++)
+		for(u32 ycnt = 0; ycnt < ((currentConsole->windowHeight -1) * FONT_YSIZE); ycnt++)
 		{
-			memmove(ptr, ptr + currentConsole->con_stride * FONT_YSIZE, currentConsole->con_cols * FONT_XSIZE * VI_DISPLAY_PIX_SZ);
+			memmove(ptr, ptr + currentConsole->con_stride * FONT_YSIZE, currentConsole->windowWidth * FONT_XSIZE * VI_DISPLAY_PIX_SZ);
 			ptr+= currentConsole->con_stride;
 		}
 
 		//clear last line
-		__console_clear_line(last_console_row, 0, currentConsole->con_cols);
-		currentConsole->cursorY = currentConsole->con_rows - 1;
+		__console_clear_line(currentConsole->windowHeight, 1, currentConsole->windowWidth);
+		currentConsole->cursorY = currentConsole->windowHeight;
 	}
 }
 
@@ -767,8 +808,8 @@ void consolePrintChar(int c)
 {
 	if (c==0) return;
 
-	if(currentConsole->cursorX  >= currentConsole->con_cols) {
-		currentConsole->cursorX  = 0;
+	if(currentConsole->cursorX  >= currentConsole->windowWidth) {
+		currentConsole->cursorX  = 1;
 		newRow();
 	}
 
@@ -785,12 +826,12 @@ void consolePrintChar(int c)
 		case 8:
 			currentConsole->cursorX--;
 
-			if(currentConsole->cursorX < 0) {
-				if(currentConsole->cursorY > 0) {
-					currentConsole->cursorX = currentConsole->con_cols - 1;
+			if(currentConsole->cursorX < 1) {
+				if(currentConsole->cursorY > 1) {
+					currentConsole->cursorX = currentConsole->windowWidth - 1;
 					currentConsole->cursorY--;
 				} else {
-					currentConsole->cursorX = 0;
+					currentConsole->cursorX = 1;
 				}
 			}
 
@@ -803,7 +844,7 @@ void consolePrintChar(int c)
 		case 10:
 			newRow();
 		case 13:
-			currentConsole->cursorX  = 0;
+			currentConsole->cursorX  = 1;
 			break;
 		default:
 			__console_drawc(c);
@@ -1057,3 +1098,87 @@ void CON_EnableGecko(int channel,int safe)
 	}
 }
 
+PrintConsole* consoleGetDefault(void){return &defaultConsole;}
+
+PrintConsole* consoleInit(PrintConsole* console)
+{
+
+	static bool firstConsoleInit = true;
+
+	if(firstConsoleInit) {
+
+		GXRModeObj *rmode = VIDEO_GetPreferredMode(NULL);
+		void *xfb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(rmode));
+		console_init(xfb,0,0,rmode->fbWidth,rmode->xfbHeight,rmode->fbWidth*VI_DISPLAY_PIX_SZ);
+		VIDEO_Configure(rmode);
+		VIDEO_SetNextFramebuffer(xfb);
+		VIDEO_SetBlack(FALSE);
+		VIDEO_Flush();
+		VIDEO_WaitVSync();
+		if(rmode->viTVMode&VI_NON_INTERLACE) VIDEO_WaitVSync();
+
+		devoptab_list[STD_OUT] = &dotab_stdout;
+		devoptab_list[STD_ERR] = &dotab_stdout;
+
+		setvbuf(stdout, NULL , _IONBF, 0);
+		setvbuf(stderr, NULL , _IONBF, 0);
+
+		firstConsoleInit = false;
+	}
+
+	if(console) {
+		currentConsole = console;
+	} else {
+		console = currentConsole;
+	}
+
+	*currentConsole = defaultConsole;
+
+	console->consoleInitialised = 1;
+
+	consoleCls(2);
+
+	return currentConsole;
+
+}
+
+PrintConsole *consoleSelect(PrintConsole* console)
+{
+	PrintConsole *tmp = currentConsole;
+	currentConsole = console;
+	return tmp;
+}
+
+void consoleSetFont(PrintConsole* console, ConsoleFont* font)
+{
+
+	if(!console) console = currentConsole;
+
+	console->font = *font;
+
+}
+
+void consoleSetWindow(PrintConsole* console, unsigned int x, unsigned int y, unsigned int width, unsigned int height)
+{
+
+	if(!console) console = currentConsole;
+
+	// co-ords are 1-based but accept 0
+	if (x == 0) x = 1;
+	if (y == 0) y = 1;
+
+	if ( x >= console->con_cols) return;
+	if ( y >= console->con_rows) return;
+
+	if ( x + width > console->con_cols + 1) width = console->con_cols + 1 - x;
+	if ( y + height > console->con_rows + 1) height = console->con_cols + 1 - y;
+
+	console->windowWidth = width;
+	console->windowHeight = height;
+	console->windowX = x;
+	console->windowY = y;
+
+	console->cursorX = 1;
+	console->cursorY = 1;
+
+}
