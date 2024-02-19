@@ -23,19 +23,6 @@
 #define FONT_YGAP			0
 #define TAB_SIZE			4
 
-typedef struct _console_data_s {
-	void *destbuffer;
-	unsigned char *font;
-	int con_xres,con_yres,con_stride;
-	int target_x,target_y, tgt_stride;
-	int cursorX,cursorY;
-	int prevCursorX,prevCursorY;
-	int con_rows, con_cols;
-	int tabSize;
-	unsigned int fg,bg;
-	unsigned int flags;
-} console_data_s;
-
 extern int __console_write(struct _reent *r,void *fd,const char *ptr,size_t len);
 extern void __console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stride);
 
