@@ -856,7 +856,9 @@ s32 net_connect(s32 s, struct sockaddr *addr, socklen_t addrlen)
 	if (addr->sa_family != AF_INET) return -EAFNOSUPPORT;
 	if (addrlen < 8) return -EINVAL;
 
-	addr->sa_len = 8;
+	addrlen = 8;
+
+	addr->sa_len = addrlen;
 
 	memset(params, 0, sizeof(struct connect_params));
 	params->socket = s;
