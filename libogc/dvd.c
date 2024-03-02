@@ -842,7 +842,7 @@ static void __dvd_statebusycb(s32 result)
 		__dvd_canceling = 0;
 		block = __dvd_executing;
 		__dvd_executing = &__dvd_dummycmdblk;
-		__dvd_executing->state = 10;
+		block->state = 10;
 		if(block->cb) block->cb(-3,block);
 		if(__dvd_cancelcallback) __dvd_cancelcallback(0,block);
 		__dvd_stateready();
