@@ -4,6 +4,7 @@
 #include <math.h>
 #include "asm.h"
 #include "processor.h"
+#include "gcutil.h"
 #include "irq.h"
 #include "lwp.h"
 #include "system.h"
@@ -128,8 +129,8 @@ static const u32 _gxtexregionaddrtable[48] =
 #endif
 
 
-extern u8 __gxregs[];
-static struct __gx_regdef *__gx = (struct __gx_regdef*)__gxregs;
+static u8 __gxregs[STRUCT_REGDEF_SIZE] ATTRIBUTE_ALIGN(32);
+static struct __gx_regdef* const __gx = (struct __gx_regdef*)__gxregs;
 static u8 _gx_saved_data[STRUCT_REGDEF_SIZE] ATTRIBUTE_ALIGN(32);
 
 static s32 __gx_onreset(s32 final);
@@ -314,8 +315,13 @@ static void __GX_SaveFifo(void)
 
 	if(_gxcpufifoready) {
 		val = _piReg[0x05];
+#if defined(HW_DOL)
+		cpufifo->wt_ptr = (u32)MEM_PHYSICAL_TO_K0((val&0x03FFFFE0));
+		cpufifo->fifo_wrap = ((val&0x04000000)==0x04000000);
+#else
 		cpufifo->wt_ptr = (u32)MEM_PHYSICAL_TO_K0((val&0x1FFFFFE0));
 		cpufifo->fifo_wrap = ((val&0x20000000)==0x20000000);
+#endif
 	}
 
 	if(_gxgpfifoready) {
@@ -327,6 +333,7 @@ static void __GX_SaveFifo(void)
 		cpufifo->rd_ptr = gpfifo->rd_ptr;
 		cpufifo->rdwt_dst = gpfifo->rdwt_dst;
 		gpfifo->wt_ptr = cpufifo->wt_ptr;
+		gpfifo->fifo_wrap = cpufifo->fifo_wrap;
 	} else if(_gxcpufifoready) {
 		rdwt_dst = (cpufifo->wt_ptr - cpufifo->rd_ptr);
 		if(rdwt_dst<0) cpufifo->rdwt_dst = (cpufifo->rdwt_dst + cpufifo->size);
@@ -547,7 +554,7 @@ static void __GX_SetTmemConfig(u8 nr)
 }
 
 #if defined(HW_RVL)
-static GXTexRegion* __GXDefTexRegionCallback(GXTexObj *obj,u8 mapid)
+static GXTexRegion* __GXDefTexRegionCallback(const GXTexObj *obj,u8 mapid)
 {
 	u32 fmt,mipmap;
 	GXTexRegion *ret = NULL;
@@ -566,7 +573,7 @@ static GXTexRegion* __GXDefTexRegionCallback(GXTexObj *obj,u8 mapid)
 	return ret;
 }
 #else
-static GXTexRegion* __GXDefTexRegionCallback(GXTexObj *obj,u8 mapid)
+static GXTexRegion* __GXDefTexRegionCallback(const GXTexObj *obj,u8 mapid)
 {
 	u32 fmt;
 	u32 idx;
@@ -796,20 +803,20 @@ static void __GX_SendFlushPrim(void)
 		cnt = tmp2/8;
 		while(cnt) {
 			wgPipe->U32 = 0;
-					wgPipe->U32 = 0;
-					wgPipe->U32 = 0;
-					wgPipe->U32 = 0;
-					wgPipe->U32 = 0;
-					wgPipe->U32 = 0;
-					wgPipe->U32 = 0;
-					wgPipe->U32 = 0;
-					cnt--;
+			wgPipe->U32 = 0;
+			wgPipe->U32 = 0;
+			wgPipe->U32 = 0;
+			wgPipe->U32 = 0;
+			wgPipe->U32 = 0;
+			wgPipe->U32 = 0;
+			wgPipe->U32 = 0;
+			cnt--;
 		}
 		tmp2 &= 0x0007;
 		if(tmp2) {
 			while(tmp2) {
 				wgPipe->U32 = 0;
-							tmp2--;
+				tmp2--;
 			}
 		}
 	}
@@ -1288,10 +1295,10 @@ void GX_GetFifoPtrs(const GXFifoObj *fifo,void **rd_ptr,void **wt_ptr)
 	*wt_ptr = (void*)ptr->wt_ptr;
 }
 
-void GX_SetCPUFifo(GXFifoObj *fifo)
+void GX_SetCPUFifo(const GXFifoObj *fifo)
 {
 	u32 level;
-	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
+	const struct __gxfifo *ptr = (const struct __gxfifo*)fifo;
 	struct __gxfifo *cpufifo = (struct __gxfifo*)&_cpufifo;
 
 	_CPU_ISR_Disable(level);
@@ -1371,10 +1378,10 @@ void GX_GetCPUFifo(GXFifoObj *fifo)
 	ptr->gpfifo_ready = cpufifo->gpfifo_ready;
 }
 
-void GX_SetGPFifo(GXFifoObj *fifo)
+void GX_SetGPFifo(const GXFifoObj *fifo)
 {
 	u32 level;
-	struct __gxfifo *ptr = (struct __gxfifo*)fifo;
+	const struct __gxfifo *ptr = (const struct __gxfifo*)fifo;
 	struct __gxfifo *gpfifo = (struct __gxfifo*)&_gpfifo;
 
 	_CPU_ISR_Disable(level);
@@ -1524,7 +1531,6 @@ lwp_t GX_SetCurrentGXThread(void)
 volatile void* GX_RedirectWriteGatherPipe(void *ptr)
 {
 	u32 level;
-	struct __gxfifo *cpufifo = (struct __gxfifo*)&_cpufifo;
 
 	_CPU_ISR_Disable(level);
 	GX_Flush();
@@ -1535,41 +1541,35 @@ volatile void* GX_RedirectWriteGatherPipe(void *ptr)
 		__GX_FifoLink(GX_FALSE);
 		__GX_WriteFifoIntEnable(GX_DISABLE,GX_DISABLE);
 	}
-	cpufifo->wt_ptr = (u32)MEM_PHYSICAL_TO_K0(_piReg[5]&~0x04000000);
+	__GX_SaveFifo();
 
 	_piReg[3] = 0;
 	_piReg[4] = 0x04000000;
-	_piReg[5] = (((u32)ptr&0x3FFFFFE0)&~0x04000000);
-	_sync();
+	_piReg[5] = ((u32)ptr&0x1FFFFFE0);
+	ppcsync();
 
 	_CPU_ISR_Restore(level);
 
-	return (volatile void*)0x0C008000;
+	return (volatile void*)0xCC008000;
 }
 
 void GX_RestoreWriteGatherPipe(void)
 {
-	u32 level;
+	u32 i,level;
 	struct __gxfifo *cpufifo = (struct __gxfifo*)&_cpufifo;
 
 	_CPU_ISR_Disable(level);
 
-	wgPipe->U32 = 0;
-	wgPipe->U32 = 0;
-	wgPipe->U32 = 0;
-	wgPipe->U32 = 0;
-	wgPipe->U32 = 0;
-	wgPipe->U32 = 0;
-	wgPipe->U32 = 0;
-	wgPipe->U32 = 0;
-
+	for(i=0;i<31;i++) {
+		wgPipe->U8 = 0;
+	}
 	ppcsync();
 	while(!IsWriteGatherBufferEmpty());
 
 	mtwpar(0x0C008000);
 	_piReg[3] = MEM_VIRTUAL_TO_PHYSICAL(cpufifo->buf_start);
 	_piReg[4] = MEM_VIRTUAL_TO_PHYSICAL(cpufifo->buf_end);
-	_piReg[5] = (((u32)cpufifo->wt_ptr&0x3FFFFFE0)&~0x04000000);
+	_piReg[5] = (cpufifo->wt_ptr&0x1FFFFFE0);
 	if(_cpgplinked) {
 		__GX_WriteFifoIntReset(GX_TRUE,GX_TRUE);
 		__GX_WriteFifoIntEnable(GX_ENABLE,GX_DISABLE);
@@ -1791,7 +1791,7 @@ void GX_SetViewport(f32 xOrig,f32 yOrig,f32 wd,f32 ht,f32 nearZ,f32 farZ)
 	GX_SetViewportJitter(xOrig,yOrig,wd,ht,nearZ,farZ,1);
 }
 
-void GX_LoadProjectionMtx(Mtx44 mt,u8 type)
+void GX_LoadProjectionMtx(const Mtx44 mt,u8 type)
 {
 	f32 tmp[7];
 
@@ -1860,6 +1860,7 @@ static void __GetImageTileCount(u32 fmt,u16 wd,u16 ht,u32 *xtiles,u32 *ytiles,u3
 		case GX_TF_RGB565:
 		case GX_TF_RGB5A3:
 		case GX_TF_RGBA8:
+		case GX_CTF_YUVA8:
 			xshift = 2;
 			yshift = 2;
 			break;
@@ -1881,7 +1882,7 @@ static void __GetImageTileCount(u32 fmt,u16 wd,u16 ht,u32 *xtiles,u32 *ytiles,u3
 	*ytiles = tile;
 
 	*zplanes = 1;
-	if(fmt==GX_TF_RGBA8 || fmt==GX_TF_Z24X8) *zplanes = 2;
+	if(fmt==GX_TF_RGBA8 || fmt==GX_TF_Z24X8 || fmt==GX_CTF_YUVA8) *zplanes = 2;
 }
 
 void GX_SetCopyClear(GXColor color,u32 zvalue)
@@ -1909,7 +1910,7 @@ void GX_SetDispCopyGamma(u8 gamma)
 	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~0x180)|(_SHIFTL(gamma,7,2));
 }
 
-void GX_SetCopyFilter(u8 aa,u8 sample_pattern[12][2],u8 vf,u8 vfilter[7])
+void GX_SetCopyFilter(u8 aa,const u8 sample_pattern[12][2],u8 vf,const u8 vfilter[7])
 {
 	u32 reg01=0,reg02=0,reg03=0,reg04=0,reg53=0,reg54=0;
 
@@ -1985,7 +1986,7 @@ u32 GX_SetDispCopyYScale(f32 yscale)
 	GX_LOAD_BP_REG(0x4e000000|yScale);
 
 	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~0x400)|(_SHIFTL(((256-yScale)>0),10,1));
-	ht = _SHIFTR(__gx->dispCopyWH,12,10)+1;
+	ht = _SHIFTR(__gx->dispCopyWH,10,10)+1;
 	return __GX_GetNumXfbLines(ht,yScale);
 }
 
@@ -2173,7 +2174,7 @@ u32 GX_EndDispList(void)
 	return GX_GetFifoCount(&_gx_dl_fifoobj);
 }
 
-void GX_CallDispList(void *list,u32 nbytes)
+void GX_CallDispList(const void *list,u32 nbytes)
 {
 	if(__gx->dirtyState)
 		__GX_SetDirtyState();
@@ -2276,7 +2277,7 @@ void GX_SetChanMatColor(s32 channel,GXColor color)
 	__gx->dirtyState |= (0x0400<<reg);
 }
 
-void GX_SetArray(u32 attr,void *ptr,u8 stride)
+void GX_SetArray(u32 attr,const void *ptr,u8 stride)
 {
 	u32 idx = 0;
 
@@ -2368,7 +2369,7 @@ void GX_SetVtxDesc(u8 attr,u8 type)
 	__gx->dirtyState |= 0x0008;
 }
 
-void GX_SetVtxDescv(GXVtxDesc *attr_list)
+void GX_SetVtxDescv(const GXVtxDesc *attr_list)
 {
 	u32 i;
 
@@ -2622,7 +2623,7 @@ void GX_SetVtxAttrFmt(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac)
 	__gx->dirtyState |= 0x0010;
 }
 
-void GX_SetVtxAttrFmtv(u8 vtxfmt,GXVtxAttrFmt *attr_list)
+void GX_SetVtxAttrFmtv(u8 vtxfmt,const GXVtxAttrFmt *attr_list)
 {
 	u32 i;
 
@@ -2783,7 +2784,7 @@ void GX_SetZTexture(u8 op,u8 fmt,u32 bias)
 	GX_LOAD_BP_REG(0xF5000000|(val&0x00FFFFFF));
 }
 
-static inline void WriteMtxPS4x3(register Mtx mt,register void *wgpipe)
+static inline void WriteMtxPS4x3(register const Mtx mt,register void *wgpipe)
 {
 	register f32 tmp0,tmp1,tmp2,tmp3,tmp4,tmp5;
 	__asm__ __volatile__ (
@@ -2805,7 +2806,7 @@ static inline void WriteMtxPS4x3(register Mtx mt,register void *wgpipe)
 	);
 }
 
-static inline void WriteMtxPS3x3from4x3(register Mtx mt,register void *wgpipe)
+static inline void WriteMtxPS3x3from4x3(register const Mtx mt,register void *wgpipe)
 {
 	register f32 tmp0,tmp1,tmp2,tmp3,tmp4,tmp5;
 	__asm__ __volatile__
@@ -2827,7 +2828,7 @@ static inline void WriteMtxPS3x3from4x3(register Mtx mt,register void *wgpipe)
 	);
 }
 
-static inline void WriteMtxPS3x3(register Mtx33 mt,register void *wgpipe)
+static inline void WriteMtxPS3x3(register const Mtx33 mt,register void *wgpipe)
 {
 	register f32 tmp0,tmp1,tmp2,tmp3,tmp4;
 	__asm__ __volatile__
@@ -2847,7 +2848,7 @@ static inline void WriteMtxPS3x3(register Mtx33 mt,register void *wgpipe)
 	);
 }
 
-static inline void WriteMtxPS4x2(register Mtx mt,register void *wgpipe)
+static inline void WriteMtxPS4x2(register const Mtx mt,register void *wgpipe)
 {
 	register f32 tmp0,tmp1,tmp2,tmp3;
 	__asm__ __volatile__
@@ -2865,7 +2866,7 @@ static inline void WriteMtxPS4x2(register Mtx mt,register void *wgpipe)
 	);
 }
 
-void GX_LoadPosMtxImm(Mtx mt,u32 pnidx)
+void GX_LoadPosMtxImm(const Mtx mt,u32 pnidx)
 {
 	GX_LOAD_XF_REGS((0x0000|(_SHIFTL(pnidx,2,8))),12);
 	WriteMtxPS4x3(mt,(void*)wgPipe);
@@ -2877,13 +2878,13 @@ void GX_LoadPosMtxIdx(u16 mtxidx,u32 pnidx)
 	wgPipe->U32 = ((_SHIFTL(mtxidx,16,16))|0xb000|(_SHIFTL(pnidx,2,8)));
 }
 
-void GX_LoadNrmMtxImm(Mtx mt,u32 pnidx)
+void GX_LoadNrmMtxImm(const Mtx mt,u32 pnidx)
 {
 	GX_LOAD_XF_REGS((0x0400|(pnidx*3)),9);
 	WriteMtxPS3x3from4x3(mt,(void*)wgPipe);
 }
 
-void GX_LoadNrmMtxImm3x3(Mtx33 mt,u32 pnidx)
+void GX_LoadNrmMtxImm3x3(const Mtx33 mt,u32 pnidx)
 {
 	GX_LOAD_XF_REGS((0x0400|(pnidx*3)),9);
 	WriteMtxPS3x3(mt,(void*)wgPipe);
@@ -2895,7 +2896,7 @@ void GX_LoadNrmMtxIdx3x3(u16 mtxidx,u32 pnidx)
 	wgPipe->U32 = ((_SHIFTL(mtxidx,16,16))|0x8000|(0x0400|(pnidx*3)));
 }
 
-void GX_LoadTexMtxImm(Mtx mt,u32 texidx,u8 type)
+void GX_LoadTexMtxImm(const Mtx mt,u32 texidx,u8 type)
 {
 	u32 addr = 0;
 	u32 rows = (type==GX_MTX2x4)?2:3;
@@ -2993,99 +2994,181 @@ static void __GetTexTileShift(u32 fmt,u32 *xshift,u32 *yshift)
 }
 #endif
 
-u32 GX_GetTexObjFmt(const GXTexObj *obj)
+void GX_GetTexObjAll(const GXTexObj *obj,void **img_ptr,u16 *wd,u16 *ht,u8 *fmt,u8 *wrap_s,u8 *wrap_t,u8 *mipmap)
 {
-	return ((const struct __gx_texobj*)obj)->tex_fmt;
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	*img_ptr = (void*)_SHIFTL(ptr->tex_maddr,5,24);
+	*wd = (ptr->tex_size&0x3ff)+1;
+	*ht = _SHIFTR(ptr->tex_size,10,10)+1;
+	*fmt = ptr->tex_fmt;
+	*wrap_s = ptr->tex_filt&0x03;
+	*wrap_t = _SHIFTR(ptr->tex_filt,2,2);
+	*mipmap = ptr->tex_flag&0x01;
 }
 
-u32 GX_GetTexObjMipMap(const GXTexObj *obj)
-{
-	return (((const struct __gx_texobj*)obj)->tex_flag&0x01);
-}
 void* GX_GetTexObjData(const GXTexObj *obj)
 {
-	return (void*)(_SHIFTL(((const struct __gx_texobj*)obj)->tex_maddr & 0x00ffffff,5,24));
-}
-
-u8 GX_GetTexObjWrapS(const GXTexObj *obj)
-{
-	return ((const struct __gx_texobj*)obj)->tex_filt & 0x03;
-}
-
-u8 GX_GetTexObjWrapT(const GXTexObj *obj)
-{
-	return _SHIFTR(((const struct __gx_texobj*)obj)->tex_filt & 0x0c, 2, 2);
-}
-
-u16 GX_GetTexObjHeight(const GXTexObj *obj)
-{
-	return _SHIFTR(((const struct __gx_texobj*)obj)->tex_size & 0xffc00, 10, 10) + 1;
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	return (void*)_SHIFTL(ptr->tex_maddr,5,24);
 }
 
 u16 GX_GetTexObjWidth(const GXTexObj *obj)
 {
-	return (((const struct __gx_texobj*)obj)->tex_size & 0x3ff) + 1;
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	return (ptr->tex_size&0x3ff)+1;
 }
 
-
-void GX_GetTexObjAll(const GXTexObj *obj, void** image_ptr, u16* width, u16* height,
-                     u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap)
+u16 GX_GetTexObjHeight(const GXTexObj *obj)
 {
 	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
-	*image_ptr = (void*)(_SHIFTL(ptr->tex_maddr & 0x00ffffff,5,24));
-	*width = (ptr->tex_size & 0x3ff) + 1;
-	*height = _SHIFTR(ptr->tex_size & 0xffc00, 10, 10) + 1;
-	*format = ptr->tex_fmt;
-	*wrap_s = ptr->tex_filt & 0x03;
-	*wrap_t = _SHIFTR(ptr->tex_filt & 0x0c, 2, 2);
-	*mipmap = ptr->tex_flag & 0x01;
+	return _SHIFTR(ptr->tex_size,10,10)+1;
 }
+
+u8 GX_GetTexObjFmt(const GXTexObj *obj)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	return ptr->tex_fmt;
+}
+
+u8 GX_GetTexObjWrapS(const GXTexObj *obj)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	return ptr->tex_filt&0x03;
+}
+
+u8 GX_GetTexObjWrapT(const GXTexObj *obj)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	return _SHIFTR(ptr->tex_filt,2,2);
+}
+
+u8 GX_GetTexObjMipMap(const GXTexObj *obj)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	return ptr->tex_flag&0x01;
+}
+
+void GX_GetTexObjLODAll(const GXTexObj *obj,u8 *minfilt,u8 *magfilt,f32 *minlod,f32 *maxlod,f32 *lodbias,u8 *biasclamp,u8 *edgelod,u8 *maxaniso)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	static const u8 HW2GXFiltConv[] = {0x00,0x02,0x04,0x00,0x01,0x03,0x05,0x00};
+
+	*minfilt = HW2GXFiltConv[_SHIFTR(ptr->tex_filt,5,3)];
+	*magfilt = _SHIFTR(ptr->tex_filt,4,1);
+	*minlod = (ptr->tex_lod&0xff)/16.0f;
+	*maxlod = _SHIFTR(ptr->tex_lod,8,8)/16.0f;
+	*lodbias = (s8)_SHIFTR(ptr->tex_filt,9,8)/32.0f;
+	*biasclamp = _SHIFTR(ptr->tex_filt,21,1);
+	*edgelod = !_SHIFTR(ptr->tex_filt,8,1);
+	*maxaniso = _SHIFTR(ptr->tex_filt,19,2);
+}
+
+u8 GX_GetTexObjMinFilt(const GXTexObj *obj)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	static const u8 HW2GXFiltConv[] = {0x00,0x02,0x04,0x00,0x01,0x03,0x05,0x00};
+
+	return HW2GXFiltConv[_SHIFTR(ptr->tex_filt,5,3)];
+}
+
+u8 GX_GetTexObjMagFilt(const GXTexObj *obj)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	return _SHIFTR(ptr->tex_filt,4,1);
+}
+
+f32 GX_GetTexObjMinLOD(const GXTexObj *obj)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	return (ptr->tex_lod&0xff)/16.0f;
+}
+
+f32 GX_GetTexObjMaxLOD(const GXTexObj *obj)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	return _SHIFTR(ptr->tex_lod,8,8)/16.0f;
+}
+
+f32 GX_GetTexObjLODBias(const GXTexObj *obj)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	return (s8)_SHIFTR(ptr->tex_filt,9,8)/32.0f;
+}
+
+u8 GX_GetTexObjBiasClamp(const GXTexObj *obj)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	return _SHIFTR(ptr->tex_filt,21,1);
+}
+
+u8 GX_GetTexObjEdgeLOD(const GXTexObj *obj)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	return !_SHIFTR(ptr->tex_filt,8,1);
+}
+
+u8 GX_GetTexObjMaxAniso(const GXTexObj *obj)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	return _SHIFTR(ptr->tex_filt,19,2);
+}
+
+u32 GX_GetTexObjTlut(const GXTexObj *obj)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	return ptr->tex_tlut;
+}
+
 u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 {
 	u32 xshift,yshift,xtiles,ytiles,bitsize,size;
 
 	switch(fmt) {
 		case GX_TF_I4:
+		case GX_TF_CI4:
 		case GX_TF_CMPR:
 		case GX_CTF_R4:
-		case GX_CTF_RA4:
 		case GX_CTF_Z4:
 			xshift = 3;
 			yshift = 3;
 			break;
-		case GX_TF_Z8:
 		case GX_TF_I8:
 		case GX_TF_IA4:
+		case GX_TF_CI8:
+		case GX_TF_Z8:
+		case GX_CTF_RA4:
 		case GX_CTF_A8:
 		case GX_CTF_R8:
 		case GX_CTF_G8:
 		case GX_CTF_B8:
-		case GX_CTF_RG8:
-		case GX_CTF_GB8:
 		case GX_CTF_Z8M:
 		case GX_CTF_Z8L:
 			xshift = 3;
 			yshift = 2;
 			break;
 		case GX_TF_IA8:
-		case GX_TF_Z16:
-		case GX_TF_Z24X8:
 		case GX_TF_RGB565:
 		case GX_TF_RGB5A3:
 		case GX_TF_RGBA8:
-		case GX_CTF_Z16L:
+		case GX_TF_CI14:
+		case GX_TF_Z16:
+		case GX_TF_Z24X8:
 		case GX_CTF_RA8:
+		case GX_CTF_YUVA8:
+		case GX_CTF_RG8:
+		case GX_CTF_GB8:
+		case GX_CTF_Z16L:
 			xshift = 2;
 			yshift = 2;
 			break;
 		default:
-			xshift = 2;
-			yshift = 2;
+			xshift = 0;
+			yshift = 0;
 			break;
 	}
 
 	bitsize = 32;
-	if(fmt==GX_TF_RGBA8 || fmt==GX_TF_Z24X8) bitsize = 64;
+	if(fmt==GX_TF_RGBA8 || fmt==GX_TF_Z24X8 || fmt==GX_CTF_YUVA8) bitsize = 64;
 
 	size = 0;
 	if(mipmap) {
@@ -3243,12 +3326,12 @@ void GX_InitTexObj(GXTexObj *obj,void *img_ptr,u16 wd,u16 ht,u8 fmt,u8 wrap_s,u8
 		case GX_TF_IA8:
 		case GX_TF_RGB565:
 		case GX_TF_RGB5A3:
-		case GX_TF_RGBA8:
+		case GX_TF_CI14:
 			xshift = 2;
 			yshift = 2;
 			ptr->tex_tile_type = 2;
 			break;
-		case GX_TF_CI14:
+		case GX_TF_RGBA8:
 			xshift = 2;
 			yshift = 2;
 			ptr->tex_tile_type = 3;
@@ -3285,7 +3368,6 @@ void GX_InitTexObjLOD(GXTexObj *obj,u8 minfilt,u8 magfilt,f32 minlod,f32 maxlod,
 {
 	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
 	static const u8 GX2HWFiltConv[] = {0x00,0x04,0x01,0x05,0x02,0x06,0x00,0x00};
-	//static const u8 HW2GXFiltConv[] = {0x00,0x02,0x04,0x00,0x01,0x03,0x05,0x00};
 
 	if(lodbias<-4.0f) lodbias = -4.0f;
 	else if(lodbias==4.0f) lodbias = 3.99f;
@@ -3407,7 +3489,33 @@ void GX_InitTlutObj(GXTlutObj *obj,void *lut,u8 fmt,u16 entries)
 	ptr->tlut_nentries = entries;
 }
 
-void GX_LoadTexObj(GXTexObj *obj,u8 mapid)
+void GX_GetTlutObjAll(const GXTlutObj *obj,void **lut,u8 *fmt,u16 *entries)
+{
+	const struct __gx_tlutobj *ptr = (const struct __gx_tlutobj*)obj;
+	*lut = (void*)_SHIFTL(ptr->tlut_maddr,5,24);
+	*fmt = _SHIFTR(ptr->tlut_fmt,10,2);
+	*entries = ptr->tlut_nentries;
+}
+
+void* GX_GetTlutObjData(const GXTlutObj *obj)
+{
+	const struct __gx_tlutobj *ptr = (const struct __gx_tlutobj*)obj;
+	return (void*)_SHIFTL(ptr->tlut_maddr,5,24);
+}
+
+u8 GX_GetTlutObjFmt(const GXTlutObj *obj)
+{
+	const struct __gx_tlutobj *ptr = (const struct __gx_tlutobj*)obj;
+	return _SHIFTR(ptr->tlut_fmt,10,2);
+}
+
+u16 GX_GetTlutObjNumEntries(const GXTlutObj *obj)
+{
+	const struct __gx_tlutobj *ptr = (const struct __gx_tlutobj*)obj;
+	return ptr->tlut_nentries;
+}
+
+void GX_LoadTexObj(const GXTexObj *obj,u8 mapid)
 {
 	GXTexRegion *region = NULL;
 
@@ -3417,7 +3525,7 @@ void GX_LoadTexObj(GXTexObj *obj,u8 mapid)
 	GX_LoadTexObjPreloaded(obj,region,mapid);
 }
 
-void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid)
+void GX_LoadTexObjPreloaded(const GXTexObj *obj,const GXTexRegion *region,u8 mapid)
 {
 	u8 type;
 	struct __gx_tlutregion *tlut = NULL;
@@ -3455,7 +3563,7 @@ void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid)
 	__gx->dirtyState |= 0x0001;
 }
 
-void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region)
+void GX_PreloadEntireTexture(const GXTexObj *obj,const GXTexRegion *region)
 {
 	u32 i,fmt;
 	s32 wd,ht;
@@ -3464,8 +3572,8 @@ void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region)
 	u32 regB = 0;
 	u32 regC = 0;
 	u32 regD = 0;
-	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
-	struct __gx_texregion *reg = (struct __gx_texregion*)region;
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	const struct __gx_texregion *reg = (const struct __gx_texregion*)region;
 
 	regA = (regA&~0xff000000)|(_SHIFTL(0x60,24,8));
 	regA = (regA&~0x00ffffff)|(ptr->tex_maddr&~0xff000000);
@@ -3532,20 +3640,21 @@ void GX_PreloadEntireTexture(GXTexObj *obj,GXTexRegion *region)
 			h = wd>>(i+1);
 			switch(ptr->tex_fmt) {
 				case GX_TF_I4:
-				case GX_TF_IA4:
 				case GX_TF_CI4:
 				case GX_TF_CMPR:
 					xshift = 3;
 					yshift = 3;
 					break;
 				case GX_TF_I8:
+				case GX_TF_IA4:
 				case GX_TF_CI8:
 					xshift = 3;
 					yshift = 2;
 					break;
 				case GX_TF_IA8:
-				case GX_TF_RGB5A3:
 				case GX_TF_RGB565:
+				case GX_TF_RGB5A3:
+				case GX_TF_RGBA8:
 				case GX_TF_CI14:
 					xshift = 2;
 					yshift = 2;
@@ -3587,12 +3696,12 @@ void GX_InvalidateTexAll(void)
 	__GX_FlushTextureState();
 }
 
-void GX_InvalidateTexRegion(GXTexRegion *region)
+void GX_InvalidateTexRegion(const GXTexRegion *region)
 {
 	u8 ismipmap;
 	s32 cw_e,ch_e,cw_o,ch_o;
 	u32 size,tmp,regvalA = 0,regvalB = 0;
-	struct __gx_texregion *ptr = (struct __gx_texregion*)region;
+	const struct __gx_texregion *ptr = (const struct __gx_texregion*)region;
 
 	cw_e = (_SHIFTR(ptr->tmem_even,15,3))-1;
 	ch_e = (_SHIFTR(ptr->tmem_even,18,3))-1;
@@ -3622,10 +3731,10 @@ void GX_InvalidateTexRegion(GXTexRegion *region)
 	__GX_FlushTextureState();
 }
 
-void GX_LoadTlut(GXTlutObj *obj,u32 tlut_name)
+void GX_LoadTlut(const GXTlutObj *obj,u32 tlut_name)
 {
 	struct __gx_tlutregion *region = NULL;
-	struct __gx_tlutobj *ptr = (struct __gx_tlutobj*)obj;
+	const struct __gx_tlutobj *ptr = (const struct __gx_tlutobj*)obj;
 
 	if(tlut_regionCB)
 		region = (struct __gx_tlutregion*)tlut_regionCB(tlut_name);
@@ -3928,7 +4037,7 @@ void GX_EnableTexOffsets(u8 coord,u8 line_enable,u8 point_enable)
 
 void GX_SetClipMode(u8 mode)
 {
-	GX_LOAD_XF_REG(0x1005,(mode&1));
+	GX_LOAD_XF_REG(0x1005,(mode&0x7));
 }
 
 void GX_SetScissor(u32 xOrigin,u32 yOrigin,u32 wd,u32 ht)
@@ -3946,6 +4055,19 @@ void GX_SetScissor(u32 xOrigin,u32 yOrigin,u32 wd,u32 ht)
 
 	GX_LOAD_BP_REG(__gx->sciTLcorner);
 	GX_LOAD_BP_REG(__gx->sciBRcorner);
+}
+
+void GX_GetScissor(u32 *xOrigin,u32 *yOrigin,u32 *wd,u32 *ht)
+{
+	u32 xo = _SHIFTR(__gx->sciTLcorner,12,11);
+	u32 yo = _SHIFTL(__gx->sciTLcorner,0,11);
+	u32 nwd = _SHIFTR(__gx->sciBRcorner,12,11);
+	u32 nht = _SHIFTL(__gx->sciBRcorner,0,11);
+
+	*xOrigin = xo-0x156;
+	*yOrigin = yo-0x156;
+	*wd = (nwd+1)-xo;
+	*ht = (nht+1)-yo;
 }
 
 void GX_SetScissorBoxOffset(s32 xoffset,s32 yoffset)
@@ -4081,7 +4203,7 @@ void GX_SetNumIndStages(u8 nstages)
 	__gx->dirtyState |= 0x0006;
 }
 
-void GX_SetIndTexMatrix(u8 indtexmtx,f32 offset_mtx[2][3],s8 scale_exp)
+void GX_SetIndTexMatrix(u8 indtexmtx,const f32 offset_mtx[2][3],s8 scale_exp)
 {
 	u32 ma,mb;
 	u32 val,s,idx;
@@ -4176,16 +4298,9 @@ void GX_SetIndTexCoordScale(u8 indtexid,u8 scale_s,u8 scale_t)
 
 void GX_SetTevIndWarp(u8 tevstage, u8 indtexid, u8 bias_flag, u8 replace_tex, u8 mtxid)
 {
-	u8 wrap = GX_ITW_OFF;
-	u8 bias = GX_ITB_NONE;
-	if(replace_tex)
-	{
-		wrap = GX_ITW_0;
-	}
-	if(bias_flag)
-	{
-		bias = GX_ITB_STU;
-	}
+	u8 bias = (bias_flag)?GX_ITB_STU:GX_ITB_NONE;
+	u8 wrap = (replace_tex)?GX_ITW_0:GX_ITW_OFF;
+
 	GX_SetTevIndirect(tevstage, indtexid, GX_ITF_8, bias, mtxid, wrap, wrap, GX_FALSE, GX_FALSE, GX_ITBA_OFF);
 }
 
@@ -4297,7 +4412,7 @@ void GX_SetFog(u8 type,f32 startz,f32 endz,f32 nearz,f32 farz,GXColor col)
 	GX_LOAD_BP_REG(val);
 }
 
-void GX_InitFogAdjTable(GXFogAdjTbl *table,u16 width,f32 projmtx[4][4])
+void GX_InitFogAdjTable(GXFogAdjTbl *table,u16 width,const f32 projmtx[4][4])
 {
 	u32 i,val7;
 	f32 val0,val1,val2,val4,val5,val6;
@@ -4324,7 +4439,7 @@ void GX_InitFogAdjTable(GXFogAdjTbl *table,u16 width,f32 projmtx[4][4])
 	}
 }
 
-void GX_SetFogRangeAdj(u8 enable,u16 center,GXFogAdjTbl *table)
+void GX_SetFogRangeAdj(u8 enable,u16 center,const GXFogAdjTbl *table)
 {
 	u32 val;
 
@@ -5126,21 +5241,29 @@ void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1)
 	// cnt1 fails....
 }
 
-void GX_AdjustForOverscan(GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver)
+void GX_AdjustForOverscan(const GXRModeObj *rmin,GXRModeObj *rmout,u16 hor,u16 ver)
 {
 	if(rmin!=rmout) memcpy(rmout,rmin,sizeof(GXRModeObj));
 
 	rmout->fbWidth = rmin->fbWidth-(hor<<1);
 	rmout->efbHeight = rmin->efbHeight-((rmin->efbHeight*(ver<<1))/rmin->xfbHeight);
-	if(rmin->xfbMode==VI_XFBMODE_SF && !(rmin->viTVMode&VI_PROGRESSIVE)) rmout->xfbHeight = rmin->xfbHeight-ver;
+	if(rmin->xfbMode==VI_XFBMODE_SF && (rmin->viTVMode&0x3)==VI_INTERLACE) rmout->xfbHeight = rmin->xfbHeight-ver;
 	else rmout->xfbHeight = rmin->xfbHeight-(ver<<1);
 
 	rmout->viWidth = rmin->viWidth-(hor<<1);
-	if(rmin->viTVMode&VI_PROGRESSIVE) rmout->viHeight = rmin->viHeight-(ver<<2);
+	if((rmin->viTVMode&0x3)==VI_NON_INTERLACE) rmout->viHeight = rmin->viHeight-(ver<<2);
 	else rmout->viHeight = rmin->viHeight-(ver<<1);
 
 	rmout->viXOrigin += hor;
 	rmout->viYOrigin += ver;
+}
+
+u16 GX_GetNumXfbLines(u16 efbHeight,f32 yscale)
+{
+	u32 yScale;
+
+	yScale = ((u32)(256.0f/yscale))&0x1ff;
+	return __GX_GetNumXfbLines(efbHeight,yScale);
 }
 
 f32 GX_GetYScaleFactor(u16 efbHeight,u16 xfbHeight)
