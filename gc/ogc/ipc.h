@@ -33,6 +33,13 @@ distribution.
 
 #include <gctypes.h>
 
+#define HW_IPC_PPCBASE		  0xCD000000
+#define HW_IPC_PPCMSG		  (*(vu32*)HW_IPC_PPCBASE)
+#define HW_IPC_PPCCTRL		  (*(vu32*)(HW_IPC_PPCBASE + 4))
+#define HW_IPC_PPC_SEND		  1
+#define HW_IPC_PPC_MSG_ACK	  2
+#define HW_IPC_PPC_CTRL_ACK	  4
+#define HW_IPC_PPC_CTRL_REGS (HW_IPC_PPC_MSG_ACK|HW_IPC_PPC_CTRL_ACK)
 #define IPC_HEAP			 -1
 
 #define IPC_OPEN_NONE		  0
