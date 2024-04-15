@@ -41,13 +41,13 @@ distribution.
 #include "ios.h"
 #include "irq.h"
 
-#define IOS_HEAP_SIZE 0x1000
-#define MAX_IPC_RETRIES 400
+#define IOS_HEAP_SIZE	0x1000
+#define MAX_IPC_RETRIES	400
 
 //#define DEBUG_IOS
 
-#define IOS_MAX_VERSION 61
-#define IOS_MIN_VERSION 28
+#define IOS_MAX_VERSION	61
+#define IOS_MIN_VERSION	28
 
 static s32 __ios_hid = -1;
 extern void udelay(int us);
@@ -298,10 +298,16 @@ s32 __IOS_LaunchNewIOS(int version)
 #ifdef DEBUG_IOS
 	printf("Waiting for IPC ...\n");
 #endif
-	for (counter = 0; !(read32(0x0d000004) & 2); counter++) {
+
+	//while IOS is starting up, we will check the IPC registers to see when it has started IPC and is therefor starting up other ios modules.
+	//from testing this seems to usually take ~650000µs
+	//this is very time sensitive though. if we check IPC CTRL regs to soon, they still contain the values from before IOS' setup IPC
+	//wait too long, and __IOS_LaunchNewIOS will take too long. we attempt to skip the old values by always waiting at least 1000µs
+	//to improve reload time we will only check 400000µs as other code will run while IOS starts up the other modules
+	for (counter = 0; counter <= MAX_IPC_RETRIES; counter++) {
 		udelay(1000);
 		
-		if (counter >= MAX_IPC_RETRIES)
+		if (HW_IPC_PPCCTRL & HW_IPC_PPC_CTRL_REGS)
 			break;
 	}
 
