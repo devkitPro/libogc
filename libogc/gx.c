@@ -3027,6 +3027,12 @@ u16 GX_GetTexObjWidth(const GXTexObj *obj)
 	return (((const struct __gx_texobj*)obj)->tex_size & 0x3ff) + 1;
 }
 
+void GX_GetTexObjLOD(const GXTexObj *obj, f32 *minlod, f32 *maxlod)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	*minlod = (ptr->tex_lod & 0xff) / 16.0f;
+	*maxlod = _SHIFTR(ptr->tex_lod, 8, 8) / 16.0f;
+}
 
 void GX_GetTexObjAll(const GXTexObj *obj, void** image_ptr, u16* width, u16* height,
                      u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap)
