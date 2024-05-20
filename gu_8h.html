@@ -22,7 +22,7 @@
  <tr style="height: 56px;">
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">libogc
-   &#160;<span id="projectnumber">v2.6.0</span>
+   &#160;<span id="projectnumber">v2.7.0</span>
    </div>
   </td>
  </tr>
@@ -101,6 +101,9 @@ Macros</h2></td></tr>
 <tr class="memitem:a9da9a415e1f610f081cce566853e5724"><td class="memItemLeft" align="right" valign="top"><a id="a9da9a415e1f610f081cce566853e5724"></a>
 #define&#160;</td><td class="memItemRight" valign="bottom"><b>FTOFRAC8</b>(x)&#160;&#160;&#160;((<a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a>) MIN(((x) * (128.0f)), 127.0f) &amp; 0xff)</td></tr>
 <tr class="separator:a9da9a415e1f610f081cce566853e5724"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3a88cd00c79125fed2fb5d3e9a72255e"><td class="memItemLeft" align="right" valign="top"><a id="a3a88cd00c79125fed2fb5d3e9a72255e"></a>
+#define&#160;</td><td class="memItemRight" valign="bottom"><b>guMtx44Concat</b>&#160;&#160;&#160;c_guMtx44Concat</td></tr>
+<tr class="separator:a3a88cd00c79125fed2fb5d3e9a72255e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a55e87a9718c0ab1830ff870ac84858f6"><td class="memItemLeft" align="right" valign="top"><a id="a55e87a9718c0ab1830ff870ac84858f6"></a>
 #define&#160;</td><td class="memItemRight" valign="bottom"><b>guMtxApplyScale</b>&#160;&#160;&#160;c_guMtxApplyScale</td></tr>
 <tr class="separator:a55e87a9718c0ab1830ff870ac84858f6"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -258,6 +261,9 @@ typedef f32(*&#160;</td><td class="memItemRight" valign="bottom"><b>ROMtxP</b>)[
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
+<tr class="memitem:adb62f457796f1c8eb9885b304c5c3610"><td class="memItemLeft" align="right" valign="top"><a id="adb62f457796f1c8eb9885b304c5c3610"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>c_guMtx44Concat</b> (const <a class="el" href="gu_8h.html#a7022058141002c96114fb362e436dc9f">Mtx44</a> a, const <a class="el" href="gu_8h.html#a7022058141002c96114fb362e436dc9f">Mtx44</a> b, <a class="el" href="gu_8h.html#a7022058141002c96114fb362e436dc9f">Mtx44</a> ab)</td></tr>
+<tr class="separator:adb62f457796f1c8eb9885b304c5c3610"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aaecb775c3bf354d64c9c1f90d840b6e3"><td class="memItemLeft" align="right" valign="top"><a id="aaecb775c3bf354d64c9c1f90d840b6e3"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>c_guMtxApplyScale</b> (const <a class="el" href="gu_8h.html#aa31105dd23ea6c2515da9f43c1e84c06">Mtx</a> src, <a class="el" href="gu_8h.html#aa31105dd23ea6c2515da9f43c1e84c06">Mtx</a> dst, f32 xS, f32 yS, f32 zS)</td></tr>
 <tr class="separator:aaecb775c3bf354d64c9c1f90d840b6e3"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -976,7 +982,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>guVecHalfAngle</b> (c
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Fri Mar 29 2024 18:05:52 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1
+Generated on Mon May 20 2024 16:08:55 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1
 </small></address>
 </body>
 </html>

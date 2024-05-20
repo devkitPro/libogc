@@ -22,7 +22,7 @@
  <tr style="height: 56px;">
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">libogc
-   &#160;<span id="projectnumber">v2.6.0</span>
+   &#160;<span id="projectnumber">v2.7.0</span>
    </div>
   </td>
  </tr>
@@ -2057,6 +2057,9 @@ Functions</h2></td></tr>
 <tr class="memitem:affa13adc6346f5a6ab21eaf5a2cc7d91"><td class="memItemLeft" align="right" valign="top"><a class="el" href="gctypes_8h.html#ace9d960e74685e2cd84b36132dbbf8aa">u16</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="gx_8h.html#affa13adc6346f5a6ab21eaf5a2cc7d91">GX_GetTexObjHeight</a> (const <a class="el" href="gx_8h.html#aaab26560d7942ee8754a616639ce8825">GXTexObj</a> *obj)</td></tr>
 <tr class="memdesc:affa13adc6346f5a6ab21eaf5a2cc7d91"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the texture height described by texture object <em>obj</em>.  <a href="gx_8h.html#affa13adc6346f5a6ab21eaf5a2cc7d91">More...</a><br /></td></tr>
 <tr class="separator:affa13adc6346f5a6ab21eaf5a2cc7d91"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a249870d1a8b4bb4990173868bfcf86df"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="gx_8h.html#a249870d1a8b4bb4990173868bfcf86df">GX_GetTexObjLOD</a> (const <a class="el" href="gx_8h.html#aaab26560d7942ee8754a616639ce8825">GXTexObj</a> *obj, f32 *minlod, f32 *maxlod)</td></tr>
+<tr class="memdesc:a249870d1a8b4bb4990173868bfcf86df"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the min and max LOD values for the texture object <em>obj</em>.  <a href="gx_8h.html#a249870d1a8b4bb4990173868bfcf86df">More...</a><br /></td></tr>
+<tr class="separator:a249870d1a8b4bb4990173868bfcf86df"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab983462a225ce9d2bbe47a726f491f9a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="gx_8h.html#ab983462a225ce9d2bbe47a726f491f9a">GX_GetTexObjMipMap</a> (const <a class="el" href="gx_8h.html#aaab26560d7942ee8754a616639ce8825">GXTexObj</a> *obj)</td></tr>
 <tr class="memdesc:ab983462a225ce9d2bbe47a726f491f9a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the texture mipmap enable described by texture object <em>obj</em>.  <a href="gx_8h.html#ab983462a225ce9d2bbe47a726f491f9a">More...</a><br /></td></tr>
 <tr class="separator:ab983462a225ce9d2bbe47a726f491f9a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -4125,6 +4128,52 @@ To execute a display list, use <a class="el" href="gx_8h.html#a20cac24818fa79957
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>texture height </dd></dl>
+
+</div>
+</div>
+<a id="a249870d1a8b4bb4990173868bfcf86df"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a249870d1a8b4bb4990173868bfcf86df">&#9670;&nbsp;</a></span>GX_GetTexObjLOD()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void GX_GetTexObjLOD </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="gx_8h.html#aaab26560d7942ee8754a616639ce8825">GXTexObj</a> *&#160;</td>
+          <td class="paramname"><em>obj</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">f32 *&#160;</td>
+          <td class="paramname"><em>minlod</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">f32 *&#160;</td>
+          <td class="paramname"><em>maxlod</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns the min and max LOD values for the texture object <em>obj</em>. </p>
+<dl class="section note"><dt>Note</dt><dd>Use <a class="el" href="gx_8h.html#a490b4c5c1548498681a3735bcd11a132" title="Sets texture Level Of Detail (LOD) controls explicitly for a texture object.">GX_InitTexObjLOD()</a>, <a class="el" href="gx_8h.html#a1ab3d7cbc351c1550e9082c7d4c96573" title="Sets the minimum LOD for a given texture.">GX_InitTexObjMinLOD()</a> or <a class="el" href="gx_8h.html#aae1e45c9b71179c214b0cb872dcc27ca" title="Sets the maximum LOD for a given texture.">GX_InitTexObjMaxLOD()</a> to initialize the texture minimum and maximum LOD.</dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">obj</td><td>ptr to a texture object </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">minlod</td><td>minimum LOD value from 0.0 - 10.0 inclusive </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">maxlod</td><td>maximum LOD value from 0.0 - 10.0 inclusive</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>none </dd></dl>
 
 </div>
 </div>
@@ -11656,7 +11705,7 @@ When a vertex contains only position and one texture coordinate and the texgen t
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Fri Mar 29 2024 18:05:52 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1
+Generated on Mon May 20 2024 16:08:55 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1
 </small></address>
 </body>
 </html>
