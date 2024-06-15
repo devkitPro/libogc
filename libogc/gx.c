@@ -105,6 +105,7 @@ static const u8 _gxteximg1ids[8] = {0x8C,0x8D,0x8E,0x8F,0xAC,0xAD,0xAE,0xAF};
 static const u8 _gxteximg2ids[8] = {0x90,0x91,0x92,0x93,0xB0,0xB1,0xB2,0xB3};
 static const u8 _gxteximg3ids[8] = {0x94,0x95,0x96,0x97,0xB4,0xB5,0xB6,0xB7};
 static const u8 _gxtextlutids[8] = {0x98,0x99,0x9A,0x9B,0xB8,0xB9,0xBA,0xBB};
+static const u8 _gx2HWFiltConv[] = {0x00,0x04,0x01,0x05,0x02,0x06,0x00,0x00};
 
 #if defined(HW_RVL)
 
@@ -3034,6 +3035,22 @@ void GX_GetTexObjLOD(const GXTexObj *obj, f32 *minlod, f32 *maxlod)
 	*maxlod = _SHIFTR(ptr->tex_lod, 8, 8) / 16.0f;
 }
 
+void GX_GetTexObjFilterMode(const GXTexObj *obj, u8 *minfilt, u8 *magfilt)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	u8 hw_filt, i;
+
+	*magfilt = ptr->tex_filt & 0x10 ? GX_LINEAR : GX_NEAR;
+	hw_filt = _SHIFTR(ptr->tex_filt, 5, 3);
+	for (i = 0; i < sizeof(_gx2HWFiltConv); i++)
+		if (_gx2HWFiltConv[i] == hw_filt) {
+			*minfilt = i;
+			break;
+		}
+	if (i == sizeof(_gx2HWFiltConv)) /* we didn't find it */
+		*minfilt = GX_NEAR;
+}
+
 void GX_GetTexObjAll(const GXTexObj *obj, void** image_ptr, u16* width, u16* height,
                      u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap)
 {
@@ -3290,15 +3307,13 @@ void GX_InitTexObjCI(GXTexObj *obj,void *img_ptr,u16 wd,u16 ht,u8 fmt,u8 wrap_s,
 void GX_InitTexObjLOD(GXTexObj *obj,u8 minfilt,u8 magfilt,f32 minlod,f32 maxlod,f32 lodbias,u8 biasclamp,u8 edgelod,u8 maxaniso)
 {
 	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
-	static const u8 GX2HWFiltConv[] = {0x00,0x04,0x01,0x05,0x02,0x06,0x00,0x00};
-	//static const u8 HW2GXFiltConv[] = {0x00,0x02,0x04,0x00,0x01,0x03,0x05,0x00};
 
 	if(lodbias<-4.0f) lodbias = -4.0f;
 	else if(lodbias==4.0f) lodbias = 3.99f;
 
 	ptr->tex_filt = (ptr->tex_filt&~0x1fe00)|(_SHIFTL(((u32)(32.0f*lodbias)),9,8));
 	ptr->tex_filt = (ptr->tex_filt&~0x10)|(_SHIFTL((magfilt==GX_LINEAR?1:0),4,1));
-	ptr->tex_filt = (ptr->tex_filt&~0xe0)|(_SHIFTL(GX2HWFiltConv[minfilt],5,3));
+	ptr->tex_filt = (ptr->tex_filt&~0xe0)|(_SHIFTL(_gx2HWFiltConv[minfilt],5,3));
 	ptr->tex_filt = (ptr->tex_filt&~0x100)|(_SHIFTL(!(edgelod&0xff),8,1));
 	ptr->tex_filt = (ptr->tex_filt&~0x180000)|(_SHIFTL(maxaniso,19,2));
 	ptr->tex_filt = (ptr->tex_filt&~0x200000)|(_SHIFTL(biasclamp,21,1));
@@ -3335,10 +3350,9 @@ void GX_InitTexObjWrapMode(GXTexObj *obj,u8 wrap_s,u8 wrap_t)
 void GX_InitTexObjFilterMode(GXTexObj *obj,u8 minfilt,u8 magfilt)
 {
 	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
-	static const u8 GX2HWFiltConv[] = {0x00,0x04,0x01,0x05,0x02,0x06,0x00,0x00};
 
 	ptr->tex_filt = (ptr->tex_filt&~0x10)|(_SHIFTL((magfilt==GX_LINEAR?1:0),4,1));
-	ptr->tex_filt = (ptr->tex_filt&~0xe0)|(_SHIFTL(GX2HWFiltConv[minfilt],5,3));
+	ptr->tex_filt = (ptr->tex_filt&~0xe0)|(_SHIFTL(_gx2HWFiltConv[minfilt],5,3));
 }
 
 void GX_InitTexObjMinLOD(GXTexObj *obj,f32 minlod)
