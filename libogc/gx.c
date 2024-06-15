@@ -3035,6 +3035,22 @@ void GX_GetTexObjLOD(const GXTexObj *obj, f32 *minlod, f32 *maxlod)
 	*maxlod = _SHIFTR(ptr->tex_lod, 8, 8) / 16.0f;
 }
 
+void GX_GetTexObjFilterMode(const GXTexObj *obj, u8 *minfilt, u8 *magfilt)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	u8 hw_filt, i;
+
+	*magfilt = ptr->tex_filt & 0x10 ? GX_LINEAR : GX_NEAR;
+	hw_filt = _SHIFTR(ptr->tex_filt, 5, 3);
+	for (i = 0; i < sizeof(_gx2HWFiltConv); i++)
+		if (_gx2HWFiltConv[i] == hw_filt) {
+			*minfilt = i;
+			break;
+		}
+	if (i == sizeof(_gx2HWFiltConv)) /* we didn't find it */
+		*minfilt = GX_NEAR;
+}
+
 void GX_GetTexObjAll(const GXTexObj *obj, void** image_ptr, u16* width, u16* height,
                      u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap)
 {
