@@ -22,7 +22,7 @@
  <tr style="height: 56px;">
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">libogc
-   &#160;<span id="projectnumber">v2.7.0</span>
+   &#160;<span id="projectnumber">v2.8.0</span>
    </div>
   </td>
  </tr>
@@ -2051,6 +2051,9 @@ Functions</h2></td></tr>
 <tr class="memitem:aebf13bf9962b1d89caa092a9f6c0cd61"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="gx_8h.html#aebf13bf9962b1d89caa092a9f6c0cd61">GX_GetTexObjData</a> (const <a class="el" href="gx_8h.html#aaab26560d7942ee8754a616639ce8825">GXTexObj</a> *obj)</td></tr>
 <tr class="memdesc:aebf13bf9962b1d89caa092a9f6c0cd61"><td class="mdescLeft">&#160;</td><td class="mdescRight">Used to get a pointer to texture data from the <a class="el" href="gx_8h.html#aaab26560d7942ee8754a616639ce8825">GXTexObj</a> structure.  <a href="gx_8h.html#aebf13bf9962b1d89caa092a9f6c0cd61">More...</a><br /></td></tr>
 <tr class="separator:aebf13bf9962b1d89caa092a9f6c0cd61"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a85e04d5cc3ac2f85c38c1133ee998b56"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="gx_8h.html#a85e04d5cc3ac2f85c38c1133ee998b56">GX_GetTexObjFilterMode</a> (const <a class="el" href="gx_8h.html#aaab26560d7942ee8754a616639ce8825">GXTexObj</a> *obj, <a class="el" href="gctypes_8h.html#a92c50087ca0e64fa93fc59402c55f8ca">u8</a> *minfilt, <a class="el" href="gctypes_8h.html#a92c50087ca0e64fa93fc59402c55f8ca">u8</a> *magfilt)</td></tr>
+<tr class="memdesc:a85e04d5cc3ac2f85c38c1133ee998b56"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the filter mode for the texture object <em>obj</em>.  <a href="gx_8h.html#a85e04d5cc3ac2f85c38c1133ee998b56">More...</a><br /></td></tr>
+<tr class="separator:a85e04d5cc3ac2f85c38c1133ee998b56"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abdbd73c696ffd790d0725298f374e582"><td class="memItemLeft" align="right" valign="top"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="gx_8h.html#abdbd73c696ffd790d0725298f374e582">GX_GetTexObjFmt</a> (const <a class="el" href="gx_8h.html#aaab26560d7942ee8754a616639ce8825">GXTexObj</a> *obj)</td></tr>
 <tr class="memdesc:abdbd73c696ffd790d0725298f374e582"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the texture format described by texture object <em>obj</em>.  <a href="gx_8h.html#abdbd73c696ffd790d0725298f374e582">More...</a><br /></td></tr>
 <tr class="separator:abdbd73c696ffd790d0725298f374e582"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -4072,6 +4075,52 @@ To execute a display list, use <a class="el" href="gx_8h.html#a20cac24818fa79957
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>Physical pointer to texture data. </dd></dl>
+
+</div>
+</div>
+<a id="a85e04d5cc3ac2f85c38c1133ee998b56"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a85e04d5cc3ac2f85c38c1133ee998b56">&#9670;&nbsp;</a></span>GX_GetTexObjFilterMode()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void GX_GetTexObjFilterMode </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="gx_8h.html#aaab26560d7942ee8754a616639ce8825">GXTexObj</a> *&#160;</td>
+          <td class="paramname"><em>obj</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="gctypes_8h.html#a92c50087ca0e64fa93fc59402c55f8ca">u8</a> *&#160;</td>
+          <td class="paramname"><em>minfilt</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="gctypes_8h.html#a92c50087ca0e64fa93fc59402c55f8ca">u8</a> *&#160;</td>
+          <td class="paramname"><em>magfilt</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns the filter mode for the texture object <em>obj</em>. </p>
+<dl class="section note"><dt>Note</dt><dd>Use <a class="el" href="gx_8h.html#a490b4c5c1548498681a3735bcd11a132" title="Sets texture Level Of Detail (LOD) controls explicitly for a texture object.">GX_InitTexObjLOD()</a> or <a class="el" href="gx_8h.html#ad926dd5b33fd06f317cd4190e47cc383" title="Sets the filter mode for a texture.">GX_InitTexObjFilterMode()</a> to initialize the texture filter mode.</dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">obj</td><td>ptr to a texture object </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">minfilt</td><td>minification filter mode; will be one of <a class="el" href="group__texfilter.html">Texture filter types</a> </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">maxfilt</td><td>magnification filter mode; will be <em>GX_NEAR</em> or <em>GX_LINEAR</em> </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>none </dd></dl>
 
 </div>
 </div>
@@ -11705,7 +11754,7 @@ When a vertex contains only position and one texture coordinate and the texgen t
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Mon May 20 2024 16:08:55 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1
+Generated on Tue Jul 2 2024 12:02:39 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1
 </small></address>
 </body>
 </html>
