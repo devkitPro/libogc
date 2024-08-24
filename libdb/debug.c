@@ -360,6 +360,26 @@ static void process_query(const char *inp,char *outp,s32 thread)
 				packqmheader(outp,i,done,athread);
 			}
 			break;
+		case 'f':
+			if(!strncmp(&inp[2],"ThreadInfo",10)) {
+				optr = outp;
+				*optr++ = 'm';
+				s32 rthread = gdbstub_getnextthread(0);
+				optr = thread2vhstr(optr,rthread);
+				while ((rthread = gdbstub_getnextthread(rthread))) {
+					*optr++=',';
+					optr = thread2vhstr(optr,rthread);
+				};
+				*optr = 0;
+			}
+			break;
+		case 's':
+			if(!strncmp(&inp[2],"ThreadInfo",10)) {
+				optr = outp;
+				*optr++ = 'l';
+				*optr = 0;
+			}
+			break;
 		default:
 			break;
 	}

@@ -10,7 +10,7 @@
 #include "video.h"
 #include "system.h"
 
-#include "console.h"
+#include "console_internal.h"
 #include "consol.h"
 #include "usbgecko.h"
 
@@ -85,7 +85,7 @@ void __console_vipostcb(u32 retraceCnt)
 	do_xfb_copy = true;
 
 	offset = (curr_con->target_y*curr_con->tgt_stride) + curr_con->target_x*VI_DISPLAY_PIX_SZ;
-	ptr = curr_con->destbuffer+offset;
+	ptr = curr_con->destbuffer;
 	fb = VIDEO_GetCurrentFramebuffer()+offset;
 	fb_stride = curr_con->tgt_stride/4 - (curr_con->con_xres/VI_DISPLAY_PIX_SZ);
 
@@ -117,8 +117,8 @@ static void __console_drawc(int c)
 	if(!curr_con) return;
 	con = curr_con;
 
-	ptr = (unsigned int*)(con->destbuffer + ( con->con_stride * con->cursor_row * FONT_YSIZE ) + ((con->cursor_col * FONT_XSIZE / 2) * 4) +
-						 (curr_con->target_y*curr_con->tgt_stride) + curr_con->target_x*VI_DISPLAY_PIX_SZ);
+	ptr = (unsigned int*)(con->destbuffer + ( con->con_stride * con->cursor_row * FONT_YSIZE ) + ((con->cursor_col * FONT_XSIZE / 2) * 4) 
+						+ (_console_buffer != NULL ? 0 : (curr_con->target_y*curr_con->tgt_stride) + curr_con->target_x*VI_DISPLAY_PIX_SZ));
 	pbits = &con->font[c * FONT_YSIZE];
 	nextline = con->con_stride/4 - 4;
 	fgcolor = con->foreground;

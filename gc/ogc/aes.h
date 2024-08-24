@@ -43,8 +43,8 @@ distribution.
 
 s32 AES_Init(void);
 s32 AES_Close(void);
-s32 AES_Decrypt(const void* key, u32 key_size, const void* iv, u32 iv_size, const void* in_data, void* out_data, u32 data_size);
-s32 AES_Encrypt(const void* key, u32 key_size, const void* iv, u32 iv_size, const void* in_data, void* out_data, u32 data_size);
+s32 AES_Decrypt(const void* key, u32 key_size, void* iv, u32 iv_size, const void* in_data, void* out_data, u32 data_size);
+s32 AES_Encrypt(const void* key, u32 key_size, void* iv, u32 iv_size, const void* in_data, void* out_data, u32 data_size);
 
 #ifdef __cplusplus
 	}

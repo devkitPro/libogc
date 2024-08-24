@@ -50,10 +50,10 @@ distribution.
 /*! @} */
 
 
-#define CARD_WORKAREA				(5*8*1024)	/*!< minimum size of the workarea passed to Mount[Async]() */
+#define CARD_WORKAREA_SIZE			(5*8*1024)	/*!< minimum size of the workarea passed to Mount[Async]() */
 #define CARD_READSIZE				512			/*!< minimum size of block to read from memory card */
 #define CARD_FILENAMELEN			32			/*!< maximum filename length */	
-#define CARD_MAXFILES				128			/*!< maximum number of files on the memory card */
+#define CARD_MAXFILES				127			/*!< maximum number of files on the memory card */
 
 /*! \addtogroup card_errors Memory card error codes
  * @{
@@ -145,16 +145,16 @@ typedef struct _card_file {
 \param company[2] string identifier <=2.
 \param showall boolean flag whether to showall entries or ony those identified by card_gamecode and card_company, previously set within the call to CARD_Init()
 */
-typedef struct _card_dir { 
-      s32 chn; 
-      u32 fileno; 
-	  u32 filelen;
-	  u8 permissions;
-      u8 filename[CARD_FILENAMELEN]; 
-      u8 gamecode[4]; 
-      u8 company[2];
-      bool showall;
-} card_dir; 
+typedef struct _card_dir {
+	s32 chn;
+	u32 fileno;
+	u32 filelen;
+	u8 permissions;
+	char filename[CARD_FILENAMELEN];
+	u8 gamecode[4];
+	u8 company[2];
+	bool showall;
+} card_dir;
 
 /*! \typedef struct card_direntry
 \brief structure to hold the information of the save file entry ( aka GCI )
@@ -210,7 +210,7 @@ typedef struct _card_direntry {
 \param offset_data offset to additional data.
 */
 typedef struct _card_stat {
-	u8 filename[CARD_FILENAMELEN];
+	char filename[CARD_FILENAMELEN];
 	u32 len;
 	u32 time;		//time since 2000 in seconds
 	u8 gamecode[4];

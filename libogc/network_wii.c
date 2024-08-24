@@ -856,7 +856,9 @@ s32 net_connect(s32 s, struct sockaddr *addr, socklen_t addrlen)
 	if (addr->sa_family != AF_INET) return -EAFNOSUPPORT;
 	if (addrlen < 8) return -EINVAL;
 
-	addr->sa_len = 8;
+	addrlen = 8;
+
+	addr->sa_len = addrlen;
 
 	memset(params, 0, sizeof(struct connect_params));
 	params->socket = s;
@@ -1018,6 +1020,30 @@ s32 net_setsockopt(s32 s, u32 level, u32 optname, const void *optval, socklen_t 
 	debug_printf("net_setsockopt(%d, %u, %u, %p, %d)=%d\n",	s, level, optname, optval, optlen, ret);
 	return ret;
 }
+
+s32 net_getsockname(s32 s, struct sockaddr *addr, socklen_t *addrlen)
+{
+	STACK_ALIGN(u32, _socket, 1, 32);
+	s32 ret;
+
+	if (net_ip_top_fd < 0) return -ENXIO;
+	if (*addrlen<8) return -ENOMEM;
+
+	if (!addr) return -EINVAL;
+	if (!addrlen) return -EINVAL;
+
+	if (*addrlen < 8) return -ENOMEM;
+
+	addr->sa_len = 8;
+	addr->sa_family = AF_INET;
+	*addrlen = 8;
+	*_socket = s;
+
+	ret = _net_convert_error(IOS_Ioctl(net_ip_top_fd, IOCTL_SO_GETSOCKNAME, _socket, 4, addr, *addrlen));
+ 
+	return ret;
+ }
+
 
 s32 net_ioctl(s32 s, u32 cmd, void *argp)
 {

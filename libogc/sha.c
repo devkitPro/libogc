@@ -52,13 +52,13 @@ static s32 SHA_ExecuteCommand(const ShaCommand command, sha_context* context, co
 	if(params == NULL)
 		return -4;
 	
-	for (u32 i = 0; i < data_size; i += SHA_BLOCK_SIZE) {
-		u32 size = SHA_BLOCK_SIZE;
+	for (u32 i = 0; i < data_size; i += SHA_MSGBLOCK_SIZE) {
+		u32 size = SHA_MSGBLOCK_SIZE;
 		ShaCommand block_cmd = command;
 		
 		//if it's the final block, set size correctly.
 		//if it's not the final block, and we got a finalize, we will first send the add command
-		if(i+SHA_BLOCK_SIZE >= data_size)
+		if(i+SHA_MSGBLOCK_SIZE >= data_size)
 			size = data_size - i;
 		else if(command == FinalizeHash)
 			block_cmd = AddData;
@@ -151,7 +151,7 @@ s32 SHA_Input(sha_context* context, const void* data, const u32 data_size)
 	if(context == NULL || data == NULL || data_size == 0)
 		return -1;
 	
-	if((((u32)context) & 0x1F) || (((u32)data) & 0x3F) || (data_size & ~(SHA_BLOCK_SIZE-1)) != 0)
+	if((((u32)context) & 0x1F) || (((u32)data) & 0x3F) || (data_size & ~(SHA_MSGBLOCK_SIZE-1)) != 0)
 		return -4;
 	
 	return SHA_ExecuteCommand(AddData, context, data, data_size, NULL);

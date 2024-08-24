@@ -43,7 +43,7 @@ distribution.
 #include "gx.h"
 #include "pad.h"
 #include "consol.h"
-#include "console.h"
+#include "console_internal.h"
 #include "lwp_threads.h"
 #include "ios.h"
 

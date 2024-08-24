@@ -32,6 +32,8 @@ distribution.
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
+
 #include <malloc.h>
 #include <time.h>
 #include <sys/iosupport.h>
@@ -262,16 +264,8 @@ static __inline__ void __lwp_syswd_free(alarm_st *alarm)
 	__lwp_objmgr_free(&sys_alarm_objects,&alarm->object);
 }
 
-#ifdef HW_DOL
 #define SOFTRESET_ADR *((vu32*)0xCC003024)
-void __reload(void) { SOFTRESET_ADR=0; }
 
-void __syscall_exit(int status)
-{
-	SYS_ResetSystem(SYS_SHUTDOWN,0,0);
-	__lwp_thread_stopmultitasking(__reload);
-}
-#else
 static void (*reload)(void) = (void(*)(void))0x80001800;
 
 static bool __stub_found(void)
@@ -297,10 +291,12 @@ void __syscall_exit(int status)
 		SYS_ResetSystem(SYS_SHUTDOWN,0,0);
 		__lwp_thread_stopmultitasking(reload);
 	}
+#ifdef HW_DOL
+	SOFTRESET_ADR=0;
+#else
 	SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
-}
-
 #endif
+}
 
 
 void __syscall_malloc_lock(struct _reent *ptr) {

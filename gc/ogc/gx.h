@@ -4096,6 +4096,36 @@ u16 GX_GetTexObjHeight(const GXTexObj* obj);
 u16 GX_GetTexObjWidth(const GXTexObj* obj);
 
 /*!
+ * \fn void GX_GetTexObjLOD(const GXTexObj* obj, f32 *minlod, f32 *maxlod)
+ * \brief Returns the min and max LOD values for the texture object \a obj.
+ *
+ * \note Use GX_InitTexObjLOD(), GX_InitTexObjMinLOD() or GX_InitTexObjMaxLOD()
+ * to initialize the texture minimum and maximum LOD.
+ *
+ * \param[in] obj ptr to a texture object
+ * \param[out] minlod minimum LOD value from 0.0 - 10.0 inclusive
+ * \param[out] maxlod maximum LOD value from 0.0 - 10.0 inclusive
+ *
+ * \return none
+ */
+void GX_GetTexObjLOD(const GXTexObj* obj, f32 *minlod, f32 *maxlod);
+
+/*!
+ * \fn void GX_GetTexObjFilterMode(const GXTexObj* obj, u8 *minfilt, u8 *magfilt)
+ * \brief Returns the filter mode for the texture object \a obj.
+ *
+ * \note Use GX_InitTexObjLOD() or GX_InitTexObjFilterMode() to initialize the
+ * texture filter mode.
+ *
+ * \param[in] obj ptr to a texture object
+ * \param[out] minfilt minification filter mode; will be one of \ref texfilter
+ * \param[out] maxfilt magnification filter mode; will be \a GX_NEAR or \a GX_LINEAR
+ *
+ * \return none
+ */
+void GX_GetTexObjFilterMode(const GXTexObj *obj, u8 *minfilt, u8 *magfilt);
+
+/*!
  * \fn void GX_GetTexObjAll(const GXTexObj* obj, void** image_ptr, u16* width, u16* height, u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap);
  * \brief Returns the parameters described by a texture object. Texture objects are used to describe all the parameters associated with a texture, including size, format, wrap modes, filter modes, etc. Texture objects are initialized using either GX_InitTexObj() or, for color index format textures, GX_InitTexObjCI().
  *

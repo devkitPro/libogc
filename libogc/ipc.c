@@ -169,7 +169,7 @@ static struct _ipcheap _ipc_heaps[IPC_NUMHEAPS] =
 	{NULL, 0, {}} // all other elements should be inited to zero, says C standard, so this should do
 };
 
-static vu32* const _ipcReg = (u32*)0xCD000000;
+static vu32* const _ipcReg = (u32*)(HW_IPC_PPCBASE);
 
 extern void __MaskIrq(u32 nMask);
 extern void __UnmaskIrq(u32 nMask);

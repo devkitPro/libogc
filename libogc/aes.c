@@ -34,7 +34,7 @@ distribution.
 #include "ipc.h"
 #include "aes.h"
 
-#define AES_HEAPSIZE 0x400
+#define AES_HEAPSIZE 0x200
 
 #define AES_IOCTLV_ENCRYPT 2
 #define AES_IOCTLV_DECRYPT 3
@@ -42,20 +42,23 @@ distribution.
 static s32 __aes_fd = -1;
 static s32 __aes_hid = -1;
 
-static s32 AES_ExecuteCommand(s32 command, const void* key, u32 key_size, const void* iv, u32 iv_size, const void* in_data, void* out_data, u32 data_size)
+static s32 AES_ExecuteCommand(s32 command, const void* key, u32 key_size, void* iv, u32 iv_size, const void* in_data, void* out_data, u32 data_size)
 {
+	if ((((u32)in_data | (u32)out_data) & 0xF) != 0)
+		return -4;
+
+	if (key_size != 16 || iv_size != 16 || (data_size & 15) != 0)
+		return -4;
+
 	ioctlv* params = (ioctlv*)iosAlloc(__aes_hid, sizeof(ioctlv) * 4);
-	void* tmpiv = iosAlloc(__aes_hid, iv_size);
-	if (!params || !tmpiv)
+	if (!params)
 		return -1;
 
-	memcpy(tmpiv, iv, iv_size);
-	
 	s32 ret = -1;
 	for (u32 i = 0; i < data_size; i += AES_BLOCK_SIZE) {
 		u32 size = i+AES_BLOCK_SIZE >= data_size
-            ? data_size - i
-            : AES_BLOCK_SIZE;
+			? data_size - i
+			: AES_BLOCK_SIZE;
 
 		params[0].data	= (void*)((u32)in_data + i);
 		params[0].len	= size;
@@ -63,7 +66,7 @@ static s32 AES_ExecuteCommand(s32 command, const void* key, u32 key_size, const 
 		params[1].len	= key_size;
 		params[2].data	= (void*)((u32)out_data + i);
 		params[2].len	= size;
-		params[3].data	= tmpiv;
+		params[3].data	= iv;
 		params[3].len	= iv_size;
 
 		ret = IOS_Ioctlv(__aes_fd, command, 2, 2, params);
@@ -71,7 +74,6 @@ static s32 AES_ExecuteCommand(s32 command, const void* key, u32 key_size, const 
 			break;
 	}
 
-	iosFree(__aes_hid, tmpiv);
 	iosFree(__aes_hid, params);
 	return ret;
 }
@@ -85,11 +87,11 @@ s32 AES_Init(void)
 	if (__aes_fd < 0)
 		return __aes_fd;
 
-	//only create heap if it wasn't created yet. 
+	//only create heap if it wasn't created yet.
 	//its never disposed, so only create once.
 	if(__aes_hid < 0)
 		__aes_hid = iosCreateHeap(AES_HEAPSIZE);
-	
+
 	if (__aes_hid < 0) {
 		AES_Close();
 		return __aes_hid;
@@ -109,25 +111,13 @@ s32 AES_Close(void)
 	return 0;
 }
 
-s32 AES_Encrypt(const void* key, u32 key_size, const void* iv, u32 iv_size, const void* in_data, void* out_data, u32 data_size)
+s32 AES_Encrypt(const void* key, u32 key_size, void* iv, u32 iv_size, const void* in_data, void* out_data, u32 data_size)
 {
-	if(((u32)in_data & 0x1f) != 0 || ((u32)out_data & 0x1f) != 0)
-		return -4;
-	
-	if (key_size != 16 || iv_size != 16 || (data_size & 15) != 0)
-		return -4;
-
 	return AES_ExecuteCommand(AES_IOCTLV_ENCRYPT, key, key_size, iv, iv_size, in_data, out_data, data_size);
 }
 
-s32 AES_Decrypt(const void* key, u32 key_size, const void* iv, u32 iv_size, const void* in_data, void* out_data, u32 data_size)
+s32 AES_Decrypt(const void* key, u32 key_size, void* iv, u32 iv_size, const void* in_data, void* out_data, u32 data_size)
 {
-	if(((u32)in_data & 0x1f) != 0 || ((u32)out_data & 0x1f) != 0)
-		return -4;
-	
-    if (key_size != 16 || iv_size != 16 || (data_size & 15) != 0)
-		return -4;
-
 	return AES_ExecuteCommand(AES_IOCTLV_DECRYPT, key, key_size, iv, iv_size, in_data, out_data, data_size);
 }
 
