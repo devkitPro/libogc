@@ -234,6 +234,7 @@ static u8 _net_error_code_map[] = {
  	ETIMEDOUT,
 };
 
+static const s32 maxblocksize = (NET_HEAP_SIZE/2);
 static volatile bool _init_busy = false;
 static volatile bool _init_abort = false;
 static vs32 _last_init_result = -ENETDOWN;
@@ -890,34 +891,49 @@ s32 net_sendto(s32 s, const void *data, s32 len, u32 flags, struct sockaddr *to,
 
 	if (net_ip_top_fd < 0) return -ENXIO;
 	if (tolen > 28) return -EOVERFLOW;
-
-	message_buf = net_malloc(len);
+	
+	s32 blockSize = len > maxblocksize ? maxblocksize : len;
+	message_buf = net_malloc(blockSize);
 	if (message_buf == NULL) {
-		debug_printf("net_send: failed to alloc %d bytes\n", len);
+		debug_printf("net_send: failed to alloc %d bytes\n", blockSize);
 		return IPC_ENOMEM;
 	}
+	
+	for(ret = 0; ret < len;)
+	{
+		blockSize = len - ret;
+		if(blockSize > maxblocksize)
+			blockSize = maxblocksize;
+		
+		debug_printf("net_sendto(%d, %p, %d, %d, %p, %d)\n", s, data+ret, blockSize, flags, to, tolen);
+		if (to && to->sa_len != tolen) {
+			debug_printf("warning: to->sa_len was %d, setting to %d\n",	to->sa_len, tolen);
+			to->sa_len = tolen;
+		}
+		
+		memset(params, 0, sizeof(struct sendto_params));
+		memcpy(message_buf, data+ret, blockSize);   // ensure message buf is aligned
+		
+		params->socket = s;
+		params->flags = flags;
+		if (to) {
+			params->has_destaddr = 1;
+			memcpy(params->destaddr, to, to->sa_len);
+		} else {
+			params->has_destaddr = 0;
+		}
 
-	debug_printf("net_sendto(%d, %p, %d, %d, %p, %d)\n", s, data, len, flags, to, tolen);
-
-	if (to && to->sa_len != tolen) {
-		debug_printf("warning: to->sa_len was %d, setting to %d\n",	to->sa_len, tolen);
-		to->sa_len = tolen;
+		s32 sent = _net_convert_error(IOS_IoctlvFormat(__net_hid, net_ip_top_fd, IOCTLV_SO_SENDTO, "dd:", message_buf, blockSize, params, sizeof(struct sendto_params)));
+		debug_printf("net_send retuned %d\n", sent);
+		
+		if(sent <= 0)
+		{
+			ret = sent;
+			break;
+		}
+		
+		ret += sent;
 	}
-
-	memset(params, 0, sizeof(struct sendto_params));
-	memcpy(message_buf, data, len);   // ensure message buf is aligned
-
-	params->socket = s;
-	params->flags = flags;
-	if (to) {
-		params->has_destaddr = 1;
-		memcpy(params->destaddr, to, to->sa_len);
-	} else {
-		params->has_destaddr = 0;
-	}
-
-	ret = _net_convert_error(IOS_IoctlvFormat(__net_hid, net_ip_top_fd, IOCTLV_SO_SENDTO, "dd:", message_buf, len, params, sizeof(struct sendto_params)));
-	debug_printf("net_send retuned %d\n", ret);
 
 	if(message_buf!=NULL) net_free(message_buf);
 	return ret;
@@ -941,35 +957,56 @@ s32 net_recvfrom(s32 s, void *mem, s32 len, u32 flags, struct sockaddr *from, so
 		debug_printf("warning: from->sa_len was %d, setting to %d\n",from->sa_len, *fromlen);
 		from->sa_len = *fromlen;
 	}
-
-	message_buf = net_malloc(len);
+	
+	s32 blockSize = len > maxblocksize ? maxblocksize : len;
+	message_buf = net_malloc(blockSize);
 	if (message_buf == NULL) {
-    	debug_printf("SORecv: failed to alloc %d bytes\n", len);
+		debug_printf("SORecv: failed to alloc %d bytes\n", blockSize);
 		return IPC_ENOMEM;
 	}
+	
+	for(ret = 0; ret < len;)
+	{
+		blockSize = len - ret;
+		if(blockSize > maxblocksize)
+			blockSize = maxblocksize;
 
-	debug_printf("net_recvfrom(%d, '%s', %d, %d, %p, %d)\n", s, (char *)mem, len, flags, from, fromlen?*fromlen:0);
+		debug_printf("net_recvfrom(%d, '%s', %d, %d, %p, %d)\n", s, (char *)mem, blockSize, flags, from, fromlen?*fromlen:0);
 
-	memset(message_buf, 0, len);
-	params[0] = s;
-	params[1] = flags;
+		memset(message_buf, 0, blockSize);
+		params[0] = s;
+		params[1] = flags;
 
-	ret = _net_convert_error(IOS_IoctlvFormat(__net_hid, net_ip_top_fd, IOCTLV_SO_RECVFROM,	"d:dd", params, 8, message_buf, len, from, (fromlen?*fromlen:0)));
-	debug_printf("net_recvfrom returned %d\n", ret);
-
-	if (ret > 0) {
-		if (ret > len) {
-			ret = -EOVERFLOW;
-			goto done;
+		s32 received = _net_convert_error(IOS_IoctlvFormat(__net_hid, net_ip_top_fd, IOCTLV_SO_RECVFROM,	"d:dd", params, 8, message_buf, blockSize, from, (fromlen?*fromlen:0)));
+		debug_printf("net_recvfrom returned %d\n", received);
+		
+		//connection closed(0) or error(<0)
+		if(received <= 0)
+		{
+			if (fromlen && from) *fromlen = from->sa_len;
+			ret = received;
+			break;
 		}
-
-		memcpy(mem, message_buf, ret);
+		
+		//well something went wrong lol
+		if(received > blockSize)
+		{
+			ret = -EOVERFLOW;
+			break;
+		}
+		
+		if (fromlen && from) *fromlen = from->sa_len;	
+		memcpy(mem+ret, message_buf, received);
+		ret += received;
+		
+		//we got a partial read, so we break and report the partial read
+		if(received != blockSize)
+			break;
 	}
-
-	if (fromlen && from) *fromlen = from->sa_len;
-
-done:
-	if(message_buf!=NULL) net_free(message_buf);
+	
+	if(message_buf!=NULL) 
+		net_free(message_buf);
+	
 	return ret;
 }
 
