@@ -49,7 +49,7 @@ typedef struct _arqm_info {
 	u32 aram_start;
 	u32 curr_read_offset;
 	u32 curr_aram_offset;
-	volatile BOOL polled;
+	volatile bool polled;
 } ARQM_Info;
 
 static u32 __ARQMStackLocation;
@@ -70,7 +70,7 @@ static void __ARQMPollCallback(ARQRequest *req)
 	if(i>=ARQM_STACKENTRIES) return;
 
 	ptr->callback = NULL;
-	ptr->polled = TRUE;
+	ptr->polled = true;
 }
 
 void ARQM_Init(u32 arambase,s32 len)
@@ -100,7 +100,7 @@ u32 ARQM_PushData(void *buffer,s32 len)
 		ptr = &__ARQMInfo[__ARQMStackLocation];
 		
 		_CPU_ISR_Disable(level);
-		ptr->polled = FALSE;
+		ptr->polled = false;
 		ptr->aram_start = __ARQMStackPointer[__ARQMStackLocation++];
 		__ARQMStackPointer[__ARQMStackLocation] = ptr->aram_start+rlen;
 		__ARQMFreeBytes -= rlen;
@@ -108,7 +108,7 @@ u32 ARQM_PushData(void *buffer,s32 len)
 		ARQ_PostRequestAsync(&ptr->arqhandle,__ARQMStackLocation-1,ARQ_MRAMTOARAM,ARQ_PRIO_HI,ptr->aram_start,(u32)buffer,rlen,__ARQMPollCallback);
 		_CPU_ISR_Restore(level);
 
-		while(ptr->polled==FALSE);
+		while(ptr->polled==false);
 		return (ptr->aram_start);
 	}
 	return 0;

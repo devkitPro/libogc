@@ -121,7 +121,7 @@ void LCAlloc(void *addr,u32 bytes)
 		__LCEnable();
 		_CPU_ISR_Restore(level);
 	}
-	LCAllocTags(TRUE,addr,cnt);
+	LCAllocTags(true,addr,cnt);
 }
 
 void LCAllocNoInvalidate(void *addr,u32 bytes)
@@ -135,7 +135,7 @@ void LCAllocNoInvalidate(void *addr,u32 bytes)
 		__LCEnable();
 		_CPU_ISR_Restore(level);
 	}
-	LCAllocTags(FALSE,addr,cnt);
+	LCAllocTags(true,addr,cnt);
 }
 #ifdef HW_RVL
 void L2Enhance(void)
