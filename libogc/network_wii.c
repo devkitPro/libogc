@@ -70,6 +70,8 @@ distribution.
 
 #define NET_UNKNOWN_ERROR_OFFSET	-10000
 
+#define IOCTLV_SO_GETINTERFACEOPT_LEVEL 0x0000FFFE;
+
 enum {
 	IOCTL_SO_ACCEPT	= 1,
 	IOCTL_SO_BIND,
@@ -98,7 +100,7 @@ enum {
 	IOCTL_SO_SOCKATMARK,   // todo
 	IOCTLV_SO_UNK1A,       // todo
 	IOCTLV_SO_UNK1B,       // todo
-	IOCTLV_SO_GETINTERFACEOPT, // todo
+	IOCTLV_SO_GETINTERFACEOPT,
 	IOCTLV_SO_SETINTERFACEOPT, // todo
 	IOCTL_SO_SETINTERFACE,     // todo
 	IOCTL_SO_STARTUP,           // 0x1f
@@ -106,6 +108,14 @@ enum {
 	IOCTLV_SO_ICMPPING,         // todo
 	IOCTL_SO_ICMPCANCEL,        // todo
 	IOCTL_SO_ICMPCLOSE          // todo
+};
+
+enum {
+	SO_GETINTERFACEOPT_MAC 			= 0x1004,
+	SO_GETINTERFACEOPT_LINKSTATE 	= 0x1005,
+	SO_GETINTERFACEOPT_IPCONFIG		= 0x4003,
+	SO_GETINTERFACEOPT_ROUTING_SIZE = 0x4005,
+	SO_GETINTERFACEOPT_ROUTING		= 0x4006,
 };
 
 struct init_data {
@@ -150,6 +160,25 @@ struct setsockopt_params {
 	u32 optname;
 	u32 optlen;
 	u8 optval[20];
+};
+
+struct getinterfaceopt_params {
+	u32 magic;
+	u32 option;
+};
+
+struct getinterfaceopt_ipconfig{
+	u32 inet;
+	u32 subnetMask;
+	u32 broadcastIp;
+};
+
+struct getinterfaceopt_iproute{
+	u32 destination;
+	u32 netmask;
+	u32 gateway;
+	u32 flags;
+	u64 ticks;
 };
 
 // 0 means we don't know what this error code means
@@ -1169,11 +1198,16 @@ s32 net_poll(struct pollsd *sds,s32 nsds,s32 timeout)
 	return ret;
 }
 
-s32 if_config(char *local_ip, char *netmask, char *gateway,bool use_dhcp, int max_retries)
+s32 if_configex(struct in_addr *local_ip, struct in_addr *netmask, struct in_addr *gateway, bool use_dhcp, int max_retries)
 {
 	s32 i,ret;
-	struct in_addr hostip;
-
+	const u32 ipconfig_size = sizeof(struct getinterfaceopt_ipconfig);
+	STACK_ALIGN(ioctlv, vectors, sizeof(ioctlv)*3, 32);
+	STACK_ALIGN(struct getinterfaceopt_params, params, sizeof(struct getinterfaceopt_params), 32);
+	STACK_ALIGN(struct getinterfaceopt_ipconfig, ipconfig, ipconfig_size, 32);
+	static u32 response __attribute__((aligned(32)));
+	static u32 table_size __attribute__((aligned(32)));
+	
 	if (!use_dhcp)
 		return -EINVAL;
 
@@ -1188,43 +1222,100 @@ s32 if_config(char *local_ip, char *netmask, char *gateway,bool use_dhcp, int ma
 
 	if (ret < 0)
 		return ret;
-
-	hostip.s_addr = net_gethostip();
-	if (local_ip && hostip.s_addr) {
-		strcpy(local_ip, inet_ntoa(hostip));
+	
+	//setup input vectors
+	memset(ipconfig, 0, ipconfig_size);
+	params->magic = IOCTLV_SO_GETINTERFACEOPT_LEVEL;
+	params->option = SO_GETINTERFACEOPT_IPCONFIG;
+	response = ipconfig_size;
+	vectors[0].data = params;
+	vectors[0].len = sizeof(struct getinterfaceopt_params);
+	
+	vectors[1].data = ipconfig;
+	vectors[1].len = ipconfig_size;
+	
+	vectors[2].data = &response;
+	vectors[2].len = sizeof(u32);;
+	
+	ret = IOS_Ioctlv(net_ip_top_fd, IOCTLV_SO_GETINTERFACEOPT, 1, 2, vectors);
+	if(ret < 0)
+		return _net_convert_error(ret);
+	
+	if(local_ip)
+		local_ip->s_addr = ipconfig->inet;
+	
+	if(netmask)
+		netmask->s_addr = ipconfig->subnetMask;
+	
+	if(!gateway)
+		return 0;
+	
+	//retrieve gateway from the ip routing table
+	params->option = SO_GETINTERFACEOPT_ROUTING_SIZE;
+	response = sizeof(u32);
+	
+	vectors[1].data = &table_size;
+	vectors[1].len = sizeof(u32);;
+	
+	ret = IOS_Ioctlv(net_ip_top_fd, IOCTLV_SO_GETINTERFACEOPT, 1, 2, vectors);
+	if(ret < 0)
+	{
+		debug_printf("failed to get the routing table size: %d\n", ret);
+		return _net_convert_error(ret);
+	}
+	
+	params->option = SO_GETINTERFACEOPT_ROUTING;
+	const u32 memory_size = table_size * sizeof(struct getinterfaceopt_iproute);
+	response = memory_size;	
+	struct getinterfaceopt_iproute* routing_tables = (struct getinterfaceopt_iproute*)net_malloc(memory_size);
+	if(routing_tables == NULL)
+	{
+		debug_printf("failed to malloc routing tables\n");
+		return IPC_ENOMEM;
+	}
+	
+	memset(routing_tables, 0, memory_size);
+	vectors[1].data = routing_tables;
+	vectors[1].len = memory_size;
+	
+	ret = IOS_Ioctlv(net_ip_top_fd, 28, 1, 2, vectors);
+	if(ret < 0)
+	{
+		debug_printf("failed to get the routing table: %d\n", ret);
+		net_free(routing_tables);
+		return _net_convert_error(ret);
+	}
+	
+	DCFlushRange(routing_tables, memory_size);
+	for(i = 0; i < table_size;i++)
+	{
+		if(routing_tables[i].destination != 0 || routing_tables[i].netmask != 0 || (routing_tables[i].flags & 1) != 1)
+			continue;
+		
+		gateway->s_addr = routing_tables[i].gateway;
+		net_free(routing_tables);
 		return 0;
 	}
-
+	
+	net_free(routing_tables);
 	return -1;
 }
 
-s32 if_configex(struct in_addr *local_ip, struct in_addr *netmask, struct in_addr *gateway,bool use_dhcp, int max_retries)
+s32 if_config(char *local_ip, char *netmask, char *gateway, bool use_dhcp, int max_retries)
 {
-	s32 i,ret;
-	struct in_addr hostip;
-
-	if (!use_dhcp)
-		return -EINVAL;
-
-	for (i = 0; i < MAX_INIT_RETRIES; ++i) {
-		ret = net_init();
-
-		if ((ret != -EAGAIN) && (ret != -ETIMEDOUT))
-			break;
-
-		usleep(50 * 1000);
-	}
-
-	if (ret < 0)
+	struct in_addr hostip, hostnetmask, hostgateway;
+	s32 ret = if_configex(&hostip, &hostnetmask, gateway == NULL ? NULL : &hostgateway, use_dhcp, max_retries);
+	if(ret < 0)
 		return ret;
-
-	hostip.s_addr = net_gethostip();
-	if (local_ip && hostip.s_addr) {
-		*local_ip = hostip;
-		return 0;
-	}
-
-	return -1;
+	
+	if(local_ip && hostip.s_addr)
+		strcpy(local_ip, inet_ntoa(hostip));
+	if(netmask && hostnetmask.s_addr)
+		strcpy(netmask, inet_ntoa(hostnetmask));
+	if(gateway && hostgateway.s_addr)
+		strcpy(gateway, inet_ntoa(hostgateway));
+	
+	return ret;
 }
 
 #endif /* defined(HW_RVL) */
