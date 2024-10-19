@@ -275,7 +275,7 @@ static void __exi_wait(s32 drv_no)
 
 static s32 __card_exthandler(s32 chn,s32 dev)
 {
-	_ioCardInserted[chn] = FALSE;
+	_ioCardInserted[chn] = false;
 	_ioFlag[chn] = NOT_INITIALIZED;
 	sdgecko_ejectedCB(chn);
 	return 1;
@@ -1142,22 +1142,22 @@ static bool __card_check(s32 drv_no)
 {
 	s32 ret;
 	
-	if(drv_no<0 || drv_no>=MAX_DRIVE) return FALSE;
+	if(drv_no<0 || drv_no>=MAX_DRIVE) return false;
 #ifdef _CARDIO_DEBUG	
 	printf("__card_check(%d)\n",drv_no);
 #endif
-	if(drv_no==2) return TRUE;
+	if(drv_no==2) return true;
 	while((ret=EXI_ProbeEx(drv_no))==0);
-	if(ret!=1) return FALSE;
+	if(ret!=1) return false;
 
 	if(!(EXI_GetState(drv_no)&EXI_FLAG_ATTACH)) {
-		if(EXI_Attach(drv_no,__card_exthandler)==0) return FALSE;
+		if(EXI_Attach(drv_no,__card_exthandler)==0) return false;
 #ifdef _CARDIO_DEBUG	
 		printf("__card_check(%d, attached)\n",drv_no);
 #endif
 		sdgecko_insertedCB(drv_no);
 	}
-	return TRUE;
+	return true;
 }
 
 static s32 __card_retrycb(s32 drv_no)
@@ -1196,7 +1196,7 @@ void sdgecko_initIODefault(void)
 	for(i=0;i<MAX_DRIVE;++i) {
 		_ioRetryCnt = 0;
 		_ioError[i] = 0;
-		_ioCardInserted[i] = FALSE;
+		_ioCardInserted[i] = false;
 		_ioFlag[i] = NOT_INITIALIZED;
 		_ioAddressingType[i] = CARD_IO_BYTE_ADDRESSING;
 		_initType[i] = TYPE_SD;
@@ -1220,7 +1220,7 @@ s32 sdgecko_initIO(s32 drv_no)
 	
 	_ioCardInserted[drv_no] = __card_check(drv_no);
 
-	if(_ioCardInserted[drv_no]==TRUE) {
+	if(_ioCardInserted[drv_no]==true) {
 		_ioWPFlag = 0;
 		_ioCardFreq[drv_no] = EXI_SPEED16MHZ;
 		_initType[drv_no] = TYPE_SD;
@@ -1420,8 +1420,8 @@ s32 sdgecko_doUnmount(s32 drv_no)
 {
 	if(drv_no<0 || drv_no>=MAX_DRIVE) return CARDIO_ERROR_NOCARD;
 
-	if(_ioCardInserted[drv_no]==TRUE) {
-		_ioCardInserted[drv_no] = FALSE;
+	if(_ioCardInserted[drv_no]==true) {
+		_ioCardInserted[drv_no] = false;
 		_ioFlag[drv_no] = NOT_INITIALIZED;
 		if(drv_no!=2) EXI_Detach(drv_no);
 		sdgecko_ejectedCB(drv_no);

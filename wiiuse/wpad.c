@@ -120,7 +120,7 @@ static sys_resetinfo __wpad_resetinfo = {
 static s32 __wpad_onreset(s32 final)
 {
 	//printf("__wpad_onreset(%d)\n",final);
-	if(final==FALSE) {
+	if(final==false) {
 		WPAD_Shutdown();
 	}
 	return 1;
