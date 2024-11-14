@@ -2566,7 +2566,7 @@ void GX_SetTevOp(u8 tevstage,u8 mode);
  *
  * \note This function can only set unsigned 8-bit colors. To set signed, 10-bit colors use GX_SetTevColorS10().
  *
- * \param[in] tev_regid \ref tevcoloutreg.
+ * \param[in] tev_regid \ref tevcoloutreg. Only GX_TEVREG0, GX_TEVREG1 and GX_TEVREG2 are supported.
  * \param[in] color Constant color value.
  *
  * \return none
@@ -2582,7 +2582,7 @@ void GX_SetTevColor(u8 tev_regid,GXColor color);
  *
  * \note This function enables the color components to be signed 10-bit numbers. To set 8-bit unsigned colors (the common case), use GX_SetTevColor().
  *
- * \param[in] tev_regid \ref tevcoloutreg.
+ * \param[in] tev_regid \ref tevcoloutreg. Only GX_TEVREG0, GX_TEVREG1 and GX_TEVREG2 are supported.
  * \param[in] color Constant color value in S10 format.
  *
  * \return none
