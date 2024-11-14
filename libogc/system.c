@@ -33,7 +33,7 @@ distribution.
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
-
+#include <reent.h>
 #include <malloc.h>
 #include <time.h>
 #include <sys/iosupport.h>
