@@ -2566,7 +2566,7 @@ void GX_SetTevOp(u8 tevstage,u8 mode);
  *
  * \note This function can only set unsigned 8-bit colors. To set signed, 10-bit colors use GX_SetTevColorS10().
  *
- * \param[in] tev_regid \ref tevcoloutreg.
+ * \param[in] tev_regid \ref tevcoloutreg. Only GX_TEVREG0, GX_TEVREG1 and GX_TEVREG2 are supported.
  * \param[in] color Constant color value.
  *
  * \return none
@@ -2582,7 +2582,7 @@ void GX_SetTevColor(u8 tev_regid,GXColor color);
  *
  * \note This function enables the color components to be signed 10-bit numbers. To set 8-bit unsigned colors (the common case), use GX_SetTevColor().
  *
- * \param[in] tev_regid \ref tevcoloutreg.
+ * \param[in] tev_regid \ref tevcoloutreg. Only GX_TEVREG0, GX_TEVREG1 and GX_TEVREG2 are supported.
  * \param[in] color Constant color value in S10 format.
  *
  * \return none
@@ -3035,7 +3035,7 @@ void GX_SetNumChans(u8 num);
  * available for all the active TEV stages is set using GX_SetNumChans(). Active TEV stages should not reference more texture coordinates or colors
  * than are being generated.<br><br>
  *
- * \note There are some special settings for the \a color argument. If you specify <tt>GX_COLOR_ZERO</tt>, you always get zero as rasterized color. If you specify
+ * \note There are some special settings for the \a color argument. If you specify <tt>GX_COLORZERO</tt>, you always get zero as rasterized color. If you specify
  * <tt>GX_ALPHA_BUMP</tt> or <tt>GX_ALPHA_BUMPN</tt>, you can use "Bump alpha" component from indirect texture unit as rasterized color input (see GX_SetTevIndirect()
  * for details about how to configure bump alpha). Since bump alpha contains only 5-bit data, <tt>GX_ALPHA_BUMP</tt> shifts them to higher bits, which makes the
  * value range 0-248. Meanwhile <tt>GX_ALPHA_BUMPN</tt> performs normalization and you can get the value range 0-255.
@@ -3156,7 +3156,7 @@ void GX_SetTevKAlphaSel(u8 tevstage,u8 sel);
  *
  * \note This function takes 10-bit signed values as color values; use GX_SetTevColor() to give 8-bit values.
  *
- * \param[in] sel \ref tevcoloutreg
+ * \param[in] sel \ref tevkcolorid
  * \param[in] col constant color value
  *
  * \return none
