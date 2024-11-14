@@ -3035,7 +3035,7 @@ void GX_SetNumChans(u8 num);
  * available for all the active TEV stages is set using GX_SetNumChans(). Active TEV stages should not reference more texture coordinates or colors
  * than are being generated.<br><br>
  *
- * \note There are some special settings for the \a color argument. If you specify <tt>GX_COLOR_ZERO</tt>, you always get zero as rasterized color. If you specify
+ * \note There are some special settings for the \a color argument. If you specify <tt>GX_COLORZERO</tt>, you always get zero as rasterized color. If you specify
  * <tt>GX_ALPHA_BUMP</tt> or <tt>GX_ALPHA_BUMPN</tt>, you can use "Bump alpha" component from indirect texture unit as rasterized color input (see GX_SetTevIndirect()
  * for details about how to configure bump alpha). Since bump alpha contains only 5-bit data, <tt>GX_ALPHA_BUMP</tt> shifts them to higher bits, which makes the
  * value range 0-248. Meanwhile <tt>GX_ALPHA_BUMPN</tt> performs normalization and you can get the value range 0-255.
