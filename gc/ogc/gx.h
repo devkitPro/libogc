@@ -3156,7 +3156,7 @@ void GX_SetTevKAlphaSel(u8 tevstage,u8 sel);
  *
  * \note This function takes 10-bit signed values as color values; use GX_SetTevColor() to give 8-bit values.
  *
- * \param[in] sel \ref tevcoloutreg
+ * \param[in] sel \ref tevkcolorid
  * \param[in] col constant color value
  *
  * \return none
