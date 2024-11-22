@@ -1624,6 +1624,7 @@ static VIRetraceCallback postRetraceCB = NULL;
 static VIPositionCallback positionCB = NULL;
 
 static vu16* const _viReg = (u16*)0xCC002000;
+static const u32 _videoMode = 0x800000CC;
 
 extern syssram* __SYS_LockSram(void);
 extern u32 __SYS_UnlockSram(u32 write);
@@ -2691,6 +2692,10 @@ void VIDEO_Configure(GXRModeObj *rmode)
 #ifdef _VIDEO_DEBUG
 	printDebugCalculations();
 #endif
+
+	// set video mode register
+	write32(_videoMode, VI_TVMODE_FMT(rmode->viTVMode));
+
 	_CPU_ISR_Restore(level);
 }
 
