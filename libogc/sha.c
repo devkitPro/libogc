@@ -151,7 +151,7 @@ s32 SHA_Input(sha_context* context, const void* data, const u32 data_size)
 	if(context == NULL || data == NULL || data_size == 0)
 		return -1;
 	
-	if((((u32)context) & 0x1F) || (((u32)data) & 0x3F) || (data_size & ~(SHA_MSGBLOCK_SIZE-1)) != 0)
+	if((((u32)context) & 0x1F) || (((u32)data) & 0x3F))
 		return -4;
 	
 	return SHA_ExecuteCommand(AddData, context, data, data_size, NULL);
