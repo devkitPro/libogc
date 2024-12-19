@@ -49,12 +49,11 @@ typedef struct
 
 s32 SHA_Init(void);
 s32 SHA_Close(void);
+s32 SHA_Calculate(const void* data, const u32 data_size, void* message_digest);
+
 s32 SHA_InitializeContext(sha_context* context);
-
-//calculate hash or add data manually - input data should *always* be 64bit aligned!
-s32 SHA_Calculate(sha_context* context, const void* data, const u32 data_size, void* message_digest);
 s32 SHA_Input(sha_context* context, const void* data, const u32 data_size);
-
+s32 SHA_Finalize(sha_context* context, const void* data, const u32 data_size, void* message_digest);
 
 #ifdef __cplusplus
 	}
