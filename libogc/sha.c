@@ -27,6 +27,7 @@ distribution.
 -------------------------------------------------------------*/
 #if defined(HW_RVL)
 
+#include <malloc.h>
 #include <string.h>
 #include "gctypes.h"
 #include "gcutil.h"
@@ -48,11 +49,29 @@ static s32 SHA_ExecuteCommand(const ShaCommand command, sha_context* context, co
 {
 	ioctlv* params = (ioctlv*)iosAlloc(__sha_hid, sizeof(ioctlv) * 3);
 	s32 ret = -1;
+	void* buffer = NULL;
 	
 	if(params == NULL)
 		return -4;
 	
-	for (u32 i = 0; i < data_size; i += SHA_MSGBLOCK_SIZE) {
+	//if data is not 64-byte aligned, and not in mem1, we allocate a buffer to contain the data
+	if(((u32)in_data & 0x1000003F) != 0)
+	{
+		buffer = memalign(64, SHA_MSGBLOCK_SIZE);
+		if(buffer == NULL)
+			return -5;
+	}
+
+	const void* in_buffer = buffer == NULL ? in_data : buffer;
+
+	params[0].data	= (void*)(in_buffer);
+	params[1].data	= (void*) context;
+	params[1].len	= sizeof(sha_context);
+	params[2].data = out_data;
+	params[2].len  = 0x14;
+
+	for (u32 i = 0; i < data_size; i += SHA_MSGBLOCK_SIZE) 
+	{
 		u32 size = SHA_MSGBLOCK_SIZE;
 		ShaCommand block_cmd = command;
 		
@@ -63,18 +82,22 @@ static s32 SHA_ExecuteCommand(const ShaCommand command, sha_context* context, co
 		else if(command == FinalizeHash)
 			block_cmd = AddData;
 
-		params[0].data	= (void*)((u32)in_data + i);
-		params[0].len	= size;
-		params[1].data	= (void*) context;
-		params[1].len	= sizeof(sha_context);
-		params[2].data	= (void*)((u32)out_data);
-		params[2].len	= 0x14;
+		//copy data to 64-byte aligned buffer and set the data size
+		if(buffer)
+		{
+			memset(buffer, 0, SHA_MSGBLOCK_SIZE);
+			memcpy(buffer, (void*)((u32)in_data + i), size);
+		}
+		
+		params[0].len = size;
 
 		ret = IOS_Ioctlv(__sha_fd, block_cmd, 1, 2, params);
 		if (ret < 0)
 			break;
 	}
 
+	if(buffer)
+		free(buffer);
 	iosFree(__sha_hid, params);
 	return ret;
 }
@@ -140,9 +163,6 @@ s32 SHA_Calculate(sha_context* context, const void* data, const u32 data_size, v
 	if(((u32)context & 0x1F) != 0 || ((u32)message_digest & 0x1F) != 0)
 		return -4;
 	
-	if( data != NULL && ((u32)data & 0x3F) != 0)
-		return -4;
-	
 	return SHA_ExecuteCommand(FinalizeHash, context, data, data_size, message_digest);
 }
 
@@ -151,7 +171,7 @@ s32 SHA_Input(sha_context* context, const void* data, const u32 data_size)
 	if(context == NULL || data == NULL || data_size == 0)
 		return -1;
 	
-	if((((u32)context) & 0x1F) || (((u32)data) & 0x3F))
+	if(((u32)context) & 0x1F)
 		return -4;
 	
 	return SHA_ExecuteCommand(AddData, context, data, data_size, NULL);
