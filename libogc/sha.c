@@ -147,16 +147,6 @@ s32 SHA_InitializeContext(sha_context* context)
 	iosFree(__sha_hid, params);
 	return ret;
 }
-s32 SHA_Calculate(sha_context* context, const void* data, const u32 data_size, void* message_digest)
-{
-	if(context == NULL || message_digest == NULL || data_size == 0 || data == NULL)
-		return -1;
-	
-	if(((u32)context & 0x1F) != 0 || ((u32)message_digest & 0x1F) != 0)
-		return -4;
-	
-	return SHA_ExecuteCommand(FinalizeHash, context, data, data_size, message_digest);
-}
 
 s32 SHA_Input(sha_context* context, const void* data, const u32 data_size)
 {
@@ -167,6 +157,27 @@ s32 SHA_Input(sha_context* context, const void* data, const u32 data_size)
 		return -4;
 	
 	return SHA_ExecuteCommand(AddData, context, data, data_size, NULL);
+}
+
+s32 SHA_Finalize(sha_context* context, const void* data, const u32 data_size, void* message_digest)
+{
+	if(context == NULL || message_digest == NULL || data_size == 0 || data == NULL)
+		return -1;
+	
+	if(((u32)context & 0x1F) != 0 || ((u32)message_digest & 0x1F) != 0)
+		return -4;
+	
+	return SHA_ExecuteCommand(FinalizeHash, context, data, data_size, message_digest);
+}
+
+s32 SHA_Calculate(const void* data, const u32 data_size, void* message_digest)
+{
+	sha_context context ATTRIBUTE_ALIGN(32);
+	s32 ret = SHA_InitializeContext(&context);
+	if(ret < 0)
+		return ret;
+
+	return SHA_Finalize(&context, data, data_size, message_digest);
 }
 
 #endif
