@@ -27,6 +27,7 @@ distribution.
 -------------------------------------------------------------*/
 #if defined(HW_RVL)
 
+#include <malloc.h>
 #include <string.h>
 #include "gctypes.h"
 #include "gcutil.h"
@@ -44,35 +45,49 @@ typedef enum
 	FinalizeHash = 0x02,
 } ShaCommand;
 
-static s32 SHA_ExecuteCommand(const ShaCommand command, sha_context* context, const void* in_data, const u32 data_size, void* out_data)
+static s32 SHA_ExecuteCommand(const ShaCommand command, const sha_context* context, const void* in_data, const u32 data_size, void* out_data)
 {
 	ioctlv* params = (ioctlv*)iosAlloc(__sha_hid, sizeof(ioctlv) * 3);
-	s32 ret = -1;
-	
 	if(params == NULL)
-		return -4;
+		return -5;
 	
-	for (u32 i = 0; i < data_size; i += SHA_MSGBLOCK_SIZE) {
-		u32 size = SHA_MSGBLOCK_SIZE;
+	params[1].data = (void*) context;
+	params[1].len  = sizeof(sha_context);
+	params[2].data = out_data;
+	params[2].len  = 0x14;
+
+	u8 buffer[0x1000] ATTRIBUTE_ALIGN(64);
+	s32 ret = -1;
+	//if data is not 64-byte aligned we allocate a buffer to contain the data
+	bool isAlignedInput = ((u32)in_data & 0x3F) == 0;
+
+	for (u32 i = 0; i < data_size;) 
+	{
+		const void* input = in_data + i;
+		u32 size = isAlignedInput ? SHA_MSGBLOCK_SIZE : sizeof(buffer);
 		ShaCommand block_cmd = command;
-		
+
 		//if it's the final block, set size correctly.
 		//if it's not the final block, and we got a finalize, we will first send the add command
-		if(i+SHA_MSGBLOCK_SIZE >= data_size)
+		if(i+size >= data_size)
 			size = data_size - i;
 		else if(command == FinalizeHash)
 			block_cmd = AddData;
 
-		params[0].data	= (void*)((u32)in_data + i);
-		params[0].len	= size;
-		params[1].data	= (void*) context;
-		params[1].len	= sizeof(sha_context);
-		params[2].data	= (void*)((u32)out_data);
-		params[2].len	= 0x14;
+		if(!isAlignedInput)
+		{
+			input = buffer;
+			memcpy(buffer, in_data + i, size);
+		}
+
+		params[0].data = (void*)input;
+		params[0].len  = size;
 
 		ret = IOS_Ioctlv(__sha_fd, block_cmd, 1, 2, params);
 		if (ret < 0)
 			break;
+
+		i += size;
 	}
 
 	iosFree(__sha_hid, params);
@@ -112,7 +127,7 @@ s32 SHA_Close(void)
 	return 0;
 }
 
-s32 SHA_InitializeContext(sha_context* context)
+s32 SHA_InitializeContext(const sha_context* context)
 {
 	if(context == NULL)
 		return -1;
@@ -132,7 +147,20 @@ s32 SHA_InitializeContext(sha_context* context)
 	iosFree(__sha_hid, params);
 	return ret;
 }
-s32 SHA_Calculate(sha_context* context, const void* data, const u32 data_size, void* message_digest)
+
+s32 SHA_Input(const sha_context* context, const void* data, const u32 data_size)
+{
+	//when adding data, it should be in 64-byte blocks.
+	if(context == NULL || data == NULL || data_size == 0)
+		return -1;
+	
+	if(((u32)context) & 0x1F || data_size & 0x3F)
+		return -4;
+	
+	return SHA_ExecuteCommand(AddData, context, data, data_size, NULL);
+}
+
+s32 SHA_Finalize(const sha_context* context, const void* data, const u32 data_size, void* message_digest)
 {
 	if(context == NULL || message_digest == NULL || data_size == 0 || data == NULL)
 		return -1;
@@ -140,21 +168,17 @@ s32 SHA_Calculate(sha_context* context, const void* data, const u32 data_size, v
 	if(((u32)context & 0x1F) != 0 || ((u32)message_digest & 0x1F) != 0)
 		return -4;
 	
-	if( data != NULL && ((u32)data & 0x3F) != 0)
-		return -4;
-	
 	return SHA_ExecuteCommand(FinalizeHash, context, data, data_size, message_digest);
 }
 
-s32 SHA_Input(sha_context* context, const void* data, const u32 data_size)
+s32 SHA_Calculate(const void* data, const u32 data_size, void* message_digest)
 {
-	if(context == NULL || data == NULL || data_size == 0)
-		return -1;
-	
-	if((((u32)context) & 0x1F) || (((u32)data) & 0x3F))
-		return -4;
-	
-	return SHA_ExecuteCommand(AddData, context, data, data_size, NULL);
+	sha_context context ATTRIBUTE_ALIGN(32) = {0};
+	s32 ret = SHA_InitializeContext(&context);
+	if(ret < 0)
+		return ret;
+
+	return SHA_Finalize(&context, data, data_size, message_digest);
 }
 
 #endif
