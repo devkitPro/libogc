@@ -46,7 +46,7 @@ typedef enum
 } ShaCommand;
 static u8 input_buffer[0x1000] ATTRIBUTE_ALIGN(64);
 
-static s32 SHA_ExecuteCommand(const ShaCommand command, sha_context* context, const void* in_data, const u32 data_size, void* out_data)
+static s32 SHA_ExecuteCommand(const ShaCommand command, const sha_context* context, const void* in_data, const u32 data_size, void* out_data)
 {
 	ioctlv* params = (ioctlv*)iosAlloc(__sha_hid, sizeof(ioctlv) * 3);
 	if(params == NULL)
@@ -127,7 +127,7 @@ s32 SHA_Close(void)
 	return 0;
 }
 
-s32 SHA_InitializeContext(sha_context* context)
+s32 SHA_InitializeContext(const sha_context* context)
 {
 	if(context == NULL)
 		return -1;
@@ -148,18 +148,19 @@ s32 SHA_InitializeContext(sha_context* context)
 	return ret;
 }
 
-s32 SHA_Input(sha_context* context, const void* data, const u32 data_size)
+s32 SHA_Input(const sha_context* context, const void* data, const u32 data_size)
 {
+	//when adding data, it should be in 64-byte blocks.
 	if(context == NULL || data == NULL || data_size == 0)
 		return -1;
 	
-	if(((u32)context) & 0x1F)
+	if(((u32)context) & 0x1F || data_size & 0x3F)
 		return -4;
 	
 	return SHA_ExecuteCommand(AddData, context, data, data_size, NULL);
 }
 
-s32 SHA_Finalize(sha_context* context, const void* data, const u32 data_size, void* message_digest)
+s32 SHA_Finalize(const sha_context* context, const void* data, const u32 data_size, void* message_digest)
 {
 	if(context == NULL || message_digest == NULL || data_size == 0 || data == NULL)
 		return -1;
@@ -172,7 +173,7 @@ s32 SHA_Finalize(sha_context* context, const void* data, const u32 data_size, vo
 
 s32 SHA_Calculate(const void* data, const u32 data_size, void* message_digest)
 {
-	sha_context context ATTRIBUTE_ALIGN(32);
+	sha_context context ATTRIBUTE_ALIGN(32) = {0};
 	s32 ret = SHA_InitializeContext(&context);
 	if(ret < 0)
 		return ret;
