@@ -22,7 +22,7 @@
  <tr style="height: 56px;">
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">libogc
-   &#160;<span id="projectnumber">v2.9.0</span>
+   &#160;<span id="projectnumber">v2.10.0</span>
    </div>
   </td>
  </tr>
@@ -9868,7 +9868,7 @@ Since changing pixel format requires the pixel pipeline to be synchronized, the 
 <dl class="section note"><dt>Note</dt><dd>This function can only set unsigned 8-bit colors. To set signed, 10-bit colors use <a class="el" href="gx_8h.html#a88617d368456c990bf91d2ee9ce52128" title="Used to set one of the constant color registers in the TEV unit.">GX_SetTevColorS10()</a>.</dd></dl>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">tev_regid</td><td><a class="el" href="group__tevcoloutreg.html">TEV color/output register</a>. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">tev_regid</td><td><a class="el" href="group__tevcoloutreg.html">TEV color/output register</a>. Only GX_TEVREG0, GX_TEVREG1 and GX_TEVREG2 are supported. </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">color</td><td>Constant color value.</td></tr>
   </table>
   </dd>
@@ -10039,7 +10039,7 @@ Since changing pixel format requires the pixel pipeline to be synchronized, the 
 <dl class="section note"><dt>Note</dt><dd>This function enables the color components to be signed 10-bit numbers. To set 8-bit unsigned colors (the common case), use <a class="el" href="gx_8h.html#ad950df99b09617edfb2a7847b99d1344" title="Used to set one of the primary color registers in the TEV unit.">GX_SetTevColor()</a>.</dd></dl>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">tev_regid</td><td><a class="el" href="group__tevcoloutreg.html">TEV color/output register</a>. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">tev_regid</td><td><a class="el" href="group__tevcoloutreg.html">TEV color/output register</a>. Only GX_TEVREG0, GX_TEVREG1 and GX_TEVREG2 are supported. </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">color</td><td>Constant color value in S10 format.</td></tr>
   </table>
   </dd>
@@ -10559,7 +10559,7 @@ Since changing pixel format requires the pixel pipeline to be synchronized, the 
 This function takes 10-bit signed values as color values; use <a class="el" href="gx_8h.html#ad950df99b09617edfb2a7847b99d1344" title="Used to set one of the primary color registers in the TEV unit.">GX_SetTevColor()</a> to give 8-bit values.</dd></dl>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">sel</td><td><a class="el" href="group__tevcoloutreg.html">TEV color/output register</a> </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">sel</td><td><a class="el" href="group__tevkcolorid.html">TEV constant color register</a> </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">col</td><td>constant color value</td></tr>
   </table>
   </dd>
@@ -10705,7 +10705,7 @@ The number of texture coordinates available for all the active TEV stages is set
 <br  />
 </dd>
 <dd>
-There are some special settings for the <em>color</em> argument. If you specify <code>GX_COLOR_ZERO</code>, you always get zero as rasterized color. If you specify <code>GX_ALPHA_BUMP</code> or <code>GX_ALPHA_BUMPN</code>, you can use "Bump alpha" component from indirect texture unit as rasterized color input (see <a class="el" href="gx_8h.html#a00fa37cf7924a9992978ef2263ca3e3d" title="Controls how the results from an indirect lookup will be used to modify a given regular TEV stage loo...">GX_SetTevIndirect()</a> for details about how to configure bump alpha). Since bump alpha contains only 5-bit data, <code>GX_ALPHA_BUMP</code> shifts them to higher bits, which makes the value range 0-248. Meanwhile <code>GX_ALPHA_BUMPN</code> performs normalization and you can get the value range 0-255.</dd></dl>
+There are some special settings for the <em>color</em> argument. If you specify <code>GX_COLORZERO</code>, you always get zero as rasterized color. If you specify <code>GX_ALPHA_BUMP</code> or <code>GX_ALPHA_BUMPN</code>, you can use "Bump alpha" component from indirect texture unit as rasterized color input (see <a class="el" href="gx_8h.html#a00fa37cf7924a9992978ef2263ca3e3d" title="Controls how the results from an indirect lookup will be used to modify a given regular TEV stage loo...">GX_SetTevIndirect()</a> for details about how to configure bump alpha). Since bump alpha contains only 5-bit data, <code>GX_ALPHA_BUMP</code> shifts them to higher bits, which makes the value range 0-248. Meanwhile <code>GX_ALPHA_BUMPN</code> performs normalization and you can get the value range 0-255.</dd></dl>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">tevstage</td><td><a class="el" href="group__tevstage.html">TEV stage</a> </td></tr>
@@ -11754,7 +11754,7 @@ When a vertex contains only position and one texture coordinate and the texgen t
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Fri Oct 4 2024 22:24:25 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1
+Generated on Sun Dec 22 2024 18:23:12 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1
 </small></address>
 </body>
 </html>
