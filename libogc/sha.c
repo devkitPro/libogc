@@ -96,10 +96,8 @@ static s32 SHA_ExecuteCommand(const ShaCommand command, const sha_context* conte
 
 s32 SHA_Init(void)
 {
-	if (__sha_fd >= 0)
-		return -1;
-
-	__sha_fd = IOS_Open("/dev/sha", 0);
+	if (__sha_fd < 0)
+		__sha_fd = IOS_Open("/dev/sha", 0);
 	if (__sha_fd < 0)
 		return __sha_fd;
 
@@ -113,7 +111,7 @@ s32 SHA_Init(void)
 		return __sha_hid;
 	}
 	
-	return 0;
+	return IPC_OK;
 }
 
 s32 SHA_Close(void)
