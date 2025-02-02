@@ -101,11 +101,13 @@ distribution.
 #define IOCTL_ES_GETSTOREDTMD			0x35
 #define IOCTL_ES_GETSHAREDCONTENTCNT	0x36
 #define IOCTL_ES_GETSHAREDCONTENTS		0x37
+#define IOCTL_ES_DIVERIFYWITHTICKETVIEW		0x3B
 
 
 #define ES_HEAP_SIZE 0x800
 
 #define ISALIGNED(x) ((((u32)x)&0x1F)==0)
+#define ISALIGNED4(x)	(((u32)x) & 0x3) == 0) 
 
 static char __es_fs[] ATTRIBUTE_ALIGN(32) = "/dev/es";
 
@@ -487,7 +489,7 @@ s32 __ES_sanity_check_certlist(const signed_blob *certs, u32 certsize)
 	if(!certs || !certsize) return 0;
 
 	end = (signed_blob*)(((u8*)certs) + certsize);
-	while(certs != end) {
+	while(certs < end) {
 #ifdef DEBUG_ES
 		printf("Checking certificate at %p\n",certs);
 #endif
@@ -535,6 +537,41 @@ s32 ES_Identify(const signed_blob *certificates, u32 certificates_size, const si
 	iosFree(__es_hid, hashes);
 
 	if(ret >= 0) {
+		__ES_Close();
+		__ES_Init();
+	}
+
+	return ret;
+}
+
+s32 ES_DiVerifyWithTicketView(const signed_blob *certificates, u32 certificates_size, const signed_blob* s_tmd, u32 tmd_size, const tikview* ticket_view, u32* keyid)
+{
+	s32 ret;
+	u8 *hashes = NULL;
+	u32 keyid_spare;
+
+	if (__es_fd < 0)
+		return ES_ENOTINIT;
+
+	if (!s_tmd || !IS_VALID_SIGNATURE(s_tmd) || tmd_size != SIGNED_TMD_SIZE(s_tmd))
+		return ES_EINVAL;
+
+	if (certificates_size && !__ES_sanity_check_certlist(certificates, certificates_size)) // ES_DiVerifyWithTicketView must fetch the system's certificate store for the ticket. It also does not check the size. It does check the pointer though.
+		return ES_EINVAL;
+
+	// Alignment demands according to the actual IPC handler. ES ultimately allocates it's own 64-byte aligned buffer and copies our data.
+	if (!ISALIGNED4(certificates) || !ISALIGNED4(s_tmd) || !ISALIGNED4(ticket_view) || !ISALIGNED4(keyid) /* ? */)
+		return ES_EALIGN;
+
+	tmd* p_tmd = SIGNATURE_PAYLOAD(s_tmd);
+	hashes = iosAlloc(__es_hid, p_tmd->num_contents * sizeof(sha1));
+	if (!hashes)
+		return ES_ENOMEM;
+
+	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DIVERIFYWITHTICKETVIEW, "dddd:dd", certificates, certificates_size, NULL, 0, ticket_view, sizeof(tikview), s_tmd, tmd_size, keyid ?: &keyid_spare, sizeof(u32), hashes, p_tmd->num_contents * sizeof(sha1));
+	iosFree(__es_hid, hashes);
+
+	if (ret >= 0) {
 		__ES_Close();
 		__ES_Init();
 	}
