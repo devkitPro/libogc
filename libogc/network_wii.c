@@ -1139,7 +1139,6 @@ s32 net_getsockname(s32 s, struct sockaddr *addr, socklen_t *addrlen)
 	s32 ret;
 
 	if (net_ip_top_fd < 0) return -ENXIO;
-	if (*addrlen<8) return -ENOMEM;
 
 	if (!addr) return -EINVAL;
 	if (!addrlen) return -EINVAL;
