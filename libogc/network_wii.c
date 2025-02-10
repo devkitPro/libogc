@@ -1062,8 +1062,54 @@ s32 net_close(s32 s)
 
 s32 net_select(s32 maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset, struct timeval *timeout)
 {
-	// not yet implemented
-	return -EINVAL;
+    struct pollsd sds[FD_SETSIZE];
+    int i, n_sds = 0;
+    s32 timeout_msecs;
+    s32 ret;
+
+    memset(sds, 0, sizeof(sds));
+    for (i = 0; i < maxfdp1; i++) {
+        bool watched = false;
+
+        if (readset && FD_ISSET(i, readset)) {
+            sds[n_sds].events |= POLLIN;
+            watched = true;
+        }
+        if (writeset && FD_ISSET(i, writeset)) {
+            sds[n_sds].events |= POLLOUT;
+            watched = true;
+        }
+        if (exceptset && FD_ISSET(i, exceptset)) {
+            sds[n_sds].events |= POLLPRI;
+            watched = true;
+        }
+
+        if (watched) {
+            sds[n_sds++].socket = i;
+        }
+    }
+
+    timeout_msecs = timeout->tv_sec * 1000 + timeout->tv_usec / 1000;
+    ret = net_poll(sds, n_sds, timeout_msecs);
+    if (ret <= 0) return ret;
+
+    ret = 0; /* Return the total number of 1 bits in the three fd sets */
+    for (i = 0; i < n_sds; i++) {
+        u8 fd = sds[i].socket;
+        if (sds[i].events & POLLIN) {
+            if (sds[i].revents & POLLIN) ret++;
+            else FD_CLR(fd, readset);
+        }
+        if (sds[i].events & POLLOUT) {
+            if (sds[i].revents & POLLOUT) ret++;
+            else FD_CLR(fd, writeset);
+        }
+        if (sds[i].events & POLLPRI) {
+            if (sds[i].revents & (POLLERR | POLLPRI | POLLHUP)) ret++;
+            else FD_CLR(fd, exceptset);
+        }
+    }
+    return ret;
 }
 
 s32 net_setsockopt(s32 s, u32 level, u32 optname, const void *optval, socklen_t optlen)
