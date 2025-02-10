@@ -83,31 +83,33 @@ distribution.
 #define IOCTL_ES_SEEKCONTENT			0x23
 #define IOCTL_ES_OPENTITLECONTENT		0x24
 //#define IOCTL_ES_LAUNCHBC				0x25
-//#define IOCTL_ES_EXPORTTITLEINIT		0x26
-//#define IOCTL_ES_EXPORTCONTENTBEGIN	0x27
-//#define IOCTL_ES_EXPORTCONTENTDATA	0x28
-//#define IOCTL_ES_EXPORTCONTENTEND		0x29
-//#define IOCTL_ES_EXPORTTITLEDONE		0x2A
+#define IOCTL_ES_EXPORTTITLEINIT		0x26
+#define IOCTL_ES_EXPORTCONTENTBEGIN		0x27
+#define IOCTL_ES_EXPORTCONTENTDATA		0x28
+#define IOCTL_ES_EXPORTCONTENTEND		0x29
+#define IOCTL_ES_EXPORTTITLEDONE		0x2A
 #define IOCTL_ES_ADDTMD					0x2B
 #define IOCTL_ES_ENCRYPT				0x2C
 #define IOCTL_ES_DECRYPT				0x2D
 #define IOCTL_ES_GETBOOT2VERSION		0x2E
 #define IOCTL_ES_ADDTITLECANCEL			0x2F
 #define IOCTL_ES_SIGN					0x30
-//#define IOCTL_ES_VERIFYSIGN			0x31
+#define IOCTL_ES_VERIFYSIGN				0x31
 #define IOCTL_ES_GETSTOREDCONTENTCNT	0x32
 #define IOCTL_ES_GETSTOREDCONTENTS		0x33
 #define IOCTL_ES_GETSTOREDTMDSIZE		0x34
 #define IOCTL_ES_GETSTOREDTMD			0x35
 #define IOCTL_ES_GETSHAREDCONTENTCNT	0x36
 #define IOCTL_ES_GETSHAREDCONTENTS		0x37
-#define IOCTL_ES_DIVERIFYWITHTICKETVIEW		0x3B
-
+#define IOCTL_ES_DIVERIFYWITHTIKVIEW	0x3B
 
 #define ES_HEAP_SIZE 0x800
 
-#define ISALIGNED(x) ((((u32)x)&0x1F)==0)
-#define ISALIGNED4(x)	(((u32)x) & 0x3) == 0) 
+#ifdef __builtin_is_aligned
+# define ISALIGNED(x, a) __builtin_is_aligned(x, a)
+#else
+# define ISALIGNED(x, a) (((u32)x) & (a - 1) == 0)
+#endif
 
 static char __es_fs[] ATTRIBUTE_ALIGN(32) = "/dev/es";
 
@@ -200,7 +202,6 @@ s32 ES_GetDataDir(u64 titleID,char *filepath)
 
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(!filepath) return ES_EINVAL;
-	if(!ISALIGNED(filepath)) return ES_EALIGN;
 
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTITLEDIR,"q:d",titleID,filepath,30);
 
@@ -216,7 +217,7 @@ s32 ES_LaunchTitle(u64 titleID, const tikview *view)
 
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(!view) return ES_EINVAL;
-	if(!ISALIGNED(view)) return ES_EALIGN;
+	if(!ISALIGNED(view, 4)) return ES_EALIGN;
 
 #ifdef DEBUG_ES
 	printf("ES LaunchTitle %d %016llx 0x%08x 0x%02x\n",__es_fd,titleID,(u32)view,sizeof(tikview));
@@ -246,7 +247,7 @@ s32 ES_LaunchTitleBackground(u64 titleID, const tikview *view)
 
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(!view) return ES_EINVAL;
-	if(!ISALIGNED(view)) return ES_EALIGN;
+	if(!ISALIGNED(view, 4)) return ES_EALIGN;
 
 #ifdef DEBUG_ES
 	printf("ES LaunchTitleBackground %d %016llx 0x%08x 0x%02x\n",__es_fd,titleID,(u32)view,sizeof(tikview));
@@ -286,7 +287,7 @@ s32 ES_GetTicketViews(u64 titleID, tikview *views, u32 cnt)
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(cnt <= 0) return ES_EINVAL;
 	if(!views) return ES_EINVAL;
-	if(!ISALIGNED(views)) return ES_EALIGN;
+	if(!ISALIGNED(views, 4)) return ES_EALIGN;
 
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETVIEWS,"qi:d",titleID,cnt,views,sizeof(tikview)*cnt);
 }
@@ -311,7 +312,7 @@ s32 ES_GetOwnedTitles(u64 *titles, u32 cnt)
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(cnt <= 0) return ES_EINVAL;
 	if(!titles) return ES_EINVAL;
-	if(!ISALIGNED(titles)) return ES_EALIGN;
+	if(!ISALIGNED(titles, 4)) return ES_EALIGN;
 
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETOWNEDTITLES,"i:d",cnt,titles,sizeof(u64)*cnt);
 }
@@ -336,7 +337,7 @@ s32 ES_GetTitles(u64 *titles, u32 cnt)
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(cnt <= 0) return ES_EINVAL;
 	if(!titles) return ES_EINVAL;
-	if(!ISALIGNED(titles)) return ES_EALIGN;
+	if(!ISALIGNED(titles, 4)) return ES_EALIGN;
 
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTITLES,"i:d",cnt,titles,sizeof(u64)*cnt);
 }
@@ -349,7 +350,7 @@ s32 ES_GetNumStoredTMDContents(const signed_blob *stmd, u32 tmd_size, u32 *cnt)
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(!cnt) return ES_EINVAL;
 	if(!stmd || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
-	if(!ISALIGNED(stmd)) return ES_EALIGN;
+	if(!ISALIGNED(stmd, 64)) return ES_EALIGN; /* !? passed directly to VerifyContainer */
 
 	ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDCONTENTCNT,"d:i",stmd,tmd_size,&cntct);
 
@@ -364,8 +365,8 @@ s32 ES_GetStoredTMDContents(const signed_blob *stmd, u32 tmd_size, u32 *contents
 	if(cnt <= 0) return ES_EINVAL;
 	if(!contents) return ES_EINVAL;
 	if(!stmd || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
-	if(!ISALIGNED(stmd)) return ES_EALIGN;
-	if(!ISALIGNED(contents)) return ES_EALIGN;
+	if(!ISALIGNED(stmd, 64)) return ES_EALIGN;
+	if(!ISALIGNED(contents, 4)) return ES_EALIGN;
 	if(tmd_size > MAX_SIGNED_TMD_SIZE) return ES_EINVAL;
 
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDCONTENTS,"di:d",stmd,tmd_size,cnt,contents,sizeof(u32)*cnt);
@@ -386,14 +387,15 @@ s32 ES_GetTitleContentsCount(u64 titleID, u32 *num)
 	return ret;
 }
 
-s32 ES_GetTitleContents(u64 titleID, u8 *data, u32 size)
+s32 ES_GetTitleContents(u64 titleID, u32 *contents, u32 num)
 {
 	if(__es_fd<0) return ES_ENOTINIT;
-	if(size <= 0) return ES_EINVAL;
-	if(!data) return ES_EINVAL;
-	if(!ISALIGNED(data)) return ES_EALIGN;
+	if(!num) return ES_EINVAL;
+	if(!contents) return ES_EINVAL;
+	if(!ISALIGNED(contents, 4)) return ES_EALIGN;
 
-	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDTMD,"qi:d",titleID,size,data,size);
+	// return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDTMD,"qi:d",titleID,size,data,size);
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_GETTITLECONTENTS, "qi:d", titleID, num, contents, num * sizeof(u32));
 }
 
 s32 ES_GetTMDViewSize(u64 titleID, u32 *size)
@@ -416,7 +418,7 @@ s32 ES_GetTMDView(u64 titleID, u8 *data, u32 size)
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(size <= 0) return ES_EINVAL;
 	if(!data) return ES_EINVAL;
-	if(!ISALIGNED(data)) return ES_EALIGN;
+	if(!ISALIGNED(data, 4)) return ES_EALIGN;
 
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETTMDVIEWS,"qi:d",titleID,size,data,size);
 }
@@ -441,7 +443,7 @@ s32 ES_GetStoredTMD(u64 titleID, signed_blob *stmd, u32 size)
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(size <= 0) return ES_EINVAL;
 	if(!stmd) return ES_EINVAL;
-	if(!ISALIGNED(stmd)) return ES_EALIGN;
+	if(!ISALIGNED(stmd, 4)) return ES_EALIGN;
 	if(size > MAX_SIGNED_TMD_SIZE) return ES_EINVAL;
 
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSTOREDTMD,"qi:d",titleID,size,stmd,size);
@@ -467,7 +469,7 @@ s32 ES_GetSharedContents(sha1 *contents, u32 cnt)
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(cnt <= 0) return ES_EINVAL;
 	if(!contents) return ES_EINVAL;
-	if(!ISALIGNED(contents)) return ES_EALIGN;
+	if(!ISALIGNED(contents, 4)) return ES_EALIGN;
 
 	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_GETSHAREDCONTENTS,"i:d",cnt,contents,sizeof(sha1)*cnt);
 }
@@ -517,9 +519,9 @@ s32 ES_Identify(const signed_blob *certificates, u32 certificates_size, const si
 	if(!stmd || !tmd_size || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
 	if(!sticket || !IS_VALID_SIGNATURE(sticket)) return ES_EINVAL;
 	if(!__ES_sanity_check_certlist(certificates, certificates_size)) return ES_EINVAL;
-	if(!ISALIGNED(certificates)) return ES_EALIGN;
-	if(!ISALIGNED(stmd)) return ES_EALIGN;
-	if(!ISALIGNED(sticket)) return ES_EALIGN;
+	if(!ISALIGNED(certificates, 4)) return ES_EALIGN;
+	if(!ISALIGNED(stmd, 4)) return ES_EALIGN;
+	if(!ISALIGNED(sticket, 4)) return ES_EALIGN;
 	if(tmd_size > MAX_SIGNED_TMD_SIZE) return ES_EINVAL;
 
 	p_tmd = SIGNATURE_PAYLOAD(stmd);
@@ -560,7 +562,7 @@ s32 ES_DiVerifyWithTicketView(const signed_blob *certificates, u32 certificates_
 		return ES_EINVAL;
 
 	// Alignment demands according to the actual IPC handler. ES ultimately allocates it's own 64-byte aligned buffer and copies our data.
-	if (!ISALIGNED4(certificates) || !ISALIGNED4(s_tmd) || !ISALIGNED4(ticket_view) || !ISALIGNED4(keyid) /* ? */)
+	if (!ISALIGNED(certificates, 4) || !ISALIGNED(s_tmd, 4) || !ISALIGNED(ticket_view, 4) || !ISALIGNED(keyid, 4) /* ? */)
 		return ES_EALIGN;
 
 	tmd* p_tmd = SIGNATURE_PAYLOAD(s_tmd);
@@ -568,7 +570,7 @@ s32 ES_DiVerifyWithTicketView(const signed_blob *certificates, u32 certificates_
 	if (!hashes)
 		return ES_ENOMEM;
 
-	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DIVERIFYWITHTICKETVIEW, "dddd:dd", certificates, certificates_size, NULL, 0, ticket_view, sizeof(tikview), s_tmd, tmd_size, keyid ?: &keyid_spare, sizeof(u32), hashes, p_tmd->num_contents * sizeof(sha1));
+	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DIVERIFYWITHTIKVIEW, "dddd:dd", certificates, certificates_size, NULL, 0, ticket_view, sizeof(tikview), s_tmd, tmd_size, keyid ?: &keyid_spare, sizeof(u32), hashes, p_tmd->num_contents * sizeof(sha1));
 	iosFree(__es_hid, hashes);
 
 	if (ret >= 0) {
@@ -585,13 +587,13 @@ s32 ES_AddTicket(const signed_blob *stik, u32 stik_size, const signed_blob *cert
 
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(stik_size != STD_SIGNED_TIK_SIZE) return ES_EINVAL;
-	if(!stik || !IS_VALID_SIGNATURE(stik)) return ES_EINVAL;
+	if(!certificates || !stik || !IS_VALID_SIGNATURE(stik)) return ES_EINVAL;
 	if(crl_size && (!crl || !IS_VALID_SIGNATURE(crl))) return ES_EINVAL;
 	if(!__ES_sanity_check_certlist(certificates, certificates_size)) return ES_EINVAL;
-	if(!certificates || !ISALIGNED(certificates)) return ES_EALIGN;
-	if(!ISALIGNED(stik)) return ES_EALIGN;
-	if(!ISALIGNED(certificates)) return ES_EALIGN;
-	if(!ISALIGNED(crl)) return ES_EALIGN;
+	if(!ISALIGNED(certificates, 4)) return ES_EALIGN;
+	if(!ISALIGNED(stik, 4)) return ES_EALIGN;
+	if(!ISALIGNED(certificates, 4)) return ES_EALIGN;
+	if(!ISALIGNED(crl, 4)) return ES_EALIGN;
 
 	if(!crl_size) crl=NULL;
 
@@ -606,23 +608,60 @@ s32 ES_DeleteTicket(const tikview *view)
 
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(!view) return ES_EINVAL;
-	if(!ISALIGNED(view)) return ES_EALIGN;
+	if(!ISALIGNED(view, 4)) return ES_EALIGN;
 	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DELETETICKET, "d:", view, sizeof(tikview));
 	return ret;
 }
 
-s32 ES_AddTitleTMD(const signed_blob *stmd, u32 stmd_size)
+s32 ES_ExportTitleInit(u64 titleID, signed_blob *tmd_out, u32 tmd_size) {
+	if (__es_fd < 0) return ES_ENOTINIT;
+	if (!tmd_out || !tmd_size || tmd_size > MAX_SIGNED_TMD_SIZE) return ES_EINVAL;
+	if (!ISALIGNED(tmd_out, 4)) return ES_EALIGN;
+
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_EXPORTTITLEINIT, "q:d", titleID, tmd_out, tmd_size);
+}
+
+s32 ES_ExportContentBegin(u64 titleID, u32 contentID) {
+	if (__es_fd < 0) return ES_ENOTINIT;
+
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_EXPORTCONTENTBEGIN, "qi:", titleID, contentID);
+}
+
+s32 ES_ExportContentData(s32 cfd, void *data, u32 size) {
+	if (__es_fd < 0) return ES_ENOTINIT;
+	if (!data || !size) return ES_EINVAL;
+	if (!ISALIGNED(data, 16) /* passed directly to IOSC_Encrypt */ || !ISALIGNED(size, 32) /* !? ES rounds up data_read to 32 bytes */)
+		return ES_EALIGN;
+
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_EXPORTCONTENTDATA, "i:d", cfd, data, size);
+}
+
+s32 ES_ExportContentEnd(s32 cfd) {
+	if (__es_fd < 0)
+		return ES_ENOTINIT;
+
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_EXPORTCONTENTEND, "i:", cfd);
+}
+
+s32 ES_ExportTitleDone(void) {
+	if (__es_fd < 0)
+		return ES_ENOTINIT;
+
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_EXPORTTITLEDONE, "");
+}
+
+// s32 ES_AddTitleTMD(const signed_blob *stmd, u32 stmd_size)
+s32 ES_ReimportTitleInit(const signed_blob* stmd, u32 stmd_size)
 {
 	s32 ret;
 
-	if(__es_fd<0) return ES_ENOTINIT;
-	if(!stmd || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
-	if(stmd_size != SIGNED_TMD_SIZE(stmd)) return ES_EINVAL;
-	if(!ISALIGNED(stmd)) return ES_EALIGN;
+	if (__es_fd < 0) return ES_ENOTINIT;
+	if (!stmd || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
+	if (stmd_size != SIGNED_TMD_SIZE(stmd)) return ES_EINVAL;
+	if (!ISALIGNED(stmd, 4)) return ES_EALIGN;
 
 	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDTMD, "d:", stmd, stmd_size);
 	return ret;
-
 }
 
 s32 ES_AddTitleStart(const signed_blob *stmd, u32 tmd_size, const signed_blob *certificates, u32 certificates_size, const signed_blob *crl, u32 crl_size)
@@ -630,14 +669,14 @@ s32 ES_AddTitleStart(const signed_blob *stmd, u32 tmd_size, const signed_blob *c
 	s32 ret;
 
 	if(__es_fd<0) return ES_ENOTINIT;
-	if(!stmd || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
+	if(!certificates || !stmd || !IS_VALID_SIGNATURE(stmd)) return ES_EINVAL;
 	if(tmd_size != SIGNED_TMD_SIZE(stmd)) return ES_EINVAL;
 	if(crl_size && (!crl || !IS_VALID_SIGNATURE(crl))) return ES_EINVAL;
 	if(!__ES_sanity_check_certlist(certificates, certificates_size)) return ES_EINVAL;
-	if(!certificates || !ISALIGNED(certificates)) return ES_EALIGN;
-	if(!ISALIGNED(stmd)) return ES_EALIGN;
-	if(!ISALIGNED(certificates)) return ES_EALIGN;
-	if(!ISALIGNED(crl)) return ES_EALIGN;
+	if(!ISALIGNED(certificates, 4)) return ES_EALIGN;
+	if(!ISALIGNED(stmd, 4)) return ES_EALIGN;
+	if(!ISALIGNED(certificates, 4)) return ES_EALIGN;
+	if(!ISALIGNED(crl, 4)) return ES_EALIGN;
 
 	if(!crl_size) crl=NULL;
 
@@ -656,7 +695,7 @@ s32 ES_AddContentData(s32 cfd, u8 *data, u32 data_size)
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(cfd<0) return ES_EINVAL;
 	if(!data || !data_size) return ES_EINVAL;
-	if(!ISALIGNED(data)) return ES_EALIGN;
+	if(!ISALIGNED(data, 4)) return ES_EALIGN;
 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ADDCONTENTDATA, "id:", cfd, data, data_size);
 }
 
@@ -686,11 +725,11 @@ s32 ES_ImportBoot(const signed_blob *tik, u32 tik_size,const signed_blob *tik_ce
 	if(!tmd || !tmd_size) return ES_EINVAL;
 	if(!tmd_certs || !tmd_certs_size) return ES_EINVAL;
 	if(!content || !content_size) return ES_EINVAL;
-	if(!ISALIGNED(tik)) return ES_EALIGN;
-	if(!ISALIGNED(tmd)) return ES_EALIGN;
-	if(!ISALIGNED(tik_certs)) return ES_EALIGN;
-	if(!ISALIGNED(tmd_certs)) return ES_EALIGN;
-	if(!ISALIGNED(content)) return ES_EALIGN;
+	if(!ISALIGNED(tik, 4)) return ES_EALIGN;
+	if(!ISALIGNED(tmd, 4)) return ES_EALIGN;
+	if(!ISALIGNED(tik_certs, 4)) return ES_EALIGN;
+	if(!ISALIGNED(tmd_certs, 4)) return ES_EALIGN;
+	if(!ISALIGNED(content, 4)) return ES_EALIGN;
 	
 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_IMPORTBOOT, "dddddd:", tik, tik_size, tik_certs, tik_certs_size, tmd, tmd_size, tmd_certs, tmd_certs_size, NULL, 0, content, content_size);
 }
@@ -704,7 +743,7 @@ s32 ES_OpenContent(u16 index)
 s32 ES_OpenTitleContent(u64 titleID, tikview *views, u16 index)
 {
 	if(__es_fd<0) return ES_ENOTINIT;
-	if(!ISALIGNED(views)) return ES_EALIGN;
+	if(!ISALIGNED(views, 4)) return ES_EALIGN;
 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_OPENTITLECONTENT, "qdi:", titleID, views, sizeof(tikview), index);
 }
 
@@ -713,7 +752,7 @@ s32 ES_ReadContent(s32 cfd, u8 *data, u32 data_size)
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(cfd<0) return ES_EINVAL;
 	if(!data || !data_size) return ES_EINVAL;
-	if(!ISALIGNED(data)) return ES_EALIGN;
+	if(!ISALIGNED(data, 32)) return ES_EALIGN;
 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_READCONTENT, "i:d", cfd, data, data_size);
 }
 
@@ -743,35 +782,56 @@ s32 ES_DeleteTitleContent(u64 titleID)
 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DELETETITLECONTENT, "q:", titleID);
 }
 
-s32 ES_Encrypt(u32 keynum, u8 *iv, u8 *source, u32 size, u8 *dest)
+s32 ES_Encrypt(u32 keynum, u32 *iv, void *source, u32 size, void *dest)
 {
-	if(__es_fd<0) return ES_ENOTINIT;
- 	if(!iv || !source || !size || !dest) return ES_EINVAL;
- 	if(!ISALIGNED(source) || !ISALIGNED(iv) || !ISALIGNED(dest)) return ES_EALIGN;
- 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ENCRYPT, "idd:dd", keynum, iv, 0x10, source, size, iv, 0x10, dest, size);
+	if (__es_fd < 0)
+		return ES_ENOTINIT;
+	if (!iv || !source || !size || !dest)
+		return ES_EINVAL;
+	if (!ISALIGNED(iv, 4) || !ISALIGNED(source, 16) || !ISALIGNED(dest, 16) || !ISALIGNED(size, 16))
+		return ES_EALIGN;
+
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_ENCRYPT, "idd:dd", keynum, iv, 0x10, source, size, iv, 0x10, dest, size);
 }
- 
-s32 ES_Decrypt(u32 keynum, u8 *iv, u8 *source, u32 size, u8 *dest)
+
+s32 ES_Decrypt(u32 keynum, u32 *iv, void *source, u32 size, void *dest)
 {
-	if(__es_fd<0) return ES_ENOTINIT;
-	if(!iv || !source || !size || !dest) return ES_EINVAL;
-	if(!ISALIGNED(source) || !ISALIGNED(iv) || !ISALIGNED(dest)) return ES_EALIGN;
+	if (__es_fd < 0)
+		return ES_ENOTINIT;
+	if (!iv || !source || !size || !dest)
+		return ES_EINVAL;
+	if (!ISALIGNED(iv, 4) || !ISALIGNED(source, 16) || !ISALIGNED(dest, 16) || !ISALIGNED(size, 16))
+		return ES_EALIGN;
+
 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DECRYPT, "idd:dd", keynum, iv, 0x10, source, size, iv, 0x10, dest, size);
 }
 
-s32 ES_Sign(u8 *source, u32 size, u8 *sig, u8 *certs)
+s32 ES_Sign(void *data, u32 size, u8 *ap_signature, signed_blob *ap_certificate)
 {
-	if(__es_fd<0) return ES_ENOTINIT;
- 	if(!source || !size || !sig || !certs) return ES_EINVAL;
- 	if(!ISALIGNED(source) || !ISALIGNED(sig) || !ISALIGNED(certs)) return ES_EALIGN;
- 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_SIGN, "d:dd", source, size, sig, 0x3C, certs, 0x180);
+	if (__es_fd < 0) return ES_ENOTINIT;
+	if (!data || !size || !ap_signature || !ap_certificate) return ES_EINVAL;
+	if (!ISALIGNED(data, 64) /* ! */ || !ISALIGNED(ap_signature, 4) /* ? */ || !ISALIGNED(ap_certificate, 4) /* ? */) return ES_EALIGN;
+	/* ES_Sign does IOSC_GenerateHash in one shot. With our data buffer by the way */
+	if (size > 0x10000)  return ES_EINVAL;
+
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_SIGN, "d:dd", data, size, ap_signature, 0x3C, ap_certificate, 0x180);
+}
+
+s32 ES_VerifySign(void *data, u32 size, u8 *ap_signature, signed_blob *certificates, u32 certificates_size) {
+	if (__es_fd < 0) return ES_ENOTINIT;
+	if (!data || !size || !ap_signature || !certificates || !certificates_size) return ES_EINVAL;
+	if (!__ES_sanity_check_certlist(certificates, certificates_size)) return ES_EINVAL;
+	if (!ISALIGNED(data, 64) || !ISALIGNED(ap_signature, 4) || !ISALIGNED(certificates, 4)) return ES_EALIGN;
+	if (size > 0x10000) return ES_EINVAL;
+
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_VERIFYSIGN, "ddd:", data, size, ap_signature, 0x3C, certificates, certificates_size);
 }
 
 s32 ES_GetDeviceCert(u8 *outbuf)
 {
 	if(__es_fd<0) return ES_ENOTINIT;
 	if(!outbuf) return ES_EINVAL;
-	if(!ISALIGNED(outbuf)) return ES_EALIGN;
+	if(!ISALIGNED(outbuf, 4)) return ES_EALIGN;
 	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_GETDEVICECERT, ":d", outbuf, 0x180);
 }
 
@@ -1005,7 +1065,7 @@ static int _ES_read_r (struct _reent *r, void *fd, char *ptr, size_t len) {
 	}
 
 	// if aligned, just pass through the read
-	if(ISALIGNED(ptr))
+	if(ISALIGNED(ptr, 32))
 	{
 		res = ES_ReadContent(file->cfd, (u8*)ptr, len);
 		if(res < 0) {
