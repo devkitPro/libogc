@@ -222,13 +222,12 @@ struct sockaddr_in {
   u8 sin_family;
   u16 sin_port;
   struct in_addr sin_addr;
-  s8 sin_zero[8];
 };
 
 struct sockaddr {
   u8 sa_len;
   u8 sa_family;
-  s8 sa_data[14];
+  s8 sa_data[6];
 };
 
 struct hostent {
