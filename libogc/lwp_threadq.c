@@ -496,7 +496,7 @@ u32 __lwp_threadqueue_extractproxy(lwp_cntrl *thethread)
 	state = thethread->cur_state;
 	if(__lwp_statewaitthreadqueue(state)) {
 		__lwp_threadqueue_extract(thethread->wait.queue,thethread);
-		return TRUE;
+		return true;
 	}
-	return FALSE;
+	return false;
 }
