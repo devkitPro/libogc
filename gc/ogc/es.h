@@ -313,6 +313,7 @@ s32 ES_VerifySign(const void *source, u32 size, const u8 *ap_signature, const si
 s32 ES_GetDeviceCert(u8 *outbuf);
 s32 ES_GetDeviceID(u32 *device_id);
 s32 ES_GetBoot2Version(u32 *version);
+s32 ES_CheckHasKoreanKey(void);
 const signed_blob *ES_NextCert(const signed_blob *certs);
 
 #ifdef __cplusplus

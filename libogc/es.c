@@ -102,6 +102,7 @@ distribution.
 #define IOCTL_ES_GETSHAREDCONTENTCNT	0x36
 #define IOCTL_ES_GETSHAREDCONTENTS		0x37
 #define IOCTL_ES_DIVERIFYWITHTIKVIEW	0x3B
+#define IOCTL_ES_CHECKHASKOREANKEY		0x45
 
 #define ES_HEAP_SIZE 0x800
 
@@ -927,6 +928,13 @@ s32 ES_GetBoot2Version(u32 *version)
 	if (ret>=0) *version = _version;
 
 	return ret;
+}
+
+s32 ES_CheckHasKoreanKey(void)
+{
+	if (__es_fd < 0) return ES_ENOTINIT;
+
+	return IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_CHECKHASKOREANKEY, "");
 }
 
 // 64k buffer size for alignment
