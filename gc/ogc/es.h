@@ -54,7 +54,7 @@ distribution.
 #define ES_KEY_COMMON		4
 #define ES_KEY_BACKUP		5
 #define ES_KEY_SDCARD		6
-#define ES_KEY_COMMON2		11
+#define ES_KEY_KOREAN		11
 
 #ifdef __cplusplus
    extern "C" {
