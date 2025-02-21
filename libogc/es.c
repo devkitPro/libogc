@@ -619,7 +619,7 @@ s32 ES_DiVerifyWithTicketView(const signed_blob *certificates, u32 certificates_
 	if (!s_tmd || !IS_VALID_SIGNATURE(s_tmd) || tmd_size != SIGNED_TMD_SIZE(s_tmd))
 		return ES_EINVAL;
 
-	if (certificates_size && !__ES_sanity_check_certlist(certificates, certificates_size))
+	if (!certificates || (certificates_size && !__ES_sanity_check_certlist(certificates, certificates_size)) || !ISALIGNED(certificates_size, 64)) // ES will copy our certificates first then read the system's on top of that. So if the size is somehow not a multiple of 64 bytes then, unless you plan to provide the ticket certificates yourself, the function is going to break
 		return ES_EINVAL;
 
 	// Alignment demands according to the actual IPC handler. ES ultimately allocates it's own 64-byte aligned buffer and copies our data.
@@ -630,12 +630,6 @@ s32 ES_DiVerifyWithTicketView(const signed_blob *certificates, u32 certificates_
 	hashes = iosAlloc(__es_hid, p_tmd->num_contents * sizeof(sha1));
 	if (!hashes)
 		return ES_ENOMEM;
-
-	// ES_DiVerifyWithTicketView must fetch the system's certificate store for the ticket. It also does not check the size. It does check the pointer though.
-	if (!certificates) {
-		certificates = (const signed_blob *)0x20;
-		certificates_size = 0;
-	}
 
 	ret = IOS_IoctlvFormat(__es_hid, __es_fd, IOCTL_ES_DIVERIFYWITHTIKVIEW, "dddd:dd", certificates, certificates_size, NULL, 0, ticket_view, sizeof(tikview), s_tmd, tmd_size, keyid ?: &keyid_spare, sizeof(u32), hashes, p_tmd->num_contents * sizeof(sha1));
 	iosFree(__es_hid, hashes);
