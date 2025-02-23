@@ -76,31 +76,34 @@ static u32 __gecko_safe = 0;
 
 extern u8 console_font_8x16[];
 
+static u32 __console_get_offset()
+{
+	if(!curr_con) 
+		return 0;
+	
+	return _console_buffer != NULL 
+		? 0 
+		: (curr_con->target_y * curr_con->tgt_stride) + (curr_con->target_x * VI_DISPLAY_PIX_SZ);
+}
+
 void __console_vipostcb(u32 retraceCnt)
 {
-	u32 ycnt,xcnt, fb_stride;
-	u32 *fb,*ptr;
-	u32 offset;
+	u8 *fb,*ptr;
 
 	do_xfb_copy = true;
-
-	offset = (curr_con->target_y*curr_con->tgt_stride) + curr_con->target_x*VI_DISPLAY_PIX_SZ;
 	ptr = curr_con->destbuffer;
-	fb = VIDEO_GetCurrentFramebuffer()+offset;
-	fb_stride = curr_con->tgt_stride/4 - (curr_con->con_xres/VI_DISPLAY_PIX_SZ);
+	fb = (u8*)((u32)VIDEO_GetCurrentFramebuffer() + (curr_con->target_y * curr_con->tgt_stride) + (curr_con->target_x * VI_DISPLAY_PIX_SZ));
 
-	for(ycnt=curr_con->con_yres;ycnt>0;ycnt--)
+	// Clears 1 line of pixels at a time
+	for(u16 ycnt = 0; ycnt < curr_con->con_yres; ycnt++)
 	{
-		for(xcnt=curr_con->con_xres;xcnt>0;xcnt-=VI_DISPLAY_PIX_SZ)
-		{
-			*fb++ = *ptr++;
-		}
-		fb += fb_stride;
+		memcpy(fb, ptr, curr_con->con_xres * VI_DISPLAY_PIX_SZ);
+		ptr+= curr_con->con_stride;
+		fb+= curr_con->tgt_stride;
 	}
 
 	do_xfb_copy = false;
 }
-
 
 static void __console_drawc(int c)
 {
@@ -118,7 +121,7 @@ static void __console_drawc(int c)
 	con = curr_con;
 
 	ptr = (unsigned int*)(con->destbuffer + ( con->con_stride * con->cursor_row * FONT_YSIZE ) + ((con->cursor_col * FONT_XSIZE / 2) * 4) 
-						+ (_console_buffer != NULL ? 0 : (curr_con->target_y*curr_con->tgt_stride) + curr_con->target_x*VI_DISPLAY_PIX_SZ));
+						+ __console_get_offset());
 	pbits = &con->font[c * FONT_YSIZE];
 	nextline = con->con_stride/4 - 4;
 	fgcolor = con->foreground;
@@ -181,47 +184,48 @@ static void __console_drawc(int c)
 #endif
 	}
 }
-static void __console_clear_line( int line, int from, int to ) {
+
+static void __console_clear_line(int line, int from, int to ) 
+{
 	console_data_s *con;
-	unsigned int c;
-	unsigned int *p;
-	unsigned int x_pixels;
-	unsigned int px_per_col = FONT_XSIZE/2;
-	unsigned int line_height = FONT_YSIZE;
-	unsigned int line_width;
-	
+	u8* p;
+	// Each character is FONT_XSIZE * VI_DISPLAY_PIX_SZ wide
+	const u32 line_width = (to - from) * (FONT_XSIZE * VI_DISPLAY_PIX_SZ);
+
 	if( !(con = curr_con) ) return;
-	// For some reason there are xres/2 pixels per screen width
-  x_pixels = con->con_xres / 2;
-	
-	line_width = (to - from)*px_per_col;
-	p = (unsigned int*)con->destbuffer;
-	
-	// Move pointer to the current line and column offset
-	p += line*(FONT_YSIZE*x_pixels) + from*px_per_col;
-	
-	// Clears 1 line of pixels at a time, line_height times
-  while( line_height-- ) {
-  	c = line_width;
-    while( c-- )
-      *p++ = con->background;
-    p -= line_width;
-    p += x_pixels;
-  }
+
+	//add the given row & column to the offset & assign the pointer
+	const u32 offset = __console_get_offset() + (line * con->con_stride * FONT_YSIZE) + (from * FONT_XSIZE * VI_DISPLAY_PIX_SZ);
+	p = (u8*)((u32)con->destbuffer + offset);
+
+	// Clears 1 line of pixels at a time
+	for(u16 ycnt = 0; ycnt < FONT_YSIZE; ycnt++)
+	{
+		for(u32 xcnt = 0; xcnt < line_width; xcnt += 4)
+			*(u32*)((u32)p + xcnt) = con->background;
+
+		p += con->con_stride;
+	}
 }
+
 static void __console_clear(void)
 {
 	console_data_s *con;
-	unsigned int c;
-	unsigned int *p;
+	u8* p;
 
 	if( !(con = curr_con) ) return;
 
-	c = (con->con_xres*con->con_yres)/2;
-	p = (unsigned int*)con->destbuffer;
-	
-	while(c--)
-		*p++ = con->background;
+	//get console pointer
+	p = (u8*)((u32)con->destbuffer + __console_get_offset());
+
+	// Clears 1 line of pixels at a time
+	for(u16 ycnt = 0; ycnt < con->con_yres; ycnt++)
+	{
+		for(u32 xcnt = 0; xcnt < con->con_xres * VI_DISPLAY_PIX_SZ; xcnt+=4)
+			*(u32*)((u32)p + xcnt) = con->background;
+
+		p += con->con_stride;
+	}
 
 	con->cursor_row = 0;
 	con->cursor_col = 0;
@@ -264,8 +268,8 @@ void __console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,in
 	con->destbuffer = framebuffer;
 	con->con_xres = xres;
 	con->con_yres = yres;
-	con->con_cols = (xres - xstart) / FONT_XSIZE;
-	con->con_rows = (yres - ystart) / FONT_YSIZE;
+	con->con_cols = xres / FONT_XSIZE;
+	con->con_rows = yres / FONT_YSIZE;
 	con->con_stride = con->tgt_stride = stride;
 	con->target_x = xstart;
 	con->target_y = ystart;
@@ -305,8 +309,8 @@ void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_str
 	con->con_yres = con_yres;
 	con->tgt_stride = tgt_stride;
 	con->con_stride = con_stride;
-	con->con_cols = (con_xres - tgt_xstart) / FONT_XSIZE;
-	con->con_rows = (con_yres - tgt_ystart) / FONT_YSIZE;
+	con->con_cols = con_xres / FONT_XSIZE;
+	con->con_rows = con_yres / FONT_YSIZE;
 	con->cursor_row = 0;
 	con->cursor_col = 0;
 	con->saved_row = 0;
@@ -578,17 +582,24 @@ int __console_write(struct _reent *r,void *fd,const char *ptr,size_t len)
 			}
 		}
 
+		/* if bottom border reached, scroll */
 		if( con->cursor_row >= con->con_rows)
 		{
-			/* if bottom border reached scroll */
-			memcpy(con->destbuffer,
-				con->destbuffer+con->con_stride*(FONT_YSIZE*FONT_YFACTOR+FONT_YGAP),
-				con->con_stride*con->con_yres-FONT_YSIZE);
+			const u8* console = (u8*)((u32)con->destbuffer + __console_get_offset());
+			const u32 last_console_row = curr_con->con_rows == 0
+				? 0
+				: (curr_con->con_rows-1);
 
-			unsigned int cnt = (con->con_stride * (FONT_YSIZE * FONT_YFACTOR + FONT_YGAP))/4;
-			unsigned int *ptr = (unsigned int*)(con->destbuffer + con->con_stride * (con->con_yres - FONT_YSIZE));
-			while(cnt--)
-				*ptr++ = con->background;
+			//copy lines upwards
+			u8* ptr = (u8*)console;
+			for(u32 ycnt = 0; ycnt < (last_console_row * FONT_YSIZE); ycnt++)
+			{
+				memmove(ptr, ptr + curr_con->con_stride * FONT_YSIZE, curr_con->con_cols * FONT_XSIZE * VI_DISPLAY_PIX_SZ);
+				ptr+= curr_con->con_stride;
+			}
+			
+			//clear last line
+			__console_clear_line(last_console_row, 0, con->con_cols);
 			con->cursor_row--;
 		}
 	}
