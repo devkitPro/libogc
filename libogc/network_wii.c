@@ -1323,7 +1323,7 @@ s32 if_configex(struct in_addr *local_ip, struct in_addr *netmask, struct in_add
 	vectors[1].data = routing_tables;
 	vectors[1].len = memory_size;
 	
-	ret = IOS_Ioctlv(net_ip_top_fd, 28, 1, 2, vectors);
+	ret = IOS_Ioctlv(net_ip_top_fd, IOCTLV_SO_GETINTERFACEOPT, 1, 2, vectors);
 	if(ret < 0)
 	{
 		debug_printf("failed to get the routing table: %d\n", ret);
