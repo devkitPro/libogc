@@ -43,6 +43,7 @@ distribution.
 #include "processor.h"
 #include "mutex.h"
 #include "es.h"
+#include "isfs.h"
 
 //#define DEBUG_ES
 
@@ -194,7 +195,16 @@ s32 ES_SetUID(u64 uid)
 {
 	if(__es_fd<0) return ES_ENOTINIT;
 
-	return IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_SETUID,"q:",uid);
+	s32 ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_SETUID,"q:",uid);
+	
+	//if the call succeeded, our FS handle needs to be reopened, as IOS saves access of our FD
+	if(ret >= 0)
+	{
+		ISFS_Deinitialize();
+		ISFS_Initialize();
+	}
+	
+	return ret;
 }
 
 s32 ES_GetDataDir(u64 titleID,char *filepath)
