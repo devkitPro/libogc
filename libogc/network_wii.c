@@ -118,6 +118,15 @@ enum {
 	SO_GETINTERFACEOPT_ROUTING		= 0x4006,
 };
 
+//wii doesn't have, or use, sin_zero in sockaddr_in and all communications assumes its not there
+//bsd sockets does have it, so we ignore it. the struct is directly compatible with bsd sockets normally
+struct wii_sockaddr_in{
+	u8 sin_len;
+	u8 sin_family;
+	u16 sin_port;
+	u32 sin_addr;
+};
+
 struct init_data {
 	u32 state;
 	s32 fd;
@@ -820,12 +829,12 @@ s32 net_bind(s32 s, struct sockaddr *name, socklen_t namelen)
 	if (net_ip_top_fd < 0) return -ENXIO;
 	if (name->sa_family != AF_INET) return -EAFNOSUPPORT;
 
-	name->sa_len = 8;
+	name->sa_len = sizeof(struct wii_sockaddr_in);
 
 	memset(params, 0, sizeof(struct bind_params));
 	params->socket = s;
 	params->has_name = 1;
-	memcpy(params->name, name, 8);
+	memcpy(params->name, name, sizeof(struct wii_sockaddr_in));
 
 	ret = _net_convert_error(IOS_Ioctl(net_ip_top_fd, IOCTL_SO_BIND, params, sizeof (struct bind_params), NULL, 0));
 	debug_printf("net_bind(%d, %p)=%d\n", s, name, ret);
@@ -860,14 +869,14 @@ s32 net_accept(s32 s, struct sockaddr *addr, socklen_t *addrlen)
 	if (net_ip_top_fd < 0) return -ENXIO;
 
 	if (!addr) return -EINVAL;
-	addr->sa_len = 8;
+	addr->sa_len = sizeof(struct wii_sockaddr_in);
 	addr->sa_family = AF_INET;
 
 	if (!addrlen) return -EINVAL;
 
-	if (*addrlen < 8) return -ENOMEM;
+	if (*addrlen < sizeof(struct wii_sockaddr_in)) return -ENOMEM;
 
-	*addrlen = 8;
+	*addrlen = sizeof(struct wii_sockaddr_in);
 
 	*_socket = s;
 	debug_printf("calling ios_ioctl(%d, %d, %p, %d)\n", net_ip_top_fd, IOCTL_SO_ACCEPT, _socket, 4);
@@ -884,9 +893,9 @@ s32 net_connect(s32 s, struct sockaddr *addr, socklen_t addrlen)
 
 	if (net_ip_top_fd < 0) return -ENXIO;
 	if (addr->sa_family != AF_INET) return -EAFNOSUPPORT;
-	if (addrlen < 8) return -EINVAL;
+	if (addrlen < sizeof(struct wii_sockaddr_in)) return -EINVAL;
 
-	addrlen = 8;
+	addrlen = sizeof(struct wii_sockaddr_in);
 
 	addr->sa_len = addrlen;
 
@@ -1143,11 +1152,11 @@ s32 net_getsockname(s32 s, struct sockaddr *addr, socklen_t *addrlen)
 	if (!addr) return -EINVAL;
 	if (!addrlen) return -EINVAL;
 
-	if (*addrlen < 8) return -ENOMEM;
+	if (*addrlen < sizeof(struct wii_sockaddr_in)) return -ENOMEM;
 
-	addr->sa_len = 8;
+	addr->sa_len = sizeof(struct wii_sockaddr_in);
 	addr->sa_family = AF_INET;
-	*addrlen = 8;
+	*addrlen = sizeof(struct wii_sockaddr_in);
 	*_socket = s;
 
 	ret = _net_convert_error(IOS_Ioctl(net_ip_top_fd, IOCTL_SO_GETSOCKNAME, _socket, 4, addr, *addrlen));
