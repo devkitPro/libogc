@@ -66,6 +66,8 @@
 #define HIDP_PROTO_BOOT				0x00
 #define HIDP_PROTO_REPORT			0x01
 
+#define BD_NAME_LEN     248
+
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
@@ -125,7 +127,11 @@ s32 BTE_ApplyPatch(btecallback cb);
 s32 BTE_InitSub(btecallback cb);
 s32 BTE_ReadStoredLinkKey(struct linkkey_info *keys,u8 max_cnt,btecallback cb);
 s32 BTE_ReadBdAddr(struct bd_addr *bdaddr, btecallback cb);
+s32 BTE_SetEvtFilter(u8 filter_type,u8 filter_cond_type,u8 *cond, btecallback cb);
+s32 BTE_ReadRemoteName(u8 *name, struct bd_addr *bdaddr);
 void (*BTE_SetDisconnectCallback(void (*callback)(struct bd_addr *bdaddr,u8 reason)))(struct bd_addr *bdaddr,u8 reason);
+void BTE_SetSyncButtonCallback(void (*callback)(u32 held));
+void BTE_ClearStoredLinkKeys(void);
 
 struct bte_pcb* bte_new(void);
 void bte_arg(struct bte_pcb *pcb,void *arg);
@@ -133,6 +139,7 @@ void bte_received(struct bte_pcb *pcb, s32 (*recv)(void *arg,void *buffer,u16 le
 void bte_disconnected(struct bte_pcb *pcb,s32 (disconn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
 
 s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
+s32 bte_connectdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
 
 s32 bte_disconnect(struct bte_pcb *pcb);
 

@@ -89,7 +89,7 @@
 #define HCI_RESET 0x03
 #define HCI_SET_EVENT_FILTER 0x05
 #define HCI_WRITE_STORED_LINK_KEY 0x11
-#define HCI_ROLE_CHANGE 0x12
+#define HCI_DELETE_STORED_LINK_KEY 0x12
 #define HCI_WRITE_LOCAL_NAME 0x13
 
 #define HCI_WRITE_PAGE_TIMEOUT 0x18
@@ -125,11 +125,18 @@
 #define HCI_CONNECTION_COMPLETE 0x03
 #define HCI_CONNECTION_REQUEST 0x04
 #define HCI_DISCONNECTION_COMPLETE 0x05
+#define HCI_AUTH_COMPLETE 0x06
+#define HCI_REMOTE_NAME_REQ_COMPLETE 0x07
 #define HCI_ENCRYPTION_CHANGE 0x08
+#define HCI_CHANGE_CONN_LINK_KEY_COMPLETE 0x09
+#define HCI_MASTER_LINK_KEY_COMPLETE 0x0A
+#define HCI_READ_REMOTE_FEATURES_COMPLETE 0x0B
+#define HCI_READ_REMOTE_VERSION_COMPLETE 0x0C
 #define HCI_QOS_SETUP_COMPLETE 0x0D
 #define HCI_COMMAND_COMPLETE 0x0E
 #define HCI_COMMAND_STATUS 0x0F
 #define HCI_HARDWARE_ERROR 0x10
+#define HCI_FLUSH_OCCURRED 0x11
 #define HCI_ROLE_CHANGE 0x12
 #define HCI_NBR_OF_COMPLETED_PACKETS 0x13
 #define HCI_MODE_CHANGE 0x14
@@ -137,8 +144,37 @@
 #define HCI_PIN_CODE_REQUEST 0x16
 #define HCI_LINK_KEY_REQUEST 0x17
 #define HCI_LINK_KEY_NOTIFICATION 0x18
+#define HCI_LOOPBACK_COMMAND 0x19
 #define HCI_DATA_BUFFER_OVERFLOW 0x1A
 #define HCI_MAX_SLOTS_CHANGE 0x1B
+#define HCI_READ_CLOCK_OFFSET_COMPLETE 0x1C
+#define HCI_CONN_PTYPE_CHANGED 0x1D
+#define HCI_QOS_VIOLATION 0x1E
+#define HCI_PSCAN_REP_MODE_CHANGE 0x20
+#define HCI_FLOW_SPEC_COMPLETE 0x21
+#define HCI_INQUIRY_RESULT_WITH_RSSI 0x22
+#define HCI_READ_REMOTE_EXT_FEATURES_COMPLETE 0x23
+#define HCI_SYNC_CONN_COMPLETE 0x2C
+#define HCI_SYNC_CONN_CHANGED 0x2D
+#define HCI_SNIFF_SUBRATING 0x2E
+#define HCI_EXTENDED_INQUIRY_RESULT 0x2F
+#define HCI_ENCRYPTION_KEY_REFRESH_COMPLETE 0x30
+#define HCI_IO_CAPABILITY_REQUEST 0x31
+#define HCI_IO_CAPABILITY_RESPONSE 0x32
+#define HCI_USER_CONFIRM_REQUEST 0x33
+#define HCI_USER_PASSKEY_REQUEST 0x34
+#define HCI_REMOTE_OOB_DATA_REQUEST 0x35
+#define HCI_SIMPLE_PAIRING_COMPLETE 0x36
+#define HCI_LINK_SUPERVISION_TIMEOUT_CHANGED 0x38
+#define HCI_ENHANCED_FLUSH_COMPLETE 0x39
+#define HCI_USER_PASSKEY_NOTIFY 0x3B
+#define HCI_KEYPRESS_NOTIFY 0x3C
+#define HCI_REMOTE_HOST_FEATURES_NOTIFY 0x3D
+#define HCI_VENDOR 0xFF
+
+/* Wii vendor specific event codes */
+#define HCI_VENDOR_BEGIN_PAIRING 0x08
+#define HCI_VENDOR_CLEAR_PAIRED_DEVICES 0x09
 
 /* Success code */
 #define HCI_SUCCESS 0x00
@@ -217,6 +253,7 @@
 #define HCI_R_STORED_LINK_KEY_OCF 0x0D 
 #define HCI_W_PAGE_TIMEOUT_OCF 0x18
 #define HCI_W_SCAN_EN_OCF 0x1A
+#define HCI_W_AUTH_ENABLE_OCF 0x20
 #define HCI_R_COD_OCF 0x23
 #define HCI_W_COD_OCF 0x24
 #define HCI_SET_HC_TO_H_FC_OCF 0x31
@@ -232,7 +269,6 @@
 #define HCI_W_INQUIRY_SCAN_TYPE_OCF 0x43
 #define HCI_W_INQUIRY_MODE_OCF 0x45
 #define HCI_W_PAGE_SCAN_TYPE_OCF 0x47
-#define HCI_W_PAGE_SCAN_TYPE_OCF 0x47
 
 /* Command packet length (including ACL header)*/
 #define HCI_INQUIRY_PLEN 9
@@ -247,7 +283,8 @@
 #define HCI_LINK_KEY_REQ_REP_PLEN 26
 #define HCI_LINK_KEY_REQ_REP_NEG_PLEN 10
 #define HCI_SET_CONN_ENCRYPT_PLEN 7
-#define HCI_WRITE_STORED_LINK_KEY_PLEN 27
+#define HCI_W_STORED_LINK_KEY_PLEN 27
+#define HCI_DEL_STORED_LINK_KEY_PLEN 11
 #define HCI_SET_EV_MASK_PLEN 12
 #define HCI_SNIFF_PLEN 14
 #define HCI_W_LINK_POLICY_PLEN 8
@@ -255,6 +292,7 @@
 #define HCI_SET_EV_FILTER_PLEN 6
 #define HCI_W_PAGE_TIMEOUT_PLEN 6
 #define HCI_W_SCAN_EN_PLEN 5
+#define HCI_W_AUTH_ENABLE_PLEN 5
 #define HCI_R_COD_PLEN 4
 #define HCI_W_COD_PLEN 7
 #define HCI_W_FLUSHTO_PLEN 8
@@ -357,6 +395,8 @@ struct hci_pcb
 	err_t (*inq_complete)(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result);
 	err_t (*wlp_complete)(void *arg, struct bd_addr *bdaddr);
 	err_t (*conn_req)(void *arg,struct bd_addr *bdaddr,u8_t *cod,u8_t link_type);
+	err_t (*remote_name_req_complete)(void *arg,struct bd_addr *bdaddr,u8_t *name,u8_t result);
+	void (*sync_btn)(u32_t held);
 };
 
 err_t hci_init(void);
@@ -381,6 +421,7 @@ err_t hci_reject_connection_request(struct bd_addr *bdaddr, u8_t reason);
 err_t hci_pin_code_request_reply(struct bd_addr *bdaddr, u8_t pinlen, u8_t *pincode);
 err_t hci_link_key_req_reply(struct bd_addr *bdaddr, u8_t *link_key);
 err_t hci_write_stored_link_key(struct bd_addr *bdaddr, u8_t *link);
+err_t hci_delete_stored_link_key(struct bd_addr *bdaddr, u8_t delete_all);
 err_t hci_set_event_filter(u8_t filter_type,u8_t filter_cond_type,u8_t *cond);
 err_t hci_write_page_timeout(u16_t timeout);
 err_t hci_inquiry(u32_t lap,u8_t inq_len,u8_t num_resp,err_t (*inq_complete)(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result));
@@ -390,6 +431,7 @@ err_t hci_write_scan_enable(u8_t scan_enable);
 err_t hci_host_num_comp_packets(u16_t conhdl, u16_t num_complete);
 err_t hci_sniff_mode(struct bd_addr *bdaddr, u16_t max_interval, u16_t min_interval, u16_t attempt, u16_t timeout);
 err_t hci_write_link_policy_settings(struct bd_addr *bdaddr, u16_t link_policy);
+err_t hci_write_authentication_enable(u8_t auth_enable);
 err_t hci_periodic_inquiry(u32_t lap,u16_t min_period,u16_t max_period,u8_t inq_len,u8_t num_resp,err_t (*inq_complete)(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result));
 err_t hci_exit_periodic_inquiry(void);
 err_t hci_accecpt_conn_request(struct bd_addr *bdaddr,u8_t role);
@@ -412,6 +454,9 @@ void hci_link_key_req(err_t (* link_key_req)(void *arg, struct bd_addr *bdaddr))
 void hci_link_key_not(err_t (* link_key_not)(void *arg, struct bd_addr *bdaddr, u8_t *key));
 void hci_wlp_complete(err_t (* wlp_complete)(void *arg, struct bd_addr *bdaddr));
 void hci_conn_req(err_t (*conn_req)(void *arg,struct bd_addr *bdaddr,u8_t *cod,u8_t link_type));
+void hci_remote_name_req_complete(err_t (*remote_name_req_complete)(void *arg,struct bd_addr *bdaddr,u8_t *name,u8_t result));
+void hci_sync_btn(void (*sync_btn)(u32_t held));
+void hci_get_bd_addr(struct bd_addr *bdaddr);
 
 u16_t lp_pdu_maxsize(void);
 u8_t lp_is_connected(struct bd_addr *bdaddr);
@@ -451,6 +496,12 @@ err_t lp_write_flush_timeout(struct bd_addr *bdaddr, u16_t flushto);
 #define HCI_EVENT_CMD_COMPLETE(pcb,ogf,ocf,result,ret) \
                               if((pcb)->cmd_complete != NULL) \
                               (ret = (pcb)->cmd_complete((pcb)->cbarg,(pcb),(ogf),(ocf),(result)))
+#define HCI_EVENT_REMOTE_NAME_REQ_COMPLETE(pcb,bdaddr,name,result,ret) \
+                              if((pcb)->remote_name_req_complete != NULL) \
+                              (ret = (pcb)->remote_name_req_complete((pcb)->cbarg,(bdaddr),(name),(result)))
+#define HCI_EVENT_SYNC_BTN(pcb, held) \
+                              if((pcb)->sync_btn != NULL) \
+                              ((pcb)->sync_btn(held))
 
 /* The HCI LINK lists. */
 extern struct hci_link *hci_active_links; /* List of all active HCI LINKs */

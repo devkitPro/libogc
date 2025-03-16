@@ -83,6 +83,11 @@ static s32 __wiiuse_connected(void *arg,struct bte_pcb *pcb,u8 err)
 	struct wiimote_listen_t *wml = (struct wiimote_listen_t*)arg;
 	struct wiimote_t *wm;
 
+	if(err) {
+		bte_disconnect(wml->sock);
+		return ERR_CONN;
+	}
+
 	wm = wml->assign_cb(&wml->bdaddr);
 
 	if(!wm) {
@@ -133,6 +138,28 @@ int wiiuse_register(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct
 	bte_disconnected(wml->sock,__wiiuse_disconnected);
 	
 	err = bte_registerdeviceasync(wml->sock,bdaddr,__wiiuse_connected);
+	if(err==ERR_OK) return 1;
+
+	return 0;
+}	
+
+int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct wiimote_t *(*assign_cb)(struct bd_addr *bdaddr))
+{
+	s32 err;
+
+	if(!wml || !bdaddr || !assign_cb) return 0;
+
+	wml->wm = NULL;
+	wml->bdaddr = *bdaddr;
+	wml->sock = bte_new();
+	wml->assign_cb = assign_cb;
+	if(wml->sock==NULL) return 0;
+
+	bte_arg(wml->sock,wml);
+	bte_received(wml->sock,__wiiuse_receive);
+	bte_disconnected(wml->sock,__wiiuse_disconnected);
+	
+	err = bte_connectdeviceasync(wml->sock,bdaddr,__wiiuse_connected);
 	if(err==ERR_OK) return 1;
 
 	return 0;

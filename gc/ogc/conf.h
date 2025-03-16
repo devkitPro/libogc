@@ -174,6 +174,9 @@ s32 CONF_GetRegion(void);
 s32 CONF_GetArea(void);
 s32 CONF_GetVideo(void);
 
+s32 CONF_SetPadDevices(const conf_pads *pads);
+s32 CONF_SaveChanges(void);
+
 #ifdef __cplusplus
    }
 #endif /* __cplusplus */

@@ -111,6 +111,8 @@ err_t bte_hci_initsub_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u
 err_t bte_inquiry_complete(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result);
 err_t bte_read_stored_link_key_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result);
 err_t bte_read_bd_addr_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result);
+err_t bte_set_evt_filter_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result);
+err_t bte_read_remote_name_complete(void *arg,struct bd_addr *bdaddr,u8_t *name, u8_t result);
 
 
 MEMB(bte_pcbs,sizeof(struct bte_pcb),MEMP_NUM_BTE_PCB);
@@ -387,6 +389,9 @@ void BTE_Init(void)
 
 	hci_wlp_complete(acl_wlp_completed);
 	hci_connection_complete(acl_conn_complete);
+    hci_remote_name_req_complete(bte_read_remote_name_complete);
+    hci_link_key_not(link_key_not);
+    hci_pin_req(pin_req);
 	_CPU_ISR_Restore(level);
 
 	tb.tv_sec = 1;
@@ -498,9 +503,57 @@ s32 BTE_ReadBdAddr(struct bd_addr *bdaddr, btecallback cb)
     return ERR_OK;
 }
 
+s32 BTE_SetEvtFilter(u8 filter_type,u8 filter_cond_type,u8 *cond, btecallback cb)
+{    
+    u32 level;
+	err_t last_err = ERR_OK;
+
+    _CPU_ISR_Disable(level);
+    btstate.cb = cb;
+    btstate.usrdata = NULL;
+    btstate.hci_cmddone = 0;
+    hci_arg(&btstate);
+    hci_cmd_complete(bte_set_evt_filter_complete);
+    hci_set_event_filter(filter_type,filter_cond_type,cond);
+    _CPU_ISR_Restore(level);
+
+    return last_err;
+}
+
+s32 BTE_ReadRemoteName(u8_t *name, struct bd_addr *bdaddr)
+{    
+    u32 level;
+	err_t last_err = ERR_OK;
+
+    _CPU_ISR_Disable(level);
+    btstate.cb = NULL;
+    btstate.usrdata = name;
+    btstate.hci_cmddone = 0;
+    hci_arg(&btstate);
+    hci_read_remote_name(bdaddr);
+	last_err = __bte_waitcmdfinish(&btstate);
+    _CPU_ISR_Restore(level);
+
+	return last_err;
+}
+
 void (*BTE_SetDisconnectCallback(void (*callback)(struct bd_addr *bdaddr,u8 reason)))(struct bd_addr *bdaddr,u8 reason)
 {
 	return l2cap_disconnect_bb(callback);
+}
+
+void BTE_SetSyncButtonCallback(void (*callback)(u32 held))
+{
+	u32 level;
+	
+	_CPU_ISR_Disable(level);
+	hci_sync_btn(callback);
+	_CPU_ISR_Restore(level);
+}
+
+void BTE_ClearStoredLinkKeys(void)
+{
+	hci_delete_stored_link_key(NULL, 0x01);
 }
 
 struct bte_pcb* bte_new(void)
@@ -563,6 +616,52 @@ error:
 	return err;
 }
 
+s32 bte_connectdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
+{
+	u32 level;
+	s32 err = ERR_OK;
+	struct l2cap_pcb *l2capcb = NULL;
+
+	printf("bte_connectdeviceasync()\n");
+	_CPU_ISR_Disable(level);
+	pcb->err = ERR_USE;
+	pcb->data_pcb = NULL;
+	pcb->ctl_pcb = NULL;
+	pcb->conn_cfm = conn_cfm;
+	pcb->state = (u32)STATE_CONNECTING;
+
+	bd_addr_set(&(pcb->bdaddr),bdaddr);
+	if((l2capcb=l2cap_new())==NULL) {
+		err = ERR_MEM;
+		goto error;
+	}
+	l2cap_arg(l2capcb,pcb);
+
+	err = l2ca_connect_req(l2capcb,bdaddr,HIDP_CONTROL_CHANNEL,HCI_ALLOW_ROLE_SWITCH,l2cap_connected);
+	if(err!=ERR_OK) {
+		l2cap_close(l2capcb);
+		err = ERR_CONN;
+		goto error;
+	}
+	
+	if((l2capcb=l2cap_new())==NULL) {
+		err = ERR_MEM;
+		goto error;
+	}
+	l2cap_arg(l2capcb,pcb);
+
+	err = l2ca_connect_req(l2capcb,bdaddr,HIDP_DATA_CHANNEL,HCI_ALLOW_ROLE_SWITCH,l2cap_connected);
+	if(err!=ERR_OK) {
+		l2cap_close(l2capcb);
+		err = ERR_CONN;
+	}
+
+error:
+	_CPU_ISR_Restore(level);
+	//printf("bte_connectdeviceasync(%02x)\n",err);
+	return err;
+}
+
 s32 bte_inquiry(struct inquiry_info *info,u8 max_cnt,u8 flush)
 {
 	s32_t i;
@@ -574,9 +673,13 @@ s32 bte_inquiry(struct inquiry_info *info,u8 max_cnt,u8 flush)
 
 	_CPU_ISR_Disable(level);
 	if(btstate.num_founddevs==0 || flush==1) {
+		btstate.cb = NULL;
 		btstate.hci_cmddone = 0;
 		btstate.num_maxdevs = max_cnt;
-		hci_inquiry(0x009E8B33,0x03,max_cnt,bte_inquiry_complete);
+		hci_arg(&btstate);
+		// Use Limited Dedicated Inquiry Access Code (LIAC) to query, since third-party Wiimotes
+		// cannot be discovered without it.
+		hci_inquiry(0x009E8B00,0x03,max_cnt,bte_inquiry_complete);
 		last_err = __bte_waitcmdfinish(&btstate);
 	}
 	fnd = btstate.num_founddevs;
@@ -603,9 +706,13 @@ s32 bte_inquiry_ex(struct inquiry_info_ex *info,u8 max_cnt,u8 flush)
 
 	_CPU_ISR_Disable(level);
 	if(btstate.num_founddevs==0 || flush==1) {
+		btstate.cb = NULL;
 		btstate.hci_cmddone = 0;
 		btstate.num_maxdevs = max_cnt;
-		hci_inquiry(0x009E8B33,0x03,max_cnt,bte_inquiry_complete);
+		hci_arg(&btstate);
+		// Use Limited Dedicated Inquiry Access Code (LIAC) to query, since third-party Wiimotes
+		// cannot be discovered without it.
+		hci_inquiry(0x009E8B00,0x03,max_cnt,bte_inquiry_complete);
 		last_err = __bte_waitcmdfinish(&btstate);
 	}
 	fnd = btstate.num_founddevs;
@@ -848,7 +955,11 @@ err_t acl_conn_complete(void *arg,struct bd_addr *bdaddr)
 
 err_t pin_req(void *arg,struct bd_addr *bdaddr)
 {
+	struct bd_addr host_addr;
 	//printf("pin_req\n");
+	
+	hci_get_bd_addr(&host_addr);
+	hci_pin_code_request_reply(bdaddr, BD_ADDR_LEN, host_addr.addr);
 	return ERR_OK;
 }
 
@@ -917,16 +1028,24 @@ err_t link_key_not(void *arg,struct bd_addr *bdaddr,u8_t *key)
 	return hci_write_stored_link_key(bdaddr,key);
 }
 
-/*
 err_t l2cap_connected(void *arg,struct l2cap_pcb *l2cappcb,u16_t result,u16_t status)
 {
 	struct bte_pcb *btepcb = (struct bte_pcb*)arg;
 
-	printf("l2cap_connected(%02x)\n",result);
+	//printf("l2cap_connected(%02x)\n",result);
 	if(result==L2CAP_CONN_SUCCESS) {
-		l2cap_recv(l2cappcb,bte_input);
+		l2cap_recv(l2cappcb,bte_process_input);
 		l2cap_disconnect_ind(l2cappcb,l2cap_disconnected_ind);
+		switch(l2cap_psm(l2cappcb)) {
+			case HIDP_CONTROL_CHANNEL:
+				btepcb->ctl_pcb = l2cappcb;
+				break;
+			case HIDP_DATA_CHANNEL:
+				btepcb->data_pcb = l2cappcb;
+				break;
+		}
 		btepcb->err = ERR_OK;
+		btepcb->state = (u32)STATE_CONNECTED;
 	} else {
 		l2cap_close(l2cappcb);
 		btepcb->err = ERR_CONN;
@@ -936,7 +1055,7 @@ err_t l2cap_connected(void *arg,struct l2cap_pcb *l2cappcb,u16_t result,u16_t st
 	LWP_ThreadSignal(btepcb->cmdq);
 	return ERR_OK;
 }
-*/
+
 err_t l2cap_accepted(void *arg,struct l2cap_pcb *l2cappcb,err_t err)
 {
 	struct bte_pcb *btepcb = (struct bte_pcb*)arg;
@@ -961,7 +1080,7 @@ err_t l2cap_accepted(void *arg,struct l2cap_pcb *l2cappcb,err_t err)
 	} else {
 		l2cap_close(l2cappcb);
 		btepcb->err = ERR_CONN;
-		btepcb->conn_cfm(btepcb->cbarg,btepcb,ERR_CONN);
+		if(btepcb->conn_cfm) btepcb->conn_cfm(btepcb->cbarg,btepcb,ERR_CONN);
 	}
 
 	return ERR_OK;
@@ -996,11 +1115,11 @@ err_t bte_inquiry_complete(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ire
 				btstate.info[i].psm = p->psm;
 				btstate.info[i].co = p->co;
 
-				printf("bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",p->bdaddr.addr[0],p->bdaddr.addr[1],p->bdaddr.addr[2],p->bdaddr.addr[3],p->bdaddr.addr[4],p->bdaddr.addr[5]);
+				/*printf("bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",p->bdaddr.addr[0],p->bdaddr.addr[1],p->bdaddr.addr[2],p->bdaddr.addr[3],p->bdaddr.addr[4],p->bdaddr.addr[5]);
 				printf("cod:    %02x%02x%02x\n",p->cod[0],p->cod[1],p->cod[2]);
 				printf("psrm:   %02x\n",p->psrm);
 				printf("psm:   %02x\n",p->psm);
-				printf("co:   %04x\n",p->co);
+				printf("co:   %04x\n",p->co);*/
 				p = p->next;
 			}
 			__bte_cmdfinish(state,ERR_OK);
@@ -1065,7 +1184,50 @@ err_t bte_read_bd_addr_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,
             bdaddr->addr[4] = pcb->bdaddr.addr[1];
             bdaddr->addr[5] = pcb->bdaddr.addr[0];
         }
-        LOG("bte_read_bd_addr_complete(%02x,%p,%d)\n",result,bdaddr,i);
+        LOG("bte_read_bd_addr_complete(%02x,%p)\n",result,bdaddr);
+        __bte_cmdfinish(state,ERR_OK);
+        return ERR_OK;
+    }
+
+    return __bte_cmdfinish(state,ERR_VAL);
+}
+
+err_t bte_read_remote_name_complete(void *arg,struct bd_addr *bdaddr,u8_t *name,u8_t result)
+{
+	u8_t *name_dest;
+    struct bt_state *state = (struct bt_state*)arg;
+
+    LOG("bte_read_remote_name_complete(%02x,%p)\n", result, bdaddr);
+
+    if(state==NULL) return ERR_VAL;
+
+    if(result == HCI_SUCCESS) {
+        name_dest = (u8_t *)state->usrdata;
+        if (name_dest != NULL) {
+			memcpy(name_dest, name, BD_NAME_LEN);
+        }
+        LOG("bte_read_remote_name_complete(%02x,%s)\n",result,name_dest);
+        __bte_cmdfinish(state,ERR_OK);
+        return ERR_OK;
+    }
+
+    return __bte_cmdfinish(state,ERR_VAL);
+}
+
+err_t bte_set_evt_filter_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result)
+{
+    struct bt_state *state = (struct bt_state*)arg;
+
+    if(!pcb) return ERR_CONN;
+
+    LOG("bte_set_evt_filter_complete(%02x)\n", result);
+
+    if(state==NULL) return ERR_VAL;
+
+    if(!(ogf==HCI_HC_BB_OGF && ocf==HCI_SET_EV_FILTER_OCF)) return __bte_cmdfinish(state,ERR_CONN);
+
+    if(result == HCI_SUCCESS) {
+        LOG("bte_set_evt_filter_complete(%02x)\n",result);
         __bte_cmdfinish(state,ERR_OK);
         return ERR_OK;
     }
@@ -1341,6 +1503,11 @@ err_t bte_hci_initsub_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u
 				} else
 					err = ERR_CONN;
 			} else if(ocf==HCI_WRITE_SCAN_ENABLE) {
+				if(result==HCI_SUCCESS) {
+					hci_write_authentication_enable(0x01);
+				} else
+					err = ERR_CONN;
+			} else if(ocf==HCI_W_AUTH_ENABLE_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_cmd_complete(NULL);
 					return __bte_cmdfinish(state,ERR_OK);

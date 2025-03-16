@@ -31,6 +31,7 @@ distribution.
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
+#include <gcbool.h>
 #include "ipc.h"
 #include "asm.h"
 #include "processor.h"
@@ -40,6 +41,7 @@ distribution.
 static int __conf_inited = 0;
 static u8 __conf_buffer[0x4000] ATTRIBUTE_ALIGN(32);
 static char __conf_txt_buffer[0x101] ATTRIBUTE_ALIGN(32);
+static int __conf_buffer_dirty = FALSE;
 
 static const char __conf_file[] ATTRIBUTE_ALIGN(32) = "/shared2/sys/SYSCONF";
 static const char __conf_txt_file[] ATTRIBUTE_ALIGN(32) = "/title/00000001/00000002/data/setting.txt";
@@ -207,6 +209,78 @@ s32 CONF_Get(const char *name, void *buffer, u32 length)
 	return len;
 }
 
+s32 CONF_Set(const char *name, const void *buffer, u32 length)
+{
+	u8 *entry;
+	s32 len;
+	if(!__conf_inited) return CONF_ENOTINIT;
+	
+	entry = __CONF_Find(name);
+	if(!entry) return CONF_ENOENT;
+	
+	len = CONF_GetLength(name);
+	if(len<0) return len;
+	if(len!=length) return CONF_EBADVALUE;
+	
+	switch(*entry>>5) {
+		case CONF_BIGARRAY:
+			memcpy(&entry[strlen(name)+3], buffer, len);
+			break;
+		case CONF_SMALLARRAY:
+			memcpy(&entry[strlen(name)+2], buffer, len);
+			break;
+		case CONF_BYTE:
+		case CONF_SHORT:
+		case CONF_LONG:
+		case CONF_BOOL:
+			memcpy(&entry[strlen(name)+1], buffer, len);
+			break;
+		default:
+			return CONF_ENOTIMPL;
+	}
+	__conf_buffer_dirty = TRUE;
+	return len;
+}
+
+int __CONF_WriteBuffer(void)
+{
+	int ret, fd;
+
+	if (!__conf_inited)
+		return CONF_ENOTINIT;
+
+	if (!__conf_buffer_dirty)
+		return 0;
+
+	fd = IOS_Open(__conf_file, 2);
+	if (fd < 0)
+		return fd;
+
+	ret = IOS_Write(fd, __conf_buffer, 0x4000);
+	IOS_Close(fd);
+	if (ret != 0x4000)
+		return CONF_EBADFILE;
+
+	__conf_buffer_dirty = FALSE;
+	return 0;
+}
+
+s32 CONF_SaveChanges(void)
+{
+	s32 ret;
+	if (!__conf_inited)
+		return CONF_ENOTINIT;
+	ret = __CONF_WriteBuffer();
+	if (ret < 0)
+		return ret;
+
+	/*ret = __CONF_WriteTxtBuffer();
+	if (ret < 0)
+		return ret;*/
+
+	return CONF_ERR_OK;
+}
+
 s32 CONF_GetShutdownMode(void) 
 {
 	u8 idleconf[2] = {0,0};
@@ -344,6 +418,16 @@ s32 CONF_GetPadDevices(conf_pads *pads)
 	if(res < 0) return res;
 	if(res < sizeof(conf_pads)) return CONF_EBADVALUE;
 	return 0;
+}
+
+s32 CONF_SetPadDevices(const conf_pads *pads)
+{
+	u8 count;
+
+	if (!pads) return CONF_EBADVALUE;
+	count = pads->num_registered;
+	if (count > CONF_PAD_MAX_REGISTERED) return CONF_EBADVALUE;
+	return CONF_Set("BT.DINF", pads, sizeof(conf_pads));
 }
 
 s32 CONF_GetNickName(u8 *nickname)

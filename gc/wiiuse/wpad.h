@@ -166,6 +166,7 @@ typedef struct _wpad_encstatus
 
 typedef void (*WPADDataCallback)(s32 chan, const WPADData *data);
 typedef void (*WPADShutdownCallback)(s32 chan);
+typedef void (*WPADSyncCallback)(u32 held);
 
 s32 WPAD_Init(void);
 s32 WPAD_ControlSpeaker(s32 chan,s32 enable);
@@ -186,6 +187,7 @@ void WPAD_Shutdown(void);
 void WPAD_SetIdleTimeout(u32 seconds);
 void WPAD_SetPowerButtonCallback(WPADShutdownCallback cb);
 void WPAD_SetBatteryDeadCallback(WPADShutdownCallback cb);
+void WPAD_SetSyncButtonCallback(WPADSyncCallback cb);
 s32 WPAD_ScanPads(void);
 s32 WPAD_Rumble(s32 chan, int status);
 s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb, s32 mp);

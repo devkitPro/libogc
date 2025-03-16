@@ -186,6 +186,30 @@ void hci_pin_req(err_t (* pin_req)(void *arg, struct bd_addr *bdaddr))
 }
 /*-----------------------------------------------------------------------------------*/
 /* 
+ * hci_sync_btn():
+ *
+ * Used to specify the function that should be called when HCI has received a 
+ * sync button event.
+ */
+/*-----------------------------------------------------------------------------------*/
+void hci_sync_btn(void (* sync_btn)(u32_t held))
+{
+	hci_dev->sync_btn = sync_btn;
+}
+/*-----------------------------------------------------------------------------------*/
+/* 
+ * hci_remote_name_req_complete():
+ *
+ * Used to specify the function that should be called when HCI has received a 
+ * remote name request complete event.
+ */
+/*-----------------------------------------------------------------------------------*/
+void hci_remote_name_req_complete(err_t (* remote_name_req_complete)(void *arg, struct bd_addr *bdaddr, u8_t *name, u8_t result))
+{
+	hci_dev->remote_name_req_complete = remote_name_req_complete;
+}
+/*-----------------------------------------------------------------------------------*/
+/* 
  * hci_link_key_req():
  *
  * Used to specify the function that should be called when HCI has received a 
@@ -845,6 +869,31 @@ err_t hci_write_link_policy_settings(struct bd_addr *bdaddr, u16_t link_policy)
 	btpbuf_free(p);
 	return ERR_OK;
 }
+/*-----------------------------------------------------------------------------------*/
+/* hci_write_authentication_enable():
+ *
+ * Control the authentication enable for the Host Controller.
+ *
+ */
+/*-----------------------------------------------------------------------------------*/
+err_t hci_write_authentication_enable(u8_t auth_enable)
+{
+	struct pbuf *p;
+
+	if( (p = btpbuf_alloc(PBUF_TRANSPORT, HCI_W_AUTH_ENABLE_PLEN, PBUF_RAM)) == NULL) { /* Alloc len of packet */
+		ERROR("hci_write_authentication_enable: Could not allocate memory for pbuf\n");
+		return ERR_MEM;
+	}
+	/* Assembling command packet */
+	p = hci_cmd_ass(p, HCI_W_AUTH_ENABLE_OCF, HCI_HC_BB_OGF, HCI_W_AUTH_ENABLE_PLEN);
+
+	/* Assembling cmd prameters */
+	((u8_t *)p->payload)[4] = auth_enable;
+
+	physbusif_output(p, p->tot_len);
+	btpbuf_free(p);
+	return ERR_OK;
+}
 
 /*-----------------------------------------------------------------------------------*/
 /* hci_pin_code_request_reply():
@@ -887,22 +936,22 @@ err_t hci_pin_code_request_reply(struct bd_addr *bdaddr, u8_t pinlen, u8_t *pinc
  /*-----------------------------------------------------------------------------------*/
 err_t hci_link_key_req_reply(struct bd_addr *bdaddr, unsigned char *link_key)
 {
-        struct pbuf *p;
-        if ((p = btpbuf_alloc(PBUF_RAW, HCI_LINK_KEY_REQ_REP_PLEN, PBUF_RAM)) == NULL) {
-                ERROR("hci_link_key_req_reply: Could not allocate memory for pbuf\n");
-                return ERR_MEM;
-        }
- 
-        p = hci_cmd_ass(p, HCI_LINK_KEY_REQ_REP, HCI_LINK_CTRL_OGF, HCI_LINK_KEY_REQ_REP_PLEN);
-        //copy bdaddr to offset 0x4
-        memcpy(((u8_t *)p->payload)+4, bdaddr->addr, 6);
-        //copy Link Key (16 bytes long) to offset 10 (0xA)
-        memcpy(((u8_t *)p->payload)+10, link_key, 16);
-        //send command
-        physbusif_output(p,p->tot_len);
-        btpbuf_free(p);
- 
-        return ERR_OK;
+	struct pbuf *p;
+	if ((p = btpbuf_alloc(PBUF_RAW, HCI_LINK_KEY_REQ_REP_PLEN, PBUF_RAM)) == NULL) {
+			ERROR("hci_link_key_req_reply: Could not allocate memory for pbuf\n");
+			return ERR_MEM;
+	}
+
+	p = hci_cmd_ass(p, HCI_LINK_KEY_REQ_REP, HCI_LINK_CTRL_OGF, HCI_LINK_KEY_REQ_REP_PLEN);
+	//copy bdaddr to offset 0x4
+	memcpy(((u8_t *)p->payload)+4, bdaddr->addr, 6);
+	//copy Link Key (16 bytes long) to offset 10 (0xA)
+	memcpy(((u8_t *)p->payload)+10, link_key, 16);
+	//send command
+	physbusif_output(p,p->tot_len);
+	btpbuf_free(p);
+
+	return ERR_OK;
 }
 
 
@@ -1024,18 +1073,51 @@ err_t hci_reject_connection_request(struct bd_addr *bdaddr, u8_t reason)
  /*-----------------------------------------------------------------------------------*/
 err_t hci_write_stored_link_key(struct bd_addr *bdaddr, u8_t *link)
 {
-  struct pbuf *p;
+	struct pbuf *p;
 
-	if((p = btpbuf_alloc(PBUF_RAW, HCI_WRITE_STORED_LINK_KEY_PLEN, PBUF_RAM)) == NULL) {
+	if((p = btpbuf_alloc(PBUF_RAW, HCI_W_STORED_LINK_KEY_PLEN, PBUF_RAM)) == NULL) {
 		ERROR("hci_write_stored_link_key: Could not allocate memory for pbuf\n");
 		return ERR_MEM;
 	}
 	/* Assembling command packet */
-	p = hci_cmd_ass(p, HCI_WRITE_STORED_LINK_KEY, HCI_HC_BB_OGF, HCI_WRITE_STORED_LINK_KEY_PLEN);
+	p = hci_cmd_ass(p, HCI_WRITE_STORED_LINK_KEY, HCI_HC_BB_OGF, HCI_W_STORED_LINK_KEY_PLEN);
 	/* Assembling cmd prameters */
 	((u8_t *)p->payload)[4] = 0x01;
 	memcpy(((u8_t *)p->payload) + 5, bdaddr->addr, 6);
 	memcpy(((u8_t *)p->payload) + 11, link, 16);
+
+	physbusif_output(p, p->tot_len);
+	btpbuf_free(p);
+
+	return ERR_OK;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/* hci_delete_stored_link_key():
+ *
+ * Deletes a link key from the Bluetooth host controller.
+ */
+ /*-----------------------------------------------------------------------------------*/
+err_t hci_delete_stored_link_key(struct bd_addr *bdaddr, u8_t delete_all)
+{
+	struct pbuf *p;
+
+	if((p = btpbuf_alloc(PBUF_RAW, HCI_DEL_STORED_LINK_KEY_PLEN, PBUF_RAM)) == NULL) {
+		ERROR("hci_write_stored_link_key: Could not allocate memory for pbuf\n");
+		return ERR_MEM;
+	}
+	/* Assembling command packet */
+	p = hci_cmd_ass(p, HCI_DELETE_STORED_LINK_KEY, HCI_HC_BB_OGF, HCI_DEL_STORED_LINK_KEY_PLEN);
+	/* Assembling cmd prameters */
+	if (bdaddr)
+	{
+		memcpy(((u8_t *)p->payload) + 4, bdaddr->addr, 6);
+	}
+	else
+	{
+		memset(((u8_t *)p->payload) + 4, 0, 6);
+	}
+	((u8_t *)p->payload)[10] = delete_all;
 
 	physbusif_output(p, p->tot_len);
 	btpbuf_free(p);
@@ -1181,6 +1263,19 @@ err_t hci_host_num_comp_packets(u16_t conhdl, u16_t num_complete)
 u16_t lp_pdu_maxsize(void)
 {
 	return hci_dev->acl_mtu;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/* hci_get_bd_addr():
+ *
+ * Called by L2CAP to check the maxsize of the PDU. In this case it is the largest
+ * ACL packet that the Host Controller can buffer.
+ */
+/*-----------------------------------------------------------------------------------*/
+void hci_get_bd_addr(struct bd_addr *bdaddr)
+{
+	if (bdaddr)
+		bd_addr_set(bdaddr, &hci_dev->bdaddr);
 }
 
 /*-----------------------------------------------------------------------------------*/
@@ -1422,7 +1517,7 @@ static void hci_cc_host_ctrl(u8_t ocf,struct pbuf *p)
 	u8_t *lap;
 	u8_t i,resp_off;
 
-	//printf("hci_cc_host_ctrl(%02x)\n",ocf);
+	LOG("hci_cc_host_ctrl(%02x)\n",ocf);
 	switch(ocf) {
 		case HCI_SET_HC_TO_H_FC:
 			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) hci_dev->flow = 1;
@@ -1544,7 +1639,7 @@ static void hci_inquiry_result_evt(struct pbuf *p)
 	struct hci_inq_res *ires;
 
 	num_resp = ((u8_t*)p->payload)[0];
-	//printf("hci_inquriy_result_evt(%d)\n",num_resp);
+	//printf("hci_inquiry_result_evt(%d)\n",num_resp);
 	for(i=0;i<num_resp && i<MEMB_NUM_HCI_INQ;i++) {
 		resp_off = (i*14);
 		bdaddr = (void*)(((u8_t*)p->payload)+(1+resp_off));
@@ -1558,7 +1653,34 @@ static void hci_inquiry_result_evt(struct pbuf *p)
 
 			HCI_REG(&(hci_dev->ires),ires);
 		} else
-			ERROR("hci_inquriy_result_evt: Could not allocate memory for inquiry result\n");
+			ERROR("hci_inquiry_result_evt: Could not allocate memory for inquiry result\n");
+	}
+
+}
+
+static void hci_inquiry_result_with_rssi_evt(struct pbuf *p)
+{
+	u8_t num_resp;
+	u32_t i,resp_off;
+	struct bd_addr *bdaddr;
+	struct hci_inq_res *ires;
+
+	num_resp = ((u8_t*)p->payload)[0];
+	//printf("hci_inquiry_result_with_rssi_evt(%d)\n",num_resp);
+	for(i=0;i<num_resp && i<MEMB_NUM_HCI_INQ;i++) {
+		resp_off = (i*14);
+		bdaddr = (void*)(((u8_t*)p->payload)+(1+resp_off));
+		if((ires=btmemb_alloc(&hci_inq_results))!=NULL) {
+			bd_addr_set(&(ires->bdaddr),bdaddr);
+			ires->psrm = ((u8_t*)p->payload)[7+resp_off];
+			ires->psm = ((u8_t*)p->payload)[8+resp_off];
+			memcpy(ires->cod,((u8_t*)p->payload)+9+resp_off,3);
+			ires->co = le16toh(*((u16_t*)(((u8_t*)p->payload)+12+resp_off)));
+			ires->next = NULL;
+
+			HCI_REG(&(hci_dev->ires),ires);
+		} else
+			ERROR("hci_inquiry_result_with_rssi_evt: Could not allocate memory for inquiry result\n");
 	}
 
 }
@@ -1612,6 +1734,9 @@ void hci_event_handler(struct pbuf *p)
 		case HCI_INQUIRY_RESULT:
 			hci_inquiry_result_evt(p);
 			break;
+		case HCI_INQUIRY_RESULT_WITH_RSSI:
+			hci_inquiry_result_with_rssi_evt(p);
+			break;
 		case HCI_CONNECTION_COMPLETE:
 			hci_conn_complete_evt(p);
 			break;
@@ -1632,6 +1757,10 @@ void hci_event_handler(struct pbuf *p)
 				default:
 					return;
 			}
+			break;
+		case HCI_REMOTE_NAME_REQ_COMPLETE:
+			bdaddr = (void *)(((u8_t *)p->payload)+1); /* Get the Bluetooth address */
+			HCI_EVENT_REMOTE_NAME_REQ_COMPLETE(hci_dev,bdaddr,(((u8_t*)p->payload)+7),((u8_t*)p->payload)[0],ret);
 			break;
 		case HCI_ENCRYPTION_CHANGE:
 			break;
@@ -1725,8 +1854,23 @@ void hci_event_handler(struct pbuf *p)
 
 			HCI_EVENT_LINK_KEY_NOT(hci_dev, bdaddr, ((u8_t *)p->payload) + 6, ret); /* Notify application.*/
 			break;
+		case HCI_VENDOR:
+			switch (((u8_t *)p->payload)[0]) {
+				case HCI_VENDOR_BEGIN_PAIRING:
+					//printf("Begin Wiimote pairing\n");
+					HCI_EVENT_SYNC_BTN(hci_dev, FALSE);
+					break;
+				case HCI_VENDOR_CLEAR_PAIRED_DEVICES:
+					//printf("Clear paired Wiimotes");
+					HCI_EVENT_SYNC_BTN(hci_dev, TRUE);
+					break;
+				default:
+					LOG("hci_event_input: Undefined vendor event code 0x%x, length %d\n", ((u8_t *)p->payload)[0], evthdr->len);
+					break;
+			}
+			break;
 		default:
-			LOG("hci_event_input: Undefined event code 0x%x\n", evthdr->code);
+			LOG("hci_event_input: Undefined event code 0x%x, length %d\n", evthdr->code, evthdr->len);
 			break;
 	}
 }

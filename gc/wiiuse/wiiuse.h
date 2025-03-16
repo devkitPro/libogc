@@ -698,6 +698,7 @@ WIIUSE_EXPORT extern const char* wiiuse_version();
 WIIUSE_EXPORT extern struct wiimote_t** wiiuse_init(int wiimotes);
 #else
 WIIUSE_EXPORT extern int wiiuse_register(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct wiimote_t *(*assign_cb)(struct bd_addr *bdaddr));
+WIIUSE_EXPORT extern int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct wiimote_t *(*assign_cb)(struct bd_addr *bdaddr));
 WIIUSE_EXPORT extern struct wiimote_t** wiiuse_init(int wiimotes, wii_event_cb event_cb);
 WIIUSE_EXPORT extern void wiiuse_sensorbar_enable(int enable);
 #endif
@@ -721,7 +722,7 @@ WIIUSE_EXPORT extern int wiiuse_write_streamdata(struct wiimote_t *wm,ubyte *dat
 
 /* connect.c */
 WIIUSE_EXPORT extern int wiiuse_find(struct wiimote_t** wm, int max_wiimotes, int timeout);
-WIIUSE_EXPORT extern int wiiuse_connect(struct wiimote_t** wm, int wiimotes);
+//WIIUSE_EXPORT extern int wiiuse_connect(struct wiimote_t** wm, int wiimotes);
 WIIUSE_EXPORT extern void wiiuse_disconnect(struct wiimote_t* wm);
 
 /* events.c */
