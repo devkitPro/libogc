@@ -197,12 +197,9 @@ s32 ES_SetUID(u64 uid)
 
 	s32 ret = IOS_IoctlvFormat(__es_hid,__es_fd,IOCTL_ES_SETUID,"q:",uid);
 	
-	//if the call succeeded, our FS handle needs to be reopened, as IOS saves access of our FD
-	if(ret >= 0)
-	{
-		ISFS_Deinitialize();
+	//if the call succeeded, our FS handle needs to be reopened (if it was opened to begin with), as IOS saves access of our FD
+	if(ret >= 0 && ISFS_Deinitialize() != ISFS_OK)
 		ISFS_Initialize();
-	}
 	
 	return ret;
 }
