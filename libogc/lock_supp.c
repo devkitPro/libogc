@@ -11,63 +11,53 @@
 #include "asm.h"
 #include "processor.h"
 #include "mutex.h"
-#include <gcbool.h>
 
-
-static void __libogc_lock_init(_LOCK_T *lock,int recursive)
-{
-	s32 ret;
-	mutex_t retlck = LWP_MUTEX_NULL;
-
-	if(!lock) return;
-
-	*lock = 0;
-	ret = LWP_MutexInit(&retlck,(recursive?TRUE:FALSE));
-	if(ret==0) *lock = (_LOCK_T)retlck;
-
-}
 
 void __syscall_lock_init(_LOCK_T *lock)
 {
-	__libogc_lock_init(lock,0);
+	s32 ret;
+	mutex_t retlck = LWP_MUTEX_NULL;
+	if(!lock) return;
+
+	*lock = 0;
+	ret = LWP_MutexInit(&retlck,false);
+	if(ret==0) *lock = (_LOCK_T)retlck;
 }
 
-void __syscall_lock_init_recursive(_LOCK_T *lock)
+void __syscall_lock_init_recursive(_LOCK_RECURSIVE_T *lock)
 {
-	__libogc_lock_init(lock,1);
+	s32 ret;
+	mutex_t retlck = LWP_MUTEX_NULL;
+	if(!lock) return;
+
+	*lock = 0;
+	ret = LWP_MutexInit(&retlck,true);
+	if(ret==0) *lock = (_LOCK_T)retlck;
 }
 
 void __syscall_lock_close(_LOCK_T *lock)
 {
 	s32 ret;
-	mutex_t plock;
 
 	if(!lock || *lock==0) return;
 
-	plock = (mutex_t)*lock;
-	ret = LWP_MutexDestroy(plock);
+	ret = LWP_MutexDestroy((mutex_t)*lock);
 	if(ret==0) *lock = 0;
 
 }
 
 void __syscall_lock_acquire(_LOCK_T *lock)
 {
-	mutex_t plock;
-
 	if(!lock || *lock==0) return;
 
-	plock = (mutex_t)*lock;
-	LWP_MutexLock(plock);
+	LWP_MutexLock((mutex_t)*lock);
 }
 
 
-void __syscall_lock_release(int *lock)
+void __syscall_lock_release(_LOCK_T *lock)
 {
-	mutex_t plock;
-
 	if(!lock || *lock==0) return;
 
-	plock = (mutex_t)*lock;
-	LWP_MutexUnlock(plock);
+	LWP_MutexUnlock((mutex_t)*lock);
 }
 

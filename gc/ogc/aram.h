@@ -38,7 +38,6 @@ distribution.
  */ 
 
 #include <gctypes.h>
-#include <gcbool.h>
 
 /*! 
  * \addtogroup dmamode ARAM DMA transfer direction
@@ -206,10 +205,10 @@ void AR_Clear(u32 flag);
  * \fn BOOL AR_CheckInit(void)
  * \brief Get the ARAM subsystem initialization flag
  *
- * \return TRUE if the ARAM subsystem has been initialized(via AR_Init())<br>
- *         FALSE if the ARAM subsystem has not been initialized, or has been reset(via AR_Reset())
+ * \return true if the ARAM subsystem has been initialized(via AR_Init())<br>
+ *         false if the ARAM subsystem has not been initialized, or has been reset(via AR_Reset())
  */
-BOOL AR_CheckInit(void);
+bool AR_CheckInit(void);
 
 
 /*!
