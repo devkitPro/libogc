@@ -49,10 +49,13 @@ struct bt_state
 	u8_t hci_inited;
 
 	u8_t num_maxdevs;
-	u8_t num_founddevs;
-	struct inquiry_info_ex *info;
+
+	u8_t inquiry_mode;
+	
+	struct inquiry_res inq_res;
 
 	btecallback cb;
+	btecallback inq_complete_cb;
 	void *usrdata;
 };
 
@@ -123,12 +126,12 @@ static void bte_reset_all()
 	btmemb_init(&bte_pcbs);
 	btmemb_init(&bte_ctrl_reqs);
 
-	if(btstate.info!=NULL) free(btstate.info);
+	if(btstate.inq_res.info!=NULL) free(btstate.inq_res.info);
 
-	btstate.info = NULL;
+	btstate.inq_res.count = 0;
+	btstate.inq_res.info = NULL;
 	btstate.hci_inited = 0;
 	btstate.hci_cmddone = 0;
-	btstate.num_founddevs = 0;
 	btstate.last_err = ERR_OK;
 }
 
@@ -399,6 +402,18 @@ void BTE_Init(void)
 	SYS_SetPeriodicAlarm(btstate.timer_svc,&tb,&tb,bt_alarmhandler, NULL);
 }
 
+void BTE_Restart(void)
+{
+	u32 level;
+	
+	_CPU_ISR_Disable(level);
+	bte_reset_all();
+	hci_reset_all();
+	l2cap_reset_all();
+	physbusif_reset_all();
+	_CPU_ISR_Restore(level);
+}
+
 void BTE_Shutdown(void)
 {
 	u32 level;
@@ -506,7 +521,6 @@ s32 BTE_ReadBdAddr(struct bd_addr *bdaddr, btecallback cb)
 s32 BTE_SetEvtFilter(u8 filter_type,u8 filter_cond_type,u8 *cond, btecallback cb)
 {    
     u32 level;
-	err_t last_err = ERR_OK;
 
     _CPU_ISR_Disable(level);
     btstate.cb = cb;
@@ -517,24 +531,28 @@ s32 BTE_SetEvtFilter(u8 filter_type,u8 filter_cond_type,u8 *cond, btecallback cb
     hci_set_event_filter(filter_type,filter_cond_type,cond);
     _CPU_ISR_Restore(level);
 
-    return last_err;
+    return ERR_OK;
 }
 
-s32 BTE_ReadRemoteName(u8_t *name, struct bd_addr *bdaddr)
-{    
+s32 BTE_ReadRemoteName(struct pad_info *info, btecallback cb)
+{
     u32 level;
 	err_t last_err = ERR_OK;
 
     _CPU_ISR_Disable(level);
-    btstate.cb = NULL;
-    btstate.usrdata = name;
+    btstate.cb = cb;
+    btstate.usrdata = NULL;
     btstate.hci_cmddone = 0;
     hci_arg(&btstate);
-    hci_read_remote_name(bdaddr);
-	last_err = __bte_waitcmdfinish(&btstate);
+    hci_read_remote_name(&info->bdaddr);
     _CPU_ISR_Restore(level);
 
 	return last_err;
+}
+
+u8 BTE_GetPairMode(void)
+{
+	return btstate.inquiry_mode;
 }
 
 void (*BTE_SetDisconnectCallback(void (*callback)(struct bd_addr *bdaddr,u8 reason)))(struct bd_addr *bdaddr,u8 reason)
@@ -578,6 +596,12 @@ s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*con
 
 	//printf("bte_registerdeviceasync()\n");
 	_CPU_ISR_Disable(level);
+	if(lp_is_connected(bdaddr)) {
+		printf("bdaddr already exists: %02x:%02x:%02x:%02x:%02x:%02x\n",bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
+		err = ERR_CONN;
+		goto error;
+	}
+
 	pcb->err = ERR_USE;
 	pcb->data_pcb = NULL;
 	pcb->ctl_pcb = NULL;
@@ -621,9 +645,14 @@ s32 bte_connectdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn
 	u32 level;
 	s32 err = ERR_OK;
 	struct l2cap_pcb *l2capcb = NULL;
-
-	printf("bte_connectdeviceasync()\n");
+	
 	_CPU_ISR_Disable(level);
+	//printf("bte_connectdeviceasync()\n");
+	if(lp_is_connected(bdaddr)) {
+		printf("bdaddr already exists: %02x:%02x:%02x:%02x:%02x:%02x\n",bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
+		err = ERR_CONN;
+		goto error;
+	}
 	pcb->err = ERR_USE;
 	pcb->data_pcb = NULL;
 	pcb->ctl_pcb = NULL;
@@ -662,73 +691,50 @@ error:
 	return err;
 }
 
-s32 bte_inquiry(struct inquiry_info *info,u8 max_cnt,u8 flush)
+s32 BTE_Inquiry(u8 max_cnt,u8 flush,btecallback cb)
 {
-	s32_t i;
-	u32 level,fnd;
-	err_t last_err;
-	struct inquiry_info_ex *pinfo;
-
-	last_err = ERR_OK;
+	u32 level;
 
 	_CPU_ISR_Disable(level);
-	if(btstate.num_founddevs==0 || flush==1) {
-		btstate.cb = NULL;
-		btstate.hci_cmddone = 0;
+	if(btstate.inq_res.count==0 || flush==1) {
+		btstate.inq_complete_cb = cb;
+		btstate.inquiry_mode = INQUIRY_MODE_SINGLE;
 		btstate.num_maxdevs = max_cnt;
 		hci_arg(&btstate);
 		// Use Limited Dedicated Inquiry Access Code (LIAC) to query, since third-party Wiimotes
 		// cannot be discovered without it.
 		hci_inquiry(0x009E8B00,0x03,max_cnt,bte_inquiry_complete);
-		last_err = __bte_waitcmdfinish(&btstate);
 	}
-	fnd = btstate.num_founddevs;
-	pinfo = btstate.info;
 	_CPU_ISR_Restore(level);
-
-	if(last_err==ERR_OK) {
-		for(i=0;i<fnd && i<max_cnt;i++) {
-			bd_addr_set(&(info[i].bdaddr),&(pinfo[i].bdaddr));
-			memcpy(info[i].cod,pinfo[i].cod,3);
-		}
-	}
-	return (s32)((last_err==ERR_OK) ? fnd : last_err);
+	return ERR_OK;
 }
 
-s32 bte_inquiry_ex(struct inquiry_info_ex *info,u8 max_cnt,u8 flush)
+s32 BTE_PeriodicInquiry(u8 max_cnt,u8 flush,btecallback cb)
 {
-	s32_t i;
-	u32 level,fnd;
-	err_t last_err;
-	struct inquiry_info_ex *pinfo;
-
-	last_err = ERR_OK;
+	u32 level;
 
 	_CPU_ISR_Disable(level);
-	if(btstate.num_founddevs==0 || flush==1) {
-		btstate.cb = NULL;
-		btstate.hci_cmddone = 0;
+	if(btstate.inq_res.count==0 || flush==1) {
+		btstate.inq_complete_cb = cb;
+		btstate.inquiry_mode = INQUIRY_MODE_PERIODIC;
 		btstate.num_maxdevs = max_cnt;
 		hci_arg(&btstate);
 		// Use Limited Dedicated Inquiry Access Code (LIAC) to query, since third-party Wiimotes
 		// cannot be discovered without it.
-		hci_inquiry(0x009E8B00,0x03,max_cnt,bte_inquiry_complete);
-		last_err = __bte_waitcmdfinish(&btstate);
+		hci_periodic_inquiry(0x009E8B00,0x04,0x05,0x03,max_cnt,bte_inquiry_complete);
 	}
-	fnd = btstate.num_founddevs;
-	pinfo = btstate.info;
 	_CPU_ISR_Restore(level);
+	return ERR_OK;
+}
 
-	if(last_err==ERR_OK) {
-		for(i=0;i<fnd && i<max_cnt;i++) {
-			memcpy(info[i].cod,pinfo[i].cod,3);
-			bd_addr_set(&(info[i].bdaddr),&(pinfo[i].bdaddr));
-			info[i].psrm = pinfo[i].psrm;
-			info[i].psm = pinfo[i].psm;
-			info[i].co = pinfo[i].co;
-		}
-	}
-	return (s32)((last_err==ERR_OK) ? fnd : last_err);
+s32 BTE_ExitPeriodicInquiry(void)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	hci_exit_periodic_inquiry();
+	_CPU_ISR_Restore(level);
+	return ERR_OK;
 }
 
 s32 bte_disconnect(struct bte_pcb *pcb)
@@ -955,11 +961,20 @@ err_t acl_conn_complete(void *arg,struct bd_addr *bdaddr)
 
 err_t pin_req(void *arg,struct bd_addr *bdaddr)
 {
-	struct bd_addr host_addr;
+	struct bd_addr addr;
 	//printf("pin_req\n");
 	
-	hci_get_bd_addr(&host_addr);
-	hci_pin_code_request_reply(bdaddr, BD_ADDR_LEN, host_addr.addr);
+	if (btstate.inquiry_mode == INQUIRY_MODE_SINGLE)
+	{
+		// Pairing from sync button (permanent)
+		hci_get_bd_addr(&addr);
+	}
+	else
+	{
+		// Pairing from 1+2 (guest/temporary)
+		bd_addr_set(&addr, bdaddr);
+	}
+	hci_pin_code_request_reply(bdaddr, BD_ADDR_LEN, addr.addr);
 	return ERR_OK;
 }
 
@@ -1060,7 +1075,7 @@ err_t l2cap_accepted(void *arg,struct l2cap_pcb *l2cappcb,err_t err)
 {
 	struct bte_pcb *btepcb = (struct bte_pcb*)arg;
 
-	//printf("l2cap_accepted(%02x)\n",err);
+	printf("l2cap_accepted(%02x)\n",err);
 	if(err==ERR_OK) {
 		l2cap_recv(l2cappcb,bte_process_input);
 		l2cap_disconnect_ind(l2cappcb,l2cap_disconnected_ind);
@@ -1088,32 +1103,34 @@ err_t l2cap_accepted(void *arg,struct l2cap_pcb *l2cappcb,err_t err)
 
 err_t bte_inquiry_complete(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result)
 {
+	u32 level;
 	u8_t i;
 	struct hci_inq_res *p;
 	struct bt_state *state = (struct bt_state*)arg;
+	struct inquiry_res *inq_res = &btstate.inq_res;
 
 	if(result==HCI_SUCCESS) {
 		if(ires!=NULL) {
 
-			if(btstate.info!=NULL) free(btstate.info);
-			btstate.info = NULL;
+			if(inq_res->info!=NULL) free(inq_res->info);
+			inq_res->info = NULL;
+			inq_res->count = 0;
 			btstate.num_maxdevs = 0;
-			btstate.num_founddevs = 0;
 
 			p = ires;
 			while(p!=NULL) {
-				btstate.num_founddevs++;
+				inq_res->count++;
 				p = p->next;
 			}
 
 			p = ires;
-			btstate.info = (struct inquiry_info_ex*)malloc(sizeof(struct inquiry_info_ex)*btstate.num_founddevs);
-			for(i=0;i<btstate.num_founddevs && p!=NULL;i++) {
-				bd_addr_set(&(btstate.info[i].bdaddr),&(p->bdaddr));
-				memcpy(btstate.info[i].cod,p->cod,3);
-				btstate.info[i].psrm = p->psrm;
-				btstate.info[i].psm = p->psm;
-				btstate.info[i].co = p->co;
+			inq_res->info = (struct inquiry_info_ex*)malloc(sizeof(struct inquiry_info_ex)*inq_res->count);
+			for(i=0;i<inq_res->count && p!=NULL;i++) {
+				bd_addr_set(&(inq_res->info[i].bdaddr),&(p->bdaddr));
+				memcpy(inq_res->info[i].cod,p->cod,3);
+				inq_res->info[i].psrm = p->psrm;
+				inq_res->info[i].psm = p->psm;
+				inq_res->info[i].co = p->co;
 
 				/*printf("bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",p->bdaddr.addr[0],p->bdaddr.addr[1],p->bdaddr.addr[2],p->bdaddr.addr[3],p->bdaddr.addr[4],p->bdaddr.addr[5]);
 				printf("cod:    %02x%02x%02x\n",p->cod[0],p->cod[1],p->cod[2]);
@@ -1122,8 +1139,13 @@ err_t bte_inquiry_complete(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ire
 				printf("co:   %04x\n",p->co);*/
 				p = p->next;
 			}
-			__bte_cmdfinish(state,ERR_OK);
-		} else
+			//__bte_cmdfinish(state,ERR_OK);
+			_CPU_ISR_Disable(level);
+			state->last_err = ERR_OK;
+			state->hci_cmddone = 1;
+			state->inq_complete_cb(ERR_OK,&state->inq_res);
+			_CPU_ISR_Restore(level);
+		} else if (state->inquiry_mode == INQUIRY_MODE_SINGLE)
 			hci_inquiry(0x009E8B33,0x03,btstate.num_maxdevs,bte_inquiry_complete);
 	}
 	return ERR_OK;
@@ -1194,7 +1216,7 @@ err_t bte_read_bd_addr_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,
 
 err_t bte_read_remote_name_complete(void *arg,struct bd_addr *bdaddr,u8_t *name,u8_t result)
 {
-	u8_t *name_dest;
+	struct pad_info *info;
     struct bt_state *state = (struct bt_state*)arg;
 
     LOG("bte_read_remote_name_complete(%02x,%p)\n", result, bdaddr);
@@ -1202,11 +1224,13 @@ err_t bte_read_remote_name_complete(void *arg,struct bd_addr *bdaddr,u8_t *name,
     if(state==NULL) return ERR_VAL;
 
     if(result == HCI_SUCCESS) {
-        name_dest = (u8_t *)state->usrdata;
-        if (name_dest != NULL) {
-			memcpy(name_dest, name, BD_NAME_LEN);
-        }
-        LOG("bte_read_remote_name_complete(%02x,%s)\n",result,name_dest);
+        info = (struct pad_info *)malloc(sizeof(struct pad_info));
+        if (info == NULL)
+			return ERR_MEM;
+		bd_addr_set(&info->bdaddr, bdaddr);
+		memcpy(info->name, name, BD_NAME_LEN);
+		state->usrdata = info;
+        LOG("bte_read_remote_name_complete(%02x,%s)\n",result,name);
         __bte_cmdfinish(state,ERR_OK);
         return ERR_OK;
     }

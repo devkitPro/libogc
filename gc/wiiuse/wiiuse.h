@@ -660,9 +660,10 @@ typedef struct wiimote_t {
  * @brief Wiimote listen structure.
  */
 typedef struct wiimote_listen_t {
+	WCONST u8 in_use;
 	WCONST struct bd_addr bdaddr;
 	WCONST struct bte_pcb *sock;
-	WCONST struct wiimote_t *(*assign_cb)(struct bd_addr *bdaddr);
+	WCONST struct wiimote_t *(*assign_cb)(struct wiimote_listen_t *wml);
 	WCONST struct wiimote_t *wm;
 } wiimote_listen;
 #endif
@@ -697,8 +698,8 @@ WIIUSE_EXPORT extern const char* wiiuse_version();
 #ifndef GEKKO
 WIIUSE_EXPORT extern struct wiimote_t** wiiuse_init(int wiimotes);
 #else
-WIIUSE_EXPORT extern int wiiuse_register(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct wiimote_t *(*assign_cb)(struct bd_addr *bdaddr));
-WIIUSE_EXPORT extern int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct wiimote_t *(*assign_cb)(struct bd_addr *bdaddr));
+WIIUSE_EXPORT extern int wiiuse_register(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct wiimote_t *(*assign_cb)(struct wiimote_listen_t *wml));
+WIIUSE_EXPORT extern int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct wiimote_t *(*assign_cb)(struct wiimote_listen_t *wml));
 WIIUSE_EXPORT extern struct wiimote_t** wiiuse_init(int wiimotes, wii_event_cb event_cb);
 WIIUSE_EXPORT extern void wiiuse_sensorbar_enable(int enable);
 #endif

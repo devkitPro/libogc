@@ -154,7 +154,7 @@ void hci_reset_all(void)
 
 	for(ikeys=hci_dev->keyres;ikeys!=NULL;) {
 		tikeys = ikeys->next;
-		btmemb_free(&hci_inq_results,ikeys);
+		btmemb_free(&hci_link_key_results,ikeys);
 		ikeys = tikeys;
 	}
 	btmemb_free(&hci_pcbs,hci_dev);
@@ -391,7 +391,6 @@ err_t hci_read_stored_link_key(void)
 		hci_dev->keyres = hci_dev->keyres->next;
 		btmemb_free(&hci_link_key_results,tmpres);
 	}
-	
 
 	if((p=btpbuf_alloc(PBUF_RAW,HCI_R_STORED_LINK_KEY_PLEN,PBUF_RAM))==NULL) {
 		ERROR("hci_read_stored_link_keys: Could not allocate memory for pbuf\n");
@@ -591,7 +590,7 @@ err_t hci_exit_periodic_inquiry(void)
 	return ERR_OK;
 }
 
-err_t hci_accecpt_conn_request(struct bd_addr *bdaddr,u8_t role)
+err_t hci_accept_conn_request(struct bd_addr *bdaddr,u8_t role)
 {
 	struct pbuf *p = NULL;
 
@@ -1568,7 +1567,9 @@ static void hci_conn_request_evt(struct pbuf *p)
 	struct hci_link *link;
 
 	LOG("hci_conn_request_evt()\n");
+	printf("hci_conn_request_evt()\n");
 	bdaddr = (void*)((u8_t*)p->payload);
+	printf("	bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 	cod = (((u8_t*)p->payload)+6);
 	link_type = *(((u8_t*)p->payload)+9);
 
@@ -1584,7 +1585,7 @@ static void hci_conn_request_evt(struct pbuf *p)
 			bd_addr_set(&(link->bdaddr),bdaddr);
 			HCI_REG(&(hci_active_links),link);
 		}
-		hci_accecpt_conn_request(bdaddr,0x00);
+		hci_accept_conn_request(bdaddr,0x00);
 	} else {
 	}
 }
@@ -1599,7 +1600,7 @@ static void hci_conn_complete_evt(struct pbuf *p)
 
 	bdaddr = (void*)(((u8_t*)p->payload)+3);
 	link = hci_get_link(bdaddr);
-	LOG("hci_conn_complete_evt(%p,%02x - %02x:%02x:%02x:%02x:%02x:%02x)\n",link,((u8_t*)p->payload)[0],bdaddr->addr[0],bdaddr->addr[1],bdaddr->addr[2],bdaddr->addr[3],bdaddr->addr[4],bdaddr->addr[5]);
+	//printf("hci_conn_complete_evt(%p,%02x - %02x:%02x:%02x:%02x:%02x:%02x)\n",link,((u8_t*)p->payload)[0],bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 	switch(((u8_t*)p->payload)[0]) {
 		case HCI_SUCCESS:
 			if(link==NULL) {
@@ -1710,6 +1711,23 @@ static void hci_return_link_key_evt(struct pbuf *p)
 
 }
 
+static void hci_inquiry_complete_evt(struct pbuf *p)
+{
+	err_t ret;
+	struct hci_inq_res *tmpres;
+
+	(void)ret;
+
+	HCI_EVENT_INQ_COMPLETE(hci_dev,((u8_t*)p->payload)[0],ret);
+
+	// After event completes, clear the list (in case periodic scan is ongoing)
+	while(hci_dev->ires != NULL) {
+		tmpres = hci_dev->ires;
+		hci_dev->ires = hci_dev->ires->next;
+		btmemb_free(&hci_inq_results,tmpres);
+	}
+}
+
 void hci_event_handler(struct pbuf *p)
 {
 	err_t ret;
@@ -1725,11 +1743,12 @@ void hci_event_handler(struct pbuf *p)
 
 	evthdr = p->payload;
 	btpbuf_header(p,-HCI_EVENT_HDR_LEN);
+	//printf("HCI_EVENT %02x\n", evthdr->code);
 
 	switch(evthdr->code) {
 		case HCI_INQUIRY_COMPLETE:
 			//printf("HCI_INQUIRY_COMPLETE\n");
-			HCI_EVENT_INQ_COMPLETE(hci_dev,((u8_t*)p->payload)[0],ret);
+			hci_inquiry_complete_evt(p);
 			break;
 		case HCI_INQUIRY_RESULT:
 			hci_inquiry_result_evt(p);

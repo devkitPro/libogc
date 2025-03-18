@@ -128,6 +128,7 @@ enum {
 
 #define CONF_PAD_MAX_REGISTERED 10
 #define CONF_PAD_MAX_ACTIVE 4
+#define CONF_PAD_TOTAL (CONF_PAD_MAX_REGISTERED + CONF_PAD_MAX_ACTIVE + 2)
 
 typedef struct _conf_pad_device conf_pad_device;
 

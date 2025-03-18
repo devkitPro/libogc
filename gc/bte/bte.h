@@ -66,7 +66,13 @@
 #define HIDP_PROTO_BOOT				0x00
 #define HIDP_PROTO_REPORT			0x01
 
-#define BD_NAME_LEN     248
+#define BD_NAME_LEN     			248
+#define BD_MAX_INQUIRY_DEVS     		255
+
+enum inquiry_mode {
+	INQUIRY_MODE_SINGLE,
+	INQUIRY_MODE_PERIODIC
+};
 
 #ifdef __cplusplus
    extern "C" {
@@ -90,10 +96,22 @@ struct inquiry_info_ex
 	u16 co;
 };
 
+struct inquiry_res
+{
+	u8 count;
+	struct inquiry_info_ex *info;
+};
+
 struct linkkey_info
 {
 	struct bd_addr bdaddr;
 	u8 key[16];
+};
+
+struct pad_info
+{
+	struct bd_addr bdaddr;
+	u8 name[BD_NAME_LEN];
 };
 
 struct bte_pcb
@@ -121,6 +139,7 @@ struct bte_pcb
 typedef s32 (*btecallback)(s32 result,void *userdata);
 
 void BTE_Init(void);
+void BTE_Restart(void);
 void BTE_Shutdown(void);
 s32 BTE_InitCore(btecallback cb);
 s32 BTE_ApplyPatch(btecallback cb);
@@ -128,9 +147,13 @@ s32 BTE_InitSub(btecallback cb);
 s32 BTE_ReadStoredLinkKey(struct linkkey_info *keys,u8 max_cnt,btecallback cb);
 s32 BTE_ReadBdAddr(struct bd_addr *bdaddr, btecallback cb);
 s32 BTE_SetEvtFilter(u8 filter_type,u8 filter_cond_type,u8 *cond, btecallback cb);
-s32 BTE_ReadRemoteName(u8 *name, struct bd_addr *bdaddr);
+s32 BTE_ReadRemoteName(struct pad_info *info, btecallback cb);
+s32 BTE_Inquiry(u8 max_cnt,u8 flush, btecallback cb);
+s32 BTE_PeriodicInquiry(u8 max_cnt,u8 flush,btecallback cb);
+s32 BTE_ExitPeriodicInquiry(void);
 void (*BTE_SetDisconnectCallback(void (*callback)(struct bd_addr *bdaddr,u8 reason)))(struct bd_addr *bdaddr,u8 reason);
 void BTE_SetSyncButtonCallback(void (*callback)(u32 held));
+u8 BTE_GetPairMode(void);
 void BTE_ClearStoredLinkKeys(void);
 
 struct bte_pcb* bte_new(void);
@@ -145,8 +168,6 @@ s32 bte_disconnect(struct bte_pcb *pcb);
 
 //s32 bte_listen(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm);
 //s32 bte_accept(struct bte_pcb *pcb,s32 (*recv)(void *arg,void *buffer,u16 len));
-s32 bte_inquiry(struct inquiry_info *info,u8 max_cnt,u8 flush);
-s32 bte_inquiry_ex(struct inquiry_info_ex *info,u8 max_cnt,u8 flush);
 //s32 bte_connect(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm,s32 (*recv)(void *arg,void *buffer,u16 len));
 //s32 bte_connect_ex(struct bte_pcb *pcb,struct inquiry_info_ex *info,u8 psm,s32 (*recv)(void *arg,void *buffer,u16 len));
 s32 bte_senddata(struct bte_pcb *pcb,void *message,u16 len);

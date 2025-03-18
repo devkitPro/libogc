@@ -434,7 +434,7 @@ err_t hci_write_link_policy_settings(struct bd_addr *bdaddr, u16_t link_policy);
 err_t hci_write_authentication_enable(u8_t auth_enable);
 err_t hci_periodic_inquiry(u32_t lap,u16_t min_period,u16_t max_period,u8_t inq_len,u8_t num_resp,err_t (*inq_complete)(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result));
 err_t hci_exit_periodic_inquiry(void);
-err_t hci_accecpt_conn_request(struct bd_addr *bdaddr,u8_t role);
+err_t hci_accept_conn_request(struct bd_addr *bdaddr,u8_t role);
 err_t hci_set_event_mask(u64_t ev_mask);
 err_t hci_read_local_version(void);
 err_t hci_read_local_features(void);

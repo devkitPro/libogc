@@ -183,6 +183,8 @@ s32 WPAD_SetEventBufs(s32 chan, WPADData *bufs, u32 cnt);
 s32 WPAD_Disconnect(s32 chan);
 s32 WPAD_IsSpeakerEnabled(s32 chan);
 s32 WPAD_SendStreamData(s32 chan,void *buf,u32 len);
+s32 WPAD_Search(void);
+s32 WPAD_StopSearch(void);
 void WPAD_Shutdown(void);
 void WPAD_SetIdleTimeout(u32 seconds);
 void WPAD_SetPowerButtonCallback(WPADShutdownCallback cb);
