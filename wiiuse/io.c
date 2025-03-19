@@ -19,7 +19,7 @@ void wiiuse_handshake(struct wiimote_t *wm,ubyte *data,uword len)
 	ubyte *buf = NULL;
 	struct accel_t *accel = &wm->accel_calib;
 
-	printf("wiiuse_handshake(%d,%p,%d)\n",wm->handshake_state,data,len);
+	//printf("wiiuse_handshake(%d,%p,%d)\n",wm->handshake_state,data,len);
 	switch(wm->handshake_state) {
 		case 0:
 			wm->handshake_state++;

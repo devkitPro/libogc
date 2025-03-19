@@ -460,7 +460,7 @@ err_t hci_set_event_filter(u8_t filter_type,u8_t filter_cond_type,u8_t *cond)
 	((u8_t*)p->payload)[4] = filter_type;
 	((u8_t*)p->payload)[5] = filter_cond_type;
 	if(cond_len>0) memcpy(p->payload+6,cond,cond_len);
-	
+
 	physbusif_output(p,p->tot_len);
 	btpbuf_free(p);
 
@@ -741,7 +741,7 @@ err_t hci_write_page_scan_type(u8_t type)
 	struct pbuf *p = NULL;
 
 	if((p=btpbuf_alloc(PBUF_RAW,HCI_W_PAGE_SCAN_TYPE_PLEN,PBUF_RAM))==NULL) {
-		ERROR("hci_write_inquiry_mode: Could not allocate memory for pbuf\n");
+		ERROR("hci_write_page_scan_type: Could not allocate memory for pbuf\n");
 		return ERR_MEM;
 	}
 
@@ -761,7 +761,7 @@ err_t hci_write_inquiry_scan_type(u8_t type)
 	struct pbuf *p = NULL;
 
 	if((p=btpbuf_alloc(PBUF_RAW,HCI_W_INQUIRY_SCAN_TYPE_PLEN,PBUF_RAM))==NULL) {
-		ERROR("hci_write_inquiry_mode: Could not allocate memory for pbuf\n");
+		ERROR("hci_write_inquiry_scan_type: Could not allocate memory for pbuf\n");
 		return ERR_MEM;
 	}
 
@@ -781,7 +781,7 @@ err_t hci_vendor_specific_command(u8_t ocf,u8_t ogf,void *data,u8_t len)
 	struct pbuf *p = NULL;
 
 	if((p=btpbuf_alloc(PBUF_RAW,HCI_W_VENDOR_CMD_PLEN + len,PBUF_RAM))==NULL) {
-		ERROR("hci_vendor_specific_patch: Could not allocate memory for pbuf\n");
+		ERROR("hci_vendor_specific_command: Could not allocate memory for pbuf\n");
 		return ERR_MEM;
 	}
 
@@ -1567,9 +1567,9 @@ static void hci_conn_request_evt(struct pbuf *p)
 	struct hci_link *link;
 
 	LOG("hci_conn_request_evt()\n");
-	printf("hci_conn_request_evt()\n");
+	//printf("hci_conn_request_evt()\n");
 	bdaddr = (void*)((u8_t*)p->payload);
-	printf("	bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
+	//printf("	bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 	cod = (((u8_t*)p->payload)+6);
 	link_type = *(((u8_t*)p->payload)+9);
 
@@ -1587,6 +1587,7 @@ static void hci_conn_request_evt(struct pbuf *p)
 		}
 		hci_accept_conn_request(bdaddr,0x00);
 	} else {
+		hci_reject_connection_request(bdaddr, HCI_HOST_REJECTED_DUE_TO_SECURITY_REASONS);
 	}
 }
 
@@ -1600,7 +1601,7 @@ static void hci_conn_complete_evt(struct pbuf *p)
 
 	bdaddr = (void*)(((u8_t*)p->payload)+3);
 	link = hci_get_link(bdaddr);
-	//printf("hci_conn_complete_evt(%p,%02x - %02x:%02x:%02x:%02x:%02x:%02x)\n",link,((u8_t*)p->payload)[0],bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
+	printf("hci_conn_complete_evt(%p,%02x - %02x:%02x:%02x:%02x:%02x:%02x)\n",link,((u8_t*)p->payload)[0],bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 	switch(((u8_t*)p->payload)[0]) {
 		case HCI_SUCCESS:
 			if(link==NULL) {
@@ -1622,6 +1623,11 @@ static void hci_conn_complete_evt(struct pbuf *p)
 			}
 			break;
 		case HCI_PAGE_TIMEOUT:
+			ERROR("hci_conn_complete_evt: Timeout\n");
+			if(link==NULL) {
+				hci_disconnect(bdaddr, HCI_OTHER_END_TERMINATED_CONN_USER_ENDED);
+				lp_disconnect_ind(bdaddr,HCI_CONN_TERMINATED_BY_LOCAL_HOST);
+			}
 			break;
 		default:
 			if(link!=NULL) {
@@ -1876,11 +1882,9 @@ void hci_event_handler(struct pbuf *p)
 		case HCI_VENDOR:
 			switch (((u8_t *)p->payload)[0]) {
 				case HCI_VENDOR_BEGIN_PAIRING:
-					//printf("Begin Wiimote pairing\n");
 					HCI_EVENT_SYNC_BTN(hci_dev, FALSE);
 					break;
 				case HCI_VENDOR_CLEAR_PAIRED_DEVICES:
-					//printf("Clear paired Wiimotes");
 					HCI_EVENT_SYNC_BTN(hci_dev, TRUE);
 					break;
 				default:

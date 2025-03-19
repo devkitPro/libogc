@@ -430,6 +430,26 @@ s32 CONF_SetPadDevices(const conf_pads *pads)
 	return CONF_Set("BT.DINF", pads, sizeof(conf_pads));
 }
 
+s32 CONF_GetPadGuestDevices(conf_pad_guests *pads)
+{
+	int res;
+	
+	res = CONF_Get("BT.CDIF", pads, sizeof(conf_pad_guests));
+	if(res < 0) return res;
+	if(res < sizeof(conf_pad_guests)) return CONF_EBADVALUE;
+	return 0;
+}
+
+s32 CONF_SetPadGuestDevices(const conf_pad_guests *pads)
+{
+	u8 count;
+
+	if (!pads) return CONF_EBADVALUE;
+	count = pads->num_guests;
+	if (count > CONF_PAD_GUESTS_MAX) return CONF_EBADVALUE;
+	return CONF_Set("BT.CDIF", pads, sizeof(conf_pad_guests));
+}
+
 s32 CONF_GetNickName(u8 *nickname)
 {
 	int i, res;

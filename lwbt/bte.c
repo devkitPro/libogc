@@ -50,7 +50,7 @@ struct bt_state
 
 	u8_t num_maxdevs;
 
-	u8_t inquiry_mode;
+	u8_t pair_mode;
 	
 	struct inquiry_res inq_res;
 
@@ -168,9 +168,15 @@ static inline s32 __bte_cmdfinish(struct bt_state *state,err_t err)
 	state->last_err = err;
 	state->hci_cmddone = 1;
 	if(state->cb!=NULL)
-		state->cb(err,state->usrdata);
+	{
+		btecallback cb = state->cb;
+		state->cb = NULL;
+		cb(err,state->usrdata);
+	}
 	else
+	{
 		LWP_ThreadSignal(state->hci_cmdq);
+	}
 	_CPU_ISR_Restore(level);
 
 	return err;
@@ -393,7 +399,7 @@ void BTE_Init(void)
 	hci_wlp_complete(acl_wlp_completed);
 	hci_connection_complete(acl_conn_complete);
     hci_remote_name_req_complete(bte_read_remote_name_complete);
-    hci_link_key_not(link_key_not);
+    //hci_link_key_not(link_key_not);
     hci_pin_req(pin_req);
 	_CPU_ISR_Restore(level);
 
@@ -534,7 +540,7 @@ s32 BTE_SetEvtFilter(u8 filter_type,u8 filter_cond_type,u8 *cond, btecallback cb
     return ERR_OK;
 }
 
-s32 BTE_ReadRemoteName(struct pad_info *info, btecallback cb)
+s32 BTE_ReadRemoteName(struct bd_addr *bdaddr, btecallback cb)
 {
     u32 level;
 	err_t last_err = ERR_OK;
@@ -544,7 +550,7 @@ s32 BTE_ReadRemoteName(struct pad_info *info, btecallback cb)
     btstate.usrdata = NULL;
     btstate.hci_cmddone = 0;
     hci_arg(&btstate);
-    hci_read_remote_name(&info->bdaddr);
+    hci_read_remote_name(bdaddr);
     _CPU_ISR_Restore(level);
 
 	return last_err;
@@ -552,7 +558,7 @@ s32 BTE_ReadRemoteName(struct pad_info *info, btecallback cb)
 
 u8 BTE_GetPairMode(void)
 {
-	return btstate.inquiry_mode;
+	return btstate.pair_mode;
 }
 
 void (*BTE_SetDisconnectCallback(void (*callback)(struct bd_addr *bdaddr,u8 reason)))(struct bd_addr *bdaddr,u8 reason)
@@ -566,6 +572,24 @@ void BTE_SetSyncButtonCallback(void (*callback)(u32 held))
 	
 	_CPU_ISR_Disable(level);
 	hci_sync_btn(callback);
+	_CPU_ISR_Restore(level);
+}
+
+void BTE_SetConnectionRequestCallback(err_t (*callback)(void *arg,struct bd_addr *bdaddr,u8 *cod,u8 link_type))
+{
+	u32 level;
+	
+	_CPU_ISR_Disable(level);
+	hci_conn_req(callback);
+	_CPU_ISR_Restore(level);
+}
+
+void BTE_SetLinkKeyNotificationCallback(err_t (*callback)(void *arg,struct bd_addr *bdaddr,u8 *key))
+{
+	u32 level;
+	
+	_CPU_ISR_Disable(level);
+	hci_link_key_not(callback);
 	_CPU_ISR_Restore(level);
 }
 
@@ -596,11 +620,11 @@ s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*con
 
 	//printf("bte_registerdeviceasync()\n");
 	_CPU_ISR_Disable(level);
-	if(lp_is_connected(bdaddr)) {
+	/*if(lp_is_connected(bdaddr)) {
 		printf("bdaddr already exists: %02x:%02x:%02x:%02x:%02x:%02x\n",bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 		err = ERR_CONN;
 		goto error;
-	}
+	}*/
 
 	pcb->err = ERR_USE;
 	pcb->data_pcb = NULL;
@@ -698,7 +722,7 @@ s32 BTE_Inquiry(u8 max_cnt,u8 flush,btecallback cb)
 	_CPU_ISR_Disable(level);
 	if(btstate.inq_res.count==0 || flush==1) {
 		btstate.inq_complete_cb = cb;
-		btstate.inquiry_mode = INQUIRY_MODE_SINGLE;
+		btstate.pair_mode = PAIR_MODE_NORMAL;
 		btstate.num_maxdevs = max_cnt;
 		hci_arg(&btstate);
 		// Use Limited Dedicated Inquiry Access Code (LIAC) to query, since third-party Wiimotes
@@ -716,7 +740,7 @@ s32 BTE_PeriodicInquiry(u8 max_cnt,u8 flush,btecallback cb)
 	_CPU_ISR_Disable(level);
 	if(btstate.inq_res.count==0 || flush==1) {
 		btstate.inq_complete_cb = cb;
-		btstate.inquiry_mode = INQUIRY_MODE_PERIODIC;
+		btstate.pair_mode = PAIR_MODE_TEMPORARY;
 		btstate.num_maxdevs = max_cnt;
 		hci_arg(&btstate);
 		// Use Limited Dedicated Inquiry Access Code (LIAC) to query, since third-party Wiimotes
@@ -732,6 +756,7 @@ s32 BTE_ExitPeriodicInquiry(void)
 	u32 level;
 
 	_CPU_ISR_Disable(level);
+	btstate.pair_mode = PAIR_MODE_NORMAL;
 	hci_exit_periodic_inquiry();
 	_CPU_ISR_Restore(level);
 	return ERR_OK;
@@ -964,7 +989,7 @@ err_t pin_req(void *arg,struct bd_addr *bdaddr)
 	struct bd_addr addr;
 	//printf("pin_req\n");
 	
-	if (btstate.inquiry_mode == INQUIRY_MODE_SINGLE)
+	if (btstate.pair_mode == PAIR_MODE_NORMAL)
 	{
 		// Pairing from sync button (permanent)
 		hci_get_bd_addr(&addr);
@@ -1037,10 +1062,9 @@ err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb)
 	return ERR_OK;
 }
 
-err_t link_key_not(void *arg,struct bd_addr *bdaddr,u8_t *key)
+void BTE_WriteStoredLinkKey(struct bd_addr *bdaddr,u8_t *key)
 {
-	//printf("link_key_not\n");
-	return hci_write_stored_link_key(bdaddr,key);
+	hci_write_stored_link_key(bdaddr,key);
 }
 
 err_t l2cap_connected(void *arg,struct l2cap_pcb *l2cappcb,u16_t result,u16_t status)
@@ -1075,7 +1099,7 @@ err_t l2cap_accepted(void *arg,struct l2cap_pcb *l2cappcb,err_t err)
 {
 	struct bte_pcb *btepcb = (struct bte_pcb*)arg;
 
-	printf("l2cap_accepted(%02x)\n",err);
+	//printf("l2cap_accepted(%02x)\n",err);
 	if(err==ERR_OK) {
 		l2cap_recv(l2cappcb,bte_process_input);
 		l2cap_disconnect_ind(l2cappcb,l2cap_disconnected_ind);
@@ -1132,8 +1156,8 @@ err_t bte_inquiry_complete(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ire
 				inq_res->info[i].psm = p->psm;
 				inq_res->info[i].co = p->co;
 
-				/*printf("bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",p->bdaddr.addr[0],p->bdaddr.addr[1],p->bdaddr.addr[2],p->bdaddr.addr[3],p->bdaddr.addr[4],p->bdaddr.addr[5]);
-				printf("cod:    %02x%02x%02x\n",p->cod[0],p->cod[1],p->cod[2]);
+				/*printf("bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",p->bdaddr.addr[5],p->bdaddr.addr[4],p->bdaddr.addr[3],p->bdaddr.addr[2],p->bdaddr.addr[1],p->bdaddr.addr[0]);
+				printf("cod:    %02x%02x%02x\n",p->cod[2],p->cod[1],p->cod[0]);
 				printf("psrm:   %02x\n",p->psrm);
 				printf("psm:   %02x\n",p->psm);
 				printf("co:   %04x\n",p->co);*/
@@ -1145,7 +1169,7 @@ err_t bte_inquiry_complete(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ire
 			state->hci_cmddone = 1;
 			state->inq_complete_cb(ERR_OK,&state->inq_res);
 			_CPU_ISR_Restore(level);
-		} else if (state->inquiry_mode == INQUIRY_MODE_SINGLE)
+		} else if (state->pair_mode == PAIR_MODE_NORMAL)
 			hci_inquiry(0x009E8B33,0x03,btstate.num_maxdevs,bte_inquiry_complete);
 	}
 	return ERR_OK;

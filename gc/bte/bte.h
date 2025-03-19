@@ -69,9 +69,9 @@
 #define BD_NAME_LEN     			248
 #define BD_MAX_INQUIRY_DEVS     		255
 
-enum inquiry_mode {
-	INQUIRY_MODE_SINGLE,
-	INQUIRY_MODE_PERIODIC
+enum pair_mode {
+	PAIR_MODE_NORMAL,
+	PAIR_MODE_TEMPORARY
 };
 
 #ifdef __cplusplus
@@ -132,6 +132,7 @@ struct bte_pcb
 
 
 	s32 (*recv)(void *arg,void *buffer,u16 len);
+	s32 (*conn_req)(void *arg,struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 *cod,u8 link_type,u8 err);
 	s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err);
 	s32 (*disconn_cfm)(void *arg,struct bte_pcb *pcb,u8 err);
 };
@@ -147,13 +148,16 @@ s32 BTE_InitSub(btecallback cb);
 s32 BTE_ReadStoredLinkKey(struct linkkey_info *keys,u8 max_cnt,btecallback cb);
 s32 BTE_ReadBdAddr(struct bd_addr *bdaddr, btecallback cb);
 s32 BTE_SetEvtFilter(u8 filter_type,u8 filter_cond_type,u8 *cond, btecallback cb);
-s32 BTE_ReadRemoteName(struct pad_info *info, btecallback cb);
+s32 BTE_ReadRemoteName(struct bd_addr *bdaddr, btecallback cb);
 s32 BTE_Inquiry(u8 max_cnt,u8 flush, btecallback cb);
 s32 BTE_PeriodicInquiry(u8 max_cnt,u8 flush,btecallback cb);
 s32 BTE_ExitPeriodicInquiry(void);
 void (*BTE_SetDisconnectCallback(void (*callback)(struct bd_addr *bdaddr,u8 reason)))(struct bd_addr *bdaddr,u8 reason);
 void BTE_SetSyncButtonCallback(void (*callback)(u32 held));
+void BTE_SetConnectionRequestCallback(s8 (*callback)(void *arg,struct bd_addr *bdaddr,u8 *cod,u8 link_type));
+void BTE_SetLinkKeyNotificationCallback(s8 (*callback)(void *arg,struct bd_addr *bdaddr,u8 *key));
 u8 BTE_GetPairMode(void);
+void BTE_WriteStoredLinkKey(struct bd_addr *bdaddr,u8 *key);
 void BTE_ClearStoredLinkKeys(void);
 
 struct bte_pcb* bte_new(void);
