@@ -53,8 +53,10 @@ distribution.
 #define MAX_STREAMDATA_LEN			20
 #define EVENTQUEUE_LENGTH			16
 
-#define DISCONNECT_BATTERY_DIED		0x14
-#define DISCONNECT_POWER_OFF		0x15
+#define DISCONNECT_TIMEOUT			8
+#define DISCONNECT_BATTERY_DIED		20
+#define DISCONNECT_POWER_OFF		21
+#define DISCONNECT_IDLE_TIMEOUT		22
 
 struct _wpad_thresh{
 	s32 btns;
@@ -109,6 +111,7 @@ static void __wpad_def_powcb(s32 chan);
 static void __wpad_def_synccb(u32 held);
 static WPADShutdownCallback __wpad_batcb = NULL;
 static WPADShutdownCallback __wpad_powcb = __wpad_def_powcb;
+static WPADShutdownCallback __wpad_idletimeoutcb = NULL;
 static WPADSyncCallback __wpad_synccb = __wpad_def_synccb;
 
 extern void __wiiuse_sensorbar_enable(int enable);
@@ -204,93 +207,129 @@ static void __wpad_setfmt(s32 chan)
 	}
 }
 
-wiimote *__wpad_assign_slot(wiimote_listen *wml)
+wiimote *__wpad_assign_slot(wiimote_listen *wml, u8 err)
 {
     u32 i, level;
+
     _CPU_ISR_Disable(level);
 
     for(i=0; i<WPAD_MAX_WIIMOTES; i++) {
         if(wml == &__wpads_listen[i]) {
-			printf("WPAD Assigning Slot %d (active: 0x%02x)\n", i, __wpads_used);
-			printf("	bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",wml->bdaddr.addr[5],wml->bdaddr.addr[4],wml->bdaddr.addr[3],wml->bdaddr.addr[2],wml->bdaddr.addr[1],wml->bdaddr.addr[0]);
-			BYTES_FROM_BD_ADDR(__wpad_devs.active[i].bdaddr, &wml->bdaddr);
-			__wpads_used |= (0x01<<i);
-            _CPU_ISR_Restore(level);
-            return __wpads[i];
-        }
-    }
-
-    printf("WPAD Listen Slot Not Valid\n");
-    _CPU_ISR_Restore(level);
-	return NULL;
-}
-
-wiimote *__wpad_register_new(wiimote_listen *wml)
-{
-	u32 i,j;
-	struct bd_addr bdaddr;
-	//printf("Registering Wiimote with system...\n");
-
-	bool known = FALSE;
-	for(i=0; i<CONF_PAD_GUESTS_MAX; i++) {
-		BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_guests.guests[i].bdaddr);
-		if(bd_addr_cmp(&wml->bdaddr,&bdaddr)) {
-			printf("Wiimote guest in slot %d\n", i);
-			known = TRUE;
 			break;
 		}
 	}
-	
-	if (!known)
+
+	if (i >= WPAD_MAX_WIIMOTES)
 	{
-		for(i=0; i<CONF_PAD_MAX_REGISTERED; i++) {
-			BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_devs.registered[i].bdaddr);
+		printf("WPAD Listen Slot Not Valid\n");
+		_CPU_ISR_Restore(level);
+		return NULL;
+	}
+
+	if (err) {
+		printf("Connection error(%d)\n", err);
+		__wpads_used &= ~(0x01<<i);
+		_CPU_ISR_Restore(level);
+		return NULL;
+	}
+	
+	printf("WPAD Assigning Slot %d (active: 0x%02x)\n", i, __wpads_used);
+	//printf("	bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",wml->bdaddr.addr[5],wml->bdaddr.addr[4],wml->bdaddr.addr[3],wml->bdaddr.addr[2],wml->bdaddr.addr[1],wml->bdaddr.addr[0]);
+	BYTES_FROM_BD_ADDR(__wpad_devs.active[i].bdaddr, &wml->bdaddr);
+	_CPU_ISR_Restore(level);
+	return __wpads[i];
+}
+
+wiimote *__wpad_register_new(wiimote_listen *wml, u8 err)
+{
+	u32 i,j,level;
+	struct bd_addr bdaddr;
+	wiimote *wm;
+	//printf("Registering Wiimote with system...\n");
+
+	int guestEntry = CONF_PAD_MAX_GUESTS;
+	int registeredEntry = CONF_PAD_MAX_REGISTERED;
+
+    _CPU_ISR_Disable(level);
+	wm = __wpad_assign_slot(wml, err);
+	if (wm)
+	{
+		// Search for wml->bdaddr in guest registration list
+		for(i=0; i<CONF_PAD_MAX_GUESTS; i++) {
+			BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_guests.guests[i].bdaddr);
 			if(bd_addr_cmp(&wml->bdaddr,&bdaddr)) {
-				printf("Wiimote currently registered in slot %d\n", i);
-				known = TRUE;
+				//printf("Wiimote guest in slot %d\n", i);
+				guestEntry = i;
 				break;
 			}
 		}
-	}
-
-	if (!known)
-	{
+	
+		// Search for wml->bdaddr in permanent registration list
+		for(i=0; i<CONF_PAD_MAX_REGISTERED; i++) {
+			BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_devs.registered[i].bdaddr);
+			if(bd_addr_cmp(&wml->bdaddr,&bdaddr)) {
+				//printf("Wiimote currently registered in slot %d\n", i);
+				registeredEntry = i;
+				break;
+			}
+		}
+	
 		if (BTE_GetPairMode() == PAIR_MODE_NORMAL)
 		{
-			printf("Registering Wiimote '%s' with system...\n", wml->name);
-			memmove(&__wpad_devs.registered[1], &__wpad_devs.registered[0], sizeof(conf_pad_device)*(CONF_PAD_MAX_REGISTERED-1));
-			BYTES_FROM_BD_ADDR(__wpad_devs.registered[0].bdaddr, &wml->bdaddr);
-			memcpy(__wpad_devs.registered[0].name, wml->name, sizeof(__wpad_devs.registered[0].name));
-			if (__wpad_devs.num_registered < CONF_PAD_MAX_REGISTERED)
-				__wpad_devs.num_registered++;
-		}
-		else
-		{
-			printf("Saving Wiimote '%s' as guest...\n", wml->name);
-			memmove(&__wpad_guests.guests[1], &__wpad_guests.guests[0], sizeof(conf_pad_guest_device)*(CONF_PAD_GUESTS_MAX-1));
-			BYTES_FROM_BD_ADDR(__wpad_guests.guests[0].bdaddr, &wml->bdaddr);
-			memcpy(__wpad_guests.guests[0].name, wml->name, sizeof(__wpad_guests.guests[0].name));
-			if (__wpad_guests.num_guests < CONF_PAD_GUESTS_MAX)
-				__wpad_guests.num_guests++;
-
-			for(i=0; i<CONF_PAD_TOTAL; i++)
+			// Not permanent pair, need to save wml->bdaddr as known controller
+			if (registeredEntry >= CONF_PAD_MAX_REGISTERED)
 			{
-				if(bd_addr_cmp(&wml->bdaddr,&__wpad_keys[i].bdaddr)) {
-					u8 *src = __wpad_keys[i].key;
-					u8 *dst = __wpad_guests.guests[0].link_key;
-					printf("Writing guest key: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",__wpad_keys[i].key[0],__wpad_keys[i].key[1],__wpad_keys[i].key[2],__wpad_keys[i].key[3],__wpad_keys[i].key[4],__wpad_keys[i].key[5],__wpad_keys[i].key[6],__wpad_keys[i].key[7],__wpad_keys[i].key[8],__wpad_keys[i].key[9],__wpad_keys[i].key[10],__wpad_keys[i].key[11],__wpad_keys[i].key[12],__wpad_keys[i].key[13],__wpad_keys[i].key[14],__wpad_keys[i].key[15]);
-					for (j=0;j<16;j++)
+				// If currently guest, we want to allow for upgrade to permanent pair
+				if (guestEntry < CONF_PAD_MAX_GUESTS)
+				{
+					// Wipe guest entry and shift later ones up
+					for (i = guestEntry; i < (__wpad_guests.num_guests - 1); i++)
 					{
-						dst[j] = src[15 - j];
+						memcpy(&__wpad_guests.guests[i], &__wpad_guests.guests[i+1], sizeof(conf_pad_guest_device));
 					}
-					//memcpy(__wpad_guests.guests[0].link_key,&__wpad_keys[i].key,sizeof(__wpad_guests.guests[0].link_key));
-					break;
+					memset(&__wpad_guests.guests[--__wpad_guests.num_guests], 0, sizeof(conf_pad_guest_device));
+				}
+		
+				//printf("Registering Wiimote '%s' with system...\n", wml->name);
+				memmove(&__wpad_devs.registered[1], &__wpad_devs.registered[0], sizeof(conf_pad_device)*(CONF_PAD_MAX_REGISTERED-1));
+				BYTES_FROM_BD_ADDR(__wpad_devs.registered[0].bdaddr, &wml->bdaddr);
+				memcpy(__wpad_devs.registered[0].name, wml->name, sizeof(__wpad_devs.registered[0].name));
+				if (__wpad_devs.num_registered < CONF_PAD_MAX_REGISTERED)
+					__wpad_devs.num_registered++;
+			}
+		}
+		else if (registeredEntry >= CONF_PAD_MAX_REGISTERED)
+		{
+			// Not permanent pair, need to save bdaddr and link key as guest controller
+			if (guestEntry >= CONF_PAD_MAX_GUESTS)
+			{
+				//printf("Saving Wiimote '%s' as guest...\n", wml->name);
+				memmove(&__wpad_guests.guests[1], &__wpad_guests.guests[0], sizeof(conf_pad_guest_device)*(CONF_PAD_MAX_GUESTS-1));
+				BYTES_FROM_BD_ADDR(__wpad_guests.guests[0].bdaddr, &wml->bdaddr);
+				memcpy(__wpad_guests.guests[0].name, wml->name, sizeof(__wpad_guests.guests[0].name));
+				if (__wpad_guests.num_guests < CONF_PAD_MAX_GUESTS)
+					__wpad_guests.num_guests++;
+	
+				for(i=0; i<CONF_PAD_TOTAL; i++)
+				{
+					if(bd_addr_cmp(&wml->bdaddr,&__wpad_keys[i].bdaddr)) {
+						u8 *src = __wpad_keys[i].key;
+						u8 *dst = __wpad_guests.guests[0].link_key;
+						//printf("Writing guest key: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",__wpad_keys[i].key[0],__wpad_keys[i].key[1],__wpad_keys[i].key[2],__wpad_keys[i].key[3],__wpad_keys[i].key[4],__wpad_keys[i].key[5],__wpad_keys[i].key[6],__wpad_keys[i].key[7],__wpad_keys[i].key[8],__wpad_keys[i].key[9],__wpad_keys[i].key[10],__wpad_keys[i].key[11],__wpad_keys[i].key[12],__wpad_keys[i].key[13],__wpad_keys[i].key[14],__wpad_keys[i].key[15]);
+						// Keys are stored in config backwards, like bdaddrs
+						for (j=0;j<16;j++)
+						{
+							dst[j] = src[15 - j];
+						}
+						break;
+					}
 				}
 			}
 		}
 	}
+    _CPU_ISR_Restore(level);
 
-	return __wpad_assign_slot(wml);
+	return wm;
 }
 
 static s32 __wpad_setevtfilter_connsetup_finished(s32 result,void *usrdata)
@@ -301,17 +340,6 @@ static s32 __wpad_setevtfilter_connsetup_finished(s32 result,void *usrdata)
 	//printf("__wpad_setevtfilter_finished(%d)\n",result);
 
 	if(result==ERR_OK) {
-        for(i=0;i<CONF_PAD_MAX_ACTIVE;i++) {
-			BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_devs.active[i].bdaddr);
-			if(!bd_addr_cmp(&bdaddr,BD_ADDR_ANY)) {
-				wiiuse_register(&__wpads_listen[i],&(bdaddr),NULL,__wpad_assign_slot);
-			}
-		}
-		
-		BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_devs.balance_board.bdaddr);
-		if(!bd_addr_cmp(&bdaddr,BD_ADDR_ANY)) {
-			wiiuse_register(&__wpads_listen[WPAD_BALANCE_BOARD],&(bdaddr),NULL,__wpad_assign_slot);
-		}
 		__wpads_inited = WPAD_STATE_ENABLED;
 	}
 	return ERR_OK;
@@ -664,6 +692,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 		case WIIUSE_STATUS:
 			break;
 		case WIIUSE_CONNECT:
+			//printf("__wpad_eventCB CONNECT\n");
 			chan = wm->unid;
 			wpdcb = &__wpdcb[chan];
 			wpdcb->wm = wm;
@@ -682,6 +711,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			__wpads_active |= (0x01<<chan);
 			break;
 		case WIIUSE_DISCONNECT:
+			//printf("__wpad_eventCB DISCONNECT\n");
 			chan = wm->unid;
 			wpdcb = &__wpdcb[chan];
 			wpdcb->wm = wm;
@@ -697,24 +727,33 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			__wpads_active &= ~(0x01<<chan);
 			__wpads_used &= ~(0x01<<chan);
 			break;
+		case WIIUSE_ACK:
+			break;
 		default:
+			printf("__wpad_eventCB(%d)\n", event);
 			break;
 	}
 }
 
-void __wpad_disconnectCB(struct bd_addr *offaddr, u8 reason)
+void __wpad_disconnectCB(struct bd_addr *pad_addr, u8 reason)
 {
-	struct bd_addr bdaddr;
 	int i;
 
 	if(__wpads_inited == WPAD_STATE_ENABLED) {
-        for(i=0;i<__wpad_devs.num_registered;i++) {
-            BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_devs.registered[i].bdaddr);
-			if(bd_addr_cmp(offaddr,&bdaddr)) {
+        for(i=0;i<WPAD_MAX_WIIMOTES;i++) {
+			if(bd_addr_cmp(pad_addr,&__wpads_listen[i].bdaddr)) {
 				if(reason == DISCONNECT_BATTERY_DIED) {
-					if(__wpad_batcb) __wpad_batcb(i);		//sanity check since this pointer can be NULL.
-				} else if(reason == DISCONNECT_POWER_OFF)
-					__wpad_powcb(i);						//no sanity check because there's a default callback if not otherwise set.
+					if(__wpad_batcb) __wpad_batcb(i);
+				} else if(reason == DISCONNECT_POWER_OFF) {
+					if(__wpad_powcb) __wpad_powcb(i);
+				} else if(reason == DISCONNECT_IDLE_TIMEOUT) {
+					if(__wpad_idletimeoutcb) __wpad_idletimeoutcb(i);
+				} else if(reason == DISCONNECT_TIMEOUT) {
+					printf("Connection timed out\n", reason);
+				} else {
+					printf("__wpad_disconnectCB(%d)\n", reason);
+				}
+				__wpads_used &= ~(0x01<<i);
 				break;
 			}
 		}
@@ -736,7 +775,7 @@ s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
 	int slot = WPAD_MAX_WIIMOTES;
 	struct pad_info *info = (struct pad_info *)userdata;
 
-	printf("__wpad_read_remote_name_finished(%d)\n", result);
+	//printf("__wpad_read_remote_name_finished(%d)\n", result);
 
 	if (result == ERR_OK && info != NULL)
 	{
@@ -748,13 +787,13 @@ s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
 			// Check for Balance Board
 			BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_devs.balance_board.bdaddr);
 			if(bd_addr_cmp(&info->bdaddr,&bdaddr)) {
-				if(__wpads_listen[WPAD_BALANCE_BOARD].name[0] == 0x00) {
+				if(!(__wpads_used & (1<<WPAD_BALANCE_BOARD))) {
 					printf("Balance Board!\n");
 					slot = WPAD_BALANCE_BOARD;
 				}
 				else
 				{
-					printf("Gee Bill, how come your Wii lets you have two Balance Boards?\n");
+					//printf("Gee Bill, how come your Wii lets you have two Balance Boards?\n");
 					result = ERR_CONN;
 					goto end;
 				}
@@ -766,7 +805,7 @@ s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
 				for(i=0; i<CONF_PAD_MAX_ACTIVE; i++) {
 					BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_devs.active[i].bdaddr);
 					if(bd_addr_cmp(&info->bdaddr,&bdaddr)) {
-						printf("Wiimote already active in slot %d\n", i);
+						//printf("Wiimote already active in slot %d\n", i);
 						slot = i;
 						break;
 					}
@@ -777,8 +816,8 @@ s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
 			if(slot >= WPAD_MAX_WIIMOTES)
 			{
 				for(i=0; i<CONF_PAD_MAX_ACTIVE; i++) {
-					if(__wpads_listen[i].name[0] == 0x00) {
-						printf("Assigning Wiimote to slot %d\n", i);
+					if(!(__wpads_used & (1<<i))) {
+						//printf("Attempting to connect to Wiimote using slot %d\n", i);
 						slot = i;
 						break;
 					}
@@ -788,6 +827,9 @@ s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
 			if(slot < WPAD_MAX_WIIMOTES)
 			{
 				result = wiiuse_connect(&__wpads_listen[slot],&info->bdaddr,info->name,__wpad_register_new);
+				__wpads_used |= (0x01<<slot);
+				//printf("wiiuse_connect(%d)\n",result);
+				result = ERR_OK;
 			}
 			else
 			{
@@ -808,12 +850,64 @@ end:
 	return result;
 }
 
+static s32 GetActiveSlot(struct bd_addr *pad_addr)
+{
+	int i;
+	int slot = CONF_PAD_MAX_ACTIVE;
+	struct bd_addr bdaddr;
+
+	for(i=0; i<CONF_PAD_MAX_ACTIVE; i++) {
+		BD_ADDR_FROM_BYTES(&bdaddr,__wpad_devs.active[i].bdaddr);
+		if(bd_addr_cmp(pad_addr,&bdaddr)) {
+			slot = i;
+			break;
+		}
+	}
+
+	return slot;
+}
+
+static s32 GetRegisteredSlot(struct bd_addr *pad_addr)
+{
+	int i;
+	int slot = CONF_PAD_MAX_REGISTERED;
+	struct bd_addr bdaddr;
+
+	for(i=0; i<__wpad_devs.num_registered; i++) {
+		BD_ADDR_FROM_BYTES(&bdaddr,__wpad_devs.registered[i].bdaddr);
+		if(bd_addr_cmp(pad_addr,&bdaddr)) {
+			slot = i;
+			break;
+		}
+	}
+
+	return slot;
+}
+
+static s32 GetGuestSlot(struct bd_addr *pad_addr)
+{
+	int i;
+	int slot = CONF_PAD_MAX_GUESTS;
+	struct bd_addr bdaddr;
+
+	for(i=0; i<__wpad_guests.num_guests; i++) {
+		BD_ADDR_FROM_BYTES(&bdaddr,__wpad_guests.guests[i].bdaddr);
+		if(bd_addr_cmp(pad_addr,&bdaddr)) {
+			slot = i;
+			break;
+		}
+	}
+
+	return slot;
+}
+
 static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_type)
 {
 	int i, j;
 	int slot = WPAD_MAX_WIIMOTES;
 	struct bd_addr bdaddr;
 	
+	// Only accept connection requests (i.e. "press any button") if not doing guest pairing
 	if (BTE_GetPairMode() == PAIR_MODE_NORMAL)
 	{
 		if (!bd_addr_cmp(pad_addr,BD_ADDR_ANY))
@@ -821,7 +915,8 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 			BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_devs.balance_board.bdaddr);
 			if(bd_addr_cmp(pad_addr,&bdaddr)) {
 				printf("Balance Board wants to connect!\n");
-				wiiuse_register(&__wpads_listen[WPAD_BALANCE_BOARD],pad_addr,(u8 *)"Balance Board",__wpad_assign_slot);
+				__wpads_used |= (0x01<<WPAD_BALANCE_BOARD);
+				wiiuse_register(&__wpads_listen[WPAD_BALANCE_BOARD],pad_addr,__wpad_assign_slot);
 				return ERR_OK;
 			}
 	
@@ -830,16 +925,15 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 				if(bd_addr_cmp(pad_addr,&bdaddr)) {
 					printf("Active Wiimote found in slot %d\n", i);
 					slot = i;
-					if(__wpads_listen[slot].name[0] != 0x00) {
-						for(j=0; j<CONF_PAD_MAX_ACTIVE; j++) {
-							if(__wpads_listen[j].name[0] == 0x00) {
-								printf("Whoops, slot was stolen?! Assigning Wiimote to slot %d\n", j);
-								slot = j;
-								break;
-							}
+					if(__wpads_used & (1<<i)) {
+						// Slot already used
+						if (!bd_addr_cmp(pad_addr,&__wpads_listen[i].bdaddr)) {
+							printf("Slot got stolen...\n");
+							return ERR_CONN;
 						}
 					}
-					wiiuse_register(&__wpads_listen[slot],pad_addr,(u8 *)"Controller",__wpad_assign_slot);
+					__wpads_used |= (0x01<<slot);
+					wiiuse_register(&__wpads_listen[slot],pad_addr,__wpad_assign_slot);
 					return ERR_OK;
 				}
 			}
@@ -851,8 +945,8 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 	
 					// Not active, try to make active
 					for(j=0; j<CONF_PAD_MAX_ACTIVE; j++) {
-						if(__wpads_listen[j].name[0] == 0x00) {
-							printf("Assigning Wiimote to slot %d\n", j);
+						if(!(__wpads_used & (1<<j))) {
+							printf("Attempting to listen to Wiimote using slot %d\n", j);
 							slot = j;
 							break;
 						}
@@ -860,7 +954,8 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 					
 					if (slot < WPAD_MAX_WIIMOTES)
 					{
-						wiiuse_register(&__wpads_listen[slot],pad_addr,(u8 *)__wpad_devs.registered[i].name,__wpad_assign_slot);
+						__wpads_used |= (0x01<<slot);
+						wiiuse_register(&__wpads_listen[slot],pad_addr,__wpad_assign_slot);
 						return ERR_OK;
 					}
 					else
@@ -879,22 +974,49 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 	return ERR_CONN;
 }
 
-static s8 __wpad_linkkeynotCB(void *arg,struct bd_addr *pad_addr,u8 *key)
+static s8 __wpad_linkkeyreqCB(void *arg,struct bd_addr *pad_addr)
 {
 	int i;
-	if (BTE_GetPairMode() == PAIR_MODE_NORMAL)
-	{
-		BTE_WriteStoredLinkKey(pad_addr,key);
-	}
-
-	printf("__wpad_linkkeynotCB\n");
+	printf("__wpad_linkkeyreqCB\n");
 	
 	for(i=0; i<CONF_PAD_TOTAL; i++)
 	{
-		if (bd_addr_cmp(pad_addr,&__wpad_keys[i].bdaddr) || bd_addr_cmp(BD_ADDR_ANY,&__wpad_keys[i].bdaddr))
+		if (bd_addr_cmp(pad_addr,&__wpad_keys[i].bdaddr))
 		{
-			//printf("Saving key for bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",pad_addr->addr[5],pad_addr->addr[4],pad_addr->addr[3],pad_addr->addr[2],pad_addr->addr[1],pad_addr->addr[0]);
-			//printf("	key: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",key[0],key[1],key[2],key[3],key[4],key[5],key[6],key[7],key[8],key[9],key[10],key[11],key[12],key[13],key[14],key[15]);
+			BTE_LinkKeyRequestReply(pad_addr,__wpad_keys[i].key);
+			break;
+		}
+	}
+
+	if (i >= CONF_PAD_TOTAL)
+	{
+		BTE_LinkKeyRequestNegativeReply(pad_addr);
+	}
+
+	return ERR_OK;
+}
+
+static s8 __wpad_linkkeynotCB(void *arg,struct bd_addr *pad_addr,u8 *key)
+{
+	int i;
+	BTE_WriteStoredLinkKey(pad_addr,key);
+
+	//printf("__wpad_linkkeynotCB\n");
+	
+	for(i=0; i<CONF_PAD_TOTAL; i++)
+	{
+		// New device
+		if (bd_addr_cmp(BD_ADDR_ANY,&__wpad_keys[i].bdaddr))
+		{
+			bd_addr_set(&__wpad_keys[i].bdaddr,pad_addr);
+			memcpy(__wpad_keys[i].key,key,sizeof(__wpad_keys[i].key));
+			__wpads_bonded++;
+			break;
+		}
+		
+		// Old device, new key
+		if (bd_addr_cmp(pad_addr,&__wpad_keys[i].bdaddr))
+		{
 			memcpy(__wpad_keys[i].key,key,sizeof(__wpad_keys[i].key));
 			break;
 		}
@@ -907,7 +1029,7 @@ s32 __wpad_inquiry_finished(s32 result,void *userdata)
 {
 	int i;
 	struct inquiry_res *inq_res = (struct inquiry_res *)userdata;
-	printf("__wpad_inquiry_finished %d\n", inq_res->count);
+	//printf("__wpad_inquiry_finished %d\n", inq_res->count);
 
 	if (result == ERR_OK && inq_res != NULL)
 	{
@@ -918,7 +1040,8 @@ s32 __wpad_inquiry_finished(s32 result,void *userdata)
 
 			if (!bd_addr_cmp(&info->bdaddr,BD_ADDR_ANY))
 			{
-				printf("Attempting to read name for bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",info->bdaddr.addr[5],info->bdaddr.addr[4],info->bdaddr.addr[3],info->bdaddr.addr[2],info->bdaddr.addr[1],info->bdaddr.addr[0]);
+				// Read name of first valid controller
+				//printf("Attempting to read name for bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",info->bdaddr.addr[5],info->bdaddr.addr[4],info->bdaddr.addr[3],info->bdaddr.addr[2],info->bdaddr.addr[1],info->bdaddr.addr[0]);
 				BTE_ReadRemoteName(&info->bdaddr, __wpad_read_remote_name_finished);
 				break;
 			}
@@ -954,7 +1077,9 @@ s32 WPAD_WipeSavedControllers(void)
 	}
 	__wpads_active = 0;
 	__wpads_used = 0;
+	__wpads_bonded = 0;
 	memset(&__wpad_devs,0,sizeof(__wpad_devs));
+	memset(&__wpad_guests,0,sizeof(__wpad_guests));
 	memset(__wpad_keys,0,sizeof(__wpad_keys));
 	BTE_ClearStoredLinkKeys();
 	_CPU_ISR_Restore(level);
@@ -1043,19 +1168,13 @@ s32 WPAD_Init(void)
 			return WPAD_ERR_BADCONF;
 		}
 
-		/*if(__wpad_devs.num_registered == 0) {
-			WPAD_Shutdown();
-			_CPU_ISR_Restore(level);
-			return WPAD_ERR_NONEREGISTERED;
-		}*/
-
 		if(__wpad_devs.num_registered > CONF_PAD_MAX_REGISTERED) {
 			WPAD_Shutdown();
 			_CPU_ISR_Restore(level);
 			return WPAD_ERR_BADCONF;
 		}
 
-		for(i=0;i<CONF_PAD_MAX_ACTIVE;i++) {
+		/*for(i=0;i<CONF_PAD_MAX_ACTIVE;i++) {
 			conf_pad_device *device = &__wpad_devs.active[i];
 			printf("Active Wiimote %s:\n", device->name);
 			printf("	bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",device->bdaddr[0],device->bdaddr[1],device->bdaddr[2],device->bdaddr[3],device->bdaddr[4],device->bdaddr[5]);
@@ -1067,7 +1186,7 @@ s32 WPAD_Init(void)
 			conf_pad_device *device = &__wpad_devs.registered[i];
 			printf("Registered Wiimote %s:\n", device->name);
 			printf("	bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",device->bdaddr[0],device->bdaddr[1],device->bdaddr[2],device->bdaddr[3],device->bdaddr[4],device->bdaddr[5]);
-		}
+		}*/
 
 		if(CONF_GetPadGuestDevices(&__wpad_guests) < 0) {
 			WPAD_Shutdown();
@@ -1075,19 +1194,19 @@ s32 WPAD_Init(void)
 			return WPAD_ERR_BADCONF;
 		}
 
-		if(__wpad_guests.num_guests > CONF_PAD_GUESTS_MAX) {
+		if(__wpad_guests.num_guests > CONF_PAD_MAX_GUESTS) {
 			WPAD_Shutdown();
 			_CPU_ISR_Restore(level);
 			return WPAD_ERR_BADCONF;
 		}
 
-		printf("BT.CDIF num_guests %d\n", __wpad_guests.num_guests);
+		/*printf("BT.CDIF num_guests %d\n", __wpad_guests.num_guests);
 
 		for(i=0;i<__wpad_guests.num_guests;i++) {
 			conf_pad_guest_device *device = &__wpad_guests.guests[i];
 			printf("Guest Wiimote %s:\n", device->name);
 			printf("	bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",device->bdaddr[0],device->bdaddr[1],device->bdaddr[2],device->bdaddr[3],device->bdaddr[4],device->bdaddr[5]);
-		}
+		}*/
 
 		__wpads = wiiuse_init(WPAD_MAX_WIIMOTES,__wpad_eventCB);
 		if(__wpads==NULL) {
@@ -1102,6 +1221,8 @@ s32 WPAD_Init(void)
 		BTE_SetDisconnectCallback(__wpad_disconnectCB);
 		BTE_SetSyncButtonCallback(__wpad_syncbuttonCB);
 		BTE_SetConnectionRequestCallback(__wpad_connreqCB);
+		// For some reason, returning our saved link key causes Wiimote to disconnect...
+		//BTE_SetLinkKeyRequestCallback(__wpad_linkkeyreqCB);
 		BTE_SetLinkKeyNotificationCallback(__wpad_linkkeynotCB);
 		BTE_InitCore(__initcore_finished);
 
@@ -1471,6 +1592,15 @@ void WPAD_SetBatteryDeadCallback(WPADShutdownCallback cb)
 
 	_CPU_ISR_Disable(level);
 	__wpad_batcb = cb;
+	_CPU_ISR_Restore(level);
+}
+
+void WPAD_SetIdleTimeoutCallback(WPADShutdownCallback cb)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	__wpad_idletimeoutcb = cb;
 	_CPU_ISR_Restore(level);
 }
 

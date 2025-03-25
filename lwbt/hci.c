@@ -1601,7 +1601,7 @@ static void hci_conn_complete_evt(struct pbuf *p)
 
 	bdaddr = (void*)(((u8_t*)p->payload)+3);
 	link = hci_get_link(bdaddr);
-	printf("hci_conn_complete_evt(%p,%02x - %02x:%02x:%02x:%02x:%02x:%02x)\n",link,((u8_t*)p->payload)[0],bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
+	//printf("hci_conn_complete_evt(%p,%02x - %02x:%02x:%02x:%02x:%02x:%02x)\n",link,((u8_t*)p->payload)[0],bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 	switch(((u8_t*)p->payload)[0]) {
 		case HCI_SUCCESS:
 			if(link==NULL) {
@@ -1624,9 +1624,9 @@ static void hci_conn_complete_evt(struct pbuf *p)
 			break;
 		case HCI_PAGE_TIMEOUT:
 			ERROR("hci_conn_complete_evt: Timeout\n");
-			if(link==NULL) {
-				hci_disconnect(bdaddr, HCI_OTHER_END_TERMINATED_CONN_USER_ENDED);
-				lp_disconnect_ind(bdaddr,HCI_CONN_TERMINATED_BY_LOCAL_HOST);
+			if(link!=NULL) {
+				hci_close(link);
+				lp_connect_cfm(bdaddr,((u8_t*)p->payload)[10],ERR_CONN);
 			}
 			break;
 		default:
@@ -1646,7 +1646,7 @@ static void hci_inquiry_result_evt(struct pbuf *p)
 	struct hci_inq_res *ires;
 
 	num_resp = ((u8_t*)p->payload)[0];
-	//printf("hci_inquiry_result_evt(%d)\n",num_resp);
+	printf("hci_inquiry_result_evt(%d)\n",num_resp);
 	for(i=0;i<num_resp && i<MEMB_NUM_HCI_INQ;i++) {
 		resp_off = (i*14);
 		bdaddr = (void*)(((u8_t*)p->payload)+(1+resp_off));
@@ -1749,7 +1749,7 @@ void hci_event_handler(struct pbuf *p)
 
 	evthdr = p->payload;
 	btpbuf_header(p,-HCI_EVENT_HDR_LEN);
-	//printf("HCI_EVENT %02x\n", evthdr->code);
+	//printf("HCI_EVENT %02X\n", evthdr->code);
 
 	switch(evthdr->code) {
 		case HCI_INQUIRY_COMPLETE:

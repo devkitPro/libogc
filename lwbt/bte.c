@@ -399,7 +399,6 @@ void BTE_Init(void)
 	hci_wlp_complete(acl_wlp_completed);
 	hci_connection_complete(acl_conn_complete);
     hci_remote_name_req_complete(bte_read_remote_name_complete);
-    //hci_link_key_not(link_key_not);
     hci_pin_req(pin_req);
 	_CPU_ISR_Restore(level);
 
@@ -556,6 +555,42 @@ s32 BTE_ReadRemoteName(struct bd_addr *bdaddr, btecallback cb)
 	return last_err;
 }
 
+s32 BTE_LinkKeyRequestReply(struct bd_addr *bdaddr,u8 *key)
+{
+    u32 level;
+	err_t last_err = ERR_OK;
+
+	printf("BTE_LinkKeyRequestReply\n");
+
+    _CPU_ISR_Disable(level);
+    btstate.cb = NULL;
+    btstate.usrdata = NULL;
+    btstate.hci_cmddone = 0;
+    hci_arg(&btstate);
+    hci_link_key_req_reply(bdaddr, key);
+    _CPU_ISR_Restore(level);
+
+	return last_err;
+}
+
+s32 BTE_LinkKeyRequestNegativeReply(struct bd_addr *bdaddr)
+{
+    u32 level;
+	err_t last_err = ERR_OK;
+
+	printf("BTE_LinkKeyRequestNegativeReply\n");
+
+    _CPU_ISR_Disable(level);
+    btstate.cb = NULL;
+    btstate.usrdata = NULL;
+    btstate.hci_cmddone = 0;
+    hci_arg(&btstate);
+    hci_link_key_req_neg_reply(bdaddr);
+    _CPU_ISR_Restore(level);
+
+	return last_err;
+}
+
 u8 BTE_GetPairMode(void)
 {
 	return btstate.pair_mode;
@@ -581,6 +616,15 @@ void BTE_SetConnectionRequestCallback(err_t (*callback)(void *arg,struct bd_addr
 	
 	_CPU_ISR_Disable(level);
 	hci_conn_req(callback);
+	_CPU_ISR_Restore(level);
+}
+
+void BTE_SetLinkKeyRequestCallback(err_t (*callback)(void *arg,struct bd_addr *bdaddr))
+{
+	u32 level;
+	
+	_CPU_ISR_Disable(level);
+	hci_link_key_req(callback);
 	_CPU_ISR_Restore(level);
 }
 
@@ -711,7 +755,7 @@ s32 bte_connectdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn
 
 error:
 	_CPU_ISR_Restore(level);
-	//printf("bte_connectdeviceasync(%02x)\n",err);
+	printf("bte_connectdeviceasync(%02x)\n",err);
 	return err;
 }
 

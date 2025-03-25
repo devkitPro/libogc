@@ -191,6 +191,7 @@ void WPAD_Shutdown(void);
 void WPAD_SetIdleTimeout(u32 seconds);
 void WPAD_SetPowerButtonCallback(WPADShutdownCallback cb);
 void WPAD_SetBatteryDeadCallback(WPADShutdownCallback cb);
+void WPAD_SetIdleTimeoutCallback(WPADShutdownCallback cb);
 void WPAD_SetSyncButtonCallback(WPADSyncCallback cb);
 s32 WPAD_ScanPads(void);
 s32 WPAD_Rumble(s32 chan, int status);

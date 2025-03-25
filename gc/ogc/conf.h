@@ -129,7 +129,7 @@ enum {
 #define CONF_PAD_MAX_REGISTERED 10
 #define CONF_PAD_MAX_ACTIVE 4
 #define CONF_PAD_TOTAL (CONF_PAD_MAX_REGISTERED + CONF_PAD_MAX_ACTIVE + 2)
-#define CONF_PAD_GUESTS_MAX 6
+#define CONF_PAD_MAX_GUESTS 6
 
 typedef struct _conf_pad_device conf_pad_device;
 
@@ -160,7 +160,7 @@ typedef struct _conf_pad_guests conf_pad_guests;
 
 struct _conf_pad_guests {
 	u8 num_guests;
-	conf_pad_guest_device guests[CONF_PAD_GUESTS_MAX];
+	conf_pad_guest_device guests[CONF_PAD_MAX_GUESTS];
 } ATTRIBUTE_PACKED;
 
 s32 CONF_Init(void);
