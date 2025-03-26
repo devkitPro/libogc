@@ -350,12 +350,12 @@ err_t hci_read_local_version(void)
 {
 	struct pbuf *p = NULL;
 
-	if((p=btpbuf_alloc(PBUF_RAW,HCI_R_LOC_VERS_SIZE_PLEN,PBUF_RAM))==NULL) {
+	if((p=btpbuf_alloc(PBUF_RAW,HCI_R_LOC_VERS_INFO_PLEN,PBUF_RAM))==NULL) {
 		ERROR("hci_read_local_version: Could not allocate memory for pbuf\n");
 		return ERR_MEM;
 	}
 
-	p = hci_cmd_ass(p,HCI_R_LOC_VERSION_OCF,HCI_INFO_PARAM_OGF,HCI_R_LOC_VERS_SIZE_PLEN);
+	p = hci_cmd_ass(p,HCI_R_LOC_VERS_INFO_OCF,HCI_INFO_PARAM_OGF,HCI_R_LOC_VERS_INFO_PLEN);
 
 	physbusif_output(p,p->tot_len);
 	btpbuf_free(p);
@@ -367,12 +367,12 @@ err_t hci_read_local_features(void)
 {
 	struct pbuf *p = NULL;
 
-	if((p=btpbuf_alloc(PBUF_RAW,HCI_R_LOC_FEAT_SIZE_PLEN,PBUF_RAM))==NULL) {
+	if((p=btpbuf_alloc(PBUF_RAW,HCI_R_LOC_FEAT_PLEN,PBUF_RAM))==NULL) {
 		ERROR("hci_read_local_features: Could not allocate memory for pbuf\n");
 		return ERR_MEM;
 	}
 
-	p = hci_cmd_ass(p,HCI_R_LOC_FEATURES_OCF,HCI_INFO_PARAM_OGF,HCI_R_LOC_FEAT_SIZE_PLEN);
+	p = hci_cmd_ass(p,HCI_R_LOC_FEAT_OCF,HCI_INFO_PARAM_OGF,HCI_R_LOC_FEAT_PLEN);
 
 	physbusif_output(p,p->tot_len);
 	btpbuf_free(p);
@@ -814,13 +814,13 @@ err_t hci_sniff_mode(struct bd_addr *bdaddr, u16_t max_interval, u16_t min_inter
 		return ERR_CONN;
 	}
 
-	if((p = btpbuf_alloc(PBUF_TRANSPORT, HCI_SNIFF_PLEN, PBUF_RAM)) == NULL) { /* Alloc len of packet */
+	if((p = btpbuf_alloc(PBUF_TRANSPORT, HCI_SNIFF_MODE_PLEN, PBUF_RAM)) == NULL) { /* Alloc len of packet */
 		ERROR("hci_sniff_mode: Could not allocate memory for pbuf\n");
 		return ERR_MEM;
 	}
 
 	/* Assembling command packet */
-	p = hci_cmd_ass(p, HCI_SNIFF_MODE_OCF, HCI_LINK_POLICY_OGF, HCI_SNIFF_PLEN);
+	p = hci_cmd_ass(p, HCI_SNIFF_MODE_OCF, HCI_LINK_POLICY_OGF, HCI_SNIFF_MODE_PLEN);
 	/* Assembling cmd prameters */
 	((u16_t *)p->payload)[2] = htole16(link->connhdl);
 	((u16_t *)p->payload)[3] = htole16(max_interval);
@@ -914,7 +914,7 @@ err_t hci_pin_code_request_reply(struct bd_addr *bdaddr, u8_t pinlen, u8_t *pinc
 	memset((u8_t *)p->payload, 0, HCI_PIN_CODE_REQ_REP_PLEN);
 
 	/* Assembling command packet */
-	p = hci_cmd_ass(p, HCI_PIN_CODE_REQ_REP, HCI_LINK_CTRL_OGF, HCI_PIN_CODE_REQ_REP_PLEN);
+	p = hci_cmd_ass(p, HCI_PIN_CODE_REQ_REP_OCF, HCI_LINK_CTRL_OGF, HCI_PIN_CODE_REQ_REP_PLEN);
 	/* Assembling cmd prameters */
 	memcpy(((u8_t *)p->payload) + 4, bdaddr->addr, 6);
 	((u8_t *)p->payload)[10] = pinlen;
@@ -937,11 +937,11 @@ err_t hci_link_key_req_reply(struct bd_addr *bdaddr, unsigned char *link_key)
 {
 	struct pbuf *p;
 	if ((p = btpbuf_alloc(PBUF_RAW, HCI_LINK_KEY_REQ_REP_PLEN, PBUF_RAM)) == NULL) {
-			ERROR("hci_link_key_req_reply: Could not allocate memory for pbuf\n");
-			return ERR_MEM;
+		ERROR("hci_link_key_req_reply: Could not allocate memory for pbuf\n");
+		return ERR_MEM;
 	}
 
-	p = hci_cmd_ass(p, HCI_LINK_KEY_REQ_REP, HCI_LINK_CTRL_OGF, HCI_LINK_KEY_REQ_REP_PLEN);
+	p = hci_cmd_ass(p, HCI_LINK_KEY_REQ_REP_OCF, HCI_LINK_CTRL_OGF, HCI_LINK_KEY_REQ_REP_PLEN);
 	//copy bdaddr to offset 0x4
 	memcpy(((u8_t *)p->payload)+4, bdaddr->addr, 6);
 	//copy Link Key (16 bytes long) to offset 10 (0xA)
@@ -970,7 +970,7 @@ err_t hci_pin_code_request_neg_reply(struct bd_addr *bdaddr)
 		return ERR_MEM;
 	}
 
-	p = hci_cmd_ass(p,HCI_PIN_CODE_REQ_NEG_REP,HCI_LINK_CTRL_OGF,HCI_PIN_CODE_REQ_NEG_REP_PLEN);
+	p = hci_cmd_ass(p,HCI_PIN_CODE_REQ_NEG_REP_OCF,HCI_LINK_CTRL_OGF,HCI_PIN_CODE_REQ_NEG_REP_PLEN);
 	memcpy(((u8_t *)p->payload)+4, bdaddr->addr, 6);
 
 	physbusif_output(p,p->tot_len);
@@ -990,12 +990,12 @@ err_t hci_link_key_req_neg_reply(struct bd_addr *bdaddr)
 {
         struct pbuf *p;
  
-        if ((p = btpbuf_alloc(PBUF_RAW, HCI_LINK_KEY_REQ_REP_NEG_PLEN, PBUF_RAM)) == NULL) {
+        if ((p = btpbuf_alloc(PBUF_RAW, HCI_LINK_KEY_REQ_NEG_REP_PLEN, PBUF_RAM)) == NULL) {
                 ERROR("hci_link_key_req_neg_repl: Could not allocate memory for pbuf\n");
                 return ERR_MEM;
         }
  
-        p = hci_cmd_ass(p, HCI_LINK_KEY_REQ_REP_NEG, HCI_LINK_CTRL_OGF, HCI_LINK_KEY_REQ_REP_NEG_PLEN);
+        p = hci_cmd_ass(p, HCI_LINK_KEY_REQ_NEG_REP_OCF, HCI_LINK_CTRL_OGF, HCI_LINK_KEY_REQ_NEG_REP_PLEN);
         memcpy(((u8_t *)p->payload)+4, bdaddr->addr, 6);
  
         physbusif_output(p,p->tot_len);
@@ -1079,7 +1079,7 @@ err_t hci_write_stored_link_key(struct bd_addr *bdaddr, u8_t *link)
 		return ERR_MEM;
 	}
 	/* Assembling command packet */
-	p = hci_cmd_ass(p, HCI_WRITE_STORED_LINK_KEY, HCI_HC_BB_OGF, HCI_W_STORED_LINK_KEY_PLEN);
+	p = hci_cmd_ass(p, HCI_W_STORED_LINK_KEY_OCF, HCI_HC_BB_OGF, HCI_W_STORED_LINK_KEY_PLEN);
 	/* Assembling cmd prameters */
 	((u8_t *)p->payload)[4] = 0x01;
 	memcpy(((u8_t *)p->payload) + 5, bdaddr->addr, 6);
@@ -1101,12 +1101,12 @@ err_t hci_delete_stored_link_key(struct bd_addr *bdaddr, u8_t delete_all)
 {
 	struct pbuf *p;
 
-	if((p = btpbuf_alloc(PBUF_RAW, HCI_DEL_STORED_LINK_KEY_PLEN, PBUF_RAM)) == NULL) {
+	if((p = btpbuf_alloc(PBUF_RAW, HCI_D_STORED_LINK_KEY_PLEN, PBUF_RAM)) == NULL) {
 		ERROR("hci_write_stored_link_key: Could not allocate memory for pbuf\n");
 		return ERR_MEM;
 	}
 	/* Assembling command packet */
-	p = hci_cmd_ass(p, HCI_DELETE_STORED_LINK_KEY, HCI_HC_BB_OGF, HCI_DEL_STORED_LINK_KEY_PLEN);
+	p = hci_cmd_ass(p, HCI_D_STORED_LINK_KEY_OCF, HCI_HC_BB_OGF, HCI_D_STORED_LINK_KEY_PLEN);
 	/* Assembling cmd prameters */
 	if (bdaddr)
 	{
@@ -1204,12 +1204,12 @@ err_t hci_set_hc_to_h_fc(void)
 err_t hci_host_buffer_size(void)
 {
 	struct pbuf *p;
-	if((p = btpbuf_alloc(PBUF_RAW, HCI_H_BUF_SIZE_PLEN, PBUF_RAM)) == NULL) {
+	if((p = btpbuf_alloc(PBUF_RAW, HCI_HOST_BUF_SIZE_PLEN, PBUF_RAM)) == NULL) {
 		ERROR("hci_host_buffer_size: Could not allocate memory for pbuf\n");
 		return ERR_MEM;
 	}
 	/* Assembling command packet */
-	p = hci_cmd_ass(p, HCI_H_BUF_SIZE_OCF, HCI_HC_BB_OGF, HCI_H_BUF_SIZE_PLEN); 
+	p = hci_cmd_ass(p, HCI_HOST_BUF_SIZE_OCF, HCI_HC_BB_OGF, HCI_HOST_BUF_SIZE_PLEN); 
 	((u16_t *)p->payload)[2] = htole16(HCI_HOST_ACL_MAX_LEN); /* Host ACL data packet maximum length */
 	((u8_t *)p->payload)[6] = 255; /* Host SCO Data Packet Length */
 	*((u16_t *)(((u8_t *)p->payload)+7)) = htole16(HCI_HOST_MAX_NUM_ACL); /* Host max total num ACL data packets */
@@ -1239,7 +1239,7 @@ err_t hci_host_num_comp_packets(u16_t conhdl, u16_t num_complete)
 		return ERR_MEM;
 	}
 	/* Assembling command packet */
-	p = hci_cmd_ass(p, HCI_H_NUM_COMPL_OCF, HCI_HC_BB_OGF, HCI_H_NUM_COMPL_PLEN); 
+	p = hci_cmd_ass(p, HCI_HOST_NUM_COMPL_OCF, HCI_HC_BB_OGF, HCI_H_NUM_COMPL_PLEN); 
 	((u8_t*)p->payload)[4] = 1;
 	*(u16_t*)(p->payload+5) = htole16(conhdl);
 	*(u16_t*)(p->payload+7) = htole16(num_complete); /* Number of completed acl packets */
@@ -1385,7 +1385,7 @@ err_t lp_write_flush_timeout(struct bd_addr *bdaddr, u16_t flushto)
 	}
 
 	/* Assembling command packet */
-	p = hci_cmd_ass(p, HCI_W_FLUSHTO, HCI_HC_BB_OGF, HCI_W_FLUSHTO_PLEN);
+	p = hci_cmd_ass(p, HCI_W_FLUSHTO_OCF, HCI_HC_BB_OGF, HCI_W_FLUSHTO_PLEN);
 	/* Assembling cmd prameters */
 	((u16_t *)p->payload)[2] = htole16(link->connhdl);
 	((u16_t *)p->payload)[3] = htole16(flushto);
@@ -1466,17 +1466,17 @@ static void hci_cc_info_param(u8_t ocf,struct pbuf *p)
 	struct bd_addr *bdaddr;
 
 	switch(ocf) {
-		case HCI_READ_LOCAL_VERSION:
+		case HCI_R_LOC_VERS_INFO_OCF:
 			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
 				hci_dev->info.hci_version = *((u8_t*)p->payload + 1);
 				hci_dev->info.hci_revision = le16toh(*(u16_t*)((u8_t*)p->payload + 2));
 				hci_dev->info.lmp_version = *((u8_t*)p->payload + 4);
 				hci_dev->info.manufacturer = le16toh(*(u16_t*)((u8_t*)p->payload + 5));
 				hci_dev->info.lmp_subversion = le16toh(*(u16_t*)((u8_t*)p->payload + 7));
-				LOG("hci_cc_info_param(HCI_READ_LOCAL_VERSION): hci_version = %02x, hci_revision = %04x, lmp_version = %02x, manufacturer = %04x, lmp_suversion = %04x\n",hci_dev->info.hci_version,hci_dev->info.hci_revision,hci_dev->info.lmp_version,hci_dev->info.manufacturer,hci_dev->info.lmp_subversion);
+				LOG("hci_cc_info_param(HCI_R_LOC_VERS_INFO_OCF): hci_version = %02x, hci_revision = %04x, lmp_version = %02x, manufacturer = %04x, lmp_suversion = %04x\n",hci_dev->info.hci_version,hci_dev->info.hci_revision,hci_dev->info.lmp_version,hci_dev->info.manufacturer,hci_dev->info.lmp_subversion);
 			}
 			break;
-		case HCI_READ_LOCAL_FEATURES:
+		case HCI_R_LOC_FEAT_OCF:
 			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
 				memcpy(hci_dev->features,(void*)((u8_t*)p->payload+1),sizeof(hci_dev->features));
 
@@ -1488,23 +1488,23 @@ static void hci_cc_info_param(u8_t ocf,struct pbuf *p)
 					hci_dev->pkt_type |= HCI_HV2;
 				if(hci_dev->features[1]&LMP_HV3)
 					hci_dev->pkt_type |= HCI_HV3;
-				LOG("hci_cc_info_param(HCI_READ_LOCAL_FEATURES): %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",hci_dev->features[0],hci_dev->features[1],hci_dev->features[2],hci_dev->features[3],
+				LOG("hci_cc_info_param(HCI_R_LOC_FEAT_OCF): %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",hci_dev->features[0],hci_dev->features[1],hci_dev->features[2],hci_dev->features[3],
 																											   hci_dev->features[4],hci_dev->features[5],hci_dev->features[6],hci_dev->features[7]);
 			}
 			break;
-		case HCI_READ_BUFFER_SIZE:
+		case HCI_R_BUF_SIZE_OCF:
 			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
 				hci_dev->acl_mtu = le16toh(*(u16_t*)(((u8_t*)p->payload)+1));
 				hci_dev->sco_mtu = *((u8_t*)p->payload+3);
 				hci_dev->acl_max_pkt = le16toh(*(u16_t*)(((u8_t*)p->payload)+4));
 				hci_dev->sco_max_pkt = le16toh(*(u16_t*)(((u8_t*)p->payload)+5));
-				LOG("hci_cc_info_param(HCI_READ_BUFFER_SIZE): acl_mt = %d, sco_mt = %d, acl_max_pkt = %d, sco_max_pkt = %d\n",hci_dev->acl_mtu,hci_dev->sco_mtu,hci_dev->acl_max_pkt,hci_dev->sco_max_pkt);
+				LOG("hci_cc_info_param(HCI_R_BUF_SIZE_OCF): acl_mt = %d, sco_mt = %d, acl_max_pkt = %d, sco_max_pkt = %d\n",hci_dev->acl_mtu,hci_dev->sco_mtu,hci_dev->acl_max_pkt,hci_dev->sco_max_pkt);
 			}
 			break;
-		case HCI_READ_BD_ADDR:
+		case HCI_R_BD_ADDR_OCF:
 			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
 				bdaddr = (void*)((u8_t*)p->payload+1);
-				LOG("hci_cc_info_param(HCI_READ_BD_ADDR): %02x:%02x:%02x:%02x:%02x:%02x",bdaddr->addr[0],bdaddr->addr[1],bdaddr->addr[2],bdaddr->addr[3],bdaddr->addr[4],bdaddr->addr[5]);
+				LOG("hci_cc_info_param(HCI_R_BD_ADDR_OCF): %02x:%02x:%02x:%02x:%02x:%02x",bdaddr->addr[0],bdaddr->addr[1],bdaddr->addr[2],bdaddr->addr[3],bdaddr->addr[4],bdaddr->addr[5]);
 				bd_addr_set(&(hci_dev->bdaddr),bdaddr);
 			}
 			break;
@@ -1516,12 +1516,12 @@ static void hci_cc_host_ctrl(u8_t ocf,struct pbuf *p)
 	u8_t *lap;
 	u8_t i,resp_off;
 
-	LOG("hci_cc_host_ctrl(%02x)\n",ocf);
+	//printf("hci_cc_host_ctrl(%02x)\n",ocf);
 	switch(ocf) {
-		case HCI_SET_HC_TO_H_FC:
+		case HCI_SET_HC_TO_H_FC_OCF:
 			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) hci_dev->flow = 1;
 			break;
-		case HCI_READ_CUR_IACLAP:
+		case HCI_R_CUR_IACLAP_OCF:
 			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
 				for(i=0;i<((u8_t*)p->payload)[1];i++) {
 					resp_off = (i*3);
@@ -1541,7 +1541,7 @@ static void hci_cc_link_policy(u8_t ocf,struct pbuf *p)
 	(void)ret;
 
 	switch(ocf) {
-		case HCI_W_LINK_POLICY:
+		case HCI_W_LINK_POLICY_OCF:
 			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) {
 				for(link=hci_active_links;link!=NULL;link=link->next) {
 					if(link->connhdl==le16toh(*((u16_t*)(((u8_t*)p->payload)+1)))) break;
@@ -1567,9 +1567,7 @@ static void hci_conn_request_evt(struct pbuf *p)
 	struct hci_link *link;
 
 	LOG("hci_conn_request_evt()\n");
-	//printf("hci_conn_request_evt()\n");
 	bdaddr = (void*)((u8_t*)p->payload);
-	//printf("	bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 	cod = (((u8_t*)p->payload)+6);
 	link_type = *(((u8_t*)p->payload)+9);
 
@@ -1601,7 +1599,7 @@ static void hci_conn_complete_evt(struct pbuf *p)
 
 	bdaddr = (void*)(((u8_t*)p->payload)+3);
 	link = hci_get_link(bdaddr);
-	//printf("hci_conn_complete_evt(%p,%02x - %02x:%02x:%02x:%02x:%02x:%02x)\n",link,((u8_t*)p->payload)[0],bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
+	LOG("hci_conn_complete_evt(%p,%02x - %02x:%02x:%02x:%02x:%02x:%02x)\n",link,((u8_t*)p->payload)[0],bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 	switch(((u8_t*)p->payload)[0]) {
 		case HCI_SUCCESS:
 			if(link==NULL) {
@@ -1646,7 +1644,7 @@ static void hci_inquiry_result_evt(struct pbuf *p)
 	struct hci_inq_res *ires;
 
 	num_resp = ((u8_t*)p->payload)[0];
-	printf("hci_inquiry_result_evt(%d)\n",num_resp);
+	//printf("hci_inquiry_result_evt(%d)\n",num_resp);
 	for(i=0;i<num_resp && i<MEMB_NUM_HCI_INQ;i++) {
 		resp_off = (i*14);
 		bdaddr = (void*)(((u8_t*)p->payload)+(1+resp_off));
@@ -1801,13 +1799,13 @@ void hci_event_handler(struct pbuf *p)
 			btpbuf_header(p,-2);
 
 			switch(ogf) {
-				case HCI_INFO_PARAM:
+				case HCI_INFO_PARAM_OGF:
 					hci_cc_info_param(ocf,p);
 					break;
-				case HCI_HOST_C_N_BB:
+				case HCI_HC_BB_OGF:
 					hci_cc_host_ctrl(ocf,p);
 					break;
-				case HCI_LINK_POLICY:
+				case HCI_LINK_POLICY_OGF:
 					hci_cc_link_policy(ocf,p);
 					break;
 			}
@@ -1879,7 +1877,7 @@ void hci_event_handler(struct pbuf *p)
 
 			HCI_EVENT_LINK_KEY_NOT(hci_dev, bdaddr, ((u8_t *)p->payload) + 6, ret); /* Notify application.*/
 			break;
-		case HCI_VENDOR:
+		case HCI_VENDOR_SPECIFIC_EVENT:
 			switch (((u8_t *)p->payload)[0]) {
 				case HCI_VENDOR_BEGIN_PAIRING:
 					HCI_EVENT_SYNC_BTN(hci_dev, FALSE);

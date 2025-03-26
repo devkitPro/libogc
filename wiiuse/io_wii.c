@@ -54,8 +54,6 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 	if(wm->event_cb) wm->event_cb(wm,WIIUSE_DISCONNECT);
 
 	wml->wm = NULL;
-	//printf("Clearing Wiimote %s (%p)\n", wml->name, wml);
-	memset(wml->name, 0, sizeof(wml->name));
 	return ERR_OK;
 }
 
@@ -85,8 +83,6 @@ static s32 __wiiuse_connected(void *arg,struct bte_pcb *pcb,u8 err)
 	struct wiimote_listen_t *wml = (struct wiimote_listen_t*)arg;
 	struct wiimote_t *wm;
 
-	//printf("__wiiuse_connected(%d)\n", err);
-	
 	wm = wml->assign_cb(wml, err);
 	
 	if(!wm) {
@@ -124,9 +120,9 @@ int wiiuse_register(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct
 {
 	s32 err;
 
-	//printf("wiiuse_register %p, bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",wml,bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
-
 	if(!wml || !bdaddr || !assign_cb) return 0;
+	
+	//printf("wiiuse_register %p, bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",wml,bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 
 	wml->wm = NULL;
 	bd_addr_set(&(wml->bdaddr),bdaddr);
@@ -149,9 +145,9 @@ int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *nam
 {
 	s32 err;
 
-	//printf("wiiuse_connect %p, bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",wml,bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
-
 	if(!wml || !bdaddr || !name || !assign_cb) return 0;
+	
+	//printf("wiiuse_connect %p, bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",wml,bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 
 	wml->wm = NULL;
 	bd_addr_set(&(wml->bdaddr),bdaddr);
@@ -175,7 +171,7 @@ int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *nam
 
 void wiiuse_disconnect(struct wiimote_t *wm)
 {
-	printf("wiiuse_disconnect\n");
+	//printf("wiiuse_disconnect\n");
 
 	if(wm==NULL || wm->sock==NULL) return;
 

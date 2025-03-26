@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include <lwp_wkspace.inl>
-#include <unistd.h>
 
 #include "definitions.h"
 #include "wiiuse_internal.h"
@@ -13,13 +12,14 @@
 #include "wiiboard.h"
 #include "motion_plus.h"
 #include "io.h"
-void wiiuse_handshake(struct wiimote_t *wm,ubyte *data,uword len)
 
+void wiiuse_handshake(struct wiimote_t *wm,ubyte *data,uword len)
 {
 	ubyte *buf = NULL;
 	struct accel_t *accel = &wm->accel_calib;
 
 	//printf("wiiuse_handshake(%d,%p,%d)\n",wm->handshake_state,data,len);
+
 	switch(wm->handshake_state) {
 		case 0:
 			wm->handshake_state++;

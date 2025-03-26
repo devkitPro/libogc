@@ -446,7 +446,7 @@ s32 CONF_SetPadGuestDevices(const conf_pad_guests *pads)
 
 	if (!pads) return CONF_EBADVALUE;
 	count = pads->num_guests;
-	if (count > CONF_PAD_MAX_GUESTS) return CONF_EBADVALUE;
+	if (count > CONF_PAD_MAX_ACTIVE) return CONF_EBADVALUE;
 	return CONF_Set("BT.CDIF", pads, sizeof(conf_pad_guests));
 }
 

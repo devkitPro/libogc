@@ -17,14 +17,6 @@
 #define STACKSIZE						32768
 #define MQ_BOX_SIZE						256
 
-/* Vendor specific OGF */
-#define HCI_VENDOR_OGF					0x3f
-
-/* Vendor specific OCF */
-#define HCI_VENDOR_PATCH_START_OCF		0x4f
-#define HCI_VENDOR_PATCH_CONT_OCF		0x4c
-#define HCI_VENDOR_PATCH_END_OCF		0x4f
-
 enum bte_state {
 	STATE_NOTREADY = -1,
 	STATE_READY = 0,
@@ -407,18 +399,6 @@ void BTE_Init(void)
 	SYS_SetPeriodicAlarm(btstate.timer_svc,&tb,&tb,bt_alarmhandler, NULL);
 }
 
-void BTE_Restart(void)
-{
-	u32 level;
-	
-	_CPU_ISR_Disable(level);
-	bte_reset_all();
-	hci_reset_all();
-	l2cap_reset_all();
-	physbusif_reset_all();
-	_CPU_ISR_Restore(level);
-}
-
 void BTE_Shutdown(void)
 {
 	u32 level;
@@ -755,7 +735,7 @@ s32 bte_connectdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn
 
 error:
 	_CPU_ISR_Restore(level);
-	printf("bte_connectdeviceasync(%02x)\n",err);
+	//printf("bte_connectdeviceasync(%02x)\n",err);
 	return err;
 }
 
@@ -1043,7 +1023,7 @@ err_t pin_req(void *arg,struct bd_addr *bdaddr)
 		// Pairing from 1+2 (guest/temporary)
 		bd_addr_set(&addr, bdaddr);
 	}
-	hci_pin_code_request_reply(bdaddr, BD_ADDR_LEN, addr.addr);
+	hci_pin_code_request_reply(bdaddr, sizeof(addr.addr), addr.addr);
 	return ERR_OK;
 }
 
@@ -1337,27 +1317,27 @@ static err_t bte_hci_initcore_complete2(void *arg,struct hci_pcb *pcb,u8_t ogf,u
 	LOG("bte_hci_initcore_complete2(%02x,%02x)\n",ogf,ocf);
 	switch(ogf) {
 		case HCI_HC_BB_OGF:
-			if(ocf==HCI_WRITE_INQUIRY_MODE) {
+			if(ocf==HCI_W_INQUIRY_MODE_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_page_scan_type(0x01);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_PAGE_SCAN_TYPE) {
+			} else if(ocf==HCI_W_PAGE_SCAN_TYPE_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_inquiry_scan_type(0x01);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_INQUIRY_SCAN_TYPE) {
+			} else if(ocf==HCI_W_INQUIRY_SCAN_TYPE_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_cod(dev_cod);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_COD) {
+			} else if(ocf==HCI_W_COD_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_page_timeout(0x2000);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_PAGE_TIMEOUT) {
+			} else if(ocf==HCI_W_PAGE_TIMEOUT_OCF) {
 				if(result==HCI_SUCCESS) {
 					state->hci_inited = 1;
 					hci_cmd_complete(NULL);
@@ -1384,23 +1364,23 @@ err_t bte_hci_initcore_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,
 
 	LOG("bte_hci_initcore_complete(%02x,%02x)\n",ogf,ocf);
 	switch(ogf) {
-		case HCI_INFO_PARAM:
-			if(ocf==HCI_READ_BUFFER_SIZE) {
+		case HCI_INFO_PARAM_OGF:
+			if(ocf==HCI_R_BUF_SIZE_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_cod(dev_cod);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_READ_LOCAL_VERSION) {
+			} else if(ocf==HCI_R_LOC_VERS_INFO_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_read_bd_addr();
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_READ_BD_ADDR) {
+			} else if(ocf==HCI_R_BD_ADDR_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_read_local_features();
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_READ_LOCAL_FEATURES) {
+			} else if(ocf==HCI_R_LOC_FEAT_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_cmd_complete(bte_hci_initcore_complete2);
 					hci_write_inquiry_mode(0x01);
@@ -1409,27 +1389,27 @@ err_t bte_hci_initcore_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,
 			}
 			break;
 		case HCI_HC_BB_OGF:
-			if(ocf==HCI_RESET) {
+			if(ocf==HCI_RESET_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_read_buffer_size();
 				} else 
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_COD) {
+			} else if(ocf==HCI_W_COD_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_local_name((u8_t*)"",1);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_LOCAL_NAME) {
+			} else if(ocf==HCI_W_LOCAL_NAME_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_pin_type(0x00);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_PIN_TYPE) {
+			} else if(ocf==HCI_W_PIN_TYPE_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_host_buffer_size();
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_HOST_BUF_SIZE) {
+			} else if(ocf==HCI_HOST_BUF_SIZE_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_read_local_version();
 				} else
@@ -1485,23 +1465,23 @@ err_t bte_hci_patch_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_
 
 	LOG("bte_hci_patch_complete(%02x,%02x,%02x)\n",ogf,ocf,result);
 	switch(ogf) {
-		case HCI_INFO_PARAM:
-			if(ocf==HCI_READ_BUFFER_SIZE) {
+		case HCI_INFO_PARAM_OGF:
+			if(ocf==HCI_R_BUF_SIZE_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_cod(dev_cod);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_READ_LOCAL_VERSION) {
+			} else if(ocf==HCI_R_LOC_VERS_INFO_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_read_bd_addr();
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_READ_BD_ADDR) {
+			} else if(ocf==HCI_R_BD_ADDR_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_read_local_features();
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_READ_LOCAL_FEATURES) {
+			} else if(ocf==HCI_R_LOC_FEAT_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_cmd_complete(NULL);
 					return __bte_cmdfinish(state,ERR_OK);
@@ -1510,27 +1490,27 @@ err_t bte_hci_patch_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_
 			}
 			break;
 		case HCI_HC_BB_OGF:
-			if(ocf==HCI_RESET) {
+			if(ocf==HCI_RESET_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_read_buffer_size();
 				} else 
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_COD) {
+			} else if(ocf==HCI_W_COD_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_local_name((u8_t*)"",1);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_LOCAL_NAME) {
+			} else if(ocf==HCI_W_LOCAL_NAME_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_pin_type(0x00);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_PIN_TYPE) {
+			} else if(ocf==HCI_W_PIN_TYPE_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_host_buffer_size();
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_HOST_BUF_SIZE) {
+			} else if(ocf==HCI_HOST_BUF_SIZE_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_read_local_version();
 				} else
@@ -1564,37 +1544,37 @@ err_t bte_hci_initsub_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u
 	LOG("bte_hci_initsub_complete(%02x,%02x)\n",ogf,ocf);
 	switch(ogf) {
 		case HCI_HC_BB_OGF:
-			if(ocf==HCI_WRITE_INQUIRY_MODE) {
+			if(ocf==HCI_W_INQUIRY_MODE_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_page_scan_type(0x01);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_PAGE_SCAN_TYPE) {
+			} else if(ocf==HCI_W_PAGE_SCAN_TYPE_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_inquiry_scan_type(0x01);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_INQUIRY_SCAN_TYPE) {
+			} else if(ocf==HCI_W_INQUIRY_SCAN_TYPE_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_cod(dev_cod);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_COD) {
+			} else if(ocf==HCI_W_COD_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_page_timeout(0x8000);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_PAGE_TIMEOUT) {
+			} else if(ocf==HCI_W_PAGE_TIMEOUT_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_local_name((u8_t*)"Wii",4);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_LOCAL_NAME) {
+			} else if(ocf==HCI_W_LOCAL_NAME_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_scan_enable(0x02);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_WRITE_SCAN_ENABLE) {
+			} else if(ocf==HCI_W_SCAN_EN_OCF) {
 				if(result==HCI_SUCCESS) {
 					hci_write_authentication_enable(0x01);
 				} else

@@ -127,9 +127,9 @@ enum {
 };
 
 #define CONF_PAD_MAX_REGISTERED 10
-#define CONF_PAD_MAX_ACTIVE 4
-#define CONF_PAD_TOTAL (CONF_PAD_MAX_REGISTERED + CONF_PAD_MAX_ACTIVE + 2)
-#define CONF_PAD_MAX_GUESTS 6
+#define CONF_PAD_MAX_ACTIVE 6
+#define CONF_PAD_MAX_WIIMOTES 4
+#define CONF_PAD_TOTAL (CONF_PAD_MAX_REGISTERED + CONF_PAD_MAX_ACTIVE)
 
 typedef struct _conf_pad_device conf_pad_device;
 
@@ -144,8 +144,6 @@ struct _conf_pads {
 	u8 num_registered;
 	conf_pad_device registered[CONF_PAD_MAX_REGISTERED];
 	conf_pad_device active[CONF_PAD_MAX_ACTIVE];
-	conf_pad_device balance_board;
-	conf_pad_device unknown;
 } ATTRIBUTE_PACKED;
 
 typedef struct _conf_pad_guest_device conf_pad_guest_device;
@@ -160,7 +158,7 @@ typedef struct _conf_pad_guests conf_pad_guests;
 
 struct _conf_pad_guests {
 	u8 num_guests;
-	conf_pad_guest_device guests[CONF_PAD_MAX_GUESTS];
+	conf_pad_guest_device guests[CONF_PAD_MAX_ACTIVE];
 } ATTRIBUTE_PACKED;
 
 s32 CONF_Init(void);
