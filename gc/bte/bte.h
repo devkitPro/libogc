@@ -164,6 +164,7 @@ void BTE_WriteStoredLinkKey(struct bd_addr *bdaddr,u8 *key);
 void BTE_ClearStoredLinkKeys(void);
 
 struct bte_pcb* bte_new(void);
+void bte_free(struct bte_pcb *pcb);
 void bte_arg(struct bte_pcb *pcb,void *arg);
 void bte_received(struct bte_pcb *pcb, s32 (*recv)(void *arg,void *buffer,u16 len));
 void bte_disconnected(struct bte_pcb *pcb,s32 (disconn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));

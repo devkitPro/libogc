@@ -53,6 +53,9 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 	
 	if(wm->event_cb) wm->event_cb(wm,WIIUSE_DISCONNECT);
 
+	bte_free(wml->sock);
+	wml->sock = NULL;
+	
 	wml->wm = NULL;
 	return ERR_OK;
 }
@@ -134,7 +137,11 @@ int wiiuse_register(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct
 		wml->sock = bte_new();
 	}
 	else
+	{
 		printf("err: %d / state: %d / bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n", wml->sock->err, wml->sock->state, wml->sock->bdaddr.addr[5], wml->sock->bdaddr.addr[4], wml->sock->bdaddr.addr[3], wml->sock->bdaddr.addr[2], wml->sock->bdaddr.addr[1], wml->sock->bdaddr.addr[0]);
+		bte_free(wml->sock);
+		wml->sock = bte_new();
+	}
 
 	bte_arg(wml->sock,wml);
 	bte_received(wml->sock,__wiiuse_receive);

@@ -958,7 +958,8 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 	// Only accept connection requests (i.e. "press any button") if not doing guest pairing
 	if(BTE_GetPairMode() == PAIR_MODE_NORMAL) {
 		if(!bd_addr_cmp(pad_addr,BD_ADDR_ANY)) {
-			__lwp_thread_dispatchdisable();
+			_CPU_ISR_Disable(level);
+			//__lwp_thread_dispatchdisable();
 			for(i=0; i<CONF_PAD_MAX_ACTIVE; i++) {
 				BD_ADDR_FROM_BYTES(&bdaddr,__wpad_devs.active[i].bdaddr);
 				if(bd_addr_cmp(pad_addr,&bdaddr)) {
@@ -1003,13 +1004,16 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 
 			if(slot < CONF_PAD_MAX_ACTIVE) {
 				__wpads_used |= (0x01<<slot);
+				printf("Assigning slot %d\n",slot);
 				wiiuse_register(&__wpads_listen[slot],pad_addr,__wpad_assign_slot);
-				__lwp_thread_dispatchunnest();
+				_CPU_ISR_Restore(level);
+				//__lwp_thread_dispatchunnest();
 				return ERR_OK;
 			}
 			else
 			{
-				__lwp_thread_dispatchunnest();
+				_CPU_ISR_Restore(level);
+				//__lwp_thread_dispatchunnest();
 			}
 		}
 		
@@ -1702,16 +1706,18 @@ s32 WPAD_Shutdown(void)
 	for(i=0;i<WPAD_MAX_DEVICES;i++) {
 		wpdcb = &__wpdcb[i];
 		SYS_RemoveAlarm(wpdcb->sound_alarm);
+		bte_free(__wpads_listen[i].sock);
+		__wpads_listen[i].sock = NULL;
 		//__wpad_disconnect(wpdcb);
 	}
 
 	__wiiuse_sensorbar_enable(0);
 	_CPU_ISR_Restore(level);
 
-	while(__wpads_used) {
+	/*while(__wpads_used) {
 		usleep(50);
 		if(++cnt > 3000) break;
-	}
+	}*/
 
 	BTE_Shutdown();
 

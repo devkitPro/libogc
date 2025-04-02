@@ -645,6 +645,14 @@ struct bte_pcb* bte_new(void)
 	return pcb;
 }
 
+void bte_free(struct bte_pcb *pcb)
+{
+	if(pcb==NULL) return;
+	
+	LWP_CloseQueue(pcb->cmdq);
+	btmemb_free(&bte_pcbs, pcb);
+}
+
 s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
 {
 	u32 level;
