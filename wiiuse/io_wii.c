@@ -55,7 +55,7 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 
 	bte_free(wml->sock);
 	wml->sock = NULL;
-	
+
 	wml->wm = NULL;
 	return ERR_OK;
 }
@@ -131,25 +131,28 @@ int wiiuse_register(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct
 	bd_addr_set(&(wml->bdaddr),bdaddr);
 	memset(wml->name, 0, sizeof(wml->name));
 	wml->assign_cb = assign_cb;
-	if(wml->sock==NULL)
+
+	if(wml->sock!=NULL)
 	{
-		printf("wml->sock was null\n");
-		wml->sock = bte_new();
-	}
-	else
-	{
-		printf("err: %d / state: %d / bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n", wml->sock->err, wml->sock->state, wml->sock->bdaddr.addr[5], wml->sock->bdaddr.addr[4], wml->sock->bdaddr.addr[3], wml->sock->bdaddr.addr[2], wml->sock->bdaddr.addr[1], wml->sock->bdaddr.addr[0]);
-		bte_free(wml->sock);
-		wml->sock = bte_new();
+		printf("wiiuse_register: wml->sock was not NULL!\n");
+		return 0;
 	}
 
+	wml->sock = bte_new();
+	if (wml->sock==NULL)
+	{
+		printf("wiiuse_register: bte_new failed to alloc new sock\n");
+		return 0;
+	}
+	
 	bte_arg(wml->sock,wml);
 	bte_received(wml->sock,__wiiuse_receive);
 	bte_disconnected(wml->sock,__wiiuse_disconnected);
 	
 	err = bte_registerdeviceasync(wml->sock,bdaddr,__wiiuse_connected);
 	if(err==ERR_OK) return 1;
-
+	
+	printf("wiiuse_register: bte_registerdeviceasync failed(%d)\n", err);
 	return 0;
 }	
 
@@ -166,9 +169,20 @@ int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *nam
 	strncpy((char *)wml->name, (char *)name, sizeof(wml->name));
 	wml->name[sizeof(wml->name) - 1] = 0x00;
 	wml->assign_cb = assign_cb;
-	if(wml->sock==NULL)
-		wml->sock = bte_new();
 
+	if(wml->sock!=NULL)
+	{
+		printf("wiiuse_connect: wml->sock was not NULL!\n");
+		return 0;
+	}
+
+	wml->sock = bte_new();
+	if (wml->sock==NULL)
+	{
+		printf("wiiuse_connect: bte_new failed to alloc new sock\n");
+		return 0;
+	}
+	
 	bte_arg(wml->sock,wml);
 	bte_received(wml->sock,__wiiuse_receive);
 	bte_disconnected(wml->sock,__wiiuse_disconnected);
@@ -177,7 +191,8 @@ int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *nam
 
 	err = bte_connectdeviceasync(wml->sock,bdaddr,__wiiuse_connected);
 	if(err==ERR_OK) return 1;
-
+	
+	printf("wiiuse_connect: bte_registerdeviceasync failed(%d)\n", err);
 	return 0;
 }	
 

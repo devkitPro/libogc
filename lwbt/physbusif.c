@@ -299,7 +299,9 @@ void physbusif_close(void)
 void physbusif_shutdown(void)
 {
 	if(__usbdev.openstate!=0x0004) return;
-	USB_CloseDeviceAsync(&__usbdev.fd,__usb_closeCB,NULL);
+	//USB_CloseDeviceAsync(&__usbdev.fd,__usb_closeCB,NULL);
+	USB_CloseDevice(&__usbdev.fd);
+	__usbdev.fd = -1;
 }
 
 void physbusif_reset_all(void)

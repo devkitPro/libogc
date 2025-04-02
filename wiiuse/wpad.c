@@ -1695,7 +1695,7 @@ s32 WPAD_Shutdown(void)
 	printf("WPAD_Shutdown\n");
 
 	_CPU_ISR_Disable(level);
-	BTE_Stop();
+	BTE_Close();
 
 	CONF_SetPadDevices(&__wpad_devs);
 	CONF_SetPadGuestDevices(&__wpad_guests);
@@ -1708,16 +1708,10 @@ s32 WPAD_Shutdown(void)
 		SYS_RemoveAlarm(wpdcb->sound_alarm);
 		bte_free(__wpads_listen[i].sock);
 		__wpads_listen[i].sock = NULL;
-		//__wpad_disconnect(wpdcb);
 	}
 
 	__wiiuse_sensorbar_enable(0);
 	_CPU_ISR_Restore(level);
-
-	/*while(__wpads_used) {
-		usleep(50);
-		if(++cnt > 3000) break;
-	}*/
 
 	BTE_Shutdown();
 

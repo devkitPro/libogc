@@ -399,7 +399,7 @@ void BTE_Init(void)
 	SYS_SetPeriodicAlarm(btstate.timer_svc,&tb,&tb,bt_alarmhandler, NULL);
 }
 
-void BTE_Stop(void)
+void BTE_Close(void)
 {
 	u32 level;
 
@@ -425,6 +425,7 @@ void BTE_Shutdown(void)
 	hci_cmd_complete(__bte_shutdown_finished);
 	hci_reset();
 	__bte_waitcmdfinish(&btstate);
+	LWP_CloseQueue(btstate.hci_cmdq);
 	_CPU_ISR_Restore(level);
 
 	physbusif_shutdown();
