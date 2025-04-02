@@ -46,6 +46,9 @@ enum {
 	WPAD_CHAN_5,
 	WPAD_MAX_DEVICES,
 };
+
+// Compatibility with old apps
+#define WPAD_MAX_WIIMOTES WPAD_MAX_DEVICES
 											
 #define WPAD_BUTTON_2							0x0001
 #define WPAD_BUTTON_1							0x0002
@@ -188,7 +191,7 @@ s32 WPAD_Search(void);
 s32 WPAD_StopSearch(void);
 s32 WPAD_StartPairing(void);
 s32 WPAD_WipeSavedControllers(void);
-void WPAD_Shutdown(void);
+s32 WPAD_Shutdown(void);
 void WPAD_SetIdleTimeout(u32 seconds);
 void WPAD_SetPowerButtonCallback(WPADShutdownCallback cb);
 void WPAD_SetBatteryDeadCallback(WPADShutdownCallback cb);

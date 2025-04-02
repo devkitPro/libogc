@@ -399,6 +399,15 @@ void BTE_Init(void)
 	SYS_SetPeriodicAlarm(btstate.timer_svc,&tb,&tb,bt_alarmhandler, NULL);
 }
 
+void BTE_Stop(void)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	hci_cmd_complete(NULL);
+	_CPU_ISR_Restore(level);
+}
+
 void BTE_Shutdown(void)
 {
 	u32 level;

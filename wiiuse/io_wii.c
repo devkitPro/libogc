@@ -129,7 +129,12 @@ int wiiuse_register(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct
 	memset(wml->name, 0, sizeof(wml->name));
 	wml->assign_cb = assign_cb;
 	if(wml->sock==NULL)
+	{
+		printf("wml->sock was null\n");
 		wml->sock = bte_new();
+	}
+	else
+		printf("err: %d / state: %d / bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n", wml->sock->err, wml->sock->state, wml->sock->bdaddr.addr[5], wml->sock->bdaddr.addr[4], wml->sock->bdaddr.addr[3], wml->sock->bdaddr.addr[2], wml->sock->bdaddr.addr[1], wml->sock->bdaddr.addr[0]);
 
 	bte_arg(wml->sock,wml);
 	bte_received(wml->sock,__wiiuse_receive);
@@ -171,7 +176,7 @@ int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *nam
 
 void wiiuse_disconnect(struct wiimote_t *wm)
 {
-	//printf("wiiuse_disconnect\n");
+	printf("wiiuse_disconnect\n");
 
 	if(wm==NULL || wm->sock==NULL) return;
 

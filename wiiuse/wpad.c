@@ -325,65 +325,107 @@ wiimote *__wpad_register_new(wiimote_listen *wml, u8 err)
 
 static s32 __wpad_setevtfilter_connsetup_finished(s32 result,void *usrdata)
 {
-	//printf("__wpad_setevtfilter_finished(%d)\n",result);
+	u32 i, level;
+	struct bd_addr bdaddr;
 
-	if(result==ERR_OK) {
+	printf("__wpad_setevtfilter_finished(%d)\n",result);
+
+	_CPU_ISR_Disable(level);
+	if((result==ERR_OK) && (__wpads_inited==WPAD_STATE_ENABLING)) {
+        /*for(i=0;i<CONF_PAD_MAX_ACTIVE;i++) {
+            BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_devs.active[i].bdaddr);
+			if (!bd_addr_cmp(&bdaddr,BD_ADDR_ANY)) {
+				wiiuse_register(&__wpads_listen[i],&(bdaddr),__wpad_assign_slot);
+			}
+		}*/
 		__wpads_inited = WPAD_STATE_ENABLED;
 	}
+	_CPU_ISR_Restore(level);
 	return ERR_OK;
 }
 
 static s32 __wpad_setevtfilter_inquiry_finished(s32 result,void *usrdata)
 {
-	//printf("__wpad_setevtfilter_inquiry_finished(%d)\n",result);
+	u32 level;
+	
+	printf("__wpad_setevtfilter_inquiry_finished(%d)\n",result);
 
 	// Filter connection setup to allow only gamepads
 	u8 filter[] = {0x00, 0x05, 0x00, 0x00, 0x1F, 0x00, 0x01};
-	BTE_SetEvtFilter(0x02,0x01,filter,__wpad_setevtfilter_connsetup_finished);
+
+	_CPU_ISR_Disable(level);
+	if(__wpads_inited==WPAD_STATE_ENABLING) {
+		BTE_SetEvtFilter(0x02,0x01,filter,__wpad_setevtfilter_connsetup_finished);
+	}
+	_CPU_ISR_Restore(level);
 	return ERR_OK;
 }
 
 static s32 __wpad_init_finished(s32 result,void *usrdata)
 {
-	//printf("__wpad_init_finished(%d)\n",result);
+	u32 level;
+	
+	printf("__wpad_init_finished(%d)\n",result);
 
 	// Filter inquiry to allow only gamepads
 	u8 filter[] = {0x00, 0x05, 0x00, 0x00, 0x1F, 0x00};
-	BTE_SetEvtFilter(0x01,0x01,filter,__wpad_setevtfilter_inquiry_finished);
+
+	_CPU_ISR_Disable(level);
+	if(__wpads_inited==WPAD_STATE_ENABLING) {
+		BTE_SetEvtFilter(0x01,0x01,filter,__wpad_setevtfilter_inquiry_finished);
+	}
+	_CPU_ISR_Restore(level);
 	return ERR_OK;
 }
 
 static s32 __wpad_patch_finished(s32 result,void *usrdata)
 {
-	//printf("__wpad_patch_finished(%d)\n",result);
+	u32 level;
+	
+	printf("__wpad_patch_finished(%d)\n",result);
 
-	BTE_InitSub(__wpad_init_finished);
+	_CPU_ISR_Disable(level);
+	if(__wpads_inited==WPAD_STATE_ENABLING) {
+		BTE_InitSub(__wpad_init_finished);
+	}
+	_CPU_ISR_Restore(level);
 	return ERR_OK;
 }
 
 static s32 __readlinkkey_finished(s32 result,void *usrdata)
 {
-	//printf("__readlinkkey_finished(%d)\n",result);
-
-	__wpads_bonded = result;
-	BTE_ApplyPatch(__wpad_patch_finished);
-
+	u32 level;
+	
+	printf("__readlinkkey_finished(%d)\n",result);
+	
+	_CPU_ISR_Disable(level);
+	if(__wpads_inited==WPAD_STATE_ENABLING) {
+		__wpads_bonded = result;
+		BTE_ApplyPatch(__wpad_patch_finished);
+	}
+	_CPU_ISR_Restore(level);
 	return ERR_OK;
 }
 
 static s32 __initcore_finished(s32 result,void *usrdata)
 {
-	//printf("__initcore_finished(%d)\n",result);
-
-	if(result==ERR_OK) {
+	u32 level;
+	
+	printf("__initcore_finished(%d)\n",result);
+	
+	_CPU_ISR_Disable(level);
+	if((result==ERR_OK) && (__wpads_inited==WPAD_STATE_ENABLING)) {
 		BTE_ReadStoredLinkKey(__wpad_keys,CONF_PAD_TOTAL,__readlinkkey_finished);
 	}
+	_CPU_ISR_Restore(level);
 	return ERR_OK;
 }
 
 static s32 __wpad_disconnect(struct _wpad_cb *wpdcb)
 {
 	struct wiimote_t *wm;
+
+	//printf("__wpad_disconnect\n");
 
 	if(wpdcb==NULL) return 0;
 
@@ -702,7 +744,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			__wpads_active |= (0x01<<chan);
 			break;
 		case WIIUSE_DISCONNECT:
-			//printf("__wpad_eventCB DISCONNECT\n");
+			printf("__wpad_eventCB DISCONNECT\n");
 			chan = wm->unid;
 			wpdcb = &__wpdcb[chan];
 			wpdcb->wm = wm;
@@ -716,7 +758,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 			memset(&wpaddata[chan],0,sizeof(WPADData));
 			memset(wpdcb->queue_int,0,(sizeof(WPADData)*EVENTQUEUE_LENGTH));
 			__wpads_active &= ~(0x01<<chan);
-			__wpads_used &= ~(0x01<<chan);
+			//__wpads_used &= ~(0x01<<chan);
 			break;
 		case WIIUSE_ACK:
 			break;
@@ -730,6 +772,11 @@ void __wpad_disconnectCB(struct bd_addr *pad_addr, u8 reason)
 {
 	int i;
 
+	u32 level;
+	
+	printf("__wpad_disconnectCB(%d)\n", __wpads_inited);
+	
+	_CPU_ISR_Disable(level);
 	if(__wpads_inited == WPAD_STATE_ENABLED) {
 		for(i=0;i<WPAD_MAX_DEVICES;i++) {
 			if(bd_addr_cmp(pad_addr,&__wpads_listen[i].bdaddr)) {
@@ -755,13 +802,18 @@ void __wpad_disconnectCB(struct bd_addr *pad_addr, u8 reason)
 			}
 		}
 	}
+	_CPU_ISR_Restore(level);
 }
 
 static void __wpad_syncbuttonCB(u32 held)
 {
+	u32 level;
+	
+	_CPU_ISR_Disable(level);
 	if(__wpads_inited == WPAD_STATE_ENABLED) {
 		__wpad_synccb(held);
 	}
+	_CPU_ISR_Restore(level);
 }
 
 s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
@@ -777,7 +829,8 @@ s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
 		if (!strncmp("Nintendo RVL-", (char *)info->name, 13)) {
 			//printf("Found controller %s:\n", info->name);
 			//printf("	bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",info->bdaddr.addr[5],info->bdaddr.addr[4],info->bdaddr.addr[3],info->bdaddr.addr[2],info->bdaddr.addr[1],info->bdaddr.addr[0]);
-			
+
+			__lwp_thread_dispatchdisable();
 			if (!strncmp("Nintendo RVL-CNT-", (char *)info->name, 17)) {
 				// Check active list
 				for(i=0; i<CONF_PAD_MAX_WIIMOTES; i++) {
@@ -831,6 +884,7 @@ s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
 				//printf("WPAD All Slots Used\n");
 				result = ERR_CONN;
 			}
+			__lwp_thread_dispatchunnest();
 		} else {
 			//printf("Found non-Wiimote %s:\n", info->name);
 			//printf("	bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",info->bdaddr.addr[5],info->bdaddr.addr[4],info->bdaddr.addr[3],info->bdaddr.addr[2],info->bdaddr.addr[1],info->bdaddr.addr[0]);
@@ -895,13 +949,16 @@ static s32 GetGuestSlot(struct bd_addr *pad_addr)
 
 static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_type)
 {
-	int i, j;
+	int i, j, level;
 	int slot = CONF_PAD_MAX_ACTIVE;
 	struct bd_addr bdaddr;
-	
+
+	printf("__wpad_connreqCB\n");
+
 	// Only accept connection requests (i.e. "press any button") if not doing guest pairing
 	if(BTE_GetPairMode() == PAIR_MODE_NORMAL) {
 		if(!bd_addr_cmp(pad_addr,BD_ADDR_ANY)) {
+			__lwp_thread_dispatchdisable();
 			for(i=0; i<CONF_PAD_MAX_ACTIVE; i++) {
 				BD_ADDR_FROM_BYTES(&bdaddr,__wpad_devs.active[i].bdaddr);
 				if(bd_addr_cmp(pad_addr,&bdaddr)) {
@@ -947,7 +1004,12 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 			if(slot < CONF_PAD_MAX_ACTIVE) {
 				__wpads_used |= (0x01<<slot);
 				wiiuse_register(&__wpads_listen[slot],pad_addr,__wpad_assign_slot);
+				__lwp_thread_dispatchunnest();
 				return ERR_OK;
+			}
+			else
+			{
+				__lwp_thread_dispatchunnest();
 			}
 		}
 		
@@ -1114,6 +1176,8 @@ s32 WPAD_Init(void)
 		__wpads_bonded = 0;
 		__wpads_active = 0;
 
+		printf("WPAD_Init\n");
+
 		memset(__wpdcb,0,sizeof(struct _wpad_cb)*WPAD_MAX_DEVICES);
 		memset(&__wpad_devs,0,sizeof(conf_pads));
 		memset(__wpad_keys,0,sizeof(struct linkkey_info)*WPAD_MAX_DEVICES);
@@ -1189,6 +1253,8 @@ s32 WPAD_Init(void)
 
 		__wiiuse_sensorbar_enable(1);
 
+		__wpads_inited = WPAD_STATE_ENABLING;
+
 		BTE_Init();
 		BTE_SetDisconnectCallback(__wpad_disconnectCB);
 		BTE_SetSyncButtonCallback(__wpad_syncbuttonCB);
@@ -1210,7 +1276,6 @@ s32 WPAD_Init(void)
 		tb.tv_sec = 1;
 		tb.tv_nsec = 0;
 		SYS_SetPeriodicAlarm(__wpad_timer,&tb,&tb,__wpad_timeouthandler,NULL);
-		__wpads_inited = WPAD_STATE_ENABLING;
 	}
 	_CPU_ISR_Restore(level);
 	return WPAD_ERR_NONE;
@@ -1590,39 +1655,44 @@ void WPAD_SetSyncButtonCallback(WPADSyncCallback cb)
 
 s32 WPAD_Disconnect(s32 chan)
 {
+	s32 err = WPAD_ERR_NONE;
 	u32 level, cnt = 0;
 	struct _wpad_cb *wpdcb = NULL;
 
 	if(chan<WPAD_CHAN_0 || chan>=WPAD_MAX_DEVICES) return WPAD_ERR_BAD_CHANNEL;
 
 	_CPU_ISR_Disable(level);
-	if(__wpads_inited==WPAD_STATE_DISABLED) {
+	if(__wpads_inited==WPAD_STATE_ENABLED) {
+		wpdcb = &__wpdcb[chan];
+		__wpad_disconnect(wpdcb);
+
 		_CPU_ISR_Restore(level);
-		return WPAD_ERR_NOT_READY;
+
+		while(__wpads_used&(0x01<<chan)) {
+			usleep(50);
+			if(++cnt > 3000) break;
+		}
+	} else {
+		_CPU_ISR_Restore(level);
+		err = WPAD_ERR_NOT_READY;
 	}
 
-	wpdcb = &__wpdcb[chan];
-	__wpad_disconnect(wpdcb);
-
-	_CPU_ISR_Restore(level);
-
-	while(__wpads_active&(0x01<<chan)) {
-		usleep(50);
-		if(++cnt > 3000) break;
-	}
-
-	return WPAD_ERR_NONE;
+	return err;
 }
 
-void WPAD_Shutdown(void)
+s32 WPAD_Shutdown(void)
 {
+	s32 err = WPAD_ERR_NONE;
 	s32 i;
 	u32 level;
 	u32 cnt = 0;
 	struct _wpad_cb *wpdcb = NULL;
+	
+	printf("WPAD_Shutdown\n");
 
 	_CPU_ISR_Disable(level);
-	
+	BTE_Stop();
+
 	CONF_SetPadDevices(&__wpad_devs);
 	CONF_SetPadGuestDevices(&__wpad_guests);
 	CONF_SaveChanges();
@@ -1632,18 +1702,20 @@ void WPAD_Shutdown(void)
 	for(i=0;i<WPAD_MAX_DEVICES;i++) {
 		wpdcb = &__wpdcb[i];
 		SYS_RemoveAlarm(wpdcb->sound_alarm);
-		__wpad_disconnect(wpdcb);
+		//__wpad_disconnect(wpdcb);
 	}
 
 	__wiiuse_sensorbar_enable(0);
 	_CPU_ISR_Restore(level);
 
-	while(__wpads_active) {
+	while(__wpads_used) {
 		usleep(50);
 		if(++cnt > 3000) break;
 	}
 
 	BTE_Shutdown();
+
+	return err;
 }
 
 void WPAD_SetIdleTimeout(u32 seconds)

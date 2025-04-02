@@ -1767,6 +1767,7 @@ void hci_event_handler(struct pbuf *p)
 			hci_conn_request_evt(p);
 			break;
 		case HCI_DISCONNECTION_COMPLETE:
+			printf("HCI_DISCONNECTION_COMPLETE\n");
 			switch(((u8_t*)p->payload)[0]) {
 				case HCI_SUCCESS:
 					for(link=hci_active_links;link!=NULL;link=link->next) {

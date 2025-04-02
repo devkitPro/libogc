@@ -141,6 +141,7 @@ typedef s32 (*btecallback)(s32 result,void *userdata);
 
 void BTE_Init(void);
 void BTE_Shutdown(void);
+void BTE_Stop(void);
 s32 BTE_InitCore(btecallback cb);
 s32 BTE_ApplyPatch(btecallback cb);
 s32 BTE_InitSub(btecallback cb);
