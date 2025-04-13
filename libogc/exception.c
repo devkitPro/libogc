@@ -43,9 +43,11 @@ distribution.
 #include "gx.h"
 #include "pad.h"
 #include "consol.h"
+#include "color.h"
 #include "console_internal.h"
 #include "lwp_threads.h"
 #include "ios.h"
+#include "video.h"
 
 #include "ogc/video_types.h"
 
@@ -69,6 +71,7 @@ extern void irq_exceptionhandler(frame_context*);
 extern void dec_exceptionhandler(frame_context*);
 extern void default_exceptionhandler(frame_context*);
 extern void VIDEO_SetFramebuffer(void *);
+extern void __VIClearFramebuffer(void*, u32, u32);
 extern void __reload(void);
 
 extern s8 exceptionhandler_start[],exceptionhandler_end[],exceptionhandler_patch[];
@@ -237,9 +240,13 @@ static void waitForReload(void)
 //just implement core for unrecoverable exceptions.
 void c_default_exceptionhandler(frame_context *pCtx)
 {
+	const u16 console_height = 680;
+	const u16 console_width = 574;
+
 	GX_AbortFrame();
 	VIDEO_SetFramebuffer(exception_xfb);
-	__console_init(exception_xfb,20,20,640,574,1280);
+	__VIClearFramebuffer(exception_xfb, console_height * console_width * VI_DISPLAY_PIX_SZ, COLOR_BLACK);
+	__console_init(exception_xfb, 20, 20, console_height-40, console_width-40, 1280);
 	CON_EnableGecko(1, true);
 
 	kprintf("\n\n\n\tException (%s) occurred!\n", exception_name[pCtx->EXCPT_Number]);
