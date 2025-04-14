@@ -4213,9 +4213,6 @@ void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 
 {
 	s32 wrap_s,wrap_t;
 	f32 offset_mtx[2][3];
-	f64 fdspace_x,fdspace_y;
-	u32 fbuf_x[2] = { 0x43300000,tilespacing_x };
-	u32 fbuf_y[2] = { 0x43300000,tilespacing_y };
 
 	wrap_s = GX_ITW_OFF;
 	if(tilesize_x==16) wrap_s = GX_ITW_16;
@@ -4231,14 +4228,15 @@ void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 
 	else if(tilesize_y==128) wrap_t = GX_ITW_128;
 	else if(tilesize_y==256) wrap_t = GX_ITW_256;
 
-	fdspace_x = *(f64*)((void*)fbuf_x);
-	fdspace_y = *(f64*)((void*)fbuf_y);
-
-	offset_mtx[0][0] = (f32)((fdspace_x - 4503599627370496.0F)*0.00097656250F);
+	/* Dividing the tile spacing by 2^10 and passing 10 as the exponent to
+	 * GX_SetIndTexMatrix() does not alter the end result, but allows us to
+	 * workaround the numeric limitations described in GX_SetIndTexMatrix()
+	 * documentation. */
+	offset_mtx[0][0] = ((f32)tilespacing_x)/(1 << 10);
 	offset_mtx[0][1] = 0.0F;
 	offset_mtx[0][2] = 0.0F;
 	offset_mtx[1][0] = 0.0F;
-	offset_mtx[1][1] = (f32)((fdspace_y - 4503599627370496.0F)*0.00097656250F);
+	offset_mtx[1][1] = ((f32)tilespacing_x)/(1 << 10);
 	offset_mtx[1][2] = 0.0F;
 
 	GX_SetIndTexMatrix(indtexmtx,offset_mtx,10);
