@@ -107,6 +107,9 @@ distribution.
 #define VI_MAX_WIDTH_EURGB60        VI_MAX_WIDTH_NTSC
 #define VI_MAX_HEIGHT_EURGB60       VI_MAX_HEIGHT_NTSC
 
+#define VI_MAX_WIDTH_DEBUG          VI_MAX_WIDTH_NTSC
+#define VI_MAX_HEIGHT_DEBUG         VI_MAX_HEIGHT_NTSC
+
 #define VIDEO_PadFramebufferWidth(width)     ((u16)(((u16)(width) + 15) & ~15))			/*!< macro to pad the width to a multiple of 16 */
 
 /*!
@@ -133,6 +136,7 @@ distribution.
 #define VI_TVMODE_MPAL_PROG			VI_TVMODE(VI_MPAL,        VI_PROGRESSIVE)
 
 #define VI_TVMODE_DEBUG_INT			VI_TVMODE(VI_DEBUG,       VI_INTERLACE)
+#define VI_TVMODE_DEBUG_PROG        VI_TVMODE(VI_DEBUG,       VI_PROGRESSIVE)
 
 #define VI_TVMODE_DEBUG_PAL_INT		VI_TVMODE(VI_DEBUG_PAL,   VI_INTERLACE)
 #define VI_TVMODE_DEBUG_PAL_DS		VI_TVMODE(VI_DEBUG_PAL,   VI_NON_INTERLACE)
@@ -191,6 +195,9 @@ extern GXRModeObj TVEurgb60Hz480IntAa;
 extern GXRModeObj TVEurgb60Hz480Prog;
 extern GXRModeObj TVEurgb60Hz480ProgSoft;
 extern GXRModeObj TVEurgb60Hz480ProgAa;
+extern GXRModeObj TVRgb480Prog;             /*!< Video and render mode configuration for 480 lines,progressive,singlefield RGB mode */
+extern GXRModeObj TVRgb480ProgSoft;
+extern GXRModeObj TVRgb480ProgAa;
 
 /*!
  * @}
