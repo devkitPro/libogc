@@ -4106,13 +4106,13 @@ void GX_SetIndTexMatrix(u8 indtexmtx,f32 offset_mtx[2][3],s8 scale_exp)
 	u32 ma,mb;
 	u32 val,s,idx;
 
-	if(indtexmtx>0x00 && indtexmtx<0x04) indtexmtx -= 0x01;
-	else if(indtexmtx>0x04 && indtexmtx<0x08) indtexmtx -= 0x05;
-	else if(indtexmtx>0x08 && indtexmtx<0x0C) indtexmtx -= 0x09;
-	else indtexmtx = 0x00;
+	if(indtexmtx>=GX_ITM_0 && indtexmtx<=GX_ITM_2) indtexmtx -= GX_ITM_0;
+	else if(indtexmtx>=GX_ITM_S0 && indtexmtx<=GX_ITM_S2) indtexmtx -= GX_ITM_S0;
+	else if(indtexmtx>=GX_ITM_T0 && indtexmtx<=GX_ITM_T2) indtexmtx -= GX_ITM_T0;
+	else indtexmtx = GX_ITM_OFF;
 
 	s = (scale_exp+17);
-	idx = ((indtexmtx<<2)-indtexmtx);
+	idx = indtexmtx * 3;
 
 	ma = (u32)(offset_mtx[0][0]*1024.0F);
 	mb = (u32)(offset_mtx[1][0]*1024.0F);
@@ -4218,18 +4218,18 @@ void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 
 	u32 fbuf_y[2] = { 0x43300000,tilespacing_y };
 
 	wrap_s = GX_ITW_OFF;
-	if(tilesize_x==0x0010) wrap_s = GX_ITW_16;
-	else if(tilesize_x==0x0020) wrap_s = GX_ITW_32;
-	else if(tilesize_x==0x0040) wrap_s = GX_ITW_64;
-	else if(tilesize_x==0x0080) wrap_s = GX_ITW_128;
-	else if(tilesize_x==0x0100) wrap_s = GX_ITW_256;
+	if(tilesize_x==16) wrap_s = GX_ITW_16;
+	else if(tilesize_x==32) wrap_s = GX_ITW_32;
+	else if(tilesize_x==64) wrap_s = GX_ITW_64;
+	else if(tilesize_x==128) wrap_s = GX_ITW_128;
+	else if(tilesize_x==256) wrap_s = GX_ITW_256;
 
 	wrap_t = GX_ITW_OFF;
-	if(tilesize_y==0x0010) wrap_t = GX_ITW_16;
-	else if(tilesize_y==0x0020) wrap_t = GX_ITW_32;
-	else if(tilesize_y==0x0040) wrap_t = GX_ITW_64;
-	else if(tilesize_y==0x0080) wrap_t = GX_ITW_128;
-	else if(tilesize_y==0x0100) wrap_t = GX_ITW_256;
+	if(tilesize_y==16) wrap_t = GX_ITW_16;
+	else if(tilesize_y==32) wrap_t = GX_ITW_32;
+	else if(tilesize_y==64) wrap_t = GX_ITW_64;
+	else if(tilesize_y==128) wrap_t = GX_ITW_128;
+	else if(tilesize_y==256) wrap_t = GX_ITW_256;
 
 	fdspace_x = *(f64*)((void*)fbuf_x);
 	fdspace_y = *(f64*)((void*)fbuf_y);
