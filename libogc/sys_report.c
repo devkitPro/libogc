@@ -30,6 +30,7 @@ distribution.
 #include <sys/iosupport.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <malloc.h>
 
 #include "exi.h"
 
@@ -57,28 +58,32 @@ static ssize_t __uart_write(const char *buffer,size_t len)
 
 #define __outsz 256
 
-
-static char __outstr[__outsz];
-
 static ssize_t __uart_stdio_write(struct _reent *r, void *fd, const char *ptr, size_t len)
 {
 	// translate \n and \r\n to \r for Dolphin handling
-	const char *p = ptr;
-	size_t left = len;
-	while(left>0) {
-		char *buf = __outstr;
-		size_t buflen = len;
-		if (buflen > __outsz) buflen = __outsz;
-		left -= buflen;
-		while(buflen>0) {
-			char ch = *p++;
-			if(ch=='\r' && *p == '\n') continue;
-			if (ch=='\n') ch = '\r';
-			*buf++ = ch;
-			buflen--;
+	char *p = (char*)ptr;
+	char *buf = (char*)ptr;
+	size_t send_len = len;
+
+	for(size_t i = 0; i <= send_len; i++)
+	{
+		char ch = *p++;
+		//skip the one of the 2 win newline bytes
+		if(ch=='\r' && *p == '\n')
+		{
+			send_len--;
+			continue;
 		}
-		__uart_write(__outstr,len);
+
+		//newline should be converted to carriage return
+		if (ch=='\n') 
+			ch = '\r';
+
+		*buf++ = ch;
 	}
+	
+	__uart_write(ptr, send_len);
+
 	return len;
 }
 static const devoptab_t dotab_uart = {
@@ -99,19 +104,37 @@ void SYS_STDIO_Report(bool use_stdout)
 	}
 }
 
-
 void SYS_Report (char const *const fmt_, ...)
 {
-
-	size_t len;
-
+	ssize_t len = 0;
+	char* buffer = NULL;
 	va_list args;
+	size_t write_len = __outsz;
+	while(true)
+	{
+		char* tmp = (char*)realloc(buffer, write_len);
+		if(tmp == NULL)
+			break;
 
-	va_start(args, fmt_);
-	len=vsnprintf(__outstr,256,fmt_,args);
-	va_end(args);
+		buffer = tmp;
 
-	__uart_stdio_write(NULL, 0, __outstr, len);
+		va_start(args, fmt_);
+		len = vsnprintf(buffer, write_len, fmt_, args);
+		va_end(args);
+		if(len > 0 && len >= write_len)
+		{
+			write_len = len+1;
+			continue;
+		}
+		
+		break;
+	}
 
+	//only output if we have data to send and no error occured
+	if(buffer != NULL && len > 0)
+		__uart_stdio_write(NULL, 0, buffer, len);
+
+	if(buffer)
+		free(buffer);	
 }
 
