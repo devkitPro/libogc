@@ -54,6 +54,7 @@ distribution.
 #define EVENTQUEUE_LENGTH			16
 
 #define DISCONNECT_TIMEOUT			0x08	/* HCI_CONN_TIMEOUT */
+#define DISCONNECT_USER_ENDED		0x13	/* HCI_OTHER_END_TERMINATED_CONN_USER_ENDED */
 #define DISCONNECT_BATTERY_DIED		0x14	/* HCI_OTHER_END_TERMINATED_CONN_LOW_RESOURCES */
 #define DISCONNECT_POWER_OFF		0x15	/* HCI_OTHER_END_TERMINATED_CONN_ABOUT_TO_POWER_OFF */
 #define DISCONNECT_IDLE_TIMEOUT		0x16	/* HCI_CONN_TERMINATED_BY_LOCAL_HOST */
@@ -793,10 +794,15 @@ void __wpad_disconnectCB(struct bd_addr *pad_addr, u8 reason)
 					case DISCONNECT_TIMEOUT:
 						// Controller stopped responding for an unknown reason
 						break;
+					case DISCONNECT_USER_ENDED:
+						printf("WPAD User Disconnect (what?)\n");
+						break;
 					default:
 						printf("WPAD Unknown Disconnect Reason(%d)\n", reason);
 						break;
 				}
+				bte_free(__wpads_listen[i].sock);
+				__wpads_listen[i].sock = NULL;
 				__wpads_used &= ~(0x01<<i);
 				break;
 			}
@@ -1115,6 +1121,8 @@ s32 WPAD_WipeSavedControllers(void)
 	for(i=0;i<WPAD_MAX_DEVICES;i++) {
 		__wpad_disconnect(&__wpdcb[i]);
 		memset(__wpads_listen[i].name, 0, sizeof(__wpads_listen[i].name));
+		bte_free(__wpads_listen[i].sock);
+		__wpads_listen[i].sock = NULL;
 	}
 	__wpads_active = 0;
 	__wpads_used = 0;

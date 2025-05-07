@@ -53,9 +53,6 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 	
 	if(wm->event_cb) wm->event_cb(wm,WIIUSE_DISCONNECT);
 
-	bte_free(wml->sock);
-	wml->sock = NULL;
-
 	wml->wm = NULL;
 	return ERR_OK;
 }
@@ -204,7 +201,6 @@ void wiiuse_disconnect(struct wiimote_t *wm)
 
 	WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_CONNECTED);
 	bte_disconnect(wm->sock);
-	wm->sock = NULL;
 }
 
 void wiiuse_sensorbar_enable(int enable)
