@@ -81,7 +81,7 @@ static s32 __pad_onreset(s32 final)
 
 	if(__pad_samplingcallback!=NULL) PAD_SetSamplingCallback(NULL);
 
-	if(final==FALSE) {
+	if(final==false) {
 		ret = PAD_Sync();
 		if(__pad_recalibrated$207==0 && ret) {
 			__pad_recalibrated$207 = PAD_Recalibrate(0xf0000000);

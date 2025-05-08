@@ -72,23 +72,6 @@ typedef union
     u32 adword;
   } union_dword;
 
-
-
-
-
-#ifndef BOOL
-#define BOOL  u32
-#endif
-#ifndef TRUE
-#define TRUE  1
-#endif
-#ifndef FALSE
-#define FALSE 0
-#endif
-#ifndef NULL
-#define NULL  0
-#endif
-
 #ifdef __cplusplus
   }
 #endif

@@ -19,22 +19,22 @@ typedef struct _modsndbuf {
 
 typedef struct _modplay {
 	MOD mod;
-	BOOL playing,paused;
-	BOOL bits,stereo,manual_polling;
+	bool playing,paused;
+	bool bits,stereo,manual_polling;
 	u32 playfreq,numSFXChans;
 	MODSNDBUF soundBuf;
 } MODPlay;
 
 void MODPlay_Init(MODPlay *mod);
 s32 MODPlay_SetFrequency(MODPlay *mod,u32 freq);
-void MODPlay_SetStereo(MODPlay *mod,BOOL stereo);
+void MODPlay_SetStereo(MODPlay *mod,bool stereo);
 s32 MODPlay_SetMOD(MODPlay *mod,const void *mem);
 void MODPlay_Unload(MODPlay *mod);
 s32 MODPlay_AllocSFXChannels(MODPlay *mod,u32 sfxchans);
 s32 MODPlay_Start(MODPlay *mod);
 s32 MODPlay_Stop(MODPlay *mod);
 s32 MODPlay_TriggerNote(MODPlay *mod,u32 chan,u8 inst,u16 freq,u8 vol);
-s32 MODPlay_Pause(MODPlay *mod,BOOL);
+s32 MODPlay_Pause(MODPlay *mod,bool);
 void MODPlay_SetVolume(MODPlay * mod, s32 musicvolume, s32 sfxvolume);
 
 #ifdef __cplusplus

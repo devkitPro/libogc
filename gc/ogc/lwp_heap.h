@@ -2,7 +2,6 @@
 #define __LWP_HEAP_H__
 
 #include <gctypes.h>
-#include <gcbool.h>
 #include "machine/asm.h"
 
 #define HEAP_BLOCK_USED					1
@@ -46,7 +45,7 @@ typedef struct _heap_cntrl_st {
 
 u32 __lwp_heap_init(heap_cntrl *theheap,void *start_addr,u32 size,u32 pg_size);
 void* __lwp_heap_allocate(heap_cntrl *theheap,u32 size);
-BOOL __lwp_heap_free(heap_cntrl *theheap,void *ptr);
+bool __lwp_heap_free(heap_cntrl *theheap,void *ptr);
 u32 __lwp_heap_getinfo(heap_cntrl *theheap,heap_iblock *theinfo);
 
 #ifdef __cplusplus
