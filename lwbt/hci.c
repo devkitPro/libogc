@@ -248,6 +248,19 @@ void hci_connection_complete(err_t (* conn_complete)(void *arg, struct bd_addr *
 
 /*-----------------------------------------------------------------------------------*/
 /* 
+ * hci_auth_complete():
+ *
+ * Used to specify the function that should be called when HCI has received a 
+ * connection complete event.
+ */
+/*-----------------------------------------------------------------------------------*/
+void hci_auth_complete(err_t (* auth_complete)(void *arg, struct bd_addr *bdaddr))
+{
+	hci_dev->auth_complete = auth_complete;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/* 
  * hci_wlp_complete():
  *
  * Used to specify the function that should be called when HCI has received a 
@@ -286,6 +299,7 @@ err_t hci_reg_dev_info(struct bd_addr *bdaddr,u8_t *cod,u8_t psrm,u8_t psm,u16_t
 
 static struct pbuf* hci_cmd_ass(struct pbuf *p,u8_t ocf,u8_t ogf,u8_t len)
 {
+	memset(p, 0, len);
 	((u8_t*)p->payload)[0] = HCI_COMMAND_DATA_PACKET; /* cmd packet type */
 	((u8_t*)p->payload)[1] = (ocf&0xff); /* OCF & OGF */
 	((u8_t*)p->payload)[2] = ((ocf>>8)|(ogf<<2));
@@ -713,7 +727,75 @@ err_t hci_read_remote_name(struct bd_addr *bdaddr)
 	btpbuf_free(p);
 
 	return ERR_OK;
+}
 
+err_t hci_read_clock_offset(struct bd_addr *bdaddr)
+{
+	struct pbuf *p = NULL;
+	struct hci_link *link;
+
+	/* Check if an ACL connection exists */ 
+	link = hci_get_link(bdaddr);
+
+	if(link == NULL) {
+		ERROR("hci_read_clock_offset: ACL connection does not exist\n");
+		return ERR_CONN;
+	}
+
+	if((p=btpbuf_alloc(PBUF_RAW,HCI_R_CLOCK_OFFSET_PLEN,PBUF_RAM))==NULL) {
+		ERROR("hci_read_clock_offset: Could not allocate memory for pbuf\n");
+		return ERR_MEM;
+	}
+
+	/* Assembling command packet */
+	p = hci_cmd_ass(p,HCI_R_CLOCK_OFFSET_OCF,HCI_LINK_CTRL_OGF,HCI_R_CLOCK_OFFSET_PLEN);
+	/* Assembling cmd prameters */
+	((u16_t *)p->payload)[2] = htole16(link->connhdl);
+
+	physbusif_output(p, p->tot_len);
+	btpbuf_free(p);
+
+	return ERR_OK;
+}
+
+err_t hci_read_remote_version_info(u16_t connhdl)
+{
+	struct pbuf *p = NULL;
+
+	if((p=btpbuf_alloc(PBUF_RAW,HCI_R_REMOTE_VERSION_INFO_PLEN,PBUF_RAM))==NULL) {
+		ERROR("hci_read_remote_version_info: Could not allocate memory for pbuf\n");
+		return ERR_MEM;
+	}
+
+	/* Assembling command packet */
+	p = hci_cmd_ass(p,HCI_R_REMOTE_VERSION_INFO_OCF,HCI_LINK_CTRL_OGF,HCI_R_REMOTE_VERSION_INFO_PLEN);
+	/* Assembling cmd prameters */
+	((u16_t *)p->payload)[2] = htole16(connhdl);
+
+	physbusif_output(p, p->tot_len);
+	btpbuf_free(p);
+
+	return ERR_OK;
+}
+
+err_t hci_read_remote_features(u16_t connhdl)
+{
+	struct pbuf *p = NULL;
+
+	if((p=btpbuf_alloc(PBUF_RAW,HCI_R_REMOTE_FEATURES_PLEN,PBUF_RAM))==NULL) {
+		ERROR("hci_read_remote_features: Could not allocate memory for pbuf\n");
+		return ERR_MEM;
+	}
+
+	/* Assembling command packet */
+	p = hci_cmd_ass(p,HCI_R_REMOTE_FEATURES_OCF,HCI_LINK_CTRL_OGF,HCI_R_REMOTE_FEATURES_PLEN);
+	/* Assembling cmd prameters */
+	((u16_t *)p->payload)[2] = htole16(connhdl);
+
+	physbusif_output(p, p->tot_len);
+	btpbuf_free(p);
+
+	return ERR_OK;
 }
 
 err_t hci_write_inquiry_mode(u8_t mode)
@@ -833,6 +915,42 @@ err_t hci_sniff_mode(struct bd_addr *bdaddr, u16_t max_interval, u16_t min_inter
 	
 	return ERR_OK;
 }
+
+/*-----------------------------------------------------------------------------------*/
+/* hci_auth_req():
+ *
+ * Control the modes (park, sniff, hold) that an ACL connection can take.
+ *
+ */
+/*-----------------------------------------------------------------------------------*/
+err_t hci_auth_req(struct bd_addr *bdaddr)
+{
+	struct pbuf *p;
+	struct hci_link *link;
+
+	/* Check if an ACL connection exists */ 
+	link = hci_get_link(bdaddr);
+
+	if(link == NULL) {
+		ERROR("hci_auth_req: ACL connection does not exist\n");
+		return ERR_CONN;
+	}
+
+	if( (p = btpbuf_alloc(PBUF_TRANSPORT, HCI_AUTH_REQUESTED_PLEN, PBUF_RAM)) == NULL) { /* Alloc len of packet */
+		ERROR("hci_auth_req: Could not allocate memory for pbuf\n");
+		return ERR_MEM;
+	}
+	/* Assembling command packet */
+	p = hci_cmd_ass(p, HCI_AUTH_REQUESTED_OCF, HCI_LINK_CTRL_OGF, HCI_AUTH_REQUESTED_PLEN);
+
+	/* Assembling cmd prameters */
+	((u16_t *)p->payload)[2] = htole16(link->connhdl);
+
+	physbusif_output(p, p->tot_len);
+	btpbuf_free(p);
+	return ERR_OK;
+}
+
 /*-----------------------------------------------------------------------------------*/
 /* hci_write_link_policy_settings():
  *
@@ -868,6 +986,7 @@ err_t hci_write_link_policy_settings(struct bd_addr *bdaddr, u16_t link_policy)
 	btpbuf_free(p);
 	return ERR_OK;
 }
+
 /*-----------------------------------------------------------------------------------*/
 /* hci_write_authentication_enable():
  *
@@ -952,7 +1071,6 @@ err_t hci_link_key_req_reply(struct bd_addr *bdaddr, unsigned char *link_key)
 
 	return ERR_OK;
 }
-
 
 /*-----------------------------------------------------------------------------------*/
 /* hci_pin_code_request_neg_reply():
@@ -1621,13 +1739,35 @@ static void hci_conn_complete_evt(struct pbuf *p)
 			}
 			break;
 		case HCI_PAGE_TIMEOUT:
+			ERROR("hci_conn_complete_evt: Page timeout\n");
+			if(link!=NULL) {
+				hci_close(link);
+				lp_connect_cfm(bdaddr,((u8_t*)p->payload)[10],ERR_CONN);
+			}
+			break;
+		case HCI_CONN_TIMEOUT:
 			ERROR("hci_conn_complete_evt: Timeout\n");
 			if(link!=NULL) {
 				hci_close(link);
 				lp_connect_cfm(bdaddr,((u8_t*)p->payload)[10],ERR_CONN);
 			}
 			break;
+		case HCI_HOST_REJECTED_DUE_TO_SECURITY_REASONS:
+			ERROR("hci_conn_complete_evt: Host rejected due to security reasons (device not paired?)\n");
+			if(link!=NULL) {
+				hci_close(link);
+				lp_connect_cfm(bdaddr,((u8_t*)p->payload)[10],ERR_CONN);
+			}
+			break;
+		case HCI_PAIRING_NOT_ALLOWED:
+			ERROR("hci_conn_complete_evt: Pairing not allowed\n");
+			if(link!=NULL) {
+				hci_close(link);
+				lp_connect_cfm(bdaddr,((u8_t*)p->payload)[10],ERR_CONN);
+			}
+			break;
 		default:
+			ERROR("hci_conn_complete_evt: Unknown error %d\n", ((u8_t*)p->payload)[0]);
 			if(link!=NULL) {
 				hci_close(link);
 				lp_connect_cfm(bdaddr,((u8_t*)p->payload)[10],ERR_CONN);
@@ -1690,6 +1830,56 @@ static void hci_inquiry_result_with_rssi_evt(struct pbuf *p)
 
 }
 
+static void hci_read_remote_features_complete_evt(struct pbuf *p)
+{
+	u16_t conn_handle;
+
+	switch(((u8_t*)p->payload)[0]) {
+		case HCI_SUCCESS:
+			conn_handle = le16toh(*((u16_t*)(((u8_t*)p->payload)+1)));
+			//hci_read_remote_features(conn_handle);
+			break;
+		default:
+			break;
+	}
+}
+
+static void hci_read_remote_version_info_complete_evt(struct pbuf *p)
+{
+	u16_t conn_handle;
+	u8_t version;
+	u16_t manufacturer_name;
+	u16_t subversion;
+
+	switch(((u8_t*)p->payload)[0]) {
+		case HCI_SUCCESS:
+			conn_handle = le16toh(*((u16_t*)(((u8_t*)p->payload)+1)));
+			version = ((u8_t*)p->payload)[3];
+			manufacturer_name = le16toh(*((u16_t*)(((u8_t*)p->payload)+4)));
+			subversion = le16toh(*((u16_t*)(((u8_t*)p->payload)+5)));
+			hci_read_remote_features(conn_handle);
+			break;
+		default:
+			break;
+	}
+}
+
+static void hci_read_clock_offset_complete_evt(struct pbuf *p)
+{
+	u16_t conn_handle;
+	u16_t clock_offset;
+
+	switch(((u8_t*)p->payload)[0]) {
+		case HCI_SUCCESS:
+			conn_handle = le16toh(*((u16_t*)(((u8_t*)p->payload)+1)));
+			clock_offset = le16toh(*((u16_t*)(((u8_t*)p->payload)+3)));
+			hci_read_remote_version_info(conn_handle);
+			break;
+		default:
+			break;
+	}
+}
+
 static void hci_return_link_key_evt(struct pbuf *p)
 {
 	u8_t num_keys;
@@ -1747,7 +1937,7 @@ void hci_event_handler(struct pbuf *p)
 
 	evthdr = p->payload;
 	btpbuf_header(p,-HCI_EVENT_HDR_LEN);
-	//printf("HCI_EVENT %02X\n", evthdr->code);
+	printf("HCI_EVENT %02X\n", evthdr->code);
 
 	switch(evthdr->code) {
 		case HCI_INQUIRY_COMPLETE:
@@ -1782,11 +1972,31 @@ void hci_event_handler(struct pbuf *p)
 					return;
 			}
 			break;
+		case HCI_AUTH_COMPLETE:
+			switch(((u8_t*)p->payload)[0]) {
+				case HCI_SUCCESS:
+					for(link=hci_active_links;link!=NULL;link=link->next) {
+						if(link->connhdl==le16toh(*((u16_t*)(((u8_t*)p->payload)+1)))) break;
+					}
+					if(link!=NULL) {
+						HCI_EVENT_AUTH_COMPLETE(hci_dev,&(link->bdaddr),ret);
+					}
+					break;
+				default:
+					return;
+			}
+			break;
 		case HCI_REMOTE_NAME_REQ_COMPLETE:
 			bdaddr = (void *)(((u8_t *)p->payload)+1); /* Get the Bluetooth address */
 			HCI_EVENT_REMOTE_NAME_REQ_COMPLETE(hci_dev,bdaddr,(((u8_t*)p->payload)+7),((u8_t*)p->payload)[0],ret);
 			break;
 		case HCI_ENCRYPTION_CHANGE:
+			break;
+		case HCI_READ_REMOTE_FEATURES_COMPLETE:
+			hci_read_remote_features_complete_evt(p);
+			break;
+		case HCI_READ_REMOTE_VERSION_COMPLETE:
+			hci_read_remote_version_info_complete_evt(p);
 			break;
 		case HCI_QOS_SETUP_COMPLETE:
 			break;
@@ -1860,7 +2070,10 @@ void hci_event_handler(struct pbuf *p)
 			//TODO: IS THIS FATAL????
 			break;
 		case HCI_MAX_SLOTS_CHANGE:
-			break; 
+			break;
+		case HCI_READ_CLOCK_OFFSET_COMPLETE:
+			hci_read_clock_offset_complete_evt(p);
+			break;
 		case HCI_RETURN_LINK_KEYS:
 			hci_return_link_key_evt(p);
 			break;

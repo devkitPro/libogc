@@ -1401,7 +1401,7 @@ void lp_connect_cfm(struct bd_addr *bdaddr, u8_t encrypt_mode, err_t err)
 				L2CA_ACTION_CONN_CFM(pcb,L2CAP_CONN_REF_RES,0x0000,ret); /* No resources available */
 			}
 		} else {
-			ERROR("lp_connect_cfm: Connection failed\n"); 
+			ERROR("lp_connect_cfm: Connection failed(%d)\n", err); 
 			L2CA_ACTION_CONN_CFM(pcb,L2CAP_CONN_REF_RES,0x0000,ret); /* No resources available */
 		}
 	}

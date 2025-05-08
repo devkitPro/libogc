@@ -822,6 +822,17 @@ static void __wpad_syncbuttonCB(u32 held)
 	_CPU_ISR_Restore(level);
 }
 
+s32 __wpad_read_remote_features_finished(s32 result,void *userdata)
+{
+
+}
+
+s32 __wpad_read_clock_offset_finished(s32 result,void *userdata)
+{
+	//BTE_ReadClockOffset(&info->bdaddr, __wpad_read_clock_offset_finished);
+	return result;
+}
+
 s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
 {
 	int i;

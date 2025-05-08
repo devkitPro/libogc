@@ -94,6 +94,7 @@ err_t pin_req(void *arg,struct bd_addr *bdaddr);
 err_t l2cap_connected(void *arg,struct l2cap_pcb *l2cappcb,u16_t result,u16_t status);
 err_t l2cap_accepted(void *arg,struct l2cap_pcb *l2cappcb,err_t err);
 err_t acl_conn_complete(void *arg,struct bd_addr *bdaddr);
+err_t acl_auth_complete(void *arg,struct bd_addr *bdaddr);
 err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb);
 err_t l2cap_disconnected_ind(void *arg, struct l2cap_pcb *pcb, err_t err);
 
@@ -390,6 +391,7 @@ void BTE_Init(void)
 
 	hci_wlp_complete(acl_wlp_completed);
 	hci_connection_complete(acl_conn_complete);
+	hci_auth_complete(acl_auth_complete);
     hci_remote_name_req_complete(bte_read_remote_name_complete);
     hci_pin_req(pin_req);
 	_CPU_ISR_Restore(level);
@@ -544,6 +546,54 @@ s32 BTE_ReadRemoteName(struct bd_addr *bdaddr, btecallback cb)
 
 	return last_err;
 }
+
+s32 BTE_ReadClockOffset(struct bd_addr *bdaddr, btecallback cb)
+{
+    u32 level;
+	err_t last_err = ERR_OK;
+
+    _CPU_ISR_Disable(level);
+    btstate.cb = cb;
+    btstate.usrdata = NULL;
+    btstate.hci_cmddone = 0;
+    hci_arg(&btstate);
+    hci_read_clock_offset(bdaddr);
+    _CPU_ISR_Restore(level);
+
+	return last_err;
+}
+
+/*s32 BTE_ReadRemoteVersionInfo(struct bd_addr *bdaddr, btecallback cb)
+{
+    u32 level;
+	err_t last_err = ERR_OK;
+
+    _CPU_ISR_Disable(level);
+    btstate.cb = cb;
+    btstate.usrdata = NULL;
+    btstate.hci_cmddone = 0;
+    hci_arg(&btstate);
+    hci_read_remote_version_info(bdaddr);
+    _CPU_ISR_Restore(level);
+
+	return last_err;
+}
+
+s32 BTE_ReadRemoteFeatures(struct bd_addr *bdaddr, btecallback cb)
+{
+    u32 level;
+	err_t last_err = ERR_OK;
+
+    _CPU_ISR_Disable(level);
+    btstate.cb = cb;
+    btstate.usrdata = NULL;
+    btstate.hci_cmddone = 0;
+    hci_arg(&btstate);
+    hci_read_remote_features(bdaddr);
+    _CPU_ISR_Restore(level);
+
+	return last_err;
+}*/
 
 s32 BTE_LinkKeyRequestReply(struct bd_addr *bdaddr,u8 *key)
 {
@@ -1020,6 +1070,15 @@ err_t acl_wlp_completed(void *arg,struct bd_addr *bdaddr)
 err_t acl_conn_complete(void *arg,struct bd_addr *bdaddr)
 {
 	//printf("acl_conn_complete\n");
+	//memcpy(&(btstate.acl_bdaddr),bdaddr,6);
+
+	hci_auth_req(bdaddr);
+	return ERR_OK;
+}
+
+err_t acl_auth_complete(void *arg,struct bd_addr *bdaddr)
+{
+	//printf("acl_auth_complete\n");
 	//memcpy(&(btstate.acl_bdaddr),bdaddr,6);
 
 	hci_write_link_policy_settings(bdaddr,0x0005);
@@ -1593,11 +1652,11 @@ err_t bte_hci_initsub_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u
 				} else
 					err = ERR_CONN;
 			} else if(ocf==HCI_W_SCAN_EN_OCF) {
-				if(result==HCI_SUCCESS) {
+			/*	if(result==HCI_SUCCESS) {
 					hci_write_authentication_enable(0x01);
 				} else
 					err = ERR_CONN;
-			} else if(ocf==HCI_W_AUTH_ENABLE_OCF) {
+			} else if(ocf==HCI_W_AUTH_ENABLE_OCF) {*/
 				if(result==HCI_SUCCESS) {
 					hci_cmd_complete(NULL);
 					return __bte_cmdfinish(state,ERR_OK);

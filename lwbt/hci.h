@@ -73,6 +73,7 @@
 
 /* Link control commands */
 #define HCI_INQUIRY_OCF					0x01
+#define HCI_INQUIRY_CANCEL_OCF			0x02
 #define HCI_PERIODIC_INQUIRY_OCF		0x03
 #define HCI_EXIT_PERIODIC_INQUIRY_OCF	0x04
 #define HCI_CREATE_CONN_OCF				0x05
@@ -83,8 +84,13 @@
 #define HCI_LINK_KEY_REQ_NEG_REP_OCF	0x0C
 #define HCI_PIN_CODE_REQ_REP_OCF		0x0D
 #define HCI_PIN_CODE_REQ_NEG_REP_OCF	0x0E
+#define HCI_CHANGE_CONN_PACKET_TYPE_OCF	0x0F
+#define HCI_AUTH_REQUESTED_OCF			0x11
 #define HCI_SET_CONN_ENCRYPT_OCF		0x13
 #define HCI_R_REMOTE_NAME_OCF			0x19
+#define HCI_R_REMOTE_FEATURES_OCF		0x1B
+#define HCI_R_REMOTE_VERSION_INFO_OCF	0x1D
+#define HCI_R_CLOCK_OFFSET_OCF			0x1F
 
 /* Link Policy commands */
 #define HCI_HOLD_MODE_OCF				0x01
@@ -112,6 +118,7 @@
 #define HCI_SET_HC_TO_H_FC_OCF			0x31
 #define HCI_HOST_BUF_SIZE_OCF			0x33
 #define HCI_HOST_NUM_COMPL_OCF			0x35
+#define HCI_W_LINK_SUP_TIMEOUT_OCF		0x37
 #define HCI_R_CUR_IACLAP_OCF			0x39
 #define HCI_W_INQUIRY_SCAN_TYPE_OCF		0x43
 #define HCI_W_INQUIRY_MODE_OCF			0x45
@@ -150,8 +157,12 @@
 #define HCI_LINK_KEY_REQ_NEG_REP_PLEN 10
 #define HCI_PIN_CODE_REQ_REP_PLEN 27
 #define HCI_PIN_CODE_REQ_NEG_REP_PLEN 10
+#define HCI_AUTH_REQUESTED_PLEN 6
 #define HCI_SET_CONN_ENCRYPT_PLEN 7
 #define HCI_R_REMOTE_NAME_PLEN 14
+#define HCI_R_REMOTE_FEATURES_PLEN 6
+#define HCI_R_REMOTE_VERSION_INFO_PLEN 6
+#define HCI_R_CLOCK_OFFSET_PLEN 6
 
 /* Link Policy Commands */
 #define HCI_SNIFF_MODE_PLEN 14
@@ -374,6 +385,7 @@ struct hci_pcb
 	err_t (*cmd_complete)(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result);
 	err_t (*link_key_not)(void *arg, struct bd_addr *bdaddr, u8_t *key);
 	err_t (*conn_complete)(void *arg,struct bd_addr *bdaddr);
+	err_t (*auth_complete)(void *arg,struct bd_addr *bdaddr);
 	err_t (*inq_complete)(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result);
 	err_t (*wlp_complete)(void *arg, struct bd_addr *bdaddr);
 	err_t (*conn_req)(void *arg,struct bd_addr *bdaddr,u8_t *cod,u8_t link_type);
@@ -412,6 +424,7 @@ err_t hci_link_key_req_neg_reply(struct bd_addr *bdaddr);
 err_t hci_write_scan_enable(u8_t scan_enable);
 err_t hci_host_num_comp_packets(u16_t conhdl, u16_t num_complete);
 err_t hci_sniff_mode(struct bd_addr *bdaddr, u16_t max_interval, u16_t min_interval, u16_t attempt, u16_t timeout);
+err_t hci_auth_req(struct bd_addr *bdaddr);
 err_t hci_write_link_policy_settings(struct bd_addr *bdaddr, u16_t link_policy);
 err_t hci_write_authentication_enable(u8_t auth_enable);
 err_t hci_periodic_inquiry(u32_t lap,u16_t min_period,u16_t max_period,u8_t inq_len,u8_t num_resp,err_t (*inq_complete)(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result));
@@ -424,6 +437,9 @@ err_t hci_write_local_name(u8_t *name,u8_t len);
 err_t hci_write_pin_type(u8_t type);
 err_t hci_read_stored_link_key(void);
 err_t hci_read_remote_name(struct bd_addr *bdaddr);
+err_t hci_read_clock_offset(struct bd_addr *bdaddr);
+err_t hci_read_remote_version_info(u16_t connhdl);
+err_t hci_read_remote_features(u16_t connhdl);
 err_t hci_vendor_specific_command(u8_t ocf,u8_t ogf,void *data,u8_t len);
 
 err_t hci_reg_dev_info(struct bd_addr *bdaddr,u8_t *cod,u8_t psrm,u8_t psm,u16_t co);
@@ -431,6 +447,7 @@ err_t hci_reg_dev_info(struct bd_addr *bdaddr,u8_t *cod,u8_t psrm,u8_t psm,u16_t
 void hci_arg(void *arg);
 void hci_cmd_complete(err_t (*cmd_complete)(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result));
 void hci_connection_complete(err_t (* conn_complete)(void *arg, struct bd_addr *bdaddr));
+void hci_auth_complete(err_t (* auth_complete)(void *arg, struct bd_addr *bdaddr));
 void hci_pin_req(err_t (* pin_req)(void *arg, struct bd_addr *bdaddr));
 void hci_link_key_req(err_t (* link_key_req)(void *arg, struct bd_addr *bdaddr));
 void hci_link_key_not(err_t (* link_key_not)(void *arg, struct bd_addr *bdaddr, u8_t *key));
@@ -475,6 +492,9 @@ err_t lp_write_flush_timeout(struct bd_addr *bdaddr, u16_t flushto);
 #define HCI_EVENT_CONN_COMPLETE(pcb,bdaddr,ret) \
                                if((pcb)->conn_complete != NULL) \
                                (ret = (pcb)->conn_complete((pcb)->cbarg,(bdaddr)));
+#define HCI_EVENT_AUTH_COMPLETE(pcb,bdaddr,ret) \
+                               if((pcb)->auth_complete != NULL) \
+                               (ret = (pcb)->auth_complete((pcb)->cbarg,(bdaddr)));
 #define HCI_EVENT_CMD_COMPLETE(pcb,ogf,ocf,result,ret) \
                               if((pcb)->cmd_complete != NULL) \
                               (ret = (pcb)->cmd_complete((pcb)->cbarg,(pcb),(ogf),(ocf),(result)))
