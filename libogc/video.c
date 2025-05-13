@@ -1650,7 +1650,6 @@ GXRModeObj TVRgb480ProgAa =
     }
 };
 
-
 static const u16 taps[26] = {
 	0x01F0,0x01DC,0x01AE,0x0174,0x0129,0x00DB,
 	0x008E,0x0046,0x000C,0x00E2,0x00CB,0x00C0,
@@ -1758,7 +1757,7 @@ static u16 shdw_regs[60];
 static u32 fbSet = 0;
 static s16 displayOffsetH;
 static s16 displayOffsetV;
-static u32 currTvMode,currRgb,changeMode,changeEncoder;
+static u32 currTvMode,currRgb,changeMode;
 static u32 shdw_changeMode,shdw_changeEncoder,flushFlag;
 static u64 changed,shdw_changed;
 static vu32 retraceCount;
@@ -2513,11 +2512,9 @@ static u32 __VISetupEncoder(void)
 		return 0;
 	shdw_changeEncoder = 0;
 
-	u8 dtv, tv, rgb;
-
-	tv = VIDEO_GetCurrentTvMode();
-	dtv = (_viReg[55]&0x01);
-	rgb = currRgb;
+	u8 tv = VIDEO_GetCurrentTvMode();
+	u8 dtv = (_viReg[55]&0x01);
+	u8 rgb = currRgb;
 	oldDtvStatus = dtv;
 
 	__VISetOutputEnable(false);
@@ -2741,15 +2738,9 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 	if(preRetraceCB)
 		preRetraceCB(retraceCount);
 
-	if(flushFlag) {
-		u32 flushed = __VISetRegs();
-#if defined(HW_RVL)
-		flushed |= __VISetupEncoder();
-#endif
-		if(flushed) {
-			flushFlag = 0;
-			SI_RefreshSamplingRate();
-		}
+	if(flushFlag && __VISetRegs()) {
+		flushFlag = 0;
+		SI_RefreshSamplingRate();
 	}
 #if defined(HW_RVL)
 	tv = VIDEO_GetCurrentTvMode();
@@ -2882,7 +2873,7 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	HorVer.tv = _SHIFTR(rmode->viTVMode,2,3);
 	rgb = rmode->rgb;
 	if(rgb!=HorVer.rgb) {
-		changeEncoder = 1;
+		shdw_changeEncoder = 1;
 		changeMode = 1;
 		HorVer.rgb = rgb;
 	}
@@ -2940,6 +2931,10 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	__setVerticalRegs(HorVer.adjustedDispPosY,HorVer.adjustedDispSizeY,curtiming->equ,curtiming->acv,curtiming->prbOdd,curtiming->prbEven,curtiming->psbOdd,curtiming->psbEven,HorVer.black);
 #ifdef _VIDEO_DEBUG
 	printDebugCalculations();
+#endif
+
+#if defined(HW_RVL)
+	__VISetupEncoder();
 #endif
 	_CPU_ISR_Restore(level);
 }
@@ -3014,8 +3009,6 @@ void VIDEO_Flush(void)
 	_CPU_ISR_Disable(level);
 	shdw_changeMode |= changeMode;
 	changeMode = 0;
-	shdw_changeEncoder |= changeEncoder;
-	changeEncoder = 0;
 
 	shdw_changed |= changed;
 	while(changed) {
