@@ -43,8 +43,12 @@ enum {
 	WPAD_CHAN_2,
 	WPAD_CHAN_3,
 	WPAD_BALANCE_BOARD,
-	WPAD_MAX_WIIMOTES,
+	WPAD_CHAN_5,
+	WPAD_MAX_DEVICES,
 };
+
+// Compatibility with old apps
+#define WPAD_MAX_WIIMOTES WPAD_MAX_DEVICES
 											
 #define WPAD_BUTTON_2							0x0001
 #define WPAD_BUTTON_1							0x0002
@@ -166,6 +170,7 @@ typedef struct _wpad_encstatus
 
 typedef void (*WPADDataCallback)(s32 chan, const WPADData *data);
 typedef void (*WPADShutdownCallback)(s32 chan);
+typedef void (*WPADSyncCallback)(u32 held);
 
 s32 WPAD_Init(void);
 s32 WPAD_ControlSpeaker(s32 chan,s32 enable);
@@ -182,10 +187,16 @@ s32 WPAD_SetEventBufs(s32 chan, WPADData *bufs, u32 cnt);
 s32 WPAD_Disconnect(s32 chan);
 s32 WPAD_IsSpeakerEnabled(s32 chan);
 s32 WPAD_SendStreamData(s32 chan,void *buf,u32 len);
-void WPAD_Shutdown(void);
+s32 WPAD_Search(void);
+s32 WPAD_StopSearch(void);
+s32 WPAD_StartPairing(void);
+s32 WPAD_WipeSavedControllers(void);
+s32 WPAD_Shutdown(void);
 void WPAD_SetIdleTimeout(u32 seconds);
 void WPAD_SetPowerButtonCallback(WPADShutdownCallback cb);
 void WPAD_SetBatteryDeadCallback(WPADShutdownCallback cb);
+void WPAD_SetIdleTimeoutCallback(WPADShutdownCallback cb);
+void WPAD_SetSyncButtonCallback(WPADSyncCallback cb);
 s32 WPAD_ScanPads(void);
 s32 WPAD_Rumble(s32 chan, int status);
 s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb, s32 mp);
