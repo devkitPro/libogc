@@ -46,13 +46,13 @@ typedef struct _modinstr
     u32 loop_start;   /* 026..027 */
     u32 loop_end;     /* 028..029 */
     u32 loop_length;
-    BOOL looped;
+    bool looped;
     s8 * data;
   } MOD_INSTR;
 
 typedef struct _mod
   {
-    BOOL loaded;
+    bool loaded;
     s8 name[21];
     MOD_INSTR instrument[31];
     s32 num_patterns;
@@ -68,7 +68,7 @@ typedef struct _mod
     s32 mixingbuflen;
     s32 shiftval;     /* Number of bits to lshift every mixed 16bit word by */
     /* Player variables */
-    BOOL channel_active[MAX_VOICES];
+    bool channel_active[MAX_VOICES];
     s32 patterndelay;
     s32 speed;
     s32 bpm;
@@ -100,7 +100,7 @@ typedef struct _mod
     u8 trem_basevol[MAX_VOICES];
     u8 trem_freq[MAX_VOICES];
     u8 trem_depth[MAX_VOICES];
-    BOOL glissando[MAX_VOICES];
+    bool glissando[MAX_VOICES];
     u8 trem_wave[MAX_VOICES];
     u8 vib_wave[MAX_VOICES];
 
@@ -120,8 +120,8 @@ typedef struct _mod
     u8 musicvolume;
     u8 sfxvolume;
     
-    BOOL set;
-    BOOL *notify;
+    bool set;
+    bool *notify;
 
   } MOD;
 

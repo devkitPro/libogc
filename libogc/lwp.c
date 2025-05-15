@@ -141,7 +141,7 @@ void __lwp_sysinit(void)
 
 	// create idle thread, is needed iff all threads are locked on a queue
 	_thr_idle = (lwp_cntrl*)__lwp_objmgr_allocate(&_lwp_thr_objects);
-	__lwp_thread_init(_thr_idle,NULL,0,255,0,TRUE);
+	__lwp_thread_init(_thr_idle,NULL,0,255,0,true);
 	_thr_executing = _thr_heir = _thr_idle;
 	__lwp_thread_start(_thr_idle,idle_func,NULL);
 	__lwp_objmgr_open(&_lwp_thr_objects,&_thr_idle->object);
@@ -149,24 +149,24 @@ void __lwp_sysinit(void)
 	// create main thread, as this is our entry point
 	// for every GC application.
 	_thr_main = (lwp_cntrl*)__lwp_objmgr_allocate(&_lwp_thr_objects);
-	__lwp_thread_init(_thr_main,__stack_end,((u32)__stack_addr-(u32)__stack_end),191,0,TRUE);
+	__lwp_thread_init(_thr_main,__stack_end,((u32)__stack_addr-(u32)__stack_end),191,0,true);
 	__lwp_thread_start(_thr_main,(void*)__crtmain,NULL);
 	__lwp_objmgr_open(&_lwp_thr_objects,&_thr_main->object);
 }
 
-BOOL __lwp_thread_isalive(lwp_t thr_id)
+bool __lwp_thread_isalive(lwp_t thr_id)
 {
-	if(thr_id==LWP_THREAD_NULL || LWP_OBJTYPE(thr_id)!=LWP_OBJTYPE_THREAD) return FALSE;
+	if(thr_id==LWP_THREAD_NULL || LWP_OBJTYPE(thr_id)!=LWP_OBJTYPE_THREAD) return false;
 
 	lwp_cntrl *thethread = (lwp_cntrl*)__lwp_objmgr_getnoprotection(&_lwp_thr_objects,LWP_OBJMASKID(thr_id));
 	
 	if(thethread) {  
 		u32 *stackbase = thethread->stack;
 		if(stackbase[0]==0xDEADBABE && !__lwp_statedormant(thethread->cur_state) && !__lwp_statetransient(thethread->cur_state))
-			return TRUE;
+			return true;
 	}
 	
-	return FALSE;
+	return false;
 }
 
 lwp_t __lwp_thread_currentid(void)
@@ -174,9 +174,9 @@ lwp_t __lwp_thread_currentid(void)
 	return _thr_executing->object.id;
 }
 
-BOOL __lwp_thread_exists(lwp_t thr_id)
+bool __lwp_thread_exists(lwp_t thr_id)
 {
-	if(thr_id==LWP_THREAD_NULL || LWP_OBJTYPE(thr_id)!=LWP_OBJTYPE_THREAD) return FALSE;
+	if(thr_id==LWP_THREAD_NULL || LWP_OBJTYPE(thr_id)!=LWP_OBJTYPE_THREAD) return false;
 	return (__lwp_objmgr_getnoprotection(&_lwp_thr_objects,LWP_OBJMASKID(thr_id))!=NULL);
 }
 
@@ -202,7 +202,7 @@ s32 LWP_CreateThread(lwp_t *thethread,void* (*entry)(void *),void *arg,void *sta
 	lwp_thread = __lwp_cntrl_allocate();
 	if(!lwp_thread) return -1;
 
-	status = __lwp_thread_init(lwp_thread,stackbase,stack_size,__lwp_priotocore(prio),0,TRUE);
+	status = __lwp_thread_init(lwp_thread,stackbase,stack_size,__lwp_priotocore(prio),0,true);
 	if(!status) {
 		__lwp_cntrl_free(lwp_thread);
 		__lwp_thread_dispatchenable();
@@ -246,7 +246,7 @@ s32 LWP_ResumeThread(lwp_t thethread)
 	if(!lwp_thread) return -1;
 
 	if(__lwp_statesuspended(lwp_thread->cur_state)) {
-		__lwp_thread_resume(lwp_thread,TRUE);
+		__lwp_thread_resume(lwp_thread,true);
 		__lwp_thread_dispatchenable();
 		return LWP_SUCCESSFUL;
 	}
@@ -274,7 +274,7 @@ void LWP_SetThreadPriority(lwp_t thethread,u32 prio)
 	lwp_thread = __lwp_cntrl_open(thethread);
 	if(!lwp_thread) return;
 
-	__lwp_thread_changepriority(lwp_thread,__lwp_priotocore(prio),TRUE);
+	__lwp_thread_changepriority(lwp_thread,__lwp_priotocore(prio),true);
 	__lwp_thread_dispatchenable();
 }
 
@@ -292,15 +292,15 @@ void LWP_Reschedule(u32 prio)
 	__lwp_thread_dispatchenable();
 }
 
-BOOL LWP_ThreadIsSuspended(lwp_t thethread)
+bool LWP_ThreadIsSuspended(lwp_t thethread)
 {
-	BOOL state;
+	bool state;
 	lwp_cntrl *lwp_thread;
 
 	lwp_thread = __lwp_cntrl_open(thethread);
-  	if(!lwp_thread) return FALSE;
+	if(!lwp_thread) return false;
 	
-	state = (__lwp_statesuspended(lwp_thread->cur_state) ? TRUE : FALSE);
+	state = (__lwp_statesuspended(lwp_thread->cur_state) ? true : false);
 
 	__lwp_thread_dispatchenable();
 	return state;
