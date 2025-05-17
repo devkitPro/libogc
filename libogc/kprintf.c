@@ -1,291 +1,426 @@
-/*
- *  linux/lib/vsprintf.c
- *
- *  Copyright (C) 1991, 1992  Linus Torvalds
- */
-
-/* vsprintf.c -- Lars Wirzenius & Linus Torvalds. */
-/*
- * Wirzenius wrote this portably, Torvalds fucked it up :-)
- */
-
-#include <stdarg.h>
 #include <string.h>
+#include <stdarg.h>
+
+#include <ogc/system.h>
 #include <unistd.h>
 
-/* we use this so that we can do without the ctype library */
-#define is_digit(c)	((c) >= '0' && (c) <= '9')
-
-static int skip_atoi(const char **s)
+static void _dietPrintDefaultFunc(const char* buf, size_t size)
 {
-	int i=0;
-
-	while (is_digit(**s))
-		i = i*10 + *((*s)++) - '0';
-	return i;
+	write(STDOUT_FILENO, buf, size);
 }
 
-#define ZEROPAD	1		/* pad with zero */
-#define SIGN	2		/* unsigned/signed long */
-#define PLUS	4		/* show plus */
-#define SPACE	8		/* space if plus */
-#define LEFT	16		/* left justified */
-#define SPECIAL	32		/* 0x */
-#define LARGE	64		/* use 'ABCDEF' instead of 'abcdef' */
+DietPrintFn g_dietPrintFn = _dietPrintDefaultFunc;
 
-#define do_div(n,base) ({ \
-int __res; \
-__res = ((unsigned long) n) % (unsigned) base; \
-n = ((unsigned long) n) / (unsigned) base; \
-__res; })
 
-static char * number(char * str, long num, int base, int size, int precision
-	,int type)
+
+//-----------------------------------------------------------------------------
+// Some of the code below is modelled after:
+//   https://github.com/mpaland/printf/blob/master/printf.c
+//-----------------------------------------------------------------------------
+
+#define DP_FLAG_ZEROPAD   (1U << 0)
+#define DP_FLAG_LEFT      (1U << 1)
+#define DP_FLAG_PLUS      (1U << 2)
+#define DP_FLAG_SPACE     (1U << 3)
+#define DP_FLAG_HASH      (1U << 4)
+#define DP_FLAG_PRECISION (1U << 5)
+#define DP_FLAG_UPPERCASE (1U << 6)
+#define DP_FLAG_SIGNED    (1U << 7)
+#define DP_FLAG_NEGATIVE  (1U << 7)
+#define DP_FLAG_64        (1U << 8)
+#define DP_FLAG_16        0 //(1U << 9)  // See below on why this isn't needed
+#define DP_FLAG_8         0 //(1U << 10)
+
+bool _dietIsDigit(char c)
 {
-	char c,sign,tmp[66];
-	const char *digits="0123456789abcdefghijklmnopqrstuvwxyz";
-	int i;
-
-	if (type & LARGE)
-		digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	if (type & LEFT)
-		type &= ~ZEROPAD;
-	if (base < 2 || base > 36)
-		return 0;
-	c = (type & ZEROPAD) ? '0' : ' ';
-	sign = 0;
-	if (type & SIGN) {
-		if (num < 0) {
-			sign = '-';
-			num = -num;
-			size--;
-		} else if (type & PLUS) {
-			sign = '+';
-			size--;
-		} else if (type & SPACE) {
-			sign = ' ';
-			size--;
-		}
-	}
-	if (type & SPECIAL) {
-		if (base == 16)
-			size -= 2;
-		else if (base == 8)
-			size--;
-	}
-	i = 0;
-	if (num == 0)
-		tmp[i++]='0';
-	else while (num != 0)
-		tmp[i++] = digits[do_div(num,base)];
-	if (i > precision)
-		precision = i;
-	size -= precision;
-	if (!(type&(ZEROPAD+LEFT)))
-		while(size-->0)
-			*str++ = ' ';
-	if (sign)
-		*str++ = sign;
-	if (type & SPECIAL) {
-		if (base==8)
-			*str++ = '0';
-		else if (base==16) {
-			*str++ = '0';
-			*str++ = digits[33];
-		}
-	}
-	if (!(type & LEFT))
-		while (size-- > 0)
-			*str++ = c;
-	while (i < precision--)
-		*str++ = '0';
-	while (i-- > 0)
-		*str++ = tmp[i];
-	while (size-- > 0)
-		*str++ = ' ';
-	return str;
+	return c >= '0' && c <= '9';
 }
 
-int kvsprintf(char *buf, const char *fmt, va_list args)
+bool _dietIsUppercase(char c)
 {
-	int len;
-	unsigned long num;
-	int i, base;
-	char * str;
-	const char *s;
+	return c >= 'A' && c <= 'Z';
+}
 
-	int flags;		/* flags to number() */
+unsigned _dietParseDec(const char** ptr)
+{
+	unsigned ret = 0;
+	while (_dietIsDigit(**ptr)) {
+		ret = 10 * ret + **ptr - '0';
+		(*ptr)++;
+	}
+	return ret;
+}
 
-	int field_width;	/* width of output field */
-	int precision;		/* min. # of digits for integers; max
-				   number of chars for from string */
-	int qualifier;		/* 'h', 'l', or 'L' for integer fields */
+static void _dietOutput(const char* buf, size_t size, unsigned left_pad, unsigned right_pad)
+{
+	if (left_pad) {
+		g_dietPrintFn(NULL, left_pad);
+	}
 
-	for (str=buf ; *fmt ; ++fmt) {
-		if (*fmt != '%') {
-			*str++ = *fmt;
+	if (size) {
+		g_dietPrintFn(buf, size);
+	}
+
+	if (right_pad) {
+		g_dietPrintFn(NULL, right_pad);
+	}
+}
+
+void _dietPrintWidth(unsigned flags, unsigned width, const char* buf, size_t size)
+{
+	unsigned padlen = size < width ? (width - size) : 0;
+
+	if (!(flags & DP_FLAG_LEFT)) {
+		_dietOutput(buf, size, padlen, 0);
+	} else {
+		_dietOutput(buf, size, 0, padlen);
+	}
+}
+
+static unsigned _dietPrintHex32(unsigned flags, unsigned width, unsigned precision, u32 value)
+{
+	bool wantPrefix = value && (flags & DP_FLAG_HASH);
+	if (flags & DP_FLAG_ZEROPAD) {
+		precision = width;
+		if (wantPrefix) {
+			precision -= 2;
+		}
+	}
+
+	unsigned buflen = 2 + (precision > 8 ? precision : 8);
+	char buf[buflen];
+
+	char* end = buf + buflen;
+	char* pos = end;
+	while (value) {
+		u32 quot = value >> 4;
+		u32 rem = value & 0xf;
+
+		char c;
+		if (rem < 0xa) {
+			c = '0' + rem;
+		} else if (flags & DP_FLAG_UPPERCASE) {
+			c = 'A' + rem - 0xa;
+		} else {
+			c = 'a' + rem - 0xa;
+		}
+
+		*--pos = c;
+		value = quot;
+	}
+
+	for (unsigned used = end - pos; used < precision; used ++) {
+		*--pos = '0';
+	}
+
+	if (wantPrefix) {
+		pos -= 2;
+		pos[0] = '0';
+		pos[1] = (flags & DP_FLAG_UPPERCASE) ? 'X' : 'x';
+	}
+
+	unsigned final_len = end - pos;
+	_dietPrintWidth(flags, width, pos, final_len);
+	return final_len;
+}
+
+void _dietPrintHex64(unsigned flags, unsigned width, unsigned precision, u64 value)
+{
+	u32 value_hi = value >> 32; // Guaranteed to be non-zero
+	u32 value_lo = value;
+
+	if (precision < 9) {
+		precision = 9;
+	}
+
+	if (width < 9) {
+		width = 9;
+	}
+
+	if (!(flags & DP_FLAG_LEFT)) {
+		// Padded left
+		_dietPrintHex32(flags, width-8, precision-8, value_hi);
+		_dietPrintHex32(0, 8, 8, value_lo);
+	} else {
+		// Padded right
+		unsigned used = _dietPrintHex32(0, 0, 0, value_hi);
+		_dietPrintHex32(flags, width-used, precision-used, value_lo);
+	}
+}
+
+static void _dietPrintDec32(unsigned flags, unsigned width, unsigned precision, u32 value)
+{
+	if (flags & DP_FLAG_ZEROPAD) {
+		precision = width;
+		if (flags & (DP_FLAG_NEGATIVE|DP_FLAG_PLUS|DP_FLAG_SPACE)) {
+			precision--;
+		}
+	}
+
+	unsigned buflen = 1 + (precision > 10 ? precision : 10);
+	char buf[buflen];
+
+	char* end = buf + buflen;
+	char* pos = end;
+	while (value) {
+		// Below code needs to be compiled in ARM mode
+		u32 quot = value / 10;
+		u32 rem  = value % 10;
+
+		*--pos = '0' + rem;
+		value = quot;
+	}
+
+	for (unsigned used = end - pos; used < precision; used ++) {
+		*--pos = '0';
+	}
+
+	if (flags & DP_FLAG_NEGATIVE) {
+		*--pos = '-';
+	} else if (flags & DP_FLAG_PLUS) {
+		*--pos = '+';
+	} else if (flags & DP_FLAG_SPACE) {
+		*--pos = ' ';
+	}
+
+	_dietPrintWidth(flags, width, pos, end - pos);
+}
+
+void dietPrintV(const char* fmt, va_list va)
+{
+	for (const char* span_end = NULL;; fmt = span_end) {
+		// Find the end of this immediate span
+		for (span_end = fmt; *span_end && *span_end != '%'; span_end ++);
+
+		bool is_literal = span_end[0] == '%' && span_end[1] == '%';
+		if (is_literal) {
+			span_end ++;
+		}
+
+		size_t imm_len = span_end - fmt;
+		if (imm_len) {
+			g_dietPrintFn(fmt, imm_len);
+		}
+
+		if (!*span_end)
+			break;
+
+		span_end ++;
+		if (is_literal) {
 			continue;
 		}
 
-		/* process flags */
-		flags = 0;
-		repeat:
-			++fmt;		/* this also skips first '%' */
-			switch (*fmt) {
-				case '-': flags |= LEFT; goto repeat;
-				case '+': flags |= PLUS; goto repeat;
-				case ' ': flags |= SPACE; goto repeat;
-				case '#': flags |= SPECIAL; goto repeat;
-				case '0': flags |= ZEROPAD; goto repeat;
+		// Retrieve flags
+		unsigned flags = 0;
+		bool parse_flags = true;
+		do {
+			switch (*span_end) {
+				default:  parse_flags = false;      break;
+				case '0': flags |= DP_FLAG_ZEROPAD; break;
+				case '-': flags |= DP_FLAG_LEFT;    break;
+				case '+': flags |= DP_FLAG_PLUS;    break;
+				case ' ': flags |= DP_FLAG_SPACE;   break;
+				case '#': flags |= DP_FLAG_HASH;    break;
+			}
+			if (parse_flags) {
+				span_end ++;
+			}
+		} while (parse_flags);
+
+		// Retrieve width
+		unsigned width = 0;
+		if (_dietIsDigit(*span_end)) {
+			width = _dietParseDec(&span_end);
+		} else if (*span_end == '*') {
+			int varwidth = va_arg(va, int);
+			if (varwidth < 0) {
+				flags |= DP_FLAG_LEFT; // The more you know about the C standard...
+				varwidth = -varwidth;
+			}
+
+			width = varwidth;
+			span_end++;
+		}
+
+		// Retrieve precision
+		unsigned precision = 1;
+		if (*span_end == '.') {
+			flags |= DP_FLAG_PRECISION;
+			span_end++;
+
+			if (_dietIsDigit(*span_end)) {
+				precision = _dietParseDec(&span_end);
+			} else if (*span_end == '*') {
+				int varprec = va_arg(va, int);
+				if (varprec < 0) {
+					varprec = 0;
 				}
 
-		/* get field width */
-		field_width = -1;
-		if (is_digit(*fmt))
-			field_width = skip_atoi(&fmt);
-		else if (*fmt == '*') {
-			++fmt;
-			/* it's the next argument */
-			field_width = va_arg(args, int);
-			if (field_width < 0) {
-				field_width = -field_width;
-				flags |= LEFT;
+				precision = varprec;
+				span_end++;
 			}
 		}
 
-		/* get the precision */
-		precision = -1;
-		if (*fmt == '.') {
-			++fmt;
-			if (is_digit(*fmt))
-				precision = skip_atoi(&fmt);
-			else if (*fmt == '*') {
-				++fmt;
-				/* it's the next argument */
-				precision = va_arg(args, int);
+		// Retrieve length modifier
+		switch (*span_end) {
+			default: break;
+
+			case 'l': { // long
+				span_end++;
+				if (*span_end == 'l') { // long long
+					flags |= DP_FLAG_64;
+					span_end++;
+				} else if (sizeof(long) == 8) {
+					flags |= DP_FLAG_64;
+				}
+				break;
 			}
-			if (precision < 0)
-				precision = 0;
+
+			case 'h': { // short
+				span_end++;
+				if (*span_end == 'h') { // char
+					flags |= DP_FLAG_8;
+					span_end++;
+				} else {
+					flags |= DP_FLAG_16;
+				}
+				break;
+			}
+
+			case 'j': { // intmax_t
+				span_end++;
+				flags |= DP_FLAG_64;
+				break;
+			}
+
+			case 't':   // ptrdiff_t
+			case 'z': { // size_t
+				span_end++;
+				flags |= sizeof(size_t) == 8 ? DP_FLAG_64 : 0;
+				break;
+			}
 		}
 
-		/* get the conversion qualifier */
-		qualifier = -1;
-		if (*fmt == 'h' || *fmt == 'l' || *fmt == 'L') {
-			qualifier = *fmt;
-			++fmt;
+		unsigned specifier = *span_end++;
+		if (_dietIsUppercase(specifier)) {
+			flags |= DP_FLAG_UPPERCASE;
+			specifier = specifier - 'A' + 'a';
 		}
 
-		/* default base */
-		base = 10;
-
-		switch (*fmt) {
-		case 'c':
-			if (!(flags & LEFT))
-				while (--field_width > 0)
-					*str++ = ' ';
-			*str++ = (unsigned char) va_arg(args, int);
-			while (--field_width > 0)
-				*str++ = ' ';
-			continue;
-
-		case 's':
-			s = va_arg(args, char *);
-			if (!s)
-				s = "<NULL>";
-
-			len = strnlen(s, precision);
-
-			if (!(flags & LEFT))
-				while (len < field_width--)
-					*str++ = ' ';
-			for (i = 0; i < len; ++i)
-				*str++ = *s++;
-			while (len < field_width--)
-				*str++ = ' ';
-			continue;
-
-		case 'p':
-			if (field_width == -1) {
-				field_width = 2*sizeof(void *);
-				flags |= ZEROPAD;
-			}
-			str = number(str,
-				(unsigned long) va_arg(args, void *), 16,
-				field_width, precision, flags);
-			continue;
-
-
-		case 'n':
-			if (qualifier == 'l') {
-				long * ip = va_arg(args, long *);
-				*ip = (str - buf);
-			} else {
-				int * ip = va_arg(args, int *);
-				*ip = (str - buf);
-			}
-			continue;
-
-		case '%':
-			*str++ = '%';
-			continue;
-
-		/* integer number formats - set up the flags and "break" */
-		case 'o':
-			base = 8;
-			break;
-
-		case 'X':
-			flags |= LARGE;
-		case 'x':
-			base = 16;
-			break;
-
-		case 'd':
-		case 'i':
-			flags |= SIGN;
-		case 'u':
-			break;
-
-		default:
-			*str++ = '%';
-			if (*fmt)
-				*str++ = *fmt;
-			else
-				--fmt;
-			continue;
+		if (specifier == 'd' || specifier == 'i') {
+			flags |= DP_FLAG_SIGNED;
+			specifier = 'u';
+		} else if (specifier == 'p') {
+			flags = DP_FLAG_HASH | (sizeof(void*) == 8 ? DP_FLAG_64 : 0);
+			width = 0;
+			precision = sizeof(void*) * 2;
+			specifier = 'x';
 		}
-		if (qualifier == 'l')
-			num = va_arg(args, unsigned long);
-		else if (qualifier == 'h') {
-			num = (unsigned short) va_arg(args, int);
-			if (flags & SIGN)
-				num = (short) num;
-		} else if (flags & SIGN)
-			num = va_arg(args, int);
-		else
-			num = va_arg(args, unsigned int);
-		str = number(str, num, base, field_width, precision, flags);
+
+		if (specifier == 'c' || specifier == 's') {
+			flags &= ~(DP_FLAG_ZEROPAD | DP_FLAG_64 | DP_FLAG_16 | DP_FLAG_8);
+			if (specifier == 'c') {
+				flags |= DP_FLAG_8;
+			}
+		}
+
+		if (!(flags & DP_FLAG_SIGNED)) {
+			flags &= ~(DP_FLAG_PLUS | DP_FLAG_SPACE);
+		}
+		if (flags & (DP_FLAG_PRECISION|DP_FLAG_LEFT)) {
+			flags &= ~DP_FLAG_ZEROPAD;
+		}
+
+		union {
+			const char* str;
+			u64 arg_u64;
+			s64 arg_s64;
+			u32 arg_u32;
+			s32 arg_s32;
+		} u;
+
+		if (specifier == 's') {
+			u.str = va_arg(va, const char*);
+		} else if (!(flags & DP_FLAG_64)) {
+			u.arg_u32 = va_arg(va, u32);
+			// Explanation why above is correct:
+			// - u8/s8/u16/s16/char are promoted to int within variadics (and sign-extended if needed)
+			// - int is 32-bit
+
+			if (flags & DP_FLAG_SIGNED) {
+				if (u.arg_s32 < 0) {
+					u.arg_s32 = -u.arg_s32;
+				} else {
+					flags &= ~DP_FLAG_NEGATIVE;
+				}
+			}
+		} else {
+			u.arg_u64 = va_arg(va, u64);
+
+			if (flags & DP_FLAG_SIGNED) {
+				if (u.arg_s64 < 0) {
+					u.arg_s64 = -u.arg_s64;
+				} else {
+					flags &= ~DP_FLAG_NEGATIVE;
+				}
+			}
+
+			// Fast path when the upper 32 bits aren't actually used
+			if ((u.arg_u64 >> 32) == 0) {
+				flags &= ~DP_FLAG_64;
+				u.arg_u64 = u.arg_u32;
+			}
+		}
+
+		switch (specifier) {
+			default: { // Invalid
+				break;
+			}
+
+			case 's': { // String
+				const char* str = (const char*)u.str;
+				str = str ? str : "(null)";
+				size_t len = strnlen(str, (flags & DP_FLAG_PRECISION) ? precision : INTPTR_MAX);
+				_dietPrintWidth(flags, width, str, len);
+				break;
+			}
+
+			case 'c': { // Character (UTF-8 code unit)
+				char c = u.arg_u32 & 0xff;
+				_dietPrintWidth(flags, width, &c, 1);
+				break;
+			}
+
+			case 'u': { // Decimal
+				if (!(flags & DP_FLAG_64)) {
+					_dietPrintDec32(flags, width, precision, u.arg_u32);
+				} else {
+					_dietPrintWidth(flags, width, "#TOOBIG#", 8);
+				}
+				break;
+			}
+
+			case 'x': { // Hex
+				if (!(flags & DP_FLAG_64)) {
+					_dietPrintHex32(flags, width, precision, u.arg_u32);
+				} else {
+					_dietPrintHex64(flags, width, precision, u.arg_u64);
+				}
+				break;
+			}
+
+			case 'o': { // Octal
+				_dietPrintWidth(flags, width, "sorry", 5);
+				break;
+			}
+		}
 	}
-	*str = '\0';
-	return str-buf;
 }
 
-#define __DOUTBUFSIZE 256
-
-char __outstr[__DOUTBUFSIZE];
-
-//---------------------------------------------------------------------------------
-void kprintf(const char *str, ...)
-//---------------------------------------------------------------------------------
+void kprintf(const char* fmt, ...)
 {
-
-	int len;
-
-	va_list args;
-
-	va_start(args, str);
-	len=kvsprintf(__outstr,str,args);
-	va_end(args);
-
-	write(2, __outstr, len);
+	va_list va;
+	va_start(va, fmt);
+	dietPrintV(fmt, va);
+	va_end(va);
 }
