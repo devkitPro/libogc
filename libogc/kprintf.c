@@ -6,7 +6,18 @@
 
 static void _dietPrintDefaultFunc(const char* buf, size_t size)
 {
-	write(STDOUT_FILENO, buf, size);
+	if(buf)
+	{
+		write(STDOUT_FILENO, buf, size);
+	}
+	else
+	{
+		for (size_t  i= 0; i < size; i ++)
+		{
+			char space = ' ';
+			write(2,&space,1);
+		}
+	}
 }
 
 DietPrintFn g_dietPrintFn = _dietPrintDefaultFunc;
