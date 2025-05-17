@@ -19,7 +19,7 @@
 #define EX_RESV				13
 #define EX_THERM			14
 
-#ifndef _LANGUAGE_ASSEMBLY
+#ifndef __ASSEMBLER__
 
 #include <gctypes.h>
 
@@ -46,6 +46,6 @@ typedef struct _excption_frame {
    }
 #endif /* __cplusplus */
 
-#endif		//!_LANGUAGE_ASSEMBLY
+#endif		//!__ASSEMBLER__
 
 #endif

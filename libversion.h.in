@@ -1,0 +1,13 @@
+#ifndef __LIBVERSION_H__
+#define __LIBVERSION_H__
+
+#define _V_MAJOR_	@LIBOGC_MAJOR@
+#define _V_MINOR_	@LIBOGC_MINOR@
+#define _V_PATCH_	@LIBOGC_PATCH@
+
+#define _V_DATE_			__DATE__
+#define _V_TIME_			__TIME__
+
+#define _V_STRING "libOGC Release '@LIBOGC_VER@'"
+
+#endif // __LIBVERSION_H__

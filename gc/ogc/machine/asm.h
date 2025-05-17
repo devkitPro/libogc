@@ -1,7 +1,7 @@
 #ifndef __ASM_H__
 #define __ASM_H__
 
-#ifdef _LANGUAGE_ASSEMBLY
+#ifdef __ASSEMBLER__
 /* Condition Register Bit Fields */
 
 #define	cr0	0
@@ -120,7 +120,7 @@
 #define	vr30	30
 #define	vr31	31
 
-#endif		//_LANGUAGE_ASSEMBLY
+#endif		//__ASSEMBLER__
 
 #define SPRG0	272
 #define SPRG1	273

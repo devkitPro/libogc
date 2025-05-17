@@ -3,7 +3,9 @@ deps
 include
 lib
 wii
+build
 gc/ogc/libversion.h
 *.bz2
+*~
 docs
 warn.log
