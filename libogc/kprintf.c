@@ -15,7 +15,7 @@ static void _dietPrintDefaultFunc(const char* buf, size_t size)
 		for (size_t  i= 0; i < size; i ++)
 		{
 			char space = ' ';
-			write(2,&space,1);
+			write(STDOUT_FILENO,&space,1);
 		}
 	}
 }
