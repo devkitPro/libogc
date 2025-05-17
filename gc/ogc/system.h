@@ -38,6 +38,8 @@ distribution.
 
 */
 
+#include <stdarg.h>
+
 #include <gctypes.h>
 #include <gcbool.h>
 #include <gcutil.h>
@@ -399,7 +401,26 @@ powercallback SYS_SetPowerCallback(powercallback cb);
 */
 u64 SYS_Time(void);
 
-void kprintf(const char *str, ...);
+/*! @brief Printing callback used by @ref dietPrint.
+	@note The incoming @p buf may be NULL, in which case the callback is
+	expected to output the number of space characters given by @p size.
+*/
+typedef void (*DietPrintFn)(const char* buf, size_t size);
+
+/*! @brief Sets @p fn as the current printing callback.
+	@warning This function changes global state, and as such is not thread safe.
+*/
+static inline void dietPrintSetFunc(DietPrintFn fn)
+{
+	extern DietPrintFn g_dietPrintFn;
+	g_dietPrintFn = fn;
+}
+
+//! @brief Prints the specified formatted text (works like vprintf).
+void dietPrintV(const char* fmt, va_list va) __attribute__((format(printf, 1, 0)));
+
+//! @brief Prints the specified formatted text (works like printf).
+void kprintf(const char *str, ...) __attribute__((format(printf, 1, 2)));
 
 #ifdef __cplusplus
    }
