@@ -1,3 +1,10 @@
+/*
+
+  Containes code inspired by and derived from code written for the RTEMS project.
+  See LICENSE for more information.
+
+*/
+
 #include <stdlib.h>
 #include <limits.h>
 #include "asm.h"
