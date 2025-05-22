@@ -1,3 +1,10 @@
+/*
+
+  Contains code inspired by and derived from code written for the RTEMS project.
+  See LICENSE for more information.
+
+*/
+
 #ifndef ___LWP_STATES_H__
 #define ___LWP_STATES_H__
 
