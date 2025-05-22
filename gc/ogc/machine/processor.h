@@ -1,6 +1,6 @@
 /*
 
-  Containes code inspired by and derived from code written for the RTEMS project.
+  Contains code inspired by and derived from code written for the RTEMS project.
   See LICENSE for more information.
 
 */
