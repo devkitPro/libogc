@@ -149,9 +149,6 @@ s32 BTE_ReadStoredLinkKey(struct linkkey_info *keys,u8 max_cnt,btecallback cb);
 s32 BTE_ReadBdAddr(struct bd_addr *bdaddr, btecallback cb);
 s32 BTE_SetEvtFilter(u8 filter_type,u8 filter_cond_type,u8 *cond, btecallback cb);
 s32 BTE_ReadRemoteName(struct bd_addr *bdaddr, btecallback cb);
-s32 BTE_ReadClockOffset(struct bd_addr *bdaddr, btecallback cb);
-s32 BTE_ReadRemoteVersionInfo(struct bd_addr *bdaddr, btecallback cb);
-s32 BTE_ReadRemoteFeatures(struct bd_addr *bdaddr, btecallback cb);
 s32 BTE_Inquiry(u8 max_cnt,u8 flush, btecallback cb);
 s32 BTE_PeriodicInquiry(u8 max_cnt,u8 flush,btecallback cb);
 s32 BTE_ExitPeriodicInquiry(void);
@@ -173,6 +170,7 @@ void bte_received(struct bte_pcb *pcb, s32 (*recv)(void *arg,void *buffer,u16 le
 void bte_disconnected(struct bte_pcb *pcb,s32 (disconn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
 
 s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
+s32 bte_registerdeviceasync2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
 s32 bte_connectdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
 s32 bte_connectdeviceasync2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
 

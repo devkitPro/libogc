@@ -83,6 +83,7 @@ static s32 __wiiuse_connected2(void *arg,struct bte_pcb *pcb,u8 err)
 	struct wiimote_listen_t *wml = (struct wiimote_listen_t*)arg;
 	struct wiimote_t *wm;
 
+	printf("__wiiuse_connected2(%d)\n", err);
 	wm = wml->assign_cb(wml, err);
 	
 	if(!wm) {
@@ -95,7 +96,7 @@ static s32 __wiiuse_connected2(void *arg,struct bte_pcb *pcb,u8 err)
 	wm->sock = wml->sock;
 	wm->bdaddr = wml->bdaddr;
 
-	//printf("__wiiuse_connected()\n");
+	//printf("__wiiuse_connected2()\n");
 	WIIMOTE_ENABLE_STATE(wm,(WIIMOTE_STATE_CONNECTED|WIIMOTE_STATE_HANDSHAKE));
 
 	wm->handshake_state = 0;
@@ -106,6 +107,7 @@ static s32 __wiiuse_connected2(void *arg,struct bte_pcb *pcb,u8 err)
 
 static s32 __wiiuse_connected(void *arg,struct bte_pcb *pcb,u8 err)
 {
+	printf("__wiiuse_connected(%d)\n", err);
 	if (err!=ERR_OK) {
 		bte_disconnect(pcb);
 		return ERR_OK;
@@ -115,7 +117,23 @@ static s32 __wiiuse_connected(void *arg,struct bte_pcb *pcb,u8 err)
 
 	if(err==ERR_OK) return ERR_OK;
 	
-	printf("wiiuse_connect: bte_registerdeviceasync failed(%d)\n", err);
+	printf("__wiiuse_connected: bte_connectdeviceasync2 failed(%d)\n", err);
+	return err;
+}
+
+static s32 __wiiuse_registered(void *arg,struct bte_pcb *pcb,u8 err)
+{
+	printf("__wiiuse_registered(%d)\n", err);
+	if (err!=ERR_OK) {
+		bte_disconnect(pcb);
+		return ERR_OK;
+	}
+
+	err = bte_registerdeviceasync2(pcb,__wiiuse_connected2);
+
+	if(err==ERR_OK) return ERR_OK;
+	
+	printf("__wiiuse_registered: bte_registerdeviceasync2 failed(%d)\n", err);
 	return err;
 }
 
@@ -161,7 +179,7 @@ int wiiuse_register(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct
 	bte_received(wml->sock,__wiiuse_receive);
 	bte_disconnected(wml->sock,__wiiuse_disconnected);
 	
-	err = bte_registerdeviceasync(wml->sock,bdaddr,__wiiuse_connected);
+	err = bte_registerdeviceasync(wml->sock,bdaddr,__wiiuse_registered);
 	if(err==ERR_OK) return 1;
 	
 	printf("wiiuse_register: bte_registerdeviceasync failed(%d)\n", err);

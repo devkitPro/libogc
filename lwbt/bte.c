@@ -547,54 +547,6 @@ s32 BTE_ReadRemoteName(struct bd_addr *bdaddr, btecallback cb)
 	return last_err;
 }
 
-s32 BTE_ReadClockOffset(struct bd_addr *bdaddr, btecallback cb)
-{
-    u32 level;
-	err_t last_err = ERR_OK;
-
-    _CPU_ISR_Disable(level);
-    btstate.cb = cb;
-    btstate.usrdata = NULL;
-    btstate.hci_cmddone = 0;
-    hci_arg(&btstate);
-    hci_read_clock_offset(bdaddr);
-    _CPU_ISR_Restore(level);
-
-	return last_err;
-}
-
-/*s32 BTE_ReadRemoteVersionInfo(struct bd_addr *bdaddr, btecallback cb)
-{
-    u32 level;
-	err_t last_err = ERR_OK;
-
-    _CPU_ISR_Disable(level);
-    btstate.cb = cb;
-    btstate.usrdata = NULL;
-    btstate.hci_cmddone = 0;
-    hci_arg(&btstate);
-    hci_read_remote_version_info(bdaddr);
-    _CPU_ISR_Restore(level);
-
-	return last_err;
-}
-
-s32 BTE_ReadRemoteFeatures(struct bd_addr *bdaddr, btecallback cb)
-{
-    u32 level;
-	err_t last_err = ERR_OK;
-
-    _CPU_ISR_Disable(level);
-    btstate.cb = cb;
-    btstate.usrdata = NULL;
-    btstate.hci_cmddone = 0;
-    hci_arg(&btstate);
-    hci_read_remote_features(bdaddr);
-    _CPU_ISR_Restore(level);
-
-	return last_err;
-}*/
-
 s32 BTE_LinkKeyRequestReply(struct bd_addr *bdaddr,u8 *key)
 {
     u32 level;
@@ -752,7 +704,41 @@ s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*con
 
 error:
 	_CPU_ISR_Restore(level);
-	//printf("bte_registerdeviceasync(%02x)\n",err);
+	printf("bte_registerdeviceasync(%02x)\n",err);
+	return err;
+}
+
+s32 bte_registerdeviceasync2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
+{
+	u32 level;
+	s32 err = ERR_OK;
+	struct l2cap_pcb *l2capcb = NULL;
+
+	//printf("bte_registerdeviceasync2()\n");
+	_CPU_ISR_Disable(level);
+	if(!lp_is_connected(&(pcb->bdaddr))) {
+		printf("bdaddr not connected: %02x:%02x:%02x:%02x:%02x:%02x\n",pcb->bdaddr.addr[5],pcb->bdaddr.addr[4],pcb->bdaddr.addr[3],pcb->bdaddr.addr[2],pcb->bdaddr.addr[1],pcb->bdaddr.addr[0]);
+		err = ERR_CONN;
+		goto error;
+	}
+
+	pcb->conn_cfm = conn_cfm;
+	
+	if((l2capcb=l2cap_new())==NULL) {
+		err = ERR_MEM;
+		goto error;
+	}
+	l2cap_arg(l2capcb,pcb);
+
+	err = l2cap_connect_ind(l2capcb,&(pcb->bdaddr),HIDP_DATA_CHANNEL,l2cap_accepted);
+	if(err!=ERR_OK) {
+		l2cap_close(l2capcb);
+		err = ERR_CONN;
+	}
+
+error:
+	_CPU_ISR_Restore(level);
+	printf("bte_registerdeviceasync2(%02x)\n",err);
 	return err;
 }
 
@@ -1247,17 +1233,14 @@ err_t l2cap_accepted(void *arg,struct l2cap_pcb *l2cappcb,err_t err)
 				btepcb->data_pcb = l2cappcb;
 				break;
 		}
-		if(btepcb->data_pcb && btepcb->ctl_pcb) {
-			btepcb->err = ERR_OK;
-			btepcb->state = (u32)STATE_CONNECTED;
-			if(btepcb->conn_cfm) btepcb->conn_cfm(btepcb->cbarg,btepcb,ERR_OK);
-		}
+		btepcb->err = ERR_OK;
+		btepcb->state = (u32)STATE_CONNECTED;
 	} else {
 		l2cap_close(l2cappcb);
 		btepcb->err = ERR_CONN;
-		if(btepcb->conn_cfm) btepcb->conn_cfm(btepcb->cbarg,btepcb,ERR_CONN);
 	}
-
+	
+	if(btepcb->conn_cfm) btepcb->conn_cfm(btepcb->cbarg,btepcb,btepcb->err);
 	return ERR_OK;
 }
 

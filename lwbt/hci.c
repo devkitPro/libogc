@@ -1830,56 +1830,6 @@ static void hci_inquiry_result_with_rssi_evt(struct pbuf *p)
 
 }
 
-static void hci_read_remote_features_complete_evt(struct pbuf *p)
-{
-	u16_t conn_handle;
-
-	switch(((u8_t*)p->payload)[0]) {
-		case HCI_SUCCESS:
-			conn_handle = le16toh(*((u16_t*)(((u8_t*)p->payload)+1)));
-			//hci_read_remote_features(conn_handle);
-			break;
-		default:
-			break;
-	}
-}
-
-static void hci_read_remote_version_info_complete_evt(struct pbuf *p)
-{
-	u16_t conn_handle;
-	u8_t version;
-	u16_t manufacturer_name;
-	u16_t subversion;
-
-	switch(((u8_t*)p->payload)[0]) {
-		case HCI_SUCCESS:
-			conn_handle = le16toh(*((u16_t*)(((u8_t*)p->payload)+1)));
-			version = ((u8_t*)p->payload)[3];
-			manufacturer_name = le16toh(*((u16_t*)(((u8_t*)p->payload)+4)));
-			subversion = le16toh(*((u16_t*)(((u8_t*)p->payload)+5)));
-			hci_read_remote_features(conn_handle);
-			break;
-		default:
-			break;
-	}
-}
-
-static void hci_read_clock_offset_complete_evt(struct pbuf *p)
-{
-	u16_t conn_handle;
-	u16_t clock_offset;
-
-	switch(((u8_t*)p->payload)[0]) {
-		case HCI_SUCCESS:
-			conn_handle = le16toh(*((u16_t*)(((u8_t*)p->payload)+1)));
-			clock_offset = le16toh(*((u16_t*)(((u8_t*)p->payload)+3)));
-			hci_read_remote_version_info(conn_handle);
-			break;
-		default:
-			break;
-	}
-}
-
 static void hci_return_link_key_evt(struct pbuf *p)
 {
 	u8_t num_keys;
@@ -1993,10 +1943,8 @@ void hci_event_handler(struct pbuf *p)
 		case HCI_ENCRYPTION_CHANGE:
 			break;
 		case HCI_READ_REMOTE_FEATURES_COMPLETE:
-			hci_read_remote_features_complete_evt(p);
 			break;
 		case HCI_READ_REMOTE_VERSION_COMPLETE:
-			hci_read_remote_version_info_complete_evt(p);
 			break;
 		case HCI_QOS_SETUP_COMPLETE:
 			break;
@@ -2072,7 +2020,6 @@ void hci_event_handler(struct pbuf *p)
 		case HCI_MAX_SLOTS_CHANGE:
 			break;
 		case HCI_READ_CLOCK_OFFSET_COMPLETE:
-			hci_read_clock_offset_complete_evt(p);
 			break;
 		case HCI_RETURN_LINK_KEYS:
 			hci_return_link_key_evt(p);
