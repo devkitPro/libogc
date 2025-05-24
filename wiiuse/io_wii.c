@@ -78,7 +78,7 @@ static s32 __wiiuse_receive(void *arg,void *buffer,u16 len)
 	return ERR_OK;
 }
 
-static s32 __wiiuse_connected(void *arg,struct bte_pcb *pcb,u8 err)
+static s32 __wiiuse_connected2(void *arg,struct bte_pcb *pcb,u8 err)
 {
 	struct wiimote_listen_t *wml = (struct wiimote_listen_t*)arg;
 	struct wiimote_t *wm;
@@ -102,6 +102,21 @@ static s32 __wiiuse_connected(void *arg,struct bte_pcb *pcb,u8 err)
 	wiiuse_handshake(wm,NULL,0);
 
 	return ERR_OK;
+}
+
+static s32 __wiiuse_connected(void *arg,struct bte_pcb *pcb,u8 err)
+{
+	if (err!=ERR_OK) {
+		bte_disconnect(pcb);
+		return ERR_OK;
+	}
+
+	err = bte_connectdeviceasync2(pcb,__wiiuse_connected2);
+
+	if(err==ERR_OK) return ERR_OK;
+	
+	printf("wiiuse_connect: bte_registerdeviceasync failed(%d)\n", err);
+	return err;
 }
 
 void __wiiuse_sensorbar_enable(int enable)

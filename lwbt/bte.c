@@ -738,7 +738,7 @@ s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*con
 		goto error;
 	}
 	
-	if((l2capcb=l2cap_new())==NULL) {
+	/*if((l2capcb=l2cap_new())==NULL) {
 		err = ERR_MEM;
 		goto error;
 	}
@@ -748,7 +748,7 @@ s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*con
 	if(err!=ERR_OK) {
 		l2cap_close(l2capcb);
 		err = ERR_CONN;
-	}
+	}*/
 
 error:
 	_CPU_ISR_Restore(level);
@@ -763,7 +763,7 @@ s32 bte_connectdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn
 	struct l2cap_pcb *l2capcb = NULL;
 	
 	_CPU_ISR_Disable(level);
-	//printf("bte_connectdeviceasync()\n");
+	printf("bte_connectdeviceasync()\n");
 	if(lp_is_connected(bdaddr)) {
 		printf("bdaddr already exists: %02x:%02x:%02x:%02x:%02x:%02x\n",bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 		err = ERR_CONN;
@@ -789,13 +789,48 @@ s32 bte_connectdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn
 		goto error;
 	}
 	
-	if((l2capcb=l2cap_new())==NULL) {
+	/*if((l2capcb=l2cap_new())==NULL) {
 		err = ERR_MEM;
 		goto error;
 	}
 	l2cap_arg(l2capcb,pcb);
 
 	err = l2ca_connect_req(l2capcb,bdaddr,HIDP_DATA_CHANNEL,HCI_ALLOW_ROLE_SWITCH,l2cap_connected);
+	if(err!=ERR_OK) {
+		l2cap_close(l2capcb);
+		err = ERR_CONN;
+	}*/
+
+error:
+	_CPU_ISR_Restore(level);
+	//printf("bte_connectdeviceasync(%02x)\n",err);
+	return err;
+}
+
+s32 bte_connectdeviceasync2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
+{
+	u32 level;
+	s32 err = ERR_OK;
+	struct l2cap_pcb *l2capcb = NULL;
+	
+	_CPU_ISR_Disable(level);
+	printf("bte_connectdeviceasync2()\n");
+	
+	if(!lp_is_connected(&(pcb->bdaddr))) {
+		printf("bdaddr not connected: %02x:%02x:%02x:%02x:%02x:%02x\n",pcb->bdaddr.addr[5],pcb->bdaddr.addr[4],pcb->bdaddr.addr[3],pcb->bdaddr.addr[2],pcb->bdaddr.addr[1],pcb->bdaddr.addr[0]);
+		err = ERR_CONN;
+		goto error;
+	}
+	
+	pcb->conn_cfm = conn_cfm;
+
+	if((l2capcb=l2cap_new())==NULL) {
+		err = ERR_MEM;
+		goto error;
+	}
+	l2cap_arg(l2capcb,pcb);
+
+	err = l2ca_connect_req(l2capcb,&(pcb->bdaddr),HIDP_DATA_CHANNEL,HCI_ALLOW_ROLE_SWITCH,l2cap_connected);
 	if(err!=ERR_OK) {
 		l2cap_close(l2capcb);
 		err = ERR_CONN;

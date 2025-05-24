@@ -50,14 +50,16 @@ distribution.
 
 #include "lwp_threads.inl"
 
-#define MAX_STREAMDATA_LEN			20
-#define EVENTQUEUE_LENGTH			16
+#define MAX_STREAMDATA_LEN				20
+#define EVENTQUEUE_LENGTH				16
 
-#define DISCONNECT_TIMEOUT			0x08	/* HCI_CONN_TIMEOUT */
-#define DISCONNECT_USER_ENDED		0x13	/* HCI_OTHER_END_TERMINATED_CONN_USER_ENDED */
-#define DISCONNECT_BATTERY_DIED		0x14	/* HCI_OTHER_END_TERMINATED_CONN_LOW_RESOURCES */
-#define DISCONNECT_POWER_OFF		0x15	/* HCI_OTHER_END_TERMINATED_CONN_ABOUT_TO_POWER_OFF */
-#define DISCONNECT_IDLE_TIMEOUT		0x16	/* HCI_CONN_TERMINATED_BY_LOCAL_HOST */
+#define DISCONNECT_AUTH_FAILURE			0x05	/* HCI_AUTHENTICATION_FAILURE */
+#define DISCONNECT_TIMEOUT				0x08	/* HCI_CONN_TIMEOUT */
+#define DISCONNECT_USER_ENDED			0x13	/* HCI_OTHER_END_TERMINATED_CONN_USER_ENDED */
+#define DISCONNECT_BATTERY_DIED			0x14	/* HCI_OTHER_END_TERMINATED_CONN_LOW_RESOURCES */
+#define DISCONNECT_POWER_OFF			0x15	/* HCI_OTHER_END_TERMINATED_CONN_ABOUT_TO_POWER_OFF */
+#define DISCONNECT_IDLE_TIMEOUT			0x16	/* HCI_CONN_TERMINATED_BY_LOCAL_HOST */
+#define DISCONNECT_REPEATED_ATTEMPTS	0x17	/* HCI_REPEATED_ATTEMPTS */
 
 struct _wpad_thresh{
 	s32 btns;
@@ -228,7 +230,7 @@ wiimote *__wpad_assign_slot(wiimote_listen *wml, u8 err)
 	}
 
 	if (err) {
-		printf("WPAD Connection Error %d\n", err);
+		printf("WPAD Connection Error %d\n", (s8)err);
 		__wpads_used &= ~(0x01<<i);
 		_CPU_ISR_Restore(level);
 		return NULL;
@@ -793,6 +795,12 @@ void __wpad_disconnectCB(struct bd_addr *pad_addr, u8 reason)
 						break;
 					case DISCONNECT_TIMEOUT:
 						// Controller stopped responding for an unknown reason
+						break;
+					case DISCONNECT_AUTH_FAILURE:
+						printf("WPAD Auth Failure\n");
+						break;
+					case DISCONNECT_REPEATED_ATTEMPTS:
+						printf("WPAD Too Many Attempts\n");
 						break;
 					case DISCONNECT_USER_ENDED:
 						printf("WPAD User Disconnect (what?)\n");

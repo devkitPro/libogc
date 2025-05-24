@@ -299,7 +299,7 @@ err_t hci_reg_dev_info(struct bd_addr *bdaddr,u8_t *cod,u8_t psrm,u8_t psm,u16_t
 
 static struct pbuf* hci_cmd_ass(struct pbuf *p,u8_t ocf,u8_t ogf,u8_t len)
 {
-	memset(p, 0, len);
+	memset(p->payload, 0, len);
 	((u8_t*)p->payload)[0] = HCI_COMMAND_DATA_PACKET; /* cmd packet type */
 	((u8_t*)p->payload)[1] = (ocf&0xff); /* OCF & OGF */
 	((u8_t*)p->payload)[2] = ((ocf>>8)|(ogf<<2));
