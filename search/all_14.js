@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['z_20texture_20format_1068',['Z Texture format',['../group__ztexfmt.html',1,'']]],
-  ['z_20texture_20operator_1069',['Z Texture operator',['../group__ztexop.html',1,'']]]
+  ['xfb_20clamp_20modes_1071',['XFB clamp modes',['../group__xfbclamp.html',1,'']]]
 ];

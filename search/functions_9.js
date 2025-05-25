@@ -1,18 +1,9 @@
 var searchData=
 [
-  ['video_5fclearframebuffer_1541',['VIDEO_ClearFrameBuffer',['../video_8h.html#a522a2ef8593bb5dac693dff07eedcb73',1,'video.h']]],
-  ['video_5fconfigure_1542',['VIDEO_Configure',['../video_8h.html#a80703c28dc652bfa5f8086ed7a52b04a',1,'video.h']]],
-  ['video_5fflush_1543',['VIDEO_Flush',['../video_8h.html#a04422628876a25abc2a60b54f03fa5a1',1,'video.h']]],
-  ['video_5fgetcurrentline_1544',['VIDEO_GetCurrentLine',['../video_8h.html#a226057057812636d4ec33bc3d4c1f7a8',1,'video.h']]],
-  ['video_5fgetcurrenttvmode_1545',['VIDEO_GetCurrentTvMode',['../video_8h.html#af46e5352514bf82e81e3779c050fc483',1,'video.h']]],
-  ['video_5fgetnextfield_1546',['VIDEO_GetNextField',['../video_8h.html#a51b8d1cfb2ab66589e598004ebec64ef',1,'video.h']]],
-  ['video_5fgetvideoscanmode_1547',['VIDEO_GetVideoScanMode',['../video_8h.html#a106804e8cd83d4425250152dc5ed7410',1,'video.h']]],
-  ['video_5fhavecomponentcable_1548',['VIDEO_HaveComponentCable',['../video_8h.html#afa60d4b4fca04ec5bcdd1923f3b2b598',1,'video.h']]],
-  ['video_5finit_1549',['VIDEO_Init',['../video_8h.html#ab00d3c028a523240c38f09f36d67bcf6',1,'video.h']]],
-  ['video_5fsetblack_1550',['VIDEO_SetBlack',['../video_8h.html#ad2d076f6ae8030183488f05bdba49a46',1,'video.h']]],
-  ['video_5fsetnextframebuffer_1551',['VIDEO_SetNextFramebuffer',['../video_8h.html#a75eb4c9ce4ede96b94263520a3f9d79b',1,'video.h']]],
-  ['video_5fsetnextrightframebuffer_1552',['VIDEO_SetNextRightFramebuffer',['../video_8h.html#a614dc937f0cf6cbd999d1e889a509710',1,'video.h']]],
-  ['video_5fsetpostretracecallback_1553',['VIDEO_SetPostRetraceCallback',['../video_8h.html#abb8a4c93de72801f2673600ea86c6bfb',1,'video.h']]],
-  ['video_5fsetpreretracecallback_1554',['VIDEO_SetPreRetraceCallback',['../video_8h.html#a4017811585807425ffc605016e128655',1,'video.h']]],
-  ['video_5fwaitvsync_1555',['VIDEO_WaitVSync',['../video_8h.html#a49f3eed54f2ef71a54501e746564e7a8',1,'video.h']]]
+  ['sys_5fallocateframebuffer_1541',['SYS_AllocateFramebuffer',['../system_8h.html#a2f6cf534244a5d12ed8feefed8a60fd8',1,'system.h']]],
+  ['sys_5fcancelalarm_1542',['SYS_CancelAlarm',['../system_8h.html#ae9df35009def32b0570c87aaba11c5d9',1,'system.h']]],
+  ['sys_5fcreatealarm_1543',['SYS_CreateAlarm',['../system_8h.html#a183800c28f569b914290185ecca8264e',1,'system.h']]],
+  ['sys_5finit_1544',['SYS_Init',['../system_8h.html#ae7266b09907efcfb4bc5df00c544715c',1,'system.h']]],
+  ['sys_5fremovealarm_1545',['SYS_RemoveAlarm',['../system_8h.html#a16d2e41f1289aa02a5f0f1b4ee2ca036',1,'system.h']]],
+  ['sys_5freport_1546',['SYS_Report',['../system_8h.html#a971ebbcbf83c1b196c9d9d6c61572ae1',1,'system.h']]]
 ];

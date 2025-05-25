@@ -1,6 +1,9 @@
 var searchData=
 [
-  ['r_922',['r',['../struct__gx__color.html#a7df77ee15ba5329dec27466afb5bdf36',1,'_gx_color::r()'],['../struct__gx__colors10.html#ac54a88d071567590eeafa4be1c669259',1,'_gx_colors10::r()'],['../struct_g_x_fog_adj_tbl.html#af036412ff8deb56e93063e1ec68ddfa9',1,'GXFogAdjTbl::r()']]],
-  ['raw_5firq_5fhandler_5ft_923',['raw_irq_handler_t',['../irq_8h.html#a5de808f138625d05430e1364cdddfb65',1,'irq.h']]],
-  ['romtx_924',['ROMtx',['../gu_8h.html#a01f9fb901ebd513d87ddb962064f3e2f',1,'gu.h']]]
+  ['performance_20counter_200_20metric_919',['Performance counter 0 metric',['../group__perf0metrics.html',1,'']]],
+  ['performance_20counter_201_20metric_920',['Performance counter 1 metric',['../group__perf1metrics.html',1,'']]],
+  ['pitch_20range_921',['Pitch Range',['../group__pitchrange.html',1,'']]],
+  ['position_2dnormal_20matrix_20index_922',['Position-normal matrix index',['../group__pnmtx.html',1,'']]],
+  ['post_2dtransform_20texture_20matrix_20index_923',['Post-transform texture matrix index',['../group__dttmtx.html',1,'']]],
+  ['primitive_20type_924',['Primitive type',['../group__primtype.html',1,'']]]
 ];

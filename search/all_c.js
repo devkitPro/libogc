@@ -1,7 +1,7 @@
 var searchData=
 [
-  ['os_20memory_20casting_20macros_912',['OS memory casting macros',['../group__sys__mcastmacros.html',1,'']]],
-  ['os_20memory_20protection_20channels_913',['OS memory protection channels',['../group__sys__mprotchans.html',1,'']]],
-  ['os_20memory_20protection_20modes_914',['OS memory protection modes',['../group__sys__mprotmodes.html',1,'']]],
-  ['os_20reset_20types_915',['OS reset types',['../group__sys__resettypes.html',1,'']]]
+  ['note_911',['NOTE',['../group__notecode.html#gaecdf46a919e14720bd2843c6c191de8f',1,'asndlib.h']]],
+  ['note_20codification_912',['Note codification',['../group__notecode.html',1,'']]],
+  ['null_913',['NULL',['../gctypes_8h.html#a070d2ce7b6bb7e5c05602aa8c308d0c4',1,'gctypes.h']]],
+  ['number_20of_20components_20in_20an_20attribute_914',['Number of components in an attribute',['../group__compsize.html',1,'']]]
 ];

@@ -22,7 +22,7 @@
  <tr style="height: 56px;">
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">libogc
-   &#160;<span id="projectnumber">v2.10.0</span>
+   &#160;<span id="projectnumber">v2.11.0</span>
    </div>
   </td>
  </tr>
@@ -94,6 +94,9 @@ Macros</h2></td></tr>
 <tr class="separator:ga7d931e1b87efd81c6aae00669868274b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga66a9efb4c948e52b3b46012279ff966b"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__vi__modetypedef.html#ga66a9efb4c948e52b3b46012279ff966b">VI_INTERLACE</a>&#160;&#160;&#160;0</td></tr>
 <tr class="separator:ga66a9efb4c948e52b3b46012279ff966b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga0a01f527623c957ebd8fbf81b9dffb30"><td class="memItemLeft" align="right" valign="top">
+#define&#160;</td><td class="memItemRight" valign="bottom"><b>VI_MAX_HEIGHT_DEBUG</b>&#160;&#160;&#160;VI_MAX_HEIGHT_NTSC</td></tr>
+<tr class="separator:ga0a01f527623c957ebd8fbf81b9dffb30"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gae8c65277e37a892b5075887f623597c0"><td class="memItemLeft" align="right" valign="top">
 #define&#160;</td><td class="memItemRight" valign="bottom"><b>VI_MAX_HEIGHT_EURGB60</b>&#160;&#160;&#160;VI_MAX_HEIGHT_NTSC</td></tr>
 <tr class="separator:gae8c65277e37a892b5075887f623597c0"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -106,6 +109,9 @@ Macros</h2></td></tr>
 <tr class="memitem:gaaec4f835371bceb8762352b48f090f26"><td class="memItemLeft" align="right" valign="top">
 #define&#160;</td><td class="memItemRight" valign="bottom"><b>VI_MAX_HEIGHT_PAL</b>&#160;&#160;&#160;576</td></tr>
 <tr class="separator:gaaec4f835371bceb8762352b48f090f26"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga087b650dd7e7a2e0e99a6755eec31f5e"><td class="memItemLeft" align="right" valign="top">
+#define&#160;</td><td class="memItemRight" valign="bottom"><b>VI_MAX_WIDTH_DEBUG</b>&#160;&#160;&#160;VI_MAX_WIDTH_NTSC</td></tr>
+<tr class="separator:ga087b650dd7e7a2e0e99a6755eec31f5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gaefe7aaca20c0e7b4bb697eb7af37719e"><td class="memItemLeft" align="right" valign="top">
 #define&#160;</td><td class="memItemRight" valign="bottom"><b>VI_MAX_WIDTH_EURGB60</b>&#160;&#160;&#160;VI_MAX_WIDTH_NTSC</td></tr>
 <tr class="separator:gaefe7aaca20c0e7b4bb697eb7af37719e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -140,6 +146,9 @@ Macros</h2></td></tr>
 <tr class="memitem:a194c093758b23647e188d49ed66a9984"><td class="memItemLeft" align="right" valign="top"><a id="a194c093758b23647e188d49ed66a9984"></a>
 #define&#160;</td><td class="memItemRight" valign="bottom"><b>VI_TVMODE_DEBUG_PAL_INT</b>&#160;&#160;&#160;VI_TVMODE(<a class="el" href="group__vi__standardtypedef.html#ga45685d513cdc3e2efd891852adf1d213">VI_DEBUG_PAL</a>,   <a class="el" href="group__vi__modetypedef.html#ga66a9efb4c948e52b3b46012279ff966b">VI_INTERLACE</a>)</td></tr>
 <tr class="separator:a194c093758b23647e188d49ed66a9984"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a80297239e6bf4d01c0cbff2a862e060c"><td class="memItemLeft" align="right" valign="top"><a id="a80297239e6bf4d01c0cbff2a862e060c"></a>
+#define&#160;</td><td class="memItemRight" valign="bottom"><b>VI_TVMODE_DEBUG_PROG</b>&#160;&#160;&#160;VI_TVMODE(<a class="el" href="group__vi__standardtypedef.html#gacf3ea9bfc2843997543348faf9e28146">VI_DEBUG</a>,       <a class="el" href="group__vi__modetypedef.html#ga5dfee597a86c115e23b237e771589d15">VI_PROGRESSIVE</a>)</td></tr>
+<tr class="separator:a80297239e6bf4d01c0cbff2a862e060c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1c774fe0473732047e9a69b76aeb2bd7"><td class="memItemLeft" align="right" valign="top"><a id="a1c774fe0473732047e9a69b76aeb2bd7"></a>
 #define&#160;</td><td class="memItemRight" valign="bottom"><b>VI_TVMODE_EURGB60_DS</b>&#160;&#160;&#160;VI_TVMODE(<a class="el" href="group__vi__standardtypedef.html#ga9523a52bf75172b8b05ff3b66407811b">VI_EURGB60</a>,     <a class="el" href="group__vi__modetypedef.html#ga39e00bd61ab6a9b76e941fc6edb6f74c">VI_NON_INTERLACE</a>)</td></tr>
 <tr class="separator:a1c774fe0473732047e9a69b76aeb2bd7"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -297,13 +306,21 @@ Variables</h2></td></tr>
 <tr class="memitem:ga491d61fcc862e87c50023088100926fd"><td class="memItemLeft" align="right" valign="top">
 <a class="el" href="gx__struct_8h.html#a232a76ec57f12bf0e45abad393c36698">GXRModeObj</a>&#160;</td><td class="memItemRight" valign="bottom"><b>TVPal576ProgScale</b></td></tr>
 <tr class="separator:ga491d61fcc862e87c50023088100926fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga9684521c3f8346abeae5b3390551b1ef"><td class="memItemLeft" align="right" valign="top"><a class="el" href="gx__struct_8h.html#a232a76ec57f12bf0e45abad393c36698">GXRModeObj</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__gxrmode__obj.html#ga9684521c3f8346abeae5b3390551b1ef">TVRgb480Prog</a></td></tr>
+<tr class="separator:ga9684521c3f8346abeae5b3390551b1ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gac4440c3b0868906cd2a1b8839b0c69dc"><td class="memItemLeft" align="right" valign="top">
+<a class="el" href="gx__struct_8h.html#a232a76ec57f12bf0e45abad393c36698">GXRModeObj</a>&#160;</td><td class="memItemRight" valign="bottom"><b>TVRgb480ProgAa</b></td></tr>
+<tr class="separator:gac4440c3b0868906cd2a1b8839b0c69dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga572cce6f56b24db5c8d97e2045b92545"><td class="memItemLeft" align="right" valign="top">
+<a class="el" href="gx__struct_8h.html#a232a76ec57f12bf0e45abad393c36698">GXRModeObj</a>&#160;</td><td class="memItemRight" valign="bottom"><b>TVRgb480ProgSoft</b></td></tr>
+<tr class="separator:ga572cce6f56b24db5c8d97e2045b92545"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>support header </p>
 </div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Sun Dec 22 2024 18:23:12 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1
+Generated on Sun May 25 2025 13:19:08 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1
 </small></address>
 </body>
 </html>

@@ -1,9 +1,8 @@
 var searchData=
 [
-  ['sys_5fallocateframebuffer_1535',['SYS_AllocateFramebuffer',['../system_8h.html#a2f6cf534244a5d12ed8feefed8a60fd8',1,'system.h']]],
-  ['sys_5fcancelalarm_1536',['SYS_CancelAlarm',['../system_8h.html#ae9df35009def32b0570c87aaba11c5d9',1,'system.h']]],
-  ['sys_5fcreatealarm_1537',['SYS_CreateAlarm',['../system_8h.html#a183800c28f569b914290185ecca8264e',1,'system.h']]],
-  ['sys_5finit_1538',['SYS_Init',['../system_8h.html#ae7266b09907efcfb4bc5df00c544715c',1,'system.h']]],
-  ['sys_5fremovealarm_1539',['SYS_RemoveAlarm',['../system_8h.html#a16d2e41f1289aa02a5f0f1b4ee2ca036',1,'system.h']]],
-  ['sys_5freport_1540',['SYS_Report',['../system_8h.html#a971ebbcbf83c1b196c9d9d6c61572ae1',1,'system.h']]]
+  ['mq_5fclose_1536',['MQ_Close',['../message_8h.html#a527bc018f8fc7ab4175a3bac6fba3581',1,'message.h']]],
+  ['mq_5finit_1537',['MQ_Init',['../message_8h.html#abeecaf332e0c610e6b88e7bc528934c7',1,'message.h']]],
+  ['mq_5fjam_1538',['MQ_Jam',['../message_8h.html#a314659167209473758fc743dd379ac43',1,'message.h']]],
+  ['mq_5freceive_1539',['MQ_Receive',['../message_8h.html#af5dabdf2b7c0b0a0814ceea27aac695c',1,'message.h']]],
+  ['mq_5fsend_1540',['MQ_Send',['../message_8h.html#ad6e886c5aca0b93c18c3e8801dba4379',1,'message.h']]]
 ];

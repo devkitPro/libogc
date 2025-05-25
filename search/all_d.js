@@ -1,9 +1,7 @@
 var searchData=
 [
-  ['performance_20counter_200_20metric_916',['Performance counter 0 metric',['../group__perf0metrics.html',1,'']]],
-  ['performance_20counter_201_20metric_917',['Performance counter 1 metric',['../group__perf1metrics.html',1,'']]],
-  ['pitch_20range_918',['Pitch Range',['../group__pitchrange.html',1,'']]],
-  ['position_2dnormal_20matrix_20index_919',['Position-normal matrix index',['../group__pnmtx.html',1,'']]],
-  ['post_2dtransform_20texture_20matrix_20index_920',['Post-transform texture matrix index',['../group__dttmtx.html',1,'']]],
-  ['primitive_20type_921',['Primitive type',['../group__primtype.html',1,'']]]
+  ['os_20memory_20casting_20macros_915',['OS memory casting macros',['../group__sys__mcastmacros.html',1,'']]],
+  ['os_20memory_20protection_20channels_916',['OS memory protection channels',['../group__sys__mprotchans.html',1,'']]],
+  ['os_20memory_20protection_20modes_917',['OS memory protection modes',['../group__sys__mprotmodes.html',1,'']]],
+  ['os_20reset_20types_918',['OS reset types',['../group__sys__resettypes.html',1,'']]]
 ];

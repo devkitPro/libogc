@@ -22,7 +22,7 @@
  <tr style="height: 56px;">
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">libogc
-   &#160;<span id="projectnumber">v2.10.0</span>
+   &#160;<span id="projectnumber">v2.11.0</span>
    </div>
   </td>
  </tr>
@@ -79,7 +79,8 @@ $(function() {
 
 <p>OS functions and initialization.  
 <a href="#details">More...</a></p>
-<div class="textblock"><code>#include &lt;<a class="el" href="gctypes_8h.html">gctypes.h</a>&gt;</code><br />
+<div class="textblock"><code>#include &lt;stdarg.h&gt;</code><br />
+<code>#include &lt;<a class="el" href="gctypes_8h.html">gctypes.h</a>&gt;</code><br />
 <code>#include &lt;gcbool.h&gt;</code><br />
 <code>#include &lt;gcutil.h&gt;</code><br />
 <code>#include &lt;time.h&gt;</code><br />
@@ -211,6 +212,9 @@ Typedefs</h2></td></tr>
 <tr class="memitem:a97ea157a0057a9c979e8b59d9d27d095"><td class="memItemLeft" align="right" valign="top"><a id="a97ea157a0057a9c979e8b59d9d27d095"></a>
 typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><b>alarmcallback</b>) (<a class="el" href="system_8h.html#af052ca94a14060aea6bd2401374d3995">syswd_t</a> alarm, void *cb_arg)</td></tr>
 <tr class="separator:a97ea157a0057a9c979e8b59d9d27d095"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5271f950e0e2c2480acb461a0a68ccd4"><td class="memItemLeft" align="right" valign="top">typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="system_8h.html#a5271f950e0e2c2480acb461a0a68ccd4">DietPrintFn</a>) (const char *buf, size_t size)</td></tr>
+<tr class="memdesc:a5271f950e0e2c2480acb461a0a68ccd4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Printing callback used by dietPrint.  <a href="system_8h.html#a5271f950e0e2c2480acb461a0a68ccd4">More...</a><br /></td></tr>
+<tr class="separator:a5271f950e0e2c2480acb461a0a68ccd4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a95137a63acf3261b811e7d30ac005958"><td class="memItemLeft" align="right" valign="top"><a id="a95137a63acf3261b811e7d30ac005958"></a>
 typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><b>powercallback</b>) (void)</td></tr>
 <tr class="separator:a95137a63acf3261b811e7d30ac005958"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -239,9 +243,14 @@ typedef <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a7e9feaec4de9b2a2301dcf8db2b678bf"><td class="memItemLeft" align="right" valign="top"><a id="a7e9feaec4de9b2a2301dcf8db2b678bf"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>kprintf</b> (const char *str,...)</td></tr>
-<tr class="separator:a7e9feaec4de9b2a2301dcf8db2b678bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6da197d8bfc9dbd7cb8c07234aa43a63"><td class="memItemLeft" align="right" valign="top"><a id="a6da197d8bfc9dbd7cb8c07234aa43a63"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="system_8h.html#a6da197d8bfc9dbd7cb8c07234aa43a63">dietPrintV</a> (const char *fmt, va_list va) __attribute__((format(printf</td></tr>
+<tr class="memdesc:a6da197d8bfc9dbd7cb8c07234aa43a63"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints the specified formatted text (works like vprintf). <br /></td></tr>
+<tr class="separator:a6da197d8bfc9dbd7cb8c07234aa43a63"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa3022b23f2ae8a314186f6ca108d22de"><td class="memItemLeft" align="right" valign="top"><a id="aa3022b23f2ae8a314186f6ca108d22de"></a>
+void void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="system_8h.html#aa3022b23f2ae8a314186f6ca108d22de">kprintf</a> (const char *str,...) __attribute__((format(printf</td></tr>
+<tr class="memdesc:aa3022b23f2ae8a314186f6ca108d22de"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints the specified formatted text (works like printf). <br /></td></tr>
+<tr class="separator:aa3022b23f2ae8a314186f6ca108d22de"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2f6cf534244a5d12ed8feefed8a60fd8"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="system_8h.html#a2f6cf534244a5d12ed8feefed8a60fd8">SYS_AllocateFramebuffer</a> (<a class="el" href="gx__struct_8h.html#a232a76ec57f12bf0e45abad393c36698">GXRModeObj</a> *rmode)</td></tr>
 <tr class="memdesc:a2f6cf534244a5d12ed8feefed8a60fd8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocate cacheline aligned memory for the external framebuffer based on the rendermode object.  <a href="system_8h.html#a2f6cf534244a5d12ed8feefed8a60fd8">More...</a><br /></td></tr>
 <tr class="separator:a2f6cf534244a5d12ed8feefed8a60fd8"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -396,6 +405,23 @@ struct <a class="el" href="struct__syssramex.html">_syssramex</a>&#160;</td><td 
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>OS functions and initialization. </p>
 </div><h2 class="groupheader">Typedef Documentation</h2>
+<a id="a5271f950e0e2c2480acb461a0a68ccd4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5271f950e0e2c2480acb461a0a68ccd4">&#9670;&nbsp;</a></span>DietPrintFn</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">typedef void(* DietPrintFn) (const char *buf, size_t size)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Printing callback used by dietPrint. </p>
+<dl class="section note"><dt>Note</dt><dd>The incoming <code>buf</code> may be NULL, in which case the callback is expected to output the number of space characters given by <code>size</code>. </dd></dl>
+
+</div>
+</div>
 <a id="a0cb716fcc0e62798a7cff7cb36c04676"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0cb716fcc0e62798a7cff7cb36c04676">&#9670;&nbsp;</a></span>syssram</h2>
 
@@ -587,7 +613,7 @@ struct <a class="el" href="struct__syssramex.html">_syssramex</a>&#160;</td><td 
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Sun Dec 22 2024 18:23:12 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1
+Generated on Sun May 25 2025 13:19:08 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1
 </small></address>
 </body>
 </html>
