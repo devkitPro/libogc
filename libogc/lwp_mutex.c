@@ -1,3 +1,10 @@
+/*
+
+  Contains code inspired by and derived from code written for the RTEMS project.
+  See LICENSE for more information.
+
+*/
+
 #include "asm.h"
 #include "lwp_mutex.h"
 
