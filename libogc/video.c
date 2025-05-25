@@ -2222,7 +2222,7 @@ static void __VIInit(u32 vimode)
 	_viReg[27] = 0x0001;		//set DI1
 	_viReg[36] = 0x2828;		//set HSR
 
-	if(vi_mode<VI_PAL && vi_mode>=VI_DEBUG_PAL) vi_mode = VI_NTSC;
+	if(vi_mode>=VI_DEBUG_PAL) vi_mode = VI_NTSC;
 	if(progressive){
 		_viReg[1] = ((vi_mode<<8)|0x0005);		//set MODE & INT & enable
 		_viReg[54] = 0x0001;
