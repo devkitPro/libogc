@@ -1,3 +1,10 @@
+/*
+
+  Contains code inspired by and derived from code written for the RTEMS project.
+  See LICENSE for more information.
+
+*/
+
 #ifndef __PROCESSOR_H__
 #define __PROCESSOR_H__
 
