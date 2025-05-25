@@ -112,6 +112,8 @@ static u16 __vid = 0;
 static u16 __pid = 0;
 static bool usb2_mode=true;
 
+u32 __io_usbstorage_sector_size;
+
 static s32 __usbstorage_reset(usbstorage_handle *dev);
 static s32 __usbstorage_clearerrors(usbstorage_handle *dev, u8 lun);
 s32 USBStorage_Inquiry(usbstorage_handle *dev, u8 lun);
@@ -905,6 +907,7 @@ static bool __usbstorage_IsInserted(void)
 			__lun = j;
 			__vid = vid;
 			__pid = pid;
+			__io_usbstorage_sector_size = __usbfd.sector_size[__lun];
 			usb_last_used = gettime()-secs_to_ticks(100);
 			usleep(10000);
 			break;
