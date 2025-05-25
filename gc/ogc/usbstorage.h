@@ -83,6 +83,7 @@ s32 USBStorage_StartStop(usbstorage_handle *dev, u8 lun, u8 lo_ej, u8 start, u8 
 #define DEVICE_TYPE_WII_USB (('W'<<24)|('U'<<16)|('S'<<8)|'B')
 
 extern DISC_INTERFACE __io_usbstorage;
+extern u32 __io_usbstorage_sector_size;
 
 #ifdef __cplusplus
    }
