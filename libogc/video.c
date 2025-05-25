@@ -72,7 +72,6 @@ typedef struct _horVer {
 	u32 fbMode;
 	u32 nonInter;
 	u32 tv;
-	u8 rgb;
 	u8 wordPerLine;
 	u8 std;
 	u8 wpl;
@@ -99,7 +98,6 @@ GXRModeObj TVNtsc240Ds =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -134,7 +132,6 @@ GXRModeObj TVNtsc240DsAa =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_TRUE,         // aa
 
@@ -169,7 +166,6 @@ GXRModeObj TVNtsc240Int =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_TRUE,         // field_rendering
     GX_FALSE,        // aa
 
@@ -204,7 +200,6 @@ GXRModeObj TVNtsc240IntAa =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_TRUE,         // field_rendering
     GX_TRUE,         // aa
 
@@ -239,7 +234,6 @@ GXRModeObj TVNtsc480Int =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -274,7 +268,6 @@ GXRModeObj TVNtsc480IntDf =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -309,7 +302,6 @@ GXRModeObj TVNtsc480IntAa =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_TRUE,         // aa
 
@@ -345,7 +337,6 @@ GXRModeObj TVNtsc480Prog =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -380,7 +371,6 @@ GXRModeObj TVNtsc480ProgSoft =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -415,7 +405,6 @@ GXRModeObj TVNtsc480ProgAa =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_TRUE,        // aa
 
@@ -450,7 +439,6 @@ GXRModeObj TVMpal240Ds =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -485,7 +473,6 @@ GXRModeObj TVMpal240DsAa =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_TRUE,         // aa
 
@@ -520,7 +507,6 @@ GXRModeObj TVMpal240Int =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_TRUE,         // field_rendering
     GX_FALSE,        // aa
 
@@ -555,7 +541,6 @@ GXRModeObj TVMpal240IntAa =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_TRUE,         // field_rendering
     GX_TRUE,         // aa
 
@@ -590,7 +575,6 @@ GXRModeObj TVMpal480Int =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -625,7 +609,6 @@ GXRModeObj TVMpal480IntDf =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -660,7 +643,6 @@ GXRModeObj TVMpal480IntAa =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_TRUE,         // aa
 
@@ -695,7 +677,6 @@ GXRModeObj TVMpal480Prog =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -730,7 +711,6 @@ GXRModeObj TVMpal480ProgSoft =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -765,7 +745,6 @@ GXRModeObj TVMpal480ProgAa =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_TRUE,         // aa
 
@@ -800,7 +779,6 @@ GXRModeObj TVPal264Ds =
     640,             // viWidth
     528,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -835,7 +813,6 @@ GXRModeObj TVPal264DsAa =
     640,             // viWidth
     528,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_TRUE,         // aa
 
@@ -870,7 +847,6 @@ GXRModeObj TVPal264Int =
     640,             // viWidth
     528,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_TRUE,         // field_rendering
     GX_FALSE,        // aa
 
@@ -905,7 +881,6 @@ GXRModeObj TVPal264IntAa =
     640,             // viWidth
     528,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_TRUE,         // field_rendering
     GX_TRUE,         // aa
 
@@ -940,7 +915,6 @@ GXRModeObj TVPal528Int =
     640,             // viWidth
     528,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -975,7 +949,6 @@ GXRModeObj TVPal528IntDf =
     640,             // viWidth
     528,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -1009,7 +982,6 @@ GXRModeObj TVPal524IntAa =
     640,             // viWidth
     524,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_TRUE,         // aa
 
@@ -1044,7 +1016,6 @@ GXRModeObj TVPal576IntDfScale =
     640,             // viWidth
     576,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -1078,7 +1049,6 @@ GXRModeObj TVPal528Prog =
     640,             // viWidth
     528,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -1113,7 +1083,6 @@ GXRModeObj TVPal528ProgSoft =
     640,             // viWidth
     528,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -1147,7 +1116,6 @@ GXRModeObj TVPal524ProgAa =
     640,             // viWidth
     524,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_TRUE,         // aa
 
@@ -1182,7 +1150,6 @@ GXRModeObj TVPal576ProgScale =
     640,             // viWidth
     576,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -1216,7 +1183,6 @@ GXRModeObj TVEurgb60Hz240Ds =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_TRUE,         // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -1250,7 +1216,6 @@ GXRModeObj TVEurgb60Hz240DsAa =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_TRUE,         // rgb
     GX_FALSE,        // field_rendering
     GX_TRUE,        // aa
 
@@ -1284,7 +1249,6 @@ GXRModeObj TVEurgb60Hz240Int =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_TRUE,         // rgb
     GX_TRUE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -1318,7 +1282,6 @@ GXRModeObj TVEurgb60Hz240IntAa =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_TRUE,         // rgb
     GX_TRUE,        // field_rendering
     GX_TRUE,        // aa
 
@@ -1352,7 +1315,6 @@ GXRModeObj TVEurgb60Hz480Int =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
-    GX_TRUE,         // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -1386,7 +1348,6 @@ GXRModeObj TVEurgb60Hz480IntDf =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
-    GX_TRUE,         // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -1420,7 +1381,6 @@ GXRModeObj TVEurgb60Hz480IntAa =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_DF,   // xFBmode
-    GX_TRUE,         // rgb
     GX_FALSE,        // field_rendering
     GX_TRUE,         // aa
 
@@ -1454,7 +1414,6 @@ GXRModeObj TVEurgb60Hz480Prog =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_TRUE,         // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -1488,7 +1447,6 @@ GXRModeObj TVEurgb60Hz480ProgSoft =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_TRUE,         // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -1522,7 +1480,6 @@ GXRModeObj TVEurgb60Hz480ProgAa =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_TRUE,         // rgb
     GX_FALSE,        // field_rendering
     GX_TRUE,        // aa
 
@@ -1556,7 +1513,6 @@ GXRModeObj TVRgb480Prog =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_TRUE,         // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -1591,7 +1547,6 @@ GXRModeObj TVRgb480ProgSoft =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_TRUE,         // rgb
     GX_FALSE,        // field_rendering
     GX_FALSE,        // aa
 
@@ -1626,7 +1581,6 @@ GXRModeObj TVRgb480ProgAa =
     640,             // viWidth
     480,             // viHeight
     VI_XFBMODE_SF,   // xFBmode
-    GX_TRUE,         // rgb
     GX_FALSE,        // field_rendering
     GX_TRUE,         // aa
 
@@ -1757,7 +1711,8 @@ static u16 shdw_regs[60];
 static u32 fbSet = 0;
 static s16 displayOffsetH;
 static s16 displayOffsetV;
-static u32 currTvMode,currRgb,changeMode;
+static bool currRgb;
+static u32 currTvMode,changeMode;
 static u32 shdw_changeMode,shdw_changeEncoder,flushFlag;
 static u64 changed,shdw_changed;
 static vu32 retraceCount;
@@ -2514,12 +2469,12 @@ static u32 __VISetupEncoder(void)
 
 	u8 tv = VIDEO_GetCurrentTvMode();
 	u8 dtv = (_viReg[55]&0x01);
-	u8 rgb = currRgb;
+	bool rgb = currRgb;
 	oldDtvStatus = dtv;
 
 	__VISetOutputEnable(false);
 
-	__VISetRGBChannelSwap(rgb ? true : false);
+	__VISetRGBChannelSwap(rgb);
 	__VISetClosedCaptionMode(1);
 	__VISetOverSampling(rgb ? 1 : 3);
 	__VISetOutputMode(dtv);
@@ -2533,13 +2488,13 @@ static u32 __VISetupEncoder(void)
 	// Macrovision crap
 	__VISetMacroVision(rgb);
 
-	__VISetOverDrive(rgb ? true : false, 0);
+	__VISetOverDrive(rgb, 0);
 
 	__VISetTrapFilter(true);
 
 	__VISetGamma();
 
-	__VISetRGBFilter(rgb ? true : false);
+	__VISetRGBFilter(rgb);
 	if (rgb) __VIWriteI2CRegister8(0x67, 1);
 
 	__VISetOutputEnable(true);
@@ -2607,8 +2562,6 @@ static inline u32 __VISetRegs(void)
 	shdw_changeMode = 0;
 	currTiming = HorVer.timing;
 	currTvMode = HorVer.tv;
-	currRgb = HorVer.rgb;
-
 	currentFb = nextFb;
 
 	return 1;
@@ -2755,6 +2708,20 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 	LWP_ThreadBroadcast(video_queue);
 }
 
+static inline bool __ViGetRgbMode(GXRModeObj *rmode)
+{
+	switch(rmode->viTVMode)
+	{
+		case VI_TVMODE_EURGB60_INT:
+		case VI_TVMODE_EURGB60_DS:
+		case VI_TVMODE_EURGB60_PROG:
+		case VI_TVMODE_DEBUG_PROG:
+			return true;
+		default:
+			return false;
+	}
+} 
+
 void* VIDEO_GetNextFramebuffer(void)
 {
 	return nextFb;
@@ -2806,7 +2773,7 @@ void VIDEO_Init(void)
 	if(HorVer.tv!=VI_DEBUG) vimode += (HorVer.tv<<2);
 	currTiming = __gettiming(vimode);
 	currTvMode = HorVer.tv;
-	currRgb = HorVer.rgb;
+	currRgb = false;
 
 	regs[1] = _viReg[1];
 	HorVer.timing = currTiming;
@@ -2855,7 +2822,6 @@ void VIDEO_Configure(GXRModeObj *rmode)
 {
 	u16 dcr;
 	u32 nonint,vimode,level;
-	u8 rgb;
 	const struct _timing *curtiming;
 #ifdef _VIDEO_DEBUG
 	if(rmode->viHeight&0x0001) printf("VIDEO_Configure(): Odd number(%d) is specified to viHeight\n",rmode->viHeight);
@@ -2871,11 +2837,11 @@ void VIDEO_Configure(GXRModeObj *rmode)
 		HorVer.nonInter = nonint;
 	}
 	HorVer.tv = _SHIFTR(rmode->viTVMode,2,3);
-	rgb = rmode->rgb;
-	if(rgb!=HorVer.rgb) {
+	bool rgb = __ViGetRgbMode(rmode);
+	if(rgb != currRgb) {
 		shdw_changeEncoder = 1;
 		changeMode = 1;
-		HorVer.rgb = rgb;
+		currRgb = rgb;
 	}
 	HorVer.dispPosX = rmode->viXOrigin;
 	HorVer.dispPosY = rmode->viYOrigin;
@@ -2913,7 +2879,7 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	dcr |= _SHIFTL(HorVer.threeD,3,1);
 	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) dcr |= 0x0004;
 	else dcr |= _SHIFTL(HorVer.nonInter,2,1);
-	if(!HorVer.rgb) dcr |= _SHIFTL(HorVer.tv,8,2);
+	if(!currRgb) dcr |= _SHIFTL(HorVer.tv,8,2);
 	regs[1] = dcr;
 	changed |= VI_REGCHANGE(1);
 
