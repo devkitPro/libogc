@@ -4236,7 +4236,7 @@ void GX_SetTevIndTile(u8 tevstage,u8 indtexid,u16 tilesize_x,u16 tilesize_y,u16 
 	offset_mtx[0][1] = 0.0F;
 	offset_mtx[0][2] = 0.0F;
 	offset_mtx[1][0] = 0.0F;
-	offset_mtx[1][1] = ((f32)tilespacing_x)/(1 << 10);
+	offset_mtx[1][1] = ((f32)tilespacing_y)/(1 << 10);
 	offset_mtx[1][2] = 0.0F;
 
 	GX_SetIndTexMatrix(indtexmtx,offset_mtx,10);
