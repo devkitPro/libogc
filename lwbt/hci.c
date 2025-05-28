@@ -1887,7 +1887,7 @@ void hci_event_handler(struct pbuf *p)
 
 	evthdr = p->payload;
 	btpbuf_header(p,-HCI_EVENT_HDR_LEN);
-	printf("HCI_EVENT %02X\n", evthdr->code);
+	//printf("HCI_EVENT %02X\n", evthdr->code);
 
 	switch(evthdr->code) {
 		case HCI_INQUIRY_COMPLETE:
