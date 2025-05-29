@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include "asm.h"
 #include "processor.h"
-#include "spinlock.h"
 #include "irq.h"
 #include "exi.h"
 #include "cache.h"
