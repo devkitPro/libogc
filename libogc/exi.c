@@ -34,12 +34,12 @@ distribution.
 #include "asm.h"
 #include "irq.h"
 #include "processor.h"
-#include "spinlock.h"
 #include "system.h"
 #include "exi.h"
 #include "gcutil.h"
-#include "lwp_queue.h"
 
+#include "lwp_watchdog.h"
+#include "lwp_queue.h"
 #include "lwp_queue.inl"
 
 //#define _EXI_DEBUG

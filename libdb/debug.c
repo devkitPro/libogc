@@ -5,7 +5,6 @@
 #include <signal.h>
 #include "asm.h"
 #include "processor.h"
-#include "spinlock.h"
 #include "lwp.h"
 #include "lwp_threads.h"
 #include "context.h"
