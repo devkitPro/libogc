@@ -1,6 +1,8 @@
 #include <_ansi.h>
 #include <_syslist.h>
 
+#include <errno.h>
+
 #include "asm.h"
 #include "processor.h"
 #include "lwp.h"
@@ -185,6 +187,35 @@ int __libogc_gettod_r(struct _reent *ptr, struct timeval *tp, struct timezone *t
 		tz->tz_minuteswest = 0;
 		tz->tz_dsttime = 0;
 
+	}
+	return 0;
+}
+
+int __syscall_clock_gettime(clockid_t clock_id, struct timespec *tp)
+{
+	if (clock_id != CLOCK_MONOTONIC && clock_id != CLOCK_REALTIME) return EINVAL;
+
+	u64 now = gettime();
+	tp->tv_sec = ticks_to_secs(now);
+	tp->tv_nsec = tick_nanosecs(now);
+
+	if (clock_id == CLOCK_REALTIME) tp->tv_sec += 946684800;
+
+	return 0;
+}
+
+int __syscall_clock_settime(clockid_t clock_id, const struct timespec *tp)
+{
+	return EPERM;
+}
+
+int __syscall_clock_getres(clockid_t clock_id, struct timespec *res)
+{
+	if (clock_id != CLOCK_MONOTONIC && clock_id != CLOCK_REALTIME) return EINVAL;
+	if (res)
+	{
+		res->tv_sec = 0;
+		res->tv_nsec = ticks_to_nanosecs(1);
 	}
 	return 0;
 }
