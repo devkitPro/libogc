@@ -14,8 +14,8 @@
 #define STACKSIZE		8192
 #define SNDBUFFERSIZE	(5760)			//that's the maximum buffer size
 
-static BOOL thr_running = FALSE;
-static BOOL sndPlaying = FALSE;
+static bool thr_running = false;
+static bool sndPlaying = false;
 static MODSNDBUF sndBuffer;
 
 static u32 shiftVal = 0;
@@ -45,10 +45,10 @@ static void* player(void *arg)
 	u64 start;
 #endif
 
-	thr_running = TRUE;
-	while(sndPlaying==TRUE) {
+	thr_running = true;
+	while(sndPlaying==true) {
 		LWP_ThreadSleep(player_queue);
-		if(sndPlaying==TRUE) {
+		if(sndPlaying==true) {
 #ifdef _GCMOD_DEBUG
 			start = gettime();
 #endif
@@ -58,7 +58,7 @@ static void* player(void *arg)
 #endif
 		}
 	}
-	thr_running = FALSE;
+	thr_running = false;
 
 	return 0;
 }
@@ -154,7 +154,7 @@ static s32 SndBufStart(MODSNDBUF *sndbuf)
 	while(thr_running);
 
 	curr_audio = 0;
-	sndPlaying = TRUE;
+	sndPlaying = true;
 	if(LWP_CreateThread(&hplayer,player,NULL,player_stack,STACKSIZE,80)!=-1) {
 #ifndef __AESNDLIB_H__
 		AUDIO_RegisterDMACallback(dmaCallback);
@@ -165,7 +165,7 @@ static s32 SndBufStart(MODSNDBUF *sndbuf)
 #endif
 		return 1;
 	}
-	sndPlaying = FALSE;
+	sndPlaying = false;
 
 	return -1;
 }
@@ -180,14 +180,14 @@ static void SndBufStop()
 	AESND_SetVoiceStop(modvoice,true);
 #endif
 	curr_audio = 0;
-	sndPlaying = FALSE;
+	sndPlaying = false;
 	LWP_ThreadSignal(player_queue);
 	LWP_JoinThread(hplayer,NULL);
 }
 
 static s32 updateWaveFormat(MODPlay *mod)
 {
-	BOOL p = mod->playing;
+	bool p = mod->playing;
 	
 	if(p)
 		SndBufStop();
@@ -236,17 +236,17 @@ void MODPlay_Init(MODPlay *mod)
 	}
 #endif
 	MODPlay_SetFrequency(mod,48000);
-	MODPlay_SetStereo(mod,TRUE);
+	MODPlay_SetStereo(mod,true);
 
 	LWP_InitQueue(&player_queue);
 
-	sndPlaying = FALSE;
-	thr_running = FALSE;
+	sndPlaying = false;
+	thr_running = false;
 
-	mod->paused = FALSE;
-	mod->bits = TRUE;
+	mod->paused = false;
+	mod->bits = true;
 	mod->numSFXChans = 0;
-	mod->manual_polling = FALSE;
+	mod->manual_polling = false;
 }
 
 s32 MODPlay_SetFrequency(MODPlay *mod,u32 freq)
@@ -268,7 +268,7 @@ s32 MODPlay_SetFrequency(MODPlay *mod,u32 freq)
 	return -1;
 }
 
-void MODPlay_SetStereo(MODPlay *mod,BOOL stereo)
+void MODPlay_SetStereo(MODPlay *mod,bool stereo)
 {
 	if(stereo==mod->stereo) return;
 
@@ -301,7 +301,7 @@ s32 MODPlay_Start(MODPlay *mod)
 	updateWaveFormat(mod);
 	MOD_Start(&mod->mod);
 	if(SndBufStart(&mod->soundBuf)<0) return -1;
-	mod->playing = TRUE;
+	mod->playing = true;
 	return 0;
 }
 
@@ -310,7 +310,7 @@ s32 MODPlay_Stop(MODPlay *mod)
 	if(!mod->playing) return -1;
 
 	SndBufStop();
-	mod->playing = FALSE;
+	mod->playing = false;
 	return 0;
 }
 
@@ -325,7 +325,7 @@ s32 MODPlay_AllocSFXChannels(MODPlay *mod,u32 sfxchans)
 	return -1;
 }
 
-s32 MODPlay_Pause(MODPlay *mod,BOOL pause)
+s32 MODPlay_Pause(MODPlay *mod,bool pause)
 {
 	if(!mod->playing) return -1;
 	mod->paused = pause;

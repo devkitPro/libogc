@@ -197,10 +197,10 @@ void __thread_dispatch(void)
 
 	_CPU_ISR_Disable(level);
 	exec = _thr_executing;
-	while(_context_switch_want==TRUE) {
+	while(_context_switch_want==true) {
 		heir = _thr_heir;
 		_thread_dispatch_disable_level = 1;
-		_context_switch_want = FALSE;
+		_context_switch_want = false;
 		_thr_executing = heir;
 		_CPU_ISR_Restore(level);
 
@@ -262,7 +262,7 @@ void __lwp_rotate_readyqueue(u32 prio)
 		_thr_heir = (lwp_cntrl*)ready->first;
 
 	if(exec!=_thr_heir)
-		_context_switch_want = TRUE;
+		_context_switch_want = true;
 
 #ifdef _LWPTHREADS_DEBUG
 	kprintf("__lwp_rotate_readyqueue(%d,%p,%p)\n",prio,exec,_thr_heir);
@@ -286,9 +286,9 @@ void __lwp_thread_yield(void)
 		_CPU_ISR_Flash(level);
 		if(__lwp_thread_isheir(exec))
 			_thr_heir = (lwp_cntrl*)ready->first;
-		_context_switch_want = TRUE;
+		_context_switch_want = true;
 	} else if(!__lwp_thread_isheir(exec))
-		_context_switch_want = TRUE;
+		_context_switch_want = true;
 	_CPU_ISR_Restore(level);
 }
 
@@ -315,7 +315,7 @@ void __lwp_thread_resettimeslice(void)
 	if(__lwp_thread_isheir(exec))
 		_thr_heir = (lwp_cntrl*)ready->first;
 
-	_context_switch_want = TRUE;
+	_context_switch_want = true;
 	_CPU_ISR_Restore(level);
 }
 
@@ -346,7 +346,7 @@ void __lwp_thread_setstate(lwp_cntrl *thethread,u32 state)
 	if(__lwp_thread_isheir(thethread))
 		__lwp_thread_calcheir();
 	if(__lwp_thread_isexec(thethread))
-		_context_switch_want = TRUE;
+		_context_switch_want = true;
 #ifdef _LWPTHREADS_DEBUG
 	kprintf("__lwp_thread_setstate(%d,%p,%p,%08x)\n",_context_switch_want,_thr_heir,thethread,thethread->cur_state);
 #endif
@@ -371,7 +371,7 @@ void __lwp_thread_clearstate(lwp_cntrl *thethread,u32 state)
 				_thr_heir = thethread;
 				if(_thr_executing->is_preemptible
 					|| thethread->cur_prio==0)
-				_context_switch_want = TRUE;
+				_context_switch_want = true;
 			}
 		}
 	}
@@ -386,10 +386,10 @@ u32 __lwp_evaluatemode(void)
 	exec = _thr_executing;
 	if(!__lwp_stateready(exec->cur_state)
 		|| (!__lwp_thread_isheir(exec) && exec->is_preemptible)){
-		_context_switch_want = TRUE;
-		return TRUE;
+		_context_switch_want = true;
+		return true;
 	}
-	return FALSE;
+	return false;
 }
 
 void __lwp_thread_changepriority(lwp_cntrl *thethread,u32 prio,u32 prependit)
@@ -421,7 +421,7 @@ void __lwp_thread_changepriority(lwp_cntrl *thethread,u32 prio,u32 prependit)
 	
 	if(!(_thr_executing==_thr_heir)
 		&& _thr_executing->is_preemptible)
-		_context_switch_want = TRUE;
+		_context_switch_want = true;
 
 	_CPU_ISR_Restore(level);
 }
@@ -464,7 +464,7 @@ void __lwp_thread_suspend(lwp_cntrl *thethread)
 		__lwp_thread_calcheir();
 	
 	if(__lwp_thread_isexec(thethread))
-		_context_switch_want = TRUE;
+		_context_switch_want = true;
 
 	_CPU_ISR_Restore(level);
 }
@@ -499,7 +499,7 @@ void __lwp_thread_resume(lwp_cntrl *thethread,u32 force)
 	
 	_CPU_ISR_Disable(level);
 
-	if(force==TRUE)
+	if(force==true)
 		thethread->suspendcnt = 0;
 	else
 		thethread->suspendcnt--;
@@ -520,7 +520,7 @@ void __lwp_thread_resume(lwp_cntrl *thethread,u32 force)
 				_thr_heir = thethread;
 				if(_thr_executing->is_preemptible
 					|| thethread->cur_prio==0)
-				_context_switch_want = TRUE;
+				_context_switch_want = true;
 			}
 		}
 	}
@@ -579,7 +579,7 @@ void __lwp_thread_ready(lwp_cntrl *thethread)
 	__lwp_thread_calcheir();
 	heir = _thr_heir;
 	if(!(__lwp_thread_isexec(heir)) && _thr_executing->is_preemptible)
-		_context_switch_want = TRUE;
+		_context_switch_want = true;
 	
 	_CPU_ISR_Restore(level);
 }
@@ -601,11 +601,11 @@ u32 __lwp_thread_init(lwp_cntrl *thethread,void *stack_area,u32 stack_size,u32 p
 		act_stack_size = __lwp_stack_allocate(thethread,act_stack_size);
 		if(!act_stack_size) return 0;
 
-		thethread->stack_allocated = TRUE;
+		thethread->stack_allocated = true;
 	} else {
 		thethread->stack = stack_area;
 		act_stack_size = stack_size;
-		thethread->stack_allocated = FALSE;
+		thethread->stack_allocated = false;
 	}
 	thethread->stack_size = act_stack_size;
 
@@ -729,7 +729,7 @@ void __lwp_thread_startmultitasking(void)
 	__sys_state_set(SYS_STATE_BEGIN_MT);
 	__sys_state_set(SYS_STATE_UP);
 
-	_context_switch_want = FALSE;
+	_context_switch_want = false;
 	_thr_executing = _thr_heir;
 #ifdef _LWPTHREADS_DEBUG
 	kprintf("__lwp_start_multitasking(%p,%p)\n",_thr_executing,_thr_heir);
@@ -760,7 +760,7 @@ void __lwp_thread_coreinit(void)
 	__lwp_thread_dispatchinitialize();
 	__lwp_thread_inittimeslice();
 	
-	_context_switch_want = FALSE;
+	_context_switch_want = false;
 	_thr_executing = NULL;
 	_thr_heir = NULL;
 	_thr_allocated_fp = NULL;
