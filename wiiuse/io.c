@@ -102,11 +102,18 @@ void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
 		case 3:
 			if(!data || !len) return;
 			id = BIG_ENDIAN_LONG(*(int*)(&data[220]));
+			//printf("New exp type: %d\n", id);
 
 			switch(id) {
 				case EXP_ID_CODE_NUNCHUK:
 					if(!nunchuk_handshake(wm,&wm->exp.nunchuk,data,len)) return;
 					break;
+				case EXP_ID_CODE_GUITAR:
+					if(!guitar_hero_3_handshake(wm,&wm->exp.gh3,data,len)) return;
+					break;
+ 				case EXP_ID_CODE_WIIBOARD:
+ 					if(!wii_board_handshake(wm,&wm->exp.wb,data,len)) return;
+ 					break;
 				case EXP_ID_CODE_CLASSIC_CONTROLLER:
 				case EXP_ID_CODE_CLASSIC_CONTROLLER_NYKOWING:
 				case EXP_ID_CODE_CLASSIC_CONTROLLER_NYKOWING2:
@@ -117,21 +124,9 @@ void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
 				case EXP_ID_CODE_CLASSIC_CONTROLLER_GENERIC4:
 				case EXP_ID_CODE_CLASSIC_CONTROLLER_GENERIC5:
 				case EXP_ID_CODE_CLASSIC_WIIU_PRO:
-					if(!classic_ctrl_handshake(wm,&wm->exp.classic,data,len)) return;
-					break;
-				case EXP_ID_CODE_GUITAR:
-					if(!guitar_hero_3_handshake(wm,&wm->exp.gh3,data,len)) return;
-					break;
- 				case EXP_ID_CODE_WIIBOARD:
- 					if(!wii_board_handshake(wm,&wm->exp.wb,data,len)) return;
- 					break;
 				default:
 					if(!classic_ctrl_handshake(wm,&wm->exp.classic,data,len)) return;
-					/*WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_EXP_HANDSHAKE);
-					WIIMOTE_ENABLE_STATE(wm,WIIMOTE_STATE_EXP_FAILED);
-					__lwp_wkspace_free(data);
-					wiiuse_status(wm,NULL);
-					return;*/
+					break;
 			}
 			__lwp_wkspace_free(data);
 

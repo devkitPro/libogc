@@ -1778,6 +1778,7 @@ static void hci_conn_complete_evt(struct pbuf *p)
 
 static void hci_inquiry_result_evt(struct pbuf *p)
 {
+	// TODO: implement inquiries like the SM does (canceling inquiry after first valid result)
 	u8_t num_resp;
 	u32_t i,resp_off;
 	struct bd_addr *bdaddr;
@@ -1907,7 +1908,6 @@ void hci_event_handler(struct pbuf *p)
 			hci_conn_request_evt(p);
 			break;
 		case HCI_DISCONNECTION_COMPLETE:
-			printf("HCI_DISCONNECTION_COMPLETE\n");
 			switch(((u8_t*)p->payload)[0]) {
 				case HCI_SUCCESS:
 					for(link=hci_active_links;link!=NULL;link=link->next) {

@@ -149,24 +149,29 @@ void __wiiuse_sensorbar_enable(int enable)
 	IRQ_Restore(level);
 }
 
-int wiiuse_register(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, struct wiimote_t *(*assign_cb)(struct wiimote_listen_t *wml, u8 err))
+int wiiuse_register(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *name, struct wiimote_t *(*assign_cb)(struct wiimote_listen_t *wml, u8 err))
 {
 	s32 err;
 
-	if(!wml || !bdaddr || !assign_cb) return 0;
+	if(!wml || !bdaddr || !name || !assign_cb) return 0;
 	
 	//printf("wiiuse_register %p, bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",wml,bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
-
-	wml->wm = NULL;
-	bd_addr_set(&(wml->bdaddr),bdaddr);
-	memset(wml->name, 0, sizeof(wml->name));
-	wml->assign_cb = assign_cb;
 
 	if(wml->sock!=NULL)
 	{
 		printf("wiiuse_register: wml->sock was not NULL!\n");
 		return 0;
 	}
+
+	wml->wm = NULL;
+	bd_addr_set(&(wml->bdaddr),bdaddr);
+	if(name) {
+		strncpy((char *)wml->name, (char *)name, sizeof(wml->name));
+		wml->name[sizeof(wml->name) - 1] = 0x00;
+	} else {
+		memset(wml->name, 0, sizeof(wml->name));
+	}
+	wml->assign_cb = assign_cb;
 
 	wml->sock = bte_new();
 	if (wml->sock==NULL)
@@ -190,21 +195,25 @@ int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *nam
 {
 	s32 err;
 
-	if(!wml || !bdaddr || !name || !assign_cb) return 0;
+	if(!wml || !bdaddr|| !assign_cb) return 0;
 	
 	//printf("wiiuse_connect %p, bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",wml,bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
-
-	wml->wm = NULL;
-	bd_addr_set(&(wml->bdaddr),bdaddr);
-	strncpy((char *)wml->name, (char *)name, sizeof(wml->name));
-	wml->name[sizeof(wml->name) - 1] = 0x00;
-	wml->assign_cb = assign_cb;
 
 	if(wml->sock!=NULL)
 	{
 		printf("wiiuse_connect: wml->sock was not NULL!\n");
 		return 0;
 	}
+
+	wml->wm = NULL;
+	bd_addr_set(&(wml->bdaddr),bdaddr);
+	if(name) {
+		strncpy((char *)wml->name, (char *)name, sizeof(wml->name));
+		wml->name[sizeof(wml->name) - 1] = 0x00;
+	} else {
+		memset(wml->name, 0, sizeof(wml->name));
+	}
+	wml->assign_cb = assign_cb;
 
 	wml->sock = bte_new();
 	if (wml->sock==NULL)

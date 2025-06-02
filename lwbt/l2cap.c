@@ -1430,8 +1430,6 @@ void lp_disconnect_ind(struct bd_addr *bdaddr,u8_t reason)
 	struct l2cap_pcb *pcb, *tpcb;
 	err_t ret;
 
-	printf("lp_disconnect_ind\n");
-
 	(void)ret;
 
 	for(pcb = l2cap_active_pcbs; pcb != NULL;) {

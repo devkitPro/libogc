@@ -85,11 +85,15 @@ static void event_ack(struct wiimote_t *wm,ubyte *msg)
 	if(!cmd) return;
 	if(!cmd || cmd->state!=CMD_SENT || cmd->data[0]==WM_CMD_READ_DATA || cmd->data[0]==WM_CMD_CTRL_STATUS || cmd->data[0]!=msg[2]) {
 		WIIUSE_WARNING("Unsolicited event ack: report %02x status %02x", msg[2], msg[3]);
-		return;
+		//return;
 	}
 	if(msg[3]) {
-		WIIUSE_WARNING("Command %02x %02x failed: status %02x", cmd->data[0], cmd->data[1], msg[3]);
-		return;
+		WIIUSE_WARNING("Command %02x %02x%02x%02x%02x failed: status %02x", cmd->data[0], cmd->data[1], cmd->data[2], cmd->data[3], cmd->data[4], msg[3]);
+		cmd->state = CMD_FAILED;
+		//return;
+	}
+	else {
+		cmd->state = CMD_DONE;
 	}
 
 	WIIUSE_DEBUG("Received ack for command %02x %02x", cmd->data[0], cmd->data[1]);
@@ -97,8 +101,8 @@ static void event_ack(struct wiimote_t *wm,ubyte *msg)
 	wm->cmd_head = cmd->next;
 
 	wm->event = WIIUSE_ACK;
-	cmd->state = CMD_DONE;
-	if(cmd->cb) cmd->cb(wm,NULL,0);
+	//cmd->state = CMD_DONE;
+	if(cmd->state != CMD_FAILED && cmd->cb) cmd->cb(wm,NULL,0);
 
 	__lwp_queue_append(&wm->cmdq,&cmd->node);
 	wiiuse_send_next_command(wm);

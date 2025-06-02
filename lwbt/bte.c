@@ -552,7 +552,7 @@ s32 BTE_LinkKeyRequestReply(struct bd_addr *bdaddr,u8 *key)
     u32 level;
 	err_t last_err = ERR_OK;
 
-	printf("BTE_LinkKeyRequestReply\n");
+	//printf("BTE_LinkKeyRequestReply\n");
 
     _CPU_ISR_Disable(level);
     btstate.cb = NULL;
@@ -570,7 +570,7 @@ s32 BTE_LinkKeyRequestNegativeReply(struct bd_addr *bdaddr)
     u32 level;
 	err_t last_err = ERR_OK;
 
-	printf("BTE_LinkKeyRequestNegativeReply\n");
+	//printf("BTE_LinkKeyRequestNegativeReply\n");
 
     _CPU_ISR_Disable(level);
     btstate.cb = NULL;
@@ -593,7 +593,7 @@ void (*BTE_SetDisconnectCallback(void (*callback)(struct bd_addr *bdaddr,u8 reas
 	return l2cap_disconnect_bb(callback);
 }
 
-void BTE_SetSyncButtonCallback(void (*callback)(u32 held))
+void BTE_SetHostSyncButtonCallback(void (*callback)(u32 held))
 {
 	u32 level;
 	
@@ -704,7 +704,7 @@ s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*con
 
 error:
 	_CPU_ISR_Restore(level);
-	printf("bte_registerdeviceasync(%02x)\n",err);
+	//printf("bte_registerdeviceasync(%02x)\n",err);
 	return err;
 }
 
@@ -738,7 +738,7 @@ s32 bte_registerdeviceasync2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struc
 
 error:
 	_CPU_ISR_Restore(level);
-	printf("bte_registerdeviceasync2(%02x)\n",err);
+	//printf("bte_registerdeviceasync2(%02x)\n",err);
 	return err;
 }
 
@@ -749,7 +749,7 @@ s32 bte_connectdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn
 	struct l2cap_pcb *l2capcb = NULL;
 	
 	_CPU_ISR_Disable(level);
-	printf("bte_connectdeviceasync()\n");
+	//printf("bte_connectdeviceasync()\n");
 	if(lp_is_connected(bdaddr)) {
 		printf("bdaddr already exists: %02x:%02x:%02x:%02x:%02x:%02x\n",bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 		err = ERR_CONN;
@@ -800,7 +800,7 @@ s32 bte_connectdeviceasync2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct
 	struct l2cap_pcb *l2capcb = NULL;
 	
 	_CPU_ISR_Disable(level);
-	printf("bte_connectdeviceasync2()\n");
+	//printf("bte_connectdeviceasync2()\n");
 	
 	if(!lp_is_connected(&(pcb->bdaddr))) {
 		printf("bdaddr not connected: %02x:%02x:%02x:%02x:%02x:%02x\n",pcb->bdaddr.addr[5],pcb->bdaddr.addr[4],pcb->bdaddr.addr[3],pcb->bdaddr.addr[2],pcb->bdaddr.addr[1],pcb->bdaddr.addr[0]);
@@ -824,7 +824,7 @@ s32 bte_connectdeviceasync2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct
 
 error:
 	_CPU_ISR_Restore(level);
-	//printf("bte_connectdeviceasync(%02x)\n",err);
+	//printf("bte_connectdeviceasync2(%02x)\n",err);
 	return err;
 }
 

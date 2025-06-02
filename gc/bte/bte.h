@@ -155,7 +155,7 @@ s32 BTE_ExitPeriodicInquiry(void);
 s32 BTE_LinkKeyRequestReply(struct bd_addr *bdaddr,u8 *key);
 s32 BTE_LinkKeyRequestNegativeReply(struct bd_addr *bdaddr);
 void (*BTE_SetDisconnectCallback(void (*callback)(struct bd_addr *bdaddr,u8 reason)))(struct bd_addr *bdaddr,u8 reason);
-void BTE_SetSyncButtonCallback(void (*callback)(u32 held));
+void BTE_SetHostSyncButtonCallback(void (*callback)(u32 held));
 void BTE_SetConnectionRequestCallback(s8 (*callback)(void *arg,struct bd_addr *bdaddr,u8 *cod,u8 link_type));
 void BTE_SetLinkKeyRequestCallback(s8 (*callback)(void *arg,struct bd_addr *bdaddr));
 void BTE_SetLinkKeyNotificationCallback(s8 (*callback)(void *arg,struct bd_addr *bdaddr,u8 *key));
