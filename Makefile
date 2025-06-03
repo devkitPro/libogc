@@ -141,7 +141,7 @@ OGCOBJ		:=	\
 			lwp_messages.o lwp.o lwp_handler.o lwp_stack.o lwp_mutex.o 	\
 			lwp_watchdog.o lwp_wkspace.o lwp_objmgr.o lwp_heap.o sys_state.o \
 			exception_handler.o exception.o irq.o irq_handler.o semaphore.o \
-			video_asm.o video.o pad.o dvd.o exi.o mutex.o arqueue.o	arqmgr.o	\
+			video.o pad.o dvd.o exi.o mutex.o arqueue.o	arqmgr.o	\
 			cache_asm.o system.o system_asm.o cond.o			\
 			gx.o gu.o gu_psasm.o gu_ps_concat44.o audio.o cache.o decrementer.o	\
 			message.o card.o aram.o depackrnc.o decrementer_handler.o	\

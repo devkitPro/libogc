@@ -1730,8 +1730,6 @@ static vu16* const _viReg = (u16*)0xCC002000;
 extern syssram* __SYS_LockSram(void);
 extern u32 __SYS_UnlockSram(u32 write);
 
-extern void __VIClearFramebuffer(void*,u32,u32);
-
 extern void udelay(int us);
 
 #ifdef _VIDEO_DEBUG
@@ -1851,6 +1849,22 @@ static const struct _timing* __gettiming(u32 vimode)
 			break;
 		default:
 			return NULL;
+	}
+}
+
+//clear the framebuffer in 64 byte blocks with the specific color
+void __VIClearFramebuffer(void* videoBuffer, u32 length, u32 color)
+{
+	//unknown why it gets the block count like this. division by 256/0x100?
+	u32 block_count = (length >> 8);
+	u32 *p = ((u32*)videoBuffer) - 1;
+
+	while (block_count--) {
+		int i;
+
+		//set 0x40 byte block
+		for (i = 0; i < 0x40; ++i)
+			*++p = color;
 	}
 }
 
