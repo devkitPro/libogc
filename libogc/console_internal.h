@@ -1,17 +1,19 @@
 #ifndef __CONSOLE_INTERNAL_H__
 #define __CONSOLE_INTERNAL_H__
 
-#define CONSOLE_COLOR_BOLD    (1<<0)  ///< Bold text
-#define CONSOLE_COLOR_FAINT   (1<<1)  ///< Faint text
-#define CONSOLE_ITALIC        (1<<2)  ///< Italic text
-#define CONSOLE_UNDERLINE     (1<<3)  ///< Underlined text
-#define CONSOLE_BLINK_SLOW    (1<<4)  ///< Slow blinking text
-#define CONSOLE_BLINK_FAST    (1<<5)  ///< Fast blinking text
-#define CONSOLE_COLOR_REVERSE (1<<6)  ///< Reversed color text
-#define CONSOLE_CONCEAL       (1<<7)  ///< Concealed text
-#define CONSOLE_CROSSED_OUT   (1<<8)  ///< Crossed out text
-#define CONSOLE_FG_CUSTOM     (1<<9)  ///< Foreground custom color
-#define CONSOLE_BG_CUSTOM     (1<<10) ///< Background custom color
+#define CONSOLE_COLOR_BOLD      (1<<0)
+#define CONSOLE_COLOR_FAINT     (1<<1)
+#define CONSOLE_ITALIC          (1<<2)
+#define CONSOLE_UNDERLINE       (1<<3)
+#define CONSOLE_BLINK_SLOW      (1<<4)
+#define CONSOLE_BLINK_FAST      (1<<5)
+#define CONSOLE_COLOR_REVERSE   (1<<6)
+#define CONSOLE_CONCEAL         (1<<7)
+#define CONSOLE_CROSSED_OUT     (1<<8)
+#define CONSOLE_FG_CUSTOM       (1<<9)
+#define CONSOLE_BG_CUSTOM       (1<<10)
+#define CONSOLE_COLOR_FG_BRIGHT (1<<11)
+#define CONSOLE_COLOR_BG_BRIGHT (1<<11)
 
 #define FONT_XSIZE		8
 #define FONT_YSIZE		16

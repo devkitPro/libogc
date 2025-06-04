@@ -175,16 +175,16 @@ static void __console_drawc(int c)
 	bgcolor = currentConsole->bg;
 
 	if (!(currentConsole->flags & CONSOLE_FG_CUSTOM)) {
-		if (currentConsole->flags & CONSOLE_COLOR_BOLD) {
-			fgcolor = colorTable[fgcolor + 8];
+		if (currentConsole->flags & (CONSOLE_COLOR_BOLD | CONSOLE_COLOR_FG_BRIGHT)) {
+			fgcolor += 8;
 		} else if (currentConsole->flags & CONSOLE_COLOR_FAINT) {
-			fgcolor = colorTable[fgcolor + 16];
-		} else {
-			fgcolor = colorTable[fgcolor];
+			fgcolor += 16;
 		}
+		fgcolor = colorTable[fgcolor];
 	}
 
 	if (!(currentConsole->flags & CONSOLE_BG_CUSTOM)) {
+		if (currentConsole->flags & CONSOLE_COLOR_BG_BRIGHT) bgcolor +=8;
 		bgcolor = colorTable[bgcolor];
 	}
 
@@ -630,6 +630,18 @@ static void consoleHandleColorEsc(int code)
 					escapeSeq.color.flags &= ~CONSOLE_BG_CUSTOM;
 					escapeSeq.color.fg = 0;
 					break;
+				case 90 ... 97: // bright foreground
+					escapeSeq.color.flags &= ~CONSOLE_COLOR_FAINT;
+					escapeSeq.color.flags |= CONSOLE_COLOR_FG_BRIGHT;
+					escapeSeq.color.flags &= ~CONSOLE_BG_CUSTOM;
+					escapeSeq.color.fg = code - 90;
+					break;					
+				case 100 ... 107: // bright background
+					escapeSeq.color.flags &= ~CONSOLE_COLOR_FAINT;
+					escapeSeq.color.flags |= CONSOLE_COLOR_BG_BRIGHT;
+					escapeSeq.color.flags &= ~CONSOLE_BG_CUSTOM;
+					escapeSeq.color.bg = code - 100;
+					break;					
 			}
 		break;
 		case ESC_BUILDING_FORMAT_FG:
