@@ -13,6 +13,17 @@
 #define console_init     CON_Init
 #define SYS_ConsoleInit  CON_InitEx
 
+#define CONSOLE_ESC(x) "\x1b[" #x
+#define CONSOLE_RESET   CONSOLE_ESC(0m)
+#define CONSOLE_BLACK   CONSOLE_ESC(30m)
+#define CONSOLE_RED     CONSOLE_ESC(31;1m)
+#define CONSOLE_GREEN   CONSOLE_ESC(32;1m)
+#define CONSOLE_YELLOW  CONSOLE_ESC(33;1m)
+#define CONSOLE_BLUE    CONSOLE_ESC(34;1m)
+#define CONSOLE_MAGENTA CONSOLE_ESC(35;1m)
+#define CONSOLE_CYAN    CONSOLE_ESC(36;1m)
+#define CONSOLE_WHITE   CONSOLE_ESC(37;1m)
+
 #ifdef __cplusplus
 	extern "C" {
 #endif
