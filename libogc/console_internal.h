@@ -13,7 +13,7 @@
 #define CONSOLE_FG_CUSTOM       (1<<9)
 #define CONSOLE_BG_CUSTOM       (1<<10)
 #define CONSOLE_COLOR_FG_BRIGHT (1<<11)
-#define CONSOLE_COLOR_BG_BRIGHT (1<<11)
+#define CONSOLE_COLOR_BG_BRIGHT (1<<12)
 
 #define FONT_XSIZE		8
 #define FONT_YSIZE		16
