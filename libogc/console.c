@@ -535,7 +535,6 @@ static void consoleHandleColorEsc(int code)
 				case 1: // bold
 					escapeSeq.color.flags &= ~CONSOLE_COLOR_FAINT;
 					escapeSeq.color.flags |= CONSOLE_COLOR_BOLD;
-					SYS_Report("set bold\n");
 					break;
 
 				case 2: // faint
@@ -756,7 +755,6 @@ static void consoleColorApply(void)
 	currentConsole->bg = escapeSeq.color.bg;
 	currentConsole->fg = escapeSeq.color.fg;
 	currentConsole->flags = escapeSeq.color.flags;
-	SYS_Report("fg: %x, bg: %x, flags: %08x\n", currentConsole->fg, currentConsole->bg, currentConsole->flags);
 }
 
 void newRow()
