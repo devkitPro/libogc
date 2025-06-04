@@ -710,6 +710,8 @@ static void consoleColorStateShift(void)
 	{
 		case ESC_BUILDING_UNKNOWN:
 			escapeSeq.state = ESC_BUILDING_FORMAT_UNKNOWN;
+			if(!escapeSeq.hasArg[0])
+				consoleHandleColorEsc(0);
 			if (escapeSeq.hasArg[0])
 				consoleHandleColorEsc(escapeSeq.color.args[0]);
 			if (escapeSeq.hasArg[1])
