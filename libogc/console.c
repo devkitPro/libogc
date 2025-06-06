@@ -358,8 +358,8 @@ static void __set_default_console(void *destbuffer,int xstart,int ystart, int tg
 
 	con->font = console_font_8x16;
 
-	con->fg = 7;
-	con->bg = 0;
+	con->fg = CONSOLE_COLOR_WHITE;
+	con->bg = CONSOLE_COLOR_BLACK;
 
 	con->flags = 0;
 	con->tabSize = 4;

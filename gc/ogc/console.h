@@ -24,6 +24,15 @@
 #define CONSOLE_CYAN    CONSOLE_ESC(36;1m)
 #define CONSOLE_WHITE   CONSOLE_ESC(37;1m)
 
+#define CONSOLE_COLOR_BLACK   0
+#define CONSOLE_COLOR_RED     1
+#define CONSOLE_COLOR_GREEN   2
+#define CONSOLE_COLOR_YELLOW  3
+#define CONSOLE_COLOR_BLUE    4
+#define CONSOLE_COLOR_MAGENTA 5
+#define CONSOLE_COLOR_CYAN    6
+#define CONSOLE_COLOR_WHITE   7
+
 #ifdef __cplusplus
 	extern "C" {
 #endif
