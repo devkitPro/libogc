@@ -60,16 +60,16 @@ static const u32 RGB8_to_YCbCr(u8 r1, u8 g1, u8 b1, u8 r2, u8 g2, u8 b2)
 	if (b2 > 240) b2 = 240;
 
 	u8 Y1 = ( 77 * r1 + 150 * g1 + 29 * b1) / 256;
-  u8 Y2 = ( 77 * r2 + 150 * g2 + 29 * b2) / 256;
-  u8 Cb = (112 * (b1 + b2) -  74 * (g1 + g2) - 38 * (r1 + r2)) / 512 + 128;
-  u8 Cr = (112 * (r1 + r2) - 94 * (g1 + g2) - 18 * (b1 + b2)) / 512 + 128;
+	u8 Y2 = ( 77 * r2 + 150 * g2 + 29 * b2) / 256;
+	u8 Cb = (112 * (b1 + b2) -  74 * (g1 + g2) - 38 * (r1 + r2)) / 512 + 128;
+	u8 Cr = (112 * (r1 + r2) - 94 * (g1 + g2) - 18 * (b1 + b2)) / 512 + 128;
 
-  return Y1 << 24 | Cb << 16 | Y2 << 8 | Cr;
+	return Y1 << 24 | Cb << 16 | Y2 << 8 | Cr;
 }
 
 static const u32 single_RGB8_to_YCbCr(const u8 r, const u8 g, const u8 b)
 {
-    return RGB8_to_YCbCr(r,g,b,r,g,b);
+		return RGB8_to_YCbCr(r,g,b,r,g,b);
 }
 
 //set up the palette for color printing
@@ -263,7 +263,7 @@ static void __console_clear_line(int line, int from, int to )
 
 	if( !(con = currentConsole) ) return;
 
-  unsigned int bgcolor = con->bg;
+	unsigned int bgcolor = con->bg;
 	if (!(currentConsole->flags & CONSOLE_BG_CUSTOM)) {
 		bgcolor = colorTable[bgcolor];
 	}
@@ -316,26 +316,26 @@ static void __console_clear_from_cursor(void) {
 	console_data_s *con;
 	int cur_row;
 	
-  if( !(con = currentConsole) ) return;
+	if( !(con = currentConsole) ) return;
 	cur_row = con->cursorY;
 	
-  __console_clear_line( cur_row, con->cursorX, con->con_cols );
-  
-  while( cur_row++ < con->con_rows )
-    __console_clear_line( cur_row, 0, con->con_cols );
-  
+	__console_clear_line( cur_row, con->cursorX, con->con_cols );
+
+	while( cur_row++ < con->con_rows )
+		__console_clear_line( cur_row, 0, con->con_cols );
+
 }
 static void __console_clear_to_cursor(void) {
 	console_data_s *con;
 	int cur_row;
 	
-  if( !(con = currentConsole) ) return;
+	if( !(con = currentConsole) ) return;
 	cur_row = con->cursorY;
-	
-  __console_clear_line( cur_row, 0, con->cursorX );
-  
-  while( cur_row-- )
-    __console_clear_line( cur_row, 0, con->con_cols );
+
+	__console_clear_line( cur_row, 0, con->cursorX );
+
+	while( cur_row-- )
+		__console_clear_line( cur_row, 0, con->con_cols );
 }
 
 void __console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stride)
@@ -364,7 +364,7 @@ void __console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,in
 	con->bg = 0;
 
 	con->flags = 0;
-  con->tabSize = 4;
+	con->tabSize = 4;
 
 	currentConsole = con;
 
@@ -405,7 +405,7 @@ void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_str
 	con->bg = 0;
 
 	con->flags = 0;
-  con->tabSize = 4;
+	con->tabSize = 4;
 
 	currentConsole = con;
 
