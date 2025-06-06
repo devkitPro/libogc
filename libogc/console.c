@@ -338,56 +338,13 @@ static void __console_clear_to_cursor(void) {
 		__console_clear_line( cur_row, 0, con->con_cols );
 }
 
-void __console_init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stride)
+static void __set_default_console(void *destbuffer,int xstart,int ystart, int tgt_stride, int con_xres,int con_yres,int con_stride)
 {
-	unsigned int level;
 	console_data_s *con = &stdcon;
 
-	_CPU_ISR_Disable(level);
-
-	con->destbuffer = framebuffer;
-	con->con_xres = xres;
-	con->con_yres = yres;
-	con->con_cols = xres / FONT_XSIZE;
-	con->con_rows = yres / FONT_YSIZE;
-	con->con_stride = con->tgt_stride = stride;
+	con->destbuffer = destbuffer;
 	con->target_x = xstart;
 	con->target_y = ystart;
-	con->cursorY = 0;
-	con->cursorX = 0;
-	con->prevCursorX = 0;
-	con->prevCursorY = 0;
-
-	con->font = console_font_8x16;
-
-	con->fg = 7;
-	con->bg = 0;
-
-	con->flags = 0;
-	con->tabSize = 4;
-
-	currentConsole = con;
-
-	__console_clear();
-
-	devoptab_list[STD_OUT] = &dotab_stdout;
-	devoptab_list[STD_ERR] = &dotab_stdout;
-	_CPU_ISR_Restore(level);
-
-	setvbuf(stdout, NULL , _IONBF, 0);
-	setvbuf(stderr, NULL , _IONBF, 0);
-}
-
-void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_stride,int con_xres,int con_yres,int con_stride)
-{
-	unsigned int level;
-	console_data_s *con = &stdcon;
-
-	_CPU_ISR_Disable(level);
-
-	con->destbuffer = conbuffer;
-	con->target_x = tgt_xstart;
-	con->target_y = tgt_ystart;
 	con->con_xres = con_xres;
 	con->con_yres = con_yres;
 	con->tgt_stride = tgt_stride;
@@ -414,12 +371,35 @@ void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_str
 	devoptab_list[STD_OUT] = &dotab_stdout;
 	devoptab_list[STD_ERR] = &dotab_stdout;
 
+	setvbuf(stdout, NULL , _IONBF, 0);
+	setvbuf(stderr, NULL , _IONBF, 0);
+
+}
+
+void __console_init(void *destbuffer,int xstart,int ystart,int xres,int yres,int stride)
+{
+	unsigned int level;
+
+	_CPU_ISR_Disable(level);
+
+	__set_default_console(destbuffer, xstart, ystart, stride, xres, yres, stride);
+
+	_CPU_ISR_Restore(level);
+
+}
+
+void __console_init_ex(void *destbuffer,int tgt_xstart,int tgt_ystart,int tgt_stride,int con_xres,int con_yres,int con_stride)
+{
+	unsigned int level;
+
+	_CPU_ISR_Disable(level);
+
+	__set_default_console(destbuffer, tgt_xstart, tgt_ystart, tgt_stride, con_xres, con_yres, con_stride);
+
 	VIDEO_SetPostRetraceCallback(__console_vipostcb);
 
 	_CPU_ISR_Restore(level);
 
-	setvbuf(stdout, NULL , _IONBF, 0);
-	setvbuf(stderr, NULL , _IONBF, 0);
 }
 
 static struct
