@@ -100,6 +100,7 @@ INCLUDES	+=	-I$(BASEDIR)/cube
 endif
 
 CFLAGS		:= $(FALSE_POSITIVES) -g -O2 -fno-strict-aliasing -Wall $(MACHDEP) $(INCLUDES)
+CXXFLAGS	:= $(CFLAGS) -std=gnu++17 -fno-exceptions -fno-rtti
 ASFLAGS		:= $(MACHDEP) -mregnames -D_LANGUAGE_ASSEMBLY $(INCLUDES)
 
 #---------------------------------------------------------------------------------
@@ -149,7 +150,7 @@ OGCOBJ		:=	\
 			console_font_8x16.o timesupp.o lock_supp.o usbgecko.o usbmouse.o \
 			sbrk.o malloc_lock.o kprintf.o stm.o aes.o sha.o ios.o es.o isfs.o usb.o network_common.o \
 			sdgecko_io.o sdgecko_buf.o gcsd.o argv.o network_wii.o wiisd.o conf.o usbstorage.o \
-			texconv.o wiilaunch.o sys_report.o
+			texconv.o wiilaunch.o sys_report.o ogc_gthread.o
 
 #---------------------------------------------------------------------------------
 MODOBJ		:=	freqtab.o mixer.o modplay.o semitonetab.o gcmodplay.o
