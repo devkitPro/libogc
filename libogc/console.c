@@ -808,11 +808,6 @@ void consolePrintChar(int c)
 {
 	if (c==0) return;
 
-	if(currentConsole->cursorX  >= currentConsole->windowWidth) {
-		currentConsole->cursorX  = 1;
-		newRow();
-	}
-
 	switch(c) {
 		/*
 		The only special characters we will handle are tab (\t), carriage return (\r), line feed (\n)
@@ -847,6 +842,10 @@ void consolePrintChar(int c)
 			currentConsole->cursorX  = 1;
 			break;
 		default:
+			if(currentConsole->cursorX  > currentConsole->windowWidth) {
+				currentConsole->cursorX  = 1;
+				newRow();
+			}
 			__console_drawc(c);
 			++currentConsole->cursorX ;
 			break;
