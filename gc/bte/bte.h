@@ -160,8 +160,9 @@ void BTE_SetConnectionRequestCallback(s8 (*callback)(void *arg,struct bd_addr *b
 void BTE_SetLinkKeyRequestCallback(s8 (*callback)(void *arg,struct bd_addr *bdaddr));
 void BTE_SetLinkKeyNotificationCallback(s8 (*callback)(void *arg,struct bd_addr *bdaddr,u8 *key));
 u8 BTE_GetPairMode(void);
-void BTE_WriteStoredLinkKey(struct bd_addr *bdaddr,u8 *key);
-void BTE_ClearStoredLinkKeys(void);
+s32 BTE_WriteStoredLinkKey(struct bd_addr *bdaddr,u8 *key);
+s32 BTE_ClearStoredLinkKeys(void);
+s32 BTE_DeleteStoredLinkKey(struct bd_addr *bdaddr);
 
 struct bte_pcb* bte_new(void);
 void bte_free(struct bte_pcb *pcb);

@@ -552,7 +552,7 @@ s32 BTE_LinkKeyRequestReply(struct bd_addr *bdaddr,u8 *key)
     u32 level;
 	err_t last_err = ERR_OK;
 
-	//printf("BTE_LinkKeyRequestReply\n");
+	printf("BTE_LinkKeyRequestReply\n");
 
     _CPU_ISR_Disable(level);
     btstate.cb = NULL;
@@ -570,7 +570,7 @@ s32 BTE_LinkKeyRequestNegativeReply(struct bd_addr *bdaddr)
     u32 level;
 	err_t last_err = ERR_OK;
 
-	//printf("BTE_LinkKeyRequestNegativeReply\n");
+	printf("BTE_LinkKeyRequestNegativeReply\n");
 
     _CPU_ISR_Disable(level);
     btstate.cb = NULL;
@@ -629,9 +629,58 @@ void BTE_SetLinkKeyNotificationCallback(err_t (*callback)(void *arg,struct bd_ad
 	_CPU_ISR_Restore(level);
 }
 
-void BTE_ClearStoredLinkKeys(void)
+s32 BTE_WriteStoredLinkKey(struct bd_addr *bdaddr,u8_t *key)
 {
-	hci_delete_stored_link_key(NULL, 0x01);
+    u32 level;
+	err_t last_err = ERR_OK;
+
+	//printf("BTE_WriteStoredLinkKey\n");
+
+    _CPU_ISR_Disable(level);
+    btstate.cb = NULL;
+    btstate.usrdata = NULL;
+    btstate.hci_cmddone = 0;
+    hci_arg(&btstate);
+    hci_write_stored_link_key(bdaddr,key);
+    _CPU_ISR_Restore(level);
+
+	return last_err;
+}
+
+s32 BTE_ClearStoredLinkKeys(void)
+{
+    u32 level;
+	err_t last_err = ERR_OK;
+
+	//printf("BTE_ClearStoredLinkKeys\n");
+
+    _CPU_ISR_Disable(level);
+    btstate.cb = NULL;
+    btstate.usrdata = NULL;
+    btstate.hci_cmddone = 0;
+    hci_arg(&btstate);
+    hci_delete_stored_link_key(NULL, 1);
+    _CPU_ISR_Restore(level);
+
+	return last_err;
+}
+
+s32 BTE_DeleteStoredLinkKey(struct bd_addr *bdaddr)
+{
+    u32 level;
+	err_t last_err = ERR_OK;
+
+	//printf("BTE_DeleteStoredLinkKey\n");
+
+    _CPU_ISR_Disable(level);
+    btstate.cb = NULL;
+    btstate.usrdata = NULL;
+    btstate.hci_cmddone = 0;
+    hci_arg(&btstate);
+    hci_delete_stored_link_key(bdaddr, 0);
+    _CPU_ISR_Restore(level);
+
+	return last_err;
 }
 
 struct bte_pcb* bte_new(void)
@@ -1184,11 +1233,6 @@ err_t l2cap_disconnect_cfm(void *arg, struct l2cap_pcb *pcb)
 	return ERR_OK;
 }
 
-void BTE_WriteStoredLinkKey(struct bd_addr *bdaddr,u8_t *key)
-{
-	hci_write_stored_link_key(bdaddr,key);
-}
-
 err_t l2cap_connected(void *arg,struct l2cap_pcb *l2cappcb,u16_t result,u16_t status)
 {
 	struct bte_pcb *btepcb = (struct bte_pcb*)arg;
@@ -1289,7 +1333,7 @@ err_t bte_inquiry_complete(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ire
 			state->inq_complete_cb(ERR_OK,&state->inq_res);
 			_CPU_ISR_Restore(level);
 		} else if (state->pair_mode == PAIR_MODE_NORMAL)
-			hci_inquiry(0x009E8B33,0x03,btstate.num_maxdevs,bte_inquiry_complete);
+			hci_inquiry(0x009E8B00,0x03,btstate.num_maxdevs,bte_inquiry_complete);
 	}
 	return ERR_OK;
 }
