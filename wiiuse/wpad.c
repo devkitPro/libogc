@@ -104,7 +104,8 @@ static WPADData wpaddata[WPAD_MAX_DEVICES];
 static struct _wpad_cb __wpdcb[WPAD_MAX_DEVICES];
 static conf_pads __wpad_devs;
 static conf_pad_guests __wpad_guests;
-static struct linkkey_info __wpad_keys[CONF_PAD_TOTAL];
+static struct linkkey_info __wpad_keys[CONF_PAD_MAX_REGISTERED];
+static struct linkkey_info __wpad_guest_keys[CONF_PAD_ACTIVE_AND_OTHER];
 
 static sem_t __wpad_confsave_sem;
 static bool __wpad_confsave_thread_running = false;
@@ -349,11 +350,11 @@ wiimote *__wpad_register_new(wiimote_listen *wml, u8 err)
 					__wpad_guests.num_guests++;
 	
 				for(i=0; i<CONF_PAD_TOTAL; i++) {
-					if(bd_addr_cmp(&wml->bdaddr,&__wpad_keys[i].bdaddr)) {
-						u8 *src = __wpad_keys[i].key;
+					if(bd_addr_cmp(&wml->bdaddr,&__wpad_guest_keys[i].bdaddr)) {
+						u8 *src = __wpad_guest_keys[i].key;
 						u8 *dst = __wpad_guests.guests[0].link_key;
 						// Keys are stored in config backwards, like bdaddrs
-						printf("Writing guest key: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",__wpad_keys[i].key[0],__wpad_keys[i].key[1],__wpad_keys[i].key[2],__wpad_keys[i].key[3],__wpad_keys[i].key[4],__wpad_keys[i].key[5],__wpad_keys[i].key[6],__wpad_keys[i].key[7],__wpad_keys[i].key[8],__wpad_keys[i].key[9],__wpad_keys[i].key[10],__wpad_keys[i].key[11],__wpad_keys[i].key[12],__wpad_keys[i].key[13],__wpad_keys[i].key[14],__wpad_keys[i].key[15]);
+						printf("Writing guest key: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",__wpad_guest_keys[i].key[0],__wpad_guest_keys[i].key[1],__wpad_guest_keys[i].key[2],__wpad_guest_keys[i].key[3],__wpad_guest_keys[i].key[4],__wpad_guest_keys[i].key[5],__wpad_guest_keys[i].key[6],__wpad_guest_keys[i].key[7],__wpad_guest_keys[i].key[8],__wpad_guest_keys[i].key[9],__wpad_guest_keys[i].key[10],__wpad_guest_keys[i].key[11],__wpad_guest_keys[i].key[12],__wpad_guest_keys[i].key[13],__wpad_guest_keys[i].key[14],__wpad_guest_keys[i].key[15]);
 						for (j=0;j<16;j++) {
 							dst[j] = src[15 - j];
 						}
@@ -424,21 +425,21 @@ static s32 __readlinkkey_finished(s32 result,void *usrdata)
 {
 	u32 i, j, level;
 	
-	//printf("__readlinkkey_finished(%d)\n",result);
+	printf("__readlinkkey_finished(%d)\n",result);
 	
 	_CPU_ISR_Disable(level);
 	if(__wpads_inited==WPAD_STATE_ENABLING) {
 		__wpads_bonded = result;
+ 
 		for(i=0;i<__wpad_guests.num_guests;i++) {
-			BD_ADDR_FROM_BYTES(&__wpad_keys[__wpads_bonded].bdaddr, __wpad_guests.guests[i].bdaddr);
+			BD_ADDR_FROM_BYTES(&__wpad_guest_keys[i].bdaddr, __wpad_guests.guests[i].bdaddr);
 			u8 *src = __wpad_guests.guests[i].link_key;
-			u8 *dst = __wpad_keys[__wpads_bonded].key;
+			u8 *dst = __wpad_guest_keys[i].key;
 			
 			// Keys are stored in config backwards, like bdaddrs
 			for (j=0;j<16;j++) {
 				dst[j] = src[15 - j];
 			}
-			__wpads_bonded++;
 		}
 		BTE_ApplyPatch(__wpad_patch_finished);
 	}
@@ -454,7 +455,7 @@ static s32 __initcore_finished(s32 result,void *usrdata)
 	
 	_CPU_ISR_Disable(level);
 	if((result==ERR_OK) && (__wpads_inited==WPAD_STATE_ENABLING)) {
-		BTE_ReadStoredLinkKey(__wpad_keys,CONF_PAD_TOTAL,__readlinkkey_finished);
+		BTE_ReadStoredLinkKey(__wpad_keys,CONF_PAD_MAX_REGISTERED,__readlinkkey_finished);
 	}
 	_CPU_ISR_Restore(level);
 	return ERR_OK;
@@ -807,6 +808,7 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 	}
 }
 
+// TODO: Expose to user instead of handling it here? (so user can be aware of any and all disconnects)
 void __wpad_disconnectCB(struct bd_addr *pad_addr, u8 reason)
 {
 	int i;
@@ -1080,19 +1082,37 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 
 static s8 __wpad_linkkeyreqCB(void *arg,struct bd_addr *pad_addr)
 {
+	bool found = false;
 	int i;
 	//printf("__wpad_linkkeyreqCB\n");
 	
 	for(i=0; i<__wpads_bonded; i++) {
 		if(bd_addr_cmp(pad_addr,&__wpad_keys[i].bdaddr)) {
+			found = true;
+			//printf("Found key for bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",pad_addr->addr[5],pad_addr->addr[4],pad_addr->addr[3],pad_addr->addr[2],pad_addr->addr[1],pad_addr->addr[0]);
+			//printf("	%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",__wpad_keys[i].key[0],__wpad_keys[i].key[1],__wpad_keys[i].key[2],__wpad_keys[i].key[3],__wpad_keys[i].key[4],__wpad_keys[i].key[5],__wpad_keys[i].key[6],__wpad_keys[i].key[7],__wpad_keys[i].key[8],__wpad_keys[i].key[9],__wpad_keys[i].key[10],__wpad_keys[i].key[11],__wpad_keys[i].key[12],__wpad_keys[i].key[13],__wpad_keys[i].key[14],__wpad_keys[i].key[15]);
+
 			BTE_LinkKeyRequestReply(pad_addr,__wpad_keys[i].key);
 			break;
 		}
 	}
 
-	if(i >= CONF_PAD_TOTAL) {
-		BTE_LinkKeyRequestNegativeReply(pad_addr);
+	if(!found) {
+		for(i=0; i<CONF_PAD_ACTIVE_AND_OTHER; i++) {
+			if(bd_addr_cmp(pad_addr,&__wpad_guest_keys[i].bdaddr)) {
+				found = true;
+				
+				//printf("Found guest key for bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",pad_addr->addr[5],pad_addr->addr[4],pad_addr->addr[3],pad_addr->addr[2],pad_addr->addr[1],pad_addr->addr[0]);
+				//printf("	%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",__wpad_keys[i].key[0],__wpad_keys[i].key[1],__wpad_keys[i].key[2],__wpad_keys[i].key[3],__wpad_keys[i].key[4],__wpad_keys[i].key[5],__wpad_keys[i].key[6],__wpad_keys[i].key[7],__wpad_keys[i].key[8],__wpad_keys[i].key[9],__wpad_keys[i].key[10],__wpad_keys[i].key[11],__wpad_keys[i].key[12],__wpad_keys[i].key[13],__wpad_keys[i].key[14],__wpad_keys[i].key[15]);
+
+				BTE_LinkKeyRequestReply(pad_addr,__wpad_guest_keys[i].key);
+				break;
+			}
+		}
 	}
+
+	if(!found)
+		BTE_LinkKeyRequestNegativeReply(pad_addr);
 
 	return ERR_OK;
 }
@@ -1104,22 +1124,38 @@ static s8 __wpad_linkkeynotCB(void *arg,struct bd_addr *pad_addr,u8 *key)
 	//printf("__wpad_linkkeynotCB\n");
 		
 	// Only write link key to controller if not doing guest pairing
-	if(BTE_GetPairMode() == PAIR_MODE_NORMAL)
+	if(BTE_GetPairMode() == PAIR_MODE_NORMAL) {
 		BTE_WriteStoredLinkKey(pad_addr,key);
 
-	for(i=0; i<CONF_PAD_TOTAL; i++) {
-		// Old device, new key
-		if(bd_addr_cmp(pad_addr,&__wpad_keys[i].bdaddr)) {
-			memcpy(__wpad_keys[i].key,key,sizeof(__wpad_keys[i].key));
-			break;
+		for(i=0; i<CONF_PAD_TOTAL; i++) {
+			// Old device, new key
+			if(bd_addr_cmp(pad_addr,&__wpad_keys[i].bdaddr)) {
+				memcpy(__wpad_keys[i].key,key,sizeof(__wpad_keys[i].key));
+				break;
+			}
+			
+			// New device
+			if(bd_addr_cmp(BD_ADDR_ANY,&__wpad_keys[i].bdaddr)) {
+				bd_addr_set(&__wpad_keys[i].bdaddr,pad_addr);
+				memcpy(__wpad_keys[i].key,key,sizeof(__wpad_keys[i].key));
+				__wpads_bonded++;
+				break;
+			}
 		}
-		
-		// New device
-		if(bd_addr_cmp(BD_ADDR_ANY,&__wpad_keys[i].bdaddr)) {
-			bd_addr_set(&__wpad_keys[i].bdaddr,pad_addr);
-			memcpy(__wpad_keys[i].key,key,sizeof(__wpad_keys[i].key));
-			__wpads_bonded++;
-			break;
+	} else {
+		for(i=0; i<CONF_PAD_TOTAL; i++) {
+			// Old device, new key
+			if(bd_addr_cmp(pad_addr,&__wpad_guest_keys[i].bdaddr)) {
+				memcpy(__wpad_guest_keys[i].key,key,sizeof(__wpad_guest_keys[i].key));
+				break;
+			}
+			
+			// New device
+			if(bd_addr_cmp(BD_ADDR_ANY,&__wpad_guest_keys[i].bdaddr)) {
+				bd_addr_set(&__wpad_guest_keys[i].bdaddr,pad_addr);
+				memcpy(__wpad_guest_keys[i].key,key,sizeof(__wpad_guest_keys[i].key));
+				break;
+			}
 		}
 	}
 
@@ -1182,6 +1218,7 @@ s32 WPAD_WipeSavedControllers(void)
 	memset(&__wpad_devs,0,sizeof(__wpad_devs));
 	memset(&__wpad_guests,0,sizeof(__wpad_guests));
 	memset(__wpad_keys,0,sizeof(__wpad_keys));
+	memset(__wpad_guest_keys,0,sizeof(__wpad_guest_keys));
 	BTE_ClearStoredLinkKeys();
 	_CPU_ISR_Restore(level);
 
@@ -1211,6 +1248,8 @@ s32 WPAD_Search(void)
 	__wpads_used = 0;
 	memset(__wpad_devs.active,0,sizeof(__wpad_devs.active));
 	memset(&__wpad_guests,0,sizeof(__wpad_guests));
+	memset(__wpad_guest_keys,0,sizeof(__wpad_guest_keys));
+
 	BTE_PeriodicInquiry(BD_MAX_INQUIRY_DEVS, TRUE, __wpad_inquiry_finished);
 	_CPU_ISR_Restore(level);
 
@@ -1241,9 +1280,10 @@ s32 WPAD_Init(void)
 
 		//printf("WPAD_Init\n");
 
-		memset(__wpdcb,0,sizeof(struct _wpad_cb)*WPAD_MAX_DEVICES);
+		memset(__wpdcb,0,sizeof(__wpdcb));
 		memset(&__wpad_devs,0,sizeof(conf_pads));
-		memset(__wpad_keys,0,sizeof(struct linkkey_info)*WPAD_MAX_DEVICES);
+		memset(__wpad_keys,0,sizeof(__wpad_keys));
+		memset(__wpad_guest_keys,0,sizeof(__wpad_guest_keys));
 
 		for(i=0;i<WPAD_MAX_DEVICES;i++) {
 			__wpdcb[i].thresh.btns = WPAD_THRESH_DEFAULT_BUTTONS;

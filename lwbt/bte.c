@@ -89,7 +89,6 @@ static u8_t bte_patch1[92] = {
 static u8 ppc_stack[STACKSIZE] ATTRIBUTE_ALIGN(8);
 
 err_t acl_wlp_completed(void *arg,struct bd_addr *bdaddr);
-err_t link_key_not(void *arg,struct bd_addr *bdaddr,u8_t *key);
 err_t pin_req(void *arg,struct bd_addr *bdaddr);
 err_t l2cap_connected(void *arg,struct l2cap_pcb *l2cappcb,u16_t result,u16_t status);
 err_t l2cap_accepted(void *arg,struct l2cap_pcb *l2cappcb,err_t err);
@@ -552,7 +551,7 @@ s32 BTE_LinkKeyRequestReply(struct bd_addr *bdaddr,u8 *key)
     u32 level;
 	err_t last_err = ERR_OK;
 
-	printf("BTE_LinkKeyRequestReply\n");
+	//printf("BTE_LinkKeyRequestReply\n");
 
     _CPU_ISR_Disable(level);
     btstate.cb = NULL;
@@ -570,7 +569,7 @@ s32 BTE_LinkKeyRequestNegativeReply(struct bd_addr *bdaddr)
     u32 level;
 	err_t last_err = ERR_OK;
 
-	printf("BTE_LinkKeyRequestNegativeReply\n");
+	//printf("BTE_LinkKeyRequestNegativeReply\n");
 
     _CPU_ISR_Disable(level);
     btstate.cb = NULL;
@@ -659,7 +658,7 @@ s32 BTE_ClearStoredLinkKeys(void)
     btstate.usrdata = NULL;
     btstate.hci_cmddone = 0;
     hci_arg(&btstate);
-    hci_delete_stored_link_key(NULL, 1);
+    hci_delete_stored_link_key(NULL);
     _CPU_ISR_Restore(level);
 
 	return last_err;
@@ -677,7 +676,7 @@ s32 BTE_DeleteStoredLinkKey(struct bd_addr *bdaddr)
     btstate.usrdata = NULL;
     btstate.hci_cmddone = 0;
     hci_arg(&btstate);
-    hci_delete_stored_link_key(bdaddr, 0);
+    hci_delete_stored_link_key(bdaddr);
     _CPU_ISR_Restore(level);
 
 	return last_err;
@@ -713,11 +712,6 @@ s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*con
 
 	//printf("bte_registerdeviceasync()\n");
 	_CPU_ISR_Disable(level);
-	/*if(lp_is_connected(bdaddr)) {
-		printf("bdaddr already exists: %02x:%02x:%02x:%02x:%02x:%02x\n",bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
-		err = ERR_CONN;
-		goto error;
-	}*/
 
 	pcb->err = ERR_USE;
 	pcb->data_pcb = NULL;
@@ -736,20 +730,7 @@ s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*con
 	if(err!=ERR_OK) {
 		l2cap_close(l2capcb);
 		err = ERR_CONN;
-		goto error;
 	}
-	
-	/*if((l2capcb=l2cap_new())==NULL) {
-		err = ERR_MEM;
-		goto error;
-	}
-	l2cap_arg(l2capcb,pcb);
-
-	err = l2cap_connect_ind(l2capcb,bdaddr,HIDP_DATA_CHANNEL,l2cap_accepted);
-	if(err!=ERR_OK) {
-		l2cap_close(l2capcb);
-		err = ERR_CONN;
-	}*/
 
 error:
 	_CPU_ISR_Restore(level);
@@ -821,20 +802,7 @@ s32 bte_connectdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn
 	if(err!=ERR_OK) {
 		l2cap_close(l2capcb);
 		err = ERR_CONN;
-		goto error;
 	}
-	
-	/*if((l2capcb=l2cap_new())==NULL) {
-		err = ERR_MEM;
-		goto error;
-	}
-	l2cap_arg(l2capcb,pcb);
-
-	err = l2ca_connect_req(l2capcb,bdaddr,HIDP_DATA_CHANNEL,HCI_ALLOW_ROLE_SWITCH,l2cap_connected);
-	if(err!=ERR_OK) {
-		l2cap_close(l2capcb);
-		err = ERR_CONN;
-	}*/
 
 error:
 	_CPU_ISR_Restore(level);
@@ -1149,7 +1117,6 @@ err_t acl_conn_complete(void *arg,struct bd_addr *bdaddr)
 err_t acl_auth_complete(void *arg,struct bd_addr *bdaddr)
 {
 	//printf("acl_auth_complete\n");
-	//memcpy(&(btstate.acl_bdaddr),bdaddr,6);
 
 	hci_write_link_policy_settings(bdaddr,0x0005);
 	return ERR_OK;
@@ -1714,11 +1681,6 @@ err_t bte_hci_initsub_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u
 				} else
 					err = ERR_CONN;
 			} else if(ocf==HCI_W_SCAN_EN_OCF) {
-			/*	if(result==HCI_SUCCESS) {
-					hci_write_authentication_enable(0x01);
-				} else
-					err = ERR_CONN;
-			} else if(ocf==HCI_W_AUTH_ENABLE_OCF) {*/
 				if(result==HCI_SUCCESS) {
 					hci_cmd_complete(NULL);
 					return __bte_cmdfinish(state,ERR_OK);

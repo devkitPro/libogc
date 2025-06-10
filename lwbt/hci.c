@@ -250,8 +250,8 @@ void hci_connection_complete(err_t (* conn_complete)(void *arg, struct bd_addr *
 /* 
  * hci_auth_complete():
  *
- * Used to specify the function that should be called when HCI has received a 
- * connection complete event.
+ * Used to specify the function that should be called when HCI has received an
+ * authentication complete event.
  */
 /*-----------------------------------------------------------------------------------*/
 void hci_auth_complete(err_t (* auth_complete)(void *arg, struct bd_addr *bdaddr))
@@ -919,7 +919,7 @@ err_t hci_sniff_mode(struct bd_addr *bdaddr, u16_t max_interval, u16_t min_inter
 /*-----------------------------------------------------------------------------------*/
 /* hci_auth_req():
  *
- * Control the modes (park, sniff, hold) that an ACL connection can take.
+ * Request authentication from an ACL connection.
  *
  */
 /*-----------------------------------------------------------------------------------*/
@@ -1213,9 +1213,10 @@ err_t hci_write_stored_link_key(struct bd_addr *bdaddr, u8_t *link)
 /* hci_delete_stored_link_key():
  *
  * Deletes a link key from the Bluetooth host controller.
+ * If bdaddr == NULL, deletes all keys.
  */
  /*-----------------------------------------------------------------------------------*/
-err_t hci_delete_stored_link_key(struct bd_addr *bdaddr, u8_t delete_all)
+err_t hci_delete_stored_link_key(struct bd_addr *bdaddr)
 {
 	struct pbuf *p;
 
@@ -1226,15 +1227,14 @@ err_t hci_delete_stored_link_key(struct bd_addr *bdaddr, u8_t delete_all)
 	/* Assembling command packet */
 	p = hci_cmd_ass(p, HCI_D_STORED_LINK_KEY_OCF, HCI_HC_BB_OGF, HCI_D_STORED_LINK_KEY_PLEN);
 	/* Assembling cmd prameters */
-	if (bdaddr)
-	{
+	if (bdaddr) {
 		memcpy(((u8_t *)p->payload) + 4, bdaddr->addr, 6);
+		((u8_t *)p->payload)[10] = 0;
 	}
-	else
-	{
+	else {
 		memset(((u8_t *)p->payload) + 4, 0, 6);
+		((u8_t *)p->payload)[10] = 1;
 	}
-	((u8_t *)p->payload)[10] = delete_all;
 
 	physbusif_output(p, p->tot_len);
 	btpbuf_free(p);
@@ -1634,7 +1634,7 @@ static void hci_cc_host_ctrl(u8_t ocf,struct pbuf *p)
 	u8_t *lap;
 	u8_t i,resp_off;
 
-	//printf("hci_cc_host_ctrl(%02x)\n",ocf);
+	LOG("hci_cc_host_ctrl(%02x)\n",ocf);
 	switch(ocf) {
 		case HCI_SET_HC_TO_H_FC_OCF:
 			if(((u8_t*)p->payload)[0]==HCI_SUCCESS) hci_dev->flow = 1;
@@ -1753,7 +1753,7 @@ static void hci_conn_complete_evt(struct pbuf *p)
 			}
 			break;
 		case HCI_HOST_REJECTED_DUE_TO_SECURITY_REASONS:
-			ERROR("hci_conn_complete_evt: Host rejected due to security reasons (device not paired?)\n");
+			ERROR("hci_conn_complete_evt: Device not paired\n");
 			if(link!=NULL) {
 				hci_close(link);
 				lp_connect_cfm(bdaddr,((u8_t*)p->payload)[10],ERR_CONN);

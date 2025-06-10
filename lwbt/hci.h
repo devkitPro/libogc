@@ -415,7 +415,7 @@ err_t hci_reject_connection_request(struct bd_addr *bdaddr, u8_t reason);
 err_t hci_pin_code_request_reply(struct bd_addr *bdaddr, u8_t pinlen, u8_t *pincode);
 err_t hci_link_key_req_reply(struct bd_addr *bdaddr, u8_t *link_key);
 err_t hci_write_stored_link_key(struct bd_addr *bdaddr, u8_t *link);
-err_t hci_delete_stored_link_key(struct bd_addr *bdaddr, u8_t delete_all);
+err_t hci_delete_stored_link_key(struct bd_addr *bdaddr);
 err_t hci_set_event_filter(u8_t filter_type,u8_t filter_cond_type,u8_t *cond);
 err_t hci_write_page_timeout(u16_t timeout);
 err_t hci_inquiry(u32_t lap,u8_t inq_len,u8_t num_resp,err_t (*inq_complete)(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ires,u16_t result));
