@@ -39,7 +39,6 @@ distribution.
 */
 
 #include <gctypes.h>
-#include <gcbool.h>
 
 #define LC_BASEPREFIX		0xe000
 #define LC_BASE				(LC_BASEPREFIX<<16)
@@ -316,8 +315,8 @@ u32 LCQueueWait(u32);
 void LCFlushQueue(void);
 void LCAlloc(void *,u32);
 void LCAllocNoInvalidate(void *,u32);
-void LCAllocOneTag(BOOL,void *);
-void LCAllocTags(BOOL,void *,u32);
+void LCAllocOneTag(bool,void *);
+void LCAllocTags(bool,void *,u32);
 
 #define LCGetBase()		((void*)LC_BASE)
 #ifdef __cplusplus
