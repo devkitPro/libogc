@@ -67,7 +67,7 @@
 #define HIDP_PROTO_REPORT			0x01
 
 #define BD_NAME_LEN     			248
-#define BD_MAX_INQUIRY_DEVS     		255
+#define BD_MAX_INQUIRY_DEVS			255
 
 enum pair_mode {
 	PAIR_MODE_NORMAL,
@@ -108,7 +108,7 @@ struct linkkey_info
 	u8 key[16];
 };
 
-struct pad_info
+struct pad_name_info
 {
 	struct bd_addr bdaddr;
 	u8 name[BD_NAME_LEN];
@@ -148,7 +148,7 @@ s32 BTE_InitSub(btecallback cb);
 s32 BTE_ReadStoredLinkKey(struct linkkey_info *keys,u8 max_cnt,btecallback cb);
 s32 BTE_ReadBdAddr(struct bd_addr *bdaddr, btecallback cb);
 s32 BTE_SetEvtFilter(u8 filter_type,u8 filter_cond_type,u8 *cond, btecallback cb);
-s32 BTE_ReadRemoteName(struct bd_addr *bdaddr, btecallback cb);
+s32 BTE_ReadRemoteName(struct pad_name_info *padinfo, btecallback cb);
 s32 BTE_Inquiry(u8 max_cnt,u8 flush, btecallback cb);
 s32 BTE_PeriodicInquiry(u8 max_cnt,u8 flush,btecallback cb);
 s32 BTE_ExitPeriodicInquiry(void);
@@ -170,17 +170,16 @@ void bte_arg(struct bte_pcb *pcb,void *arg);
 void bte_received(struct bte_pcb *pcb, s32 (*recv)(void *arg,void *buffer,u16 len));
 void bte_disconnected(struct bte_pcb *pcb,s32 (disconn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
 
-s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
-s32 bte_registerdeviceasync2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
-s32 bte_connectdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
-s32 bte_connectdeviceasync2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
-
 s32 bte_disconnect(struct bte_pcb *pcb);
 
 //s32 bte_listen(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm);
 //s32 bte_accept(struct bte_pcb *pcb,s32 (*recv)(void *arg,void *buffer,u16 len));
+s32 bte_listenasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
+s32 bte_listenasync_step2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
 //s32 bte_connect(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm,s32 (*recv)(void *arg,void *buffer,u16 len));
 //s32 bte_connect_ex(struct bte_pcb *pcb,struct inquiry_info_ex *info,u8 psm,s32 (*recv)(void *arg,void *buffer,u16 len));
+s32 bte_connectasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
+s32 bte_connectasync_step2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
 s32 bte_senddata(struct bte_pcb *pcb,void *message,u16 len);
 s32 bte_sendmessage(struct bte_pcb *pcb,void *message,u16 len);
 s32 bte_sendmessageasync(struct bte_pcb *pcb,void *message,u16 len,s32 (*sent)(void *arg,struct bte_pcb *pcb,u8 err));

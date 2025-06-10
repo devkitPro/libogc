@@ -1753,7 +1753,7 @@ static void hci_conn_complete_evt(struct pbuf *p)
 			}
 			break;
 		case HCI_HOST_REJECTED_DUE_TO_SECURITY_REASONS:
-			ERROR("hci_conn_complete_evt: Device not paired\n");
+			LOG("hci_conn_complete_evt: Device not paired\n");
 			if(link!=NULL) {
 				hci_close(link);
 				lp_connect_cfm(bdaddr,((u8_t*)p->payload)[10],ERR_CONN);
@@ -1779,6 +1779,7 @@ static void hci_conn_complete_evt(struct pbuf *p)
 static void hci_inquiry_result_evt(struct pbuf *p)
 {
 	// TODO: implement inquiries like the SM does (canceling inquiry after first valid result)
+	// Need to research what SM deems "valid" (it cancels inquiry before checking for name...)
 	u8_t num_resp;
 	u32_t i,resp_off;
 	struct bd_addr *bdaddr;
@@ -1806,6 +1807,8 @@ static void hci_inquiry_result_evt(struct pbuf *p)
 
 static void hci_inquiry_result_with_rssi_evt(struct pbuf *p)
 {
+	// TODO: implement inquiries like the SM does (canceling inquiry after first valid result)
+	// Need to research what SM deems "valid" (it cancels inquiry before checking for name...)
 	u8_t num_resp;
 	u32_t i,resp_off;
 	struct bd_addr *bdaddr;

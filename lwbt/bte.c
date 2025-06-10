@@ -530,17 +530,17 @@ s32 BTE_SetEvtFilter(u8 filter_type,u8 filter_cond_type,u8 *cond, btecallback cb
     return ERR_OK;
 }
 
-s32 BTE_ReadRemoteName(struct bd_addr *bdaddr, btecallback cb)
+s32 BTE_ReadRemoteName(struct pad_name_info *padinfo, btecallback cb)
 {
     u32 level;
 	err_t last_err = ERR_OK;
 
     _CPU_ISR_Disable(level);
     btstate.cb = cb;
-    btstate.usrdata = NULL;
+    btstate.usrdata = padinfo;
     btstate.hci_cmddone = 0;
     hci_arg(&btstate);
-    hci_read_remote_name(bdaddr);
+    hci_read_remote_name(&padinfo->bdaddr);
     _CPU_ISR_Restore(level);
 
 	return last_err;
@@ -704,147 +704,6 @@ void bte_free(struct bte_pcb *pcb)
 	btmemb_free(&bte_pcbs, pcb);
 }
 
-s32 bte_registerdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
-{
-	u32 level;
-	s32 err = ERR_OK;
-	struct l2cap_pcb *l2capcb = NULL;
-
-	//printf("bte_registerdeviceasync()\n");
-	_CPU_ISR_Disable(level);
-
-	pcb->err = ERR_USE;
-	pcb->data_pcb = NULL;
-	pcb->ctl_pcb = NULL;
-	pcb->conn_cfm = conn_cfm;
-	pcb->state = (u32)STATE_CONNECTING;
-
-	bd_addr_set(&(pcb->bdaddr),bdaddr);
-	if((l2capcb=l2cap_new())==NULL) {
-		err = ERR_MEM;
-		goto error;
-	}
-	l2cap_arg(l2capcb,pcb);
-
-	err = l2cap_connect_ind(l2capcb,bdaddr,HIDP_CONTROL_CHANNEL,l2cap_accepted);
-	if(err!=ERR_OK) {
-		l2cap_close(l2capcb);
-		err = ERR_CONN;
-	}
-
-error:
-	_CPU_ISR_Restore(level);
-	//printf("bte_registerdeviceasync(%02x)\n",err);
-	return err;
-}
-
-s32 bte_registerdeviceasync2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
-{
-	u32 level;
-	s32 err = ERR_OK;
-	struct l2cap_pcb *l2capcb = NULL;
-
-	//printf("bte_registerdeviceasync2()\n");
-	_CPU_ISR_Disable(level);
-	if(!lp_is_connected(&(pcb->bdaddr))) {
-		printf("bdaddr not connected: %02x:%02x:%02x:%02x:%02x:%02x\n",pcb->bdaddr.addr[5],pcb->bdaddr.addr[4],pcb->bdaddr.addr[3],pcb->bdaddr.addr[2],pcb->bdaddr.addr[1],pcb->bdaddr.addr[0]);
-		err = ERR_CONN;
-		goto error;
-	}
-
-	pcb->conn_cfm = conn_cfm;
-	
-	if((l2capcb=l2cap_new())==NULL) {
-		err = ERR_MEM;
-		goto error;
-	}
-	l2cap_arg(l2capcb,pcb);
-
-	err = l2cap_connect_ind(l2capcb,&(pcb->bdaddr),HIDP_DATA_CHANNEL,l2cap_accepted);
-	if(err!=ERR_OK) {
-		l2cap_close(l2capcb);
-		err = ERR_CONN;
-	}
-
-error:
-	_CPU_ISR_Restore(level);
-	//printf("bte_registerdeviceasync2(%02x)\n",err);
-	return err;
-}
-
-s32 bte_connectdeviceasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
-{
-	u32 level;
-	s32 err = ERR_OK;
-	struct l2cap_pcb *l2capcb = NULL;
-	
-	_CPU_ISR_Disable(level);
-	//printf("bte_connectdeviceasync()\n");
-	if(lp_is_connected(bdaddr)) {
-		printf("bdaddr already exists: %02x:%02x:%02x:%02x:%02x:%02x\n",bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
-		err = ERR_CONN;
-		goto error;
-	}
-	pcb->err = ERR_USE;
-	pcb->data_pcb = NULL;
-	pcb->ctl_pcb = NULL;
-	pcb->conn_cfm = conn_cfm;
-	pcb->state = (u32)STATE_CONNECTING;
-
-	bd_addr_set(&(pcb->bdaddr),bdaddr);
-	if((l2capcb=l2cap_new())==NULL) {
-		err = ERR_MEM;
-		goto error;
-	}
-	l2cap_arg(l2capcb,pcb);
-
-	err = l2ca_connect_req(l2capcb,bdaddr,HIDP_CONTROL_CHANNEL,HCI_ALLOW_ROLE_SWITCH,l2cap_connected);
-	if(err!=ERR_OK) {
-		l2cap_close(l2capcb);
-		err = ERR_CONN;
-	}
-
-error:
-	_CPU_ISR_Restore(level);
-	//printf("bte_connectdeviceasync(%02x)\n",err);
-	return err;
-}
-
-s32 bte_connectdeviceasync2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
-{
-	u32 level;
-	s32 err = ERR_OK;
-	struct l2cap_pcb *l2capcb = NULL;
-	
-	_CPU_ISR_Disable(level);
-	//printf("bte_connectdeviceasync2()\n");
-	
-	if(!lp_is_connected(&(pcb->bdaddr))) {
-		printf("bdaddr not connected: %02x:%02x:%02x:%02x:%02x:%02x\n",pcb->bdaddr.addr[5],pcb->bdaddr.addr[4],pcb->bdaddr.addr[3],pcb->bdaddr.addr[2],pcb->bdaddr.addr[1],pcb->bdaddr.addr[0]);
-		err = ERR_CONN;
-		goto error;
-	}
-	
-	pcb->conn_cfm = conn_cfm;
-
-	if((l2capcb=l2cap_new())==NULL) {
-		err = ERR_MEM;
-		goto error;
-	}
-	l2cap_arg(l2capcb,pcb);
-
-	err = l2ca_connect_req(l2capcb,&(pcb->bdaddr),HIDP_DATA_CHANNEL,HCI_ALLOW_ROLE_SWITCH,l2cap_connected);
-	if(err!=ERR_OK) {
-		l2cap_close(l2capcb);
-		err = ERR_CONN;
-	}
-
-error:
-	_CPU_ISR_Restore(level);
-	//printf("bte_connectdeviceasync2(%02x)\n",err);
-	return err;
-}
-
 s32 BTE_Inquiry(u8 max_cnt,u8 flush,btecallback cb)
 {
 	u32 level;
@@ -943,9 +802,82 @@ s32 bte_connect_ex(struct bte_pcb *pcb,struct inquiry_info_ex *info,u8 psm,s32 (
 
 	if((err=hci_reg_dev_info(&(info->bdaddr),info->cod,info->psrm,info->psm,info->co))!=ERR_OK) return err;
 	return bte_connect(pcb,&(info->bdaddr),psm,recv);
+}*/
+
+s32 bte_connectasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
+{
+	u32 level;
+	s32 err = ERR_OK;
+	struct l2cap_pcb *l2capcb = NULL;
+	
+	_CPU_ISR_Disable(level);
+	//printf("bte_connectasync()\n");
+	if(lp_is_connected(bdaddr)) {
+		printf("bdaddr already exists: %02x:%02x:%02x:%02x:%02x:%02x\n",bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
+		err = ERR_CONN;
+		goto error;
+	}
+	pcb->err = ERR_USE;
+	pcb->data_pcb = NULL;
+	pcb->ctl_pcb = NULL;
+	pcb->conn_cfm = conn_cfm;
+	pcb->state = (u32)STATE_CONNECTING;
+
+	bd_addr_set(&(pcb->bdaddr),bdaddr);
+	if((l2capcb=l2cap_new())==NULL) {
+		err = ERR_MEM;
+		goto error;
+	}
+	l2cap_arg(l2capcb,pcb);
+
+	err = l2ca_connect_req(l2capcb,bdaddr,HIDP_CONTROL_CHANNEL,HCI_ALLOW_ROLE_SWITCH,l2cap_connected);
+	if(err!=ERR_OK) {
+		l2cap_close(l2capcb);
+		err = ERR_CONN;
+	}
+
+error:
+	_CPU_ISR_Restore(level);
+	//printf("bte_connectasync(%02x)\n",err);
+	return err;
 }
 
-s32 bte_listen(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm)
+s32 bte_connectasync_step2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
+{
+	u32 level;
+	s32 err = ERR_OK;
+	struct l2cap_pcb *l2capcb = NULL;
+	
+	_CPU_ISR_Disable(level);
+	//printf("bte_connectasync_step2()\n");
+	
+	if(!lp_is_connected(&(pcb->bdaddr))) {
+		printf("bdaddr not connected: %02x:%02x:%02x:%02x:%02x:%02x\n",pcb->bdaddr.addr[5],pcb->bdaddr.addr[4],pcb->bdaddr.addr[3],pcb->bdaddr.addr[2],pcb->bdaddr.addr[1],pcb->bdaddr.addr[0]);
+		err = ERR_CONN;
+		goto error;
+	}
+	
+	pcb->conn_cfm = conn_cfm;
+
+	if((l2capcb=l2cap_new())==NULL) {
+		err = ERR_MEM;
+		goto error;
+	}
+	l2cap_arg(l2capcb,pcb);
+
+	err = l2ca_connect_req(l2capcb,&(pcb->bdaddr),HIDP_DATA_CHANNEL,HCI_ALLOW_ROLE_SWITCH,l2cap_connected);
+	if(err!=ERR_OK) {
+		l2cap_close(l2capcb);
+		err = ERR_CONN;
+	}
+
+error:
+	_CPU_ISR_Restore(level);
+	//printf("bte_connectasync_step2(%02x)\n",err);
+	return err;
+}
+
+/*s32 bte_listen(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm)
 {
 	s32 err;
 	u32 level;
@@ -968,8 +900,77 @@ s32 bte_listen(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm)
 
 	_CPU_ISR_Restore(level);
 	return err;
+}*/
+
+s32 bte_listenasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
+{
+	u32 level;
+	s32 err = ERR_OK;
+	struct l2cap_pcb *l2capcb = NULL;
+
+	//printf("bte_listenasync()\n");
+	_CPU_ISR_Disable(level);
+
+	pcb->err = ERR_USE;
+	pcb->data_pcb = NULL;
+	pcb->ctl_pcb = NULL;
+	pcb->conn_cfm = conn_cfm;
+	pcb->state = (u32)STATE_CONNECTING;
+
+	bd_addr_set(&(pcb->bdaddr),bdaddr);
+	if((l2capcb=l2cap_new())==NULL) {
+		err = ERR_MEM;
+		goto error;
+	}
+	l2cap_arg(l2capcb,pcb);
+
+	err = l2cap_connect_ind(l2capcb,bdaddr,HIDP_CONTROL_CHANNEL,l2cap_accepted);
+	if(err!=ERR_OK) {
+		l2cap_close(l2capcb);
+		err = ERR_CONN;
+	}
+
+error:
+	_CPU_ISR_Restore(level);
+	//printf("bte_listenasync(%02x)\n",err);
+	return err;
 }
 
+s32 bte_listenasync_step2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
+{
+	u32 level;
+	s32 err = ERR_OK;
+	struct l2cap_pcb *l2capcb = NULL;
+
+	//printf("bte_listenasync_step2()\n");
+	_CPU_ISR_Disable(level);
+	if(!lp_is_connected(&(pcb->bdaddr))) {
+		printf("bdaddr not connected: %02x:%02x:%02x:%02x:%02x:%02x\n",pcb->bdaddr.addr[5],pcb->bdaddr.addr[4],pcb->bdaddr.addr[3],pcb->bdaddr.addr[2],pcb->bdaddr.addr[1],pcb->bdaddr.addr[0]);
+		err = ERR_CONN;
+		goto error;
+	}
+
+	pcb->conn_cfm = conn_cfm;
+	
+	if((l2capcb=l2cap_new())==NULL) {
+		err = ERR_MEM;
+		goto error;
+	}
+	l2cap_arg(l2capcb,pcb);
+
+	err = l2cap_connect_ind(l2capcb,&(pcb->bdaddr),HIDP_DATA_CHANNEL,l2cap_accepted);
+	if(err!=ERR_OK) {
+		l2cap_close(l2capcb);
+		err = ERR_CONN;
+	}
+
+error:
+	_CPU_ISR_Restore(level);
+	//printf("bte_listenasync_step2(%02x)\n",err);
+	return err;
+}
+
+/*
 s32 bte_accept(struct bte_pcb *pcb,s32 (*recv)(void *arg,void *buffer,u16 len))
 {
 	u32 level;
@@ -1370,7 +1371,7 @@ err_t bte_read_bd_addr_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,
 
 err_t bte_read_remote_name_complete(void *arg,struct bd_addr *bdaddr,u8_t *name,u8_t result)
 {
-	struct pad_info *info;
+	struct pad_name_info *info;
     struct bt_state *state = (struct bt_state*)arg;
 
     LOG("bte_read_remote_name_complete(%02x,%p)\n", result, bdaddr);
@@ -1378,12 +1379,9 @@ err_t bte_read_remote_name_complete(void *arg,struct bd_addr *bdaddr,u8_t *name,
     if(state==NULL) return ERR_VAL;
 
     if(result == HCI_SUCCESS) {
-        info = (struct pad_info *)malloc(sizeof(struct pad_info));
-        if (info == NULL)
-			return ERR_MEM;
+		info = (struct pad_name_info *)state->usrdata;
 		bd_addr_set(&info->bdaddr, bdaddr);
 		memcpy(info->name, name, BD_NAME_LEN);
-		state->usrdata = info;
         LOG("bte_read_remote_name_complete(%02x,%s)\n",result,name);
         __bte_cmdfinish(state,ERR_OK);
         return ERR_OK;
