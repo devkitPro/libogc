@@ -165,6 +165,7 @@ struct _conf_pad_guests {
 } ATTRIBUTE_PACKED;
 
 s32 CONF_Init(void);
+s32 CONF_SaveChanges(void);
 s32 CONF_GetLength(const char *name);
 s32 CONF_GetType(const char *name);
 s32 CONF_Get(const char *name, void *buffer, u32 length);
@@ -182,7 +183,9 @@ s32 CONF_GetCounterBias(u32 *bias);
 s32 CONF_GetScreenSaverMode(void);
 s32 CONF_GetDisplayOffsetH(s8 *offset);
 s32 CONF_GetPadDevices(conf_pads *pads);
+s32 CONF_SetPadDevices(const conf_pads *pads);
 s32 CONF_GetPadGuestDevices(conf_pad_guests *pads);
+s32 CONF_SetPadGuestDevices(const conf_pad_guests *pads);
 s32 CONF_GetNickName(u8 *nickname);
 s32 CONF_GetAspectRatio(void);
 s32 CONF_GetEULA(void);
@@ -192,10 +195,6 @@ s32 CONF_GetWiiConnect24(void);
 s32 CONF_GetRegion(void);
 s32 CONF_GetArea(void);
 s32 CONF_GetVideo(void);
-
-s32 CONF_SetPadDevices(const conf_pads *pads);
-s32 CONF_SetPadGuestDevices(const conf_pad_guests *pads);
-s32 CONF_SaveChanges(void);
 
 #ifdef __cplusplus
    }

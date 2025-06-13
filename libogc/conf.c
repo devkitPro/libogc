@@ -1,9 +1,11 @@
 /*-------------------------------------------------------------
 
-conf.c -- SYSCONF support
+conf.c -- SYSCONF & setting.txt support
 
-Copyright (C) 2008
+Copyright (C) 2008-2025
 Hector Martin (marcan)
+tona
+Zarithya
 
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any
@@ -31,17 +33,18 @@ distribution.
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
-#include <gcbool.h>
 #include "ipc.h"
 #include "asm.h"
 #include "processor.h"
 #include "conf.h"
 
+#define CONF_FILE_SIZE 0x4000
+#define CONF_TXT_FILE_SIZE 0x100
 
 static int __conf_inited = 0;
-static u8 __conf_buffer[0x4000] ATTRIBUTE_ALIGN(32);
-static char __conf_txt_buffer[0x101] ATTRIBUTE_ALIGN(32);
-static int __conf_buffer_dirty = FALSE;
+static u8 __conf_buffer[CONF_FILE_SIZE] ATTRIBUTE_ALIGN(32);
+static char __conf_txt_buffer[CONF_TXT_FILE_SIZE + 1] ATTRIBUTE_ALIGN(32);
+static int __conf_buffer_dirty = false;
 
 static const char __conf_file[] ATTRIBUTE_ALIGN(32) = "/shared2/sys/SYSCONF";
 static const char __conf_txt_file[] ATTRIBUTE_ALIGN(32) = "/title/00000001/00000002/data/setting.txt";
@@ -51,7 +54,7 @@ void __CONF_DecryptTextBuffer(void)
 	u32 key = 0x73B5DBFA;
 	int i;
 	
-	for(i=0; i<0x100; i++) {
+	for(i=0; i<CONF_TXT_FILE_SIZE; i++) {
 		__conf_txt_buffer[i] ^= key & 0xff;
 		key = (key<<1) | (key>>31);
 	}
@@ -67,19 +70,19 @@ s32 CONF_Init(void)
 	fd = IOS_Open(__conf_file,1);
 	if(fd < 0) return fd;
 	
-	memset(__conf_buffer,0,0x4000);
-	memset(__conf_txt_buffer,0,0x101);
+	memset(__conf_buffer,0,CONF_FILE_SIZE);
+	memset(__conf_txt_buffer,0,CONF_TXT_FILE_SIZE + 1);
 	
-	ret = IOS_Read(fd, __conf_buffer, 0x4000);
+	ret = IOS_Read(fd, __conf_buffer, CONF_FILE_SIZE);
 	IOS_Close(fd);
-	if(ret != 0x4000) return CONF_EBADFILE;
+	if(ret != CONF_FILE_SIZE) return CONF_EBADFILE;
 	
 	fd = IOS_Open(__conf_txt_file,1);
 	if(fd < 0) return fd;
 	
-	ret = IOS_Read(fd, __conf_txt_buffer, 0x100);
+	ret = IOS_Read(fd, __conf_txt_buffer, CONF_TXT_FILE_SIZE);
 	IOS_Close(fd);
-	if(ret != 0x100) return CONF_EBADFILE;
+	if(ret != CONF_TXT_FILE_SIZE) return CONF_EBADFILE;
 	
 	if(memcmp(__conf_buffer, "SCv0", 4)) return CONF_EBADFILE;
 	
@@ -98,7 +101,7 @@ int __CONF_GetTxt(const char *name, char *buf, int length)
 	
 	if(!__conf_inited) return CONF_ENOTINIT;
 	
-	while(line < (__conf_txt_buffer+0x100) ) {
+	while(line < (__conf_txt_buffer+CONF_TXT_FILE_SIZE) ) {
 		delim = strchr(line, '=');
 		if(delim && ((delim - line) == nlen) && !memcmp(name, line, nlen)) {
 			delim++;
@@ -117,7 +120,7 @@ int __CONF_GetTxt(const char *name, char *buf, int length)
 		}
 		
 		// skip to line end
-		while(line < (__conf_txt_buffer+0x100) && *line++ != '\n');
+		while(line < (__conf_txt_buffer+CONF_TXT_FILE_SIZE) && *line++ != '\n');
 	}
 	return CONF_ENOENT;
 }
@@ -238,7 +241,7 @@ s32 CONF_Set(const char *name, const void *buffer, u32 length)
 		default:
 			return CONF_ENOTIMPL;
 	}
-	__conf_buffer_dirty = TRUE;
+	__conf_buffer_dirty = true;
 	return len;
 }
 
@@ -256,12 +259,12 @@ int __CONF_WriteBuffer(void)
 	if (fd < 0)
 		return fd;
 
-	ret = IOS_Write(fd, __conf_buffer, 0x4000);
+	ret = IOS_Write(fd, __conf_buffer, CONF_FILE_SIZE);
 	IOS_Close(fd);
-	if (ret != 0x4000)
+	if (ret != CONF_FILE_SIZE)
 		return CONF_EBADFILE;
 
-	__conf_buffer_dirty = FALSE;
+	__conf_buffer_dirty = false;
 	return 0;
 }
 
@@ -273,10 +276,6 @@ s32 CONF_SaveChanges(void)
 	ret = __CONF_WriteBuffer();
 	if (ret < 0)
 		return ret;
-
-	/*ret = __CONF_WriteTxtBuffer();
-	if (ret < 0)
-		return ret;*/
 
 	return CONF_ERR_OK;
 }

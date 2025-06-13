@@ -39,11 +39,11 @@
    extern "C" {
 #endif /* __cplusplus */
 
-struct bd_addr {
-  u8 addr[6];
-};
+#define BD_ADDR_LEN	6
 
-#define BD_ADDR_LEN			6
+struct bd_addr {
+  u8 addr[BD_ADDR_LEN];
+};
 
 #define BD_ADDR_ANY			(&(struct bd_addr){{0,0,0,0,0,0}})
 #define BD_ADDR_LOCAL		(&(struct bd_addr){{0,0,0,0xff,0xff,0xff}})

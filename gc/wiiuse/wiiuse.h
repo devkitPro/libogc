@@ -724,7 +724,6 @@ WIIUSE_EXPORT extern int wiiuse_write_streamdata(struct wiimote_t *wm,ubyte *dat
 
 /* connect.c */
 WIIUSE_EXPORT extern int wiiuse_find(struct wiimote_t** wm, int max_wiimotes, int timeout);
-//WIIUSE_EXPORT extern int wiiuse_connect(struct wiimote_t** wm, int wiimotes);
 WIIUSE_EXPORT extern void wiiuse_disconnect(struct wiimote_t* wm);
 
 /* events.c */

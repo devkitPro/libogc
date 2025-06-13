@@ -391,8 +391,8 @@ void BTE_Init(void)
 	hci_wlp_complete(acl_wlp_completed);
 	hci_connection_complete(acl_conn_complete);
 	hci_auth_complete(acl_auth_complete);
-    hci_remote_name_req_complete(bte_read_remote_name_complete);
-    hci_pin_req(pin_req);
+	hci_remote_name_req_complete(bte_read_remote_name_complete);
+	hci_pin_req(pin_req);
 	_CPU_ISR_Restore(level);
 
 	tb.tv_sec = 1;
@@ -500,84 +500,84 @@ s32 BTE_ReadStoredLinkKey(struct linkkey_info *keys,u8 max_cnt,btecallback cb)
 
 s32 BTE_ReadBdAddr(struct bd_addr *bdaddr, btecallback cb)
 {    
-    u32 level;
+	u32 level;
 
-    _CPU_ISR_Disable(level);
-    btstate.cb = cb;
-    btstate.usrdata = bdaddr;
-    btstate.hci_cmddone = 0;
-    hci_arg(&btstate);
-    hci_cmd_complete(bte_read_bd_addr_complete);
-    hci_read_bd_addr();
-    _CPU_ISR_Restore(level);
+	_CPU_ISR_Disable(level);
+	btstate.cb = cb;
+	btstate.usrdata = bdaddr;
+	btstate.hci_cmddone = 0;
+	hci_arg(&btstate);
+	hci_cmd_complete(bte_read_bd_addr_complete);
+	hci_read_bd_addr();
+	_CPU_ISR_Restore(level);
 
-    return ERR_OK;
+	return ERR_OK;
 }
 
 s32 BTE_SetEvtFilter(u8 filter_type,u8 filter_cond_type,u8 *cond, btecallback cb)
 {    
-    u32 level;
+	u32 level;
 
-    _CPU_ISR_Disable(level);
-    btstate.cb = cb;
-    btstate.usrdata = NULL;
-    btstate.hci_cmddone = 0;
-    hci_arg(&btstate);
-    hci_cmd_complete(bte_set_evt_filter_complete);
-    hci_set_event_filter(filter_type,filter_cond_type,cond);
-    _CPU_ISR_Restore(level);
+	_CPU_ISR_Disable(level);
+	btstate.cb = cb;
+	btstate.usrdata = NULL;
+	btstate.hci_cmddone = 0;
+	hci_arg(&btstate);
+	hci_cmd_complete(bte_set_evt_filter_complete);
+	hci_set_event_filter(filter_type,filter_cond_type,cond);
+	_CPU_ISR_Restore(level);
 
-    return ERR_OK;
+	return ERR_OK;
 }
 
 s32 BTE_ReadRemoteName(struct pad_name_info *padinfo, btecallback cb)
 {
-    u32 level;
+	u32 level;
 	err_t last_err = ERR_OK;
 
-    _CPU_ISR_Disable(level);
-    btstate.cb = cb;
-    btstate.usrdata = padinfo;
-    btstate.hci_cmddone = 0;
-    hci_arg(&btstate);
-    hci_read_remote_name(&padinfo->bdaddr);
-    _CPU_ISR_Restore(level);
+	_CPU_ISR_Disable(level);
+	btstate.cb = cb;
+	btstate.usrdata = padinfo;
+	btstate.hci_cmddone = 0;
+	hci_arg(&btstate);
+	hci_read_remote_name(&padinfo->bdaddr);
+	_CPU_ISR_Restore(level);
 
 	return last_err;
 }
 
 s32 BTE_LinkKeyRequestReply(struct bd_addr *bdaddr,u8 *key)
 {
-    u32 level;
+	u32 level;
 	err_t last_err = ERR_OK;
 
-	//printf("BTE_LinkKeyRequestReply\n");
+	LOG("BTE_LinkKeyRequestReply\n");
 
-    _CPU_ISR_Disable(level);
-    btstate.cb = NULL;
-    btstate.usrdata = NULL;
-    btstate.hci_cmddone = 0;
-    hci_arg(&btstate);
-    hci_link_key_req_reply(bdaddr, key);
-    _CPU_ISR_Restore(level);
+	_CPU_ISR_Disable(level);
+	btstate.cb = NULL;
+	btstate.usrdata = NULL;
+	btstate.hci_cmddone = 0;
+	hci_arg(&btstate);
+	hci_link_key_req_reply(bdaddr, key);
+	_CPU_ISR_Restore(level);
 
 	return last_err;
 }
 
 s32 BTE_LinkKeyRequestNegativeReply(struct bd_addr *bdaddr)
 {
-    u32 level;
+	u32 level;
 	err_t last_err = ERR_OK;
 
-	//printf("BTE_LinkKeyRequestNegativeReply\n");
+	LOG("BTE_LinkKeyRequestNegativeReply\n");
 
-    _CPU_ISR_Disable(level);
-    btstate.cb = NULL;
-    btstate.usrdata = NULL;
-    btstate.hci_cmddone = 0;
-    hci_arg(&btstate);
-    hci_link_key_req_neg_reply(bdaddr);
-    _CPU_ISR_Restore(level);
+	_CPU_ISR_Disable(level);
+	btstate.cb = NULL;
+	btstate.usrdata = NULL;
+	btstate.hci_cmddone = 0;
+	hci_arg(&btstate);
+	hci_link_key_req_neg_reply(bdaddr);
+	_CPU_ISR_Restore(level);
 
 	return last_err;
 }
@@ -630,54 +630,54 @@ void BTE_SetLinkKeyNotificationCallback(err_t (*callback)(void *arg,struct bd_ad
 
 s32 BTE_WriteStoredLinkKey(struct bd_addr *bdaddr,u8_t *key)
 {
-    u32 level;
+	u32 level;
 	err_t last_err = ERR_OK;
 
-	//printf("BTE_WriteStoredLinkKey\n");
+	LOG("BTE_WriteStoredLinkKey\n");
 
-    _CPU_ISR_Disable(level);
-    btstate.cb = NULL;
-    btstate.usrdata = NULL;
-    btstate.hci_cmddone = 0;
-    hci_arg(&btstate);
-    hci_write_stored_link_key(bdaddr,key);
-    _CPU_ISR_Restore(level);
+	_CPU_ISR_Disable(level);
+	btstate.cb = NULL;
+	btstate.usrdata = NULL;
+	btstate.hci_cmddone = 0;
+	hci_arg(&btstate);
+	hci_write_stored_link_key(bdaddr,key);
+	_CPU_ISR_Restore(level);
 
 	return last_err;
 }
 
 s32 BTE_ClearStoredLinkKeys(void)
 {
-    u32 level;
+	u32 level;
 	err_t last_err = ERR_OK;
 
-	//printf("BTE_ClearStoredLinkKeys\n");
+	LOG("BTE_ClearStoredLinkKeys\n");
 
-    _CPU_ISR_Disable(level);
-    btstate.cb = NULL;
-    btstate.usrdata = NULL;
-    btstate.hci_cmddone = 0;
-    hci_arg(&btstate);
-    hci_delete_stored_link_key(NULL);
-    _CPU_ISR_Restore(level);
+	_CPU_ISR_Disable(level);
+	btstate.cb = NULL;
+	btstate.usrdata = NULL;
+	btstate.hci_cmddone = 0;
+	hci_arg(&btstate);
+	hci_delete_stored_link_key(NULL);
+	_CPU_ISR_Restore(level);
 
 	return last_err;
 }
 
 s32 BTE_DeleteStoredLinkKey(struct bd_addr *bdaddr)
 {
-    u32 level;
+	u32 level;
 	err_t last_err = ERR_OK;
 
-	//printf("BTE_DeleteStoredLinkKey\n");
+	LOG("BTE_DeleteStoredLinkKey\n");
 
-    _CPU_ISR_Disable(level);
-    btstate.cb = NULL;
-    btstate.usrdata = NULL;
-    btstate.hci_cmddone = 0;
-    hci_arg(&btstate);
-    hci_delete_stored_link_key(bdaddr);
-    _CPU_ISR_Restore(level);
+	_CPU_ISR_Disable(level);
+	btstate.cb = NULL;
+	btstate.usrdata = NULL;
+	btstate.hci_cmddone = 0;
+	hci_arg(&btstate);
+	hci_delete_stored_link_key(bdaddr);
+	_CPU_ISR_Restore(level);
 
 	return last_err;
 }
@@ -769,41 +769,6 @@ s32 bte_disconnect(struct bte_pcb *pcb)
 	return err;
 }
 
-/*
-s32 bte_connect(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm,s32 (*recv)(void *arg,void *buffer,u16 len))
-{
-	u32 level;
-	err_t err = ERR_OK;
-
-	if(pcb==NULL) return ERR_VAL;
-
-	if((pcb->l2capcb=l2cap_new())==NULL) return ERR_MEM;
-
-	pcb->psm = psm;
-	pcb->recv = recv;
-	bd_addr_set(&(pcb->bdaddr),bdaddr);
-
-	_CPU_ISR_Disable(level);
-	pcb->err = ERR_CONN;
-	l2cap_arg(pcb->l2capcb,pcb);
-	err = l2ca_connect_req(pcb->l2capcb,bdaddr,psm,HCI_ALLOW_ROLE_SWITCH,l2cap_connected);
-	if(err==ERR_OK) {
-		LWP_ThreadSleep(pcb->cmdq);
-		err = pcb->err;
-	}
-	_CPU_ISR_Restore(level);
-
-	return err;
-}
-
-s32 bte_connect_ex(struct bte_pcb *pcb,struct inquiry_info_ex *info,u8 psm,s32 (*recv)(void *arg,void *buffer,u16 len))
-{
-	err_t err;
-
-	if((err=hci_reg_dev_info(&(info->bdaddr),info->cod,info->psrm,info->psm,info->co))!=ERR_OK) return err;
-	return bte_connect(pcb,&(info->bdaddr),psm,recv);
-}*/
-
 s32 bte_connectasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
 {
 	u32 level;
@@ -811,9 +776,9 @@ s32 bte_connectasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(
 	struct l2cap_pcb *l2capcb = NULL;
 	
 	_CPU_ISR_Disable(level);
-	//printf("bte_connectasync()\n");
+	LOG("bte_connectasync()\n");
 	if(lp_is_connected(bdaddr)) {
-		printf("bdaddr already exists: %02x:%02x:%02x:%02x:%02x:%02x\n",bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
+		ERROR("bdaddr already exists: %02x:%02x:%02x:%02x:%02x:%02x\n",bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 		err = ERR_CONN;
 		goto error;
 	}
@@ -838,7 +803,7 @@ s32 bte_connectasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(
 
 error:
 	_CPU_ISR_Restore(level);
-	//printf("bte_connectasync(%02x)\n",err);
+	LOG("bte_connectasync(%02x)\n",err);
 	return err;
 }
 
@@ -849,10 +814,10 @@ s32 bte_connectasync_step2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct 
 	struct l2cap_pcb *l2capcb = NULL;
 	
 	_CPU_ISR_Disable(level);
-	//printf("bte_connectasync_step2()\n");
+	LOG("bte_connectasync_step2()\n");
 	
 	if(!lp_is_connected(&(pcb->bdaddr))) {
-		printf("bdaddr not connected: %02x:%02x:%02x:%02x:%02x:%02x\n",pcb->bdaddr.addr[5],pcb->bdaddr.addr[4],pcb->bdaddr.addr[3],pcb->bdaddr.addr[2],pcb->bdaddr.addr[1],pcb->bdaddr.addr[0]);
+		ERROR("bdaddr not connected: %02x:%02x:%02x:%02x:%02x:%02x\n",pcb->bdaddr.addr[5],pcb->bdaddr.addr[4],pcb->bdaddr.addr[3],pcb->bdaddr.addr[2],pcb->bdaddr.addr[1],pcb->bdaddr.addr[0]);
 		err = ERR_CONN;
 		goto error;
 	}
@@ -873,34 +838,9 @@ s32 bte_connectasync_step2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct 
 
 error:
 	_CPU_ISR_Restore(level);
-	//printf("bte_connectasync_step2(%02x)\n",err);
+	LOG("bte_connectasync_step2(%02x)\n",err);
 	return err;
 }
-
-/*s32 bte_listen(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm)
-{
-	s32 err;
-	u32 level;
-	struct l2cap_pcb *l2capcb = NULL;
-
-	if(pcb==NULL) return ERR_VAL;
-
-	if((l2capcb=l2cap_new())==NULL) return ERR_MEM;
-	pcb->l2capcb = NULL;
-
-	pcb->psm = psm;
-	pcb->recv = NULL;
-	bd_addr_set(&(pcb->bdaddr),bdaddr);
-
-	_CPU_ISR_Disable(level);
-	pcb->err = ERR_CONN;
-	l2cap_arg(l2capcb,pcb);
-	err = l2cap_connect_ind(l2capcb,psm,l2cap_accepted);
-	if(err!=ERR_OK) l2cap_close(l2capcb);
-
-	_CPU_ISR_Restore(level);
-	return err;
-}*/
 
 s32 bte_listenasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err))
 {
@@ -908,7 +848,7 @@ s32 bte_listenasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(v
 	s32 err = ERR_OK;
 	struct l2cap_pcb *l2capcb = NULL;
 
-	//printf("bte_listenasync()\n");
+	LOG("bte_listenasync()\n");
 	_CPU_ISR_Disable(level);
 
 	pcb->err = ERR_USE;
@@ -932,7 +872,7 @@ s32 bte_listenasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(v
 
 error:
 	_CPU_ISR_Restore(level);
-	//printf("bte_listenasync(%02x)\n",err);
+	LOG("bte_listenasync(%02x)\n",err);
 	return err;
 }
 
@@ -942,10 +882,10 @@ s32 bte_listenasync_step2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct b
 	s32 err = ERR_OK;
 	struct l2cap_pcb *l2capcb = NULL;
 
-	//printf("bte_listenasync_step2()\n");
+	LOG("bte_listenasync_step2()\n");
 	_CPU_ISR_Disable(level);
 	if(!lp_is_connected(&(pcb->bdaddr))) {
-		printf("bdaddr not connected: %02x:%02x:%02x:%02x:%02x:%02x\n",pcb->bdaddr.addr[5],pcb->bdaddr.addr[4],pcb->bdaddr.addr[3],pcb->bdaddr.addr[2],pcb->bdaddr.addr[1],pcb->bdaddr.addr[0]);
+		ERROR("bdaddr not connected: %02x:%02x:%02x:%02x:%02x:%02x\n",pcb->bdaddr.addr[5],pcb->bdaddr.addr[4],pcb->bdaddr.addr[3],pcb->bdaddr.addr[2],pcb->bdaddr.addr[1],pcb->bdaddr.addr[0]);
 		err = ERR_CONN;
 		goto error;
 	}
@@ -966,28 +906,9 @@ s32 bte_listenasync_step2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct b
 
 error:
 	_CPU_ISR_Restore(level);
-	//printf("bte_listenasync_step2(%02x)\n",err);
+	LOG("bte_listenasync_step2(%02x)\n",err);
 	return err;
 }
-
-/*
-s32 bte_accept(struct bte_pcb *pcb,s32 (*recv)(void *arg,void *buffer,u16 len))
-{
-	u32 level;
-	err_t err = ERR_OK;
-
-	if(pcb==NULL) return ERR_VAL;
-
-	_CPU_ISR_Disable(level);
-	pcb->recv = recv;
-	while(pcb->l2capcb==NULL)
-		LWP_ThreadSleep(pcb->cmdq);
-	err = pcb->err;
-	_CPU_ISR_Restore(level);
-
-	return err;
-}
-*/
 
 s32 bte_senddata(struct bte_pcb *pcb,void *message,u16 len)
 {
@@ -1016,7 +937,7 @@ s32 bte_sendmessageasync(struct bte_pcb *pcb,void *message,u16 len,s32 (*sent)(v
 	struct pbuf *p;
 	struct ctrl_req_t *req;
 
-	//printf("bte_sendmessageasync()\n");
+	LOG("bte_sendmessageasync()\n");
 
 	if(pcb==NULL || message==NULL || len==0) return ERR_VAL;
 	if(pcb->state==STATE_DISCONNECTING || pcb->state==STATE_DISCONNECTED) return ERR_CLSD;
@@ -1047,7 +968,7 @@ s32 bte_sendmessage(struct bte_pcb *pcb,void *message,u16 len)
 	struct pbuf *p;
 	struct ctrl_req_t *req;
 
-	//printf("bte_sendmessage()\n");
+	LOG("bte_sendmessage()\n");
 
 	if(pcb==NULL || message==NULL || len==0) return ERR_VAL;
 	if(pcb->state==STATE_DISCONNECTING || pcb->state==STATE_DISCONNECTED) return ERR_CLSD;
@@ -1108,8 +1029,7 @@ err_t acl_wlp_completed(void *arg,struct bd_addr *bdaddr)
 
 err_t acl_conn_complete(void *arg,struct bd_addr *bdaddr)
 {
-	//printf("acl_conn_complete\n");
-	//memcpy(&(btstate.acl_bdaddr),bdaddr,6);
+	LOG("acl_conn_complete\n");
 
 	hci_auth_req(bdaddr);
 	return ERR_OK;
@@ -1117,7 +1037,7 @@ err_t acl_conn_complete(void *arg,struct bd_addr *bdaddr)
 
 err_t acl_auth_complete(void *arg,struct bd_addr *bdaddr)
 {
-	//printf("acl_auth_complete\n");
+	LOG("acl_auth_complete\n");
 
 	hci_write_link_policy_settings(bdaddr,0x0005);
 	return ERR_OK;
@@ -1126,7 +1046,7 @@ err_t acl_auth_complete(void *arg,struct bd_addr *bdaddr)
 err_t pin_req(void *arg,struct bd_addr *bdaddr)
 {
 	struct bd_addr addr;
-	//printf("pin_req\n");
+	LOG("pin_req\n");
 	
 	if (btstate.pair_mode == PAIR_MODE_NORMAL)
 	{
@@ -1205,7 +1125,7 @@ err_t l2cap_connected(void *arg,struct l2cap_pcb *l2cappcb,u16_t result,u16_t st
 {
 	struct bte_pcb *btepcb = (struct bte_pcb*)arg;
 
-	//printf("l2cap_connected(%02x)\n",result);
+	LOG("l2cap_connected(%02x)\n",result);
 	if(result==L2CAP_CONN_SUCCESS) {
 		l2cap_recv(l2cappcb,bte_process_input);
 		l2cap_disconnect_ind(l2cappcb,l2cap_disconnected_ind);
@@ -1233,7 +1153,7 @@ err_t l2cap_accepted(void *arg,struct l2cap_pcb *l2cappcb,err_t err)
 {
 	struct bte_pcb *btepcb = (struct bte_pcb*)arg;
 
-	//printf("l2cap_accepted(%02x)\n",err);
+	LOG("l2cap_accepted(%02x)\n",err);
 	if(err==ERR_OK) {
 		l2cap_recv(l2cappcb,bte_process_input);
 		l2cap_disconnect_ind(l2cappcb,l2cap_disconnected_ind);
@@ -1287,13 +1207,10 @@ err_t bte_inquiry_complete(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ire
 				inq_res->info[i].psm = p->psm;
 				inq_res->info[i].co = p->co;
 
-				/*printf("bdaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",p->bdaddr.addr[5],p->bdaddr.addr[4],p->bdaddr.addr[3],p->bdaddr.addr[2],p->bdaddr.addr[1],p->bdaddr.addr[0]);
-				printf("cod:    %02x%02x%02x\n",p->cod[2],p->cod[1],p->cod[0]);
-				printf("psrm:   %02x\n",p->psrm);
-				printf("psm:   %02x\n",p->psm);
-				printf("co:   %04x\n",p->co);*/
 				p = p->next;
 			}
+			// Can't use __bte_cmdfinish here because we need to run a different callback.
+			// Commands may have run during inquiry which overwrote state->cb.
 			//__bte_cmdfinish(state,ERR_OK);
 			_CPU_ISR_Disable(level);
 			state->last_err = ERR_OK;
@@ -1325,7 +1242,7 @@ err_t bte_read_stored_link_key_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u
 		if(pcb->keyres!=NULL && keys!=NULL) {
 			for(i=0,p=pcb->keyres;i<state->num_maxdevs && p!=NULL;i++) {
 				bd_addr_set(&(keys[i].bdaddr),&(p->bdaddr));
-				memcpy(keys[i].key,p->key,16);
+				memcpy(keys[i].key,p->key,HCI_LINK_KEY_LEN);
 
 				p = p->next;
 			}
@@ -1340,75 +1257,75 @@ err_t bte_read_stored_link_key_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u
 
 err_t bte_read_bd_addr_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result)
 {
-    struct bd_addr *bdaddr;
-    struct bt_state *state = (struct bt_state*)arg;
+	struct bd_addr *bdaddr;
+	struct bt_state *state = (struct bt_state*)arg;
 
-    if(!pcb) return ERR_CONN;
+	if(!pcb) return ERR_CONN;
 
-    LOG("bte_read_bd_addr_complete(%02x,%p)\n", result, &pcb->bdaddr);
+	LOG("bte_read_bd_addr_complete(%02x,%p)\n", result, &pcb->bdaddr);
 
-    if(state==NULL) return ERR_VAL;
+	if(state==NULL) return ERR_VAL;
 
-    if(!(ogf==HCI_INFO_PARAM_OGF && ocf==HCI_R_BD_ADDR_OCF)) return __bte_cmdfinish(state,ERR_CONN);
+	if(!(ogf==HCI_INFO_PARAM_OGF && ocf==HCI_R_BD_ADDR_OCF)) return __bte_cmdfinish(state,ERR_CONN);
 
-    if(result == HCI_SUCCESS) {
-        bdaddr = (struct bd_addr *)state->usrdata;
-        if (bdaddr != NULL) {
-            bdaddr->addr[0] = pcb->bdaddr.addr[5];
-            bdaddr->addr[1] = pcb->bdaddr.addr[4];
-            bdaddr->addr[2] = pcb->bdaddr.addr[3];
-            bdaddr->addr[3] = pcb->bdaddr.addr[2];
-            bdaddr->addr[4] = pcb->bdaddr.addr[1];
-            bdaddr->addr[5] = pcb->bdaddr.addr[0];
-        }
-        LOG("bte_read_bd_addr_complete(%02x,%p)\n",result,bdaddr);
-        __bte_cmdfinish(state,ERR_OK);
-        return ERR_OK;
-    }
+	if(result == HCI_SUCCESS) {
+		bdaddr = (struct bd_addr *)state->usrdata;
+		if (bdaddr != NULL) {
+			bdaddr->addr[0] = pcb->bdaddr.addr[5];
+			bdaddr->addr[1] = pcb->bdaddr.addr[4];
+			bdaddr->addr[2] = pcb->bdaddr.addr[3];
+			bdaddr->addr[3] = pcb->bdaddr.addr[2];
+			bdaddr->addr[4] = pcb->bdaddr.addr[1];
+			bdaddr->addr[5] = pcb->bdaddr.addr[0];
+		}
+		LOG("bte_read_bd_addr_complete(%02x,%p)\n",result,bdaddr);
+		__bte_cmdfinish(state,ERR_OK);
+		return ERR_OK;
+	}
 
-    return __bte_cmdfinish(state,ERR_VAL);
+	return __bte_cmdfinish(state,ERR_VAL);
 }
 
 err_t bte_read_remote_name_complete(void *arg,struct bd_addr *bdaddr,u8_t *name,u8_t result)
 {
 	struct pad_name_info *info;
-    struct bt_state *state = (struct bt_state*)arg;
+	struct bt_state *state = (struct bt_state*)arg;
 
-    LOG("bte_read_remote_name_complete(%02x,%p)\n", result, bdaddr);
+	LOG("bte_read_remote_name_complete(%02x,%p)\n", result, bdaddr);
 
-    if(state==NULL) return ERR_VAL;
+	if(state==NULL) return ERR_VAL;
 
-    if(result == HCI_SUCCESS) {
+	if(result == HCI_SUCCESS) {
 		info = (struct pad_name_info *)state->usrdata;
 		bd_addr_set(&info->bdaddr, bdaddr);
 		memcpy(info->name, name, BD_NAME_LEN);
-        LOG("bte_read_remote_name_complete(%02x,%s)\n",result,name);
-        __bte_cmdfinish(state,ERR_OK);
-        return ERR_OK;
-    }
+		LOG("bte_read_remote_name_complete(%02x,%s)\n",result,name);
+		__bte_cmdfinish(state,ERR_OK);
+		return ERR_OK;
+	}
 
-    return __bte_cmdfinish(state,ERR_VAL);
+	return __bte_cmdfinish(state,ERR_VAL);
 }
 
 err_t bte_set_evt_filter_complete(void *arg,struct hci_pcb *pcb,u8_t ogf,u8_t ocf,u8_t result)
 {
-    struct bt_state *state = (struct bt_state*)arg;
+	struct bt_state *state = (struct bt_state*)arg;
 
-    if(!pcb) return ERR_CONN;
+	if(!pcb) return ERR_CONN;
 
-    LOG("bte_set_evt_filter_complete(%02x)\n", result);
+	LOG("bte_set_evt_filter_complete(%02x)\n", result);
 
-    if(state==NULL) return ERR_VAL;
+	if(state==NULL) return ERR_VAL;
 
-    if(!(ogf==HCI_HC_BB_OGF && ocf==HCI_SET_EV_FILTER_OCF)) return __bte_cmdfinish(state,ERR_CONN);
+	if(!(ogf==HCI_HC_BB_OGF && ocf==HCI_SET_EV_FILTER_OCF)) return __bte_cmdfinish(state,ERR_CONN);
 
-    if(result == HCI_SUCCESS) {
-        LOG("bte_set_evt_filter_complete(%02x)\n",result);
-        __bte_cmdfinish(state,ERR_OK);
-        return ERR_OK;
-    }
+	if(result == HCI_SUCCESS) {
+		LOG("bte_set_evt_filter_complete(%02x)\n",result);
+		__bte_cmdfinish(state,ERR_OK);
+		return ERR_OK;
+	}
 
-    return __bte_cmdfinish(state,ERR_VAL);
+	return __bte_cmdfinish(state,ERR_VAL);
 }
 
 /* new init with patching */

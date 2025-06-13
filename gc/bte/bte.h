@@ -66,6 +66,7 @@
 #define HIDP_PROTO_BOOT				0x00
 #define HIDP_PROTO_REPORT			0x01
 
+#define BD_LINK_KEY_LEN     		16
 #define BD_NAME_LEN     			248
 #define BD_MAX_INQUIRY_DEVS			255
 
@@ -105,7 +106,7 @@ struct inquiry_res
 struct linkkey_info
 {
 	struct bd_addr bdaddr;
-	u8 key[16];
+	u8 key[BD_LINK_KEY_LEN];
 };
 
 struct pad_name_info
@@ -172,12 +173,8 @@ void bte_disconnected(struct bte_pcb *pcb,s32 (disconn_cfm)(void *arg,struct bte
 
 s32 bte_disconnect(struct bte_pcb *pcb);
 
-//s32 bte_listen(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm);
-//s32 bte_accept(struct bte_pcb *pcb,s32 (*recv)(void *arg,void *buffer,u16 len));
 s32 bte_listenasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
 s32 bte_listenasync_step2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
-//s32 bte_connect(struct bte_pcb *pcb,struct bd_addr *bdaddr,u8 psm,s32 (*recv)(void *arg,void *buffer,u16 len));
-//s32 bte_connect_ex(struct bte_pcb *pcb,struct inquiry_info_ex *info,u8 psm,s32 (*recv)(void *arg,void *buffer,u16 len));
 s32 bte_connectasync(struct bte_pcb *pcb,struct bd_addr *bdaddr,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
 s32 bte_connectasync_step2(struct bte_pcb *pcb,s32 (*conn_cfm)(void *arg,struct bte_pcb *pcb,u8 err));
 s32 bte_senddata(struct bte_pcb *pcb,void *message,u16 len);

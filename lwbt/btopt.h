@@ -181,7 +181,7 @@ typedef s8 err_t;
  * \hideinitializer
  */
 #define LOGGING     0
-#define ERRORING	1
+#define ERRORING	0
 
 /**
  * Print out a uIP log message.
