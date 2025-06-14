@@ -128,6 +128,8 @@ enum {
 
 #define CONF_PAD_MAX_REGISTERED 10
 #define CONF_PAD_MAX_ACTIVE 4
+#define CONF_PAD_ACTIVE_AND_OTHER (CONF_PAD_MAX_ACTIVE + 2)
+#define CONF_PAD_TOTAL (CONF_PAD_MAX_REGISTERED + CONF_PAD_ACTIVE_AND_OTHER)
 
 typedef struct _conf_pad_device conf_pad_device;
 
@@ -146,7 +148,24 @@ struct _conf_pads {
 	conf_pad_device unknown;
 } ATTRIBUTE_PACKED;
 
+typedef struct _conf_pad_guest_device conf_pad_guest_device;
+
+struct _conf_pad_guest_device {
+	u8 bdaddr[6];
+	char name[0x40];
+	u8 link_key[16];
+} ATTRIBUTE_PACKED;
+
+typedef struct _conf_pad_guests conf_pad_guests;
+
+struct _conf_pad_guests {
+	u8 num_guests;
+	conf_pad_guest_device guests[CONF_PAD_MAX_ACTIVE];
+	conf_pad_guest_device unknown[2]; // Balance Board can't be set as guest...
+} ATTRIBUTE_PACKED;
+
 s32 CONF_Init(void);
+s32 CONF_SaveChanges(void);
 s32 CONF_GetLength(const char *name);
 s32 CONF_GetType(const char *name);
 s32 CONF_Get(const char *name, void *buffer, u32 length);
@@ -164,6 +183,9 @@ s32 CONF_GetCounterBias(u32 *bias);
 s32 CONF_GetScreenSaverMode(void);
 s32 CONF_GetDisplayOffsetH(s8 *offset);
 s32 CONF_GetPadDevices(conf_pads *pads);
+s32 CONF_SetPadDevices(const conf_pads *pads);
+s32 CONF_GetPadGuestDevices(conf_pad_guests *pads);
+s32 CONF_SetPadGuestDevices(const conf_pad_guests *pads);
 s32 CONF_GetNickName(u8 *nickname);
 s32 CONF_GetAspectRatio(void);
 s32 CONF_GetEULA(void);

@@ -95,7 +95,7 @@ int wii_board_handshake(struct wiimote_t* wm, struct wii_board_t* wb, ubyte* dat
 /**
  *	@brief The wii board disconnected.
  *
- *	@param cc		A pointer to a classic_ctrl_t structure.
+ *	@param cc		A pointer to a wii_board_t structure.
  */
 void wii_board_disconnected(struct wii_board_t* wb)
 {
