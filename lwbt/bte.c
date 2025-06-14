@@ -760,10 +760,11 @@ s32 bte_disconnect(struct bte_pcb *pcb)
 
 	_CPU_ISR_Disable(level);
 	pcb->state = (u32)STATE_DISCONNECTING;
-	if(pcb->data_pcb!=NULL )
+	if(pcb->data_pcb!=NULL)
 		err = l2ca_disconnect_req(pcb->data_pcb,l2cap_disconnect_cfm);
 	else if(pcb->ctl_pcb!=NULL)
 		err = l2ca_disconnect_req(pcb->ctl_pcb,l2cap_disconnect_cfm);
+	bte_free(pcb);
 	_CPU_ISR_Restore(level);
 
 	return err;

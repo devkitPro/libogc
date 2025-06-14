@@ -53,6 +53,9 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 	if(wm->event_cb) wm->event_cb(wm,WIIUSE_DISCONNECT);
 
 	wml->wm = NULL;
+
+	bte_free(wml->sock);
+	wml->sock = NULL;
 	return ERR_OK;
 }
 
@@ -82,11 +85,12 @@ static s32 __wiiuse_connected(void *arg,struct bte_pcb *pcb,u8 err)
 	struct wiimote_listen_t *wml = (struct wiimote_listen_t*)arg;
 	struct wiimote_t *wm;
 
-	WIIUSE_INFO("__wiiuse_connected(%d)", err);
+	WIIUSE_DEBUG("__wiiuse_connected(%d)", err);
 	wm = wml->assign_cb(wml, err);
 	
 	if(!wm) {
 		bte_disconnect(wml->sock);
+		wml->sock = NULL;
 		return ERR_OK;
 	}
 
@@ -105,7 +109,7 @@ static s32 __wiiuse_connected(void *arg,struct bte_pcb *pcb,u8 err)
 
 static s32 __wiiuse_connect_step2(void *arg,struct bte_pcb *pcb,u8 err)
 {
-	WIIUSE_INFO("__wiiuse_connect_step2(%d)", err);
+	WIIUSE_DEBUG("__wiiuse_connect_step2(%d)", err);
 	if (err!=ERR_OK) {
 		bte_disconnect(pcb);
 		return ERR_OK;
@@ -121,7 +125,7 @@ static s32 __wiiuse_connect_step2(void *arg,struct bte_pcb *pcb,u8 err)
 
 static s32 __wiiuse_accept_step2(void *arg,struct bte_pcb *pcb,u8 err)
 {
-	WIIUSE_INFO("__wiiuse_accept_step2(%d)", err);
+	WIIUSE_DEBUG("__wiiuse_accept_step2(%d)", err);
 	if (err!=ERR_OK) {
 		bte_disconnect(pcb);
 		return ERR_OK;
@@ -151,9 +155,9 @@ int wiiuse_accept(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *name
 {
 	s32 err;
 
-	if(!wml || !bdaddr || !name || !assign_cb) return 0;
+	if(!wml || !bdaddr || !assign_cb) return 0;
 
-	WIIUSE_INFO("wiiuse_accept %p, bdaddr: %02x:%02x:%02x:%02x:%02x:%02x",wml,bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
+	WIIUSE_DEBUG("wiiuse_accept %p, bdaddr: %02x:%02x:%02x:%02x:%02x:%02x",wml,bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 
 	if(wml->sock!=NULL) {
 		WIIUSE_ERROR("wiiuse_accept: wml->sock was not NULL!");
@@ -185,6 +189,8 @@ int wiiuse_accept(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *name
 	if(err==ERR_OK) return 1;
 	
 	WIIUSE_ERROR("wiiuse_accept: bte_listenasync failed(%d)", err);
+	bte_free(wml->sock);
+	wml->sock = NULL;
 	return 0;
 }	
 
@@ -194,7 +200,7 @@ int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *nam
 
 	if(!wml || !bdaddr|| !assign_cb) return 0;
 	
-	WIIUSE_INFO("wiiuse_connect %p, bdaddr: %02x:%02x:%02x:%02x:%02x:%02x",wml,bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
+	WIIUSE_DEBUG("wiiuse_connect %p, bdaddr: %02x:%02x:%02x:%02x:%02x:%02x",wml,bdaddr->addr[5],bdaddr->addr[4],bdaddr->addr[3],bdaddr->addr[2],bdaddr->addr[1],bdaddr->addr[0]);
 
 	if(wml->sock!=NULL) {
 		WIIUSE_ERROR("wiiuse_connect: wml->sock was not NULL!");
@@ -222,23 +228,24 @@ int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *nam
 	bte_received(wml->sock,__wiiuse_receive);
 	bte_disconnected(wml->sock,__wiiuse_disconnected);
 
-	WIIUSE_INFO("wiiuse_connect");
-
 	err = bte_connectasync(wml->sock,bdaddr,__wiiuse_connect_step2);
 	if(err==ERR_OK) return 1;
 	
-	WIIUSE_ERROR("wiiuse_connect: bte_listenasync failed(%d)", err);
+	WIIUSE_ERROR("wiiuse_connect: bte_connectasync failed(%d)", err);
+	bte_free(wml->sock);
+	wml->sock = NULL;
 	return 0;
 }	
 
 void wiiuse_disconnect(struct wiimote_t *wm)
 {
-	WIIUSE_INFO("wiiuse_disconnect");
+	WIIUSE_DEBUG("wiiuse_disconnect");
 
 	if(wm==NULL || wm->sock==NULL) return;
 
 	WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_CONNECTED);
 	bte_disconnect(wm->sock);
+	wml->sock = NULL;
 }
 
 void wiiuse_sensorbar_enable(int enable)
