@@ -54,14 +54,6 @@ distribution.
 #define MAX_STREAMDATA_LEN				20
 #define EVENTQUEUE_LENGTH				16
 
-#define DISCONNECT_AUTH_FAILURE			0x05	/* HCI_AUTHENTICATION_FAILURE */
-#define DISCONNECT_TIMEOUT				0x08	/* HCI_CONN_TIMEOUT */
-#define DISCONNECT_SYNC_PRESSED			0x13	/* HCI_OTHER_END_TERMINATED_CONN_USER_ENDED */
-#define DISCONNECT_BATTERY_DIED			0x14	/* HCI_OTHER_END_TERMINATED_CONN_LOW_RESOURCES */
-#define DISCONNECT_POWER_OFF			0x15	/* HCI_OTHER_END_TERMINATED_CONN_ABOUT_TO_POWER_OFF */
-#define DISCONNECT_IDLE_TIMEOUT			0x16	/* HCI_CONN_TERMINATED_BY_LOCAL_HOST */
-#define DISCONNECT_REPEATED_ATTEMPTS	0x17	/* HCI_REPEATED_ATTEMPTS */
-
 struct _wpad_thresh {
 	s32 btns;
 	s32 ir;
@@ -121,9 +113,9 @@ static void __wpad_def_powcb(s32 chan);
 static void __wpad_def_hostsynccb(u32 held);
 static WPADShutdownCallback __wpad_batcb = NULL;
 static WPADShutdownCallback __wpad_powcb = __wpad_def_powcb;
-static WPADShutdownCallback __wpad_synccb = NULL;
-static WPADShutdownCallback __wpad_idletimeoutcb = NULL;
+static WPADDisconnectCallback __wpad_disconncb = NULL;
 static WPADHostSyncBtnCallback __wpad_hostsynccb = __wpad_def_hostsynccb;
+static WPADStatusCallback __wpad_statuscb = NULL;
 
 extern void __wiiuse_sensorbar_enable(int enable);
 extern void __SYS_DoPowerCB(void);
@@ -232,7 +224,7 @@ wiimote *__wpad_assign_slot(wiimote_listen *wml, u8 err)
 
 	if (i >= WPAD_MAX_DEVICES)
 	{
-		WIIUSE_ERROR("WPAD Listen Slot %d Not Valid\n", i);
+		WIIUSE_ERROR("WPAD Slot %d Not Valid\n", i);
 		_CPU_ISR_Restore(level);
 		return NULL;
 	}
@@ -298,7 +290,7 @@ wiimote *__wpad_register_new(wiimote_listen *wml, u8 err)
 	wm = __wpad_assign_slot(wml, err);
 	if (wm)
 	{
-		// Search for wml->bdaddr in guest registration list
+		// Search for bdaddr in guest registration list
 		for(i=0; i<__wpad_guests.num_guests; i++) {
 			BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_guests.guests[i].bdaddr);
 			if(bd_addr_cmp(&wml->bdaddr,&bdaddr)) {
@@ -308,7 +300,7 @@ wiimote *__wpad_register_new(wiimote_listen *wml, u8 err)
 			}
 		}
 	
-		// Search for wml->bdaddr in permanent registration list
+		// Search for bdaddr in permanent registration list
 		for(i=0; i<__wpad_devs.num_registered; i++) {
 			BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_devs.registered[i].bdaddr);
 			if(bd_addr_cmp(&wml->bdaddr,&bdaddr)) {
@@ -319,7 +311,7 @@ wiimote *__wpad_register_new(wiimote_listen *wml, u8 err)
 		}
 
 		if(BTE_GetPairMode() == PAIR_MODE_NORMAL) {
-			// Permanent pair, need to save wml->bdaddr as known controller
+			// Permanent pair, need to save bdaddr as known controller
 			if(registeredEntry >= __wpad_devs.num_registered) {
 				// If currently guest, we want to allow for upgrade to permanent pair
 				if(guestEntry < CONF_PAD_MAX_ACTIVE) {
@@ -348,7 +340,7 @@ wiimote *__wpad_register_new(wiimote_listen *wml, u8 err)
 				if (__wpad_guests.num_guests < CONF_PAD_MAX_ACTIVE)
 					__wpad_guests.num_guests++;
 	
-				for(i=0; i<CONF_PAD_ACTIVE_AND_OTHER; i++) {
+				for(i=0; i<CONF_PAD_MAX_ACTIVE; i++) {
 					if(bd_addr_cmp(&wml->bdaddr,&__wpad_guest_keys[i].bdaddr)) {
 						u8 *src = __wpad_guest_keys[i].key;
 						u8 *dst = __wpad_guests.guests[0].link_key;
@@ -794,8 +786,6 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 	}
 }
 
-// TODO: Expose to user instead of handling it here? (so user can be aware of any and all disconnects)
-// Or should user just be polling?
 void __wpad_disconnectCB(struct bd_addr *pad_addr, u8 reason)
 {
 	int i;
@@ -807,31 +797,18 @@ void __wpad_disconnectCB(struct bd_addr *pad_addr, u8 reason)
 	if(__wpads_inited == WPAD_STATE_ENABLED) {
 		for(i=0;i<WPAD_MAX_DEVICES;i++) {
 			if(bd_addr_cmp(pad_addr,&__wpads_listen[i].bdaddr)) {
-				switch (reason) {
-					case DISCONNECT_AUTH_FAILURE:
-						printf("WPAD Auth Failure\n");
-						break;
-					case DISCONNECT_TIMEOUT:
-						printf("WPAD Timeout\n");
-						break;
-					case DISCONNECT_SYNC_PRESSED:
-						if(__wpad_synccb) __wpad_synccb(i);
-						break;
-					case DISCONNECT_BATTERY_DIED:
-						if(__wpad_batcb) __wpad_batcb(i);
-						break;
-					case DISCONNECT_POWER_OFF:
-						if(__wpad_powcb) __wpad_powcb(i);
-						break;
-					case DISCONNECT_IDLE_TIMEOUT:
-						if(__wpad_idletimeoutcb) __wpad_idletimeoutcb(i);
-						break;
-					case DISCONNECT_REPEATED_ATTEMPTS:
-						printf("WPAD Too Many Attempts\n");
-						break;
-					default:
-						printf("WPAD Unknown Disconnect Reason(%d)\n", reason);
-						break;
+				if (__wpad_disconncb) {
+					__wpad_disconncb(i, reason);
+				} else {
+					// For backwards compatibility
+					switch (reason) {
+						case WPAD_DISCON_BATTERY_DIED:
+							if(__wpad_batcb) __wpad_batcb(i);
+							break;
+						case WPAD_DISCON_POWER_OFF:
+							if(__wpad_powcb) __wpad_powcb(i);
+							break;
+					}
 				}
 				__wpads_used &= ~(0x01<<i);
 				break;
@@ -1061,7 +1038,7 @@ static s8 __wpad_linkkeyreqCB(void *arg,struct bd_addr *pad_addr)
 	}
 
 	if(!found) {
-		for(i=0; i<CONF_PAD_ACTIVE_AND_OTHER; i++) {
+		for(i=0; i<CONF_PAD_MAX_ACTIVE; i++) {
 			if(bd_addr_cmp(pad_addr,&__wpad_guest_keys[i].bdaddr)) {
 				found = true;
 				BTE_LinkKeyRequestReply(pad_addr,__wpad_guest_keys[i].key);
@@ -1222,7 +1199,7 @@ s32 WPAD_StopSearch(void)
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	WIIUSE_DEBUG("Stopping guest Wiimote thing");
+	WIIUSE_DEBUG("WPAD Stopping Guest Device Search");
 	BTE_ExitPeriodicInquiry();
 	_CPU_ISR_Restore(level);
 	return ERR_OK;
@@ -1280,7 +1257,7 @@ s32 WPAD_Init(void)
 			return WPAD_ERR_BADCONF;
 		}
 
-		if(__wpad_guests.num_guests > CONF_PAD_ACTIVE_AND_OTHER) {
+		if(__wpad_guests.num_guests > CONF_PAD_MAX_ACTIVE) {
 			WPAD_Shutdown();
 			_CPU_ISR_Restore(level);
 			return WPAD_ERR_BADCONF;
@@ -1671,6 +1648,7 @@ s32 WPAD_SetEventBufs(s32 chan, WPADData *bufs, u32 cnt)
 	return WPAD_ERR_NONE;
 }
 
+[[deprecated]]
 void WPAD_SetPowerButtonCallback(WPADShutdownCallback cb)
 {
 	u32 level;
@@ -1683,6 +1661,7 @@ void WPAD_SetPowerButtonCallback(WPADShutdownCallback cb)
 	_CPU_ISR_Restore(level);
 }
 
+[[deprecated]]
 void WPAD_SetBatteryDeadCallback(WPADShutdownCallback cb)
 {
 	u32 level;
@@ -1692,12 +1671,12 @@ void WPAD_SetBatteryDeadCallback(WPADShutdownCallback cb)
 	_CPU_ISR_Restore(level);
 }
 
-void WPAD_SetIdleTimeoutCallback(WPADShutdownCallback cb)
+void WPAD_SetDisconnectCallback(WPADDisconnectCallback cb)
 {
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	__wpad_idletimeoutcb = cb;
+	__wpad_disconncb = cb;
 	_CPU_ISR_Restore(level);
 }
 
@@ -1710,6 +1689,15 @@ void WPAD_SetHostSyncButtonCallback(WPADHostSyncBtnCallback cb)
 		__wpad_hostsynccb = cb;
 	else
 		__wpad_hostsynccb = __wpad_def_hostsynccb;
+	_CPU_ISR_Restore(level);
+}
+
+void WPAD_SetStatusCallback(WPADStatusCallback cb)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	__wpad_statuscb = cb;
 	_CPU_ISR_Restore(level);
 }
 
@@ -2009,4 +1997,30 @@ void WPAD_Expansion(int chan, struct expansion_t *exp)
 {
 	if(chan<0 || chan>=WPAD_MAX_DEVICES || exp==NULL ) return;
 	*exp = wpaddata[chan].exp;
+}
+
+void __wpad_status_finished(struct wiimote_t *wm,ubyte *data,uword len)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	if (wm && __wpad_statuscb) __wpad_statuscb(wm->unid);
+	_CPU_ISR_Restore(level);
+}
+
+void WPAD_PadStatus(int chan)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	if(chan<0 || chan>=WPAD_MAX_DEVICES) return;
+	if(__wpads[chan] && WIIMOTE_IS_SET(__wpads[chan],WIIMOTE_STATE_CONNECTED)) wiiuse_status(__wpads[chan], __wpad_status_finished);
+
+	_CPU_ISR_Restore(level);
+}
+
+bool WPAD_IsBatteryCritical(int chan)
+{
+	if(chan<0 || chan>=WPAD_MAX_DEVICES) return false;
+	return WIIMOTE_IS_SET(__wpads[chan],WIIMOTE_STATE_BATTERY_CRITICAL);
 }

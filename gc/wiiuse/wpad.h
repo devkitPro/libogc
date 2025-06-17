@@ -140,6 +140,14 @@ enum {
 #define WPAD_THRESH_DEFAULT_BALANCEBOARD		60
 #define WPAD_THRESH_DEFAULT_MOTION_PLUS			100
 
+#define WPAD_DISCON_AUTH_FAILURE				0x05	/* HCI_AUTHENTICATION_FAILURE */
+#define WPAD_DISCON_TIMEOUT						0x08	/* HCI_CONN_TIMEOUT */
+#define WPAD_DISCON_SYNC_PRESSED				0x13	/* HCI_OTHER_END_TERMINATED_CONN_USER_ENDED */
+#define WPAD_DISCON_BATTERY_DIED				0x14	/* HCI_OTHER_END_TERMINATED_CONN_LOW_RESOURCES */
+#define WPAD_DISCON_POWER_OFF					0x15	/* HCI_OTHER_END_TERMINATED_CONN_ABOUT_TO_POWER_OFF */
+#define WPAD_DISCON_IDLE_TIMEOUT				0x16	/* HCI_CONN_TERMINATED_BY_LOCAL_HOST */
+#define WPAD_DISCON_REPEATED_ATTEMPTS			0x17	/* HCI_REPEATED_ATTEMPTS */
+
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
@@ -170,6 +178,8 @@ typedef struct _wpad_encstatus
 
 typedef void (*WPADDataCallback)(s32 chan, const WPADData *data);
 typedef void (*WPADShutdownCallback)(s32 chan);
+typedef void (*WPADDisconnectCallback)(s32 chan, u8 reason);
+typedef void (*WPADStatusCallback)(s32 chan);
 typedef void (*WPADHostSyncBtnCallback)(u32 held);
 
 s32 WPAD_Init(void);
@@ -195,8 +205,9 @@ s32 WPAD_Shutdown(void);
 void WPAD_SetIdleTimeout(u32 seconds);
 void WPAD_SetPowerButtonCallback(WPADShutdownCallback cb);
 void WPAD_SetBatteryDeadCallback(WPADShutdownCallback cb);
-void WPAD_SetIdleTimeoutCallback(WPADShutdownCallback cb);
+void WPAD_SetDisconnectCallback(WPADDisconnectCallback cb);
 void WPAD_SetHostSyncButtonCallback(WPADHostSyncBtnCallback cb);
+void WPAD_SetStatusCallback(WPADStatusCallback cb);
 s32 WPAD_ScanPads(void);
 s32 WPAD_Rumble(s32 chan, int status);
 s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb, s32 mp);
@@ -211,6 +222,8 @@ void WPAD_Orientation(int chan, struct orient_t *orient);
 void WPAD_GForce(int chan, struct gforce_t *gforce);
 void WPAD_Accel(int chan, struct vec3w_t *accel);
 void WPAD_Expansion(int chan, struct expansion_t *exp);
+void WPAD_PadStatus(int chan);
+bool WPAD_IsBatteryCritical(int chan);
 
 #ifdef __cplusplus
    }

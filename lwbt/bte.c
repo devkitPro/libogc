@@ -764,6 +764,7 @@ s32 bte_disconnect(struct bte_pcb *pcb)
 		err = l2ca_disconnect_req(pcb->data_pcb,l2cap_disconnect_cfm);
 	else if(pcb->ctl_pcb!=NULL)
 		err = l2ca_disconnect_req(pcb->ctl_pcb,l2cap_disconnect_cfm);
+	printf("bte_disconnect: freed\n");
 	bte_free(pcb);
 	_CPU_ISR_Restore(level);
 
