@@ -491,10 +491,10 @@ static inline void consolePosition(int x, int y) {
 		y = 1;
 
 	// clip to console edge
-	if(x > currentConsole->con_cols)
-		x = currentConsole->con_cols;
-	if(y > currentConsole->con_rows)
-		y = currentConsole->con_rows;
+	if(x > currentConsole->windowWidth)
+		x = currentConsole->windowWidth;
+	if(y > currentConsole->windowHeight)
+		y = currentConsole->windowHeight;
 
 	currentConsole->cursorX = x;
 	currentConsole->cursorY = y;
