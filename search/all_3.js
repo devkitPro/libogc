@@ -78,12 +78,6 @@ var searchData=
   ['compressed_20z_20format_202',['Compressed Z format',['../group__zfmt.html',1,'']]],
   ['compsize_203',['compsize',['../struct_g_x_vtx_attr_fmt.html#a6050c3d7310d79d3fd3128083633f85d',1,'GXVtxAttrFmt']]],
   ['comptype_204',['comptype',['../struct_g_x_vtx_attr_fmt.html#a6016ccb1f22742aa86973d9c15dbc7a2',1,'GXVtxAttrFmt']]],
-  ['con_5fenablegecko_205',['CON_EnableGecko',['../consol_8h.html#ac419d2a95a4a003e35fc278b04a990ac',1,'consol.h']]],
-  ['con_5fgetmetrics_206',['CON_GetMetrics',['../consol_8h.html#abf9dd4b1395d4ceea52905cd7f6a3311',1,'consol.h']]],
-  ['con_5fgetposition_207',['CON_GetPosition',['../consol_8h.html#ae7edc2d4da5438f0b2ca3e4cc4ce1fde',1,'consol.h']]],
-  ['con_5finit_208',['CON_Init',['../consol_8h.html#a3c3828f5d8ed8a22a4cccd40df6d4bc3',1,'consol.h']]],
-  ['con_5finitex_209',['CON_InitEx',['../consol_8h.html#a6b21e58292ed6fd71c7e7acaf14add91',1,'consol.h']]],
-  ['cond_2eh_210',['cond.h',['../cond_8h.html',1,'']]],
-  ['cond_5ft_211',['cond_t',['../cond_8h.html#a27066fd931a975a442ce4d6a0bafc127',1,'cond.h']]],
-  ['consol_2eh_212',['consol.h',['../consol_8h.html',1,'']]]
+  ['cond_2eh_205',['cond.h',['../cond_8h.html',1,'']]],
+  ['cond_5ft_206',['cond_t',['../cond_8h.html#a27066fd931a975a442ce4d6a0bafc127',1,'cond.h']]]
 ];
