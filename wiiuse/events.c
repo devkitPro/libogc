@@ -88,7 +88,7 @@ static void event_ack(struct wiimote_t *wm,ubyte *msg)
 		return;
 	}
 	if(msg[3]) {
-		WIIUSE_WARNING("Command %02x %02x failed: status %02x", cmd->data[0], cmd->data[1], msg[3]);
+		WIIUSE_WARNING("Command %02x %02x%02x%02x%02x failed: status %02x", cmd->data[0], cmd->data[1], cmd->data[2], cmd->data[3], cmd->data[4], msg[3]);
 		return;
 	}
 
