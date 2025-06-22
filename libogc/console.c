@@ -1,4 +1,3 @@
-
 #include <stdlib.h>
 #include <string.h>
 #include <reent.h>
@@ -769,6 +768,8 @@ void newRow()
 
 void consolePrintChar(int c)
 {
+	int tabspaces;
+
 	if (c==0) return;
 
 	switch(c) {
@@ -786,7 +787,7 @@ void consolePrintChar(int c)
 
 			if(currentConsole->cursorX < 1) {
 				if(currentConsole->cursorY > 1) {
-					currentConsole->cursorX = currentConsole->windowWidth - 1;
+					currentConsole->cursorX = currentConsole->windowWidth;
 					currentConsole->cursorY--;
 				} else {
 					currentConsole->cursorX = 1;
@@ -797,7 +798,10 @@ void consolePrintChar(int c)
 			break;
 
 		case 9:
-			currentConsole->cursorX  += currentConsole->tabSize - ((currentConsole->cursorX)%(currentConsole->tabSize));
+			tabspaces = currentConsole->tabSize - ((currentConsole->cursorX - 1) % currentConsole->tabSize);
+			if (currentConsole->cursorX + tabspaces > currentConsole->windowWidth)
+				tabspaces = currentConsole->windowWidth - currentConsole->cursorX;
+			for(int i=0; i<tabspaces; i++) consolePrintChar(' ');
 			break;
 		case 10:
 			newRow();
