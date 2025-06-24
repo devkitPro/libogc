@@ -295,7 +295,7 @@ static void __console_clear_line(int line, int from, int to )
 	if( !(con = currentConsole) ) return;
 
 	// Each character is FONT_XSIZE * VI_DISPLAY_PIX_SZ wide
-	const u32 line_width = (to - from + 1) * (FONT_XSIZE * VI_DISPLAY_PIX_SZ);
+	const u32 line_width = (to - from + 1) * FONT_XSIZE * VI_DISPLAY_PIX_SZ;
 
 	unsigned int bgcolor = con->bg;
 
@@ -306,15 +306,15 @@ static void __console_clear_line(int line, int from, int to )
 	//add the given row & column to the offset & assign the pointer
 	const u32 offset = __console_get_offset() \
 		+ ((line - 1 + con->windowY - 1) * con->con_stride * FONT_YSIZE) \
-		+ ((from - 1 + con->windowX - 1) * FONT_XSIZE * VI_DISPLAY_PIX_SZ);
+		+ (from - 1 + con->windowX - 1) * FONT_XSIZE * VI_DISPLAY_PIX_SZ;
 
-	p = (u8*)((u32)con->destbuffer + offset);
+	p = (u8*)((uintptr_t)con->destbuffer + offset);
 
 	// Clears 1 line of pixels at a time
 	for(u16 ycnt = 0; ycnt < FONT_YSIZE; ycnt++)
 	{
 		for(u32 xcnt = 0; xcnt < line_width; xcnt += 4)
-			*(u32*)((u32)p + xcnt) = bgcolor;
+			*(u32*)((uintptr_t)p + xcnt) = bgcolor;
 
 		p += con->con_stride;
 	}
@@ -333,13 +333,14 @@ static void __console_clear(void)
 	}
 
 	//get console pointer
-	p = (u8*)((u32)con->destbuffer + __console_get_offset()) + ((con->windowY - 1 ) * con->con_stride * FONT_YSIZE);
+	p = (u8*)((uintptr_t)con->destbuffer + __console_get_offset()) \
+		+ ((con->windowY - 1) * con->con_stride * FONT_YSIZE);
 
 	// Clears 1 line of pixels at a time
-	for(u16 ycnt = con->windowY * 16; ycnt < (con->windowHeight + con->windowY) * 16; ycnt++)
+	for(u16 ycnt = 0; ycnt < con->windowHeight * 16; ycnt++)
 	{
 		for(u32 xcnt = (con->windowX - 1) * 8 * VI_DISPLAY_PIX_SZ; xcnt < (con->windowWidth + con->windowX -1) * 8 * VI_DISPLAY_PIX_SZ; xcnt+=4)
-			*(u32*)((u32)p + xcnt) = bgcolor;
+			*(u32*)((uintptr_t)p + xcnt) = bgcolor;
 
 		p += con->con_stride;
 	}
@@ -406,7 +407,7 @@ static void __set_default_console(void *destbuffer,int xstart,int ystart, int tg
 	con->bg = CONSOLE_COLOR_BLACK;
 
 	con->flags = 0;
-	con->tabSize = 4;
+	con->tabSize = 3;
 
 	currentConsole = con;
 
@@ -749,11 +750,10 @@ void newRow()
 	/* if bottom border reached, scroll */
 	if( currentConsole->cursorY > currentConsole->windowHeight)
 	{
-		const u8* console = (u8*)((u32)currentConsole->destbuffer + __console_get_offset()) \
+		u8* ptr = (u8*)((u32)currentConsole->destbuffer + __console_get_offset()) \
+			+ (currentConsole->windowX - 1) * FONT_XSIZE * VI_DISPLAY_PIX_SZ \
 			+ ((currentConsole->windowY - 1 ) * currentConsole->con_stride * FONT_YSIZE);
 
-		//copy lines upwards
-		u8* ptr = (u8*)console;
 		for(u32 ycnt = 0; ycnt < ((currentConsole->windowHeight -1) * FONT_YSIZE); ycnt++)
 		{
 			memmove(ptr, ptr + currentConsole->con_stride * FONT_YSIZE, currentConsole->windowWidth * FONT_XSIZE * VI_DISPLAY_PIX_SZ);
