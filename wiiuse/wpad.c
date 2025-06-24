@@ -1749,6 +1749,8 @@ s32 WPAD_Shutdown(void)
 	for(i=0;i<WPAD_MAX_DEVICES;i++) {
 		wpdcb = &__wpdcb[i];
 		SYS_RemoveAlarm(wpdcb->sound_alarm);
+		bte_free(__wpads_listen[i].sock);
+		__wpads_listen[i].sock = NULL;
 	}
 
 	__wiiuse_sensorbar_enable(0);

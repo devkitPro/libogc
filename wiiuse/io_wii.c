@@ -55,7 +55,6 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 
 	wml->wm = NULL;
 
-	printf("__wiiuse_disconnected: freed\n");
 	bte_free(wml->sock);
 	wml->sock = NULL;
 	return ERR_OK;
@@ -176,7 +175,6 @@ int wiiuse_accept(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *name
 	}
 	wml->assign_cb = assign_cb;
 
-	printf("wiiuse_accept: create\n");
 	wml->sock = bte_new();
 	if (wml->sock==NULL)
 	{
@@ -192,8 +190,7 @@ int wiiuse_accept(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *name
 	if(err==ERR_OK) return 1;
 	
 	WIIUSE_ERROR("wiiuse_accept: bte_listenasync failed(%d)", err);
-	
-	printf("wiiuse_accept: freed\n");
+
 	bte_free(wml->sock);
 	wml->sock = NULL;
 	return 0;
@@ -222,7 +219,6 @@ int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *nam
 	}
 	wml->assign_cb = assign_cb;
 
-	printf("wiiuse_connect: create\n");
 	wml->sock = bte_new();
 	if (wml->sock==NULL)
 	{
@@ -239,7 +235,6 @@ int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *nam
 	
 	WIIUSE_ERROR("wiiuse_connect: bte_connectasync failed(%d)", err);
 
-	printf("wiiuse_connect: freed\n");
 	bte_free(wml->sock);
 	wml->sock = NULL;
 	return 0;
