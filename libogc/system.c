@@ -215,6 +215,8 @@ extern int __libogc_nanosleep(const struct timespec *tb, struct timespec *rem);
 extern u64 gettime(void);
 extern void settime(u64);
 
+extern void __ogc_gthread_init();
+
 extern u8 __gxregs[];
 extern u8 __text_start[];
 extern u8 __isIPL[];
@@ -1097,6 +1099,7 @@ void SYS_Init(void)
 	IRQ_Request(IRQ_PI_RSW,__RSWHandler,NULL);
 	__MaskIrq(IRQMASK(IRQ_PI_RSW));
 #endif
+	__ogc_gthread_init();
 	__lwp_thread_startmultitasking();
 	_CPU_ISR_Restore(level);
 }
