@@ -169,7 +169,7 @@ typedef s8 err_t;
  *
  * \hideinitializer
  */
-#define STATISTICS  0
+#define STATISTICS	0
 
 /**
  * Determines if logging of certain events should be compiled in.
@@ -180,8 +180,8 @@ typedef s8 err_t;
  *
  * \hideinitializer
  */
-#define LOGGING     0
-#define ERRORING	1
+#define BT_LOGGING	0
+#define BT_ERRORING	0
 
 /**
  * Print out a uIP log message.
@@ -200,7 +200,7 @@ void bt_log(const char *filename,int line_nb,char *msg);
  *
  * \hideinitializer
  */
-#define LL_HLEN     16
+#define LL_HLEN		16
 
 #define TCPIP_HLEN	40
 /** @} */
@@ -216,10 +216,10 @@ void bt_log(const char *filename,int line_nb,char *msg);
  * reflect the CPU architecture on which uIP is to be run.
  */
 #ifndef LITTLE_ENDIAN
-#define LITTLE_ENDIAN  3412
+#define LITTLE_ENDIAN	3412
 #endif /* LITTLE_ENDIAN */
 #ifndef BIG_ENDIAN
-#define BIG_ENDIAN     1234
+#define BIG_ENDIAN		1234
 #endif /* BIGE_ENDIAN */
 
 /**
@@ -231,7 +231,7 @@ void bt_log(const char *filename,int line_nb,char *msg);
  * \hideinitializer
  */
 #ifndef BYTE_ORDER
-#define BYTE_ORDER     BIG_ENDIAN
+#define BYTE_ORDER		BIG_ENDIAN
 #endif /* BYTE_ORDER */
 
 /** @} */
@@ -241,7 +241,7 @@ void bt_log(const char *filename,int line_nb,char *msg);
 
 /* ---------- Memory options ---------- */
 #define MAX_NUM_CLIENTS					6 /* Maximum number of connected Bluetooth clients. No more than 6 */ 
-#define MAX_NUM_OPT_CLIENTS             10 /* Maximum number of possible Bluetooth clients we might listen to */
+#define MAX_NUM_OPT_CLIENTS				10 /* Maximum number of possible Bluetooth clients we might listen to */
 
 #define MEMB_NUM_HCI_PCB				1 /* Always set to one */
 #define MEMB_NUM_HCI_LINK				MAX_NUM_CLIENTS /* One for DT + One per ACL connection */

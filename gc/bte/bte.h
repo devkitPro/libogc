@@ -56,18 +56,18 @@
 #define HIDP_CTRL_VC_UNPLUG			0x05
 
 /* HIDP data transaction headers */
-#define HIDP_DATA_RTYPE_MASK        0x03
-#define HIDP_DATA_RSRVD_MASK        0x0c
-#define HIDP_DATA_RTYPE_OTHER       0x00
-#define HIDP_DATA_RTYPE_INPUT       0x01
-#define HIDP_DATA_RTYPE_OUPUT       0x02
-#define HIDP_DATA_RTYPE_FEATURE     0x03
+#define HIDP_DATA_RTYPE_MASK		0x03
+#define HIDP_DATA_RSRVD_MASK		0x0c
+#define HIDP_DATA_RTYPE_OTHER		0x00
+#define HIDP_DATA_RTYPE_INPUT		0x01
+#define HIDP_DATA_RTYPE_OUPUT		0x02
+#define HIDP_DATA_RTYPE_FEATURE		0x03
 
 #define HIDP_PROTO_BOOT				0x00
 #define HIDP_PROTO_REPORT			0x01
 
-#define BD_LINK_KEY_LEN     		16
-#define BD_NAME_LEN     			248
+#define BD_LINK_KEY_LEN				16
+#define BD_NAME_LEN					248
 #define BD_MAX_INQUIRY_DEVS			255
 
 enum pair_mode {
@@ -76,7 +76,7 @@ enum pair_mode {
 };
 
 #ifdef __cplusplus
-   extern "C" {
+	extern "C" {
 #endif /* __cplusplus */
 
 struct l2cap_pcb;
@@ -182,7 +182,7 @@ s32 bte_sendmessage(struct bte_pcb *pcb,void *message,u16 len);
 s32 bte_sendmessageasync(struct bte_pcb *pcb,void *message,u16 len,s32 (*sent)(void *arg,struct bte_pcb *pcb,u8 err));
 
 #ifdef __cplusplus
-   }
+	}
 #endif /* __cplusplus */
 
 #endif

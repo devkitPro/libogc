@@ -7,14 +7,30 @@
 
 //#define WITH_WIIUSE_DEBUG
 
+#define WIIUSE_LOGGING	0
+#define WIIUSE_ERRORING	0
+
 /* Error output macros */
-#define WIIUSE_ERROR(fmt, ...)		fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
+#if WIIUSE_ERRORING == 1
+	#define WIIUSE_ERROR(fmt, ...)		fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
+#else
+	#define WIIUSE_ERROR(fmt, ...)
+#endif /* WIIUSE_ERRORING == 1 */
 
 /* Warning output macros */
-#define WIIUSE_WARNING(fmt, ...)	fprintf(stderr, "[WARNING] " fmt "\n",	##__VA_ARGS__)
+#if WIIUSE_ERRORING == 1
+	#define WIIUSE_WARNING(fmt, ...)	fprintf(stderr, "[WARNING] " fmt "\n",	##__VA_ARGS__)
+#else
+	#define WIIUSE_WARNING(fmt, ...)
+#endif /* WIIUSE_ERRORING == 1 */
+
 
 /* Information output macros */
-#define WIIUSE_INFO(fmt, ...)		fprintf(stderr, "[INFO] " fmt "\n", ##__VA_ARGS__)
+#if WIIUSE_LOGGING == 1
+	#define WIIUSE_INFO(fmt, ...)		fprintf(stderr, "[INFO] " fmt "\n", ##__VA_ARGS__)
+#else
+	#define WIIUSE_INFO(fmt, ...)
+#endif /* WIIUSE_LOGGING == 1 */
 
 #ifdef WITH_WIIUSE_DEBUG
 	#ifdef WIN32
