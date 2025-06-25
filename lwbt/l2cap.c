@@ -342,6 +342,9 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 
 					pcb->state = L2CAP_CONFIG;
 					L2CAP_REG(&l2cap_active_pcbs, pcb);
+					
+					/* Free the listening pcb, don't need it anymore */
+					l2cap_close((struct l2cap_pcb *)lpcb);
 
 					LOG("l2cap_process_sig: A connection request was received. Send a response\n");
 					data = btpbuf_alloc(PBUF_RAW, L2CAP_CONN_RSP_SIZE, PBUF_RAM);
@@ -1398,7 +1401,7 @@ void lp_connect_cfm(struct bd_addr *bdaddr, u8_t encrypt_mode, err_t err)
 				L2CA_ACTION_CONN_CFM(pcb,L2CAP_CONN_REF_RES,0x0000,ret); /* No resources available */
 			}
 		} else {
-			ERROR("lp_connect_cfm: Connection falied\n"); 
+			ERROR("lp_connect_cfm: Connection failed(%d)\n", err); 
 			L2CA_ACTION_CONN_CFM(pcb,L2CAP_CONN_REF_RES,0x0000,ret); /* No resources available */
 		}
 	}
