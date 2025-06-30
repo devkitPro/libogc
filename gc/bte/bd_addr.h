@@ -39,11 +39,11 @@
    extern "C" {
 #endif /* __cplusplus */
 
-struct bd_addr {
-  u8 addr[6];
-};
+#define BD_ADDR_LEN	6
 
-#define BD_ADDR_LEN			6
+struct bd_addr {
+  u8 addr[BD_ADDR_LEN];
+};
 
 #define BD_ADDR_ANY			(&(struct bd_addr){{0,0,0,0,0,0}})
 #define BD_ADDR_LOCAL		(&(struct bd_addr){{0,0,0,0xff,0xff,0xff}})
@@ -55,6 +55,23 @@ struct bd_addr {
 				        (bdaddr)->addr[3] = d; \
 				        (bdaddr)->addr[4] = e; \
 						(bdaddr)->addr[5] = f; }while(0)
+
+#define BD_ADDR_FROM_BYTES(bdaddr, bytes) do{ \
+                                        (bdaddr)->addr[0] = bytes[5]; \
+				        (bdaddr)->addr[1] = bytes[4]; \
+				        (bdaddr)->addr[2] = bytes[3]; \
+				        (bdaddr)->addr[3] = bytes[2]; \
+				        (bdaddr)->addr[4] = bytes[1]; \
+						(bdaddr)->addr[5] = bytes[0]; }while(0)
+
+#define BYTES_FROM_BD_ADDR(bytes, bdaddr) do{ \
+                                        bytes[0] = (bdaddr)->addr[5]; \
+				        bytes[1] = (bdaddr)->addr[4]; \
+				        bytes[2] = (bdaddr)->addr[3]; \
+				        bytes[3] = (bdaddr)->addr[2]; \
+				        bytes[4] = (bdaddr)->addr[1]; \
+				        bytes[5] = (bdaddr)->addr[0]; }while(0)
+
 //TODO: USE memcmp????
 #define bd_addr_cmp(addr1, addr2) (((addr1)->addr[0] == (addr2)->addr[0]) && \
 				   ((addr1)->addr[1] == (addr2)->addr[1]) && \
