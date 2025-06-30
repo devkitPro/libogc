@@ -1,4 +1,3 @@
-
 #include <stdlib.h>
 #include <string.h>
 #include <reent.h>
@@ -296,7 +295,7 @@ static void __console_clear_line(int line, int from, int to )
 	if( !(con = currentConsole) ) return;
 
 	// Each character is FONT_XSIZE * VI_DISPLAY_PIX_SZ wide
-	const u32 line_width = (to - from + 1) * (FONT_XSIZE * VI_DISPLAY_PIX_SZ);
+	const u32 line_width = (to - from + 1) * FONT_XSIZE * VI_DISPLAY_PIX_SZ;
 
 	unsigned int bgcolor = con->bg;
 
@@ -307,15 +306,15 @@ static void __console_clear_line(int line, int from, int to )
 	//add the given row & column to the offset & assign the pointer
 	const u32 offset = __console_get_offset() \
 		+ ((line - 1 + con->windowY - 1) * con->con_stride * FONT_YSIZE) \
-		+ ((from - 1 + con->windowX - 1) * FONT_XSIZE * VI_DISPLAY_PIX_SZ);
+		+ (from - 1 + con->windowX - 1) * FONT_XSIZE * VI_DISPLAY_PIX_SZ;
 
-	p = (u8*)((u32)con->destbuffer + offset);
+	p = (u8*)((uintptr_t)con->destbuffer + offset);
 
 	// Clears 1 line of pixels at a time
 	for(u16 ycnt = 0; ycnt < FONT_YSIZE; ycnt++)
 	{
 		for(u32 xcnt = 0; xcnt < line_width; xcnt += 4)
-			*(u32*)((u32)p + xcnt) = bgcolor;
+			*(u32*)((uintptr_t)p + xcnt) = bgcolor;
 
 		p += con->con_stride;
 	}
@@ -334,13 +333,14 @@ static void __console_clear(void)
 	}
 
 	//get console pointer
-	p = (u8*)((u32)con->destbuffer + __console_get_offset()) + ((con->windowY - 1 ) * con->con_stride * FONT_YSIZE);
+	p = (u8*)((uintptr_t)con->destbuffer + __console_get_offset()) \
+		+ ((con->windowY - 1) * con->con_stride * FONT_YSIZE);
 
 	// Clears 1 line of pixels at a time
-	for(u16 ycnt = con->windowY * 16; ycnt < (con->windowHeight + con->windowY) * 16; ycnt++)
+	for(u16 ycnt = 0; ycnt < con->windowHeight * 16; ycnt++)
 	{
 		for(u32 xcnt = (con->windowX - 1) * 8 * VI_DISPLAY_PIX_SZ; xcnt < (con->windowWidth + con->windowX -1) * 8 * VI_DISPLAY_PIX_SZ; xcnt+=4)
-			*(u32*)((u32)p + xcnt) = bgcolor;
+			*(u32*)((uintptr_t)p + xcnt) = bgcolor;
 
 		p += con->con_stride;
 	}
@@ -407,7 +407,7 @@ static void __set_default_console(void *destbuffer,int xstart,int ystart, int tg
 	con->bg = CONSOLE_COLOR_BLACK;
 
 	con->flags = 0;
-	con->tabSize = 4;
+	con->tabSize = 3;
 
 	currentConsole = con;
 
@@ -646,6 +646,10 @@ static void consoleSetColorState(int code)
 
 static void consoleHandleColorEsc(int argCount)
 {
+	escapeSeq.color.bg = currentConsole->bg;
+	escapeSeq.color.fg = currentConsole->fg;
+	escapeSeq.color.flags = currentConsole->flags;
+
 	for (int arg = 0; arg < argCount; arg++)
 	{
 		int code = escapeSeq.args[arg];
@@ -724,7 +728,7 @@ static void consoleHandleColorEsc(int argCount)
 			if(escapeSeq.colorArgCount == 3)
 			{
 				escapeSeq.color.bg = single_RGB8_to_YCbCr(escapeSeq.colorArgs[0], escapeSeq.colorArgs[1], escapeSeq.colorArgs[2]);
-				escapeSeq.color.flags |= CONSOLE_FG_CUSTOM;
+				escapeSeq.color.flags |= CONSOLE_BG_CUSTOM;
 				escapeSeq.state = ESC_BUILDING_UNKNOWN;
 			}
 		default:
@@ -732,13 +736,11 @@ static void consoleHandleColorEsc(int argCount)
 		}
 	}
 	escapeSeq.argIdx = 0;
-}
 
-static void consoleColorApply(void)
-{
 	currentConsole->bg = escapeSeq.color.bg;
 	currentConsole->fg = escapeSeq.color.fg;
 	currentConsole->flags = escapeSeq.color.flags;
+
 }
 
 void newRow()
@@ -748,11 +750,10 @@ void newRow()
 	/* if bottom border reached, scroll */
 	if( currentConsole->cursorY > currentConsole->windowHeight)
 	{
-		const u8* console = (u8*)((u32)currentConsole->destbuffer + __console_get_offset()) \
+		u8* ptr = (u8*)((u32)currentConsole->destbuffer + __console_get_offset()) \
+			+ (currentConsole->windowX - 1) * FONT_XSIZE * VI_DISPLAY_PIX_SZ \
 			+ ((currentConsole->windowY - 1 ) * currentConsole->con_stride * FONT_YSIZE);
 
-		//copy lines upwards
-		u8* ptr = (u8*)console;
 		for(u32 ycnt = 0; ycnt < ((currentConsole->windowHeight -1) * FONT_YSIZE); ycnt++)
 		{
 			memmove(ptr, ptr + currentConsole->con_stride * FONT_YSIZE, currentConsole->windowWidth * FONT_XSIZE * VI_DISPLAY_PIX_SZ);
@@ -767,6 +768,8 @@ void newRow()
 
 void consolePrintChar(int c)
 {
+	int tabspaces;
+
 	if (c==0) return;
 
 	switch(c) {
@@ -784,7 +787,7 @@ void consolePrintChar(int c)
 
 			if(currentConsole->cursorX < 1) {
 				if(currentConsole->cursorY > 1) {
-					currentConsole->cursorX = currentConsole->windowWidth - 1;
+					currentConsole->cursorX = currentConsole->windowWidth;
 					currentConsole->cursorY--;
 				} else {
 					currentConsole->cursorX = 1;
@@ -795,7 +798,10 @@ void consolePrintChar(int c)
 			break;
 
 		case 9:
-			currentConsole->cursorX  += currentConsole->tabSize - ((currentConsole->cursorX)%(currentConsole->tabSize));
+			tabspaces = currentConsole->tabSize - ((currentConsole->cursorX - 1) % currentConsole->tabSize);
+			if (currentConsole->cursorX + tabspaces > currentConsole->windowWidth)
+				tabspaces = currentConsole->windowWidth - currentConsole->cursorX;
+			for(int i=0; i<tabspaces; i++) consolePrintChar(' ');
 			break;
 		case 10:
 			newRow();
@@ -975,7 +981,6 @@ ssize_t __console_write(struct _reent *r,void *fd,const char *ptr, size_t len)
 				if (escapeSeq.argIdx == 0 && !escapeSeq.hasArg) escapeSeq.args[escapeSeq.argIdx++] = 0;
 				if (escapeSeq.hasArg) escapeSeq.argIdx++;
 				consoleHandleColorEsc(escapeSeq.argIdx);
-				consoleColorApply();
 				escapeSeq.state = ESC_NONE;
 				break;
 			default:
