@@ -12,16 +12,20 @@ endif
 
 export PATH	:=	$(DEVKITPPC)/bin:$(PATH)
 
-export LIBOGC_MAJOR	:= 2
-export LIBOGC_MINOR	:= 12
-export LIBOGC_PATCH	:= 2
-
 include	$(DEVKITPPC)/base_rules
 
 BUILD		:=	build
 
 DATESTRING	:=	$(shell date +%Y%m%d)
 VERSTRING	:=	$(LIBOGC_MAJOR).$(LIBOGC_MINOR).$(LIBOGC_PATCH)
+ifeq ($(strip $(LIBOGC_VER)),)
+	export LIBOGC_VER := $(shell git describe --tags)
+endif
+
+export LIBOGC_MAJOR := `echo $(LIBOGC_VER) | sed "s/^v\([0-9]*\).*/\1/"`
+export LIBOGC_MINOR := `echo $(LIBOGC_VER) | sed "s/v[0-9]*\.\([0-9]*\).*/\1/"`
+export LIBOGC_PATCH := `echo $(LIBOGC_VER) | sed "s/v[0-9]*\.[0-9]*\.\([0-9]*\).*/\1/"`
+export LIBOGC_SUFFIX := `echo $(LIBOGC_VER) | sed "s/v[0-9]*\.[0-9]*\.[0-9]*\(.*\)/\1/"`
 
 #---------------------------------------------------------------------------------
 ifeq ($(strip $(PLATFORM)),)
@@ -224,7 +228,7 @@ gc/ogc/libversion.h : Makefile
 	@echo "#define _V_DATE_			__DATE__" >> $@
 	@echo "#define _V_TIME_			__TIME__" >> $@
 	@echo >> $@
-	@echo '#define _V_STRING "libOGC Release '$(LIBOGC_MAJOR).$(LIBOGC_MINOR).$(LIBOGC_PATCH)'"' >> $@
+	@echo '#define _V_STRING "libOGC Release '$(LIBOGC_MAJOR).$(LIBOGC_MINOR).$(LIBOGC_PATCH)$(LIBOGC_SUFFIX)'"' >> $@
 	@echo >> $@
 	@echo "#endif // __LIBVERSION_H__" >> $@
 
