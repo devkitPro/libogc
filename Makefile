@@ -17,14 +17,13 @@ include	$(DEVKITPPC)/base_rules
 BUILD		:=	build
 
 DATESTRING	:=	$(shell date +%Y%m%d)
-VERSTRING	:=	$(LIBOGC_MAJOR).$(LIBOGC_MINOR).$(LIBOGC_PATCH)
 ifeq ($(strip $(LIBOGC_VER)),)
 	export LIBOGC_VER := $(shell git describe --tags)
 endif
 
-export LIBOGC_MAJOR := `echo $(LIBOGC_VER) | sed "s/^v\([0-9]*\).*/\1/"`
-export LIBOGC_MINOR := `echo $(LIBOGC_VER) | sed "s/v[0-9]*\.\([0-9]*\).*/\1/"`
-export LIBOGC_PATCH := `echo $(LIBOGC_VER) | sed "s/v[0-9]*\.[0-9]*\.\([0-9]*\).*/\1/"`
+export LIBOGC_MAJOR  := `echo $(LIBOGC_VER) | sed "s/^v\([0-9]*\).*/\1/"`
+export LIBOGC_MINOR  := `echo $(LIBOGC_VER) | sed "s/v[0-9]*\.\([0-9]*\).*/\1/"`
+export LIBOGC_PATCH  := `echo $(LIBOGC_VER) | sed "s/v[0-9]*\.[0-9]*\.\([0-9]*\).*/\1/"`
 export LIBOGC_SUFFIX := `echo $(LIBOGC_VER) | sed "s/v[0-9]*\.[0-9]*\.[0-9]*\(.*\)/\1/"`
 
 #---------------------------------------------------------------------------------
@@ -46,17 +45,17 @@ export LIBAESNDDIR	:= $(BASEDIR)/libaesnd
 export LIBISODIR	:= $(BASEDIR)/libiso9660
 export LIBWIIKEYB	:= $(BASEDIR)/libwiikeyboard
 export STUBSDIR		:= $(BASEDIR)/lockstubs
-export DEPS			:=	$(BASEDIR)/deps
-export LIBS			:=	$(BASEDIR)/lib
+export DEPS		:= $(BASEDIR)/deps
+export LIBS		:= $(BASEDIR)/lib
 
-export INCDIR		:=	$(BASEDIR)/include
+export INCDIR		:= $(BASEDIR)/include
 
 #---------------------------------------------------------------------------------
 else
 #---------------------------------------------------------------------------------
 
 export LIBDIR		:= $(LIBS)/$(PLATFORM)
-export DEPSDIR		:=	$(DEPS)/$(PLATFORM)
+export DEPSDIR		:= $(DEPS)/$(PLATFORM)
 
 #---------------------------------------------------------------------------------
 endif
@@ -193,11 +192,10 @@ ISOLIBOBJ	:=	iso9660.o
 WIIKEYBLIBOBJ	:=	usbkeyboard.o keyboard.o ukbdmap.o wskbdutil.o
 
 
-
 all: wii cube
 
 #---------------------------------------------------------------------------------
-wii: gc/ogc/libversion.h
+wii: $(BASEDIR)/gc/ogc/libversion.h
 #---------------------------------------------------------------------------------
 	@[ -d $(INCDIR) ] || mkdir -p $(INCDIR)
 	@[ -d $(LIBS)/wii ] || mkdir -p $(LIBS)/wii
@@ -206,7 +204,7 @@ wii: gc/ogc/libversion.h
 	@$(MAKE) PLATFORM=wii libs -C wii -f $(CURDIR)/Makefile
 
 #---------------------------------------------------------------------------------
-cube: gc/ogc/libversion.h
+cube: $(BASEDIR)/gc/ogc/libversion.h
 #---------------------------------------------------------------------------------
 	@[ -d $(INCDIR) ] || mkdir -p $(INCDIR)
 	@[ -d $(LIBS)/cube ] || mkdir -p $(LIBS)/cube
@@ -216,8 +214,11 @@ cube: gc/ogc/libversion.h
 
 
 #---------------------------------------------------------------------------------
-gc/ogc/libversion.h : Makefile
+$(BASEDIR)/gc/ogc/libversion.h :
 #---------------------------------------------------------------------------------
+ifeq ($(strip $(LIBOGC_VER)),)
+	$(error "Use git sources or official packages")
+endif
 	@echo "#ifndef __LIBVERSION_H__" > $@
 	@echo "#define __LIBVERSION_H__" >> $@
 	@echo >> $@
@@ -255,12 +256,10 @@ asnd_dsp_mixer.bin: $(LIBASNDDIR)/dsp_mixer/dsp_mixer.s
 	@echo $(notdir $<)
 	@gcdsptool -c $< -o $@
 
-
-
 #---------------------------------------------------------------------------------
 $(BBALIB).a: $(LWIPOBJ)
 #---------------------------------------------------------------------------------
-$(OGCLIB).a: $(OGCOBJ)
+$(OGCLIB).a: $(OGCOBJ) $(BASEDIR)/gc/ogc/libversion.h
 #---------------------------------------------------------------------------------
 $(MP3LIB).a: $(MP3OBJ)
 #---------------------------------------------------------------------------------
