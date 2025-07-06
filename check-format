@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+find ./gc ./libaesnd ./libdb ./libdi ./libiso9660 ./libogc ./libtinysmb ./libwiikeyboard -name *.[h,c] -exec clang-format-18 -style=file -i {}  \;
