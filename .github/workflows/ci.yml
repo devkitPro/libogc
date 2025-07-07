@@ -9,7 +9,7 @@ jobs:
     container: devkitpro/devkitppc:latest
  
     steps:
-    - uses: actions/checkout@v3.5.2
+    - uses: actions/checkout@v4.2.2
       with:
           fetch-tags: true
           fetch-depth: '25'
