@@ -10,7 +10,12 @@ jobs:
  
     steps:
     - uses: actions/checkout@v3.5.2
-
+    
+      #workaround for the github checkout not fully working right with containers
+      #see : https://github.com/actions/checkout/issues/2031
+    - name: Add git safe directory
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      
     - name: Build
       run: |
         make -j2
