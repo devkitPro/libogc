@@ -30,22 +30,28 @@ distribution.
 
 #if defined(HW_RVL)
 
-#include <stdio.h>
+#include <string.h>
 #include "ipc.h"
 #include "system.h"
-#include "asm.h"
-#include "processor.h"
+#include "irq.h"
 #include "stm.h"
 
-//#define DEBUG_STM
+#define DEBUG_STM
+
+#ifdef DEBUG_STM
+#include <stdio.h>
+#define STM_printf(fmt, ...)	fprintf(stderr, fmt, ##__VA_ARGS__)
+#else
+#define STM_printf(fmt, ...)	while (0) {};
+#endif
 
 #define IOCTL_STM_EVENTHOOK			0x1000
-#define IOCTL_STM_GET_IDLEMODE		0x3001
+#define IOCTL_STM_GETSTATE			0x3001
 #define IOCTL_STM_RELEASE_EH		0x3002
 #define IOCTL_STM_HOTRESET			0x2001
 #define IOCTL_STM_HOTRESET_FOR_PD	0x2002
 #define IOCTL_STM_SHUTDOWN			0x2003
-#define IOCTL_STM_IDLE				0x2004
+#define IOCTL_STM_IDLEMODE			0x2004
 #define IOCTL_STM_WAKEUP			0x2005
 #define IOCTL_STM_VIDIMMING			0x5001
 #define IOCTL_STM_LEDFLASH			0x6001
@@ -54,227 +60,223 @@ distribution.
 #define IOCTL_STM_READDDRREG		0x4001
 #define IOCTL_STM_READDDRREG2		0x4002
 
-static s32 __stm_eh_fd = -1;
-static s32 __stm_imm_fd = -1;
-static u32 __stm_vdinuse = 0;
-static u32 __stm_initialized= 0;
-static u32 __stm_ehregistered= 0;
-static u32 __stm_ehclear= 0;
+struct eventhook {
+	s32 fd;
+	u32 event_code;
+	stmcallback callback;
+	u32 state; /* 0: unset, 1: set, 2: release */
+};
 
-static u32 __stm_ehbufin[0x08] ATTRIBUTE_ALIGN(32) = {0,0,0,0,0,0,0,0};
-static u32 __stm_ehbufout[0x08] ATTRIBUTE_ALIGN(32) = {0,0,0,0,0,0,0,0};
-static u32 __stm_immbufin[0x08] ATTRIBUTE_ALIGN(32) = {0,0,0,0,0,0,0,0};
-static u32 __stm_immbufout[0x08] ATTRIBUTE_ALIGN(32) = {0,0,0,0,0,0,0,0};
+static struct eventhook __stm_eventhook;
 
-static char __stm_eh_fs[] ATTRIBUTE_ALIGN(32) = "/dev/stm/eventhook";
-static char __stm_imm_fs[] ATTRIBUTE_ALIGN(32) = "/dev/stm/immediate";
-
-s32 __STM_SetEventHook(void);
-s32 __STM_ReleaseEventHook(void);
 static s32 __STMEventHandler(s32 result,void *usrdata);
-
-stmcallback __stm_eventcb = NULL;
+s32 __STM_ReleaseEventHook(void);
 
 static vu16* const _viReg = (u16*)0xCC002000;
 
 s32 __STM_Init(void)
 {
-	if(__stm_initialized==1) return 1;
-#ifdef DEBUG_STM
-	printf("STM Init\n");
-#endif
-
-	__stm_vdinuse = 0;
-	__stm_imm_fd = IOS_Open(__stm_imm_fs,0);
-	if(__stm_imm_fd<0) return 0;
-
-	__stm_eh_fd = IOS_Open(__stm_eh_fs,0);
-	if(__stm_eh_fd<0) return 0;
-	
-#ifdef DEBUG_STM
-	printf("STM FDs: %d, %d\n",__stm_imm_fd, __stm_eh_fd);
-#endif
-	
-	__stm_initialized = 1;
-	__STM_SetEventHook();
-	return 1;
+	return 0;
 }
 
 s32 __STM_Close(void)
 {
-	s32 res;
-	s32 ret = 0;
 	__STM_ReleaseEventHook();
-	
-	if(__stm_imm_fd >= 0) {
-		res = IOS_Close(__stm_imm_fd);
-		if(res < 0) ret = res;
-		__stm_imm_fd = -1;
-	}
-	if(__stm_eh_fd >= 0) {
-		res = IOS_Close(__stm_eh_fd);
-		if(res < 0) ret = res;
-		__stm_eh_fd = -1;
-	}
-	__stm_initialized = 0;
-	return ret;
+	return 0;
 }
 
 s32 __STM_SetEventHook(void)
 {
 	s32 ret;
-	u32 level;
 
-	if(__stm_initialized==0) return STM_ENOTINIT;
-	
-	__stm_ehclear = 0;
-	
-	_CPU_ISR_Disable(level);
-	ret = IOS_IoctlAsync(__stm_eh_fd,IOCTL_STM_EVENTHOOK,__stm_ehbufin,0x20,__stm_ehbufout,0x20,__STMEventHandler,NULL);
-	if(ret<0) __stm_ehregistered = 0;
-	else __stm_ehregistered = 1;
-	_CPU_ISR_Restore(level);
+	if (__stm_eventhook.state == 1)
+		return 0;
+
+	if (__stm_eventhook.fd < 0) {
+		__stm_eventhook.fd = ret = IOS_Open("/dev/stm/eventhook", 0);
+		if (ret < 0)
+			return ret;
+	}
+
+	u32 level = IRQ_Disable();
+	{
+		__stm_eventhook.event_code = 0;
+		ret = IOS_IoctlAsync(__stm_eventhook.fd, IOCTL_STM_EVENTHOOK, NULL, 0, &__stm_eventhook.event_code, 0x4, __STMEventHandler, &__stm_eventhook);
+		if (ret == 0)
+			__stm_eventhook.state = 1;
+	}
+	IRQ_Restore(level);
 
 	return ret;
 }
 
 s32 __STM_ReleaseEventHook(void)
 {
-	s32 ret;
+	s32 ret, fd;
 
-	if(__stm_initialized==0) return STM_ENOTINIT;
-	if(__stm_ehregistered==0) return STM_ENOHANDLER;
-
-	__stm_ehclear = 1;
-	
-	ret = IOS_Ioctl(__stm_imm_fd,IOCTL_STM_RELEASE_EH,__stm_immbufin,0x20,__stm_immbufout,0x20);
-	if(ret>=0) __stm_ehregistered = 0;
+	ret = fd = IOS_Open("/dev/stm/immediate", 0);
+	if (ret >= 0) {
+		__stm_eventhook.state = 2;
+		ret = IOS_Ioctl(fd, IOCTL_STM_RELEASE_EH, NULL, 0, NULL, 0);
+		IOS_Close(fd);
+	}
 
 	return ret;
 }
 
-static s32 __STMEventHandler(s32 result,void *usrdata)
+static s32 __STMEventHandler(s32 result, void *usrdata)
 {
-	__stm_ehregistered = 0;
-	
-	if(result < 0) { // shouldn't happen
-		return result;
+	__stm_eventhook.state = 0;
+
+	if (__stm_eventhook.state == 2) {
+		/* Release. event_code will probably be 0. */
+		result = IOS_Close(__stm_eventhook.fd);
+		__stm_eventhook.fd = -1;
+	}
+
+	else if (result < 0) {
+		STM_printf("STM eventhook error (%i), was it already registered?\n", result);
+	}
+
+	else {
+		STM_printf("STM eventhook handler, event=%08x\n", __stm_eventhook.event_code);
+
+		if (__stm_eventhook.callback)
+			__stm_eventhook.callback(__stm_eventhook.event_code);
+
+		__STM_SetEventHook();
 	}
 	
-#ifdef DEBUG_STM
-	printf("STM Event: %08x\n",__stm_ehbufout[0]);
-#endif
-	
-	if(__stm_ehclear) { //release
-		return 0;
-	}
-	
-	if(__stm_eventcb) {
-		__stm_eventcb(__stm_ehbufout[0]);
-	}
-	
-	__STM_SetEventHook();
-	
-	return 0;
+	return result;
 }
 
-stmcallback STM_RegisterEventHandler(stmcallback newhandler)
+stmcallback STM_RegisterEventHandler(stmcallback new)
 {
 	stmcallback old;
-	old = __stm_eventcb;
-	__stm_eventcb = newhandler;
+	old = __stm_eventhook.callback;
+	__stm_eventhook.callback = new;
+	__STM_SetEventHook();
 	return old;
 }
 
 s32 STM_ShutdownToStandby(void)
 {
-	int res;
-	
+	s32 ret, fd;
+	u32 config = 0;
+
 	_viReg[1] = 0;
-	if(__stm_initialized==0) {
-#ifdef DEBUG_STM
-		printf("STM notinited\n");
-#endif
-		return STM_ENOTINIT;
+	ret = fd = IOS_Open("/dev/stm/immediate", 0);
+	if (ret >= 0) {
+		ret = IOS_Ioctl(fd, IOCTL_STM_SHUTDOWN, &config, 0x4, NULL, 0);
+		if (ret == 0) {
+			// *disable irq and spin here*
+			// IOS_Close will lock us anyways, since STM is most definitely not going to pick up the 2nd message before the entire system turns off. Lol.
+		} else {
+			STM_printf("STM Shutdown failed (%i). Why? It does not even check input size...\n", ret);
+		}
+		IOS_Close(fd);
 	}
-	__stm_immbufin[0] = 0;
-	res= IOS_Ioctl(__stm_imm_fd,IOCTL_STM_SHUTDOWN,__stm_immbufin,0x20,__stm_immbufout,0x20);
-	if(res<0) {
-#ifdef DEBUG_STM
-		printf("STM STBY failed: %d\n",res);
-#endif
-	}
-	return res;
+
+	return ret;
 }
 
 s32 STM_ShutdownToIdle(void)
 {
-	int res;
-	
+	s32 ret, fd;
+
+	u32 config = 0xFCA08280;
+	if (SYS_GetHollywoodRevision() > 2)
+		config |= 0x00400040;
+
 	_viReg[1] = 0;
-	if(__stm_initialized==0) {
-#ifdef DEBUG_STM
-		printf("STM notinited\n");
-#endif
-		return STM_ENOTINIT;
+	ret = fd = IOS_Open("/dev/stm/immediate", 0);
+	if (ret >= 0) {
+		ret = IOS_Ioctl(fd, IOCTL_STM_IDLEMODE, &config, 0x4, NULL, 0);
+		if (ret == 0) {
+			// *disable irq and spin here*
+		} else {
+			STM_printf("STM IdleMode failed (%i).\n", ret);
+		}
 	}
-	switch(SYS_GetHollywoodRevision()) {
-		case 0:
-		case 1:
-		case 2:
-			__stm_immbufin[0] = 0xFCA08280;
-		default:
-			__stm_immbufin[0] = 0xFCE082C0;
-	}
-	res= IOS_Ioctl(__stm_imm_fd,IOCTL_STM_IDLE,__stm_immbufin,0x20,__stm_immbufout,0x20);
-	if(res<0) {
-#ifdef DEBUG_STM
-		printf("STM IDLE failed: %d\n",res);
-#endif
-	}
-	return res;
+
+	return ret;
 }
 
 s32 STM_SetLedMode(u32 mode)
 {
-	int res;
-	if(__stm_initialized==0) {
-#ifdef DEBUG_STM
-		printf("STM notinited\n");
-#endif
-		return STM_ENOTINIT;
+	s32 ret, fd;
+
+	ret = fd = IOS_Open("/dev/stm/immediate", 0);
+	if (ret >= 0) {
+		ret = IOS_Ioctl(fd, IOCTL_STM_LEDMODE, &mode, 0x4, NULL, 0);
+		if (ret < 0) {
+			STM_printf("STM LEDMode failed (%i).\n", ret);
+		} else if (mode == 0) {
+			STM_printf("Forced led off.\n");
+		}
+
+		IOS_Close(fd);
 	}
-	__stm_immbufin[0] = mode;
-	res= IOS_Ioctl(__stm_imm_fd,IOCTL_STM_LEDMODE,__stm_immbufin,0x20,__stm_immbufout,0x20);
-	if(res<0) {
-#ifdef DEBUG_STM
-		printf("STM LEDMODE failed: %d\n",res);
-#endif
+
+	return ret;
+}
+
+struct STM_LEDFlashConfig {
+	u32          : 8;
+	u32 flags    : 8;
+	u32 priority : 8;
+	u32 id       : 8;
+
+	u16 patterns[STM_MAX_LED_PATTERNS];
+};
+_Static_assert(offsetof(struct STM_LEDFlashConfig, patterns) == 0x4, "?");
+
+s32 STM_StartLEDFlashLoop(u8 id, u8 priority, u8 flags, const u16* patterns, u32 num_patterns) {
+	s32 ret, fd;
+
+	ret = fd = IOS_Open("/dev/stm/immediate", 0);
+	if (ret >= 0) {
+		static struct STM_LEDFlashConfig config;
+
+		if ((flags & STM_LEDFLASH_USER) && patterns != NULL) {
+			memcpy(config.patterns, patterns, sizeof(u16[num_patterns]));
+		} else {
+			num_patterns = 0;
+			flags &= ~STM_LEDFLASH_USER;
+		}
+
+		config.id = id;
+		config.priority = priority;
+		config.flags = flags;
+
+		ret = IOS_Ioctl(fd, IOCTL_STM_LEDFLASH, &config, offsetof(struct STM_LEDFlashConfig, patterns[num_patterns]), NULL, 0);
+		if (ret < 0) {
+			STM_printf("STM LEDFlash failed (%i). :(\n", ret);
+		}
+
+		IOS_Close(fd);
 	}
-	return res;
+
+	return ret;
 }
 
 s32 STM_RebootSystem(void)
 {
-	int res;
-	
+	s32 ret, fd;
+
 	_viReg[1] = 0;
-	if(__stm_initialized==0) {
-#ifdef DEBUG_STM
-		printf("STM notinited\n");
-#endif
-		return STM_ENOTINIT;
+	ret = fd = IOS_Open("/dev/stm/immediate", 0);
+	if (ret >= 0) {
+		ret = IOS_Ioctl(fd, IOCTL_STM_HOTRESET, NULL, 0, NULL, 0);
+		if (ret == 0) {
+			// *disable irq and spin here*
+		} else {
+			STM_printf("STM HotReset failed. (%i)\n", ret);
+		}
+		IOS_Close(fd);
 	}
-	__stm_immbufin[0] = 0;
-	res= IOS_Ioctl(__stm_imm_fd,IOCTL_STM_HOTRESET,__stm_immbufin,0x20,__stm_immbufout,0x20);
-	if(res<0) {
-#ifdef DEBUG_STM
-		printf("STM HRST failed: %d\n",res);
-#endif
-	}
-	return res;
+
+	return ret;
 }
-
-
 
 #endif /* defined(HW_RVL) */
