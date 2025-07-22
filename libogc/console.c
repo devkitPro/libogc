@@ -1122,7 +1122,7 @@ void consoleSetWindow(PrintConsole* console, unsigned int x, unsigned int y, uns
 	if ( y >= console->con_rows) return;
 
 	if ( x + width > console->con_cols + 1) width = console->con_cols + 1 - x;
-	if ( y + height > console->con_rows + 1) height = console->con_cols + 1 - y;
+	if ( y + height > console->con_rows + 1) height = console->con_rows + 1 - y;
 
 	console->windowWidth = width;
 	console->windowHeight = height;
