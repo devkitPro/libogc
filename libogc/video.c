@@ -1502,107 +1502,6 @@ GXRModeObj TVEurgb60Hz480ProgAa =
 	}
 };
 
-GXRModeObj TVRgb480Prog =
-{
-    VI_TVMODE_DEBUG_PROG,     // viDisplayMode
-    640,             // fbWidth
-    480,             // efbHeight
-    480,             // xfbHeight
-    (VI_MAX_WIDTH_DEBUG - 640)/2,        // viXOrigin
-    (VI_MAX_HEIGHT_DEBUG - 480)/2,       // viYOrigin
-    640,             // viWidth
-    480,             // viHeight
-    VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // field_rendering
-    GX_FALSE,        // aa
-
-    // sample points arranged in increasing Y order
-    {
-		{6,6},{6,6},{6,6},  // pix 0, 3 sample points, 1/12 units, 4 bits each
-		{6,6},{6,6},{6,6},  // pix 1
-		{6,6},{6,6},{6,6},  // pix 2
-		{6,6},{6,6},{6,6}   // pix 3
-    },
-
-    // vertical filter[7], 1/64 units, 6 bits each
-    {
-          0,         // line n-1
-          0,         // line n-1
-         21,         // line n
-         22,         // line n
-         21,         // line n
-          0,         // line n+1
-          0          // line n+1
-    }
-};
-
-GXRModeObj TVRgb480ProgSoft =
-{
-    VI_TVMODE_DEBUG_PROG,     // viDisplayMode
-    640,             // fbWidth
-    480,             // efbHeight
-    480,             // xfbHeight
-    (VI_MAX_WIDTH_DEBUG - 640)/2,        // viXOrigin
-    (VI_MAX_HEIGHT_DEBUG - 480)/2,       // viYOrigin
-    640,             // viWidth
-    480,             // viHeight
-    VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // field_rendering
-    GX_FALSE,        // aa
-
-    // sample points arranged in increasing Y order
-    {
-		{6,6},{6,6},{6,6},  // pix 0, 3 sample points, 1/12 units, 4 bits each
-		{6,6},{6,6},{6,6},  // pix 1
-		{6,6},{6,6},{6,6},  // pix 2
-		{6,6},{6,6},{6,6}   // pix 3
-    },
-
-    // vertical filter[7], 1/64 units, 6 bits each
-    {
-          8,         // line n-1
-          8,         // line n-1
-         10,         // line n
-         12,         // line n
-         10,         // line n
-          8,         // line n+1
-          8          // line n+1
-    }
-};
-
-GXRModeObj TVRgb480ProgAa =
-{
-    VI_TVMODE_DEBUG_PROG,     // viDisplayMode
-    640,             // fbWidth
-    480,             // efbHeight
-    480,             // xfbHeight
-    (VI_MAX_WIDTH_DEBUG - 640)/2,        // viXOrigin
-    (VI_MAX_HEIGHT_DEBUG - 480)/2,       // viYOrigin
-    640,             // viWidth
-    480,             // viHeight
-    VI_XFBMODE_SF,   // xFBmode
-    GX_FALSE,        // field_rendering
-    GX_TRUE,         // aa
-
-    // sample points arranged in increasing Y order
-    {
-		{3,2},{9,6},{3,10},  // pix 0, 3 sample points, 1/12 units, 4 bits each
-		{3,2},{9,6},{3,10},  // pix 1
-		{9,2},{3,6},{9,10},  // pix 2
-		{9,2},{3,6},{9,10}   // pix 3
-    },
-
-    // vertical filter[7], 1/64 units, 6 bits each
-    {
-          4,         // line n-1
-          8,         // line n-1
-         12,         // line n
-         16,         // line n
-         12,         // line n
-          8,         // line n+1
-          4          // line n+1
-    }
-};
 
 static const u16 taps[26] = {
 	0x01F0,0x01DC,0x01AE,0x0174,0x0129,0x00DB,
@@ -1711,9 +1610,8 @@ static u16 shdw_regs[60];
 static u32 fbSet = 0;
 static s16 displayOffsetH;
 static s16 displayOffsetV;
-static bool currRgb;
 static u32 currTvMode,changeMode;
-static u32 shdw_changeMode,shdw_changeEncoder,flushFlag;
+static u32 shdw_changeMode,flushFlag;
 static u64 changed,shdw_changed;
 static vu32 retraceCount;
 static const struct _timing *currTiming;
@@ -1785,7 +1683,6 @@ static void printDebugCalculations(void)
 		printf("HorVer.fbMode = %d\n",HorVer.fbMode);
 		printf("HorVer.nonInter = %d\n",HorVer.nonInter);
 		printf("HorVer.tv = %d\n",HorVer.tv);
-		printf("HorVer.rgb = %d\n",HorVer.rgb);
 		printf("HorVer.wordPerLine = %d\n",HorVer.wordPerLine);
 		printf("HorVer.wpl = %d\n",HorVer.wpl);
 		printf("HorVer.std = %d\n",HorVer.std);
@@ -1855,7 +1752,6 @@ static const struct _timing* __gettiming(u32 vimode)
 //clear the framebuffer in 64 byte blocks with the specific color
 void __VIClearFramebuffer(void* videoBuffer, u32 length, u32 color)
 {
-	//unknown why it gets the block count like this. division by 256/0x100?
 	u32 block_count = (length >> 8);
 	u32 *p = ((u32*)videoBuffer) - 1;
 
@@ -2350,75 +2246,30 @@ static void __VIWriteI2CRegisterBuf(u8 reg, int size, u8 *data)
 	udelay(2);
 }
 
-
-static void __VISetTiming(u8 mode)
+static void __VISetOverSampling(u8 mode)
 {
-	__VIWriteI2CRegister8(0x00, mode);
+	__VIWriteI2CRegister8(0x65, mode);
 }
 
-static void __VISetOutputMode(u8 dtvstatus)
+static void __VISetYUVSEL(u8 dtvstatus)
 {
-	switch (currTvMode)
-	{
-	case VI_NTSC:
-	default:
-		vdacFlagRegion = 0; break;
-	case VI_MPAL:
-		vdacFlagRegion = 1; break;
-	case VI_PAL:
-	case VI_EURGB60:
-		vdacFlagRegion = 2; break;
-	case VI_DEBUG:
-	case VI_DEBUG_PAL:
-		vdacFlagRegion = 3; break;
-	}
+	if(currTvMode==VI_NTSC) vdacFlagRegion = 0x0000;
+	else if(currTvMode==VI_PAL || currTvMode==VI_EURGB60) vdacFlagRegion = 0x0002;
+	else if(currTvMode==VI_MPAL) vdacFlagRegion = 0x0001;
+	else vdacFlagRegion = 0x0000;
 
 	__VIWriteI2CRegister8(0x01, _SHIFTL(dtvstatus,5,3)|(vdacFlagRegion&0x1f));
 }
 
-static void __VISetVBlankData(bool cgms, bool wss, bool captions)
+static void __VISetFilterEURGB60(u8 enable)
 {
-	u8 data = (captions ? 0 : 1) | (cgms ? 0 : 1) << 1 | (cgms ? 0 : 1) << 2;
-	__VIWriteI2CRegister8(0x02, data);
+	__VIWriteI2CRegister8(0x6e, enable);
 }
 
-static void __VISetTrapFilter(bool enable)
+static void __VISetupEncoder(void)
 {
-	__VIWriteI2CRegister8(0x03, enable ? 1 : 0);
-}
+	u8 macrobuf[0x1a];
 
-static void __VISetOutputEnable(bool enable)
-{
-	__VIWriteI2CRegister8(0x04, enable ? 1 : 0);
-}
-
-static void __VISetCGMSData(u8 param1, u8 param2, u8 param3)
-{
-	__VIWriteI2CRegister16(0x05, (param1 & 3) << 8 | (param2 & 0xf) << 10 | param3);
-}
-
-static void __VIResetCGMSData(void)
-{
-	__VISetCGMSData(0, 0, 0);
-}
-
-static void __VISetWSSData(u8 param1, u8 param2, u8 param3, u8 param4)
-{
-	__VIWriteI2CRegister16(0x08, (param1 & 0xf) << 8 | (param2 & 0xf) << 12 | (param3 & 0x7) << 3 | (param4 & 0x7));
-}
-
-static void __VIResetWSSData(void)
-{
-	__VISetWSSData(0, 0, 0, 0);
-}
-
-static void __VISetOverDrive(bool enable, u8 level)
-{
-	__VIWriteI2CRegister8(0x0A, (level << 1) | (enable ? 1 : 0));
-}
-
-static void __VISetGamma(void)
-{
 	u8 gamma[0x21] = {
 		0x10, 0x00, 0x10, 0x00, 0x10, 0x00, 0x10, 0x00,
 		0x10, 0x00, 0x10, 0x00, 0x10, 0x20, 0x40, 0x60,
@@ -2426,95 +2277,43 @@ static void __VISetGamma(void)
 		0x00, 0x60, 0x00, 0x80, 0x00, 0xa0, 0x00, 0xeb,
 		0x00
 	};
-	__VIWriteI2CRegisterBuf(0x10, sizeof(gamma), gamma);
-}
 
-static void __VISetMacroVision(u8 rgb)
-{
-	u8 macrobuf[0x1a];
+	u8 dtv, tv;
 
-	memset(macrobuf, 0, sizeof(macrobuf));
-	__VIWriteI2CRegisterBuf(0x40, sizeof(macrobuf), macrobuf);
-	if (rgb) __VIWriteI2CRegister8(0x59, 1);
-}
-
-static void __VISetRGBChannelSwap(bool enable)
-{
-	__VIWriteI2CRegister8(0x62, enable ? 1 : 0);
-}
-
-static void __VISetOverSampling(u8 mode)
-{
-	__VIWriteI2CRegister8(0x65, mode);
-}
-
-static void __VISetClosedCaptionMode(u8 mode)
-{
-	__VIWriteI2CRegister8(0x6A, mode);
-}
-
-static void __VISetRGBFilter(bool enable)
-{
-	__VIWriteI2CRegister8(0x6e, enable ? 1 : 0);
-}
-
-static void __VISetAudioVolume(u8 left_chan, u8 right_chan)
-{
-	u16 data = (left_chan << 8) | right_chan;
-	__VIWriteI2CRegister16(0x71, data);
-}
-
-static void __VISetClosedCaptionData(u8 param1, u8 param2, u8 param3, u8 param4)
-{
-	u32 data = (param1 & 0x7f) << 24 | (param2 & 0x7f) << 16 | (param3 & 0x7f) << 8 | (param4 & 0x7f);
-	__VIWriteI2CRegister32(0x7A, data);
-}
-
-static void __VIResetClosedCaptionData(void)
-{
-	__VISetClosedCaptionData(0, 0, 0, 0);
-}
-
-static u32 __VISetupEncoder(void)
-{
-	if (!shdw_changeEncoder)
-		return 0;
-	shdw_changeEncoder = 0;
-
-	u8 tv = VIDEO_GetCurrentTvMode();
-	u8 dtv = (_viReg[55]&0x01);
-	bool rgb = currRgb;
+	tv = VIDEO_GetCurrentTvMode();
+	dtv = (_viReg[55]&0x01);
 	oldDtvStatus = dtv;
 
-	__VISetOutputEnable(false);
+	// SetRevolutionModeSimple
 
-	__VISetRGBChannelSwap(rgb);
-	__VISetClosedCaptionMode(1);
-	__VISetOverSampling(rgb ? 1 : 3);
-	__VISetOutputMode(dtv);
-	__VISetTiming(0);
-	__VISetAudioVolume(0x8e, 0x8e);
-	__VISetVBlankData(false, false, false);
-	__VIResetCGMSData();
-	__VIResetWSSData();
-	__VIResetClosedCaptionData();
+	memset(macrobuf, 0, 0x1a);
+
+	__VIWriteI2CRegister8(0x6a, 1);
+	__VISetOverSampling(3);
+	__VISetYUVSEL(dtv);
+	__VIWriteI2CRegister8(0x00, 0);
+	__VIWriteI2CRegister16(0x71, 0x8e8e);
+	__VIWriteI2CRegister8(0x02, 7);
+	__VIWriteI2CRegister16(0x05, 0x0000);
+	__VIWriteI2CRegister16(0x08, 0x0000);
+	__VIWriteI2CRegister32(0x7A, 0x00000000);
 
 	// Macrovision crap
-	__VISetMacroVision(rgb);
+	__VIWriteI2CRegisterBuf(0x40, sizeof(macrobuf), macrobuf);
 
-	__VISetOverDrive(rgb, 0);
+	// Sometimes 1 in RGB mode? (reg 1 == 3)
+	__VIWriteI2CRegister8(0x0A, 0);
 
-	__VISetTrapFilter(true);
+	__VIWriteI2CRegister8(0x03, 1);
 
-	__VISetGamma();
+	__VIWriteI2CRegisterBuf(0x10, sizeof(gamma), gamma);
 
-	__VISetRGBFilter(rgb);
-	if (rgb) __VIWriteI2CRegister8(0x67, 1);
+	__VIWriteI2CRegister8(0x04, 1);
 
-	__VISetOutputEnable(true);
+	if(tv==VI_EURGB60) __VISetFilterEURGB60(1);
+	else __VISetFilterEURGB60(0);
 	oldTvStatus = tv;
 
-	return 1;
 }
 #endif
 
@@ -2705,15 +2504,22 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 	if(preRetraceCB)
 		preRetraceCB(retraceCount);
 
-	if(flushFlag && __VISetRegs()) {
-		flushFlag = 0;
-		SI_RefreshSamplingRate();
+	if(flushFlag) {
+		if(__VISetRegs()) {
+			flushFlag = 0;
+			SI_RefreshSamplingRate();
+		}
 	}
 #if defined(HW_RVL)
 	tv = VIDEO_GetCurrentTvMode();
 	dtv = (_viReg[55]&0x01);
-	if(dtv!=oldDtvStatus || tv!=oldTvStatus) __VISetOutputMode(dtv);
+	if(dtv!=oldDtvStatus || tv!=oldTvStatus) __VISetYUVSEL(dtv);
 	oldDtvStatus = dtv;
+
+	if(tv!=oldTvStatus) {
+		if(tv==VI_EURGB60) __VISetFilterEURGB60(1);
+		else __VISetFilterEURGB60(0);
+	}
 	oldTvStatus = tv;
 #endif
 	if(postRetraceCB)
@@ -2721,20 +2527,6 @@ static void __VIRetraceHandler(u32 nIrq,void *pCtx)
 
 	LWP_ThreadBroadcast(video_queue);
 }
-
-static inline bool __ViGetRgbMode(GXRModeObj *rmode)
-{
-	switch(rmode->viTVMode)
-	{
-		case VI_TVMODE_EURGB60_INT:
-		case VI_TVMODE_EURGB60_DS:
-		case VI_TVMODE_EURGB60_PROG:
-		case VI_TVMODE_DEBUG_PROG:
-			return true;
-		default:
-			return false;
-	}
-} 
 
 void* VIDEO_GetNextFramebuffer(void)
 {
@@ -2759,7 +2551,6 @@ void VIDEO_Init(void)
 	changed = 0;
 	shdw_changed = 0;
 	shdw_changeMode = 0;
-	shdw_changeEncoder = 1;
 	flushFlag = 0;
 
 	_viReg[38] = ((taps[1]>>6)|(taps[2]<<4));
@@ -2787,7 +2578,6 @@ void VIDEO_Init(void)
 	if(HorVer.tv!=VI_DEBUG) vimode += (HorVer.tv<<2);
 	currTiming = __gettiming(vimode);
 	currTvMode = HorVer.tv;
-	currRgb = false;
 
 	regs[1] = _viReg[1];
 	HorVer.timing = currTiming;
@@ -2845,18 +2635,12 @@ void VIDEO_Configure(GXRModeObj *rmode)
 		&& (rmode->xfbHeight<<1)!=rmode->viHeight) printf("VIDEO_Configure(): xfbHeight(%d) is not as twice as viHeight(%d) when SF XFB mode is specified\n",rmode->xfbHeight,rmode->viHeight);
 #endif
 	_CPU_ISR_Disable(level);
-	nonint = _SHIFTR(rmode->viTVMode,0,2);
+	nonint = (rmode->viTVMode&0x0003);
 	if(nonint!=HorVer.nonInter) {
 		changeMode = 1;
 		HorVer.nonInter = nonint;
 	}
 	HorVer.tv = _SHIFTR(rmode->viTVMode,2,3);
-	bool rgb = __ViGetRgbMode(rmode);
-	if(rgb != currRgb) {
-		shdw_changeEncoder = 1;
-		changeMode = 1;
-		currRgb = rgb;
-	}
 	HorVer.dispPosX = rmode->viXOrigin;
 	HorVer.dispPosY = rmode->viYOrigin;
 	if(HorVer.nonInter==VI_NON_INTERLACE) HorVer.dispPosY = HorVer.dispPosY<<1;
@@ -2893,7 +2677,7 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	dcr |= _SHIFTL(HorVer.threeD,3,1);
 	if(HorVer.nonInter==VI_PROGRESSIVE || HorVer.nonInter==(VI_NON_INTERLACE|VI_PROGRESSIVE)) dcr |= 0x0004;
 	else dcr |= _SHIFTL(HorVer.nonInter,2,1);
-	if(!currRgb) dcr |= _SHIFTL(HorVer.tv,8,2);
+	if(!(HorVer.tv==VI_EURGB60)) dcr |= _SHIFTL(HorVer.tv,8,2);
 	regs[1] = dcr;
 	changed |= VI_REGCHANGE(1);
 
@@ -2911,10 +2695,6 @@ void VIDEO_Configure(GXRModeObj *rmode)
 	__setVerticalRegs(HorVer.adjustedDispPosY,HorVer.adjustedDispSizeY,curtiming->equ,curtiming->acv,curtiming->prbOdd,curtiming->prbEven,curtiming->psbOdd,curtiming->psbEven,HorVer.black);
 #ifdef _VIDEO_DEBUG
 	printDebugCalculations();
-#endif
-
-#if defined(HW_RVL)
-	__VISetupEncoder();
 #endif
 	_CPU_ISR_Restore(level);
 }
