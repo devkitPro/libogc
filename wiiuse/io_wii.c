@@ -39,6 +39,11 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 
 	if(!wm) return ERR_OK;
 
+	// Disable system power button events for 1100ms after Wiimote disconnection
+	// BT module hardware will trigger power button press in GPIO just like front panel
+	// if auth'd Wiimote power button pressed, so this is the only way to disambiguate
+	SYS_DisablePowerButton(1100);
+
 	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_BATTERY_CRITICAL));
 	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_IR|WIIMOTE_STATE_IR_INIT));
 	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_SPEAKER|WIIMOTE_STATE_SPEAKER_INIT));

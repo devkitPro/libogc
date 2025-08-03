@@ -109,6 +109,9 @@ static s32 __wpad_onreset(s32 final);
 static s32 __wpad_disconnect(struct _wpad_cb *wpdcb);
 static void __wpad_eventCB(struct wiimote_t *wm,s32 event);
 
+static s32 GetGuestSlot(struct bd_addr *pad_addr);
+static s32 GetRegisteredSlot(struct bd_addr *pad_addr);
+
 static void __wpad_def_powcb(s32 chan);
 static void __wpad_def_hostsynccb(u32 held);
 static WPADShutdownCallback __wpad_batcb = NULL;
@@ -118,7 +121,6 @@ static WPADHostSyncBtnCallback __wpad_hostsynccb = __wpad_def_hostsynccb;
 static WPADStatusCallback __wpad_statuscb = NULL;
 
 extern void __wiiuse_sensorbar_enable(int enable);
-extern void __SYS_DoPowerCB(void);
 
 static sys_resetinfo __wpad_resetinfo = {
 	{},
@@ -137,7 +139,7 @@ static s32 __wpad_onreset(s32 final)
 
 static void __wpad_def_powcb(s32 chan)
 {
-	__SYS_DoPowerCB();
+	SYS_DoPowerCB();
 }
 
 static void __wpad_timeouthandler(syswd_t alarm,void *cbarg)
@@ -280,7 +282,6 @@ static void __wpad_confsave_thread_stop(void)
 wiimote *__wpad_register_new(wiimote_listen *wml, u8 err)
 {
 	u32 i,j,level;
-	struct bd_addr bdaddr;
 	wiimote *wm;
 
 	int guestEntry = CONF_PAD_MAX_ACTIVE;
@@ -290,25 +291,8 @@ wiimote *__wpad_register_new(wiimote_listen *wml, u8 err)
 	wm = __wpad_assign_slot(wml, err);
 	if (wm)
 	{
-		// Search for bdaddr in guest registration list
-		for(i=0; i<__wpad_guests.num_guests; i++) {
-			BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_guests.guests[i].bdaddr);
-			if(bd_addr_cmp(&wml->bdaddr,&bdaddr)) {
-				WIIUSE_DEBUG("Wiimote guest in slot %d", i);
-				guestEntry = i;
-				break;
-			}
-		}
-	
-		// Search for bdaddr in permanent registration list
-		for(i=0; i<__wpad_devs.num_registered; i++) {
-			BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_devs.registered[i].bdaddr);
-			if(bd_addr_cmp(&wml->bdaddr,&bdaddr)) {
-				WIIUSE_DEBUG("Wiimote currently registered in slot %d", i);
-				registeredEntry = i;
-				break;
-			}
-		}
+		guestEntry = GetGuestSlot(&wml->bdaddr);
+		registeredEntry = GetRegisteredSlot(&wml->bdaddr);
 
 		if(BTE_GetPairMode() == PAIR_MODE_NORMAL) {
 			// Permanent pair, need to save bdaddr as known controller
@@ -963,14 +947,10 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 	// Only accept connection requests (i.e. "press any button") if not doing guest pairing
 	if(BTE_GetPairMode() == PAIR_MODE_NORMAL) {
 		if(!bd_addr_cmp(pad_addr,BD_ADDR_ANY)) {
-			for(i=0; i<CONF_PAD_MAX_ACTIVE; i++) {
-				BD_ADDR_FROM_BYTES(&bdaddr,__wpad_devs.active[i].bdaddr);
-				if(bd_addr_cmp(pad_addr,&bdaddr)) {
-					name = (u8 *)__wpad_devs.active[i].name;
-					WIIUSE_DEBUG("Active pad '%s' found in slot %d", name, i);
-					slot = i;
-					break;
-				}
+			slot = GetActiveSlot(pad_addr);
+			if (slot < CONF_PAD_MAX_ACTIVE) {
+				name = (u8 *)__wpad_devs.active[slot].name;
+				WIIUSE_DEBUG("Active pad '%s' found in slot %d", name, slot);
 			}
 	
 			if(slot >= WPAD_MAX_DEVICES) {
