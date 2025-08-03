@@ -22,6 +22,8 @@ extern void parse_event(struct wiimote_t *wm);
 extern void idle_cycle(struct wiimote_t* wm);
 extern void hexdump(void *d, int len);
 
+extern void __SYS_DisablePowerButton(u32 duration);
+
 static __inline__ u32 ACR_ReadReg(u32 reg)
 {
 	return _ipcReg[reg>>2];
@@ -39,10 +41,12 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 
 	if(!wm) return ERR_OK;
 
-	// Disable system power button events for 1100ms after Wiimote disconnection
+	// Disable system power button events for a bit after Wiimote disconnection
 	// BT module hardware will trigger power button press in GPIO just like front panel
 	// if auth'd Wiimote power button pressed, so this is the only way to disambiguate
-	SYS_DisablePowerButton(1100);
+	// It sends power button events for ~1s, but if we disable for 200ms, we can get
+	// power button event throttling to take care of the rest
+	__SYS_DisablePowerButton(200);
 
 	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_BATTERY_CRITICAL));
 	WIIMOTE_DISABLE_STATE(wm, (WIIMOTE_STATE_IR|WIIMOTE_STATE_IR_INIT));

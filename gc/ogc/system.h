@@ -391,7 +391,6 @@ void* SYS_GetArena2Hi(void);
 void SYS_SetArena2Hi(void *newHi);
 u32 SYS_GetArena2Size(void);
 powercallback SYS_SetPowerCallback(powercallback cb);
-void SYS_DisablePowerButton(u32 duration);
 void SYS_DoPowerCB(void);
 #endif
 
