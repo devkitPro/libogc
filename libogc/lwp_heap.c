@@ -96,7 +96,7 @@ void* __lwp_heap_allocate(heap_cntrl *theheap,u32 size)
 	return ptr;
 }
 
-BOOL __lwp_heap_free(heap_cntrl *theheap,void *ptr)
+bool __lwp_heap_free(heap_cntrl *theheap,void *ptr)
 {
 	heap_block *block;
 	heap_block *next_block;
@@ -110,7 +110,7 @@ BOOL __lwp_heap_free(heap_cntrl *theheap,void *ptr)
 	block = __lwp_heap_usrblockat(ptr);
 	if(!__lwp_heap_blockin(theheap,block) || __lwp_heap_blockfree(block)) {
 		_CPU_ISR_Restore(level);
-		return FALSE;
+		return false;
 	}
 
 	dsize = __lwp_heap_blocksize(block);
@@ -118,14 +118,14 @@ BOOL __lwp_heap_free(heap_cntrl *theheap,void *ptr)
 	
 	if(!__lwp_heap_blockin(theheap,next_block) || (block->front_flag!=next_block->back_flag)) {
 		_CPU_ISR_Restore(level);
-		return FALSE;
+		return false;
 	}
 	
 	if(__lwp_heap_prev_blockfree(block)) {
 		prev_block = __lwp_heap_prevblock(block);
 		if(!__lwp_heap_blockin(theheap,prev_block)) {
 			_CPU_ISR_Restore(level);
-			return FALSE;
+			return false;
 		}
 		
 		if(__lwp_heap_blockfree(next_block)) {
@@ -156,7 +156,7 @@ BOOL __lwp_heap_free(heap_cntrl *theheap,void *ptr)
 	}
 	_CPU_ISR_Restore(level);
 
-	return TRUE;
+	return true;
 }
 
 u32 __lwp_heap_getinfo(heap_cntrl *theheap,heap_iblock *theinfo)

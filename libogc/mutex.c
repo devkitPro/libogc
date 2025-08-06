@@ -114,7 +114,7 @@ s32 LWP_MutexInit(mutex_t *mutex,bool use_recursive)
 
 	attr.mode = LWP_MUTEX_FIFO;
 	attr.nest_behavior = use_recursive?LWP_MUTEX_NEST_ACQUIRE:LWP_MUTEX_NEST_ERROR;
-	attr.onlyownerrelease = TRUE;
+	attr.onlyownerrelease = true;
 	attr.prioceil = 1; //__lwp_priotocore(LWP_PRIO_MAX-1);
 	__lwp_mutex_initialize(&ret->mutex,&attr,LWP_MUTEX_UNLOCKED);
 
@@ -143,12 +143,12 @@ s32 LWP_MutexDestroy(mutex_t mutex)
 
 s32 LWP_MutexLock(mutex_t mutex)
 {
-	return __lwp_mutex_locksupp(mutex,LWP_THREADQ_NOTIMEOUT,TRUE);
+	return __lwp_mutex_locksupp(mutex,LWP_THREADQ_NOTIMEOUT,true);
 }
 
 s32 LWP_MutexTryLock(mutex_t mutex)
 {
-	return __lwp_mutex_locksupp(mutex,LWP_THREADQ_NOTIMEOUT,FALSE);
+	return __lwp_mutex_locksupp(mutex,LWP_THREADQ_NOTIMEOUT,false);
 }
 
 s32 LWP_MutexUnlock(mutex_t mutex)

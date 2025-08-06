@@ -121,49 +121,49 @@ void MQ_Close(mqbox_t mqbox)
 	__lwp_mqbox_free(mbox);
 }
 
-BOOL MQ_Send(mqbox_t mqbox,mqmsg_t msg,u32 flags)
+bool MQ_Send(mqbox_t mqbox,mqmsg_t msg,u32 flags)
 {
-	BOOL ret;
+	bool ret;
 	mqbox_st *mbox;
-	u32 wait = (flags==MQ_MSG_BLOCK)?TRUE:FALSE;
+	u32 wait = (flags==MQ_MSG_BLOCK)?true:false;
 
 	mbox = __lwp_mqbox_open(mqbox);
-	if(!mbox) return FALSE;
+	if(!mbox) return false;
 
-	ret = FALSE;
-	if(__lwpmq_submit(&mbox->mqueue,mbox->object.id,(void*)&msg,sizeof(mqmsg_t),LWP_MQ_SEND_REQUEST,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
+	ret = false;
+	if(__lwpmq_submit(&mbox->mqueue,mbox->object.id,(void*)&msg,sizeof(mqmsg_t),LWP_MQ_SEND_REQUEST,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = true;
 	__lwp_thread_dispatchenable();
 
 	return ret;
 }
 
-BOOL MQ_Receive(mqbox_t mqbox,mqmsg_t *msg,u32 flags)
+bool MQ_Receive(mqbox_t mqbox,mqmsg_t *msg,u32 flags)
 {
-	BOOL ret;
+	bool ret;
 	mqbox_st *mbox;
-	u32 tmp,wait = (flags==MQ_MSG_BLOCK)?TRUE:FALSE;
+	u32 tmp,wait = (flags==MQ_MSG_BLOCK)?true:false;
 
 	mbox = __lwp_mqbox_open(mqbox);
-	if(!mbox) return FALSE;
+	if(!mbox) return false;
 
-	ret = FALSE;
-	if(__lwpmq_seize(&mbox->mqueue,mbox->object.id,(void*)msg,&tmp,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
+	ret = false;
+	if(__lwpmq_seize(&mbox->mqueue,mbox->object.id,(void*)msg,&tmp,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = true;
 	__lwp_thread_dispatchenable();
 
 	return ret;
 }
 
-BOOL MQ_Jam(mqbox_t mqbox,mqmsg_t msg,u32 flags)
+bool MQ_Jam(mqbox_t mqbox,mqmsg_t msg,u32 flags)
 {
-	BOOL ret;
+	bool ret;
 	mqbox_st *mbox;
-	u32 wait = (flags==MQ_MSG_BLOCK)?TRUE:FALSE;
+	u32 wait = (flags==MQ_MSG_BLOCK)?true:false;
 
 	mbox = __lwp_mqbox_open(mqbox);
-	if(!mbox) return FALSE;
+	if(!mbox) return false;
 
-	ret = FALSE;
-	if(__lwpmq_submit(&mbox->mqueue,mbox->object.id,(void*)&msg,sizeof(mqmsg_t),LWP_MQ_SEND_URGENT,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = TRUE;
+	ret = false;
+	if(__lwpmq_submit(&mbox->mqueue,mbox->object.id,(void*)&msg,sizeof(mqmsg_t),LWP_MQ_SEND_URGENT,wait,LWP_THREADQ_NOTIMEOUT)==LWP_MQ_STATUS_SUCCESSFUL) ret = true;
 	__lwp_thread_dispatchenable();
 
 	return ret;

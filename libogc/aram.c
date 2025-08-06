@@ -199,7 +199,7 @@ void AR_Clear(u32 flag)
 	}
 }
 
-BOOL AR_CheckInit(void)
+bool AR_CheckInit(void)
 {
 	return __ARInit_Flag;
 }

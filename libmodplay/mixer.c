@@ -59,7 +59,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                     else \
                       { \
                         playpos.adword = (mod->instrument[mod->instnum[voice]].loop_end-1)<<16; \
-                        mod->channel_active[voice] = FALSE; \
+                        mod->channel_active[voice] = false; \
                         break; \
                       } \
                   }

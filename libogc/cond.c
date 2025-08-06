@@ -168,23 +168,23 @@ s32 LWP_CondInit(cond_t *cond)
 
 s32 LWP_CondWait(cond_t cond,mutex_t mutex)
 {
-	return __lwp_cond_waitsupp(cond,mutex,LWP_THREADQ_NOTIMEOUT,FALSE);
+	return __lwp_cond_waitsupp(cond,mutex,LWP_THREADQ_NOTIMEOUT,false);
 }
 
 s32 LWP_CondSignal(cond_t cond)
 {
-	return __lwp_cond_signalsupp(cond,FALSE);
+	return __lwp_cond_signalsupp(cond,false);
 }
 
 s32 LWP_CondBroadcast(cond_t cond)
 {
-	return __lwp_cond_signalsupp(cond,TRUE);
+	return __lwp_cond_signalsupp(cond,true);
 }
 
 s32 LWP_CondTimedWait(cond_t cond,mutex_t mutex,const struct timespec *abstime)
 {
 	u64 timeout = LWP_THREADQ_NOTIMEOUT;
-	bool timedout = FALSE;
+	bool timedout = false;
 
 	if(abstime) timeout = __lwp_wd_calc_ticks(abstime);
 	return __lwp_cond_waitsupp(cond,mutex,timeout,timedout);

@@ -32,7 +32,6 @@ distribution.
 #include <stdlib.h>
 #include <stdio.h>
 #include "gcutil.h"
-#include <gcbool.h>
 #include "asm.h"
 #include "processor.h"
 #include "irq.h"
@@ -54,8 +53,8 @@ distribution.
 #define DSPCR_RES           0x0001        // reset DSP
 
 
-static u32 __dsp_inited = FALSE;
-static u32 __dsp_rudetask_pend = FALSE;
+static u32 __dsp_inited = false;
+static u32 __dsp_rudetask_pend = false;
 static DSPCallback __dsp_intcb = NULL;
 static dsptask_t *__dsp_currtask,*__dsp_lasttask,*__dsp_firsttask,*__dsp_rudetask,*tmp_task;
 
@@ -235,13 +234,13 @@ static void __dsp_def_taskcb(void)
 			if(__dsp_currtask->res_cb) __dsp_currtask->res_cb(__dsp_currtask);
 			break;
 		case 0xDCD10002:
-			if(__dsp_rudetask_pend==TRUE) {
+			if(__dsp_rudetask_pend==true) {
 				if(__dsp_rudetask==__dsp_currtask) {
 					DSP_SendMailTo(0xCDD10003);
 					while(DSP_CheckMailTo());
 
 					__dsp_rudetask = NULL;
-					__dsp_rudetask_pend = FALSE;
+					__dsp_rudetask_pend = false;
 					if(__dsp_currtask->res_cb) __dsp_currtask->res_cb(__dsp_currtask);
 				} else {
 					DSP_SendMailTo(0xCDD10001);
@@ -251,7 +250,7 @@ static void __dsp_def_taskcb(void)
 					__dsp_currtask->state = DSPTASK_YIELD;
 					__dsp_currtask = __dsp_rudetask;
 					__dsp_rudetask = NULL;
-					__dsp_rudetask_pend = FALSE;
+					__dsp_rudetask_pend = false;
 				}
 			} else if(__dsp_currtask->next==NULL) {
 				if(__dsp_firsttask==__dsp_currtask) {
@@ -277,7 +276,7 @@ static void __dsp_def_taskcb(void)
 			}
 			break;
 		case 0xDCD10003:
-			if(__dsp_rudetask_pend==TRUE) {
+			if(__dsp_rudetask_pend==true) {
 				if(__dsp_currtask->done_cb) __dsp_currtask->done_cb(__dsp_currtask);
 				DSP_SendMailTo(0xCDD10001);
 				while(DSP_CheckMailTo());
@@ -286,7 +285,7 @@ static void __dsp_def_taskcb(void)
 				__dsp_removetask(__dsp_currtask);
 
 				__dsp_currtask = __dsp_rudetask;
-				__dsp_rudetask_pend = FALSE;
+				__dsp_rudetask_pend = false;
 				__dsp_rudetask = NULL;
 			} else if(__dsp_currtask->next==NULL) {
 				if(__dsp_firsttask==__dsp_currtask) {
@@ -329,7 +328,7 @@ void DSP_Init(void)
 	printf("DSP_Init()\n");
 #endif
 	_CPU_ISR_Disable(level);
-	if(__dsp_inited==FALSE) {
+	if(__dsp_inited==false) {
 		__dsp_intcb= __dsp_def_taskcb;
 
 		IRQ_Request(IRQ_DSP_DSP,__dsp_inthandler,NULL);
@@ -342,7 +341,7 @@ void DSP_Init(void)
 		__dsp_firsttask = NULL;
 		__dsp_lasttask = NULL;
 		tmp_task = NULL;
-		__dsp_inited = TRUE;
+		__dsp_inited = true;
 	}
 	_CPU_ISR_Restore(level);
 }
@@ -493,12 +492,12 @@ dsptask_t* DSP_AssertTask(dsptask_t *task)
 	_CPU_ISR_Disable(level);
 	if(task==__dsp_currtask) {
 		__dsp_rudetask = task;
-		__dsp_rudetask_pend = TRUE;
+		__dsp_rudetask_pend = true;
 		ret = task;
 	} else {
 		if(task->prio<__dsp_currtask->prio) {
 			__dsp_rudetask = task;
-			__dsp_rudetask_pend = TRUE;
+			__dsp_rudetask_pend = true;
 			if(__dsp_currtask->state==DSPTASK_RUN)
 				_dspReg[5] = ((_dspReg[5]&~(DSPCR_DSPINT|DSPCR_ARINT|DSPCR_AIINT))|DSPCR_PIINT);
 
