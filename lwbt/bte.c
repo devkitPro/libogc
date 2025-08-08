@@ -44,7 +44,7 @@ struct bt_state
 
 	u8_t pair_mode;
 	
-	struct inquiry_res inq_res;
+	struct bte_inquiry_res inq_res;
 
 	btecallback cb;
 	btecallback inq_complete_cb;
@@ -1183,7 +1183,7 @@ err_t bte_inquiry_complete(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ire
 	u8_t i;
 	struct hci_inq_res *p;
 	struct bt_state *state = (struct bt_state*)arg;
-	struct inquiry_res *inq_res = &btstate.inq_res;
+	struct bte_inquiry_res *inq_res = &btstate.inq_res;
 
 	if(result==HCI_SUCCESS) {
 		if(ires!=NULL) {

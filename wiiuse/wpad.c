@@ -1082,7 +1082,7 @@ s32 __wpad_inquiry_finished(s32 result,void *userdata)
 {
 	int i;
 	struct pad_name_info *padinfo;
-	struct inquiry_res *inq_res = (struct inquiry_res *)userdata;
+	struct bte_inquiry_res *inq_res = (struct bte_inquiry_res *)userdata;
 
 	if(result == ERR_OK && inq_res != NULL) {
 		// Filter out weird null values

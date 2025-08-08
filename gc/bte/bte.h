@@ -97,7 +97,7 @@ struct inquiry_info_ex
 	u16 co;
 };
 
-struct inquiry_res
+struct bte_inquiry_res
 {
 	u8 count;
 	struct inquiry_info_ex *info;
