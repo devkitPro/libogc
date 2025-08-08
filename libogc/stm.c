@@ -34,13 +34,15 @@ distribution.
 #include "ipc.h"
 #include "system.h"
 #include "irq.h"
+#include "processor.h"
+#include "cache.h"
 #include "stm.h"
 
 #define DEBUG_STM
 
 #ifdef DEBUG_STM
 #include <stdio.h>
-#define STM_printf(fmt, ...)	fprintf(stderr, fmt, ##__VA_ARGS__)
+#define STM_printf(fmt, ...)	printf("%s():%i: "fmt, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #else
 #define STM_printf(fmt, ...)	while (0) {};
 #endif
@@ -69,7 +71,8 @@ struct eventhook {
 
 static struct eventhook __stm_eventhook;
 
-static s32 __STMEventHandler(s32 result,void *usrdata);
+static s32 __STMEventCallback(s32 result,void *usrdata);
+s32 __STM_SetEventHook(void);
 s32 __STM_ReleaseEventHook(void);
 
 static vu16* const _viReg = (u16*)0xCC002000;
@@ -94,14 +97,15 @@ s32 __STM_SetEventHook(void)
 
 	if (__stm_eventhook.fd < 0) {
 		__stm_eventhook.fd = ret = IOS_Open("/dev/stm/eventhook", 0);
-		if (ret < 0)
+		if (ret < 0) {
+			STM_printf("Failed to open STM eventhook (%i)\n", ret);
 			return ret;
+		}
 	}
 
 	u32 level = IRQ_Disable();
 	{
-		__stm_eventhook.event_code = 0;
-		ret = IOS_IoctlAsync(__stm_eventhook.fd, IOCTL_STM_EVENTHOOK, NULL, 0, &__stm_eventhook.event_code, 0x4, __STMEventHandler, &__stm_eventhook);
+		ret = IOS_IoctlAsync(__stm_eventhook.fd, IOCTL_STM_EVENTHOOK, NULL, 0, &__stm_eventhook.event_code, sizeof(u32), __STMEventCallback, &__stm_eventhook);
 		if (ret == 0)
 			__stm_eventhook.state = 1;
 	}
@@ -112,19 +116,30 @@ s32 __STM_SetEventHook(void)
 
 s32 __STM_ReleaseEventHook(void)
 {
-	s32 ret, fd;
+	s32 ret = STM_ENOHANDLER, fd;
 
-	ret = fd = IOS_Open("/dev/stm/immediate", 0);
-	if (ret >= 0) {
-		__stm_eventhook.state = 2;
-		ret = IOS_Ioctl(fd, IOCTL_STM_RELEASE_EH, NULL, 0, NULL, 0);
-		IOS_Close(fd);
+	STM_printf("Release\n");
+
+	if (__stm_eventhook.state == 1) {
+		ret = fd = IOS_Open("/dev/stm/immediate", 0);
+		if (ret >= 0) {
+			__stm_eventhook.state = 2;
+			ret = IOS_Ioctl(fd, IOCTL_STM_RELEASE_EH, NULL, 0, NULL, 0);
+			IOS_Close(fd);
+		} else {
+			STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
+		}
 	}
+	else if (__stm_eventhook.fd >= 0) {
+		ret = IOS_Close(__stm_eventhook.fd);
+		__stm_eventhook.fd = -1;
+	}
+
 
 	return ret;
 }
 
-static s32 __STMEventHandler(s32 result, void *usrdata)
+static s32 __STMEventCallback(s32 result, void *usrdata)
 {
 	__stm_eventhook.state = 0;
 
@@ -159,6 +174,13 @@ stmcallback STM_RegisterEventHandler(stmcallback new)
 	return old;
 }
 
+__attribute__((noreturn))
+static void WaitForImpendingDoom(void) {
+	IRQ_Disable();
+	ICFlashInvalidate();
+	ppchalt();
+}
+
 s32 STM_ShutdownToStandby(void)
 {
 	s32 ret, fd;
@@ -167,14 +189,17 @@ s32 STM_ShutdownToStandby(void)
 	_viReg[1] = 0;
 	ret = fd = IOS_Open("/dev/stm/immediate", 0);
 	if (ret >= 0) {
-		ret = IOS_Ioctl(fd, IOCTL_STM_SHUTDOWN, &config, 0x4, NULL, 0);
+		ret = IOS_Ioctl(fd, IOCTL_STM_SHUTDOWN, &config, sizeof(u32), NULL, 0);
 		if (ret == 0) {
-			// *disable irq and spin here*
-			// IOS_Close will lock us anyways, since STM is most definitely not going to pick up the 2nd message before the entire system turns off. Lol.
+			WaitForImpendingDoom();
 		} else {
 			STM_printf("STM Shutdown failed (%i). Why? It does not even check input size...\n", ret);
 		}
+
+		/* Should we hang regardless? The Wii menu does, pulling OSHalt if STM was not ready by the time <function> was called */
 		IOS_Close(fd);
+	} else {
+		STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
 	}
 
 	return ret;
@@ -191,12 +216,36 @@ s32 STM_ShutdownToIdle(void)
 	_viReg[1] = 0;
 	ret = fd = IOS_Open("/dev/stm/immediate", 0);
 	if (ret >= 0) {
-		ret = IOS_Ioctl(fd, IOCTL_STM_IDLEMODE, &config, 0x4, NULL, 0);
+		ret = IOS_Ioctl(fd, IOCTL_STM_IDLEMODE, &config, sizeof(u32), NULL, 0);
 		if (ret == 0) {
-			// *disable irq and spin here*
+			WaitForImpendingDoom();
 		} else {
 			STM_printf("STM IdleMode failed (%i).\n", ret);
 		}
+		IOS_Close(fd);
+	} else {
+		STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
+	}
+
+	return ret;
+}
+
+s32 STM_RebootSystem(void)
+{
+	s32 ret, fd;
+
+	_viReg[1] = 0;
+	ret = fd = IOS_Open("/dev/stm/immediate", 0);
+	if (ret >= 0) {
+		ret = IOS_Ioctl(fd, IOCTL_STM_HOTRESET, NULL, 0, NULL, 0);
+		if (ret == 0) {
+			WaitForImpendingDoom();
+		} else {
+			STM_printf("STM HotReset failed. (%i)\n", ret);
+		}
+		IOS_Close(fd);
+	} else {
+		STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
 	}
 
 	return ret;
@@ -208,7 +257,7 @@ s32 STM_SetLedMode(u32 mode)
 
 	ret = fd = IOS_Open("/dev/stm/immediate", 0);
 	if (ret >= 0) {
-		ret = IOS_Ioctl(fd, IOCTL_STM_LEDMODE, &mode, 0x4, NULL, 0);
+		ret = IOS_Ioctl(fd, IOCTL_STM_LEDMODE, &mode, sizeof(u32), NULL, 0);
 		if (ret < 0) {
 			STM_printf("STM LEDMode failed (%i).\n", ret);
 		} else if (mode == 0) {
@@ -216,12 +265,15 @@ s32 STM_SetLedMode(u32 mode)
 		}
 
 		IOS_Close(fd);
+	} else {
+		STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
 	}
 
 	return ret;
 }
 
-struct STM_LEDFlashConfig {
+struct STM_LEDFlashConfig
+{
 	u32          : 8;
 	u32 flags    : 8;
 	u32 priority : 8;
@@ -231,14 +283,18 @@ struct STM_LEDFlashConfig {
 };
 _Static_assert(offsetof(struct STM_LEDFlashConfig, patterns) == 0x4, "?");
 
-s32 STM_StartLEDFlashLoop(u8 id, u8 priority, u8 flags, const u16* patterns, u32 num_patterns) {
+s32 STM_StartLEDFlashLoop(u8 id, u8 priority, u8 flags, const u16* patterns, u32 num_patterns)
+{
 	s32 ret, fd;
 
 	ret = fd = IOS_Open("/dev/stm/immediate", 0);
 	if (ret >= 0) {
-		static struct STM_LEDFlashConfig config;
+		struct STM_LEDFlashConfig config;
 
 		if ((flags & STM_LEDFLASH_USER) && patterns != NULL) {
+			if (num_patterns >= STM_MAX_LED_PATTERNS)
+				num_patterns = STM_MAX_LED_PATTERNS;
+
 			memcpy(config.patterns, patterns, sizeof(u16[num_patterns]));
 		} else {
 			num_patterns = 0;
@@ -255,25 +311,8 @@ s32 STM_StartLEDFlashLoop(u8 id, u8 priority, u8 flags, const u16* patterns, u32
 		}
 
 		IOS_Close(fd);
-	}
-
-	return ret;
-}
-
-s32 STM_RebootSystem(void)
-{
-	s32 ret, fd;
-
-	_viReg[1] = 0;
-	ret = fd = IOS_Open("/dev/stm/immediate", 0);
-	if (ret >= 0) {
-		ret = IOS_Ioctl(fd, IOCTL_STM_HOTRESET, NULL, 0, NULL, 0);
-		if (ret == 0) {
-			// *disable irq and spin here*
-		} else {
-			STM_printf("STM HotReset failed. (%i)\n", ret);
-		}
-		IOS_Close(fd);
+	} else {
+		STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
 	}
 
 	return ret;

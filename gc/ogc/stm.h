@@ -36,20 +36,28 @@ distribution.
 #include <gctypes.h>
 #include <gcutil.h>
 
-#define STM_EVENT_RESET			0x00020000
-#define STM_EVENT_POWER			0x00000800
+#define STM_EVENT_RESET		0x00020000
+#define STM_EVENT_POWER		0x00000800
 
-#define STM_EINVAL				-0x2004
-#define STM_ENOTINIT			-0x2100
-#define STM_ENOHANDLER			-0x2101
+#define STM_EINVAL			-0x2004 // << Unused
+#define STM_ENOTINIT		-0x2100
+#define STM_ENOHANDLER		-0x2101
 
-#define STM_LEDFLASH_USER		0x01
-#define STM_LEDFLASH_NOEXEC		0x02
+enum {
+	STM_LEDMODE_OFF,
+	STM_LEDMODE_DIM,
+	STM_LEDMODE_BRIGHT,
+};
 
-#define STM_MAX_LED_PATTERNS	128
+enum {
+	STM_LEDFLASH_USER   = (1 << 0),
+	STM_LEDFLASH_NOEXEC = (1 << 1),
+};
+
+#define STM_MAX_LED_PATTERNS 128
 
 #ifdef __cplusplus
-	extern "C" {
+   extern "C" {
 #endif /* __cplusplus */
 
 typedef void (*stmcallback)(u32 event);
@@ -67,7 +75,7 @@ s32 STM_SetLedMode(u32 mode);
 s32 STM_StartLEDFlashLoop(u8 id, u8 priority, u8 flags, const u16* patterns, u32 num_patterns);
 
 #ifdef __cplusplus
-	}
+   }
 #endif /* __cplusplus */
 
 #endif /* defined(HW_RVL) */
