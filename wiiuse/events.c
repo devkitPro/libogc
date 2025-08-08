@@ -88,7 +88,7 @@ static void event_ack(struct wiimote_t *wm,ubyte *msg)
 		return;
 	}
 	if(msg[3]) {
-		WIIUSE_WARNING("Command %02x %02x failed: status %02x", cmd->data[0], cmd->data[1], msg[3]);
+		WIIUSE_WARNING("Command %02x %02x%02x%02x%02x failed: status %02x", cmd->data[0], cmd->data[1], cmd->data[2], cmd->data[3], cmd->data[4], msg[3]);
 		return;
 	}
 
@@ -106,9 +106,10 @@ static void event_ack(struct wiimote_t *wm,ubyte *msg)
 
 static void event_status(struct wiimote_t *wm,ubyte *msg)
 {
-	int ir = 0;
+	int critical = 0;
 	int attachment = 0;
 	int speaker = 0;
+	int ir = 0;
 	//int led[4]= {0};
 	struct cmd_blk_t *cmd = wm->cmd_head;
 
@@ -120,11 +121,15 @@ static void event_status(struct wiimote_t *wm,ubyte *msg)
 	//if(msg[2]&WM_CTRL_STATUS_BYTE1_LED_3) led[2] = 1;
 	//if(msg[2]&WM_CTRL_STATUS_BYTE1_LED_4) led[3] = 1;
 
+	if((msg[2]&WM_CTRL_STATUS_BYTE1_BATTERY_CRITICAL)==WM_CTRL_STATUS_BYTE1_BATTERY_CRITICAL) critical = 1;
 	if((msg[2]&WM_CTRL_STATUS_BYTE1_ATTACHMENT)==WM_CTRL_STATUS_BYTE1_ATTACHMENT) attachment = 1;
 	if((msg[2]&WM_CTRL_STATUS_BYTE1_SPEAKER_ENABLED)==WM_CTRL_STATUS_BYTE1_SPEAKER_ENABLED) speaker = 1;
 	if((msg[2]&WM_CTRL_STATUS_BYTE1_IR_ENABLED)==WM_CTRL_STATUS_BYTE1_IR_ENABLED) ir = 1;
 
 	wm->battery_level = msg[5];
+
+	if(critical && !WIIMOTE_IS_SET(wm,WIIMOTE_STATE_BATTERY_CRITICAL)) WIIMOTE_ENABLE_STATE(wm,WIIMOTE_STATE_BATTERY_CRITICAL);
+	else if(!critical && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_BATTERY_CRITICAL)) WIIMOTE_DISABLE_STATE(wm,WIIMOTE_STATE_BATTERY_CRITICAL);
 
 	if(!ir && WIIMOTE_IS_SET(wm,WIIMOTE_STATE_IR_INIT)) {
 		WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_IR_INIT);

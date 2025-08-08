@@ -137,19 +137,19 @@ static __inline__ void __memset(void *dest,s32_t c,s32_t len)
 #define MEMSET				memset
 #endif
 
-#if LOGGING == 1
+#if BT_LOGGING == 1
 #include <stdio.h>
 #define LOG(fmt, ...) fprintf(stderr, "[BTLOG] " __FILE__ ":%i: " fmt "\n", __LINE__, ##__VA_ARGS__)
 #else
 #define LOG(fmt, ...)
-#endif /* LOGGING == 1 */
+#endif /* BT_LOGGING == 1 */
 
-#if ERRORING == 1
+#if BT_ERRORING == 1
 #include <stdio.h>
 #define ERROR(fmt,...) fprintf(stderr, "[BTERR] " __FILE__ ":%i: " fmt "\n", __LINE__, ##__VA_ARGS__)
 #else
 #define ERROR(fmt, ...)
-#endif /* ERRORING == 1 */
+#endif /* BT_ERRORING == 1 */
 
 /** @} */
 

@@ -43,8 +43,12 @@ enum {
 	WPAD_CHAN_2,
 	WPAD_CHAN_3,
 	WPAD_BALANCE_BOARD,
-	WPAD_MAX_WIIMOTES,
+	WPAD_CHAN_UNKNOWN,
+	WPAD_MAX_DEVICES,
 };
+
+// Compatibility with old apps
+#define WPAD_MAX_WIIMOTES WPAD_MAX_DEVICES
 											
 #define WPAD_BUTTON_2							0x0001
 #define WPAD_BUTTON_1							0x0002
@@ -136,6 +140,14 @@ enum {
 #define WPAD_THRESH_DEFAULT_BALANCEBOARD		60
 #define WPAD_THRESH_DEFAULT_MOTION_PLUS			100
 
+#define WPAD_DISCON_AUTH_FAILURE				0x05	/* HCI_AUTHENTICATION_FAILURE */
+#define WPAD_DISCON_TIMEOUT						0x08	/* HCI_CONN_TIMEOUT */
+#define WPAD_DISCON_SYNC_PRESSED				0x13	/* HCI_OTHER_END_TERMINATED_CONN_USER_ENDED */
+#define WPAD_DISCON_BATTERY_DIED				0x14	/* HCI_OTHER_END_TERMINATED_CONN_LOW_RESOURCES */
+#define WPAD_DISCON_POWER_OFF					0x15	/* HCI_OTHER_END_TERMINATED_CONN_ABOUT_TO_POWER_OFF */
+#define WPAD_DISCON_IDLE_TIMEOUT				0x16	/* HCI_CONN_TERMINATED_BY_LOCAL_HOST */
+#define WPAD_DISCON_REPEATED_ATTEMPTS			0x17	/* HCI_REPEATED_ATTEMPTS */
+
 #ifdef __cplusplus
    extern "C" {
 #endif /* __cplusplus */
@@ -166,6 +178,9 @@ typedef struct _wpad_encstatus
 
 typedef void (*WPADDataCallback)(s32 chan, const WPADData *data);
 typedef void (*WPADShutdownCallback)(s32 chan);
+typedef void (*WPADDisconnectCallback)(s32 chan, u8 reason);
+typedef void (*WPADStatusCallback)(s32 chan);
+typedef void (*WPADHostSyncBtnCallback)(u32 held);
 
 s32 WPAD_Init(void);
 s32 WPAD_ControlSpeaker(s32 chan,s32 enable);
@@ -182,10 +197,17 @@ s32 WPAD_SetEventBufs(s32 chan, WPADData *bufs, u32 cnt);
 s32 WPAD_Disconnect(s32 chan);
 s32 WPAD_IsSpeakerEnabled(s32 chan);
 s32 WPAD_SendStreamData(s32 chan,void *buf,u32 len);
-void WPAD_Shutdown(void);
+s32 WPAD_Search(void);
+s32 WPAD_StopSearch(void);
+s32 WPAD_StartPairing(void);
+s32 WPAD_WipeSavedControllers(void);
+s32 WPAD_Shutdown(void);
 void WPAD_SetIdleTimeout(u32 seconds);
 void WPAD_SetPowerButtonCallback(WPADShutdownCallback cb);
 void WPAD_SetBatteryDeadCallback(WPADShutdownCallback cb);
+void WPAD_SetDisconnectCallback(WPADDisconnectCallback cb);
+void WPAD_SetHostSyncButtonCallback(WPADHostSyncBtnCallback cb);
+void WPAD_SetStatusCallback(WPADStatusCallback cb);
 s32 WPAD_ScanPads(void);
 s32 WPAD_Rumble(s32 chan, int status);
 s32 WPAD_SetIdleThresholds(s32 chan, s32 btns, s32 ir, s32 accel, s32 js, s32 wb, s32 mp);
@@ -200,6 +222,8 @@ void WPAD_Orientation(int chan, struct orient_t *orient);
 void WPAD_GForce(int chan, struct gforce_t *gforce);
 void WPAD_Accel(int chan, struct vec3w_t *accel);
 void WPAD_Expansion(int chan, struct expansion_t *exp);
+void WPAD_PadStatus(int chan);
+bool WPAD_IsBatteryCritical(int chan);
 
 #ifdef __cplusplus
    }

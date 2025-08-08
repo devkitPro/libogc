@@ -156,6 +156,7 @@ static void __POWDefaultHandler(void);
 static powercallback __POWCallback = NULL;
 
 static u32 __sys_resetdown = 0;
+static u64 __sys_powerenabletime = 0;
 #endif
 
 static vu64* const _bootTime = (u64*)0x800030d8;
@@ -456,7 +457,7 @@ static void __STMEventHandler(u32 event)
 
 	if(event==STM_EVENT_POWER) {
 		_CPU_ISR_Disable(level);
-		__POWCallback();
+		SYS_DoPowerCB();
 		_CPU_ISR_Restore(level);
 	}
 }
@@ -1019,16 +1020,23 @@ void _V_EXPORTNAME(void)
 { __sys_versionbuild = _V_STRING; __sys_versiondate = _V_DATE_; }
 
 #if defined(HW_RVL)
-void __SYS_DoPowerCB(void)
+void SYS_DoPowerCB(void)
 {
 	u32 level;
-	powercallback powcb;
 
-	_CPU_ISR_Disable(level);
-	powcb = __POWCallback;
-	__POWCallback = __POWDefaultHandler;
-	powcb();
-	_CPU_ISR_Restore(level);
+	// Power button events fire repeatedly for one second after button is pressed
+	// Throttle events so only one callback gets called per button press
+	if(gettime() >= __sys_powerenabletime) {
+		_CPU_ISR_Disable(level);
+		__POWCallback();
+		_CPU_ISR_Restore(level);
+	}
+	__sys_powerenabletime = gettime() + millisecs_to_ticks(50);
+}
+
+void __SYS_DisablePowerButton(u32 disableTime)
+{
+	__sys_powerenabletime = gettime() + millisecs_to_ticks(disableTime);
 }
 #endif
 

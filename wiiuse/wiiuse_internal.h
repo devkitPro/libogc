@@ -143,7 +143,7 @@
 #define WM_IR_TYPE_FULL				0x05
 
 /* controller status flags for the first message byte */
-/* bit 1 is unknown */
+#define WM_CTRL_STATUS_BYTE1_BATTERY_CRITICAL	0x01
 #define WM_CTRL_STATUS_BYTE1_ATTACHMENT			0x02
 #define WM_CTRL_STATUS_BYTE1_SPEAKER_ENABLED	0x04
 #define WM_CTRL_STATUS_BYTE1_IR_ENABLED			0x08
@@ -174,7 +174,7 @@
 #define EXP_ID_CODE_CLASSIC_CONTROLLER_GENERIC3		0xa0a1a000
 #define EXP_ID_CODE_CLASSIC_CONTROLLER_GENERIC4		0x8d8d8e00
 #define EXP_ID_CODE_CLASSIC_CONTROLLER_GENERIC5		0x93949400
-#define EXP_ID_CODE_CLASSIC_WIIU_PRO            0xa4200120
+#define EXP_ID_CODE_CLASSIC_WIIU_PRO            	0xa4200120
 #define EXP_ID_CODE_GUITAR							0xa4200103
 #define EXP_ID_CODE_WIIBOARD						0xa4200402
 #define EXP_ID_CODE_MOTION_PLUS						0xa4200405
@@ -189,7 +189,7 @@
 
 /* wiimote state flags - (some duplicated in wiiuse.h)*/
 #define WIIMOTE_STATE_DEV_FOUND					0x000001
-//#define WIIMOTE_STATE_DEV_REGISTER				0x000002
+#define WIIMOTE_STATE_BATTERY_CRITICAL			0x000002
 #define WIIMOTE_STATE_HANDSHAKE					0x000004	/* actual connection exists but no handshake yet */
 #define WIIMOTE_STATE_HANDSHAKE_COMPLETE		0x000008	/* actual connection exists but no handshake yet */
 #define WIIMOTE_STATE_CONNECTED					0x000010

@@ -47,12 +47,6 @@ static s32 __issue_intrread(void);
 
 extern u32 __IPC_ClntInit(void);
 
-static s32 __usb_closeCB(s32 result,void *usrdata)
-{
-	__usbdev.fd = -1;
-	return result;
-}
-
 static s32 __writectrlmsgCB(s32 result,void *usrdata)
 {
 	if(usrdata!=NULL) btmemb_free(&ctrlbufs,usrdata);
@@ -299,7 +293,7 @@ void physbusif_close(void)
 void physbusif_shutdown(void)
 {
 	if(__usbdev.openstate!=0x0004) return;
-	USB_CloseDeviceAsync(&__usbdev.fd,__usb_closeCB,NULL);
+	USB_CloseDevice(&__usbdev.fd);
 }
 
 void physbusif_reset_all(void)
