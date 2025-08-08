@@ -147,7 +147,7 @@
 			"1:" \
 			: "=r"((_isr_cookie)),"=&r" ((_enable_mask)) \
 			: "0"((_isr_cookie)),"1" ((_enable_mask)) \
-			: "memory" \
+			: "cc" \
 		); \
 	} while (0)
 
@@ -165,7 +165,7 @@
 			"1:" \
 			: "=r" ((_isr_cookie)), "=&r" ((_flash_mask)) \
 			: "0" ((_isr_cookie)), "1" ((_flash_mask)) \
-			: "memory" \
+			: "cc" \
 		); \
 	} while (0)
 
