@@ -938,6 +938,7 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 {
 	int i, j, level;
 	int slot = WPAD_MAX_DEVICES;
+	int confslot = CONF_PAD_MAX_ACTIVE;
 	struct bd_addr bdaddr;
 	u8 *name = NULL;
 
@@ -947,10 +948,14 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 	// Only accept connection requests (i.e. "press any button") if not doing guest pairing
 	if(BTE_GetPairMode() == PAIR_MODE_NORMAL) {
 		if(!bd_addr_cmp(pad_addr,BD_ADDR_ANY)) {
-			slot = GetActiveSlot(pad_addr);
-			if (slot < CONF_PAD_MAX_ACTIVE) {
-				name = (u8 *)__wpad_devs.active[slot].name;
-				WIIUSE_DEBUG("Active pad '%s' found in slot %d", name, slot);
+			confslot = GetActiveSlot(pad_addr);
+			if (confslot < CONF_PAD_MAX_ACTIVE) {
+				name = (u8 *)__wpad_devs.active[confslot].name;
+				WIIUSE_DEBUG("Active pad '%s' found in slot %d", name, confslot);
+				if (!(__wpads_used & (1<<confslot)))
+					slot = confslot;
+				else
+					WIIUSE_DEBUG("Slot %d taken! Finding new slot", confslot);
 			}
 	
 			if(slot >= WPAD_MAX_DEVICES) {
