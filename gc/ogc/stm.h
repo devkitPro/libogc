@@ -74,6 +74,8 @@ s32 STM_RebootSystem(void);
 s32 STM_SetLedMode(u32 mode);
 s32 STM_StartLEDFlashLoop(u8 id, u8 priority, u8 flags, const u16* patterns, u32 num_patterns);
 
+s32 STM_VIDimming(bool enable, u32 luma, u32 chroma);
+
 #ifdef __cplusplus
    }
 #endif /* __cplusplus */
