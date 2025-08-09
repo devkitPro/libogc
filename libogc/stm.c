@@ -66,7 +66,7 @@ struct eventhook {
 	s32 fd;
 	u32 event_code;
 	stmcallback callback;
-	u32 state; /* 0: unset, 1: set, 2: release */
+	enum { EVENTHOOK_UNSET = 0, EVENTHOOK_SET } state;
 };
 
 static struct eventhook __stm_eventhook;
@@ -92,7 +92,7 @@ s32 __STM_SetEventHook(void)
 {
 	s32 ret;
 
-	if (__stm_eventhook.state == 1)
+	if (__stm_eventhook.state == EVENTHOOK_SET)
 		return 0;
 
 	if (__stm_eventhook.fd < 0) {
@@ -107,7 +107,7 @@ s32 __STM_SetEventHook(void)
 	{
 		ret = IOS_IoctlAsync(__stm_eventhook.fd, IOCTL_STM_EVENTHOOK, NULL, 0, &__stm_eventhook.event_code, sizeof(u32), __STMEventCallback, &__stm_eventhook);
 		if (ret == 0)
-			__stm_eventhook.state = 1;
+			__stm_eventhook.state = EVENTHOOK_SET;
 	}
 	IRQ_Restore(level);
 
@@ -116,46 +116,44 @@ s32 __STM_SetEventHook(void)
 
 s32 __STM_ReleaseEventHook(void)
 {
-	s32 ret = STM_ENOHANDLER, fd;
+	s32 ret, fd;
 
 	STM_printf("Release\n");
 
-	if (__stm_eventhook.state == 1) {
-		ret = fd = IOS_Open("/dev/stm/immediate", 0);
-		if (ret >= 0) {
-			__stm_eventhook.state = 2;
-			ret = IOS_Ioctl(fd, IOCTL_STM_RELEASE_EH, NULL, 0, NULL, 0);
-			IOS_Close(fd);
-		} else {
-			STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
-		}
-	}
-	else if (__stm_eventhook.fd >= 0) {
-		ret = IOS_Close(__stm_eventhook.fd);
-		__stm_eventhook.fd = -1;
+	ret = fd = IOS_Open("/dev/stm/immediate", 0);
+	if (ret >= 0) {
+		ret = IOS_Ioctl(fd, IOCTL_STM_RELEASE_EH, NULL, 0, NULL, 0);
+		if (ret == IPC_ENOENT)
+			ret = STM_ENOHANDLER;
+
+		IOS_Close(fd);
+	} else {
+		STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
 	}
 
+	if (__stm_eventhook.fd >= 0) {
+		IOS_Close(__stm_eventhook.fd);
+		__stm_eventhook.fd = -1;
+	}
 
 	return ret;
 }
 
 static s32 __STMEventCallback(s32 result, void *usrdata)
 {
-	__stm_eventhook.state = 0;
+	__stm_eventhook.state = EVENTHOOK_UNSET;
 
-	if (__stm_eventhook.state == 2) {
-		/* Release. event_code will probably be 0. */
-		result = IOS_Close(__stm_eventhook.fd);
-		__stm_eventhook.fd = -1;
-	}
-
-	else if (result < 0) {
+	if (result < 0) {
 		STM_printf("STM eventhook error (%i), was it already registered?\n", result);
+		return result;
 	}
 
-	else {
-		STM_printf("STM eventhook handler, event=%08x\n", __stm_eventhook.event_code);
+	STM_printf("event=%08x\n", __stm_eventhook.event_code);
 
+	if (__stm_eventhook.event_code == 0) { // Release
+		return 0;
+	}
+	else {
 		if (__stm_eventhook.callback)
 			__stm_eventhook.callback(__stm_eventhook.event_code);
 
