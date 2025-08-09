@@ -38,7 +38,7 @@ distribution.
 #include "cache.h"
 #include "stm.h"
 
-#define DEBUG_STM
+// #define DEBUG_STM
 
 #ifdef DEBUG_STM
 #include <stdio.h>
