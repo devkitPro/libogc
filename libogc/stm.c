@@ -114,22 +114,28 @@ s32 __STM_SetEventHook(void)
 	return ret;
 }
 
+// static?
+s32 __STM_SendCommand(s32 cmd, void* inbuf, u32 inlen, void* outbuf, u32 outlen) {
+	s32 ret, fd;
+
+	ret = fd = IOS_Open("/dev/stm/immediate", 0);
+	if (ret < 0) {
+		STM_printf("Open /dev/stm/immediate failed (%i)\n", ret);
+		return ret;
+	}
+
+	ret = IOS_Ioctl(fd, cmd, inbuf, inlen, outbuf, outlen);
+	IOS_Close(fd);
+	return ret;
+}
+
 s32 __STM_ReleaseEventHook(void)
 {
-	s32 ret, fd;
+	s32 ret;
 
 	STM_printf("Release\n");
 
-	ret = fd = IOS_Open("/dev/stm/immediate", 0);
-	if (ret >= 0) {
-		ret = IOS_Ioctl(fd, IOCTL_STM_RELEASE_EH, NULL, 0, NULL, 0);
-		if (ret == IPC_ENOENT)
-			ret = STM_ENOHANDLER;
-
-		IOS_Close(fd);
-	} else {
-		STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
-	}
+	ret = __STM_SendCommand(IOCTL_STM_RELEASE_EH, NULL, 0, NULL, 0);
 
 	if (__stm_eventhook.fd >= 0) {
 		IOS_Close(__stm_eventhook.fd);
@@ -181,23 +187,15 @@ static void WaitForImpendingDoom(void) {
 
 s32 STM_ShutdownToStandby(void)
 {
-	s32 ret, fd;
+	s32 ret;
 	u32 config = 0;
 
 	_viReg[1] = 0;
-	ret = fd = IOS_Open("/dev/stm/immediate", 0);
-	if (ret >= 0) {
-		ret = IOS_Ioctl(fd, IOCTL_STM_SHUTDOWN, &config, sizeof(u32), NULL, 0);
-		if (ret == 0) {
-			WaitForImpendingDoom();
-		} else {
-			STM_printf("STM Shutdown failed (%i). Why? It does not even check input size...\n", ret);
-		}
-
-		/* Should we hang regardless? The Wii menu does, pulling OSHalt if STM was not ready by the time <function> was called */
-		IOS_Close(fd);
+	ret = __STM_SendCommand(IOCTL_STM_SHUTDOWN, &config, sizeof(u32), NULL, 0);
+	if (ret == 0) {
+		WaitForImpendingDoom();
 	} else {
-		STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
+		STM_printf("STM Shutdown failed (%i).\n", ret);
 	}
 
 	return ret;
@@ -205,24 +203,18 @@ s32 STM_ShutdownToStandby(void)
 
 s32 STM_ShutdownToIdle(void)
 {
-	s32 ret, fd;
+	s32 ret;
 
 	u32 config = 0xFCA08280;
 	if (SYS_GetHollywoodRevision() > 2)
 		config |= 0x00400040;
 
 	_viReg[1] = 0;
-	ret = fd = IOS_Open("/dev/stm/immediate", 0);
-	if (ret >= 0) {
-		ret = IOS_Ioctl(fd, IOCTL_STM_IDLEMODE, &config, sizeof(u32), NULL, 0);
-		if (ret == 0) {
-			WaitForImpendingDoom();
-		} else {
-			STM_printf("STM IdleMode failed (%i).\n", ret);
-		}
-		IOS_Close(fd);
+	ret = __STM_SendCommand(IOCTL_STM_IDLEMODE, &config, sizeof(u32), NULL, 0);
+	if (ret == 0) {
+		WaitForImpendingDoom();
 	} else {
-		STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
+		STM_printf("STM IdleMode failed (%i).\n", ret);
 	}
 
 	return ret;
@@ -230,20 +222,14 @@ s32 STM_ShutdownToIdle(void)
 
 s32 STM_RebootSystem(void)
 {
-	s32 ret, fd;
+	s32 ret;
 
 	_viReg[1] = 0;
-	ret = fd = IOS_Open("/dev/stm/immediate", 0);
-	if (ret >= 0) {
-		ret = IOS_Ioctl(fd, IOCTL_STM_HOTRESET, NULL, 0, NULL, 0);
-		if (ret == 0) {
-			WaitForImpendingDoom();
-		} else {
-			STM_printf("STM HotReset failed. (%i)\n", ret);
-		}
-		IOS_Close(fd);
+	ret = __STM_SendCommand(IOCTL_STM_HOTRESET, NULL, 0, NULL, 0);
+	if (ret == 0) {
+		WaitForImpendingDoom();
 	} else {
-		STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
+		STM_printf("STM HotReset failed. (%i)\n", ret);
 	}
 
 	return ret;
@@ -251,20 +237,13 @@ s32 STM_RebootSystem(void)
 
 s32 STM_SetLedMode(u32 mode)
 {
-	s32 ret, fd;
+	s32 ret;
 
-	ret = fd = IOS_Open("/dev/stm/immediate", 0);
-	if (ret >= 0) {
-		ret = IOS_Ioctl(fd, IOCTL_STM_LEDMODE, &mode, sizeof(u32), NULL, 0);
-		if (ret < 0) {
-			STM_printf("STM LEDMode failed (%i).\n", ret);
-		} else if (mode == 0) {
-			STM_printf("Forced led off.\n");
-		}
-
-		IOS_Close(fd);
-	} else {
-		STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
+	ret = __STM_SendCommand(IOCTL_STM_LEDMODE, &mode, sizeof(u32), NULL, 0);
+	if (ret < 0) {
+		STM_printf("STM LEDMode failed (%i).\n", ret);
+	} else if (mode == STM_LEDMODE_OFF) {
+		STM_printf("Forced led off.\n");
 	}
 
 	return ret;
@@ -283,34 +262,27 @@ _Static_assert(offsetof(struct STM_LEDFlashConfig, patterns) == 0x4, "?");
 
 s32 STM_StartLEDFlashLoop(u8 id, u8 priority, u8 flags, const u16* patterns, u32 num_patterns)
 {
-	s32 ret, fd;
+	s32 ret;
 
-	ret = fd = IOS_Open("/dev/stm/immediate", 0);
-	if (ret >= 0) {
-		struct STM_LEDFlashConfig config;
+	struct STM_LEDFlashConfig config;
 
-		if ((flags & STM_LEDFLASH_USER) && patterns != NULL) {
-			if (num_patterns >= STM_MAX_LED_PATTERNS)
-				num_patterns = STM_MAX_LED_PATTERNS;
+	if ((flags & STM_LEDFLASH_USER) && patterns != NULL) {
+		if (num_patterns >= STM_MAX_LED_PATTERNS)
+			num_patterns = STM_MAX_LED_PATTERNS;
 
-			memcpy(config.patterns, patterns, sizeof(u16[num_patterns]));
-		} else {
-			num_patterns = 0;
-			flags &= ~STM_LEDFLASH_USER;
-		}
-
-		config.id = id;
-		config.priority = priority;
-		config.flags = flags;
-
-		ret = IOS_Ioctl(fd, IOCTL_STM_LEDFLASH, &config, offsetof(struct STM_LEDFlashConfig, patterns[num_patterns]), NULL, 0);
-		if (ret < 0) {
-			STM_printf("STM LEDFlash failed (%i). :(\n", ret);
-		}
-
-		IOS_Close(fd);
+		memcpy(config.patterns, patterns, sizeof(u16[num_patterns]));
 	} else {
-		STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
+		num_patterns = 0;
+		flags &= ~STM_LEDFLASH_USER;
+	}
+
+	config.id = id;
+	config.priority = priority;
+	config.flags = flags;
+
+	ret = __STM_SendCommand(IOCTL_STM_LEDFLASH, &config, offsetof(struct STM_LEDFlashConfig, patterns[num_patterns]), NULL, 0);
+	if (ret < 0) {
+		STM_printf("STM LEDFlash failed (%i). :(\n", ret);
 	}
 
 	return ret;
@@ -318,7 +290,7 @@ s32 STM_StartLEDFlashLoop(u8 id, u8 priority, u8 flags, const u16* patterns, u32
 
 // https://wiibrew.org/wiki//dev/stm/immediate#VIDimming
 s32 STM_VIDimming(bool enable, u32 luma, u32 chroma) {
-	s32 ret, fd;
+	s32 ret;
 	u32 inbuf[8], outbuf[8];
 
 	inbuf[0] = enable << 7 | (luma & 0x7) << 3 | (chroma & 0x7);
@@ -329,20 +301,13 @@ s32 STM_VIDimming(bool enable, u32 luma, u32 chroma) {
 	inbuf[5] = ~0; // keep everything
 	inbuf[6] = ~0; // <official software> uses 0xFFFF0000 here, but, what is the register even for....
 
-	ret = fd = IOS_Open("/dev/stm/immediate", 0);
-	if (ret >= 0) {
-		ret = IOS_Ioctl(fd, IOCTL_STM_VIDIMMING, inbuf, sizeof inbuf, outbuf, sizeof outbuf);
-		if (ret < 0) {
-			STM_printf("STM LEDMode failed (%i).\n", ret);
-		} else {
-			STM_printf("0x0d80001c: %08x\n", outbuf[0]);
-			STM_printf("0x0d800020: %08x\n", outbuf[1]);
-			STM_printf("0x0d800028: %08x\n", outbuf[2]);
-		}
-
-		IOS_Close(fd);
+	ret = __STM_SendCommand(IOCTL_STM_VIDIMMING, inbuf, sizeof inbuf, outbuf, sizeof outbuf);
+	if (ret < 0) {
+		STM_printf("STM VIDimming failed (%i).\n", ret);
 	} else {
-		STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
+		STM_printf("0x0d80001c: %08x\n", outbuf[0]);
+		STM_printf("0x0d800020: %08x\n", outbuf[1]);
+		STM_printf("0x0d800028: %08x\n", outbuf[2]);
 	}
 
 	return ret;
