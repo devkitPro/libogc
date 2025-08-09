@@ -318,4 +318,36 @@ s32 STM_StartLEDFlashLoop(u8 id, u8 priority, u8 flags, const u16* patterns, u32
 	return ret;
 }
 
+// https://wiibrew.org/wiki//dev/stm/immediate#VIDimming
+s32 STM_VIDimming(bool enable, u32 luma, u32 chroma) {
+	s32 ret, fd;
+	u32 inbuf[8], outbuf[8];
+
+	inbuf[0] = enable << 7 | (luma & 0x7) << 3 | (chroma & 0x7);
+	inbuf[1] = 0;
+	inbuf[2] = 0;
+
+	inbuf[4] = 0; // keep nothing
+	inbuf[5] = ~0; // keep everything
+	inbuf[6] = ~0; // <official software> uses 0xFFFF0000 here, but, what is the register even for....
+
+	ret = fd = IOS_Open("/dev/stm/immediate", 0);
+	if (ret >= 0) {
+		ret = IOS_Ioctl(fd, IOCTL_STM_VIDIMMING, inbuf, sizeof inbuf, outbuf, sizeof outbuf);
+		if (ret < 0) {
+			STM_printf("STM LEDMode failed (%i).\n", ret);
+		} else {
+			STM_printf("0x0d80001c: %08x\n", outbuf[0]);
+			STM_printf("0x0d800020: %08x\n", outbuf[1]);
+			STM_printf("0x0d800028: %08x\n", outbuf[2]);
+		}
+
+		IOS_Close(fd);
+	} else {
+		STM_printf("Open /dev/stm/immediate failed {%i}\n", ret);
+	}
+
+	return ret;
+}
+
 #endif /* defined(HW_RVL) */
