@@ -102,7 +102,6 @@ void wiiuse_handshake_expansion(struct wiimote_t *wm,ubyte *data,uword len)
 		case 3:
 			if(!data || !len) return;
 			id = BIG_ENDIAN_LONG(*(int*)(&data[220]));
-			//printf("New exp type: %d\n", id);
 
 			switch(id) {
 				case EXP_ID_CODE_NUNCHUK:

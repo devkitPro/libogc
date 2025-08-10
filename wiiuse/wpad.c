@@ -492,7 +492,12 @@ static void __wpad_calc_data(WPADData *data,WPADData *lstate,struct accel_t *acc
 				cc->l_shoulder = ((f32)cc->ls_raw/0x1F);
 				calc_joystick_state(&cc->ljs, cc->ljs.pos.x, cc->ljs.pos.y);
 				calc_joystick_state(&cc->rjs, cc->rjs.pos.x, cc->rjs.pos.y);
-				data->btns_h |= (data->exp.classic.btns<<16);
+
+				// overwrite Wiimote buttons (unused) with extra Wii U Pro Controller stick buttons
+				if (data->exp.classic.type == CLASSIC_TYPE_WIIU)
+					data->btns_h = (data->exp.classic.btns & WII_U_PRO_CTRL_BUTTON_EXTRA) >> 16;
+
+				data->btns_h |= ((data->exp.classic.btns & CLASSIC_CTRL_BUTTON_ALL)<<16);
 			}
 			break;
 
@@ -765,9 +770,9 @@ static void __wpad_eventCB(struct wiimote_t *wm,s32 event)
 		case WIIUSE_ACK:
 			break;
 		default:
-			WIIUSE_DEBUG("__wpad_eventCB(%02x)", event);
+			WIIUSE_DEBUG("__wpad_eventCB(%02x)\n", event);
 			break;
-	}
+		}
 }
 
 void __wpad_disconnectCB(struct bd_addr *pad_addr, u8 reason)
