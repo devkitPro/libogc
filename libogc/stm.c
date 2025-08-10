@@ -66,10 +66,13 @@ struct eventhook {
 	s32 fd;
 	u32 event_code;
 	stmcallback callback;
-	enum { EVENTHOOK_UNSET = 0, EVENTHOOK_SET } state;
+	enum { EVENTHOOK_UNSET, EVENTHOOK_SET } state;
 };
 
-static struct eventhook __stm_eventhook;
+static struct eventhook __stm_eventhook = {
+	.fd = -1,
+	.state = EVENTHOOK_UNSET,
+};
 
 static s32 __STMEventCallback(s32 result,void *usrdata);
 s32 __STM_SetEventHook(void);
@@ -157,7 +160,7 @@ static s32 __STMEventCallback(s32 result, void *usrdata)
 	STM_printf("event=%08x\n", __stm_eventhook.event_code);
 
 	if (__stm_eventhook.event_code == 0) { // Release
-		return 0;
+		return result;
 	}
 	else {
 		if (__stm_eventhook.callback)
