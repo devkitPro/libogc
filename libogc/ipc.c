@@ -46,6 +46,7 @@ distribution.
 #include "cache.h"
 #include "system.h"
 #include "lwp_heap.h"
+#include "lwp_watchdog.h"
 
 #include "lwp_wkspace.inl"
 
@@ -171,12 +172,8 @@ static struct _ipcheap _ipc_heaps[IPC_NUMHEAPS] =
 
 static vu32* const _ipcReg = (u32*)(HW_IPC_PPCBASE);
 
-extern void __MaskIrq(u32 nMask);
-extern void __UnmaskIrq(u32 nMask);
 extern void* __SYS_GetIPCBufferLo(void);
 extern void* __SYS_GetIPCBufferHi(void);
-
-extern u32 gettick(void);
 
 static __inline__ u32 IPC_ReadReg(u32 reg)
 {

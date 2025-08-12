@@ -31,6 +31,9 @@ FUNC_START __app_start, crt0
 	lwz  sp, __ppc_excpt_sp@sda21(0)
 	subi sp, sp, 8
 
+	// Shelter argv before clearing BSS
+	bl   __CheckARGV
+
 	// Clear BSS
 	lis  r3, __sbss_start@h
 	ori  r3, r3, __sbss_start@l
@@ -49,10 +52,14 @@ FUNC_START __app_start, crt0
 	lwz  sp, __ppc_main_sp@sda21(0)
 	stwu r14, -8(sp)
 
-	// Set up exceptions
+	// Initialize tuxedo
 	bl   PPCExcptInit
 	bl   KThreadInit
 	bl   KIrqInit
+
+	// Initialize libogc
+	bl   SYS_Init
+	bl   SYS_PreMain
 
 	// Jump to main
 	lwz  r11, __system_argv@sda21(0)

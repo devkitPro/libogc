@@ -5,7 +5,6 @@
 #include "lwp_heap.h"
 
 #include "lwp_heap.inl"
-#include "sys_state.inl"
 
 u32 __lwp_heap_init(heap_cntrl *theheap,void *start_addr,u32 size,u32 pg_size)
 {
@@ -169,8 +168,6 @@ u32 __lwp_heap_getinfo(heap_cntrl *theheap,heap_iblock *theinfo)
 	theinfo->free_size = 0;
 	theinfo->used_blocks = 0;
 	theinfo->used_size = 0;
-	
-	if(!__sys_state_up(__sys_state_get())) return 1;
 
 	theblock = theheap->start;
 	if(theblock->back_flag!=HEAP_DUMMY_FLAG) return 2;

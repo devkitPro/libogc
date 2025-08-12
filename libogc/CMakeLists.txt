@@ -1,62 +1,37 @@
 
 add_library(ogc STATIC
 	console.c
-	lwp_priority.c
 	lwp_queue.c
-	lwp_threadq.c
-	lwp_threads.c
-	lwp_sema.c
-	lwp_messages.c
-	lwp.c
-	lwp_handler.S
-	lwp_stack.c
-	lwp_mutex.c
-	lwp_watchdog.c
 	lwp_wkspace.c
-	lwp_objmgr.c
 	lwp_heap.c
-	sys_state.c
-	exception_handler.S
-	exception.c
-	irq.c
-	irq_handler.S
-	semaphore.c
 	video.c
 	pad.c
 	dvd.c
 	exi.c
-	mutex.c
 	arqueue.c
 	arqmgr.c
 	cache_asm.S
 	system.c
-	system_asm.S
-	cond.c
 	gx.c
 	gu.c
 	gu_psasm.S
 	gu_ps_concat44.S
 	audio.c
 	cache.c
-	decrementer.c
-	message.c
 	card.c
 	aram.c
 	depackrnc.S
-	decrementer_handler.S
 	depackrnc1.c
 	dsp.c
 	si.c
 	tpl.c
 	ipc.c
-	ogc_crt0.S
 	console_font_8x16.c
 	timesupp.c
 	lock_supp.c
 	usbgecko.c
 	usbmouse.c
 	sbrk.c
-	malloc_lock.c
 	kprintf.c
 	stm.c
 	aes.c
@@ -80,6 +55,6 @@ add_library(ogc STATIC
 	sys_report.c
 )
 
-target_link_libraries(ogc PRIVATE libogc_inc)
+target_link_libraries(ogc PRIVATE libogc_inc tuxedo)
 
 libogc_install_lib(ogc)

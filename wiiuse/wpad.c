@@ -49,8 +49,6 @@ distribution.
 
 #include "ogcsys.h"
 
-#include "lwp_threads.inl"
-
 #define MAX_STREAMDATA_LEN				20
 #define EVENTQUEUE_LENGTH				16
 
@@ -184,7 +182,6 @@ static void __wpad_timeouthandler(syswd_t alarm,void *cbarg)
 
 	if(!__wpads_active) return;
 
-	__lwp_thread_dispatchdisable();
 	for(i=0;i<WPAD_MAX_DEVICES;i++) {
 		wpdcb = &__wpdcb[i];
 		wm = wpdcb->wm;
@@ -196,7 +193,6 @@ static void __wpad_timeouthandler(syswd_t alarm,void *cbarg)
 			}
 		}
 	}
-	__lwp_thread_dispatchunnest();
 }
 
 static void __wpad_sounddata_alarmhandler(syswd_t alarm,void *cbarg)

@@ -41,6 +41,8 @@ distribution.
 #include <gctypes.h>
 #include <gcbool.h>
 
+#include "../tuxedo/ppc/cache.h"
+
 #define LC_BASEPREFIX		0xe000
 #define LC_BASE				(LC_BASEPREFIX<<16)
 
@@ -114,7 +116,7 @@ void DCFlashInvalidate(void);
  *
  * \return none
  */
-void DCInvalidateRange(void *startaddress,u32 len);
+void DCInvalidateRange(void *startaddress,u32 len) __asm__("PPCDCacheInvalidate");
 
 
 /*!
@@ -129,7 +131,10 @@ void DCInvalidateRange(void *startaddress,u32 len);
  *
  *\return none
  */
-void DCFlushRange(void *startaddress,u32 len);
+MK_INLINE void DCFlushRange(void *startaddress,u32 len)
+{
+   PPCDCacheFlush(startaddress, len);
+}
 
 /*!
  * \fn void DCStoreRange(void *startaddress,u32 len)
@@ -142,7 +147,10 @@ void DCFlushRange(void *startaddress,u32 len);
  *
  * \return none
  */
-void DCStoreRange(void *startaddress,u32 len);
+MK_INLINE void DCStoreRange(void *startaddress,u32 len)
+{
+   PPCDCacheStore(startaddress, len);
+}
 
 
 /*!
@@ -157,7 +165,7 @@ void DCStoreRange(void *startaddress,u32 len);
  *
  * \return none
  */
-void DCFlushRangeNoSync(void *startaddress,u32 len);
+void DCFlushRangeNoSync(void *startaddress,u32 len) __asm__("PPCDCacheFlushAsync");
 
 
 /*!
@@ -171,7 +179,7 @@ void DCFlushRangeNoSync(void *startaddress,u32 len);
  *
  * \return none
  */
-void DCStoreRangeNoSync(void *startaddress,u32 len);
+void DCStoreRangeNoSync(void *startaddress,u32 len) __asm__("PPCDCacheStoreAsync");
 
 
 /*!
@@ -183,7 +191,7 @@ void DCStoreRangeNoSync(void *startaddress,u32 len);
  *
  * \return none
  */
-void DCZeroRange(void *startaddress,u32 len);
+void DCZeroRange(void *startaddress,u32 len) __asm__("PPCDCacheZero");
 
 
 /*!
@@ -195,7 +203,7 @@ void DCZeroRange(void *startaddress,u32 len);
  *
  * \return none
  */
-void DCTouchRange(void *startaddress,u32 len);
+void DCTouchRange(void *startaddress,u32 len) __asm__("PPCDCacheTouch");
 
 
 /*!
@@ -206,7 +214,10 @@ void DCTouchRange(void *startaddress,u32 len);
  *
  * \return none
  */
-void ICSync(void);
+MK_INLINE void ICSync(void)
+{
+   PPCIsync();
+}
 
 
 /*!
@@ -273,7 +284,10 @@ void ICUnfreeze(void);
  *
  *\return none
  */
-void ICBlockInvalidate(void *startaddress);
+MK_INLINE void ICBlockInvalidate(void *startaddress)
+{
+   PPCIcbi((uptr)startaddress);
+}
 
 
 /*!
@@ -287,7 +301,7 @@ void ICBlockInvalidate(void *startaddress);
  *
  * \return none
  */
-void ICInvalidateRange(void *startaddress,u32 len);
+void ICInvalidateRange(void *startaddress,u32 len) __asm__("PPCICacheInvalidate");
 
 /*!
  * \fn void L2Enhance(void)

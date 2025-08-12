@@ -47,6 +47,7 @@ distribution.
 #include "dvd.h"
 
 #include "lwp_queue.inl"
+#include "lwp_watchdog.h"
 
 //#define _DVD_DEBUG
 
@@ -393,9 +394,6 @@ static s32 DVD_LowSetGCMOffset(s64 offset,dvdcallbacklow cb);
 static s32 DVD_LowSetOffset(s64 offset,dvdcallbacklow cb);
 
 extern void udelay(int us);
-extern u32 diff_msec(unsigned long long start,unsigned long long end);
-extern void __MaskIrq(u32);
-extern void __UnmaskIrq(u32);
 extern syssramex* __SYS_LockSramEx(void);
 extern u32 __SYS_UnlockSramEx(u32 write);
 

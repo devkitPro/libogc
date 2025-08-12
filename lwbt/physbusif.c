@@ -10,8 +10,6 @@
 #include "btmemb.h"
 #include "physbusif.h"
 
-#define STACKSIZE					32768
-
 #define NUM_ACL_BUFS				30
 #define NUM_CTRL_BUFS				45
 
@@ -38,9 +36,6 @@ static struct _usb_p __usbdev;
 
 static struct memb_blks ctrlbufs;
 static struct memb_blks aclbufs;
-
-static u8 __ppc_btstack1[STACKSIZE] ATTRIBUTE_ALIGN(8);
-static u8 __ppc_btstack2[STACKSIZE] ATTRIBUTE_ALIGN(8);
 
 static s32 __issue_bulkread(void);
 static s32 __issue_intrread(void);
@@ -79,7 +74,7 @@ static s32 __readbulkdataCB(s32 result,void *usrdata)
 				len -= q->len;
 			}
 
-			SYS_SwitchFiber((u32)p,0,0,0,(u32)hci_acldata_handler,(u32)(&__ppc_btstack2[STACKSIZE]));
+			hci_acldata_handler(p);
 			btpbuf_free(p);
 		} else
 			ERROR("__readbulkdataCB: Could not allocate memory for pbuf.\n");
@@ -109,7 +104,7 @@ static s32 __readintrdataCB(s32 result,void *usrdata)
 				len -= q->len;
 			}
 
-			SYS_SwitchFiber((u32)p,0,0,0,(u32)hci_event_handler,(u32)(&__ppc_btstack1[STACKSIZE]));
+			hci_event_handler(p);
 			btpbuf_free(p);
 		} else
 			ERROR("__readintrdataCB: Could not allocate memory for pbuf.\n");

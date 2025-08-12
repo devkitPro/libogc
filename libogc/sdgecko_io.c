@@ -8,6 +8,7 @@
 #include "processor.h"
 #include "exi.h"
 #include "lwp.h"
+#include "lwp_watchdog.h"
 #include "system.h"
 #include "semaphore.h"
 #include "card_cmn.h"
@@ -82,8 +83,6 @@ static u16 _ioCrc16Table[256];
 // SDHC support
 static u32 _initType[MAX_DRIVE];
 static card_addressing_type_t _ioAddressingType[MAX_DRIVE];
-
-extern unsigned long gettick(void);
 
 static __inline__ u32 __check_response(s32 drv_no,u8 res)
 {

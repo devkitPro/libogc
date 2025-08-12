@@ -373,7 +373,6 @@ void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width);
 void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu);
 void SYS_RegisterResetFunc(sys_resetinfo *info);
 void SYS_UnregisterResetFunc(sys_resetinfo *info);
-void SYS_SwitchFiber(u32 arg0,u32 arg1,u32 arg2,u32 arg3,u32 pc,u32 newsp);
 
 void* SYS_GetArena1Lo(void);
 void SYS_SetArena1Lo(void *newLo);

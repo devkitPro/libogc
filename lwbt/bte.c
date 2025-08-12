@@ -5,17 +5,12 @@
 #include <ogcsys.h>
 #include <gccore.h>
 
-#include <lwp_threads.inl>
-
 #include "bt.h"
 #include "bte.h"
 #include "hci.h"
 #include "l2cap.h"
 #include "btmemb.h"
 #include "physbusif.h"
-
-#define STACKSIZE						32768
-#define MQ_BOX_SIZE						256
 
 enum bte_state {
 	STATE_NOTREADY = -1,
@@ -86,8 +81,6 @@ static u8_t bte_patch1[92] = {
 	0x74,0x2f,0x00,0x00,0x86,0xf0,0x18,0xfd,0x21,0x4f,0x3b,0x60
 };
 
-static u8 ppc_stack[STACKSIZE] ATTRIBUTE_ALIGN(8);
-
 err_t acl_wlp_completed(void *arg,struct bd_addr *bdaddr);
 err_t pin_req(void *arg,struct bd_addr *bdaddr);
 err_t l2cap_connected(void *arg,struct l2cap_pcb *l2cappcb,u16_t result,u16_t status);
@@ -129,9 +122,7 @@ static void bte_reset_all()
 
 static void bt_alarmhandler(syswd_t alarm,void *cbarg)
 {
-	__lwp_thread_dispatchdisable();
-	SYS_SwitchFiber(0,0,0,0,(u32)l2cap_tmr,(u32)(&ppc_stack[STACKSIZE]));
-	__lwp_thread_dispatchunnest();
+	l2cap_tmr();
 }
 
 static inline s32 __bte_waitcmdfinish(struct bt_state *state)

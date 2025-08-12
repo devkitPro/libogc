@@ -102,8 +102,6 @@ static t_sound_data sound_data_dma ATTRIBUTE_ALIGN(32);
 static s16 mute_buf[SND_BUFFERSIZE] ATTRIBUTE_ALIGN(32);
 static s16 audio_buf[2][SND_BUFFERSIZE] ATTRIBUTE_ALIGN(32);
 
-extern u32 gettick();
-
 static __inline__ char* snd_set0b( char *p, int n)
 {
 	while(n>0) {*p++=0;n--;}

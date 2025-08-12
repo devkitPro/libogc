@@ -38,6 +38,10 @@ distribution.
 #include <time.h>
 #include <sys/iosupport.h>
 
+#include <tuxedo/thread.h>
+#include <tuxedo/sync.h>
+#include <tuxedo/tick.h>
+
 #include "asm.h"
 #include "irq.h"
 #include "exi.h"
@@ -52,19 +56,12 @@ distribution.
 #include "cache.h"
 #include "video.h"
 #include "system.h"
-#include "lwp_threads.h"
-#include "lwp_priority.h"
+#include "machine/processor.h"
 #include "lwp_watchdog.h"
 #include "lwp_wkspace.h"
-#include "lwp_objmgr.h"
-#include "lwp_config.h"
 #include "libversion.h"
 
-#include "lwp_objmgr.inl"
 #include "lwp_queue.inl"
-#include "lwp_threads.inl"
-#include "lwp_watchdog.inl"
-#include "sys_state.inl"
 
 #define SYSMEM1_SIZE				0x01800000
 #if defined(HW_RVL)
@@ -94,15 +91,6 @@ distribution.
 #define DSPCR_PIINT				    0x0002        // assert DSP PI interrupt
 #define DSPCR_RES				    0x0001        // reset DSP
 
-#define LWP_OBJTYPE_SYSWD			7
-
-#define LWP_CHECK_SYSWD(hndl)		\
-{									\
-	if(((hndl)==SYS_WD_NULL) || (LWP_OBJTYPE(hndl)!=LWP_OBJTYPE_SYSWD))	\
-		return NULL;				\
-}
-
-
 struct _sramcntrl {
 	u8 srambuf[64];
 	u32 offset;
@@ -110,17 +98,6 @@ struct _sramcntrl {
 	s32 locked;
 	s32 sync;
 } sramcntrl ATTRIBUTE_ALIGN(32);
-
-typedef struct _alarm_st
-{
-	lwp_obj object;
-	wd_cntrl alarm;
-	u64 ticks;
-	u64 periodic;
-	u64 start_per;
-	alarmcallback alarmhandler;
-	void *cb_arg;
-} alarm_st;
 
 typedef struct _yay0header {
 	unsigned int id ATTRIBUTE_PACKED;
@@ -137,7 +114,6 @@ static sys_fontheader *sys_fontdata = NULL;
 
 static lwp_queue sys_reset_func_queue;
 static u32 system_initialized = 0;
-static lwp_objinfo sys_alarm_objects;
 
 static void *__sysarena1lo = NULL;
 static void *__sysarena1hi = NULL;
@@ -172,52 +148,17 @@ static s32 __sram_sync(void);
 static s32 __sram_writecallback(s32 chn,s32 dev);
 static s32 __mem_onreset(s32 final);
 
-extern void	__lwp_thread_coreinit(void);
-extern void	__lwp_sysinit(void);
-extern void __heap_init(void);
-extern void __exception_init(void);
-extern void __exception_closeall(void);
-extern void __systemcall_init(void);
-extern void __decrementer_init(void);
-extern void __lwp_mutex_init(void);
-extern void __lwp_cond_init(void);
-extern void __lwp_mqbox_init(void);
-extern void __lwp_sema_init(void);
 extern void __exi_init(void);
 extern void __si_init(void);
 extern void __irq_init(void);
-extern void __lwp_start_multitasking(void);
-extern void __timesystem_init(void);
-extern void __memlock_init(void);
-
-extern void __libogc_malloc_lock( struct _reent *ptr );
-extern void __libogc_malloc_unlock( struct _reent *ptr );
-
-extern void __exception_console(void);
-extern void __exception_printf(const char *str, ...);
-
-extern void __realmode(void*);
-extern void __configMEM1_24Mb(void);
-extern void __configMEM1_48Mb(void);
-extern void __configMEM2_64Mb(void);
-extern void __configMEM2_128Mb(void);
-extern void __reset(u32 reset_code);
 
 extern u32 __IPC_ClntInit(void);
 extern u32 __PADDisableRecalibration(s32 disable);
 extern u32 __WPADClearActiveList(void);
 
-extern void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_stride,int con_xres,int con_yres,int con_stride);
-
-extern void timespec_subtract(const struct timespec *tp_start,const struct timespec *tp_end,struct timespec *result);
-
-
 extern int __libogc_gettod_r(struct _reent *ptr, struct timeval *tp, struct timezone *tz);
 extern int __libogc_nanosleep(const struct timespec *tb, struct timespec *rem);
-extern u64 gettime(void);
-extern void settime(u64);
 
-extern u8 __text_start[];
 extern u8 __isIPL[];
 extern u8 __Arena1Lo[], __Arena1Hi[];
 #if defined(HW_RVL)
@@ -252,19 +193,11 @@ const void *__libogc_lock_init  = __syscall_lock_init;
 
 const char __sys_versioninfo[] = _V_STRING "\nBuilt on " _V_DATE_;
 
-static __inline__ alarm_st* __lwp_syswd_open(syswd_t wd)
+MK_INLINE void __irq_shutdown(void)
 {
-	LWP_CHECK_SYSWD(wd);
-	return (alarm_st*)__lwp_objmgr_get(&sys_alarm_objects,LWP_OBJMASKID(wd));
+	u32 msr = PPCMfmsr() &~ MSR_EE;
+	PPCMtmsr(msr | MSR_FP | MSR_RI);
 }
-
-static __inline__ void __lwp_syswd_free(alarm_st *alarm)
-{
-	__lwp_objmgr_close(&sys_alarm_objects,&alarm->object);
-	__lwp_objmgr_free(&sys_alarm_objects,&alarm->object);
-}
-
-#define SOFTRESET_ADR *((vu32*)0xCC003024)
 
 static void (*reload)(void) = (void(*)(void))0x80001800;
 
@@ -278,33 +211,32 @@ static bool __stub_found(void)
 
 void __reload(void)
 {
-	if(__stub_found()) {
-		__exception_closeall();
+	if (__stub_found()) {
+		__irq_shutdown();
 		reload();
 	}
-	SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
+
+	SYS_ResetSystem(SYS_HOTRESET, 0, 0);
 }
 
 void __syscall_exit(int status)
 {
-	if(__stub_found()) {
-		SYS_ResetSystem(SYS_SHUTDOWN,0,0);
-		__lwp_thread_stopmultitasking(reload);
+	if (__stub_found()) {
+		SYS_ResetSystem(SYS_SHUTDOWN, 0, 0);
+		reload();
+	} else {
+		SYS_ResetSystem(SYS_HOTRESET, 0, 0);
 	}
-#ifdef HW_DOL
-	SOFTRESET_ADR=0;
-#else
-	SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
-#endif
 }
 
+static KRMutex libogc_malloc_lock;
 
 void __syscall_malloc_lock(struct _reent *ptr) {
-	return __libogc_malloc_lock(ptr);
+	KRMutexLock(&libogc_malloc_lock);
 }
 
 void __syscall_malloc_unlock(struct _reent *ptr) {
-	return __libogc_malloc_unlock(ptr);
+	KRMutexUnlock(&libogc_malloc_lock);
 }
 
 int  __syscall_gettod_r(struct _reent *ptr, struct timeval *tp, struct timezone *tz){
@@ -315,20 +247,6 @@ int __syscall_nanosleep(const struct timespec *req, struct timespec *rem){
 	return __libogc_nanosleep(req, rem);
 }
 
-static alarm_st* __lwp_syswd_allocate(void)
-{
-	alarm_st *alarm;
-
-	__lwp_thread_dispatchdisable();
-	alarm = (alarm_st*)__lwp_objmgr_allocate(&sys_alarm_objects);
-	if(alarm) {
-		__lwp_objmgr_open(&sys_alarm_objects,&alarm->object);
-		return alarm;
-	}
-	__lwp_thread_dispatchenable();
-	return NULL;
-}
-
 static s32 __mem_onreset(s32 final)
 {
 	if(final==TRUE) {
@@ -337,34 +255,6 @@ static s32 __mem_onreset(s32 final)
 	}
 	return 1;
 }
-
-static void __sys_alarmhandler(void *arg)
-{
-	alarm_st *alarm;
-	syswd_t thealarm = (syswd_t)arg;
-
-	if(thealarm==SYS_WD_NULL || LWP_OBJTYPE(thealarm)!=LWP_OBJTYPE_SYSWD) return;
-
-	__lwp_thread_dispatchdisable();
-	alarm = (alarm_st*)__lwp_objmgr_getnoprotection(&sys_alarm_objects,LWP_OBJMASKID(thealarm));
-	if(alarm) {
-		if(alarm->alarmhandler) alarm->alarmhandler(thealarm,alarm->cb_arg);
-		if(alarm->periodic) __lwp_wd_insert_ticks(&alarm->alarm,alarm->periodic);
-	}
-	__lwp_thread_dispatchunnest();
-}
-
-#if defined(HW_DOL)
-static void __dohotreset(u32 resetcode)
-{
-	u32 level;
-
-	_CPU_ISR_Disable(level);
-	_viReg[1] = 0;
-	ICFlashInvalidate();
-	__reset(resetcode<<3);
-}
-#endif
 
 static s32 __call_resetfuncs(s32 final)
 {
@@ -383,19 +273,6 @@ static s32 __call_resetfuncs(s32 final)
 	if(ret&~0x01) return 0;
 	return 1;
 }
-
-#if defined(HW_DOL)
-static void __doreboot(u32 resetcode,s32 force_menu)
-{
-	u32 level;
-
-	_CPU_ISR_Disable(level);
-
-	*((u32*)0x817ffffc) = 0;
-	*((u32*)0x817ffff8) = 0;
-	*((u32*)0x800030e2) = 1;
-}
-#endif
 
 static void __MEMInterruptHandler(u32 irq, void* ctx)
 {
@@ -479,7 +356,7 @@ static void __lowmem_init(void)
 
 #if defined(HW_DOL)
 	memset(ram_start,0,0x100);
-	memset(arena_start,0,0x100);
+	//memset(arena_start,0,0x100);
 	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"
 	*((u32*)(ram_start+0x24))	= 1;            // version
 	*((u32*)(ram_start+0x28))	= SYSMEM1_SIZE;	// physical memory size
@@ -672,11 +549,6 @@ void __sram_init(void)
 	sramcntrl.offset = 64;
 
 	SYS_SetGBSMode(SYS_GetGBSMode());
-}
-
-static void DisableWriteGatherPipe(void)
-{
-	mtspr(920,(mfspr(920)&~0x40000000));
 }
 
 static void __buildchecksum(u16 *buffer,u16 *c1,u16 *c2)
@@ -971,9 +843,9 @@ void __SYS_SetBootTime(void)
 
 	if(__SYS_GetRTC(&gctime)!=1)
 		return;
-	
+
 #if defined(HW_RVL)
-	if(CONF_GetCounterBias(&bias) >= 0) 
+	if(CONF_GetCounterBias(&bias) >= 0)
 		gctime += bias;
 #else
 	gctime += SYS_GetCounterBias();
@@ -1046,10 +918,6 @@ void __attribute__((weak)) __SYS_PreInit(void)
 
 void SYS_Init(void)
 {
-	u32 level;
-
-	_CPU_ISR_Disable(level);
-
 	__SYS_PreInit();
 
 	if(system_initialized) return;
@@ -1061,31 +929,14 @@ void SYS_Init(void)
 #endif
 	__lwp_wkspace_init(KERNEL_HEAP);
 	__lwp_queue_init_empty(&sys_reset_func_queue);
-	__lwp_objmgr_initinfo(&sys_alarm_objects,LWP_MAX_WATCHDOGS,sizeof(alarm_st));
-	__sys_state_init();
-	__lwp_priority_init();
-	__lwp_watchdog_init();
-	__exception_init();
-	__systemcall_init();
-	__decrementer_init();
-	__irq_init();
 	__exi_init();
 	__sram_init();
 	__si_init();
-	__lwp_thread_coreinit();
-	__lwp_sysinit();
-	__memlock_init();
-	__lwp_mqbox_init();
-	__lwp_sema_init();
-	__lwp_mutex_init();
-	__lwp_cond_init();
-	__timesystem_init();
 	__dsp_bootstrap();
 
 	if(!__sys_inIPL)
 		__memprotect_init();
 
-	DisableWriteGatherPipe();
 	__SYS_InitCallbacks();
 #if defined(HW_RVL)
 	__IPC_ClntInit();
@@ -1093,8 +944,6 @@ void SYS_Init(void)
 	IRQ_Request(IRQ_PI_RSW,__RSWHandler,NULL);
 	__MaskIrq(IRQMASK(IRQ_PI_RSW));
 #endif
-	__lwp_thread_startmultitasking();
-	_CPU_ISR_Restore(level);
 }
 
 // This function gets called inside the main thread, prior to the application's main() function
@@ -1122,6 +971,23 @@ u32 SYS_ResetButtonDown(void)
 }
 
 #if defined(HW_DOL)
+
+static void __dohotreset(u32 resetcode)
+{
+	_viReg[1] = 0;
+	ICFlashInvalidate();
+	PPCHotReset(resetcode<<3);
+}
+
+static void __doreboot(u32 resetcode,s32 force_menu)
+{
+	*((u32*)0x817ffffc) = 0;
+	*((u32*)0x817ffff8) = 0;
+	*((u32*)0x800030e2) = 1;
+
+	__dohotreset(resetcode);
+}
+
 void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 {
 	u32 ret = 0;
@@ -1142,21 +1008,16 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 		while(!__SYS_SyncSram());
 	}
 
-	__exception_closeall();
+	__irq_shutdown();
 	__call_resetfuncs(TRUE);
 
 	LCDisable();
 
-	__lwp_thread_dispatchdisable();
 	if(reset==SYS_HOTRESET) {
 		__dohotreset(reset_code);
 	} else if(reset==SYS_RESTART) {
-		__lwp_thread_closeall();
-		__lwp_thread_dispatchunnest();
 		__doreboot(reset_code,force_menu);
 	}
-
-	__lwp_thread_closeall();
 
 	memset((void*)0x80000040,0,140);
 	memset((void*)0x800000D4,0,20);
@@ -1182,6 +1043,10 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 	u32 ret = 0;
 
 	__dsp_shutdown();
+
+	if(reset==SYS_HOTRESET) {
+		reset = SYS_RETURNTOMENU;
+	}
 
 	switch(reset) {
 		case SYS_SHUTDOWN:
@@ -1222,18 +1087,14 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 			break;
 	}
 
-	//TODO: implement SYS_HOTRESET
 	// either restart failed or this is SYS_SHUTDOWN
 
 	__IOS_ShutdownSubsystems();
 
-	__exception_closeall();
+	__irq_shutdown();
 	__call_resetfuncs(TRUE);
 
 	LCDisable();
-
-	__lwp_thread_dispatchdisable();
-	__lwp_thread_closeall();
 
 	memset((void*)0x80000040,0,140);
 	memset((void*)0x800000D4,0,20);
@@ -1418,7 +1279,7 @@ void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)
 
 		_CPU_ISR_Disable(level);
 
-		__UnmaskIrq(IRQMASK(chan));
+		__UnmaskIrq(IRQMASK(IRQ_MEM0+chan));
 		_memReg[chan<<2] = _SHIFTR(pstart,10,16);
 		_memReg[(chan<<2)+1] = _SHIFTR(pend,10,16);
 
@@ -1427,7 +1288,7 @@ void SYS_ProtectRange(u32 chan,void *addr,u32 bytes,u32 cntrl)
 		_memReg[8] = rcntrl;
 
 		if(cntrl==SYS_PROTECTRDWR)
-			__MaskIrq(IRQMASK(chan));
+			__MaskIrq(IRQMASK(IRQ_MEM0+chan));
 
 
 		_CPU_ISR_Restore(level);
@@ -1535,98 +1396,6 @@ void SYS_GetFontTexel(s32 c,void *image,s32 pos,s32 stride,s32 *width)
 		ypos++;
 	}
 	*width = sys_fontwidthtab[c];
-}
-
-s32 SYS_CreateAlarm(syswd_t *thealarm)
-{
-	alarm_st *alarm;
-
-	alarm = __lwp_syswd_allocate();
-	if(!alarm) return -1;
-
-	alarm->alarmhandler = NULL;
-	alarm->ticks = 0;
-	alarm->start_per = 0;
-	alarm->periodic = 0;
-
-	*thealarm = (LWP_OBJMASKTYPE(LWP_OBJTYPE_SYSWD)|LWP_OBJMASKID(alarm->object.id));
-	__lwp_thread_dispatchenable();
-	return 0;
-}
-
-s32 SYS_SetAlarm(syswd_t thealarm,const struct timespec *tp,alarmcallback cb,void *cbarg)
-{
-	alarm_st *alarm;
-
-	alarm = __lwp_syswd_open(thealarm);
-	if(!alarm) return -1;
-
-	alarm->cb_arg = cbarg;
-	alarm->alarmhandler = cb;
-	alarm->ticks = __lwp_wd_calc_ticks(tp);
-
-	alarm->periodic = 0;
-	alarm->start_per = 0;
-
-	__lwp_wd_initialize(&alarm->alarm,__sys_alarmhandler,alarm->object.id,(void*)thealarm);
-	__lwp_wd_insert_ticks(&alarm->alarm,alarm->ticks);
-	__lwp_thread_dispatchenable();
-	return 0;
-}
-
-s32 SYS_SetPeriodicAlarm(syswd_t thealarm,const struct timespec *tp_start,const struct timespec *tp_period,alarmcallback cb,void *cbarg)
-{
-	alarm_st *alarm;
-
-	alarm = __lwp_syswd_open(thealarm);
-	if(!alarm) return -1;
-
-	alarm->start_per = __lwp_wd_calc_ticks(tp_start);
-	alarm->periodic = __lwp_wd_calc_ticks(tp_period);
-	alarm->alarmhandler = cb;
-	alarm->cb_arg = cbarg;
-
-	alarm->ticks = 0;
-
-	__lwp_wd_initialize(&alarm->alarm,__sys_alarmhandler,alarm->object.id,(void*)thealarm);
-	__lwp_wd_insert_ticks(&alarm->alarm,alarm->start_per);
-	__lwp_thread_dispatchenable();
-	return 0;
-}
-
-s32 SYS_RemoveAlarm(syswd_t thealarm)
-{
-	alarm_st *alarm;
-
-	alarm = __lwp_syswd_open(thealarm);
-	if(!alarm) return -1;
-
-	alarm->alarmhandler = NULL;
-	alarm->ticks = 0;
-	alarm->periodic = 0;
-	alarm->start_per = 0;
-
-	__lwp_wd_remove_ticks(&alarm->alarm);
-	__lwp_syswd_free(alarm);
-	__lwp_thread_dispatchenable();
-	return 0;
-}
-
-s32 SYS_CancelAlarm(syswd_t thealarm)
-{
-	alarm_st *alarm;
-
-	alarm = __lwp_syswd_open(thealarm);
-	if(!alarm) return -1;
-
-	alarm->alarmhandler = NULL;
-	alarm->ticks = 0;
-	alarm->periodic = 0;
-	alarm->start_per = 0;
-
-	__lwp_wd_remove_ticks(&alarm->alarm);
-	__lwp_thread_dispatchenable();
-	return 0;
 }
 
 resetcallback SYS_SetResetCallback(resetcallback cb)
