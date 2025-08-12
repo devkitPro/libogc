@@ -1,7 +1,6 @@
 #include <asm.h>
 
-	.text
-	.section .init
+	.section ".crt0", "ax", %progbits
 
 	# crt0.s file for the GameCube V1.1 by Costis (costis@gbaemu.com)!
 	#
@@ -23,8 +22,8 @@
 	.extern __InitCache
 	.extern __InitSystem
 	.extern __sbss_start, __bss_end, __CheckARGV
-	.globl _start, __main, __system_argv
-_start:
+	.globl __app_start, __main, __system_argv
+__app_start:
 	b	startup
 	.long	0x5f617267
 __argv:

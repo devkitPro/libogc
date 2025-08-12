@@ -3,8 +3,6 @@
 
 #include <gctypes.h>
 
-#define STRUCT_REGDEF_SIZE		1440
-
 struct __gx_regdef
 {
 	u16 cpSRreg;

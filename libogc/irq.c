@@ -29,6 +29,7 @@ distribution.
 
 
 #include <stdlib.h>
+#include <stdalign.h>
 #include <string.h>
 #include "asm.h"
 #include "cache.h"
@@ -389,10 +390,15 @@ void __MaskIrq(u32 nMask)
 	_CPU_ISR_Restore(level);
 }
 
+alignas(8) static u8 __default_intr_stack_storage[0x4000];
+
+__attribute__((weak)) void* const __intrstack_start = __default_intr_stack_storage;
+__attribute__((weak)) const u32 __intrstack_size = sizeof(__default_intr_stack_storage);
+
 void __irq_init(void)
 {
-	register u32 intrStack = (u32)__intrstack_addr;
-	register u32 intrStack_end = (u32)__intrstack_end;
+	register u32 intrStack = (u32)__intrstack_start + __intrstack_size;
+	register u32 intrStack_end = (u32)__intrstack_start;
 	register u32 irqNestingLevel = 0;
 
 	memset(g_IRQHandler,0,32*sizeof(struct irq_handler_s));

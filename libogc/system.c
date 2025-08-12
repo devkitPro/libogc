@@ -217,7 +217,6 @@ extern int __libogc_nanosleep(const struct timespec *tb, struct timespec *rem);
 extern u64 gettime(void);
 extern void settime(u64);
 
-extern u8 __gxregs[];
 extern u8 __text_start[];
 extern u8 __isIPL[];
 extern u8 __Arena1Lo[], __Arena1Hi[];
@@ -251,8 +250,7 @@ static sys_resetinfo mem_resetinfo = {
 const void *__libogc_sbrk = _sbrk_r;
 const void *__libogc_lock_init  = __syscall_lock_init;
 
-static const char *__sys_versiondate;
-static const char *__sys_versionbuild;
+const char __sys_versioninfo[] = _V_STRING "\nBuilt on " _V_DATE_;
 
 static __inline__ alarm_st* __lwp_syswd_open(syswd_t wd)
 {
@@ -469,24 +467,19 @@ void * __attribute__ ((weak)) __myArena1Hi = 0;
 
 static void __lowmem_init(void)
 {
-	u32 *_gx = (u32*)__gxregs;
-
 #if defined(HW_DOL)
 	void *ram_start = (void*)0x80000000;
 	void *ram_end = (void*)(0x80000000|SYSMEM1_SIZE);
 	void *arena_start = (void*)0x80003000;
-#elif defined(HW_RVL)
-	void *arena_start = (void*)0x80003F00;
 #endif
 
-	memset(_gx,0,2048);
-	memset(arena_start,0,0x100);
 	if ( __argvArena1Lo == (u8*)0xdeadbeef ) __argvArena1Lo = __Arena1Lo;
 	if (__myArena1Lo == 0) __myArena1Lo = __argvArena1Lo;
 	if (__myArena1Hi == 0) __myArena1Hi = __Arena1Hi;
 
 #if defined(HW_DOL)
 	memset(ram_start,0,0x100);
+	memset(arena_start,0,0x100);
 	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"
 	*((u32*)(ram_start+0x24))	= 1;            // version
 	*((u32*)(ram_start+0x28))	= SYSMEM1_SIZE;	// physical memory size
@@ -504,10 +497,9 @@ static void __lowmem_init(void)
 	*((u32*)(arena_start+0xE4))	= 0xC0008000;
 
 	DCFlushRangeNoSync(ram_start, 0x100);
+	DCFlushRangeNoSync(arena_start, 0x100);
 #endif
 
-	DCFlushRangeNoSync(arena_start, 0x100);
-	DCFlushRangeNoSync(_gx, 2048);
 	_sync();
 
 	SYS_SetArenaLo((void*)__myArena1Lo);
@@ -1017,9 +1009,6 @@ void* __SYS_GetIPCBufferHi(void)
 
 #endif
 
-void _V_EXPORTNAME(void)
-{ __sys_versionbuild = _V_STRING; __sys_versiondate = _V_DATE_; }
-
 #if defined(HW_RVL)
 void SYS_DoPowerCB(void)
 {
@@ -1065,8 +1054,6 @@ void SYS_Init(void)
 
 	if(system_initialized) return;
 	system_initialized = 1;
-
-	_V_EXPORTNAME();
 
 	__lowmem_init();
 #if defined(HW_RVL)

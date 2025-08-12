@@ -29,6 +29,7 @@ distribution.
 
 
 #include <stdlib.h>
+#include <stdalign.h>
 #include <errno.h>
 #include "asm.h"
 #include "processor.h"
@@ -134,6 +135,11 @@ static void* idle_func(void *arg)
 	return 0;
 }
 
+alignas(8) static u8 __lwp_default_main_stack_storage[0x20000];
+
+__attribute__((weak)) void* const __stack_start = __lwp_default_main_stack_storage;
+__attribute__((weak)) const u32 __stack_size = sizeof(__lwp_default_main_stack_storage);
+
 void __lwp_sysinit(void)
 {
 	__lwp_objmgr_initinfo(&_lwp_thr_objects,LWP_MAX_THREADS,sizeof(lwp_cntrl));
@@ -149,7 +155,7 @@ void __lwp_sysinit(void)
 	// create main thread, as this is our entry point
 	// for every GC application.
 	_thr_main = (lwp_cntrl*)__lwp_objmgr_allocate(&_lwp_thr_objects);
-	__lwp_thread_init(_thr_main,__stack_end,((u32)__stack_addr-(u32)__stack_end),191,0,TRUE);
+	__lwp_thread_init(_thr_main,__stack_start,__stack_size,191,0,TRUE);
 	__lwp_thread_start(_thr_main,(void*)__crtmain,NULL);
 	__lwp_objmgr_open(&_lwp_thr_objects,&_thr_main->object);
 }
