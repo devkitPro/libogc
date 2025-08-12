@@ -1738,6 +1738,9 @@ s32 WPAD_Shutdown(void)
 		__wpads_listen[i].sock = NULL;
 	}
 
+	__wpads_active = 0;
+	__wpads_used = 0;
+
 	__wiiuse_sensorbar_enable(0);
 	_CPU_ISR_Restore(level);
 
