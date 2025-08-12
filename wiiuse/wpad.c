@@ -950,9 +950,10 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 		if(!bd_addr_cmp(pad_addr,BD_ADDR_ANY)) {
 			confslot = GetActiveSlot(pad_addr);
 			if (confslot < CONF_PAD_MAX_ACTIVE) {
+				BD_ADDR_FROM_BYTES(&bdaddr,__wpad_devs.active[confslot].bdaddr);
 				name = (u8 *)__wpad_devs.active[confslot].name;
 				WIIUSE_DEBUG("Active pad '%s' found in slot %d", name, confslot);
-				if (!(__wpads_used & (1<<confslot)))
+				if (!(__wpads_used & (1<<confslot)) || bd_addr_cmp(pad_addr,&bdaddr))
 					slot = confslot;
 				else
 					WIIUSE_DEBUG("Slot %d taken! Finding new slot", confslot);
