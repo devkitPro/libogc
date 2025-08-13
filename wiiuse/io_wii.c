@@ -13,7 +13,7 @@
 #include "io.h"
 
 #define MAX_COMMANDS					0x100
-#define MAX_WIIMOTES					5
+#define MAX_WIIMOTES					6
 
 static vu32* const _ipcReg = (u32*)0xCD000000;
 static u8 *__queue_buffer[MAX_WIIMOTES] = { 0, 0, 0, 0, 0 };
