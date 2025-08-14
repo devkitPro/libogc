@@ -39,9 +39,22 @@ distribution.
 #define STM_EVENT_RESET		0x00020000
 #define STM_EVENT_POWER		0x00000800
 
-#define STM_EINVAL			-0x2004
+#define STM_EINVAL			-0x2004 // << Unused
 #define STM_ENOTINIT		-0x2100
 #define STM_ENOHANDLER		-0x2101
+
+enum {
+	STM_LEDMODE_OFF,
+	STM_LEDMODE_DIM,
+	STM_LEDMODE_BRIGHT,
+};
+
+enum {
+	STM_LEDFLASH_USER   = (1 << 0),
+	STM_LEDFLASH_NOEXEC = (1 << 1),
+};
+
+#define STM_MAX_LED_PATTERNS 128
 
 #ifdef __cplusplus
    extern "C" {
@@ -51,11 +64,17 @@ typedef void (*stmcallback)(u32 event);
 
 s32 __STM_Init(void);
 s32 __STM_Close(void);
+
+stmcallback STM_RegisterEventHandler(stmcallback newhandler);
+
 s32 STM_ShutdownToStandby(void);
 s32 STM_ShutdownToIdle(void);
-s32 STM_SetLedMode(u32 mode);
 s32 STM_RebootSystem(void);
-stmcallback STM_RegisterEventHandler(stmcallback newhandler);
+
+s32 STM_SetLedMode(u32 mode);
+s32 STM_StartLEDFlashLoop(u8 id, u8 priority, u8 flags, const u16* patterns, u32 num_patterns);
+
+s32 STM_VIDimming(bool enable, u32 luma, u32 chroma);
 
 #ifdef __cplusplus
    }
