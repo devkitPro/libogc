@@ -67,6 +67,17 @@
 #define CLASSIC_CTRL_BUTTON_RIGHT		0x8000
 #define CLASSIC_CTRL_BUTTON_ALL			0xFEFF
 
+/* wii u pro controller extra button codes */
+#define WII_U_PRO_CTRL_BUTTON_RSTICK	0x00010000
+#define WII_U_PRO_CTRL_BUTTON_LSTICK	0x00020000
+#define WII_U_PRO_CTRL_BUTTON_EXTRA		0x00030000
+#define WII_U_PRO_CTRL_BUTTON_ALL		(WII_U_PRO_CTRL_BUTTON_EXTRA | CLASSIC_CTRL_BUTTON_ALL)
+
+/* wii u pro controller extra data */
+#define WII_U_PRO_CTRL_CHARGING			0x04
+#define WII_U_PRO_CTRL_WIRED			0x08
+#define WII_U_PRO_CTRL_BATTERY			0x70
+
 /* guitar hero 3 button codes */
 #define GUITAR_HERO_3_BUTTON_STRUM_UP	0x0001
 #define GUITAR_HERO_3_BUTTON_YELLOW		0x0008
@@ -104,6 +115,11 @@
 #define EXP_GUITAR_HERO_3				3
 #define EXP_WII_BOARD					4
 #define EXP_MOTION_PLUS					5
+
+/* classic controller types */
+#define CLASSIC_TYPE_ORIG   0   /* original classic controller (analog triggers) */
+#define CLASSIC_TYPE_PRO    1   /* classic controller pro (no analog triggers) */
+#define CLASSIC_TYPE_WIIU   2
 
 /* IR correction types */
 typedef enum ir_position_t {
@@ -458,10 +474,10 @@ typedef struct nunchuk_t {
  *	@brief Classic controller expansion device.
  */
 typedef struct classic_ctrl_t {
-	short btns;						/**< what buttons have just been pressed	*/
-	short btns_last;				/**< what buttons have just been pressed	*/
-	short btns_held;				/**< what buttons are being held down		*/
-	short btns_released;			/**< what buttons were just released this	*/
+	u32 btns;						/**< what buttons have just been pressed	*/
+	u32 btns_last;					/**< what buttons have just been pressed	*/
+	u32 btns_held;					/**< what buttons are being held down		*/
+	u32 btns_released;				/**< what buttons were just released this	*/
 
 	ubyte rs_raw;
 	ubyte ls_raw;
@@ -471,7 +487,12 @@ typedef struct classic_ctrl_t {
 
 	struct joystick_t ljs;			/**< left joystick calibration				*/
 	struct joystick_t rjs;			/**< right joystick calibration				*/
-   ubyte type;                  /**< original, pro, wiiu pro               */
+	ubyte type;						/**< original, pro, wiiu pro				*/
+
+	ubyte charging;
+	ubyte wired;
+	ubyte battery;
+	
 } classic_ctrl_t;
 
 

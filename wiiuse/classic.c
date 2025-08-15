@@ -48,7 +48,7 @@
 #include "io.h"
 
 static void fix_bad_calibration_values(struct joystick_t* js, short right_stick);
-static void classic_ctrl_pressed_buttons(struct classic_ctrl_t* cc, short now);
+static void classic_ctrl_pressed_buttons(struct classic_ctrl_t* cc, ubyte *now);
 
 /**
  *	@brief Handle the handshake data from the classic controller.
@@ -81,7 +81,7 @@ int classic_ctrl_handshake(struct wiimote_t* wm, struct classic_ctrl_t* cc, ubyt
 
 		cc->rjs = cc->ljs;
 
-		cc->type = 2;
+		cc->type = CLASSIC_TYPE_WIIU;
 	}
 	else {
 		if (data[offset] == 0xFF) {
@@ -102,9 +102,9 @@ int classic_ctrl_handshake(struct wiimote_t* wm, struct classic_ctrl_t* cc, ubyt
 		}
 
 		if (len > 218 && data[218])
-			cc->type = 1; /* classic controller pro (no analog triggers) */
+			cc->type = CLASSIC_TYPE_PRO; 
 		else
-			cc->type = 0; /* original classic controller (analog triggers) */
+			cc->type = CLASSIC_TYPE_ORIG; 
 
 		/* joystick stuff */
 		cc->ljs.max.x = data[0 + offset] / 4 == 0 ? 64 : data[0 + offset] / 4;
@@ -124,6 +124,7 @@ int classic_ctrl_handshake(struct wiimote_t* wm, struct classic_ctrl_t* cc, ubyt
 		fix_bad_calibration_values(&cc->ljs, 0);
 		fix_bad_calibration_values(&cc->rjs, 1);
 	}
+
 	/* handshake done */
 	wm->event = WIIUSE_CLASSIC_CTRL_INSERTED;
 	wm->exp.type = EXP_CLASSIC;
@@ -162,8 +163,8 @@ void classic_ctrl_event(struct classic_ctrl_t* cc, ubyte* msg) {
 	for (i = 0; i < 6; ++i)
 		msg[i] = (msg[i] ^ 0x17) + 0x17;
 	*/
-	if (cc->type==2) {
-		classic_ctrl_pressed_buttons(cc, BIG_ENDIAN_SHORT(*(short*)(msg + 8)));
+	if (cc->type==CLASSIC_TYPE_WIIU) {
+		classic_ctrl_pressed_buttons(cc, msg + 8);
 
 		/* 12-bit little endian values adjusted to 8-bit */
 		cc->ljs.pos.x = (msg[0] >> 4) | (msg[1] << 4);
@@ -173,11 +174,16 @@ void classic_ctrl_event(struct classic_ctrl_t* cc, ubyte* msg) {
 
 		cc->ls_raw = cc->btns & CLASSIC_CTRL_BUTTON_FULL_L ? 0x1F : 0;
 		cc->rs_raw = cc->btns & CLASSIC_CTRL_BUTTON_FULL_R ? 0x1F : 0;
+
+		/* Wii U pro controller specific data */
+		cc->charging = !(((msg[10] & WII_U_PRO_CTRL_CHARGING) >> 2) & 1);
+		cc->wired = !(((msg[10] & WII_U_PRO_CTRL_WIRED) >> 3) & 1);
+		cc->battery = ((msg[10] & WII_U_PRO_CTRL_BATTERY) >> 4) & 7;
 	}
 	else {
-		classic_ctrl_pressed_buttons(cc, BIG_ENDIAN_SHORT(*(short*)(msg + 4)));
+		classic_ctrl_pressed_buttons(cc, msg + 4);
 
-		/* left/right buttons */
+		/* left/right triggers */
 		cc->ls_raw = (((msg[2] & 0x60) >> 2) | ((msg[3] & 0xE0) >> 5));
 		cc->rs_raw = (msg[3] & 0x1F);
 
@@ -194,6 +200,11 @@ void classic_ctrl_event(struct classic_ctrl_t* cc, ubyte* msg) {
 		cc->ljs.pos.y = (msg[1] & 0x3F);
 		cc->rjs.pos.x = ((msg[0] & 0xC0) >> 3) | ((msg[1] & 0xC0) >> 5) | ((msg[2] & 0x80) >> 7);
 		cc->rjs.pos.y = (msg[2] & 0x1F);
+
+		/* wipe Wii U pro controller specific data */
+		cc->charging = 0;
+		cc->wired = 0;
+		cc->battery = 0;
 	}
 
 #ifndef GEKKO
@@ -221,19 +232,29 @@ static void fix_bad_calibration_values(struct joystick_t* js, short right_stick)
  *	@param cc		A pointer to a classic_ctrl_t structure.
  *	@param msg		The message byte specified in the event packet.
  */
-static void classic_ctrl_pressed_buttons(struct classic_ctrl_t* cc, short now) {
-	/* message is inverted (0 is active, 1 is inactive) */
-	now = ~now & CLASSIC_CTRL_BUTTON_ALL;
+static void classic_ctrl_pressed_buttons(struct classic_ctrl_t* cc, ubyte *now) {
+	u32 buttons = (now[0] << 0x8) | now[1];
+
+	if (cc->type==CLASSIC_TYPE_WIIU) {
+		/* append Wii U Pro Controller stick buttons to top 16 bits */
+		buttons |= (now[2] << 0x10);
+
+		/* message is inverted (0 is active, 1 is inactive) */
+		buttons = ~buttons & WII_U_PRO_CTRL_BUTTON_ALL;
+	} else {
+		/* message is inverted (0 is active, 1 is inactive) */
+		buttons = ~buttons & CLASSIC_CTRL_BUTTON_ALL;
+	}
 
 	/* preserve old btns pressed */
 	cc->btns_last = cc->btns;
 
 	/* pressed now & were pressed, then held */
-	cc->btns_held = (now & cc->btns);
+	cc->btns_held = (buttons & cc->btns);
 
 	/* were pressed or were held & not pressed now, then released */
-	cc->btns_released = ((cc->btns | cc->btns_held) & ~now);
+	cc->btns_released = ((cc->btns | cc->btns_held) & ~buttons);
 
 	/* buttons pressed now */
-	cc->btns = now;
+	cc->btns = buttons;
 }
