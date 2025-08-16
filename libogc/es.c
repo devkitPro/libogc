@@ -110,7 +110,7 @@ distribution.
 #ifdef __builtin_is_aligned
 # define ISALIGNED(x, a) __builtin_is_aligned(x, a)
 #else
-# define ISALIGNED(x, a) (((u32)x) & (a - 1) == 0)
+# define ISALIGNED(x, a) ((((u32)x) & (a - 1)) == 0)
 #endif
 
 static char __es_fs[] ATTRIBUTE_ALIGN(32) = "/dev/es";
