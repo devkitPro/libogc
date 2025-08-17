@@ -1,5 +1,12 @@
 
 add_library(ogc STATIC
+	lwpcompat/lwpc_alarm.c
+	lwpcompat/lwpc_queue.c
+	lwpcompat/lwpc_thread.c
+	lwpcompat/lwpc_sync.c
+	lwpcompat/lwpc_sem.c
+	lwpcompat/lwpc_mq.c
+
 	console.c
 	lwp_queue.c
 	lwp_wkspace.c
