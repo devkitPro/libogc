@@ -67,7 +67,7 @@ distribution.
 #if defined(HW_RVL)
 #define SYSMEM2_SIZE				0x04000000
 #endif
-#define KERNEL_HEAP					(1*1024*1024)
+#define KERNEL_HEAP					(64*1024)
 
 // SRAM bits
 #define SRAM_VIDEO_MODE_BITS		0x03
