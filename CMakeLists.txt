@@ -61,7 +61,7 @@ add_subdirectory(libaesnd)
 add_subdirectory(libiso9660)
 
 if(NINTENDO_GAMECUBE)
-	#add_subdirectory(lwip)
+	add_subdirectory(lwip)
 elseif(NINTENDO_WII)
 	add_subdirectory(lwbt)
 	add_subdirectory(wiiuse)

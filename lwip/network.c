@@ -9,10 +9,8 @@
 #include <cond.h>
 #include <semaphore.h>
 #include <processor.h>
+#include <tuxedo/tick.h>
 #include <lwp_watchdog.h>
-
-#include <lwp_threads.inl>
-#include <lwp_watchdog.inl>
 
 #include <lwip/debug.h>
 #include <lwip/opt.h>
@@ -67,14 +65,10 @@ typedef void (*apimsg_decode)(struct apimsg_msg *);
 
 static u32 g_netinitiated = 0;
 static u32 tcpiplayer_inited = 0;
-static u64 net_tcp_ticks = 0;
-static u64 net_dhcpcoarse_ticks = 0;
-static u64 net_dhcpfine_ticks = 0;
-static u64 net_arp_ticks = 0;
-static wd_cntrl arp_time_cntrl;
-static wd_cntrl tcp_timer_cntrl;
-static wd_cntrl dhcp_coarsetimer_cntrl;
-static wd_cntrl dhcp_finetimer_cntrl;
+static KTickTask arp_time_cntrl;
+static KTickTask tcp_timer_cntrl;
+static KTickTask dhcp_coarsetimer_cntrl;
+static KTickTask dhcp_finetimer_cntrl;
 
 static struct netif g_hNetIF;
 static struct netif g_hLoopIF;
@@ -171,42 +165,33 @@ static void tmr_callback(void *arg)
 }
 
 /* low level stuff */
-static void __dhcpcoarse_timer(void *arg)
+static void __dhcpcoarse_timer(KTickTask* t)
 {
-	__lwp_thread_dispatchdisable();
 	net_callback(tmr_callback,(void*)dhcp_coarse_tmr);
-	__lwp_wd_insert_ticks(&dhcp_coarsetimer_cntrl,net_dhcpcoarse_ticks);
-	__lwp_thread_dispatchunnest();
 }
 
-static void __dhcpfine_timer(void *arg)
+static void __dhcpfine_timer(KTickTask* t)
 {
-	__lwp_thread_dispatchdisable();
 	net_callback(tmr_callback,(void*)dhcp_fine_tmr);
-	__lwp_wd_insert_ticks(&dhcp_finetimer_cntrl,net_dhcpfine_ticks);
-	__lwp_thread_dispatchunnest();
 }
 
-static void __tcp_timer(void *arg)
+static void __tcp_timer(KTickTask* t)
 {
 #ifdef _NET_DEBUG
 	printf("__tcp_timer(%d,%p,%p)\n",tcp_timer_active,tcp_active_pcbs,tcp_tw_pcbs);
 #endif
-	__lwp_thread_dispatchdisable();
 	net_callback(tmr_callback,(void*)tcp_tmr);
 	if (tcp_active_pcbs || tcp_tw_pcbs) {
-		__lwp_wd_insert_ticks(&tcp_timer_cntrl,net_tcp_ticks);
-	} else
+		// Nothing
+	} else {
 		tcp_timer_active = 0;
-	__lwp_thread_dispatchunnest();
+		KTickTaskStop(t);
+	}
 }
 
-static void __arp_timer(void *arg)
+static void __arp_timer(KTickTask* t)
 {
-	__lwp_thread_dispatchdisable();
 	net_callback(tmr_callback,(void*)etharp_tmr);
-	__lwp_wd_insert_ticks(&arp_time_cntrl,net_arp_ticks);
-	__lwp_thread_dispatchunnest();
 }
 
 void tcp_timer_needed(void)
@@ -216,7 +201,9 @@ void tcp_timer_needed(void)
 #endif
 	if(!tcp_timer_active && (tcp_active_pcbs || tcp_tw_pcbs)) {
 		tcp_timer_active = 1;
-		__lwp_wd_insert_ticks(&tcp_timer_cntrl,net_tcp_ticks);	
+
+		u64 tcp_ticks = PPCMsToTicks(TCP_TMR_INTERVAL);
+		KTickTaskStart(&tcp_timer_cntrl, __tcp_timer, tcp_ticks, tcp_ticks);
 	}
 }
 
@@ -1308,7 +1295,6 @@ static err_t net_callback(void (*f)(void *),void *ctx)
 static void* net_thread(void *arg)
 {
 	struct net_msg *msg;
-	struct timespec tb;
 	sys_sem sem = (sys_sem)arg;
 
 	etharp_init();
@@ -1316,18 +1302,9 @@ static void* net_thread(void *arg)
 	udp_init();
 	tcp_init();
 
+	u64 arp_ticks = PPCMsToTicks(ARP_TMR_INTERVAL);
+	KTickTaskStart(&arp_time_cntrl, __arp_timer, arp_ticks, arp_ticks);
 
-	tb.tv_sec = ARP_TMR_INTERVAL/TB_MSPERSEC;
-	tb.tv_nsec = 0;
-	net_arp_ticks = __lwp_wd_calc_ticks(&tb);
-	__lwp_wd_initialize(&arp_time_cntrl,__arp_timer,ARP_TIMER_ID,NULL);
-	__lwp_wd_insert_ticks(&arp_time_cntrl,net_arp_ticks);
-
-	tb.tv_sec = 0;
-	tb.tv_nsec = TCP_TMR_INTERVAL*TB_NSPERMS;
-	net_tcp_ticks = __lwp_wd_calc_ticks(&tb);
-	__lwp_wd_initialize(&tcp_timer_cntrl,__tcp_timer,TCP_TIMER_ID,NULL);
-	
 	LWP_SemPost(sem);
 	
 	LWIP_DEBUGF(TCPIP_DEBUG, ("net_thread(%p)\n",arg));
@@ -1462,7 +1439,6 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 	s32 ret = 0;
 	struct ip_addr loc_ip, mask, gw;
 	struct netif *pnet;
-	struct timespec tb;
 	dev_s hbba = NULL;
 
 	if(g_netinitiated >= 4) return 0;
@@ -1509,18 +1485,12 @@ s32 if_configex(struct in_addr *local_ip,struct in_addr *netmask,struct in_addr 
 	#if (LWIP_DHCP)
 			if(use_dhcp==TRUE) {
 				//setup coarse timer
-				tb.tv_sec = DHCP_COARSE_TIMER_SECS;
-				tb.tv_nsec = 0;
-				net_dhcpcoarse_ticks = __lwp_wd_calc_ticks(&tb);
-				__lwp_wd_initialize(&dhcp_coarsetimer_cntrl, __dhcpcoarse_timer, DHCPCOARSE_TIMER_ID, NULL);
-				__lwp_wd_insert_ticks(&dhcp_coarsetimer_cntrl, net_dhcpcoarse_ticks);
-				
+				u64 coarse_ticks = secs_to_ticks(DHCP_COARSE_TIMER_SECS);
+				KTickTaskStart(&dhcp_coarsetimer_cntrl, __dhcpcoarse_timer, coarse_ticks, coarse_ticks);
+
 				//setup fine timer
-				tb.tv_sec = 0;
-				tb.tv_nsec = DHCP_FINE_TIMER_MSECS * TB_NSPERMS;
-				net_dhcpfine_ticks = __lwp_wd_calc_ticks(&tb);
-				__lwp_wd_initialize(&dhcp_finetimer_cntrl, __dhcpfine_timer, DHCPFINE_TIMER_ID, NULL);
-				__lwp_wd_insert_ticks(&dhcp_finetimer_cntrl, net_dhcpfine_ticks);
+				u64 fine_ticks = PPCMsToTicks(DHCP_FINE_TIMER_MSECS);
+				KTickTaskStart(&dhcp_finetimer_cntrl, __dhcpfine_timer, fine_ticks, fine_ticks);
 
 				//now start dhcp client
 				dhcp_start(pnet);
