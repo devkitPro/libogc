@@ -1256,9 +1256,9 @@ s32 if_configex(struct in_addr *local_ip, struct in_addr *netmask, struct in_add
 {
 	s32 i,ret;
 	const u32 ipconfig_size = sizeof(struct getinterfaceopt_ipconfig);
-	STACK_ALIGN(ioctlv, vectors, sizeof(ioctlv)*3, 32);
-	STACK_ALIGN(struct getinterfaceopt_params, params, sizeof(struct getinterfaceopt_params), 32);
-	STACK_ALIGN(struct getinterfaceopt_ipconfig, ipconfig, ipconfig_size, 32);
+	STACK_ALIGN(ioctlv, vectors, 3, 32);
+	STACK_ALIGN(struct getinterfaceopt_params, params, 1, 32);
+	STACK_ALIGN(struct getinterfaceopt_ipconfig, ipconfig, 1, 32);
 	static u32 response __attribute__((aligned(32)));
 	static u32 table_size __attribute__((aligned(32)));
 	
