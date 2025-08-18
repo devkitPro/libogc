@@ -42,10 +42,7 @@
 #include <gccore.h>
 #include <network.h>
 #include <processor.h>
-#include <lwp_objmgr.h>
 #include <lwp_watchdog.h>
-
-#include <lwp_objmgr.inl>
 
 #include <sys/statvfs.h>
 #include <errno.h>
@@ -150,15 +147,7 @@
 #define CIFS_FLAGS2_UNICODE			0x8001 // Server may return long components in paths in the response - use 0x8001 for Unicode support
 #define CIFS_FLAGS2					0x0001 // Server may return long components in paths in the response - use 0x0001 for ASCII support
 
-#define SMB_CONNHANDLES_MAX			8
-#define SMB_FILEHANDLES_MAX			(32*SMB_CONNHANDLES_MAX)
-
-#define SMB_OBJTYPE_HANDLE			7
-#define SMB_CHECK_HANDLE(hndl)		\
-{									\
-	if(((hndl)==SMB_HANDLE_NULL) || (LWP_OBJTYPE(hndl)!=SMB_OBJTYPE_HANDLE))	\
-		return NULL;				\
-}
+#define SMB_FILEHANDLES_MAX			256
 
 /* NBT Session Service Packet Type Codes
  */
@@ -213,7 +202,6 @@ typedef struct _smbsession
 
 typedef struct _smbhandle
 {
-	lwp_obj object;
 	char *user;
 	char *pwd;
 	char *share_name;
@@ -228,7 +216,6 @@ typedef struct _smbhandle
 
 static u32 smb_dialectcnt = 1;
 static bool smb_inited = false;
-static lwp_objinfo smb_handle_objects;
 static lwp_queue smb_filehandle_queue;
 static struct _smbfile smb_filehandles[SMB_FILEHANDLES_MAX];
 static const char *smb_dialects[] = {"NT LM 0.12",NULL};
@@ -376,32 +363,22 @@ static __inline__ u64 getULongLong(u8 *buffer,u32 offset)
 
 static __inline__ SMBHANDLE* __smb_handle_open(SMBCONN smbhndl)
 {
-	u32 level;
-	SMBHANDLE *handle;
+	if (!smbhndl || smbhndl == SMB_HANDLE_NULL) {
+		return NULL;
+	}
 
-	SMB_CHECK_HANDLE(smbhndl);
-
-	_CPU_ISR_Disable(level);
-	handle = (SMBHANDLE*)__lwp_objmgr_getnoprotection(&smb_handle_objects,LWP_OBJMASKID(smbhndl));
-	_CPU_ISR_Restore(level);
-	return handle;
+	return (SMBHANDLE*)~smbhndl;
 }
 
 
 static __inline__ void __smb_handle_free(SMBHANDLE *handle)
 {
-	u32 level;
-
-	_CPU_ISR_Disable(level);
-	__lwp_objmgr_close(&smb_handle_objects,&handle->object);
-	__lwp_objmgr_free(&smb_handle_objects,&handle->object);
-	_CPU_ISR_Restore(level);
+	free(handle);
 }
 
 static void __smb_init()
 {
 	smb_inited = true;
-	__lwp_objmgr_initinfo(&smb_handle_objects,SMB_CONNHANDLES_MAX,sizeof(SMBHANDLE));
 	__lwp_queue_initialize(&smb_filehandle_queue,smb_filehandles,SMB_FILEHANDLES_MAX,sizeof(struct _smbfile));
 }
 
@@ -411,7 +388,7 @@ static SMBHANDLE* __smb_allocate_handle()
 	SMBHANDLE *handle;
 
 	_CPU_ISR_Disable(level);
-	handle = (SMBHANDLE*)__lwp_objmgr_allocate(&smb_handle_objects);
+	handle = malloc(sizeof(*handle));
 	if(handle) {
 		handle->user = NULL;
 		handle->pwd = NULL;
@@ -419,7 +396,6 @@ static SMBHANDLE* __smb_allocate_handle()
 		handle->share_name = NULL;
 		handle->sck_server = INVALID_SOCKET;
 		handle->conn_valid = false;
-		__lwp_objmgr_open(&smb_handle_objects,&handle->object);
 	}
 	_CPU_ISR_Restore(level);
 	return handle;
@@ -628,7 +604,7 @@ static s32 SMBCheck(u8 command,SMBHANDLE *handle)
 	if(getUChar(ptr, SMB_OFFSET_CMD) != command){ret = SMB_BAD_COMMAND; goto failed;}
 
 	if(getUInt(ptr,SMB_OFFSET_NTSTATUS)) goto failed;
-	
+
 	return SMB_SUCCESS;
 failed:
     clear_network(handle->sck_server,ptr);
@@ -1254,7 +1230,7 @@ s32 SMB_Connect(SMBCONN *smbhndl, const char *user, const char *password, const 
 #endif
 	}
 
-	*smbhndl =(SMBCONN)(LWP_OBJMASKTYPE(SMB_OBJTYPE_HANDLE)|LWP_OBJMASKID(handle->object.id));
+	*smbhndl = ~(uptr)handle;
 
 	if(ret==0)
 	{
