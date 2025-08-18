@@ -1049,6 +1049,14 @@ void CON_EnableGecko(int channel,int safe)
 	}
 }
 
+void consoleClear(void)
+{
+	if(!currentConsole)
+		return;
+
+	__console_clear();
+}
+
 PrintConsole* consoleGetDefault(void){return &defaultConsole;}
 
 PrintConsole* consoleInit(PrintConsole* console)
