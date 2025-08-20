@@ -340,7 +340,7 @@ to convert from 'an amount of tiles' to 'the end of the final tile' (aka 'the st
 simply add 1 to the 'amount of tiles' value
 Examples:
 a cursor points to (the start of) tile 3, how many tiles to fill to clear until (the start of) tile 7 ?
--> fill tile 3, 4, 5, 6 (= 4 tiles)
+-> fill tile 3, 4, 5, 6 (= 4 tiles = 7 - 3)
 a cursor points to (the start of) tile 2 in an area with 5 tiles, how many tiles to fill to clear until the end ?
 -> fill tile 2, 3, 4, 5 (= 4 tiles = 5 - 2 + 1, because '5' here is an amount, not an offset)
 */
@@ -351,7 +351,7 @@ static void __console_clear_line(int line, int from, int to)
 	
 	if( !(con = currentConsole) ) return;
 
-	// Each character is FONT_XSIZE * VI_DISPLAY_PIX_SZ wide
+	// Each character is FONT_XSIZE * VI_DISPLAY_PIX_SZ bytes wide
 	const u32 line_width = (to - from) * FONT_XSIZE * VI_DISPLAY_PIX_SZ;
 
 	unsigned int bgcolor = con->bg;
