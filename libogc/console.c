@@ -149,14 +149,63 @@ PrintConsole currentCopy;
 
 PrintConsole* currentConsole = &currentCopy;
 
-static u32 __console_get_offset()
+static void *__console_offset_by_pixels(void *ptr, s32 dy_pixels, u32 stride_bytes, s32 dx_pixels)
+{
+	const s32 dy_bytes = dy_pixels * stride_bytes;
+	const s32 dx_bytes = dx_pixels * VI_DISPLAY_PIX_SZ;
+	return (u8 *)ptr + dy_bytes + dx_bytes;
+}
+
+// cursor_y and cursor_x are 1-indexed tile offsets (to start of tile), window offsets are a type of cursor
+// window/console dimensions are a count of tiles, but 0-indexed
+static void *__console_offset_by_cursor(void *ptr, u32 cursor_y, u32 stride_bytes, u32 cursor_x)
+{
+	return __console_offset_by_pixels(ptr, (cursor_y - 1) * FONT_YSIZE, stride_bytes, (cursor_x - 1) * FONT_XSIZE);
+}
+
+static void *__console_get_buffer_start_ptr()
 {
 	if(!currentConsole)
-		return 0;
-	
+		return NULL;
+
+	// using CON_InitEx automatically copies the console buffer to the framebuffer via __console_vipostcb
+	// this copy may be to an offset, which is where target_y/target_x/tgt_stride come into play in this case
+	// detected by _console_buffer being non-NULL (and by construction == currentConsole->destbuffer)
+
+	// using CON_Init uses the provided pointer directly
+	// then target_y/target_x/tgt_stride must be applied here when writing pixels to the console buffer
+
+	// writing characters/pixels to the console buffer via stdio/etc does not involve those values otherwise
+	// only console dimensions (con_xres/con_yres/con_stride) and cursor/window values (cursorX/cursorY/con_cols/con_rows/...)
+
 	return _console_buffer != NULL 
-		? 0 
-		: (currentConsole->target_y * currentConsole->tgt_stride) + (currentConsole->target_x * VI_DISPLAY_PIX_SZ);
+		? _console_buffer // same as currentConsole->destbuffer, don't need to load from a struct access
+		: __console_offset_by_pixels(currentConsole->destbuffer, currentConsole->target_y, currentConsole->tgt_stride, currentConsole->target_x);
+}
+
+static void *__console_get_window_start_ptr()
+{
+	PrintConsole *con;
+	if( !(con = currentConsole) )
+		return NULL;
+
+	return __console_offset_by_cursor(__console_get_buffer_start_ptr(), con->windowY, con->con_stride, con->windowX);
+}
+
+static void *__console_get_cursor_start_ptr()
+{
+	PrintConsole *con;
+	if( !(con = currentConsole) )
+		return NULL;
+
+	/*
+	void *ptr = __console_get_buffer_start_ptr();
+	ptr = __console_offset_by_cursor(ptr, con->windowY, con->con_stride, con->windowX);
+	ptr = __console_offset_by_cursor(ptr, con->cursorY, con->con_stride, con->cursorX);
+	return ptr;
+	*/
+	// equivalent but less calls. -1 for the x/y offsets avoids mistakenly using 2-indexed values
+	return __console_offset_by_cursor(__console_get_buffer_start_ptr(), con->windowY + con->cursorY - 1, con->con_stride, con->windowX + con->cursorX - 1);
 }
 
 void __console_vipostcb(u32 retraceCnt)
@@ -165,14 +214,14 @@ void __console_vipostcb(u32 retraceCnt)
 
 	do_xfb_copy = true;
 	ptr = currentConsole->destbuffer;
-	fb = (u8*)((u32)VIDEO_GetCurrentFramebuffer() + (currentConsole->target_y * currentConsole->tgt_stride) + (currentConsole->target_x * VI_DISPLAY_PIX_SZ));
+	fb = __console_offset_by_pixels(VIDEO_GetCurrentFramebuffer(), currentConsole->target_y, currentConsole->tgt_stride, currentConsole->target_x);
 
-	// Clears 1 line of pixels at a time
+	// Copies 1 line of pixels at a time
 	for(u16 ycnt = 0; ycnt < currentConsole->con_yres; ycnt++)
 	{
 		memcpy(fb, ptr, currentConsole->con_xres * VI_DISPLAY_PIX_SZ);
-		ptr+= currentConsole->con_stride;
-		fb+= currentConsole->tgt_stride;
+		ptr += currentConsole->con_stride;
+		fb += currentConsole->tgt_stride;
 	}
 
 	do_xfb_copy = false;
@@ -195,13 +244,12 @@ static void __console_drawc(int c)
 	c -= con->font.asciiOffset;
 	if (c<0 || c>con->font.numChars) return;
 
-	ptr = (unsigned int*)(con->destbuffer \
-		+ ( con->con_stride * (con->windowY - 1 + con->cursorY - 1) * FONT_YSIZE ) \
-		+ (((con->cursorX - 1 + con->windowX - 1) * FONT_XSIZE / 2) * 4) \
-		+ __console_get_offset());
+	ptr = __console_get_cursor_start_ptr();
 
 	pbits = &con->font.gfx[c * FONT_YSIZE];
-	nextline = con->con_stride/4 - 4;
+	// con_stride is in bytes, but we increment ptr which isn't a byte pointer
+	// and the work in the loop already increments ptr 4 times before needing to go to the next row
+	nextline = con->con_stride/sizeof(*ptr) - 4;
 
 	fgcolor = currentConsole->fg;
 	bgcolor = currentConsole->bg;
@@ -286,16 +334,25 @@ static void __console_drawc(int c)
 	}
 }
 
-static void __console_clear_line(int line, int from, int to ) 
+/*
+line, from, to are 1-indexed tile offsets (to starts of tiles)
+to convert from 'an amount of tiles' to 'the end of the final tile' (aka 'the start of the past-the-end tile')
+simply add 1 to the 'amount of tiles' value
+Examples:
+a cursor points to (the start of) tile 3, how many tiles to fill to clear until (the start of) tile 7 ?
+-> fill tile 3, 4, 5, 6 (= 4 tiles)
+a cursor points to (the start of) tile 2 in an area with 5 tiles, how many tiles to fill to clear until the end ?
+-> fill tile 2, 3, 4, 5 (= 4 tiles = 5 - 2 + 1, because '5' here is an amount, not an offset)
+*/
+static void __console_clear_line(int line, int from, int to)
 {
 	PrintConsole *con;
-	u8* p;
-
-
+	u8 *p;
+	
 	if( !(con = currentConsole) ) return;
 
 	// Each character is FONT_XSIZE * VI_DISPLAY_PIX_SZ wide
-	const u32 line_width = (to - from + 1) * FONT_XSIZE * VI_DISPLAY_PIX_SZ;
+	const u32 line_width = (to - from) * FONT_XSIZE * VI_DISPLAY_PIX_SZ;
 
 	unsigned int bgcolor = con->bg;
 
@@ -303,18 +360,14 @@ static void __console_clear_line(int line, int from, int to )
 		bgcolor = colorTable[bgcolor];
 	}
 
-	//add the given row & column to the offset & assign the pointer
-	const u32 offset = __console_get_offset() \
-		+ ((line - 1 + con->windowY - 1) * con->con_stride * FONT_YSIZE) \
-		+ (from - 1 + con->windowX - 1) * FONT_XSIZE * VI_DISPLAY_PIX_SZ;
-
-	p = (u8*)((uintptr_t)con->destbuffer + offset);
+	p = __console_get_window_start_ptr();
+	p = __console_offset_by_cursor(p, line, con->con_stride, from);
 
 	// Clears 1 line of pixels at a time
 	for(u16 ycnt = 0; ycnt < FONT_YSIZE; ycnt++)
 	{
-		for(u32 xcnt = 0; xcnt < line_width; xcnt += 4)
-			*(u32*)((uintptr_t)p + xcnt) = bgcolor;
+		for(u32 xcnt = 0; xcnt < line_width; xcnt += sizeof(u32))
+			*(u32*)(p + xcnt) = bgcolor;
 
 		p += con->con_stride;
 	}
@@ -323,9 +376,14 @@ static void __console_clear_line(int line, int from, int to )
 static void __console_clear(void)
 {
 	PrintConsole *con;
-	u8* p;
+	u8 *p;
 
 	if( !(con = currentConsole) ) return;
+
+	// Window lines add up to con->windowHeight * FONT_YSIZE pixel lines
+	const u32 view_height = con->windowHeight * FONT_YSIZE;
+	// Each window line is con->windowWidth * FONT_XSIZE * VI_DISPLAY_PIX_SZ bytes wide
+	const u32 line_width = con->windowWidth * FONT_XSIZE * VI_DISPLAY_PIX_SZ;
 
 	unsigned int bgcolor = con->bg;
 	if (!(currentConsole->flags & CONSOLE_BG_CUSTOM)) {
@@ -333,14 +391,13 @@ static void __console_clear(void)
 	}
 
 	//get console pointer
-	p = (u8*)((uintptr_t)con->destbuffer + __console_get_offset()) \
-		+ ((con->windowY - 1) * con->con_stride * FONT_YSIZE);
+	p = __console_get_window_start_ptr();
 
 	// Clears 1 line of pixels at a time
-	for(u16 ycnt = 0; ycnt < con->windowHeight * 16; ycnt++)
+	for(u16 ycnt = 0; ycnt < view_height; ycnt++)
 	{
-		for(u32 xcnt = (con->windowX - 1) * 8 * VI_DISPLAY_PIX_SZ; xcnt < (con->windowWidth + con->windowX -1) * 8 * VI_DISPLAY_PIX_SZ; xcnt+=4)
-			*(u32*)((uintptr_t)p + xcnt) = bgcolor;
+		for(u32 xcnt = 0; xcnt < line_width; xcnt += sizeof(u32))
+			*(u32*)(p + xcnt) = bgcolor;
 
 		p += con->con_stride;
 	}
@@ -359,11 +416,10 @@ static void __console_clear_from_cursor(void) {
 
 	cur_row = con->cursorY;
 	
-	__console_clear_line( cur_row, con->cursorX, con->windowWidth );
+	__console_clear_line( cur_row, con->cursorX, con->windowWidth + 1 );
 
-	while( cur_row++ < (con->windowY + con->windowHeight) )
-		__console_clear_line( cur_row, 1, con->windowWidth );
-
+	while( cur_row++ < con->windowHeight )
+		__console_clear_line( cur_row, 1, con->windowWidth + 1 );
 }
 
 static void __console_clear_to_cursor(void) {
@@ -373,10 +429,10 @@ static void __console_clear_to_cursor(void) {
 	if( !(con = currentConsole) ) return;
 	cur_row = con->cursorY;
 
-	__console_clear_line( cur_row, 1, con->cursorX - 1);
+	__console_clear_line( cur_row, 1, con->cursorX );
 
-	while( cur_row-- )
-		__console_clear_line( cur_row, 1, con->windowWidth );
+	while( --cur_row )
+		__console_clear_line( cur_row, 1, con->windowWidth + 1 );
 }
 
 static void __set_default_console(void *destbuffer,int xstart,int ystart, int tgt_stride, int con_xres,int con_yres,int con_stride)
@@ -447,18 +503,17 @@ void __console_init_ex(void *destbuffer,int tgt_xstart,int tgt_ystart,int tgt_st
 
 }
 
-
 static void consoleClearLine(int mode) {
 
 	switch(mode) {
-	case 0:
-		 __console_clear_line( currentConsole->cursorY, currentConsole->cursorX, currentConsole->windowWidth );
+	case 0: // cursor to end of line
+		 __console_clear_line( currentConsole->cursorY, currentConsole->cursorX, currentConsole->windowWidth + 1 );
 		break;
-	case 1:
-		__console_clear_line( currentConsole->cursorY, 1, currentConsole->cursorX - 1);
+	case 1: // beginning of line to cursor
+		__console_clear_line( currentConsole->cursorY, 1, currentConsole->cursorX );
 		break;
-	case 2:
-		__console_clear_line( currentConsole->cursorY, 1, currentConsole->windowWidth);
+	case 2: // entire line
+		__console_clear_line( currentConsole->cursorY, 1, currentConsole->windowWidth + 1);
 		break;
 	}
 }
@@ -745,23 +800,28 @@ static void consoleHandleColorEsc(int argCount)
 
 void newRow()
 {
-
 	currentConsole->cursorY++;
-	/* if bottom border reached, scroll */
+	// if bottom border reached, scroll
 	if( currentConsole->cursorY > currentConsole->windowHeight)
 	{
-		u8* ptr = (u8*)((u32)currentConsole->destbuffer + __console_get_offset()) \
-			+ (currentConsole->windowX - 1) * FONT_XSIZE * VI_DISPLAY_PIX_SZ \
-			+ ((currentConsole->windowY - 1 ) * currentConsole->con_stride * FONT_YSIZE);
+		u8* ptr = __console_get_window_start_ptr();
 
-		for(u32 ycnt = 0; ycnt < ((currentConsole->windowHeight -1) * FONT_YSIZE); ycnt++)
+		// Each window line is currentConsole->windowWidth * FONT_XSIZE * VI_DISPLAY_PIX_SZ bytes wide
+		const u32 line_width = currentConsole->windowWidth * FONT_XSIZE * VI_DISPLAY_PIX_SZ;
+		
+		// scrolling copies all rows except the very first one (that gets overwritten)
+		const u32 scroll_height = (currentConsole->windowHeight - 1) * FONT_YSIZE;
+		// skip 1 tile row's worth of bytes
+		const u32 row_bytes = currentConsole->con_stride * FONT_YSIZE;
+
+		for(u32 ycnt = 0; ycnt < scroll_height; ycnt++)
 		{
-			memmove(ptr, ptr + currentConsole->con_stride * FONT_YSIZE, currentConsole->windowWidth * FONT_XSIZE * VI_DISPLAY_PIX_SZ);
-			ptr+= currentConsole->con_stride;
+			memmove(ptr, ptr + row_bytes, line_width);
+			ptr += currentConsole->con_stride;
 		}
 
-		//clear last line
-		__console_clear_line(currentConsole->windowHeight, 1, currentConsole->windowWidth);
+		// clear last line
+		__console_clear_line(currentConsole->windowHeight, 1, currentConsole->windowWidth + 1);
 		currentConsole->cursorY = currentConsole->windowHeight;
 	}
 }
@@ -801,20 +861,20 @@ void consolePrintChar(int c)
 			tabspaces = currentConsole->tabSize - ((currentConsole->cursorX - 1) % currentConsole->tabSize);
 			if (currentConsole->cursorX + tabspaces > currentConsole->windowWidth)
 				tabspaces = currentConsole->windowWidth - currentConsole->cursorX;
-			for(int i=0; i<tabspaces; i++) consolePrintChar(' ');
+			for(int i=0; i < tabspaces; i++) consolePrintChar(' ');
 			break;
 		case 10:
 			newRow();
 		case 13:
-			currentConsole->cursorX  = 1;
+			currentConsole->cursorX = 1;
 			break;
 		default:
-			if(currentConsole->cursorX  > currentConsole->windowWidth) {
-				currentConsole->cursorX  = 1;
+			if(currentConsole->cursorX > currentConsole->windowWidth) {
+				currentConsole->cursorX = 1;
 				newRow();
 			}
 			__console_drawc(c);
-			++currentConsole->cursorX ;
+			++currentConsole->cursorX;
 			break;
 	}
 }
@@ -910,7 +970,7 @@ ssize_t __console_write(struct _reent *r,void *fd,const char *ptr, size_t len)
 				if (!escapeSeq.hasArg && !escapeSeq.argIdx)
 					escapeSeq.args[0] = 1;
 				currentConsole->cursorY  =  currentConsole->cursorY + escapeSeq.args[0];
-				if (currentConsole->cursorY >= currentConsole->windowHeight)
+				if (currentConsole->cursorY > currentConsole->windowHeight)
 					currentConsole->cursorY = currentConsole->windowHeight;
 				escapeSeq.state = ESC_NONE;
 				break;
@@ -962,16 +1022,16 @@ ssize_t __console_write(struct _reent *r,void *fd,const char *ptr, size_t len)
 			// Save cursor position
 			//---------------------------------------
 			case 's':
-				currentConsole->prevCursorX  = currentConsole->cursorX ;
-				currentConsole->prevCursorY  = currentConsole->cursorY ;
+				currentConsole->prevCursorX = currentConsole->cursorX ;
+				currentConsole->prevCursorY = currentConsole->cursorY ;
 				escapeSeq.state = ESC_NONE;
 				break;
 			//---------------------------------------
 			// Load cursor position
 			//---------------------------------------
 			case 'u':
-				currentConsole->cursorX  = currentConsole->prevCursorX ;
-				currentConsole->cursorY  = currentConsole->prevCursorY ;
+				currentConsole->cursorX = currentConsole->prevCursorX ;
+				currentConsole->cursorY = currentConsole->prevCursorY ;
 				escapeSeq.state = ESC_NONE;
 				break;
 			//---------------------------------------
@@ -1110,27 +1170,24 @@ PrintConsole *consoleSelect(PrintConsole* console)
 
 void consoleSetFont(PrintConsole* console, ConsoleFont* font)
 {
-
 	if(!console) console = currentConsole;
 
 	console->font = *font;
-
 }
 
 void consoleSetWindow(PrintConsole* console, unsigned int x, unsigned int y, unsigned int width, unsigned int height)
 {
-
 	if(!console) console = currentConsole;
 
 	// co-ords are 1-based but accept 0
 	if (x == 0) x = 1;
 	if (y == 0) y = 1;
 
-	if ( x >= console->con_cols) return;
-	if ( y >= console->con_rows) return;
+	if (x >= console->con_cols) return;
+	if (y >= console->con_rows) return;
 
-	if ( x + width > console->con_cols + 1) width = console->con_cols + 1 - x;
-	if ( y + height > console->con_rows + 1) height = console->con_rows + 1 - y;
+	if (x + width > console->con_cols + 1) width = console->con_cols + 1 - x;
+	if (y + height > console->con_rows + 1) height = console->con_rows + 1 - y;
 
 	console->windowWidth = width;
 	console->windowHeight = height;
@@ -1139,5 +1196,4 @@ void consoleSetWindow(PrintConsole* console, unsigned int x, unsigned int y, uns
 
 	console->cursorX = 1;
 	console->cursorY = 1;
-
 }
