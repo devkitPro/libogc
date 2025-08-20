@@ -100,7 +100,7 @@ void CON_GetPosition(int *cols, int *rows);
  * \fn CON_EnableGecko(int channel, int safe)
  * \brief Enable or disable the USB gecko console.
  *
- * \param[in] channel EXI channel, or -1 �to disable the gecko console
+ * \param[in] channel EXI channel, or -1 to disable the gecko console
  * \param[in] safe If true, use safe mode (wait for peer)
  *
  * \return none
