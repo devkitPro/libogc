@@ -131,9 +131,11 @@ static resetcallback __RSWCallback = NULL;
 static void __POWDefaultHandler(void);
 static powercallback __POWCallback = NULL;
 
-static u32 __sys_resetdown = 0;
+static u8 __sys_powerstate = 0;
 static u64 __sys_powerenabletime = 0;
 #endif
+
+static u8 __sys_ismainloopdone = 0;
 
 static vu64* const _bootTime = (u64*)0x800030d8;
 static vu16* const _viReg = (u16*)0xCC002000;
@@ -219,13 +221,37 @@ void __reload(void)
 	SYS_ResetSystem(SYS_HOTRESET, 0, 0);
 }
 
+bool SYS_MainLoop(void)
+{
+	if (__sys_ismainloopdone) {
+		return false;
+	}
+
+#if defined(HW_RVL)
+	if (__sys_powerstate != 0) {
+#elif defined(HW_DOL)
+	if (SYS_ResetButtonDown()) {
+#endif
+		__sys_ismainloopdone = 1;
+		return false;
+	}
+
+	return true;
+}
+
 void __syscall_exit(int status)
 {
-	if (__stub_found()) {
+	if (!__sys_ismainloopdone && __stub_found()) {
 		SYS_ResetSystem(SYS_SHUTDOWN, 0, 0);
 		reload();
 	} else {
-		SYS_ResetSystem(SYS_HOTRESET, 0, 0);
+		s32 reset = SYS_HOTRESET;
+#if defined(HW_RVL)
+		if (__sys_powerstate == 2) {
+			reset = SYS_POWEROFF;
+		}
+#endif
+		SYS_ResetSystem(reset, 0, 0);
 	}
 }
 
@@ -322,8 +348,11 @@ static void __STMEventHandler(u32 event)
 	if(event==STM_EVENT_RESET) {
 		ret = SYS_ResetButtonDown();
 		if(ret) {
+			if (!__sys_powerstate) {
+				__sys_powerstate = 1;
+			}
+
 			_CPU_ISR_Disable(level);
-			__sys_resetdown = 1;
 			if(__RSWCallback) {
 				__RSWCallback(IRQ_PI_RSW, NULL);
 			}
@@ -332,6 +361,10 @@ static void __STMEventHandler(u32 event)
 	}
 
 	if(event==STM_EVENT_POWER) {
+		if (!__sys_powerstate) {
+			__sys_powerstate = 2;
+		}
+
 		_CPU_ISR_Disable(level);
 		SYS_DoPowerCB();
 		_CPU_ISR_Restore(level);
@@ -906,7 +939,6 @@ void __SYS_InitCallbacks(void)
 {
 #if defined(HW_RVL)
 	__POWCallback = __POWDefaultHandler;
-	__sys_resetdown = 0;
 #endif
 	__RSWCallback = __RSWDefaultHandler;
 }

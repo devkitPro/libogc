@@ -268,6 +268,29 @@ void SYS_Init(void);
 
 
 /*!
+ * \fn bool SYS_MainLoop(void)
+ * \brief Performs default processing of reset and power button events.
+ *
+ * This function checks the state of the reset (and on Wii, power) buttons. If either button is pressed
+ * this function returns false, indicating that the application should quit. Call this function in your
+ * main loop like this:
+ *
+ * @code
+ * while (SYS_MainLoop()) {
+ *   VIDEO_WaitVSync();
+ *   // processing etc ...
+ * }
+ * @endcode
+ *
+ * If this function returns false, returning from main() or calling exit() ignores the reload stub, and
+ * libogc will automatically reset or power off the console.
+ *
+ * \return Returns true if the application should continue running, false if it should clean up and exit.
+ */
+bool SYS_MainLoop(void);
+
+
+/*!
  * \fn void* SYS_AllocateFramebuffer(GXRModeObj *rmode)
  * \brief Allocate cacheline aligned memory for the external framebuffer based on the rendermode object.
  * \param[in] rmode pointer to the video/render mode configuration
