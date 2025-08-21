@@ -80,7 +80,7 @@ s32 CON_InitEx(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidth,s32
  * \fn CON_GetMetrics(int *cols, int *rows)
  * \brief retrieve the columns and rows of the current console
  *
- * \param[out] cols,rows number of columns and rows of the current console, in tiles, 1-indexed.
+ * \param[out] cols,rows number of columns and rows of the current console, in tiles
  *
  * \return none
  */
@@ -90,7 +90,7 @@ void CON_GetMetrics(int *cols, int *rows);
  * \fn CON_GetPosition(int *col, int *row)
  * \brief retrieve the current cursor position of the current console
  *
- * \param[out] col,row current cursor position, in tiles, 1-indexed.
+ * \param[out] col,row current cursor position, in tiles, 1-indexed
  *
  * \return none
  */
@@ -198,10 +198,10 @@ void consoleSetFont(PrintConsole* console, ConsoleFont* font);
 /**
  * @brief Sets the print window.
  * @param console Console to set, if NULL it will set the current console window.
- * @param x X location of the window, in tiles, 1-indexed.
- * @param y Y location of the window, in tiles, 1-indexed.
- * @param width Width of the window, in tiles, 1-indexed.
- * @param height Height of the window, in tiles, 1-indexed.
+ * @param x X location of the window, in tiles, 1-indexed
+ * @param y Y location of the window, in tiles, 1-indexed
+ * @param width Width of the window, in tiles
+ * @param height Height of the window, in tiles
  */
 void consoleSetWindow(PrintConsole* console, unsigned int x, unsigned int y, unsigned int width, unsigned int height);
 
