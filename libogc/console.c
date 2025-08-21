@@ -247,8 +247,10 @@ static void __console_drawc(int c)
 	ptr = __console_get_cursor_start_ptr();
 
 	pbits = &con->font.gfx[c * FONT_YSIZE];
-	// con_stride is in bytes, but we increment ptr which isn't a byte pointer
-	// and the work in the loop already increments ptr 4 times before needing to go to the next row
+	// con_stride is in bytes, but we increment ptr which is an int pointer
+	// -> we have to divide to not skip over rows we want to write to
+	// the work in the loop already writes 4 ints before going to the next row
+	// -> subtract that 4 here, so nextline can be directly added to ptr later
 	nextline = con->con_stride/sizeof(*ptr) - 4;
 
 	fgcolor = currentConsole->fg;
