@@ -2,16 +2,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <gccore.h>
+#include <tuxedo/thread.h>
 
-#include "lwp_threads.h"
 #include "debug_supp.h"
 
-extern lwp_objinfo _lwp_cond_objects;
-extern lwp_objinfo _lwp_thr_objects;
-extern lwp_objinfo _lwp_tqueue_objects;
-extern lwp_objinfo _lwp_mqbox_objects;
-extern lwp_objinfo _lwp_mutex_objects;
-extern lwp_objinfo _lwp_sema_objects;
+extern KThread* s_firstThread;
 
 extern const u8 hexchars[];
 
@@ -218,67 +213,26 @@ const char* vhstr2thread(const char *buf,s32 *thread)
 	return buf;
 }
 
-s32 gdbstub_idtoindex(s32 objid)
+KThread* gdbstub_indextoid(s32 thread)
 {
-	s32 min_id,max_id;
-	s32 first_id;
+	if (thread <= 0) return NULL;
 
-	if(_thr_executing==_thr_idle) return 1;
-
-	first_id = 1;
-	min_id = _lwp_thr_objects.min_id;
-	max_id = _lwp_thr_objects.max_id;
-	if(objid>=min_id && objid<max_id) return first_id + (objid - min_id);
-
-	return 1;
-}
-
-lwp_cntrl* gdbstub_indextoid(s32 thread)
-{
-	s32 min_id,max_id,first_id;
-	lwp_cntrl *th;
-
-	if(thread<=0) return NULL;
-
-	if(thread==1) return _thr_idle;
-
-	first_id = 1;
-	min_id = _lwp_thr_objects.min_id;
-	max_id = _lwp_thr_objects.max_id;
-	if(thread<(first_id + (max_id - min_id))) {
-		th = (lwp_cntrl*)_lwp_thr_objects.local_table[thread - first_id];
-		return th;
-	}
-	return NULL;
+	return (KThread*)MEM_PHYSICAL_TO_K0(thread);
 }
 
 s32 gdbstub_getcurrentthread(void)
 {
-	return gdbstub_idtoindex(_thr_executing->object.id);
+	return MEM_VIRTUAL_TO_PHYSICAL(KThreadGetSelf());
 }
 
 s32 gdbstub_getnextthread(s32 athread)
 {
-	s32 id,start;
-	s32 first_id,min_id,max_id,lim;
-
-	if(athread<1) return 1;
-
-	first_id = 1;
-	min_id = _lwp_thr_objects.min_id;
-	max_id = _lwp_thr_objects.max_id;
-	lim = first_id + max_id - min_id;
-	if(athread<lim) {
-		if(athread<first_id) 
-			start = first_id;
-		else 
-			start = athread+1;
-		
-		for(id=start;id<lim;id++)
-			if(_lwp_thr_objects.local_table[id - first_id]!=NULL) return id;
+	if (athread <= 0) {
+		return MEM_VIRTUAL_TO_PHYSICAL(s_firstThread);
 	}
 
-	return 0;
+	KThread* t = (KThread*)MEM_PHYSICAL_TO_K0(athread);
+	return t->next ? MEM_VIRTUAL_TO_PHYSICAL(t->next) : 0;
 }
 
 s32 gdbstub_getoffsets(char **textaddr,char **dataaddr,char **bssaddr)
@@ -292,48 +246,33 @@ s32 gdbstub_getoffsets(char **textaddr,char **dataaddr,char **bssaddr)
 
 s32 gdbstub_getthreadinfo(s32 thread,struct gdbstub_threadinfo *info)
 {
-	s32 first_id,min_id,max_id;
-	lwp_cntrl *th;
+	KThread *th;
 	char tmp_buf[20];
 
 	if(thread<=0) return 0;
 
-	if(thread==1) {
-		strcpy(info->display,"idle thread");
-		strcpy(info->name,"IDLE");
-		info->more_display[0] = 0;
-		return 1;
-	}
+	th = (KThread*)MEM_PHYSICAL_TO_K0(thread);
 
-	first_id = 1;
-	min_id = _lwp_thr_objects.min_id;
-	max_id = _lwp_thr_objects.max_id;
-	if(thread<=(first_id + (max_id - min_id))){
-		th = (lwp_cntrl*)_lwp_thr_objects.local_table[thread - first_id];
-		if(th==NULL) return 0;
+	strcpy(info->display,"libogc task:   control at: 0x");
+	tmp_buf[0] = hexchars[(((int)th)>>28)&0x0f];
+	tmp_buf[1] = hexchars[(((int)th)>>24)&0x0f];
+	tmp_buf[2] = hexchars[(((int)th)>>20)&0x0f];
+	tmp_buf[3] = hexchars[(((int)th)>>16)&0x0f];
+	tmp_buf[4] = hexchars[(((int)th)>>12)&0x0f];
+	tmp_buf[5] = hexchars[(((int)th)>>8)&0x0f];
+	tmp_buf[6] = hexchars[(((int)th)>>4)&0x0f];
+	tmp_buf[7] = hexchars[((int)th)&0x0f];
+	tmp_buf[8] = 0;
+	strcat(info->display,tmp_buf);
 
-		strcpy(info->display,"libogc task:   control at: 0x");
-		tmp_buf[0] = hexchars[(((int)th)>>28)&0x0f];
-		tmp_buf[1] = hexchars[(((int)th)>>24)&0x0f];
-		tmp_buf[2] = hexchars[(((int)th)>>20)&0x0f];
-		tmp_buf[3] = hexchars[(((int)th)>>16)&0x0f];
-		tmp_buf[4] = hexchars[(((int)th)>>12)&0x0f];
-		tmp_buf[5] = hexchars[(((int)th)>>8)&0x0f];
-		tmp_buf[6] = hexchars[(((int)th)>>4)&0x0f];
-		tmp_buf[7] = hexchars[((int)th)&0x0f];
-		tmp_buf[8] = 0;
-		strcat(info->display,tmp_buf);
+	info->name[0] = 0;
+	info->name[1] = 0;
+	info->name[2] = 0;
+	info->name[3] = 0;
+	info->name[4] = 0;
 
-		info->name[0] = 0;
-		info->name[1] = 0;
-		info->name[2] = 0;
-		info->name[3] = 0;
-		info->name[4] = 0;
-
-		info->more_display[0] = 0;
-		return 1;
-	}
-	return 0;
+	info->more_display[0] = 0;
+	return 1;
 }
 
 s32 parsezbreak(const char *in,s32 *type,char **addr,u32 *len)

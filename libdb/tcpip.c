@@ -4,6 +4,7 @@
 
 #include "asm.h"
 #include "processor.h"
+#include "ogc/lwp_watchdog.h"
 
 #include "uIP/bba.h"
 #include "uIP/memr.h"
@@ -48,9 +49,6 @@ static s32 listensock = -1;
 static struct uip_netif netif;
 static struct dbginterface netif_device;
 static struct tcpip_sock *tcpip_accepted_sockets = NULL;
-
-extern s64 gettime(void);
-extern u32 diff_msec(s64 start,s64 end);
 
 static s32_t tcpip_allocsocket(struct uip_tcp_pcb *pcb)
 {

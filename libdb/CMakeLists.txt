@@ -12,7 +12,6 @@ add_library(db STATIC
 	uIP/bba.c
 	tcpip.c
 	debug.c
-	debug_handler.S
 	debug_supp.c
 	geckousb.c
 )

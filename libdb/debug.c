@@ -3,16 +3,16 @@
 #include <stdio.h>
 #include <errno.h>
 #include <signal.h>
+
+#include <tuxedo/ppc/exception.h>
+#include <tuxedo/ppc/context.h>
+
 #include "asm.h"
 #include "processor.h"
 #include "lwp.h"
-#include "lwp_threads.h"
-#include "context.h"
 #include "cache.h"
 #include "video.h"
 #include "ogcsys.h"
-
-#include "lwp_threads.inl"
 
 #include "tcpip.h"
 #include "geckousb.h"
@@ -49,23 +49,21 @@ static char remcomOutBuffer[BUFMAX];
 
 const char hexchars[]="0123456789abcdef";
 
-static struct hard_trap_info {
-	u32 tt;
+const static struct hard_trap_info {
+	u8 tt;
 	u8 signo;
 } hard_trap_info[] = {
-	{EX_MACH_CHECK,SIGSEGV},/* Machine Check */
-	{EX_DSI,SIGSEGV},		/* Adress Error(store) DSI */
-	{EX_ISI,SIGBUS},		/* Instruction Bus Error ISI */
-	{EX_INT,SIGINT},		/* Interrupt */
-	{EX_ALIGN,SIGBUS},		/* Alignment */
-	{EX_PRG,SIGTRAP},		/* Breakpoint Trap */
-	{EX_FP,SIGFPE},			/* FPU unavail */
-	{EX_DEC,SIGALRM},		/* Decrementer */
-	{EX_SYS_CALL,SIGSYS},	/* System Call */			
-	{EX_TRACE,SIGTRAP},		/* Singel-Step/Watch */
-	{0xB,SIGILL},			/* Reserved */
-	{EX_IABR,SIGTRAP},		/* Instruction Address Breakpoint (GEKKO) */
-	{0xD,SIGFPE},			/* FP assist */			
+	{PPC_EXCPT_MCHK,SIGSEGV},/* Machine Check */
+	{PPC_EXCPT_DSI,SIGSEGV},		/* Adress Error(store) DSI */
+	{PPC_EXCPT_ISI,SIGBUS},		/* Instruction Bus Error ISI */
+	{PPC_EXCPT_IRQ,SIGINT},		/* Interrupt */
+	{PPC_EXCPT_ALIGN,SIGBUS},		/* Alignment */
+	{PPC_EXCPT_UNDEF,SIGTRAP},		/* Breakpoint Trap */
+	{PPC_EXCPT_FPU,SIGFPE},			/* FPU unavail */
+	{PPC_EXCPT_DECR,SIGALRM},		/* Decrementer */
+	{PPC_EXCPT_SYSCALL,SIGSYS},	/* System Call */
+	{PPC_EXCPT_TRACE,SIGTRAP},		/* Singel-Step/Watch */
+	{PPC_EXCPT_BKPT,SIGTRAP},		/* Instruction Address Breakpoint (GEKKO) */
 	{0,0}					/* MUST be the last */
 };
 
@@ -76,24 +74,13 @@ static struct bp_entry {
 } bp_entries[GEKKO_MAX_BP];
 
 static struct bp_entry *p_bpentries = NULL;
-static frame_context current_thread_registers;
 
 void __breakinst(void);
-void c_debug_handler(frame_context *ctx);
-
-extern void dbg_exceptionhandler(frame_context*);
-extern void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
-
-extern void __clr_iabr(void);
-extern void __enable_iabr(void);
-extern void __disable_iabr(void);
-extern void __set_iabr(void *);
+static void c_debug_handler(unsigned exid, PPCContext *ctx);
 
 extern const char *tcp_localip;
 extern const char *tcp_netmask;
 extern const char *tcp_gateway;
-extern u8 __text_start[],__data_start[],__bss_start[];
-extern u8 __text_fstart[],__data_fstart[],__bss_fstart[];
 
 static __inline__ void bp_init(void)
 {
@@ -137,9 +124,9 @@ static s32 hexToInt(char **ptr, s32 *ival)
 	return cnt;
 }
 
-static s32 computeSignal(s32 excpt)
+static s32 computeSignal(unsigned excpt)
 {
-	struct hard_trap_info *ht;
+	const struct hard_trap_info *ht;
 	for(ht = hard_trap_info;ht->tt && ht->signo;ht++) {
 		if(ht->tt==excpt) return ht->signo;
 	}
@@ -384,50 +371,25 @@ static void process_query(const char *inp,char *outp,s32 thread)
 	}
 }
 
-static s32 gdbstub_setthreadregs(s32 thread,frame_context *frame)
-{
-	return 1;
-}
-
-static s32 gdbstub_getthreadregs(s32 thread,frame_context *frame)
-{
-	lwp_cntrl *th;
-
-	th = gdbstub_indextoid(thread);
-	if(th) {
-		memcpy(frame->GPR,th->context.GPR,(32*4));
-		memcpy(frame->FPR,th->context.FPR,(32*8));
-		frame->SRR0 = th->context.LR;
-		frame->SRR1 = th->context.MSR;
-		frame->CR = th->context.CR;
-		frame->LR = th->context.LR;
-		frame->CTR = th->context.CTR;
-		frame->XER = th->context.XER;
-		frame->FPSCR = th->context.FPSCR;
-		return 1;
-	}
-	return 0;
-}
-
-static void gdbstub_report_exception(frame_context *frame,s32 thread)
+static void gdbstub_report_exception(unsigned exid, PPCContext *frame,s32 thread)
 {
 	s32 sigval;
 	char *ptr;
 
 	ptr = remcomOutBuffer;
-	sigval = computeSignal(frame->EXCPT_Number);
+	sigval = computeSignal(exid);
 	*ptr++ = 'T';
 	*ptr++ = highhex(sigval);
 	*ptr++ = lowhex(sigval);
 	*ptr++ = highhex(SP_REGNUM);
 	*ptr++ = lowhex(SP_REGNUM);
 	*ptr++ = ':';
-	ptr = mem2hstr(ptr,(char*)&frame->GPR[1],4);
+	ptr = mem2hstr(ptr,(char*)&frame->gpr[1],4);
 	*ptr++ = ';';
 	*ptr++ = highhex(PC_REGNUM);
 	*ptr++ = lowhex(PC_REGNUM);
 	*ptr++ = ':';
-	ptr = mem2hstr(ptr,(char*)&frame->SRR0,4);
+	ptr = mem2hstr(ptr,(char*)&frame->pc,4);
 	*ptr++ = ';';
 
 	*ptr++ = 't';
@@ -445,13 +407,13 @@ static void gdbstub_report_exception(frame_context *frame,s32 thread)
 }
 
 
-void c_debug_handler(frame_context *frame)
+void c_debug_handler(unsigned exid, PPCContext *frame)
 {
 	char *ptr;
 	s32 addr,len;
 	s32 thread,current_thread;
 	s32 host_has_detached;
-	frame_context *regptr;
+	PPCContext *regptr, *thrctx;
 
 	thread = gdbstub_getcurrentthread();
 	current_thread = thread;
@@ -459,11 +421,11 @@ void c_debug_handler(frame_context *frame)
 	if(current_device->open(current_device)<0) return;
 
 	if(dbg_active) {
-		gdbstub_report_exception(frame,thread);
+		gdbstub_report_exception(exid,frame,thread);
 		putpacket(remcomOutBuffer);
 	}
 
-	if(frame->SRR0==(u32)__breakinst) frame->SRR0 += 4;
+	if(frame->pc==(u32)__breakinst) frame->pc += 4;
 
 	host_has_detached = 0;
 	while(!host_has_detached) {
@@ -471,36 +433,37 @@ void c_debug_handler(frame_context *frame)
 		getpacket(remcomInBuffer);
 		switch(remcomInBuffer[0]) {
 			case '?':
-				gdbstub_report_exception(frame,thread);
+				gdbstub_report_exception(exid,frame,thread);
 				break;
 			case 'D':
 				dbg_instep = 0;
 				dbg_active = 0;
-				frame->SRR1 &= ~MSR_SE;
+				frame->msr &= ~MSR_SE;
 				strcpy(remcomOutBuffer,"OK");
 				host_has_detached = 1;
 				break;
 			case 'k':
 				dbg_instep = 0;
 				dbg_active = 0;
-				frame->SRR1 &= ~MSR_SE;
-				frame->SRR0 = 0x80001800;
+				frame->msr &= ~MSR_SE;
+				frame->pc = 0x80001800;
 				host_has_detached = 1;
 				goto exit;
 			case 'g':
+				thrctx = &gdbstub_indextoid(current_thread)->ctx;
 				regptr = frame;
 				ptr = remcomOutBuffer;
-				if(current_thread!=thread) regptr = &current_thread_registers;
+				if(current_thread!=thread) regptr = thrctx;
 
-				ptr = mem2hstr(ptr,(char*)regptr->GPR,32*4);
-				ptr = mem2hstr(ptr,(char*)regptr->FPR,32*8);
-				ptr = mem2hstr(ptr,(char*)&regptr->SRR0,4);
-				ptr = mem2hstr(ptr,(char*)&regptr->SRR1,4);
-				ptr = mem2hstr(ptr,(char*)&regptr->CR,4);
-				ptr = mem2hstr(ptr,(char*)&regptr->LR,4);
-				ptr = mem2hstr(ptr,(char*)&regptr->CTR,4);
-				ptr = mem2hstr(ptr,(char*)&regptr->XER,4);
-				ptr = mem2hstr(ptr,(char*)&regptr->FPSCR,4);
+				ptr = mem2hstr(ptr,(char*)regptr->gpr,32*4);
+				ptr = mem2hstr(ptr,(char*)thrctx->fpr,32*8);
+				ptr = mem2hstr(ptr,(char*)&regptr->pc,4);
+				ptr = mem2hstr(ptr,(char*)&regptr->msr,4);
+				ptr = mem2hstr(ptr,(char*)&regptr->cr,4);
+				ptr = mem2hstr(ptr,(char*)&regptr->lr,4);
+				ptr = mem2hstr(ptr,(char*)&regptr->ctr,4);
+				ptr = mem2hstr(ptr,(char*)&regptr->xer,4);
+				ptr = mem2hstr(ptr,(char*)&thrctx->fpscr,4);
 				break;
 			case 'm':
 				ptr = &remcomInBuffer[1];
@@ -517,13 +480,13 @@ void c_debug_handler(frame_context *frame)
 			case 'c':
 				dbg_instep = 0;
 				dbg_active = 1;
-				frame->SRR1 &= ~MSR_SE;
+				frame->msr &= ~MSR_SE;
 				current_device->wait(current_device);
 				goto exit;
 			case 's':
 				dbg_instep = 1;
 				dbg_active = 1;
-				frame->SRR1 |= MSR_SE; 
+				frame->msr |= MSR_SE;
 				current_device->wait(current_device);
 				goto exit;
 			case 'z':
@@ -555,26 +518,14 @@ void c_debug_handler(frame_context *frame)
 			case 'H':
 				if(remcomInBuffer[1]=='g')
 				{
-					s32 tmp,ret;
+					s32 tmp;
 
 					if(vhstr2thread(&remcomInBuffer[2],&tmp)==NULL) {
 						strcpy(remcomOutBuffer,"E01");
 						break;
 					}
 					if(!tmp) tmp = thread;
-					if(tmp==current_thread) {
-						strcpy(remcomOutBuffer,"OK");
-						break;
-					}
 
-					if(current_thread!=thread) ret = gdbstub_setthreadregs(current_thread,&current_thread_registers);
-					if(tmp!=thread) {
-						ret = gdbstub_getthreadregs(tmp,&current_thread_registers);
-						if(!ret) {
-							strcpy(remcomOutBuffer,"E02");
-							break;
-						}
-					}
 					current_thread= tmp;
 				}
 				strcpy(remcomOutBuffer,"OK");
@@ -624,7 +575,12 @@ void c_debug_handler(frame_context *frame)
 	}
 	current_device->close(current_device);
 exit:
-	return;
+
+	// Ensure FPU access is relinquished for non-exception contexts
+	if (frame->msr & MSR_RI) {
+		frame->msr &= ~MSR_FP;
+	}
+
 }
 
 void _break(void)
@@ -636,12 +592,9 @@ void _break(void)
 
 void DEBUG_Init(s32 device_type,s32 channel_port)
 {
-	u32 level;
 	struct uip_ip_addr localip,netmask,gateway;
 
 	UIP_LOG("DEBUG_Init()\n");
-
-	__lwp_thread_dispatchdisable();
 
 	bp_init();
 
@@ -656,16 +609,10 @@ void DEBUG_Init(s32 device_type,s32 channel_port)
 	}
 
 	if(current_device!=NULL) {
-		_CPU_ISR_Disable(level);
-		__exception_sethandler(EX_DSI,dbg_exceptionhandler);
-		__exception_sethandler(EX_PRG,dbg_exceptionhandler);
-		__exception_sethandler(EX_TRACE,dbg_exceptionhandler);
-		__exception_sethandler(EX_IABR,dbg_exceptionhandler);
-		_CPU_ISR_Restore(level);
+		PPCExcptCurPanicFn = c_debug_handler;
 
 		dbg_initialized = 1;
-		
+
 	}
-	__lwp_thread_dispatchenable();
 }
 
