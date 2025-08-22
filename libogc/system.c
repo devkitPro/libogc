@@ -38,6 +38,7 @@ distribution.
 #include <time.h>
 #include <sys/iosupport.h>
 
+#include <tuxedo/ppc/exception.h>
 #include <tuxedo/thread.h>
 #include <tuxedo/sync.h>
 #include <tuxedo/tick.h>
@@ -211,14 +212,23 @@ static bool __stub_found(void)
 	return false;
 }
 
+#if defined(HW_DOL)
+static void __dohotreset(u32 resetcode);
+#endif
+
 void __reload(void)
 {
+	__irq_shutdown();
+
 	if (__stub_found()) {
-		__irq_shutdown();
 		reload();
 	}
 
+#if defined(HW_DOL)
+	__dohotreset(0);
+#elif defined(HW_RVL)
 	SYS_ResetSystem(SYS_HOTRESET, 0, 0);
+#endif
 }
 
 bool SYS_MainLoop(void)
@@ -948,9 +958,17 @@ void __attribute__((weak)) __SYS_PreInit(void)
 
 }
 
+void __libogc_panic(unsigned exid, PPCContext* pCtx);
+
+void __attribute__((weak)) __SYS_InstallPanicHandler(void)
+{
+	PPCExcptCurPanicFn = __libogc_panic;
+}
+
 void SYS_Init(void)
 {
 	__SYS_PreInit();
+	__SYS_InstallPanicHandler();
 
 	if(system_initialized) return;
 	system_initialized = 1;

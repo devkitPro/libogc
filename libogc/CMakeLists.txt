@@ -60,6 +60,7 @@ add_library(ogc STATIC
 	wiilaunch.c
 	wd.c
 	sys_report.c
+	default_panic.c
 )
 
 target_link_libraries(ogc PRIVATE libogc_inc tuxedo)
