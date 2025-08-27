@@ -213,7 +213,7 @@ static void waitForReload(void)
 	while ( 1 )
 	{
 		if(reload_timer > 0) {
-			kprintf("\r\tReloading in %d seconds ", reload_timer/50);
+			kprintf("\x1b[2K\tReloading in %d seconds", reload_timer/50);
 		}
 		PAD_ScanPads();
 
