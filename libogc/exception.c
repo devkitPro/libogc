@@ -201,20 +201,21 @@ void __exception_setreload(int t)
 static void waitForReload(void)
 {
 	u32 level;
-
-	PAD_Init();
 	
-	if(reload_timer > 0)
-		kprintf("\n\tReloading in %d seconds\n", reload_timer/50);
+	PAD_Init();
+
+	kprintf("\n\n\tPress RESET (or Z on your GameCube Controller) to reload\n\n");
 
 	while ( 1 )
 	{
+		if(reload_timer > 0) {
+			kprintf("\x1b[2K\r\tReloading in %d seconds", reload_timer/50);
+		}
 		PAD_ScanPads();
 
 		int buttonsDown = PAD_ButtonsDown(0);
 
-		if( (buttonsDown & PAD_TRIGGER_Z) || SYS_ResetButtonDown() || 
-			reload_timer == 0 )
+		if( (buttonsDown & PAD_TRIGGER_Z) || SYS_ResetButtonDown() || reload_timer == 0 )
 		{
 			kprintf("\n\tReload\n\n\n");
 			_CPU_ISR_Disable(level);
