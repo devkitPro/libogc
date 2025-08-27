@@ -61,7 +61,7 @@ typedef struct _framerec {
 } frame_rec, *frame_rec_t;
 
 static void *exception_xfb = (void*)0xC1700000;			//we use a static address above ArenaHi.
-static int reload_timer = -1;
+static int reload_timer = 1000;
 
 void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
 
@@ -201,14 +201,18 @@ void __exception_setreload(int t)
 static void waitForReload(void)
 {
 	u32 level;
-
+	
 	PAD_Init();
 	
-	if(reload_timer > 0)
-		kprintf("\n\tReloading in %d seconds\n", reload_timer/50);
+	if(reload_timer > 0) {
+		kprintf("\n\n\tPress RESET (or Z on your GameCube Controller) to skip\n\n\tReloading in %d seconds", reload_timer/50);
+	}
 
 	while ( 1 )
 	{
+		if(reload_timer > 0) {
+			kprintf("\r\tReloading in %d seconds ", reload_timer/50);
+		}
 		PAD_ScanPads();
 
 		int buttonsDown = PAD_ButtonsDown(0);
@@ -216,7 +220,7 @@ static void waitForReload(void)
 		if( (buttonsDown & PAD_TRIGGER_Z) || SYS_ResetButtonDown() || 
 			reload_timer == 0 )
 		{
-			kprintf("\n\tReload\n\n\n");
+			kprintf("\n\n\tReload\n\n\n");
 			_CPU_ISR_Disable(level);
 			__reload ();
 		}
