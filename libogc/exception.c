@@ -204,7 +204,7 @@ static void waitForReload(void)
 	
 	PAD_Init();
 
-	kprintf("\n\n\tPress RESET (or Z on your GameCube Controller) to reload\n\n");
+	kprintf("\n\n\tPress RESET, or Z on a GameCube Controller, to reload\n\n");
 
 	while ( 1 )
 	{
