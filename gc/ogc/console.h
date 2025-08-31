@@ -55,9 +55,9 @@
  * \brief Initializes the console subsystem with given parameters
  *
  * \param[in] framebuffer pointer to the framebuffer used for drawing the characters
- * \param[in] xstart,ystart start position of the console output, in pixels
- * \param[in] xres,yres size of the console, in pixels
- * \param[in] stride size of one line of the framebuffer, in bytes
+ * \param[in] xstart,ystart start position of the console output in pixels
+ * \param[in] xres,yres size of the console in pixels
+ * \param[in] stride size of one line of the framebuffer in bytes
  *
  * \return none
  */
@@ -69,8 +69,8 @@ void CON_Init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stri
  * \param[in] rmode pointer to the video/render mode configuration
  * \param[in] conXOrigin starting pixel in X direction of the console output on the external framebuffer
  * \param[in] conYOrigin starting pixel in Y direction of the console output on the external framebuffer
- * \param[in] conWidth width of the console output 'window' to be drawn, in pixels
- * \param[in] conHeight height of the console output 'window' to be drawn, in pixels
+ * \param[in] conWidth width of the console output 'window' to be drawn in pixels
+ * \param[in] conHeight height of the console output 'window' to be drawn in pixels
  *
  * \return 0 on success, <0 on error
  */
@@ -80,7 +80,7 @@ s32 CON_InitEx(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidth,s32
  * \fn CON_GetMetrics(int *cols, int *rows)
  * \brief retrieve the columns and rows of the current console
  *
- * \param[out] cols,rows number of columns and rows of the current console, in tiles
+ * \param[out] cols,rows number of columns and rows of the current console in tiles
  *
  * \return none
  */
@@ -90,7 +90,7 @@ void CON_GetMetrics(int *cols, int *rows);
  * \fn CON_GetPosition(int *col, int *row)
  * \brief retrieve the current cursor position of the current console
  *
- * \param[out] col,row current cursor position, in tiles, 1-indexed
+ * \param[out] col,row current cursor position in tiles, 1-indexed
  *
  * \return none
  */
@@ -163,8 +163,8 @@ typedef struct PrintConsole
 	int prevCursorX;         ///< Internal state
 	int prevCursorY;         ///< Internal state
 
-	int con_cols;            ///< Width of the console hardware layer in characters (amount of tiles)
-	int con_rows;            ///< Height of the console hardware layer in characters (amount of tiles)
+	int con_cols;            ///< Width of the console hardware layer in characters (aka tiles)
+	int con_rows;            ///< Height of the console hardware layer in characters (aka tiles)
 
 	int windowX;             ///< Window X location in tiles, 1-indexed, 1 <= windowX < con_cols
 	int windowY;             ///< Window Y location in tiles, 1-indexed
