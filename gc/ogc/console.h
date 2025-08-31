@@ -152,24 +152,24 @@ typedef struct PrintConsole
 	ConsoleFont font;        ///< Font of the console
 
 	void *destbuffer;        ///< Framebuffer address
-	int con_xres, con_yres;  ///< Console buffer width/height, in pixels
-	int con_stride;          ///< Size of one row in the console buffer, in bytes
-	int target_x, target_y;  ///< Target buffer x/y offset to start the console, in pixels
-	int tgt_stride;          ///< Size of one row in the target buffer, in bytes
+	int con_xres, con_yres;  ///< Console buffer width/height in pixels
+	int con_stride;          ///< Size of one row in the console buffer in bytes
+	int target_x, target_y;  ///< Target buffer x/y offset to start the console in pixels
+	int tgt_stride;          ///< Size of one row in the target buffer in bytes
 
-	int cursorX;             ///< Current X location of the cursor in the window, in tiles, 1-indexed: 1 <= cursorX <= windowWidth, cursorX > windowWidth wraps to the next line and resets to cursorX = 1
-	int cursorY;             ///< Current Y location of the cursor in the window, in tiles, 1-indexed
+	int cursorX;             ///< Current X location of the cursor in the window in tiles, 1-indexed: 1 <= cursorX <= windowWidth, cursorX > windowWidth wraps to the next line and resets to cursorX = 1
+	int cursorY;             ///< Current Y location of the cursor in the window in tiles, 1-indexed
 
 	int prevCursorX;         ///< Internal state
 	int prevCursorY;         ///< Internal state
 
-	int con_cols;            ///< Width of the console hardware layer, in characters (amount of tiles)
-	int con_rows;            ///< Height of the console hardware layer, in characters (amount of tiles)
+	int con_cols;            ///< Width of the console hardware layer in characters (amount of tiles)
+	int con_rows;            ///< Height of the console hardware layer in characters (amount of tiles)
 
-	int windowX;             ///< Window X location, in tiles, 1-indexed, 1 <= windowX < con_cols
-	int windowY;             ///< Window Y location, in tiles, 1-indexed
-	int windowWidth;         ///< Window width, in amount of tiles, 1 <= windowWidth <= con_cols
-	int windowHeight;        ///< Window height, in amount of tiles
+	int windowX;             ///< Window X location in tiles, 1-indexed, 1 <= windowX < con_cols
+	int windowY;             ///< Window Y location in tiles, 1-indexed
+	int windowWidth;         ///< Window width in tiles, 1 <= windowWidth <= con_cols
+	int windowHeight;        ///< Window height in tiles
 
 	int tabSize;             ///< Size of a tab
 	unsigned int fg;         ///< Foreground color
@@ -198,10 +198,10 @@ void consoleSetFont(PrintConsole* console, ConsoleFont* font);
 /**
  * @brief Sets the print window.
  * @param console Console to set, if NULL it will set the current console window.
- * @param x X location of the window, in tiles, 1-indexed
- * @param y Y location of the window, in tiles, 1-indexed
- * @param width Width of the window, in tiles
- * @param height Height of the window, in tiles
+ * @param x X location of the window in tiles, 1-indexed
+ * @param y Y location of the window in tiles, 1-indexed
+ * @param width Width of the window in tiles
+ * @param height Height of the window in tiles
  */
 void consoleSetWindow(PrintConsole* console, unsigned int x, unsigned int y, unsigned int width, unsigned int height);
 
