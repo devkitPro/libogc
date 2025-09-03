@@ -149,7 +149,7 @@ PrintConsole currentCopy;
 
 PrintConsole* currentConsole = &currentCopy;
 
-static void *__console_offset_by_pixels(void *ptr, s32 dy_pixels, u32 stride_bytes, s32 dx_pixels)
+static inline void *__console_offset_by_pixels(void *ptr, s32 dy_pixels, u32 stride_bytes, s32 dx_pixels)
 {
 	const s32 dy_bytes = dy_pixels * stride_bytes;
 	const s32 dx_bytes = dx_pixels * VI_DISPLAY_PIX_SZ;
@@ -158,12 +158,12 @@ static void *__console_offset_by_pixels(void *ptr, s32 dy_pixels, u32 stride_byt
 
 // cursor_y and cursor_x are 1-indexed tile offsets (to start of tile), window offsets are a type of cursor
 // window/console dimensions are a count of tiles, but 0-indexed
-static void *__console_offset_by_cursor(void *ptr, u32 cursor_y, u32 stride_bytes, u32 cursor_x)
+static inline void *__console_offset_by_cursor(void *ptr, u32 cursor_y, u32 stride_bytes, u32 cursor_x)
 {
 	return __console_offset_by_pixels(ptr, (cursor_y - 1) * FONT_YSIZE, stride_bytes, (cursor_x - 1) * FONT_XSIZE);
 }
 
-static void *__console_get_buffer_start_ptr()
+static inline void *__console_get_buffer_start_ptr()
 {
 	if(!currentConsole)
 		return NULL;
@@ -183,7 +183,7 @@ static void *__console_get_buffer_start_ptr()
 		: __console_offset_by_pixels(currentConsole->destbuffer, currentConsole->target_y, currentConsole->tgt_stride, currentConsole->target_x);
 }
 
-static void *__console_get_window_start_ptr()
+static inline void *__console_get_window_start_ptr()
 {
 	PrintConsole *con;
 	if( !(con = currentConsole) )
@@ -192,7 +192,7 @@ static void *__console_get_window_start_ptr()
 	return __console_offset_by_cursor(__console_get_buffer_start_ptr(), con->windowY, con->con_stride, con->windowX);
 }
 
-static void *__console_get_cursor_start_ptr()
+static inline void *__console_get_cursor_start_ptr()
 {
 	PrintConsole *con;
 	if( !(con = currentConsole) )
