@@ -56,7 +56,7 @@
  *
  * \param[in] framebuffer pointer to the framebuffer used for drawing the characters
  * \param[in] xstart,ystart start position of the console output in pixels
- * \param[in] xres,yres size of the console in pixels
+ * \param[in] xres,yres size of the console in pixels. Truncated to a multiple of font size if not already one
  * \param[in] stride size of one line of the framebuffer in bytes
  *
  * \return none
@@ -69,8 +69,8 @@ void CON_Init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stri
  * \param[in] rmode pointer to the video/render mode configuration
  * \param[in] conXOrigin starting pixel in X direction of the console output on the external framebuffer
  * \param[in] conYOrigin starting pixel in Y direction of the console output on the external framebuffer
- * \param[in] conWidth width of the console output 'window' to be drawn in pixels
- * \param[in] conHeight height of the console output 'window' to be drawn in pixels
+ * \param[in] conWidth width of the console output 'window' to be drawn in pixels. Truncated to a multiple of font width if not already one
+ * \param[in] conHeight height of the console output 'window' to be drawn in pixels. Truncated to a multiple of font height if not already one
  *
  * \return 0 on success, <0 on error
  */
