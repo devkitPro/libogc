@@ -47,15 +47,32 @@ distribution.
    extern "C" {
 #endif /* __cplusplus */
 
+enum {
+	STM_LEDMODE_OFF,
+	STM_LEDMODE_DIM,
+	STM_LEDMODE_BRIGHT,
+};
+
+enum {
+	STM_MAX_LED_PATTERNS = 128,
+
+	STM_LEDFLASH_USER = (1 << 0),
+	STM_LEDFLASH_NOEXEC = (1 << 1),
+};
+
 typedef void (*stmcallback)(u32 event);
 
 s32 __STM_Init(void);
 s32 __STM_Close(void);
+stmcallback STM_RegisterEventHandler(stmcallback newhandler);
+
 s32 STM_ShutdownToStandby(void);
 s32 STM_ShutdownToIdle(void);
-s32 STM_SetLedMode(u32 mode);
 s32 STM_RebootSystem(void);
-stmcallback STM_RegisterEventHandler(stmcallback newhandler);
+
+s32 STM_SetLedMode(u32 mode);
+s32 STM_StartLedFlashLoop(u8 pattern_id, u8 priority, u8 flags, const u16* patterns, u32 num_patterns);
+s32 STM_VIDimming(bool enable, u32 luma, u32 chroma);
 
 #ifdef __cplusplus
    }
