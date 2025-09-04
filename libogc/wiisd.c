@@ -58,8 +58,9 @@
 #define	SDIOHCR_SOFTWARERESET		0x2f
  
 #define SDIOHCR_HOSTCONTROL_4BIT	0x02
+#define SDIOHCR_HOSTCONTROL_HS		0x04
 
-#define	SDIO_DEFAULT_TIMEOUT		0xe
+#define	SDIO_DEFAULT_TIMEOUT		0x0e
  
 #define IOCTL_SDIO_WRITEHCREG		0x01
 #define IOCTL_SDIO_READHCREG		0x02
@@ -84,7 +85,7 @@
 #define SDIO_RESPONSE_NONE			0
 #define SDIO_RESPONSE_R1			1
 #define SDIO_RESPONSE_R1B			2
-#define SDIO_RESPOSNE_R2			3
+#define SDIO_RESPONSE_R2			3
 #define SDIO_RESPONSE_R3			4
 #define SDIO_RESPONSE_R4			5
 #define SDIO_RESPONSE_R5			6
@@ -93,6 +94,7 @@
 #define SDIO_CMD_GOIDLE				0x00
 #define	SDIO_CMD_ALL_SENDCID		0x02
 #define SDIO_CMD_SENDRCA			0x03
+#define SDIO_CMD_SWITCHFUNC			0x06
 #define SDIO_CMD_SELECT				0x07
 #define SDIO_CMD_DESELECT			0x07
 #define	SDIO_CMD_SENDIFCOND			0x08
@@ -111,12 +113,12 @@
 #define	SDIO_ACMD_SENDOPCOND		0x29
 
 #define	SDIO_STATUS_CARD_INSERTED		0x1
+#define SDIO_STATUS_CARD_LOCKED			0x4
 #define	SDIO_STATUS_CARD_INITIALIZED	0x10000
 #define SDIO_STATUS_CARD_SDHC			0x100000
 
-#define READ_BL_LEN					((u8)(__sd0_csd[5]&0x0f))
-#define WRITE_BL_LEN				((u8)(((__sd0_csd[12]&0x03)<<2)|((__sd0_csd[13]>>6)&0x03)))
-
+#define TRAN_SPEED					((u8)(__sd0_csd[8]))
+#define CCC							((u16)((__sd0_csd[9]<<4)|((__sd0_csd[10]>>4)&0x0f)))
 static u8 *rw_buffer = NULL;
 
 struct _sdiorequest
@@ -142,13 +144,11 @@ static s32 hId = -1;
  
 static s32 __sd0_fd = -1;
 static u16 __sd0_rca = 0;
-static s32 __sd0_initialized = 0;
 static s32 __sd0_sdhc = 0;
-//static u8 __sd0_csd[16];
+static u8 __sd0_csd[16];
 static u8 __sd0_cid[16];
- 
-static s32 __sdio_initialized = 0;
- 
+static u8 __sd0_functions[64] ATTRIBUTE_ALIGN(32);
+static bool __sdio_initialized = false;
 static char _sd0_fs[] ATTRIBUTE_ALIGN(32) = "/dev/sdio/slot0";
 
 static s32 __sdio_sendcommand(u32 cmd,u32 cmd_type,u32 rsp_type,u32 arg,u32 blk_cnt,u32 blk_size,void *buffer,void *reply,u32 rlen)
@@ -277,7 +277,7 @@ static s32 __sdio_waithcr(u8 reg, u8 size, u8 unset, u32 mask)
 	return -1;
 }
  
-static s32 __sdio_setbuswidth(u32 bus_width)
+static s32 __sdio_setbuswidth(bool enable, u8 reg)
 {
 	s32 ret;
 	u32 hc_reg = 0;
@@ -286,8 +286,8 @@ static s32 __sdio_setbuswidth(u32 bus_width)
 	if(ret<0) return ret;
  
 	hc_reg &= 0xff; 	
-	hc_reg &= ~SDIOHCR_HOSTCONTROL_4BIT;
-	if(bus_width==4) hc_reg |= SDIOHCR_HOSTCONTROL_4BIT;
+	hc_reg &= ~reg;
+	if(enable) hc_reg |= reg;
  
 	return __sdio_sethcr(SDIOHCR_HOSTCONTROL, 1, hc_reg);		
 }
@@ -356,26 +356,25 @@ static s32 __sd0_setbuswidth(u32 bus_width)
 	if(ret<0) return ret;
  
 	ret = __sdio_sendcommand(SDIO_ACMD_SETBUSWIDTH,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,val,0,0,NULL,NULL,0);
- 
-	return ret;		
+	if(ret<0) return ret;
+
+	return __sdio_setbuswidth(bus_width==4, SDIOHCR_HOSTCONTROL_4BIT);
 }
 
-#if 0
 static s32 __sd0_getcsd(void)
 {
 	s32 ret;
  
-	ret = __sdio_sendcommand(SDIO_CMD_SENDCSD,SDIOCMD_TYPE_AC,SDIO_RESPOSNE_R2,(__sd0_rca<<16),0,0,NULL,__sd0_csd,16);
+	ret = __sdio_sendcommand(SDIO_CMD_SENDCSD,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R2,(__sd0_rca<<16),0,0,NULL,__sd0_csd,sizeof(__sd0_csd));
  
 	return ret;
 }
-#endif
 
 static s32 __sd0_getcid(void)
 {
 	s32 ret;
  
-	ret = __sdio_sendcommand(SDIO_CMD_ALL_SENDCID,0,SDIO_RESPOSNE_R2,(__sd0_rca<<16),0,0,NULL,__sd0_cid,16);
+	ret = __sdio_sendcommand(SDIO_CMD_ALL_SENDCID,0,SDIO_RESPONSE_R2,(__sd0_rca<<16),0,0,NULL,__sd0_cid,sizeof(__sd0_cid));
  
 	return ret;
 }
@@ -386,6 +385,7 @@ static	bool __sd0_initio(void)
 	s32 ret;
 	s32 tries;
 	u32 status;
+	u32 clock = 1;
 	struct _sdioresponse resp;
 
 	__sdio_resetcard();
@@ -466,11 +466,8 @@ static	bool __sd0_initio(void)
 		__sd0_sdhc = 1;
 	else
 		__sd0_sdhc = 0;
- 
-	ret = __sdio_setbuswidth(4);
-	if(ret<0) return false;
- 
-	ret = __sdio_setclock(1);
+
+	ret = __sd0_getcsd();
 	if(ret<0) return false;
  
 	ret = __sd0_select();
@@ -478,18 +475,48 @@ static	bool __sd0_initio(void)
  
 	ret = __sd0_setblocklength(PAGE_SIZE512);
 	if(ret<0) {
-		ret = __sd0_deselect();
+		__sd0_deselect();
 		return false;
 	}
  
 	ret = __sd0_setbuswidth(4);
 	if(ret<0) {
-		ret = __sd0_deselect();
+		__sd0_deselect();
 		return false;
 	}
-	__sd0_deselect();
 
-	__sd0_initialized = 1;
+	if(CCC & (1 << 10)) {
+		ret = __sdio_sendcommand(SDIO_CMD_SWITCHFUNC, 1, SDIO_RESPONSE_R1, 0x00fffff0, 1, sizeof(__sd0_functions), __sd0_functions, NULL, 0);
+		if(ret<0) {
+			__sd0_deselect();
+			return false;
+		}
+
+		if(((u16*)__sd0_functions)[6] & (1 << 1)) {
+			ret = __sdio_sendcommand(SDIO_CMD_SWITCHFUNC, 1, SDIO_RESPONSE_R1, 0x80fffff1, 1, sizeof(__sd0_functions), __sd0_functions, NULL, 0);
+			if(ret<0) {
+				__sd0_deselect();
+				return false;
+			}
+
+			if((__sd0_functions[16] & 0xf) == 1) {
+				ret = __sdio_setbuswidth(true, SDIOHCR_HOSTCONTROL_HS);
+				if(ret<0) {
+					__sd0_deselect();
+					return false;
+				}
+				clock = 0;
+			}
+		}
+	}
+
+	ret = __sdio_setclock(clock);
+	if(ret<0) {
+		__sd0_deselect();
+		return false;
+	}
+
+	__sd0_deselect();
 	return true;
 
 	fail:
@@ -506,13 +533,13 @@ static bool sdio_Deinitialize(void)
 		IOS_Close(__sd0_fd);
  
 	__sd0_fd = -1;
-	__sdio_initialized = 0;
+	__sdio_initialized = false;
 	return true;
 }
 
 static bool sdio_Startup(void)
 {
-	if(__sdio_initialized==1) return true;
+	if(__sdio_initialized) return true;
  
 	if(hId<0) {
 		hId = iosCreateHeap(SDIO_HEAPSIZE);
@@ -533,17 +560,15 @@ static bool sdio_Startup(void)
 		sdio_Deinitialize();
 		return false;
 	}
-	__sdio_initialized = 1;
+	__sdio_initialized = true;
 	return true;
 }
  
 static bool sdio_Shutdown(void)
 {
-	if(__sd0_initialized==0) return false;
+	if(!__sdio_initialized) return false;
 
 	sdio_Deinitialize();
- 
-	__sd0_initialized = 0;
 	return true;
 }
 
@@ -554,6 +579,7 @@ static bool sdio_ReadSectors(sec_t sector, sec_t numSectors,void* buffer)
 	sec_t blk_off;
  
 	if(buffer==NULL) return false;
+	if(!__sdio_initialized) return false;
  
 	ret = __sd0_select();
 	if(ret<0) return false;
@@ -592,6 +618,7 @@ static bool sdio_WriteSectors(sec_t sector, sec_t numSectors,const void* buffer)
 	u32 blk_off;
  
 	if(buffer==NULL) return false;
+	if(!__sdio_initialized) return false;
  
 	ret = __sd0_select();
 	if(ret<0) return false;
@@ -630,16 +657,11 @@ static bool sdio_ClearStatus(void)
 
 static bool sdio_IsInserted(void)
 {
+	if(!__sdio_initialized) return false;
+
 	return ((__sdio_getstatus() & SDIO_STATUS_CARD_INSERTED) ==
 			SDIO_STATUS_CARD_INSERTED);
 }
-
-/*static bool sdio_IsInitialized(void)
-{
-	return ((__sdio_getstatus() & SDIO_STATUS_CARD_INITIALIZED) ==
-			SDIO_STATUS_CARD_INITIALIZED);
-}
-*/
 
 const DISC_INTERFACE __io_wiisd = {
 	DEVICE_TYPE_WII_SD,
