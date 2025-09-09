@@ -672,6 +672,7 @@
 #define GX_TEXMAP7				7			/*!< Texture map slot 7 */
 #define GX_MAX_TEXMAP			8
 #define GX_TEXMAP_NULL			0xff			/*!< No texmap */
+#define GX_TEXMAPNULL			GX_TEXMAP_NULL
 #define GX_TEXMAP_DISABLE		0x100			/*!< Disable texmap lookup for this texmap slot (use bitwise OR with a texture map slot). */
 /*! @} */
 
