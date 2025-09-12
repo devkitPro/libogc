@@ -220,8 +220,7 @@ s32 STM_ShutdownToStandby(void)
 	return res;
 }
 
-// idea: rename this to STM_ShutdownToIdleEx and give it some bitflags
-s32 STM_ShutdownToIdle(void)
+s32 STM_ShutdownToIdleEx(u32 flags)
 {
 	int res;
 	u32 config;
@@ -241,7 +240,12 @@ s32 STM_ShutdownToIdle(void)
 			config = 0xFCE082C0;
 			break;
 	}
-	res= __STM_SendCommand(IOCTL_STM_IDLE, &config, sizeof(u32), NULL, 0);
+
+	if (flags & STM_IDLEMODE_FAN_ON) {
+		config &= ~(1 << 30);
+	}
+
+	res = __STM_SendCommand(IOCTL_STM_IDLE, &config, sizeof(u32), NULL, 0);
 	if(res<0) {
 		STM_printf("STM IDLE failed: %d\n",res);
 	}

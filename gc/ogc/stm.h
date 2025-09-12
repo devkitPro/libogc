@@ -47,7 +47,8 @@ distribution.
    extern "C" {
 #endif /* __cplusplus */
 
-enum {
+// There are also in conf.h anyways
+enum STM_LedMode {
 	STM_LEDMODE_OFF,
 	STM_LEDMODE_DIM,
 	STM_LEDMODE_BRIGHT,
@@ -58,6 +59,8 @@ enum {
 
 	STM_LEDFLASH_USER = (1 << 0),
 	STM_LEDFLASH_NOEXEC = (1 << 1),
+
+	STM_IDLEMODE_FAN_ON = (1 << 0),
 };
 
 typedef void (*stmcallback)(u32 event);
@@ -67,7 +70,8 @@ s32 __STM_Close(void);
 stmcallback STM_RegisterEventHandler(stmcallback newhandler);
 
 s32 STM_ShutdownToStandby(void);
-s32 STM_ShutdownToIdle(void);
+s32 STM_ShutdownToIdleEx(u32 flags);
+#define STM_ShutdownToIdle() STM_ShutdownToIdleEx(0)
 s32 STM_RebootSystem(void);
 
 s32 STM_SetLedMode(u32 mode);
