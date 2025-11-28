@@ -89,6 +89,17 @@ static void event_ack(struct wiimote_t *wm,ubyte *msg)
 	}
 	if(msg[3]) {
 		WIIUSE_WARNING("Command %02x %02x%02x%02x%02x failed: status %02x", cmd->data[0], cmd->data[1], cmd->data[2], cmd->data[3], cmd->data[4], msg[3]);
+		// Send a status request to reset Wiimote error state
+		// Without this, the Wiimote will stop sending any data after the error occurs
+		wiiuse_status(wm,NULL);
+
+		wm->cmd_head = cmd->next;
+
+		cmd->state = CMD_DONE;
+		if(cmd->cb) cmd->cb(wm,NULL,0);
+
+		__lwp_queue_append(&wm->cmdq,&cmd->node);
+		wiiuse_send_next_command(wm);
 		return;
 	}
 
