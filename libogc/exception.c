@@ -61,11 +61,14 @@ typedef struct _framerec {
 } frame_rec, *frame_rec_t;
 
 static void *exception_xfb = (void*)0xC1700000;			//we use a static address above ArenaHi.
+static void *lookup_xfb = NULL;
 static int reload_timer = -1;
 
 void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
 
 extern void udelay(int us);
+extern s32 CONF_GetEuRGB60(void);
+extern s32 CONF_GetProgressiveScan(void);
 extern void fpu_exceptionhandler(frame_context*);
 extern void irq_exceptionhandler(frame_context*);
 extern void dec_exceptionhandler(frame_context*);
@@ -198,40 +201,76 @@ void __exception_setreload(int t)
 	reload_timer = t*50;
 }
 
+void __exception_setlookupxfb(void *xfb) {
+	lookup_xfb = (u32 *)xfb;
+}
+
+static void __toggleframebuffer() {
+	static bool currfb = false;
+	if(currfb) {
+		currfb = false;
+		VIDEO_SetFramebuffer(exception_xfb);
+	} else {
+		currfb = true;
+		VIDEO_SetFramebuffer(lookup_xfb);
+	}
+}
+
 static void waitForReload(void)
 {
 	u32 level;
-	
+
 	PAD_Init();
 
-	kprintf("\n\n\tPress RESET, or Z on a GameCube Controller, to reload\n\n");
+	VIDEO_WaitVSync(); // For VI/PAD_Interface Timing
+
+	kprintf("\n\tRESET / A: Reset, B: Reload");
+	if (lookup_xfb) {
+		kprintf(", START: Show the previous XFB\n");
+	} else {
+		kprintf("\n");
+	}
 
 	while ( 1 )
 	{
 		if(reload_timer > 0) {
 			kprintf("\x1b[2K\r\tReloading in %d seconds", reload_timer/50);
 		}
+		
 		PAD_ScanPads();
+		
+		// Checks all controller ports because why not
+		int buttonsDown = PAD_ButtonsDown(0) | PAD_ButtonsDown(1) | PAD_ButtonsDown(2) | PAD_ButtonsDown(3);
 
-		int buttonsDown = PAD_ButtonsDown(0);
-
-		if( (buttonsDown & PAD_TRIGGER_Z) || SYS_ResetButtonDown() || reload_timer == 0 )
+		if( (buttonsDown & PAD_BUTTON_B) || reload_timer == 0 )
 		{
-			kprintf("\n\tReload\n\n\n");
+			// Clears the screen because the added text 
+			// could interfere with the ability of showing the full stack
+			consoleClear();
+			kprintf("\tReloading...");
 			_CPU_ISR_Disable(level);
 			__reload ();
 		}
 
-		if ( buttonsDown & PAD_BUTTON_A )
+		if ( (buttonsDown & PAD_BUTTON_START) && lookup_xfb ) {
+			reload_timer--;
+			__toggleframebuffer();
+			VIDEO_WaitVSync();
+		}
+
+		if ( buttonsDown & PAD_BUTTON_A || SYS_ResetButtonDown() )
 		{
-			kprintf("\n\tReset\n\n\n");
+			// Clears the screen because the added text 
+			// could interfere with the ability of showing the full stack
+			consoleClear(); 
+			kprintf("\tResetting...");
 #if defined(HW_DOL)
-			SYS_ResetSystem(SYS_HOTRESET,0,FALSE);
+			SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
 #else
 			__reload ();
 #endif
 		}
-
+		VIDEO_WaitVSync();
 		udelay(20000);
 		if(reload_timer > 0)
 			reload_timer--;
@@ -240,17 +279,26 @@ static void waitForReload(void)
 
 //just implement core for unrecoverable exceptions.
 void c_default_exceptionhandler(frame_context *pCtx)
-{
-	const u16 console_height = 680;
-	const u16 console_width = 574;
+{	
+	// Default values are for 576i
+	u16 console_height = 680;
+	u16 console_width = 574;
+	u8 Yoffset = 48;
+
+	if (CONF_GetEuRGB60() > 0 || ((CONF_GetProgressiveScan() > 0) && VIDEO_HaveComponentCable())) {
+		// Changes to 480i/p values
+		console_height = 640;
+		console_width = 480;
+		Yoffset = 32;
+	}
 
 	GX_AbortFrame();
 	VIDEO_SetFramebuffer(exception_xfb);
 	__VIClearFramebuffer(exception_xfb, console_height * console_width * VI_DISPLAY_PIX_SZ, COLOR_BLACK);
-	__console_init(exception_xfb, 20, 20, console_height-40, console_width-40, 1280);
+	__console_init(exception_xfb, 16, Yoffset, console_height-16, console_width-Yoffset, 1280);
 	CON_EnableGecko(1, true);
 
-	kprintf("\n\n\n\tException (%s) occurred!\n", exception_name[pCtx->EXCPT_Number]);
+	kprintf("\tException (%s) occurred!\n", exception_name[pCtx->EXCPT_Number]);
 
 	kprintf("\tGPR00 %08X GPR08 %08X GPR16 %08X GPR24 %08X\n",pCtx->GPR[0], pCtx->GPR[8], pCtx->GPR[16], pCtx->GPR[24]);
 	kprintf("\tGPR01 %08X GPR09 %08X GPR17 %08X GPR25 %08X\n",pCtx->GPR[1], pCtx->GPR[9], pCtx->GPR[17], pCtx->GPR[25]);
@@ -276,4 +324,3 @@ void c_default_exceptionhandler(frame_context *pCtx)
 
 	waitForReload();
 }
-
