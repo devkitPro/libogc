@@ -404,6 +404,8 @@ void BTE_Close(void)
 {
 	u32 level;
 
+	if(btstate.hci_inited==0) return;
+
 	_CPU_ISR_Disable(level);
 	hci_cmd_complete(NULL);
 	_CPU_ISR_Restore(level);

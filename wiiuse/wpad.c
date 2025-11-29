@@ -92,13 +92,13 @@ static u32 __wpad_idletimeout = 300;
 static vu32 __wpads_active = 0;
 static vu32 __wpads_used = 0;
 static wiimote **__wpads = NULL;
-static wiimote_listen __wpads_listen[WPAD_MAX_DEVICES];
-static WPADData wpaddata[WPAD_MAX_DEVICES];
-static struct _wpad_cb __wpdcb[WPAD_MAX_DEVICES];
-static conf_pads __wpad_devs;
-static conf_pad_guests __wpad_guests;
-static struct linkkey_info __wpad_keys[CONF_PAD_MAX_REGISTERED];
-static struct linkkey_info __wpad_guest_keys[CONF_PAD_ACTIVE_AND_OTHER];
+static wiimote_listen __wpads_listen[WPAD_MAX_DEVICES] = {0};
+static WPADData wpaddata[WPAD_MAX_DEVICES] = {0};
+static struct _wpad_cb __wpdcb[WPAD_MAX_DEVICES] = {0};
+static conf_pads __wpad_devs = {0};
+static conf_pad_guests __wpad_guests = {0};
+static struct linkkey_info __wpad_keys[CONF_PAD_MAX_REGISTERED] = {0};
+static struct linkkey_info __wpad_guest_keys[CONF_PAD_ACTIVE_AND_OTHER] = {0};
 
 static sem_t __wpad_confsave_sem;
 static bool __wpad_confsave_thread_running = false;
@@ -818,6 +818,23 @@ static void __wpad_hostsyncbuttonCB(u32 held)
 	_CPU_ISR_Restore(level);
 }
 
+static s32 GetActiveSlot(struct bd_addr *pad_addr)
+{
+	int i;
+	int slot = CONF_PAD_MAX_ACTIVE;
+	struct bd_addr bdaddr;
+
+	for(i=0; i<CONF_PAD_MAX_ACTIVE; i++) {
+		BD_ADDR_FROM_BYTES(&bdaddr,__wpad_devs.active[i].bdaddr);
+		if(bd_addr_cmp(pad_addr,&bdaddr)) {
+			slot = i;
+			break;
+		}
+	}
+
+	return slot;
+}
+
 s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
 {
 	u32 level;
@@ -832,18 +849,12 @@ s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
 		if (!strncmp("Nintendo RVL-", (char *)info->name, 13)) {
 			// Found Wii accessory, is it controller or something else?
 			if (!strncmp("Nintendo RVL-CNT-", (char *)info->name, 17)) {
-				// Check active list
-				for(i=0; i<CONF_PAD_MAX_ACTIVE; i++) {
-					BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_devs.active[i].bdaddr);
-					if(bd_addr_cmp(&info->bdaddr,&bdaddr)) {
-						WIIUSE_DEBUG("Wiimote already active in slot %d", i);
-						slot = i;
-						break;
-					}
-				}
-				
-				// Not active, try to make active
-				if(slot >= CONF_PAD_MAX_ACTIVE) {
+				slot = GetActiveSlot(&info->bdaddr);
+				if (slot < CONF_PAD_MAX_ACTIVE) {
+					WIIUSE_DEBUG("Wiimote already active in slot %d", slot);
+				} else {
+					// Not active, try to make active
+					slot = WPAD_MAX_DEVICES;
 					for(i=0; i<CONF_PAD_MAX_ACTIVE; i++) {
 						if(!(__wpads_used & (1<<i))) {
 							WIIUSE_DEBUG("Attempting to connect to Wiimote using slot %d", i);
@@ -855,7 +866,7 @@ s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
 			} else {
 				// Check for balance board
 				BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_devs.balance_board.bdaddr);
-				if(bd_addr_cmp(&info->bdaddr,&bdaddr)) {
+				if (bd_addr_cmp(&info->bdaddr,&bdaddr)) {
 					WIIUSE_DEBUG("Balance Board already registered");
 					slot = WPAD_BALANCE_BOARD;
 				}
@@ -886,23 +897,6 @@ s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
 	_CPU_ISR_Restore(level);
 
 	return result;
-}
-
-static s32 GetActiveSlot(struct bd_addr *pad_addr)
-{
-	int i;
-	int slot = CONF_PAD_MAX_ACTIVE;
-	struct bd_addr bdaddr;
-
-	for(i=0; i<CONF_PAD_MAX_ACTIVE; i++) {
-		BD_ADDR_FROM_BYTES(&bdaddr,__wpad_devs.active[i].bdaddr);
-		if(bd_addr_cmp(pad_addr,&bdaddr)) {
-			slot = i;
-			break;
-		}
-	}
-
-	return slot;
 }
 
 static s32 GetRegisteredSlot(struct bd_addr *pad_addr)
@@ -1732,8 +1726,10 @@ s32 WPAD_Shutdown(void)
 	BTE_Close();
 
 	__wpad_confsave_thread_stop();
-	CONF_SetPadGuestDevices(&__wpad_guests);
-	CONF_SaveChanges();
+	if(__wpads_inited!=WPAD_STATE_DISABLED) {
+		CONF_SetPadGuestDevices(&__wpad_guests);
+		CONF_SaveChanges();
+	}
 
 	__wpads_inited = WPAD_STATE_DISABLED;
 	SYS_RemoveAlarm(__wpad_timer);
