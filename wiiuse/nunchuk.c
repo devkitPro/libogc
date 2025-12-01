@@ -55,9 +55,11 @@ int nunchuk_handshake(struct wiimote_t *wm,struct nunchuk_t *nc,ubyte *data,uwor
 	nc->accel_calib.cal_zero.x = (data[offset + 0]<<2)|((data[offset + 3]>>4)&3);
 	nc->accel_calib.cal_zero.y = (data[offset + 1]<<2)|((data[offset + 3]>>2)&3);
 	nc->accel_calib.cal_zero.z = (data[offset + 2]<<2)|(data[offset + 3]&3);
-	nc->accel_calib.cal_g.x = (data[offset + 4]<<2)|((data[offset + 7]>>4)&3);
-	nc->accel_calib.cal_g.y = (data[offset + 5]<<2)|((data[offset + 7]>>2)&3);
-	nc->accel_calib.cal_g.z = (data[offset + 6]<<2)|(data[offset + 7]&3);
+
+	nc->accel_calib.cal_g.x = (((data[offset + 4]<<2)|((data[offset + 7]>>4)&3)) - nc->accel_calib.cal_zero.x);
+	nc->accel_calib.cal_g.y = (((data[offset + 5]<<2)|((data[offset + 7]>>2)&3)) - nc->accel_calib.cal_zero.y);
+	nc->accel_calib.cal_g.z = (((data[offset + 6]<<2)|(data[offset + 7]&3)) - nc->accel_calib.cal_zero.z);
+
 	nc->js.max.x = data[offset + 8];
 	nc->js.min.x = data[offset + 9];
 	nc->js.center.x = data[offset + 10];
