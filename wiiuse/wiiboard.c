@@ -84,7 +84,7 @@ int wii_board_handshake(struct wiimote_t* wm, struct wii_board_t* wb, ubyte* dat
 		wb->cal_sensor[i].ref_34 = load_be_u16(data + offset + 0x14 + 2*i);
 	}
 
-	/* The minimum battery value (always 0x6a). */
+	/* The critical battery value (always 0x69). */
 	wb->cal_bat = data[offset + 0x01];
 
 	/* The reference temperature. */

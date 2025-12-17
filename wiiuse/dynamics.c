@@ -256,7 +256,7 @@ static unsigned calc_balanceboard_battery_bars(const struct wii_board_t *wb)
 	return 3;
     if (wb->raw_bat >= 0x78)
 	return 2;
-    if (wb->raw_bat >= wb->cal_bat)
+    if (wb->raw_bat > wb->cal_bat)
 	return 1;
     return 0;
 }
