@@ -225,49 +225,74 @@ void apply_smoothing(struct accel_t* ac, struct orient_t* orient, int type) {
 	}
 }
 
+static float calc_balanceboard_weight(wii_board_t *wb, int idx)
+{
+	/*
+	 * Calculations borrowed from wiili.org - No names to mention sadly :(
+	 * http://www.wiili.org/index.php/Wii_Balance_Board_PC_Drivers
+	 */
+	short raw = wb->raw_sensor[idx];
+	const wii_board_sensor_cal_t *cal = &wb->cal_sensor[idx];
+	if (raw < cal->ref_17)
+		return 17.0f * (raw - cal->ref_0 ) / (cal->ref_17 - cal->ref_0 );
+	else
+		return 17.0f * (raw - cal->ref_17) / (cal->ref_34 - cal->ref_17) + 17.0f;
+}
+
+static float calc_balanceboard_temp_correct(float w, const wii_board_t* wb)
+{
+	/* Temperature correction, based on https://wiibrew.org/wiki/Wii_Balance_Board */
+	static const double a = 0.9990813732147217;
+	static const double b = 0.007000000216066837;
+	double c = 1.0 - b * (wb->raw_temp - wb->cal_temp) / 10.0;
+	return a * w * c;
+}
+
+static unsigned calc_balanceboard_battery_bars(const struct wii_board_t *wb)
+{
+    if (wb->raw_bat >= 0x82)
+	return 4;
+    if (wb->raw_bat >= 0x7d)
+	return 3;
+    if (wb->raw_bat >= 0x78)
+	return 2;
+    if (wb->raw_bat >= wb->cal_bat)
+	return 1;
+    return 0;
+}
+
 void calc_balanceboard_state(struct wii_board_t *wb)
 {
-	/* 
-	Interpolate values 
-	Calculations borrowed from wiili.org - No names to mention sadly :( http://www.wiili.org/index.php/Wii_Balance_Board_PC_Drivers
-	*/
+	/* Convert raw sensor data to Kg. */
+	for (unsigned i = 0; i < WII_BOARD_NUM_SENSORS; ++i)
+		wb->weight[i] = calc_balanceboard_weight(wb, i);
 
-	if(wb->rtr<wb->ctr[1])
-	{
-		wb->tr = 17.0f*(f32)(wb->rtr-wb->ctr[0])/(f32)(wb->ctr[1]-wb->ctr[0]);
-	}
-	else
-	{
-		wb->tr = 17.0f*(f32)(wb->rtr-wb->ctr[1])/(f32)(wb->ctr[2]-wb->ctr[1]) + 17.0f;
+	/* Apply temperature and zero correction. */
+	for (unsigned i = 0; i < WII_BOARD_NUM_SENSORS; ++i)
+		wb->weight[i] = calc_balanceboard_temp_correct(wb->weight[i], wb);
+
+	wb->total_weight = 0;
+	for (unsigned i = 0; i < WII_BOARD_NUM_SENSORS; ++i)
+		wb->total_weight += wb->weight[i];
+
+	/* Calculate x,y members only if there's at least 2 Kg on the board. */
+	if (wb->total_weight >= 2.0f) {
+		wb->x = ((wb->weight[WII_BOARD_SENSOR_ID_TOP_RIGHT] +
+			  wb->weight[WII_BOARD_SENSOR_ID_BOT_RIGHT])
+			 -
+			 (wb->weight[WII_BOARD_SENSOR_ID_TOP_LEFT] +
+			  wb->weight[WII_BOARD_SENSOR_ID_BOT_LEFT]))
+			/ wb->total_weight;
+		wb->y = ((wb->weight[WII_BOARD_SENSOR_ID_TOP_RIGHT] +
+			  wb->weight[WII_BOARD_SENSOR_ID_TOP_LEFT])
+			 -
+			 (wb->weight[WII_BOARD_SENSOR_ID_BOT_RIGHT] +
+			  wb->weight[WII_BOARD_SENSOR_ID_BOT_LEFT]))
+			/ wb->total_weight;
+	} else {
+		wb->x = 0;
+		wb->y = 0;
 	}
 
-	if(wb->rtl<wb->ctl[1])
-	{
-		wb->tl = 17.0f*(f32)(wb->rtl-wb->ctl[0])/(f32)(wb->ctl[1]-wb->ctl[0]);
-	}
-	else
-	{
-		wb->tl = 17.0f*(f32)(wb->rtl-wb->ctl[1])/(f32)(wb->ctl[2]-wb->ctl[1]) + 17.0f;
-	}
-
-	if(wb->rbr<wb->cbr[1])
-	{
-		wb->br = 17.0f*(f32)(wb->rbr-wb->cbr[0])/(f32)(wb->cbr[1]-wb->cbr[0]);
-	}
-	else
-	{
-		wb->br = 17.0f*(f32)(wb->rbr-wb->cbr[1])/(f32)(wb->cbr[2]-wb->cbr[1]) + 17.0f;
-	}
-
-	if(wb->rbl<wb->cbl[1])
-	{
-		wb->bl = 17.0f*(f32)(wb->rbl-wb->cbl[0])/(f32)(wb->cbl[1]-wb->cbl[0]);
-	}
-	else
-	{
-		wb->bl = 17.0f*(f32)(wb->rbl-wb->cbl[1])/(f32)(wb->cbl[2]-wb->cbl[1]) + 17.0f;
-	}	 
-
-	wb->x = ((wb->tr+wb->br) - (wb->tl+wb->bl))/2.0f;
-	wb->y = ((wb->bl+wb->br) - (wb->tl+wb->tr))/2.0f;
+	wb->battery = calc_balanceboard_battery_bars(wb);
 }

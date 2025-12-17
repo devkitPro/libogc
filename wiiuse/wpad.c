@@ -619,10 +619,10 @@ static u32 __wpad_read_expansion(struct wiimote_t *wm,WPADData *data, struct _wp
 			break;
  		case EXP_WII_BOARD:
 			data->exp.wb = wm->exp.wb;
-			STATE_CHECK(thresh->wb,wm->exp.wb.rtl,wm->lstate.exp.wb.rtl);
-			STATE_CHECK(thresh->wb,wm->exp.wb.rtr,wm->lstate.exp.wb.rtr);
-			STATE_CHECK(thresh->wb,wm->exp.wb.rbl,wm->lstate.exp.wb.rbl);
-			STATE_CHECK(thresh->wb,wm->exp.wb.rbr,wm->lstate.exp.wb.rbr);
+			for (unsigned i = 0; i < WII_BOARD_NUM_SENSORS; ++i)
+				STATE_CHECK(thresh->wb,
+					    wm->exp.wb.raw_sensor[i],
+					    wm->lstate.exp.wb.raw_sensor[i]);
  			break;
 		case EXP_MOTION_PLUS:
 			data->exp.mp = wm->exp.mp;
