@@ -129,6 +129,10 @@ PrintConsole defaultConsole =
 		256 //number of characters in the font set
 	},
 	(u16*)NULL,
+	0,0,	//con_xres con_yres
+	0,		//con_stride
+	0,0,	//target_x target_y
+	0,		//tgt_stride
 	0,0,	//cursorX cursorY
 	0,0,	//prevcursorX prevcursorY
 	80,		//console width
@@ -138,9 +142,9 @@ PrintConsole defaultConsole =
 	80,		//window width
 	30,		//window height
 	3,		//tab size
-	7,		// foreground color
-	0,		// background color
-	0,		// flags
+	7,		//foreground color
+	0,		//background color
+	0,		//flags
 	0,		//print callback
 	false	//console initialized
 };
@@ -151,6 +155,7 @@ PrintConsole* currentConsole = &currentCopy;
 
 static inline void *__console_offset_by_pixels(void *ptr, s32 dy_pixels, u32 stride_bytes, s32 dx_pixels)
 {
+	if (ptr == NULL) return NULL;
 	const s32 dy_bytes = dy_pixels * stride_bytes;
 	const s32 dx_bytes = dx_pixels * VI_DISPLAY_PIX_SZ;
 	return (u8 *)ptr + dy_bytes + dx_bytes;
@@ -248,6 +253,7 @@ static void __console_drawc(int c)
 	if (c<0 || c>con->font.numChars) return;
 
 	ptr = __console_get_cursor_start_ptr();
+	if( ptr == NULL ) return;
 
 	pbits = &con->font.gfx[c * FONT_YSIZE];
 	// con_stride is in bytes, but we increment ptr which is an int pointer
@@ -366,6 +372,7 @@ static void __console_clear_line(int line, int from, int to)
 	}
 
 	p = __console_get_window_start_ptr();
+	if( p == NULL ) return;
 	p = __console_offset_by_cursor(p, line, con->con_stride, from);
 
 	// Clears 1 line of pixels at a time
@@ -397,6 +404,7 @@ static void __console_clear(void)
 
 	//get console pointer
 	p = __console_get_window_start_ptr();
+	if( p == NULL ) return;
 
 	// Clears 1 line of pixels at a time
 	for(u16 ycnt = 0; ycnt < view_height; ycnt++)
@@ -810,6 +818,7 @@ void newRow()
 	if( currentConsole->cursorY > currentConsole->windowHeight)
 	{
 		u8* ptr = __console_get_window_start_ptr();
+		if( ptr == NULL ) return;
 
 		// Each window line is currentConsole->windowWidth * FONT_XSIZE * VI_DISPLAY_PIX_SZ bytes wide
 		const u32 line_width = currentConsole->windowWidth * FONT_XSIZE * VI_DISPLAY_PIX_SZ;
@@ -905,6 +914,7 @@ ssize_t __console_write(struct _reent *r,void *fd,const char *ptr, size_t len)
 
 	if(!currentConsole) return -1;
 	if(!tmp || len<=0) return -1;
+	if( __console_get_cursor_start_ptr() == NULL ) return -1;
 
 	while(i<len) {
 
