@@ -720,8 +720,8 @@ WIIUSE_EXPORT extern const char* wiiuse_version();
 #ifndef GEKKO
 WIIUSE_EXPORT extern struct wiimote_t** wiiuse_init(int wiimotes);
 #else
-WIIUSE_EXPORT extern int wiiuse_accept(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *name, struct wiimote_t *(*assign_cb)(wiimote_listen *wml, u8 err));
-WIIUSE_EXPORT extern int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *name, struct wiimote_t *(*assign_cb)(wiimote_listen *wml, u8 err));
+WIIUSE_EXPORT extern int wiiuse_accept(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, const u8 *name, struct wiimote_t *(*assign_cb)(wiimote_listen *wml, u8 err));
+WIIUSE_EXPORT extern int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, const u8 *name, struct wiimote_t *(*assign_cb)(wiimote_listen *wml, u8 err));
 WIIUSE_EXPORT extern struct wiimote_t** wiiuse_init(int wiimotes, wii_event_cb event_cb);
 WIIUSE_EXPORT extern void wiiuse_sensorbar_enable(int enable);
 #endif
