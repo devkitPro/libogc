@@ -1083,6 +1083,13 @@ s32 CON_InitEx(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidth,s32
 	VIDEO_SetPostRetraceCallback(NULL);
 	if(_console_buffer)
 		free(_console_buffer);
+
+	// clip console to framebuffer size
+	if(rmode->fbWidth < conXOrigin + conWidth)
+		conWidth = rmode->fbWidth - conXOrigin;
+
+	if(rmode->xfbHeight < conYOrigin + conHeight)
+		conHeight = rmode->xfbHeight - conYOrigin;
 	
 	// force conWidth, conHeight to be multiples of font size
 	conWidth = (conWidth / FONT_XSIZE) * FONT_XSIZE;
