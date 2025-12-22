@@ -47,8 +47,8 @@ extern "C" {
 void calculate_orientation(struct accel_t* ac, struct vec3w_t* accel, struct orient_t* orient, int smooth);
 void calculate_gforce(struct accel_t* ac, struct vec3w_t* accel, struct gforce_t* gforce);
 void calc_joystick_state(struct joystick_t* js, float x, float y);
-void calc_balanceboard_state(struct wii_board_t *wb);
 void apply_smoothing(struct accel_t* ac, struct orient_t* orient, int type);
+void calc_balanceboard_state(struct wii_board_t *wb);
 
 #ifdef __cplusplus
 }
