@@ -205,6 +205,7 @@ extern void __reset(u32 reset_code);
 
 extern u32 __IPC_ClntInit(void);
 extern u32 __PADDisableRecalibration(s32 disable);
+extern u32 __WPADClearActiveList(void);
 
 extern void __console_init_ex(void *conbuffer,int tgt_xstart,int tgt_ystart,int tgt_stride,int con_xres,int con_yres,int con_stride);
 
@@ -1189,8 +1190,15 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 
 	__dsp_shutdown();
 
-	if(reset==SYS_SHUTDOWN) {
-		ret = __PADDisableRecalibration(TRUE);
+	switch(reset) {
+		case SYS_SHUTDOWN:
+			ret = __PADDisableRecalibration(TRUE);
+			break;
+		case SYS_POWEROFF:
+		case SYS_POWEROFF_STANDBY:
+		case SYS_POWEROFF_IDLE:
+			__WPADClearActiveList();
+			break;
 	}
 
 	while(__call_resetfuncs(FALSE)==0);

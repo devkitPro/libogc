@@ -138,6 +138,40 @@ static s32 __wpad_onreset(s32 final)
 	return 1;
 }
 
+u32 __WPADClearActiveList(void)
+{
+	u32 level,ret;
+	
+	_CPU_ISR_Disable(level);
+
+	if(CONF_GetPadDevices(&__wpad_devs) < 0) {
+		ret = 1;
+		goto err;
+	}
+
+	__wpads_active = 0;
+	__wpads_used = 0;
+	memset(__wpad_devs.active,0,sizeof(__wpad_devs.active));
+	memset(&__wpad_guests,0,sizeof(__wpad_guests));
+	memset(__wpad_guest_keys,0,sizeof(__wpad_guest_keys));
+
+	if(CONF_SetPadDevices(&__wpad_devs) < 0) {
+		ret = 1;
+		goto err;
+	}
+
+	if(CONF_SetPadGuestDevices(&__wpad_guests) < 0) {
+		ret = 1;
+		goto err;
+	}
+
+	ret = CONF_SaveChanges();
+
+err:
+	_CPU_ISR_Restore(level);
+	return ret;
+}
+
 static void __wpad_def_powcb(s32 chan)
 {
 	SYS_DoPowerCB();
@@ -941,7 +975,7 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 	int slot = WPAD_MAX_DEVICES;
 	int confslot = CONF_PAD_MAX_ACTIVE;
 	struct bd_addr bdaddr;
-	u8 *name = NULL;
+	const u8 *name = NULL;
 
 	WIIUSE_INFO("__wpad_connreqCB");
 	_CPU_ISR_Disable(level);
@@ -952,7 +986,7 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 			confslot = GetActiveSlot(pad_addr);
 			if (confslot < CONF_PAD_MAX_ACTIVE) {
 				BD_ADDR_FROM_BYTES(&bdaddr,__wpad_devs.active[confslot].bdaddr);
-				name = (u8 *)__wpad_devs.active[confslot].name;
+				name = (const u8 *)__wpad_devs.active[confslot].name;
 				WIIUSE_INFO("Active pad '%s' found in slot %d", name, confslot);
 				if (!(__wpads_used & (1<<confslot)) || bd_addr_cmp(pad_addr,&bdaddr))
 					slot = confslot;
@@ -964,7 +998,7 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 				for(i=0; i<CONF_PAD_MAX_REGISTERED; i++) {
 					BD_ADDR_FROM_BYTES(&bdaddr,__wpad_devs.registered[i].bdaddr);
 					if(bd_addr_cmp(pad_addr,&bdaddr)) {
-						name = (u8 *)__wpad_devs.registered[i].name;
+						name = (const u8 *)__wpad_devs.registered[i].name;
 						WIIUSE_INFO("Registered pad '%s' found in slot %d", name, i);
 		
 						// Not active, try to make active

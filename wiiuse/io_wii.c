@@ -161,7 +161,7 @@ void __wiiuse_sensorbar_enable(int enable)
 	IRQ_Restore(level);
 }
 
-int wiiuse_accept(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *name, struct wiimote_t *(*assign_cb)(wiimote_listen *wml, u8 err))
+int wiiuse_accept(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, const u8 *name, struct wiimote_t *(*assign_cb)(wiimote_listen *wml, u8 err))
 {
 	s32 err;
 
@@ -205,7 +205,7 @@ int wiiuse_accept(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *name
 	return 0;
 }	
 
-int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, u8 *name, struct wiimote_t *(*assign_cb)(wiimote_listen *wml, u8 err))
+int wiiuse_connect(struct wiimote_listen_t *wml, struct bd_addr *bdaddr, const u8 *name, struct wiimote_t *(*assign_cb)(wiimote_listen *wml, u8 err))
 {
 	s32 err;
 
