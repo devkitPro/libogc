@@ -274,23 +274,15 @@ static void waitForReload(void)
 //just implement core for unrecoverable exceptions.
 void c_default_exceptionhandler(frame_context *pCtx)
 {	
-	// Default values are for 576i
-	u16 console_height = 680;
-	u16 console_width = 574;
-	u8 Yoffset = 48;
+	const u16 console_height = 680;
+	const u16 console_width = 574;
 
-	if (SYS_GetEuRGB60() > 0 || ((SYS_GetProgressiveScan() > 0) && VIDEO_HaveComponentCable())) {
-		// Changes to 480i/p values
-		console_height = 640;
-		console_width = 480;
-		Yoffset = 32;
-	}
 	lookup_xfb = VIDEO_GetNextFramebuffer();
 	VIDEO_WaitVSync();
 	GX_AbortFrame();
 	VIDEO_SetFramebuffer(exception_xfb);
 	__VIClearFramebuffer(exception_xfb, console_height * console_width * VI_DISPLAY_PIX_SZ, COLOR_BLACK);
-	__console_init(exception_xfb, 16, Yoffset, console_height-16, console_width-Yoffset, 1280);
+	__console_init(exception_xfb, 16, 32, console_height-16, console_width-32, 1280);
 	CON_EnableGecko(1, true);
 
 	kprintf("\tException (%s) occurred!\n", exception_name[pCtx->EXCPT_Number]);
