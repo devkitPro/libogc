@@ -201,10 +201,6 @@ void __exception_setreload(int t)
 	reload_timer = t*50;
 }
 
-void __exception_setlookupxfb(void *xfb) {
-	lookup_xfb = (u32 *)xfb;
-}
-
 static void __toggleframebuffer() {
 	static bool currfb = false;
 	if(currfb) {
@@ -293,6 +289,7 @@ void c_default_exceptionhandler(frame_context *pCtx)
 	}
 
 	GX_AbortFrame();
+	lookup_xfb = VIDEO_GetNextFramebuffer();
 	VIDEO_SetFramebuffer(exception_xfb);
 	__VIClearFramebuffer(exception_xfb, console_height * console_width * VI_DISPLAY_PIX_SZ, COLOR_BLACK);
 	__console_init(exception_xfb, 16, Yoffset, console_height-16, console_width-Yoffset, 1280);
