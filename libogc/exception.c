@@ -259,9 +259,9 @@ static void waitForReload(void)
 			consoleClear(); 
 			kprintf("\tResetting...");
 #if defined(HW_DOL)
-			SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
+			SYS_ResetSystem(SYS_HOTRESET,0,FALSE);
 #else
-			__reload ();
+			SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0);
 #endif
 		}
 		VIDEO_WaitVSync();
