@@ -67,8 +67,6 @@ static int reload_timer = -1;
 void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
 
 extern void udelay(int us);
-extern s32 CONF_GetEuRGB60(void);
-extern s32 CONF_GetProgressiveScan(void);
 extern void fpu_exceptionhandler(frame_context*);
 extern void irq_exceptionhandler(frame_context*);
 extern void dec_exceptionhandler(frame_context*);
@@ -281,15 +279,15 @@ void c_default_exceptionhandler(frame_context *pCtx)
 	u16 console_width = 574;
 	u8 Yoffset = 48;
 
-	if (CONF_GetEuRGB60() > 0 || ((CONF_GetProgressiveScan() > 0) && VIDEO_HaveComponentCable())) {
+	if (SYS_GetEuRGB60() > 0 || ((SYS_GetProgressiveScan() > 0) && VIDEO_HaveComponentCable())) {
 		// Changes to 480i/p values
 		console_height = 640;
 		console_width = 480;
 		Yoffset = 32;
 	}
-
-	GX_AbortFrame();
 	lookup_xfb = VIDEO_GetNextFramebuffer();
+	VIDEO_WaitVSync();
+	GX_AbortFrame();
 	VIDEO_SetFramebuffer(exception_xfb);
 	__VIClearFramebuffer(exception_xfb, console_height * console_width * VI_DISPLAY_PIX_SZ, COLOR_BLACK);
 	__console_init(exception_xfb, 16, Yoffset, console_height-16, console_width-Yoffset, 1280);
@@ -310,10 +308,12 @@ void c_default_exceptionhandler(frame_context *pCtx)
 
 	_cpu_print_stack((void*)pCtx->SRR0,(void*)pCtx->LR,(void*)pCtx->GPR[1]);
 
+	kprintf("\n");
+
 	if((pCtx->EXCPT_Number==EX_DSI) || (pCtx->EXCPT_Number==EX_FP)) {
 		u32 i;
 		u32 *pAdd = (u32*)pCtx->SRR0;
-		kprintf("\n\n\tCODE DUMP:\n");
+		kprintf("\n\tCODE DUMP:\n");
 		for (i=0; i<12; i+=4)
 			kprintf("\t%p:  %08X %08X %08X %08X\n",
 			&(pAdd[i]),pAdd[i], pAdd[i+1], pAdd[i+2], pAdd[i+3]);
