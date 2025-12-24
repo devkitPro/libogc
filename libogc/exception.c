@@ -200,14 +200,12 @@ void __exception_setreload(int t)
 }
 
 static void __toggleframebuffer() {
-	static bool currfb = false;
-	if(currfb) {
-		currfb = false;
-		VIDEO_SetFramebuffer(exception_xfb);
-	} else {
-		currfb = true;
+	if(VIDEO_GetCurrentFramebuffer() == exception_xfb) {
 		VIDEO_SetFramebuffer(lookup_xfb);
+	} else {
+		VIDEO_SetFramebuffer(exception_xfb);
 	}
+    VIDEO_Flush();
 }
 
 static void waitForReload(void)
@@ -250,6 +248,7 @@ static void waitForReload(void)
 			reload_timer--;
 			__toggleframebuffer();
 			VIDEO_WaitVSync();
+			udelay(20000);
 		}
 
 		if ( buttonsDown & PAD_BUTTON_A || SYS_ResetButtonDown() )
@@ -281,6 +280,7 @@ void c_default_exceptionhandler(frame_context *pCtx)
 	VIDEO_WaitVSync();
 	GX_AbortFrame();
 	VIDEO_SetFramebuffer(exception_xfb);
+    VIDEO_Flush();
 	__VIClearFramebuffer(exception_xfb, console_height * console_width * VI_DISPLAY_PIX_SZ, COLOR_BLACK);
 	__console_init(exception_xfb, 16, 32, console_height-16, console_width-32, 1280);
 	CON_EnableGecko(1, true);
