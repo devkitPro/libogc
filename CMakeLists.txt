@@ -50,6 +50,7 @@ macro(libogc_install_lib target)
 	)
 endmacro()
 
+add_subdirectory(tuxedo)
 add_subdirectory(libogc)
 add_subdirectory(libmodplay)
 add_subdirectory(libmad)

@@ -1,0 +1,5 @@
+*link:
++ -dT rvl.ld --gc-sections --nmagic --no-warn-rwx-segments
+
+*startfile:
++ --require-defined=main
