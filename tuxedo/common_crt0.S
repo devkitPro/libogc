@@ -1,6 +1,8 @@
 #include <tuxedo/asm.inc>
 #include <tuxedo/ppc/spr.h>
 
+REFERENCE __newlib_syscalls
+
 FUNC_START __app_start, crt0
 
 	b .Lactual_start

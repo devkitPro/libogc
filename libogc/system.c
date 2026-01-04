@@ -192,7 +192,6 @@ static sys_resetinfo mem_resetinfo = {
 };
 
 const void *__libogc_sbrk = _sbrk_r;
-const void *__libogc_lock_init  = __syscall_lock_init;
 
 const char __sys_versioninfo[] = _V_STRING "\nBuilt on " _V_DATE_;
 

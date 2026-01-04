@@ -12,6 +12,7 @@ add_library(tuxedo OBJECT
 	sync.c
 	tick.c
 	mailbox.c
+	newlib_syscalls.c
 )
 
 target_include_directories(tuxedo PRIVATE ../gc)

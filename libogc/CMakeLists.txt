@@ -35,7 +35,6 @@ add_library(ogc STATIC
 	ipc.c
 	console_font_8x16.c
 	timesupp.c
-	lock_supp.c
 	usbgecko.c
 	usbmouse.c
 	sbrk.c
