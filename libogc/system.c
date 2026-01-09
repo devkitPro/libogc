@@ -1184,6 +1184,12 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 
 #if defined(HW_RVL)
 
+
+// provide weak linked __WPADClearActiveList to prevent libogc dependency on wiiuse
+__attribute__((weak)) u32 __WPADClearActiveList(void) {
+	return 0;
+}
+
 void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 {
 	u32 ret = 0;
