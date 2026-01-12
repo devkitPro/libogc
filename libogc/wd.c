@@ -33,7 +33,32 @@
 #include <string.h>
 #include <ogc/machine/processor.h>
 
-#define WD_HEAP_SIZE 0x1000
+//#define WD_HEAP_SIZE 0x1000
+
+#define DEFAULT_CHANNEL_BITMAP 0xfffe
+
+enum WDIOCTLV
+{
+    IOCTLV_WD_INVALID = 0x1000,
+    IOCTLV_WD_GET_MODE = 0x1001,          // WD_GetMode
+    IOCTLV_WD_SET_LINKSTATE = 0x1002,     // WD_SetLinkState
+    IOCTLV_WD_GET_LINKSTATE = 0x1003,     // WD_GetLinkState
+    IOCTLV_WD_SET_CONFIG = 0x1004,        // WD_SetConfig
+    IOCTLV_WD_GET_CONFIG = 0x1005,        // WD_GetConfig
+    IOCTLV_WD_CHANGE_BEACON = 0x1006,     // WD_ChangeBeacon
+    IOCTLV_WD_DISASSOC = 0x1007,          // WD_DisAssoc
+    IOCTLV_WD_MP_SEND_FRAME = 0x1008,     // WD_MpSendFrame
+    IOCTLV_WD_SEND_FRAME = 0x1009,        // WD_SendFrame
+    IOCTLV_WD_SCAN = 0x100a,              // WD_Scan
+    IOCTLV_WD_CALL_WL = 0x100c,           // WD_CallWL
+    IOCTLV_WD_MEASURE_CHANNEL = 0x100b,   // WD_MeasureChannel
+    IOCTLV_WD_GET_LASTERROR = 0x100d,     // WD_GetLastError
+    IOCTLV_WD_GET_INFO = 0x100e,          // WD_GetInfo
+    IOCTLV_WD_CHANGE_GAMEINFO = 0x100f,   // WD_ChangeGameInfo
+    IOCTLV_WD_CHANGE_VTSF = 0x1010,       // WD_ChangeVTSF
+    IOCTLV_WD_RECV_FRAME = 0x8000,        // WD_ReceiveFrame
+    IOCTLV_WD_RECV_NOTIFICATION = 0x8001  // WD_ReceiveNotification
+};
 
 extern void usleep(u32 t);
 
@@ -45,7 +70,7 @@ s32* WD_GetWork() {
 }
 
 u8 NCDcommonbuff[0x20] __attribute__((aligned(32)));
-s32 NCDheap; 
+//s32 NCDheap; 
 
 s32 NCD_LockWirelessDriver() {
     s32 NCD = IOS_Open("/dev/net/ncd/manage", 0);
@@ -90,8 +115,8 @@ u32 NCD_UnlockWirelessDriver(s32 lockid) {
     NCD = -1;
     return ret;
 }
-
-s32 WD_CreateHeap() {
+/*
+s32 WD_CreateHeap() { // Currently unused.
     s32 heap;
     u32 level;
     
@@ -101,10 +126,11 @@ s32 WD_CreateHeap() {
     
     return heap;
 }
+*/
 
 void WD_SetDefaultScanParameters(ScanParameters* set) {
-    set->ChannelBitmap = 0xfffe;
-    set->MaxChannelTime = 100; // 100 ms
+    set->ChannelBitmap = DEFAULT_CHANNEL_BITMAP;
+    set->MaxChannelTime = 100;
 
     memset(set->BSSID, 0xff, BSSID_LENGTH);
  
@@ -140,15 +166,15 @@ u8 WD_GetRadioLevel(BSSDescriptor* Bss) {
     if (Bss->RSSI < 0xc4) {
         if (Bss->RSSI < 0xb5) {
             if (Bss->RSSI < 0xab) {
-                ret = 0;
+                ret = 0; // Very Weak
             } else {
-                ret = 1;
+                ret = 1; // Weak
             }
         } else {
-            ret = 2;
+            ret = 2; // Medium
         }
     } else {
-        ret = 3;
+        ret = 3; // Strong
     }
     return ret;
 }
@@ -164,7 +190,7 @@ int WD_GetInfo(WDInfo* info) {
     vector.data = inf;
     vector.len = sizeof(WDInfo);
 	
-    IOS_Ioctlv(wd_fd, 0x100e, 0, 1, &vector);
+    IOS_Ioctlv(wd_fd, IOCTLV_WD_GET_INFO, 0, 1, &vector);
     memcpy(info, inf, sizeof(WDInfo));
 
     WD_Deinit();
@@ -189,7 +215,7 @@ int WD_Scan(ScanParameters *settings, u8* buff, u16 buffsize) {
     vectors[1].data = buf;
     vectors[1].len = buffsize;
     
-    IOS_Ioctlv(wd_fd, 0x100a, 1, 1, vectors);
+    IOS_Ioctlv(wd_fd, IOCTLV_WD_SCAN, 1, 1, vectors);
     usleep(100000);
     memcpy(buff, buf, buffsize);
 	
@@ -200,7 +226,6 @@ int WD_ScanOnce(ScanParameters *settings, u8* buff, u16 buffsize) {
     s32 lockid = NCD_LockWirelessDriver();
     
     if(WD_Init(AOSSAPScan) < 0) return -1;
-    usleep(100000);
     
     WD_Scan(settings, buff, buffsize);
     
