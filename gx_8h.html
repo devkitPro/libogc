@@ -21,7 +21,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">libogc<span id="projectnumber">&#160;v2.13.0</span>
+   <div id="projectname">libogc<span id="projectnumber">&#160;v2.14.0</span>
    </div>
   </td>
  </tr>
@@ -1465,6 +1465,9 @@ Macros</h2></td></tr>
 <tr class="separator:ga1853bc9a11cb6bcac80bee14791ebc58"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga8d8783c7b2eb99b6db2c2b47bf9bdbc2"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__texmapid.html#ga8d8783c7b2eb99b6db2c2b47bf9bdbc2">GX_TEXMAP_NULL</a>&#160;&#160;&#160;0xff</td></tr>
 <tr class="separator:ga8d8783c7b2eb99b6db2c2b47bf9bdbc2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga9d2fd822aff275ef41b4b5b60f650191"><td class="memItemLeft" align="right" valign="top">
+#define&#160;</td><td class="memItemRight" valign="bottom"><b>GX_TEXMAPNULL</b>&#160;&#160;&#160;<a class="el" href="group__texmapid.html#ga8d8783c7b2eb99b6db2c2b47bf9bdbc2">GX_TEXMAP_NULL</a></td></tr>
+<tr class="separator:ga9d2fd822aff275ef41b4b5b60f650191"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gab79a6326e8d883e64fa1aa4e46245860"><td class="memItemLeft" align="right" valign="top">
 #define&#160;</td><td class="memItemRight" valign="bottom"><b>GX_TEXMTX0</b>&#160;&#160;&#160;30</td></tr>
 <tr class="separator:gab79a6326e8d883e64fa1aa4e46245860"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -10688,7 +10691,7 @@ This function takes 10-bit signed values as color values; use <a class="el" href
 <p >The texture coordinate <em>texcoord</em> is generated from input attributes using the <a class="el" href="gx_8h.html#a7d3139b693ace5587c3224e7df2d8245" title="Specifies how texture coordinates are generated.">GX_SetTexCoordGen()</a> function and is used to look up the texture map, previously loaded by <a class="el" href="gx_8h.html#ad6388b0e4a0f2ffb5daa16a8851fa567" title="Loads the state describing a texture into one of eight hardware register sets.">GX_LoadTexObj()</a>. The <em>color</em> to rasterize for this <em>tevstage</em> is also specified. The color is the result of per-vertex lighting which is controlled by <a class="el" href="gx_8h.html#a87d79cf2375217d06237c887ba027cc2" title="Sets the lighting controls for a particular color channel.">GX_SetChanCtrl()</a>.</p>
 <p >This function will scale the normalized texture coordinates produced by <a class="el" href="gx_8h.html#a7d3139b693ace5587c3224e7df2d8245" title="Specifies how texture coordinates are generated.">GX_SetTexCoordGen()</a> according to the size of the texture map in the function call. For this reason, texture coordinates can only be broadcast to multiple texture maps if and only if the maps are the same size. In some cases, you may want to generate a texture coordinate having a certain scale, but disable the texture lookup (this comes up when generating texture coordinates for indirect bump mapping). To accomplish this, use the <code>GX_TEXMAP_DISABLE</code> flag:</p>
 <div class="fragment"><div class="line"><a class="code hl_function" href="gx_8h.html#ae64799e52298de39efc74bf989fc57f5">GX_SetTevOrder</a>(GX_TEVSTAGE1, GX_TEXCOORD0, <a class="code hl_define" href="group__texmapid.html#gae2b83076405c7661f51a43b8605f82fa">GX_TEXMAP3</a> | <a class="code hl_define" href="group__texmapid.html#ga1853bc9a11cb6bcac80bee14791ebc58">GX_TEXMAP_DISABLE</a>, GX_COLORNULL); </div>
-<div class="ttc" id="agroup__texmapid_html_ga1853bc9a11cb6bcac80bee14791ebc58"><div class="ttname"><a href="group__texmapid.html#ga1853bc9a11cb6bcac80bee14791ebc58">GX_TEXMAP_DISABLE</a></div><div class="ttdeci">#define GX_TEXMAP_DISABLE</div><div class="ttdef"><b>Definition:</b> gx.h:675</div></div>
+<div class="ttc" id="agroup__texmapid_html_ga1853bc9a11cb6bcac80bee14791ebc58"><div class="ttname"><a href="group__texmapid.html#ga1853bc9a11cb6bcac80bee14791ebc58">GX_TEXMAP_DISABLE</a></div><div class="ttdeci">#define GX_TEXMAP_DISABLE</div><div class="ttdef"><b>Definition:</b> gx.h:676</div></div>
 <div class="ttc" id="agroup__texmapid_html_gae2b83076405c7661f51a43b8605f82fa"><div class="ttname"><a href="group__texmapid.html#gae2b83076405c7661f51a43b8605f82fa">GX_TEXMAP3</a></div><div class="ttdeci">#define GX_TEXMAP3</div><div class="ttdef"><b>Definition:</b> gx.h:668</div></div>
 <div class="ttc" id="agx_8h_html_ae64799e52298de39efc74bf989fc57f5"><div class="ttname"><a href="gx_8h.html#ae64799e52298de39efc74bf989fc57f5">GX_SetTevOrder</a></div><div class="ttdeci">void GX_SetTevOrder(u8 tevstage, u8 texcoord, u32 texmap, u8 color)</div><div class="ttdoc">Specifies the texture and rasterized color that will be available as inputs to this TEV tevstage.</div></div>
 </div><!-- fragment --><p >This will scale <code>GX_TEXCOORD0</code> using <code>GX_TEXMAP3</code> but disable the lookup of <code>GX_TEXMAP3</code>.</p>
@@ -11753,7 +11756,7 @@ When a vertex contains only position and one texture coordinate and the texgen t
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Thu Sep 4 2025 21:47:01 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.4
+Generated on Thu Jan 15 2026 12:20:36 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.4
 </small></address>
 </body>
 </html>
