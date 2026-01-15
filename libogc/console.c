@@ -1072,10 +1072,25 @@ ssize_t __console_write(struct _reent *r,void *fd,const char *ptr, size_t len)
 
 void CON_Init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stride)
 {
+
+	// clear given framebuffer to black
+	u32 *ptr = (u32*)framebuffer;
+
+	for(int i=0; i<yres*stride/4; i++) {
+		ptr[i] = colorTable[0];
+	}
+
+	// xstart and ystart are offsets within the provided framebuffer
+	// reduce xres and yres accordingly to prevent OOB writes
+	xres = xres - xstart;
+	yres = yres - ystart;
+
 	// force xres, yres to be multiples of font size
 	xres = (xres / FONT_XSIZE) * FONT_XSIZE;
 	yres = (yres / FONT_YSIZE) * FONT_YSIZE;
 	__console_init(framebuffer,xstart,ystart,xres,yres,stride);
+
+
 }
 
 s32 CON_InitEx(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidth,s32 conHeight)
