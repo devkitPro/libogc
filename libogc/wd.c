@@ -25,6 +25,8 @@
 
 -----------------------------------------------------------------------*/
 
+#if defined(HW_RVL)
+
 #include "wd.h"
 #include "ipc.h"
 #include <stdio.h>
@@ -234,3 +236,5 @@ int WD_ScanOnce(ScanParameters *settings, u8* buff, u16 buffsize) {
     
     return 0;
 }
+
+#endif
