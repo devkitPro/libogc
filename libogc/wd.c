@@ -35,8 +35,6 @@
 #include <string.h>
 #include <ogc/machine/processor.h>
 
-//#define WD_HEAP_SIZE 0x1000
-
 #define DEFAULT_CHANNEL_BITMAP 0xfffe
 
 enum WDIOCTLV
@@ -65,14 +63,8 @@ enum WDIOCTLV
 extern void usleep(u32 t);
 
 s32 wd_fd = -1;
-s32 wd_heap = -1;
-
-s32* WD_GetWork() {
-  return &wd_fd;
-}
 
 u8 NCDcommonbuff[0x20] __attribute__((aligned(32)));
-//s32 NCDheap; 
 
 s32 NCD_LockWirelessDriver() {
     s32 NCD = IOS_Open("/dev/net/ncd/manage", 0);
@@ -117,18 +109,6 @@ u32 NCD_UnlockWirelessDriver(s32 lockid) {
     NCD = -1;
     return ret;
 }
-/*
-s32 WD_CreateHeap() { // Currently unused.
-    s32 heap;
-    u32 level;
-    
-    _CPU_ISR_Disable(level);
-    heap = iosCreateHeap(WD_HEAP_SIZE);
-    _CPU_ISR_Restore(level);
-    
-    return heap;
-}
-*/
 
 void WD_SetDefaultScanParameters(ScanParameters* set) {
     set->ChannelBitmap = DEFAULT_CHANNEL_BITMAP;
@@ -154,12 +134,8 @@ int WD_Init(u8 mode) {
 void WD_Deinit() {
     if(wd_fd < 0) return;
     
-    u32 level;
-    
-    _CPU_ISR_Disable(level);
-    IOS_Close(*WD_GetWork());
+    IOS_Close(wd_fd);
     wd_fd = -1;
-    _CPU_ISR_Restore(level);
 }
 
 u8 WD_GetRadioLevel(BSSDescriptor* Bss) {
