@@ -126,6 +126,32 @@ static inline void write32(u32 addr, u32 x)
 	PPCEieioInner();
 }
 
+static inline u16 read16(u32 addr)
+{
+	u16 x = *(vu16*)(0xc0000000 | addr);
+	PPCSyncInner();
+	return x;
+}
+
+static inline void write16(u32 addr, u16 x)
+{
+	*(vu16*)(0xc0000000 | addr) = x;
+	PPCEieioInner();
+}
+
+static inline u8 read8(u32 addr)
+{
+	u8 x = *(vu8*)(0xc0000000 | addr);
+	PPCSyncInner();
+	return x;
+}
+
+static inline void write8(u32 addr, u8 x)
+{
+	*(vu8*)(0xc0000000 | addr) = x;
+	PPCEieioInner();
+}
+
 #ifdef __cplusplus
    }
 #endif /* __cplusplus */
