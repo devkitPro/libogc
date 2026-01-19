@@ -12,6 +12,7 @@ add_library(ogc STATIC
 	ogc_sockets/soc_bind.c
 	ogc_sockets/soc_listen.c
 	ogc_sockets/soc_send.c
+	ogc_sockets/soc_recv.c
 
 	console.c
 	lwp_queue.c
