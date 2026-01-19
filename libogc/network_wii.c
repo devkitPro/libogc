@@ -51,12 +51,14 @@ distribution.
 #include <fcntl.h>
 #include <malloc.h>
 #include <poll.h>
-	
+
 #include "ipc.h"
 #include "processor.h"
 #include "network.h"
 #include "ogcsys.h"
 #include "lwp_heap.h"
+
+#include "ogc_sockets/soc.h"
 
 #define NET_HEAP_SIZE				64*1024
 
@@ -1209,6 +1211,8 @@ s32 if_configex(struct in_addr *local_ip, struct in_addr *netmask, struct in_add
 	
 	if(netmask)
 		netmask->s_addr = ipconfig->subnetMask;
+
+	socInit();
 	
 	if(!gateway)
 		return 0;

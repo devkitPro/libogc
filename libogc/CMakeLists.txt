@@ -7,6 +7,7 @@ add_library(ogc STATIC
 	lwpcompat/lwpc_sem.c
 	lwpcompat/lwpc_mq.c
 
+	ogc_sockets/soc_init.c
 	ogc_sockets/soc_common.c
 	ogc_sockets/soc_socket.c
 	ogc_sockets/soc_bind.c
