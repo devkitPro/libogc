@@ -17,6 +17,7 @@ add_library(ogc STATIC
 	ogc_sockets/soc_shutdown.c
 	ogc_sockets/soc_accept.c
 	ogc_sockets/soc_poll.c
+	ogc_sockets/soc_getsockname.c
 
 	console.c
 	lwp_queue.c
