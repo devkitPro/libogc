@@ -1032,6 +1032,12 @@ s32 net_select(s32 maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset
     return ret;
 }
 
+s32 net_getsockopt(s32 s, u32 level, u32 optname, const void *optval, socklen_t *optlen)
+{
+	// not yet implemented
+	return -EINVAL;
+}
+
 s32 net_setsockopt(s32 s, u32 level, u32 optname, const void *optval, socklen_t optlen)
 {
 	s32 ret;

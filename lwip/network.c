@@ -2102,10 +2102,12 @@ s32 net_select(s32 maxfdp1,fd_set *readset,fd_set *writeset,fd_set *exceptset,st
 	return nready;
 }
 
-s32 net_getsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optlen)
+s32 net_getsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t *optlen)
 {
 	s32 err = 0;
 	struct netsocket *sock;
+	socklen_t optval_len=0;
+	if(optlen) optval_len = *optlen;
 
 	sock = get_socket(s);
 	if(sock==NULL) return -ENOTSOCK;
@@ -2120,7 +2122,7 @@ s32 net_getsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optl
 				case SO_KEEPALIVE:
 				case SO_REUSEADDR:
 				case SO_REUSEPORT:
-					if(optlen<sizeof(u32)) err = EINVAL;
+					if(optval_len<sizeof(u32)) err = EINVAL;
 					break;
 				default:
 					LWIP_DEBUGF(SOCKETS_DEBUG, ("net_getsockopt(%d, SOL_SOCKET, UNIMPL: optname=0x%x, ..)\n", s, optname));
@@ -2134,7 +2136,7 @@ s32 net_getsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optl
 			switch(optname) {
 				case IP_TTL:
 				case IP_TOS:
-					if(optlen<sizeof(u32)) err = EINVAL;
+					if(optval_len<sizeof(u32)) err = EINVAL;
 					break;
 				default:
 					LWIP_DEBUGF(SOCKETS_DEBUG, ("net_getsockopt(%d, IPPROTO_IP, UNIMPL: optname=0x%x, ..)\n", s, optname));
@@ -2145,7 +2147,7 @@ s32 net_getsockopt(s32 s,u32 level,u32 optname,const void *optval,socklen_t optl
 
 		case  IPPROTO_TCP:
 		{
-			if(optlen<sizeof(u32)) {
+			if(optval_len<sizeof(u32)) {
 				err = EINVAL;
 				break;
 			}
