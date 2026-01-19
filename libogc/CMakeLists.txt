@@ -8,6 +8,7 @@ add_library(ogc STATIC
 	lwpcompat/lwpc_mq.c
 
 	ogc_sockets/soc_common.c
+	ogc_sockets/soc_socket.c
 
 	console.c
 	lwp_queue.c

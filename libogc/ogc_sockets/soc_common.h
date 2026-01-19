@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/iosupport.h>
 #include <gctypes.h>
+#include <network.h>
 
 #define SYNC_ERROR ENODEV
 
