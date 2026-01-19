@@ -15,6 +15,7 @@ add_library(ogc STATIC
 	ogc_sockets/soc_recv.c
 	ogc_sockets/soc_connect.c
 	ogc_sockets/soc_shutdown.c
+	ogc_sockets/soc_accept.c
 
 	console.c
 	lwp_queue.c
