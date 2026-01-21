@@ -37,29 +37,6 @@
 
 #define DEFAULT_CHANNEL_BITMAP 0xfffe
 
-enum WDIOCTLV
-{
-    IOCTLV_WD_INVALID = 0x1000,
-    IOCTLV_WD_GET_MODE = 0x1001,          // WD_GetMode
-    IOCTLV_WD_SET_LINKSTATE = 0x1002,     // WD_SetLinkState
-    IOCTLV_WD_GET_LINKSTATE = 0x1003,     // WD_GetLinkState
-    IOCTLV_WD_SET_CONFIG = 0x1004,        // WD_SetConfig
-    IOCTLV_WD_GET_CONFIG = 0x1005,        // WD_GetConfig
-    IOCTLV_WD_CHANGE_BEACON = 0x1006,     // WD_ChangeBeacon
-    IOCTLV_WD_DISASSOC = 0x1007,          // WD_DisAssoc
-    IOCTLV_WD_MP_SEND_FRAME = 0x1008,     // WD_MpSendFrame
-    IOCTLV_WD_SEND_FRAME = 0x1009,        // WD_SendFrame
-    IOCTLV_WD_SCAN = 0x100a,              // WD_Scan
-    IOCTLV_WD_CALL_WL = 0x100c,           // WD_CallWL
-    IOCTLV_WD_MEASURE_CHANNEL = 0x100b,   // WD_MeasureChannel
-    IOCTLV_WD_GET_LASTERROR = 0x100d,     // WD_GetLastError
-    IOCTLV_WD_GET_INFO = 0x100e,          // WD_GetInfo
-    IOCTLV_WD_CHANGE_GAMEINFO = 0x100f,   // WD_ChangeGameInfo
-    IOCTLV_WD_CHANGE_VTSF = 0x1010,       // WD_ChangeVTSF
-    IOCTLV_WD_RECV_FRAME = 0x8000,        // WD_ReceiveFrame
-    IOCTLV_WD_RECV_NOTIFICATION = 0x8001  // WD_ReceiveNotification
-};
-
 extern void usleep(u32 t);
 
 s32 wd_fd = -1;
@@ -210,6 +187,64 @@ int WD_ScanOnce(ScanParameters *settings, u8* buff, u16 buffsize) {
     WD_Deinit();
     NCD_UnlockWirelessDriver(lockid);
     
+    return 0;
+}
+
+u8 WD_GetNumberOfIEs(BSSDescriptor* Bss) {
+    u8 ret = 0;
+
+    u8* ptr = (u8*)Bss;
+    size_t offset = 0;
+
+    for(;
+        offset < Bss->IEs_length && ptr[offset + 0x3F] != 0;
+        offset += ptr[offset + 0x3F])
+    {
+        ret++;
+    }
+
+    return ret;
+}
+
+u8 WD_GetIELength(BSSDescriptor* Bss, u8 ID) {
+    if(ID > WD_GetNumberOfIEs(Bss)) return -1;
+
+    
+    u16 IEslen = Bss->IEs_length;
+
+    u8* ptr = (u8*)Bss;
+    size_t offset = 0;
+
+    for(u8 IE = 0;
+        (IE < ID) && ((offset + ptr[offset + 0x3F]) < IEslen && ptr[offset + 0x3F] != 0);
+        offset += ptr[offset + 0x3F])
+    {
+        IE++;
+    }
+    
+    return ptr[offset + 0x3F];
+}
+
+int WD_GetIE(BSSDescriptor* Bss, u8 ID, u8* buff, u8 buffsize) {
+    if(ID > WD_GetNumberOfIEs(Bss)) return -1;
+
+    if(!buff) return -2;
+
+    u16 IEslen = Bss->IEs_length;
+
+    u8* ptr = (u8*)Bss;
+    size_t offset = 0;
+
+    for(u8 IE = 0;
+        (IE < ID) && ((offset + WD_GetIELength(Bss, ID)) < IEslen && WD_GetIELength(Bss, ID) != 0);
+        offset += WD_GetIELength(Bss, ID))
+    {
+        IE++;
+    }
+
+    memset(buff, 0, buffsize);
+    memcpy(buff, &ptr[offset + 0x3F + 1], WD_GetIELength(Bss, ID));
+
     return 0;
 }
 

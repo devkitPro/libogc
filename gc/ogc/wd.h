@@ -35,6 +35,35 @@
 #define SSID_LENGTH 32
 #define BSSID_LENGTH 6
 
+enum WDIOCTLV
+{
+    IOCTLV_WD_INVALID = 0x1000,
+    IOCTLV_WD_GET_MODE = 0x1001,          // WD_GetMode
+    IOCTLV_WD_SET_LINKSTATE = 0x1002,     // WD_SetLinkState
+    IOCTLV_WD_GET_LINKSTATE = 0x1003,     // WD_GetLinkState
+    IOCTLV_WD_SET_CONFIG = 0x1004,        // WD_SetConfig
+    IOCTLV_WD_GET_CONFIG = 0x1005,        // WD_GetConfig
+    IOCTLV_WD_CHANGE_BEACON = 0x1006,     // WD_ChangeBeacon
+    IOCTLV_WD_DISASSOC = 0x1007,          // WD_DisAssoc
+    IOCTLV_WD_MP_SEND_FRAME = 0x1008,     // WD_MpSendFrame
+    IOCTLV_WD_SEND_FRAME = 0x1009,        // WD_SendFrame
+    IOCTLV_WD_SCAN = 0x100a,              // WD_Scan
+    IOCTLV_WD_CALL_WL = 0x100c,           // WD_CallWL
+    IOCTLV_WD_MEASURE_CHANNEL = 0x100b,   // WD_MeasureChannel
+    IOCTLV_WD_GET_LASTERROR = 0x100d,     // WD_GetLastError
+    IOCTLV_WD_GET_INFO = 0x100e,          // WD_GetInfo
+    IOCTLV_WD_CHANGE_GAMEINFO = 0x100f,   // WD_ChangeGameInfo
+    IOCTLV_WD_CHANGE_VTSF = 0x1010,       // WD_ChangeVTSF
+    IOCTLV_WD_RECV_FRAME = 0x8000,        // WD_ReceiveFrame
+    IOCTLV_WD_RECV_NOTIFICATION = 0x8001  // WD_ReceiveNotification
+};
+
+// Capability flags :
+
+#define CAPAB_SECURED_FLAG 0x10
+
+// WD Modes :
+
 enum MODES
 {
     Unintialized = 0,
@@ -45,6 +74,8 @@ enum MODES
     NA2 = 5,
     NA3 = 6
 };
+
+// WD Information :
 
 typedef struct WDInfo
 {
@@ -58,6 +89,8 @@ typedef struct WDInfo
     u8 unknown[48];
 } WDInfo;
 
+// Scan parameters :
+
 typedef struct ScanParameters
 {
     u16         ChannelBitmap;
@@ -70,6 +103,8 @@ typedef struct ScanParameters
     u8          SSIDMatchMask[6];
 
 } ScanParameters;
+
+// BSS Descriptor :
 
 typedef struct BSSDescriptor
 {
@@ -89,18 +124,26 @@ typedef struct BSSDescriptor
     u16 channel;
     u16 CF_period;
     u16 CF_max_duration;
-    u16 element_info_length;
-    u16 element_info[1];
-}  BSSDescriptor;
+    // IE -> Information Elements
+    u16 IEs_length;
+} BSSDescriptor;
+
+// General Purpose :
 
 s32 NCD_LockWirelessDriver();
 u32 NCD_UnlockWirelessDriver(s32 lockid);
 int WD_Init(u8 mode);
 void WD_Deinit();
 int WD_GetInfo(WDInfo* inf);
+
+// AP Scan related : 
+
 u8 WD_GetRadioLevel(BSSDescriptor* Bss);
 int WD_Scan(ScanParameters *settings, u8* buff, u16 buffsize);
 int WD_ScanOnce(ScanParameters *settings, u8* buff, u16 buffsize);
+u8 WD_GetNumberOfIEs(BSSDescriptor* Bss);
+u8 WD_GetIELength(BSSDescriptor* Bss, u8 ID);
+int WD_GetIE(BSSDescriptor* Bss, u8 ID, u8* buff, u8 buffsize);
 void WD_SetDefaultScanParameters(ScanParameters* set);
 
 #endif
