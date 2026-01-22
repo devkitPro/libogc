@@ -116,22 +116,17 @@ void WD_Deinit() {
 }
 
 u8 WD_GetRadioLevel(BSSDescriptor* Bss) {
-    u8 ret;
+    if (Bss->RSSI >= 0xc4)
+        return 3; // Strong
+
+    if (Bss->RSSI >= 0xb5)
+        return 2; // Normal
+
+    if (Bss->RSSI >= 0xab)
+        return 1; // Weak
     
-    if (Bss->RSSI < 0xc4) {
-        if (Bss->RSSI < 0xb5) {
-            if (Bss->RSSI < 0xab) {
-                ret = 0; // Very Weak
-            } else {
-                ret = 1; // Weak
-            }
-        } else {
-            ret = 2; // Medium
-        }
-    } else {
-        ret = 3; // Strong
-    }
-    return ret;
+    return 0; // Very Weak
+
 }
 
 int WD_GetInfo(WDInfo* info) {
