@@ -62,6 +62,12 @@ enum WDIOCTLV
 
 #define CAPAB_SECURED_FLAG 0x10
 
+// Information Elements IDs :
+
+#define IEID_SSID 0x0
+#define IEID_VENDORSPECIFIC 0xDD
+#define IEID_SECURITY 0x30
+
 // WD Modes :
 
 enum MODES
@@ -124,9 +130,16 @@ typedef struct BSSDescriptor
     u16 channel;
     u16 CF_period;
     u16 CF_max_duration;
-    // IE -> Information Elements
     u16 IEs_length;
 } BSSDescriptor;
+
+// Information Element Header :
+
+typedef struct IE_hdr
+{
+    u8 ID;
+    u8 len;
+} IE_hdr;
 
 // General Purpose :
 
@@ -142,7 +155,7 @@ u8 WD_GetRadioLevel(BSSDescriptor* Bss);
 int WD_Scan(ScanParameters *settings, u8* buff, u16 buffsize);
 int WD_ScanOnce(ScanParameters *settings, u8* buff, u16 buffsize);
 u8 WD_GetNumberOfIEs(BSSDescriptor* Bss);
-u8 WD_GetIELength(BSSDescriptor* Bss, u8 ID);
+int WD_GetIELength(BSSDescriptor* Bss, u8 ID, u8* len);
 int WD_GetIE(BSSDescriptor* Bss, u8 ID, u8* buff, u8 buffsize);
 void WD_SetDefaultScanParameters(ScanParameters* set);
 

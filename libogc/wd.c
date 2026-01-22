@@ -194,56 +194,57 @@ u8 WD_GetNumberOfIEs(BSSDescriptor* Bss) {
     u8 ret = 0;
 
     u8* ptr = (u8*)Bss;
-    size_t offset = 0;
+    IE_hdr* hdr = (IE_hdr*)&ptr[sizeof(BSSDescriptor)];
+    u16 offset = 0;
 
-    for(;
-        offset < Bss->IEs_length && ptr[offset + 0x3F] != 0;
-        offset += ptr[offset + 0x3F])
+    while(offset < Bss->IEs_length && hdr->len != 0 )
     {
+        hdr = (IE_hdr*)&ptr[sizeof(BSSDescriptor) + offset];
+        offset += hdr->len + sizeof(IE_hdr);
         ret++;
     }
 
     return ret;
 }
 
-u8 WD_GetIELength(BSSDescriptor* Bss, u8 ID) {
-    if(ID > WD_GetNumberOfIEs(Bss)) return -1;
-
-    
+int WD_GetIELength(BSSDescriptor* Bss, u8 ID, u8* len) {
     u16 IEslen = Bss->IEs_length;
 
     u8* ptr = (u8*)Bss;
-    size_t offset = 0;
+    IE_hdr* hdr = (IE_hdr*)&ptr[sizeof(BSSDescriptor)];
+    u16 offset = 0;
 
-    for(u8 IE = 0;
-        (IE < ID) && ((offset + ptr[offset + 0x3F]) < IEslen && ptr[offset + 0x3F] != 0);
-        offset += ptr[offset + 0x3F])
+    while(hdr->ID != ID && (offset + hdr->len) < IEslen && hdr->len != 0)
     {
-        IE++;
+        hdr = (IE_hdr*)&ptr[sizeof(BSSDescriptor) + offset];
+        offset += hdr->len + sizeof(IE_hdr);
     }
-    
-    return ptr[offset + 0x3F];
+
+    if(hdr->ID != ID) return -1;
+
+    *len = hdr->len;
+    return 0;
 }
 
 int WD_GetIE(BSSDescriptor* Bss, u8 ID, u8* buff, u8 buffsize) {
-    if(ID > WD_GetNumberOfIEs(Bss)) return -1;
-
     if(!buff) return -2;
 
     u16 IEslen = Bss->IEs_length;
 
     u8* ptr = (u8*)Bss;
-    size_t offset = 0;
+    IE_hdr* hdr = (IE_hdr*)&ptr[sizeof(BSSDescriptor)];
+    u16 offset = 0;
 
-    for(u8 IE = 0;
-        (IE < ID) && ((offset + WD_GetIELength(Bss, ID)) < IEslen && WD_GetIELength(Bss, ID) != 0);
-        offset += WD_GetIELength(Bss, ID))
+    while(hdr->ID != ID && (offset + hdr->len) < IEslen && hdr->len != 0)
     {
-        IE++;
+        hdr = (IE_hdr*)&ptr[sizeof(BSSDescriptor) + offset];
+        offset += hdr->len + sizeof(IE_hdr);
     }
 
+    if(hdr->ID != ID) return -1;
+
     memset(buff, 0, buffsize);
-    memcpy(buff, &ptr[offset + 0x3F + 1], WD_GetIELength(Bss, ID));
+    memcpy(buff, &ptr[offset + sizeof(BSSDescriptor) + sizeof(IE_hdr)], hdr->len);
 
     return 0;
 }
