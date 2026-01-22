@@ -155,7 +155,7 @@ u8 WD_GetRadioLevel(BSSDescriptor* Bss);
 int WD_Scan(ScanParameters *settings, u8* buff, u16 buffsize);
 int WD_ScanOnce(ScanParameters *settings, u8* buff, u16 buffsize);
 u8 WD_GetNumberOfIEs(BSSDescriptor* Bss);
-int WD_GetIELength(BSSDescriptor* Bss, u8 ID, u8* len);
+int WD_GetIELength(BSSDescriptor* Bss, u8 ID);
 int WD_GetIE(BSSDescriptor* Bss, u8 ID, u8* buff, u8 buffsize);
 void WD_SetDefaultScanParameters(ScanParameters* set);
 

@@ -207,7 +207,7 @@ u8 WD_GetNumberOfIEs(BSSDescriptor* Bss) {
     return ret;
 }
 
-int WD_GetIELength(BSSDescriptor* Bss, u8 ID, u8* len) {
+int WD_GetIELength(BSSDescriptor* Bss, u8 ID) {
     u16 IEslen = Bss->IEs_length;
 
     u8* ptr = (u8*)Bss;
@@ -222,8 +222,7 @@ int WD_GetIELength(BSSDescriptor* Bss, u8 ID, u8* len) {
 
     if(hdr->ID != ID) return -1;
 
-    *len = hdr->len;
-    return 0;
+    return hdr->len;
 }
 
 int WD_GetIE(BSSDescriptor* Bss, u8 ID, u8* buff, u8 buffsize) {
