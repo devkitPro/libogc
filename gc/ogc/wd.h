@@ -68,6 +68,13 @@ enum WDIOCTLV
 #define IEID_VENDORSPECIFIC 0xDD
 #define IEID_SECURITY 0x30
 
+// Signal Strength :
+
+#define WD_SIGNAL_STRONG 3
+#define WD_SIGNAL_NORMAL 2
+#define WD_SIGNAL_FAIR 1
+#define WD_SIGNAL_WEAK 0
+
 // WD Modes :
 
 enum MODES

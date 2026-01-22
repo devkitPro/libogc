@@ -117,16 +117,15 @@ void WD_Deinit() {
 
 u8 WD_GetRadioLevel(BSSDescriptor* Bss) {
     if (Bss->RSSI >= 0xc4)
-        return 3; // Strong
+        return WD_SIGNAL_STRONG; // Strong
 
     if (Bss->RSSI >= 0xb5)
-        return 2; // Normal
+        return WD_SIGNAL_NORMAL; // Normal
 
     if (Bss->RSSI >= 0xab)
-        return 1; // Weak
+        return WD_SIGNAL_FAIR; // Fair
     
-    return 0; // Very Weak
-
+    return WD_SIGNAL_WEAK; // Weak
 }
 
 int WD_GetInfo(WDInfo* info) {
