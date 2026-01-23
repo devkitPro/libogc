@@ -81,7 +81,7 @@ int __SYSCALL(thread_create)(struct __pthread_t** thread, void* (*func)(void*), 
 	}
 
 	if (!stack_size) {
-		stack_size = 8*1024;
+		stack_size = 64*1024;
 	}
 
 	size_t struct_sz = (sizeof(struct __pthread_t) + 7) &~ 7;
