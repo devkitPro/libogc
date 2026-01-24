@@ -103,9 +103,9 @@ void WD_SetDefaultScanParameters(ScanParameters* set) {
 int WD_Init(u8 mode) {
     if(wd_fd < 0) {
         wd_fd = IOS_Open("/dev/net/wd/command", 0x10000 | mode);
-        if (wd_fd < 0) return -1;
+        if (wd_fd < 0) return WD_UINITIALIZED;
     }
-    return 0;
+    return WD_SUCCESS;
 }
 
 void WD_Deinit() {
@@ -116,13 +116,13 @@ void WD_Deinit() {
 }
 
 u8 WD_GetRadioLevel(BSSDescriptor* Bss) {
-    if (Bss->RSSI >= 0xc4)
+    if ((u8)Bss->RSSI >= 0xc4)
         return WD_SIGNAL_STRONG; // Strong
 
-    if (Bss->RSSI >= 0xb5)
+    if ((u8)Bss->RSSI >= 0xb5)
         return WD_SIGNAL_NORMAL; // Normal
 
-    if (Bss->RSSI >= 0xab)
+    if ((u8)Bss->RSSI >= 0xab)
         return WD_SIGNAL_FAIR; // Fair
     
     return WD_SIGNAL_WEAK; // Weak
@@ -131,7 +131,7 @@ u8 WD_GetRadioLevel(BSSDescriptor* Bss) {
 int WD_GetInfo(WDInfo* info) {
     s32 lockid = NCD_LockWirelessDriver();
     
-    if(WD_Init(AOSSAPScan) < 0) return -1;
+    if(WD_Init(AOSSAPScan) < 0) return WD_UINITIALIZED;
     
     u8 inf[sizeof(WDInfo)] __attribute__((aligned(32)));
     
@@ -145,11 +145,11 @@ int WD_GetInfo(WDInfo* info) {
     WD_Deinit();
     NCD_UnlockWirelessDriver(lockid);
     
-    return 0;
+    return WD_SUCCESS;
 }
 
 int WD_Scan(ScanParameters *settings, u8* buff, u16 buffsize) {
-    if(wd_fd < 0) return -1;
+    if(wd_fd < 0) return WD_UINITIALIZED;
 
     u8 buf[buffsize + 2] __attribute__((aligned(32)));
     u8 settingsbuf[0x4e] __attribute__((aligned(32)));
@@ -168,20 +168,20 @@ int WD_Scan(ScanParameters *settings, u8* buff, u16 buffsize) {
     usleep(100000);
     memcpy(buff, buf, buffsize);
 	
-    return 0;
+    return WD_SUCCESS;
 }
 
 int WD_ScanOnce(ScanParameters *settings, u8* buff, u16 buffsize) {
     s32 lockid = NCD_LockWirelessDriver();
     
-    if(WD_Init(AOSSAPScan) < 0) return -1;
+    if(WD_Init(AOSSAPScan) < 0) return WD_UINITIALIZED;
     
     WD_Scan(settings, buff, buffsize);
     
     WD_Deinit();
     NCD_UnlockWirelessDriver(lockid);
     
-    return 0;
+    return WD_SUCCESS;
 }
 
 u8 WD_GetNumberOfIEs(BSSDescriptor* Bss) {
@@ -214,13 +214,13 @@ int WD_GetIELength(BSSDescriptor* Bss, u8 ID) {
         offset += hdr->len + sizeof(IE_hdr);
     }
 
-    if(hdr->ID != ID) return -1;
+    if(hdr->ID != ID) return WD_NOTFOUND;
 
     return hdr->len;
 }
 
 int WD_GetIE(BSSDescriptor* Bss, u8 ID, u8* buff, u8 buffsize) {
-    if(!buff) return -2;
+    if(!buff) return WD_INVALIDBUFF;
 
     u16 IEslen = Bss->IEs_length;
 
@@ -234,12 +234,55 @@ int WD_GetIE(BSSDescriptor* Bss, u8 ID, u8* buff, u8 buffsize) {
         offset += hdr->len + sizeof(IE_hdr);
     }
 
-    if(hdr->ID != ID) return -1;
+    if(hdr->ID != ID) return WD_NOTFOUND;
+    if(buffsize < WD_GetIELength(Bss, ID)) return WD_BUFFTOOSMALL;
 
     memset(buff, 0, buffsize);
     memcpy(buff, &ptr[offset + sizeof(BSSDescriptor) + sizeof(IE_hdr)], hdr->len);
 
-    return 0;
+    return WD_SUCCESS;
+}
+
+int WD_GetIEIDList(BSSDescriptor* Bss, u8* buff, u8 buffsize) {
+    if(!buff) return WD_INVALIDBUFF;
+    if(buffsize < WD_GetNumberOfIEs(Bss)) return WD_BUFFTOOSMALL;
+
+    u8 n = 0;
+
+    u8* ptr = (u8*)Bss;
+    IE_hdr* hdr = (IE_hdr*)&ptr[sizeof(BSSDescriptor)];
+    u16 offset = 0;
+
+    while(offset < Bss->IEs_length && hdr->len != 0)
+    {
+        buff[n] = hdr->ID;
+        hdr = (IE_hdr*)&ptr[sizeof(BSSDescriptor) + offset];
+        offset += hdr->len + sizeof(IE_hdr);
+        n++;
+    }
+
+    return WD_SUCCESS;
+}
+
+int WD_GetVendorSpecificIE(BSSDescriptor* Bss, u32 OUI, u8* buff, u8 buffsize) {
+    if(!buff) return WD_INVALIDBUFF;
+
+    u16 IEslen = Bss->IEs_length;
+
+    u8* ptr = (u8*)Bss;
+    IE_hdr* hdr = (IE_hdr*)&ptr[sizeof(BSSDescriptor)];
+    u16 offset = 0;
+
+    while((hdr->ID != IEID_VENDORSPECIFIC && (u32)ptr[sizeof(BSSDescriptor) + offset + 2] != OUI) && (offset + hdr->len) < IEslen && hdr->len != 0)
+    {
+        hdr = (IE_hdr*)&ptr[sizeof(BSSDescriptor) + offset];
+        offset += hdr->len + sizeof(IE_hdr);
+    }
+
+    if( hdr->ID != IEID_VENDORSPECIFIC ||
+        (u32)ptr[sizeof(BSSDescriptor) + offset + 2] != OUI) return WD_NOTFOUND;
+
+    return WD_SUCCESS;
 }
 
 #endif
