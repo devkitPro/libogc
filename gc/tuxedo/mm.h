@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Zlib
+// SPDX-FileCopyrightText: Copyright fincs, devkitPro
 #pragma once
 
 #define MM_P_MEM1   0x00000000

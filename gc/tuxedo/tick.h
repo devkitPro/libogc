@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Zlib
+// SPDX-FileCopyrightText: Copyright fincs, devkitPro
 #pragma once
 #include "ppc/intrinsics.h"
 #include "ppc/clock.h"

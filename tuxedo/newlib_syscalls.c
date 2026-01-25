@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Zlib
+// SPDX-FileCopyrightText: Copyright fincs, devkitPro
 #include <stdlib.h>
 #include <string.h>
 #include <tuxedo/thread.h>

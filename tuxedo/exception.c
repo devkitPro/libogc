@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Zlib
+// SPDX-FileCopyrightText: Copyright fincs, devkitPro
 #include <tuxedo/ppc/exception.h>
 #include <tuxedo/ppc/cache.h>
 #include <tuxedo/thread.h>

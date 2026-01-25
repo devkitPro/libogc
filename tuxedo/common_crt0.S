@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Zlib
+// SPDX-FileCopyrightText: Copyright fincs, devkitPro
 #include <tuxedo/asm.inc>
 #include <tuxedo/ppc/spr.h>
 

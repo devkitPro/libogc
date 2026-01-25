@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Zlib
+// SPDX-FileCopyrightText: Copyright fincs, devkitPro
 #include <tuxedo/ppc/cache.h>
 
 // GCC generates *very* stupid code for these functions unless we disable loop unrolling...

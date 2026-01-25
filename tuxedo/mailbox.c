@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Zlib
+// SPDX-FileCopyrightText: Copyright fincs, devkitPro
 #include <tuxedo/thread.h>
 #include <tuxedo/mailbox.h>
 
