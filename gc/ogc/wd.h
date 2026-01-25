@@ -77,6 +77,10 @@ enum WDIOCTLV
 #define IEID_SECURITY_RSN 0x30
 #define IEID_VENDORSPECIFIC 0xDD
 
+// OUI (Organization Unified ID) :
+
+#define OUI_WPA 0x0050F201
+
 // Signal Strength :
 
 #define WD_SIGNAL_STRONG 3
@@ -157,6 +161,44 @@ typedef struct IE_hdr
     u8 len;
 } IE_hdr;
 
+// Security :
+
+enum WD_SECURITY
+{
+    WD_OPEN     = 0x00,
+    WD_WEP      = 0x01,
+    WD_WPA_TKIP = 0x02,
+    WD_WPA2_AES = 0x03,
+    WD_WPA_AES = 0x04,
+    WD_WPA2_TKIP = 0x05,
+};
+
+typedef struct IE_RSN
+{
+    u16 Version;
+
+    u32 GDCS; // Group Data Cipher Suite
+    
+    u16 PCS_Count; // Pairwise Cipher Suite
+    
+    u16 AKMS_Count; // AKM Suite
+
+    u16 RSN_Capab;
+
+    u16 PMKID_Count;
+} IE_RSN;
+
+typedef struct IE_WPA
+{
+    u16 Version;
+
+    u32 GDCS; // Group Data Cipher Suite
+    
+    u16 PCS_Count; // Pairwise Cipher Suite
+    
+    u16 AKMS_Count; // AKM Suite
+} IE_WPA;
+
 // General Purpose :
 
 s32 NCD_LockWirelessDriver();
@@ -178,5 +220,15 @@ u8 WD_GetNumberOfIEs(BSSDescriptor* Bss);
 int WD_GetIELength(BSSDescriptor* Bss, u8 ID);
 int WD_GetIE(BSSDescriptor* Bss, u8 ID, u8* buff, u8 buffsize);
 int WD_GetIEIDList(BSSDescriptor* Bss, u8* buff, u8 buffsize);
+int WD_GetVendorSpecificIELength(BSSDescriptor* Bss, u32 OUI);
+int WD_GetVendorSpecificIE(BSSDescriptor* Bss, u32 OUI, u8* buff, u8 buffsize);
+
+// AP Security related :
+
+int WD_GetRSNEssentials(BSSDescriptor *Bss, IE_RSN *IE);
+int WD_GetRSNPCSList(BSSDescriptor *Bss, u8* buff, u8 buffsize);
+int WD_GetWPAIEEssentials(BSSDescriptor *Bss, IE_WPA *IE);
+int WD_GetWPA_PCSList(BSSDescriptor *Bss, u8* destbuff, u16 buffsize);
+u8 WD_GetSecurity(BSSDescriptor *Bss);
 
 #endif
