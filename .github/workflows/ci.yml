@@ -7,18 +7,15 @@ jobs:
     name: ubuntu-latest
     runs-on: ubuntu-latest
     container: devkitpro/devkitppc:latest
- 
+
     steps:
     - uses: actions/checkout@v4.3.1
-      with:
-          fetch-tags: true
-          fetch-depth: '25'
-    
+    - name: Fetch tags
+      run: git fetch --prune --unshallow --tags
       #workaround for the github checkout not fully working right with containers
       #see : https://github.com/actions/checkout/issues/2031
     - name: Add git safe directory
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      
     - name: Build
       run: |
         catnip
