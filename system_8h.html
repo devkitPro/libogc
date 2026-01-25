@@ -21,7 +21,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">libogc<span id="projectnumber">&#160;v2.14.1</span>
+   <div id="projectname">libogc<span id="projectnumber">&#160;v3.0.0</span>
    </div>
   </td>
  </tr>
@@ -99,19 +99,19 @@ Data Structures</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
 Macros</h2></td></tr>
-<tr class="memitem:ga366079df33b105bc969e4ea30ea20c32"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga366079df33b105bc969e4ea30ea20c32">MEM_K0_TO_K1</a>(x)&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) + (SYS_BASE_UNCACHED - SYS_BASE_CACHED))</td></tr>
+<tr class="memitem:ga366079df33b105bc969e4ea30ea20c32"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga366079df33b105bc969e4ea30ea20c32">MEM_K0_TO_K1</a>(x)&#160;&#160;&#160;(void*)((u32)(x) + (SYS_BASE_UNCACHED - SYS_BASE_CACHED))</td></tr>
 <tr class="separator:ga366079df33b105bc969e4ea30ea20c32"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gadd741cccb304c44040969cf44037bf2e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#gadd741cccb304c44040969cf44037bf2e">MEM_K0_TO_PHYSICAL</a>(x)&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) - SYS_BASE_CACHED)</td></tr>
+<tr class="memitem:gadd741cccb304c44040969cf44037bf2e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#gadd741cccb304c44040969cf44037bf2e">MEM_K0_TO_PHYSICAL</a>(x)&#160;&#160;&#160;(void*)((u32)(x) - SYS_BASE_CACHED)</td></tr>
 <tr class="separator:gadd741cccb304c44040969cf44037bf2e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga7fed6b6449d66911536a6da04ea69a2e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga7fed6b6449d66911536a6da04ea69a2e">MEM_K1_TO_K0</a>(x)&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) - (SYS_BASE_UNCACHED - SYS_BASE_CACHED))</td></tr>
+<tr class="memitem:ga7fed6b6449d66911536a6da04ea69a2e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga7fed6b6449d66911536a6da04ea69a2e">MEM_K1_TO_K0</a>(x)&#160;&#160;&#160;(void*)((u32)(x) - (SYS_BASE_UNCACHED - SYS_BASE_CACHED))</td></tr>
 <tr class="separator:ga7fed6b6449d66911536a6da04ea69a2e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga57c3ba40dc583961e2d7c10bd8b8e218"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga57c3ba40dc583961e2d7c10bd8b8e218">MEM_K1_TO_PHYSICAL</a>(x)&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) - SYS_BASE_UNCACHED)</td></tr>
+<tr class="memitem:ga57c3ba40dc583961e2d7c10bd8b8e218"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga57c3ba40dc583961e2d7c10bd8b8e218">MEM_K1_TO_PHYSICAL</a>(x)&#160;&#160;&#160;(void*)((u32)(x) - SYS_BASE_UNCACHED)</td></tr>
 <tr class="separator:ga57c3ba40dc583961e2d7c10bd8b8e218"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaa6a4c77d510b05327490bdbce563fd24"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#gaa6a4c77d510b05327490bdbce563fd24">MEM_PHYSICAL_TO_K0</a>(x)&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) + SYS_BASE_CACHED)</td></tr>
+<tr class="memitem:gaa6a4c77d510b05327490bdbce563fd24"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#gaa6a4c77d510b05327490bdbce563fd24">MEM_PHYSICAL_TO_K0</a>(x)&#160;&#160;&#160;(void*)((u32)(x) + SYS_BASE_CACHED)</td></tr>
 <tr class="separator:gaa6a4c77d510b05327490bdbce563fd24"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga9a8e9cc962ec0830baf00dbcb080949f"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga9a8e9cc962ec0830baf00dbcb080949f">MEM_PHYSICAL_TO_K1</a>(x)&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) + SYS_BASE_UNCACHED)</td></tr>
+<tr class="memitem:ga9a8e9cc962ec0830baf00dbcb080949f"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga9a8e9cc962ec0830baf00dbcb080949f">MEM_PHYSICAL_TO_K1</a>(x)&#160;&#160;&#160;(void*)((u32)(x) + SYS_BASE_UNCACHED)</td></tr>
 <tr class="separator:ga9a8e9cc962ec0830baf00dbcb080949f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga238b75abe08418670597e43cb711455e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga238b75abe08418670597e43cb711455e">MEM_VIRTUAL_TO_PHYSICAL</a>(x)&#160;&#160;&#160;(((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x)) &amp; ~SYS_BASE_UNCACHED)</td></tr>
+<tr class="memitem:ga238b75abe08418670597e43cb711455e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga238b75abe08418670597e43cb711455e">MEM_VIRTUAL_TO_PHYSICAL</a>(x)&#160;&#160;&#160;(((u32)(x)) &amp; ~SYS_BASE_UNCACHED)</td></tr>
 <tr class="separator:ga238b75abe08418670597e43cb711455e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1c07ba56a0fe6b45232e878d547172c7"><td class="memItemLeft" align="right" valign="top"><a id="a1c07ba56a0fe6b45232e878d547172c7" name="a1c07ba56a0fe6b45232e878d547172c7"></a>
 #define&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_BASE_CACHED</b>&#160;&#160;&#160;(0x80000000)</td></tr>
@@ -218,10 +218,10 @@ typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><b>alarmcallba
 typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><b>powercallback</b>) (void)</td></tr>
 <tr class="separator:a95137a63acf3261b811e7d30ac005958"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a64b369f18684ed723e823d0c33aa5edb"><td class="memItemLeft" align="right" valign="top"><a id="a64b369f18684ed723e823d0c33aa5edb" name="a64b369f18684ed723e823d0c33aa5edb"></a>
-typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><b>resetcallback</b>) (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> irq, void *ctx)</td></tr>
+typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><b>resetcallback</b>) (u32 irq, void *ctx)</td></tr>
 <tr class="separator:a64b369f18684ed723e823d0c33aa5edb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a60a499d2ebd390eed5f324a088867d32"><td class="memItemLeft" align="right" valign="top"><a id="a60a499d2ebd390eed5f324a088867d32" name="a60a499d2ebd390eed5f324a088867d32"></a>
-typedef <a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a>(*&#160;</td><td class="memItemRight" valign="bottom"><b>resetfunction</b>) (<a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a> final)</td></tr>
+typedef s32(*&#160;</td><td class="memItemRight" valign="bottom"><b>resetfunction</b>) (s32 final)</td></tr>
 <tr class="separator:a60a499d2ebd390eed5f324a088867d32"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aade16582218eb5cc06b8fb930e279abc"><td class="memItemLeft" align="right" valign="top"><a id="aade16582218eb5cc06b8fb930e279abc" name="aade16582218eb5cc06b8fb930e279abc"></a>
 typedef struct <a class="el" href="struct__sys__fontheader.html">_sys_fontheader</a>&#160;</td><td class="memItemRight" valign="bottom"><b>sys_fontheader</b></td></tr>
@@ -236,7 +236,7 @@ typedef struct <a class="el" href="struct__sys__resetinfo.html">_sys_resetinfo</
 <tr class="memdesc:a20952c52f3ce48b3126c332cbce2a9a8"><td class="mdescLeft">&#160;</td><td class="mdescRight">holds the stored configuration value from the extended SRAM area  <a href="system_8h.html#a20952c52f3ce48b3126c332cbce2a9a8">More...</a><br /></td></tr>
 <tr class="separator:a20952c52f3ce48b3126c332cbce2a9a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af052ca94a14060aea6bd2401374d3995"><td class="memItemLeft" align="right" valign="top"><a id="af052ca94a14060aea6bd2401374d3995" name="af052ca94a14060aea6bd2401374d3995"></a>
-typedef <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>syswd_t</b></td></tr>
+typedef u32&#160;</td><td class="memItemRight" valign="bottom"><b>syswd_t</b></td></tr>
 <tr class="memdesc:af052ca94a14060aea6bd2401374d3995"><td class="mdescLeft">&#160;</td><td class="mdescRight">handle typedef for the alarm context <br /></td></tr>
 <tr class="separator:af052ca94a14060aea6bd2401374d3995"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
@@ -253,10 +253,10 @@ void void&#160;</td><td class="memItemRight" valign="bottom"><b>kprintf</b> (con
 <tr class="memitem:a2f6cf534244a5d12ed8feefed8a60fd8"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="system_8h.html#a2f6cf534244a5d12ed8feefed8a60fd8">SYS_AllocateFramebuffer</a> (<a class="el" href="gx__struct_8h.html#a232a76ec57f12bf0e45abad393c36698">GXRModeObj</a> *rmode)</td></tr>
 <tr class="memdesc:a2f6cf534244a5d12ed8feefed8a60fd8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocate cacheline aligned memory for the external framebuffer based on the rendermode object.  <a href="system_8h.html#a2f6cf534244a5d12ed8feefed8a60fd8">More...</a><br /></td></tr>
 <tr class="separator:a2f6cf534244a5d12ed8feefed8a60fd8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae9df35009def32b0570c87aaba11c5d9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="system_8h.html#ae9df35009def32b0570c87aaba11c5d9">SYS_CancelAlarm</a> (<a class="el" href="system_8h.html#af052ca94a14060aea6bd2401374d3995">syswd_t</a> thealarm)</td></tr>
+<tr class="memitem:ae9df35009def32b0570c87aaba11c5d9"><td class="memItemLeft" align="right" valign="top">s32&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="system_8h.html#ae9df35009def32b0570c87aaba11c5d9">SYS_CancelAlarm</a> (<a class="el" href="system_8h.html#af052ca94a14060aea6bd2401374d3995">syswd_t</a> thealarm)</td></tr>
 <tr class="memdesc:ae9df35009def32b0570c87aaba11c5d9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cancel the alarm, but do not remove from the list of contexts.  <a href="system_8h.html#ae9df35009def32b0570c87aaba11c5d9">More...</a><br /></td></tr>
 <tr class="separator:ae9df35009def32b0570c87aaba11c5d9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a183800c28f569b914290185ecca8264e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="system_8h.html#a183800c28f569b914290185ecca8264e">SYS_CreateAlarm</a> (<a class="el" href="system_8h.html#af052ca94a14060aea6bd2401374d3995">syswd_t</a> *thealarm)</td></tr>
+<tr class="memitem:a183800c28f569b914290185ecca8264e"><td class="memItemLeft" align="right" valign="top">s32&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="system_8h.html#a183800c28f569b914290185ecca8264e">SYS_CreateAlarm</a> (<a class="el" href="system_8h.html#af052ca94a14060aea6bd2401374d3995">syswd_t</a> *thealarm)</td></tr>
 <tr class="memdesc:a183800c28f569b914290185ecca8264e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Create/initialize sysalarm structure.  <a href="system_8h.html#a183800c28f569b914290185ecca8264e">More...</a><br /></td></tr>
 <tr class="separator:a183800c28f569b914290185ecca8264e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6550ffc945db8331f1f131ceed75b909"><td class="memItemLeft" align="right" valign="top"><a id="a6550ffc945db8331f1f131ceed75b909" name="a6550ffc945db8331f1f131ceed75b909"></a>
@@ -269,56 +269,59 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetArena1Hi</b>
 void *&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetArena1Lo</b> (void)</td></tr>
 <tr class="separator:a5a32195e9a2de79d5f562c9ec22d36fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad7c540adca9882fe2011231f21960ef5"><td class="memItemLeft" align="right" valign="top"><a id="ad7c540adca9882fe2011231f21960ef5" name="ad7c540adca9882fe2011231f21960ef5"></a>
-<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetArena1Size</b> (void)</td></tr>
+u32&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetArena1Size</b> (void)</td></tr>
 <tr class="separator:ad7c540adca9882fe2011231f21960ef5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad309908a9e45466034b58207889f9b6a"><td class="memItemLeft" align="right" valign="top"><a id="ad309908a9e45466034b58207889f9b6a" name="ad309908a9e45466034b58207889f9b6a"></a>
-<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetCounterBias</b> (void)</td></tr>
+u32&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetCounterBias</b> (void)</td></tr>
 <tr class="separator:ad309908a9e45466034b58207889f9b6a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1dfad24cf4aa6d3cc59bcd93c8903fe1"><td class="memItemLeft" align="right" valign="top"><a id="a1dfad24cf4aa6d3cc59bcd93c8903fe1" name="a1dfad24cf4aa6d3cc59bcd93c8903fe1"></a>
-<a class="el" href="gctypes_8h.html#a9e382f207c65ca13ab4ae98363aeda80">s8</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetDisplayOffsetH</b> (void)</td></tr>
+s8&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetDisplayOffsetH</b> (void)</td></tr>
 <tr class="separator:a1dfad24cf4aa6d3cc59bcd93c8903fe1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a35f27c6153dd8101057d30e648370d88"><td class="memItemLeft" align="right" valign="top"><a id="a35f27c6153dd8101057d30e648370d88" name="a35f27c6153dd8101057d30e648370d88"></a>
-<a class="el" href="gctypes_8h.html#a92c50087ca0e64fa93fc59402c55f8ca">u8</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetEuRGB60</b> (void)</td></tr>
+u8&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetEuRGB60</b> (void)</td></tr>
 <tr class="separator:a35f27c6153dd8101057d30e648370d88"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abee42fade8d92f66d8610076ee12cfc3"><td class="memItemLeft" align="right" valign="top"><a id="abee42fade8d92f66d8610076ee12cfc3" name="abee42fade8d92f66d8610076ee12cfc3"></a>
-<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetFontEncoding</b> (void)</td></tr>
+u32&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetFontEncoding</b> (void)</td></tr>
 <tr class="separator:abee42fade8d92f66d8610076ee12cfc3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a25c30be0bb61cdd104cb4371e6674c43"><td class="memItemLeft" align="right" valign="top"><a id="a25c30be0bb61cdd104cb4371e6674c43" name="a25c30be0bb61cdd104cb4371e6674c43"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetFontTexel</b> (<a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a> c, void *image, <a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a> pos, <a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a> stride, <a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a> *width)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetFontTexel</b> (s32 c, void *image, s32 pos, s32 stride, s32 *width)</td></tr>
 <tr class="separator:a25c30be0bb61cdd104cb4371e6674c43"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abc5ec7a01005db2b77fdc16061bcc1be"><td class="memItemLeft" align="right" valign="top"><a id="abc5ec7a01005db2b77fdc16061bcc1be" name="abc5ec7a01005db2b77fdc16061bcc1be"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetFontTexture</b> (<a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a> c, void **image, <a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a> *xpos, <a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a> *ypos, <a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a> *width)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetFontTexture</b> (s32 c, void **image, s32 *xpos, s32 *ypos, s32 *width)</td></tr>
 <tr class="separator:abc5ec7a01005db2b77fdc16061bcc1be"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6cd26cb4e906987ea0a755218679c30e"><td class="memItemLeft" align="right" valign="top"><a id="a6cd26cb4e906987ea0a755218679c30e" name="a6cd26cb4e906987ea0a755218679c30e"></a>
-<a class="el" href="gctypes_8h.html#ace9d960e74685e2cd84b36132dbbf8aa">u16</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetGBSMode</b> (void)</td></tr>
+u16&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetGBSMode</b> (void)</td></tr>
 <tr class="separator:a6cd26cb4e906987ea0a755218679c30e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1db96d236f692b037ee50cac6a773935"><td class="memItemLeft" align="right" valign="top"><a id="a1db96d236f692b037ee50cac6a773935" name="a1db96d236f692b037ee50cac6a773935"></a>
-<a class="el" href="gctypes_8h.html#a92c50087ca0e64fa93fc59402c55f8ca">u8</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetLanguage</b> (void)</td></tr>
+u8&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetLanguage</b> (void)</td></tr>
 <tr class="separator:a1db96d236f692b037ee50cac6a773935"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad6f5cf7b120d5683f24cddbac6e656d4"><td class="memItemLeft" align="right" valign="top"><a id="ad6f5cf7b120d5683f24cddbac6e656d4" name="ad6f5cf7b120d5683f24cddbac6e656d4"></a>
-<a class="el" href="gctypes_8h.html#a92c50087ca0e64fa93fc59402c55f8ca">u8</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetProgressiveScan</b> (void)</td></tr>
+u8&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetProgressiveScan</b> (void)</td></tr>
 <tr class="separator:ad6f5cf7b120d5683f24cddbac6e656d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a07f30943a682d6ce5cde2cdea1cb4c0d"><td class="memItemLeft" align="right" valign="top"><a id="a07f30943a682d6ce5cde2cdea1cb4c0d" name="a07f30943a682d6ce5cde2cdea1cb4c0d"></a>
-<a class="el" href="gctypes_8h.html#a92c50087ca0e64fa93fc59402c55f8ca">u8</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetSoundMode</b> (void)</td></tr>
+u8&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetSoundMode</b> (void)</td></tr>
 <tr class="separator:a07f30943a682d6ce5cde2cdea1cb4c0d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8cf6fcde011e455788f421796fae9b37"><td class="memItemLeft" align="right" valign="top"><a id="a8cf6fcde011e455788f421796fae9b37" name="a8cf6fcde011e455788f421796fae9b37"></a>
-<a class="el" href="gctypes_8h.html#a92c50087ca0e64fa93fc59402c55f8ca">u8</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetVideoMode</b> (void)</td></tr>
+u8&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetVideoMode</b> (void)</td></tr>
 <tr class="separator:a8cf6fcde011e455788f421796fae9b37"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4e5027d102c5d818b8288f937f44faf1"><td class="memItemLeft" align="right" valign="top"><a id="a4e5027d102c5d818b8288f937f44faf1" name="a4e5027d102c5d818b8288f937f44faf1"></a>
-<a class="el" href="gctypes_8h.html#ace9d960e74685e2cd84b36132dbbf8aa">u16</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetWirelessID</b> (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> chan)</td></tr>
+u16&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_GetWirelessID</b> (u32 chan)</td></tr>
 <tr class="separator:a4e5027d102c5d818b8288f937f44faf1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae7266b09907efcfb4bc5df00c544715c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="system_8h.html#ae7266b09907efcfb4bc5df00c544715c">SYS_Init</a> (void)</td></tr>
 <tr class="separator:ae7266b09907efcfb4bc5df00c544715c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7fe56a6187425e46349f1634e60c38a8"><td class="memItemLeft" align="right" valign="top"><a id="a7fe56a6187425e46349f1634e60c38a8" name="a7fe56a6187425e46349f1634e60c38a8"></a>
-<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_InitFont</b> (<a class="el" href="struct__sys__fontheader.html">sys_fontheader</a> *font_data)</td></tr>
+u32&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_InitFont</b> (<a class="el" href="struct__sys__fontheader.html">sys_fontheader</a> *font_data)</td></tr>
 <tr class="separator:a7fe56a6187425e46349f1634e60c38a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3aa37db2c8a3b67942850149711cfe9b"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="system_8h.html#a3aa37db2c8a3b67942850149711cfe9b">SYS_MainLoop</a> (void)</td></tr>
+<tr class="memdesc:a3aa37db2c8a3b67942850149711cfe9b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs default processing of reset and power button events.  <a href="system_8h.html#a3aa37db2c8a3b67942850149711cfe9b">More...</a><br /></td></tr>
+<tr class="separator:a3aa37db2c8a3b67942850149711cfe9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a792a3580918086591f1c629fbd76906e"><td class="memItemLeft" align="right" valign="top"><a id="a792a3580918086591f1c629fbd76906e" name="a792a3580918086591f1c629fbd76906e"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_ProtectRange</b> (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> chan, void *addr, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> bytes, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> cntrl)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_ProtectRange</b> (u32 chan, void *addr, u32 bytes, u32 cntrl)</td></tr>
 <tr class="separator:a792a3580918086591f1c629fbd76906e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3d4dca727a0060df49ed47b8bb3275aa"><td class="memItemLeft" align="right" valign="top"><a id="a3d4dca727a0060df49ed47b8bb3275aa" name="a3d4dca727a0060df49ed47b8bb3275aa"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_RegisterResetFunc</b> (<a class="el" href="struct__sys__resetinfo.html">sys_resetinfo</a> *info)</td></tr>
 <tr class="separator:a3d4dca727a0060df49ed47b8bb3275aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a16d2e41f1289aa02a5f0f1b4ee2ca036"><td class="memItemLeft" align="right" valign="top"><a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="system_8h.html#a16d2e41f1289aa02a5f0f1b4ee2ca036">SYS_RemoveAlarm</a> (<a class="el" href="system_8h.html#af052ca94a14060aea6bd2401374d3995">syswd_t</a> thealarm)</td></tr>
+<tr class="memitem:a16d2e41f1289aa02a5f0f1b4ee2ca036"><td class="memItemLeft" align="right" valign="top">s32&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="system_8h.html#a16d2e41f1289aa02a5f0f1b4ee2ca036">SYS_RemoveAlarm</a> (<a class="el" href="system_8h.html#af052ca94a14060aea6bd2401374d3995">syswd_t</a> thealarm)</td></tr>
 <tr class="memdesc:a16d2e41f1289aa02a5f0f1b4ee2ca036"><td class="mdescLeft">&#160;</td><td class="mdescRight">Remove the given alarm context from the list of contexts and destroy it.  <a href="system_8h.html#a16d2e41f1289aa02a5f0f1b4ee2ca036">More...</a><br /></td></tr>
 <tr class="separator:a16d2e41f1289aa02a5f0f1b4ee2ca036"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a971ebbcbf83c1b196c9d9d6c61572ae1"><td class="memItemLeft" align="right" valign="top"><a id="a971ebbcbf83c1b196c9d9d6c61572ae1" name="a971ebbcbf83c1b196c9d9d6c61572ae1"></a>
@@ -326,16 +329,16 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_Report</b> (char 
 <tr class="memdesc:a971ebbcbf83c1b196c9d9d6c61572ae1"><td class="mdescLeft">&#160;</td><td class="mdescRight">write formatted string to Dolphin OSReport uart <br /></td></tr>
 <tr class="separator:a971ebbcbf83c1b196c9d9d6c61572ae1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad7e81aae69aa6323fd1b730c2f34edc8"><td class="memItemLeft" align="right" valign="top"><a id="ad7e81aae69aa6323fd1b730c2f34edc8" name="ad7e81aae69aa6323fd1b730c2f34edc8"></a>
-<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_ResetButtonDown</b> (void)</td></tr>
+u32&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_ResetButtonDown</b> (void)</td></tr>
 <tr class="separator:ad7e81aae69aa6323fd1b730c2f34edc8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad5c5d184a174b88335d240496e910ac7"><td class="memItemLeft" align="right" valign="top"><a id="ad5c5d184a174b88335d240496e910ac7" name="ad5c5d184a174b88335d240496e910ac7"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_ResetPMC</b> (void)</td></tr>
 <tr class="separator:ad5c5d184a174b88335d240496e910ac7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae28b38ae18cc75262aac104863acd3fa"><td class="memItemLeft" align="right" valign="top"><a id="ae28b38ae18cc75262aac104863acd3fa" name="ae28b38ae18cc75262aac104863acd3fa"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_ResetSystem</b> (<a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a> reset, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> reset_code, <a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a> force_menu)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_ResetSystem</b> (s32 reset, u32 reset_code, s32 force_menu)</td></tr>
 <tr class="separator:ae28b38ae18cc75262aac104863acd3fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa764fb3e8eab277d9f93aec7fb333a1d"><td class="memItemLeft" align="right" valign="top"><a id="aa764fb3e8eab277d9f93aec7fb333a1d" name="aa764fb3e8eab277d9f93aec7fb333a1d"></a>
-<a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetAlarm</b> (<a class="el" href="system_8h.html#af052ca94a14060aea6bd2401374d3995">syswd_t</a> thealarm, const struct timespec *tp, alarmcallback cb, void *cbarg)</td></tr>
+s32&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetAlarm</b> (<a class="el" href="system_8h.html#af052ca94a14060aea6bd2401374d3995">syswd_t</a> thealarm, const struct timespec *tp, alarmcallback cb, void *cbarg)</td></tr>
 <tr class="separator:aa764fb3e8eab277d9f93aec7fb333a1d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a847262a1533774b41d023128c03b5675"><td class="memItemLeft" align="right" valign="top"><a id="a847262a1533774b41d023128c03b5675" name="a847262a1533774b41d023128c03b5675"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetArena1Hi</b> (void *newHi)</td></tr>
@@ -344,40 +347,40 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetArena1Hi</b> (
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetArena1Lo</b> (void *newLo)</td></tr>
 <tr class="separator:ac2cee89d7bff7e71aee477973f1d4ab3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a89dbcab8ab15ed26f3cc04e32ab9b187"><td class="memItemLeft" align="right" valign="top"><a id="a89dbcab8ab15ed26f3cc04e32ab9b187" name="a89dbcab8ab15ed26f3cc04e32ab9b187"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetCounterBias</b> (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> bias)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetCounterBias</b> (u32 bias)</td></tr>
 <tr class="separator:a89dbcab8ab15ed26f3cc04e32ab9b187"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9679dc19dbde47d8a0fffed945dcd611"><td class="memItemLeft" align="right" valign="top"><a id="a9679dc19dbde47d8a0fffed945dcd611" name="a9679dc19dbde47d8a0fffed945dcd611"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetDisplayOffsetH</b> (<a class="el" href="gctypes_8h.html#a9e382f207c65ca13ab4ae98363aeda80">s8</a> offset)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetDisplayOffsetH</b> (s8 offset)</td></tr>
 <tr class="separator:a9679dc19dbde47d8a0fffed945dcd611"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a14109e7e840781a978829a1ce09f4093"><td class="memItemLeft" align="right" valign="top"><a id="a14109e7e840781a978829a1ce09f4093" name="a14109e7e840781a978829a1ce09f4093"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetEuRGB60</b> (<a class="el" href="gctypes_8h.html#a92c50087ca0e64fa93fc59402c55f8ca">u8</a> enable)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetEuRGB60</b> (u8 enable)</td></tr>
 <tr class="separator:a14109e7e840781a978829a1ce09f4093"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7dc9c60ab8295a3fca9f028e0effc55c"><td class="memItemLeft" align="right" valign="top"><a id="a7dc9c60ab8295a3fca9f028e0effc55c" name="a7dc9c60ab8295a3fca9f028e0effc55c"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetGBSMode</b> (<a class="el" href="gctypes_8h.html#ace9d960e74685e2cd84b36132dbbf8aa">u16</a> mode)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetGBSMode</b> (u16 mode)</td></tr>
 <tr class="separator:a7dc9c60ab8295a3fca9f028e0effc55c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a30b42028be6cd2d0f5b507082974e7d3"><td class="memItemLeft" align="right" valign="top"><a id="a30b42028be6cd2d0f5b507082974e7d3" name="a30b42028be6cd2d0f5b507082974e7d3"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetLanguage</b> (<a class="el" href="gctypes_8h.html#a92c50087ca0e64fa93fc59402c55f8ca">u8</a> lang)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetLanguage</b> (u8 lang)</td></tr>
 <tr class="separator:a30b42028be6cd2d0f5b507082974e7d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a847a5a91f5fda8fda7af0bc38e7b6330"><td class="memItemLeft" align="right" valign="top"><a id="a847a5a91f5fda8fda7af0bc38e7b6330" name="a847a5a91f5fda8fda7af0bc38e7b6330"></a>
-<a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetPeriodicAlarm</b> (<a class="el" href="system_8h.html#af052ca94a14060aea6bd2401374d3995">syswd_t</a> thealarm, const struct timespec *tp_start, const struct timespec *tp_period, alarmcallback cb, void *cbarg)</td></tr>
+s32&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetPeriodicAlarm</b> (<a class="el" href="system_8h.html#af052ca94a14060aea6bd2401374d3995">syswd_t</a> thealarm, const struct timespec *tp_start, const struct timespec *tp_period, alarmcallback cb, void *cbarg)</td></tr>
 <tr class="separator:a847a5a91f5fda8fda7af0bc38e7b6330"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2c7c09d20e0e1bd83f382820d0411fd3"><td class="memItemLeft" align="right" valign="top"><a id="a2c7c09d20e0e1bd83f382820d0411fd3" name="a2c7c09d20e0e1bd83f382820d0411fd3"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetProgressiveScan</b> (<a class="el" href="gctypes_8h.html#a92c50087ca0e64fa93fc59402c55f8ca">u8</a> enable)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetProgressiveScan</b> (u8 enable)</td></tr>
 <tr class="separator:a2c7c09d20e0e1bd83f382820d0411fd3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0145399cd2982499f135967c459febeb"><td class="memItemLeft" align="right" valign="top"><a id="a0145399cd2982499f135967c459febeb" name="a0145399cd2982499f135967c459febeb"></a>
 resetcallback&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetResetCallback</b> (resetcallback cb)</td></tr>
 <tr class="separator:a0145399cd2982499f135967c459febeb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a81ffa39bb37d27408cc579b71d25cc53"><td class="memItemLeft" align="right" valign="top"><a id="a81ffa39bb37d27408cc579b71d25cc53" name="a81ffa39bb37d27408cc579b71d25cc53"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetSoundMode</b> (<a class="el" href="gctypes_8h.html#a92c50087ca0e64fa93fc59402c55f8ca">u8</a> mode)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetSoundMode</b> (u8 mode)</td></tr>
 <tr class="separator:a81ffa39bb37d27408cc579b71d25cc53"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3e41fc71f3d55d3a01170ddcca7629a5"><td class="memItemLeft" align="right" valign="top"><a id="a3e41fc71f3d55d3a01170ddcca7629a5" name="a3e41fc71f3d55d3a01170ddcca7629a5"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetVideoMode</b> (<a class="el" href="gctypes_8h.html#a92c50087ca0e64fa93fc59402c55f8ca">u8</a> mode)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetVideoMode</b> (u8 mode)</td></tr>
 <tr class="separator:a3e41fc71f3d55d3a01170ddcca7629a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a620de7b2e4f27432e203bbe3c85aafde"><td class="memItemLeft" align="right" valign="top"><a id="a620de7b2e4f27432e203bbe3c85aafde" name="a620de7b2e4f27432e203bbe3c85aafde"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetWirelessID</b> (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> chan, <a class="el" href="gctypes_8h.html#ace9d960e74685e2cd84b36132dbbf8aa">u16</a> id)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SetWirelessID</b> (u32 chan, u16 id)</td></tr>
 <tr class="separator:a620de7b2e4f27432e203bbe3c85aafde"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab2b695911ba9da5732e38c2e5a4443ac"><td class="memItemLeft" align="right" valign="top"><a id="ab2b695911ba9da5732e38c2e5a4443ac" name="ab2b695911ba9da5732e38c2e5a4443ac"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_StartPMC</b> (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> mcr0val, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> mcr1val)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_StartPMC</b> (u32 mcr0val, u32 mcr1val)</td></tr>
 <tr class="separator:ab2b695911ba9da5732e38c2e5a4443ac"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6c340350b6b608f1ab1ca6ebe115aacc"><td class="memItemLeft" align="right" valign="top"><a id="a6c340350b6b608f1ab1ca6ebe115aacc" name="a6c340350b6b608f1ab1ca6ebe115aacc"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_STDIO_Report</b> (bool use_stdout)</td></tr>
@@ -385,11 +388,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_STDIO_Report</b> 
 <tr class="memitem:aecbe53b0b91c223b773ef01fc53d9bab"><td class="memItemLeft" align="right" valign="top"><a id="aecbe53b0b91c223b773ef01fc53d9bab" name="aecbe53b0b91c223b773ef01fc53d9bab"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_StopPMC</b> (void)</td></tr>
 <tr class="separator:aecbe53b0b91c223b773ef01fc53d9bab"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ada9c6bbd1b1029371b2328b67ac70d64"><td class="memItemLeft" align="right" valign="top"><a id="ada9c6bbd1b1029371b2328b67ac70d64" name="ada9c6bbd1b1029371b2328b67ac70d64"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_SwitchFiber</b> (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> arg0, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> arg1, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> arg2, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> arg3, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> pc, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> newsp)</td></tr>
-<tr class="separator:ada9c6bbd1b1029371b2328b67ac70d64"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac86ec7a0481fd9f9635e120210c3769e"><td class="memItemLeft" align="right" valign="top"><a id="ac86ec7a0481fd9f9635e120210c3769e" name="ac86ec7a0481fd9f9635e120210c3769e"></a>
-<a class="el" href="gctypes_8h.html#a3f7e2bcbb0b4c338f3c4f6c937cd4234">u64</a>&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_Time</b> (void)</td></tr>
+u64&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_Time</b> (void)</td></tr>
 <tr class="separator:ac86ec7a0481fd9f9635e120210c3769e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a96ab23e129637c18795f9d550fee4b69"><td class="memItemLeft" align="right" valign="top"><a id="a96ab23e129637c18795f9d550fee4b69" name="a96ab23e129637c18795f9d550fee4b69"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SYS_UnregisterResetFunc</b> (<a class="el" href="struct__sys__resetinfo.html">sys_resetinfo</a> *info)</td></tr>
@@ -515,7 +515,7 @@ struct <a class="el" href="struct__syssramex.html">_syssramex</a>&#160;</td><td 
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a> SYS_CancelAlarm </td>
+          <td class="memname">s32 SYS_CancelAlarm </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="system_8h.html#af052ca94a14060aea6bd2401374d3995">syswd_t</a>&#160;</td>
           <td class="paramname"><em>thealarm</em></td><td>)</td>
@@ -542,7 +542,7 @@ struct <a class="el" href="struct__syssramex.html">_syssramex</a>&#160;</td><td 
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a> SYS_CreateAlarm </td>
+          <td class="memname">s32 SYS_CreateAlarm </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="system_8h.html#af052ca94a14060aea6bd2401374d3995">syswd_t</a> *&#160;</td>
           <td class="paramname"><em>thealarm</em></td><td>)</td>
@@ -582,6 +582,35 @@ struct <a class="el" href="struct__syssramex.html">_syssramex</a>&#160;</td><td 
 
 </div>
 </div>
+<a id="a3aa37db2c8a3b67942850149711cfe9b" name="a3aa37db2c8a3b67942850149711cfe9b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3aa37db2c8a3b67942850149711cfe9b">&#9670;&nbsp;</a></span>SYS_MainLoop()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool SYS_MainLoop </td>
+          <td>(</td>
+          <td class="paramtype">void&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Performs default processing of reset and power button events. </p>
+<p >This function checks the state of the reset (and on Wii, power) buttons. If either button is pressed this function returns false, indicating that the application should quit. Call this function in your main loop like this:</p>
+<div class="fragment"><div class="line"><span class="keywordflow">while</span> (<a class="code hl_function" href="system_8h.html#a3aa37db2c8a3b67942850149711cfe9b">SYS_MainLoop</a>()) {</div>
+<div class="line">  <a class="code hl_function" href="video_8h.html#a49f3eed54f2ef71a54501e746564e7a8">VIDEO_WaitVSync</a>();</div>
+<div class="line">  <span class="comment">// processing etc ...</span></div>
+<div class="line">}</div>
+<div class="ttc" id="asystem_8h_html_a3aa37db2c8a3b67942850149711cfe9b"><div class="ttname"><a href="system_8h.html#a3aa37db2c8a3b67942850149711cfe9b">SYS_MainLoop</a></div><div class="ttdeci">bool SYS_MainLoop(void)</div><div class="ttdoc">Performs default processing of reset and power button events.</div></div>
+<div class="ttc" id="avideo_8h_html_a49f3eed54f2ef71a54501e746564e7a8"><div class="ttname"><a href="video_8h.html#a49f3eed54f2ef71a54501e746564e7a8">VIDEO_WaitVSync</a></div><div class="ttdeci">void VIDEO_WaitVSync(void)</div><div class="ttdoc">Wait on the next vertical retrace.</div></div>
+</div><!-- fragment --><p >If this function returns false, returning from main() or calling exit() ignores the reload stub, and libogc will automatically reset or power off the console.</p>
+<dl class="section return"><dt>Returns</dt><dd>Returns true if the application should continue running, false if it should clean up and exit. </dd></dl>
+
+</div>
+</div>
 <a id="a16d2e41f1289aa02a5f0f1b4ee2ca036" name="a16d2e41f1289aa02a5f0f1b4ee2ca036"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a16d2e41f1289aa02a5f0f1b4ee2ca036">&#9670;&nbsp;</a></span>SYS_RemoveAlarm()</h2>
 
@@ -589,7 +618,7 @@ struct <a class="el" href="struct__syssramex.html">_syssramex</a>&#160;</td><td 
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a> SYS_RemoveAlarm </td>
+          <td class="memname">s32 SYS_RemoveAlarm </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="system_8h.html#af052ca94a14060aea6bd2401374d3995">syswd_t</a>&#160;</td>
           <td class="paramname"><em>thealarm</em></td><td>)</td>
@@ -612,7 +641,7 @@ struct <a class="el" href="struct__syssramex.html">_syssramex</a>&#160;</td><td 
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Sat Jan 17 2026 13:38:36 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.4
+Generated on Sun Jan 25 2026 18:34:43 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.4
 </small></address>
 </body>
 </html>

@@ -42,13 +42,5 @@ var searchData=
   ['voice_20format_39',['Voice format',['../group__sndsetvoiceformats.html',1,'']]],
   ['voice_20functions_40',['Voice functions',['../group__voicefuncs.html',1,'']]],
   ['voice_20volume_41',['Voice volume',['../group__voicevol.html',1,'']]],
-  ['vs16_42',['vs16',['../gctypes_8h.html#a84c4ebe721fa065d9bd514ce8d76c455',1,'gctypes.h']]],
-  ['vs32_43',['vs32',['../gctypes_8h.html#a6c6cf6e3aedfd399080c6f52c2870063',1,'gctypes.h']]],
-  ['vs64_44',['vs64',['../gctypes_8h.html#a484adfab567791250a9fdbf0db8d3144',1,'gctypes.h']]],
-  ['vs8_45',['vs8',['../gctypes_8h.html#a108e1a5e4c3e8322825ef7dcd45966ca',1,'gctypes.h']]],
-  ['vtxattr_46',['vtxattr',['../struct_g_x_vtx_attr_fmt.html#a124c29066ef015fe1303ef138728df1b',1,'GXVtxAttrFmt']]],
-  ['vu16_47',['vu16',['../gctypes_8h.html#a677aa1edce4bbb53741b1cc24eb4c035',1,'gctypes.h']]],
-  ['vu32_48',['vu32',['../gctypes_8h.html#abcdd5d61f51cb4c472ac6637916cf72a',1,'gctypes.h']]],
-  ['vu64_49',['vu64',['../gctypes_8h.html#ace392b4d1c3911331b2fe5ddc99fdcba',1,'gctypes.h']]],
-  ['vu8_50',['vu8',['../gctypes_8h.html#a1a2a3100a902c32a55d8b08915bce044',1,'gctypes.h']]]
+  ['vtxattr_42',['vtxattr',['../struct_g_x_vtx_attr_fmt.html#a124c29066ef015fe1303ef138728df1b',1,'GXVtxAttrFmt']]]
 ];

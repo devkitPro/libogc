@@ -21,7 +21,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">libogc<span id="projectnumber">&#160;v2.14.1</span>
+   <div id="projectname">libogc<span id="projectnumber">&#160;v3.0.0</span>
    </div>
   </td>
  </tr>
@@ -82,15 +82,15 @@ $(function() {
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
 Typedefs</h2></td></tr>
 <tr class="memitem:a1260e2028e0bf1207fac2fceacc7a837"><td class="memItemLeft" align="right" valign="top"><a id="a1260e2028e0bf1207fac2fceacc7a837" name="a1260e2028e0bf1207fac2fceacc7a837"></a>
-typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><b>VIPositionCallback</b>) (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> posX, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> posY)</td></tr>
+typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><b>VIPositionCallback</b>) (u32 posX, u32 posY)</td></tr>
 <tr class="separator:a1260e2028e0bf1207fac2fceacc7a837"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6ac15a70d2c5238199433c99644fb5cc"><td class="memItemLeft" align="right" valign="top">typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#a6ac15a70d2c5238199433c99644fb5cc">VIRetraceCallback</a>) (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> retraceCnt)</td></tr>
+<tr class="memitem:a6ac15a70d2c5238199433c99644fb5cc"><td class="memItemLeft" align="right" valign="top">typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#a6ac15a70d2c5238199433c99644fb5cc">VIRetraceCallback</a>) (u32 retraceCnt)</td></tr>
 <tr class="memdesc:a6ac15a70d2c5238199433c99644fb5cc"><td class="mdescLeft">&#160;</td><td class="mdescRight">function pointer typedef for the user's retrace callback  <a href="video_8h.html#a6ac15a70d2c5238199433c99644fb5cc">More...</a><br /></td></tr>
 <tr class="separator:a6ac15a70d2c5238199433c99644fb5cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a522a2ef8593bb5dac693dff07eedcb73"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#a522a2ef8593bb5dac693dff07eedcb73">VIDEO_ClearFrameBuffer</a> (<a class="el" href="gx__struct_8h.html#a232a76ec57f12bf0e45abad393c36698">GXRModeObj</a> *rmode, void *fb, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> color)</td></tr>
+<tr class="memitem:a522a2ef8593bb5dac693dff07eedcb73"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#a522a2ef8593bb5dac693dff07eedcb73">VIDEO_ClearFrameBuffer</a> (<a class="el" href="gx__struct_8h.html#a232a76ec57f12bf0e45abad393c36698">GXRModeObj</a> *rmode, void *fb, u32 color)</td></tr>
 <tr class="memdesc:a522a2ef8593bb5dac693dff07eedcb73"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clear the given framebuffer.  <a href="video_8h.html#a522a2ef8593bb5dac693dff07eedcb73">More...</a><br /></td></tr>
 <tr class="separator:a522a2ef8593bb5dac693dff07eedcb73"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a80703c28dc652bfa5f8086ed7a52b04a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#a80703c28dc652bfa5f8086ed7a52b04a">VIDEO_Configure</a> (<a class="el" href="gx__struct_8h.html#a232a76ec57f12bf0e45abad393c36698">GXRModeObj</a> *rmode)</td></tr>
@@ -102,16 +102,16 @@ Functions</h2></td></tr>
 <tr class="memitem:ac4ad2367b2dd2138278a6320adf87069"><td class="memItemLeft" align="right" valign="top"><a id="ac4ad2367b2dd2138278a6320adf87069" name="ac4ad2367b2dd2138278a6320adf87069"></a>
 void *&#160;</td><td class="memItemRight" valign="bottom"><b>VIDEO_GetCurrentFramebuffer</b> (void)</td></tr>
 <tr class="separator:ac4ad2367b2dd2138278a6320adf87069"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a226057057812636d4ec33bc3d4c1f7a8"><td class="memItemLeft" align="right" valign="top"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#a226057057812636d4ec33bc3d4c1f7a8">VIDEO_GetCurrentLine</a> (void)</td></tr>
+<tr class="memitem:a226057057812636d4ec33bc3d4c1f7a8"><td class="memItemLeft" align="right" valign="top">u32&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#a226057057812636d4ec33bc3d4c1f7a8">VIDEO_GetCurrentLine</a> (void)</td></tr>
 <tr class="memdesc:a226057057812636d4ec33bc3d4c1f7a8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get current video line.  <a href="video_8h.html#a226057057812636d4ec33bc3d4c1f7a8">More...</a><br /></td></tr>
 <tr class="separator:a226057057812636d4ec33bc3d4c1f7a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af46e5352514bf82e81e3779c050fc483"><td class="memItemLeft" align="right" valign="top"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#af46e5352514bf82e81e3779c050fc483">VIDEO_GetCurrentTvMode</a> (void)</td></tr>
+<tr class="memitem:af46e5352514bf82e81e3779c050fc483"><td class="memItemLeft" align="right" valign="top">u32&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#af46e5352514bf82e81e3779c050fc483">VIDEO_GetCurrentTvMode</a> (void)</td></tr>
 <tr class="memdesc:af46e5352514bf82e81e3779c050fc483"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get current configured TV mode.  <a href="video_8h.html#af46e5352514bf82e81e3779c050fc483">More...</a><br /></td></tr>
 <tr class="separator:af46e5352514bf82e81e3779c050fc483"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9e2468aded19fe80836a85691bc00f97"><td class="memItemLeft" align="right" valign="top"><a id="a9e2468aded19fe80836a85691bc00f97" name="a9e2468aded19fe80836a85691bc00f97"></a>
-<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>VIDEO_GetFrameBufferSize</b> (<a class="el" href="gx__struct_8h.html#a232a76ec57f12bf0e45abad393c36698">GXRModeObj</a> *rmode)</td></tr>
+u32&#160;</td><td class="memItemRight" valign="bottom"><b>VIDEO_GetFrameBufferSize</b> (<a class="el" href="gx__struct_8h.html#a232a76ec57f12bf0e45abad393c36698">GXRModeObj</a> *rmode)</td></tr>
 <tr class="separator:a9e2468aded19fe80836a85691bc00f97"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a51b8d1cfb2ab66589e598004ebec64ef"><td class="memItemLeft" align="right" valign="top"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#a51b8d1cfb2ab66589e598004ebec64ef">VIDEO_GetNextField</a> (void)</td></tr>
+<tr class="memitem:a51b8d1cfb2ab66589e598004ebec64ef"><td class="memItemLeft" align="right" valign="top">u32&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#a51b8d1cfb2ab66589e598004ebec64ef">VIDEO_GetNextField</a> (void)</td></tr>
 <tr class="memdesc:a51b8d1cfb2ab66589e598004ebec64ef"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the next field in DS mode.  <a href="video_8h.html#a51b8d1cfb2ab66589e598004ebec64ef">More...</a><br /></td></tr>
 <tr class="separator:a51b8d1cfb2ab66589e598004ebec64ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a96c68658afa6f4ebe3ec60d67d4cb623"><td class="memItemLeft" align="right" valign="top"><a id="a96c68658afa6f4ebe3ec60d67d4cb623" name="a96c68658afa6f4ebe3ec60d67d4cb623"></a>
@@ -120,10 +120,10 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>VIDEO_GetNextFrameb
 <tr class="memitem:a6920d579563c65d041fbbec43a1b0d43"><td class="memItemLeft" align="right" valign="top"><a id="a6920d579563c65d041fbbec43a1b0d43" name="a6920d579563c65d041fbbec43a1b0d43"></a>
 <a class="el" href="gx__struct_8h.html#a232a76ec57f12bf0e45abad393c36698">GXRModeObj</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>VIDEO_GetPreferredMode</b> (<a class="el" href="gx__struct_8h.html#a232a76ec57f12bf0e45abad393c36698">GXRModeObj</a> *mode)</td></tr>
 <tr class="separator:a6920d579563c65d041fbbec43a1b0d43"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a106804e8cd83d4425250152dc5ed7410"><td class="memItemLeft" align="right" valign="top"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#a106804e8cd83d4425250152dc5ed7410">VIDEO_GetVideoScanMode</a> (void)</td></tr>
+<tr class="memitem:a106804e8cd83d4425250152dc5ed7410"><td class="memItemLeft" align="right" valign="top">u32&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#a106804e8cd83d4425250152dc5ed7410">VIDEO_GetVideoScanMode</a> (void)</td></tr>
 <tr class="memdesc:a106804e8cd83d4425250152dc5ed7410"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get video scan mode. This function returns 0 when interlaced, 1 when non interlaced and 2 when progressive.  <a href="video_8h.html#a106804e8cd83d4425250152dc5ed7410">More...</a><br /></td></tr>
 <tr class="separator:a106804e8cd83d4425250152dc5ed7410"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afa60d4b4fca04ec5bcdd1923f3b2b598"><td class="memItemLeft" align="right" valign="top"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#afa60d4b4fca04ec5bcdd1923f3b2b598">VIDEO_HaveComponentCable</a> (void)</td></tr>
+<tr class="memitem:afa60d4b4fca04ec5bcdd1923f3b2b598"><td class="memItemLeft" align="right" valign="top">u32&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#afa60d4b4fca04ec5bcdd1923f3b2b598">VIDEO_HaveComponentCable</a> (void)</td></tr>
 <tr class="memdesc:afa60d4b4fca04ec5bcdd1923f3b2b598"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check for a component cable. This function returns 1 when a Component (YPbPr) cable is connected.  <a href="video_8h.html#afa60d4b4fca04ec5bcdd1923f3b2b598">More...</a><br /></td></tr>
 <tr class="separator:afa60d4b4fca04ec5bcdd1923f3b2b598"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab00d3c028a523240c38f09f36d67bcf6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="video_8h.html#ab00d3c028a523240c38f09f36d67bcf6">VIDEO_Init</a> (void)</td></tr>
@@ -158,7 +158,7 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>VIDEO_GetNextFrameb
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void(* VIRetraceCallback)(<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> retraceCnt)</td>
+          <td class="memname">void(* VIRetraceCallback)(u32 retraceCnt)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -195,7 +195,7 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>VIDEO_GetNextFrameb
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td>
+          <td class="paramtype">u32&#160;</td>
           <td class="paramname"><em>color</em>&#160;</td>
         </tr>
         <tr>
@@ -274,7 +274,7 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>VIDEO_GetNextFrameb
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> VIDEO_GetCurrentLine </td>
+          <td class="memname">u32 VIDEO_GetCurrentLine </td>
           <td>(</td>
           <td class="paramtype">void&#160;</td>
           <td class="paramname"></td><td>)</td>
@@ -295,7 +295,7 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>VIDEO_GetNextFrameb
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> VIDEO_GetCurrentTvMode </td>
+          <td class="memname">u32 VIDEO_GetCurrentTvMode </td>
           <td>(</td>
           <td class="paramtype">void&#160;</td>
           <td class="paramname"></td><td>)</td>
@@ -316,7 +316,7 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>VIDEO_GetNextFrameb
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> VIDEO_GetNextField </td>
+          <td class="memname">u32 VIDEO_GetNextField </td>
           <td>(</td>
           <td class="paramtype">void&#160;</td>
           <td class="paramname"></td><td>)</td>
@@ -337,7 +337,7 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>VIDEO_GetNextFrameb
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> VIDEO_GetVideoScanMode </td>
+          <td class="memname">u32 VIDEO_GetVideoScanMode </td>
           <td>(</td>
           <td class="paramtype">void&#160;</td>
           <td class="paramname"></td><td>)</td>
@@ -358,7 +358,7 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>VIDEO_GetNextFrameb
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> VIDEO_HaveComponentCable </td>
+          <td class="memname">u32 VIDEO_HaveComponentCable </td>
           <td>(</td>
           <td class="paramtype">void&#160;</td>
           <td class="paramname"></td><td>)</td>
@@ -540,7 +540,7 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>VIDEO_GetNextFrameb
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Sat Jan 17 2026 13:38:36 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.4
+Generated on Sun Jan 25 2026 18:34:43 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.4
 </small></address>
 </body>
 </html>

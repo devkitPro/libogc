@@ -21,7 +21,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">libogc<span id="projectnumber">&#160;v2.14.1</span>
+   <div id="projectname">libogc<span id="projectnumber">&#160;v3.0.0</span>
    </div>
   </td>
  </tr>
@@ -95,10 +95,10 @@ Macros</h2></td></tr>
 #define&#160;</td><td class="memItemRight" valign="bottom"><b>FIX32TOF</b>(x)&#160;&#160;&#160;((f32)(x) * (1.0f / (f32)0x00010000))</td></tr>
 <tr class="separator:a6c66aedfc7cf71c13af607d84938b50f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a695fc005c2ccd9780559daa55901c645"><td class="memItemLeft" align="right" valign="top"><a id="a695fc005c2ccd9780559daa55901c645" name="a695fc005c2ccd9780559daa55901c645"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>FTOFIX32</b>(x)&#160;&#160;&#160;(<a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a>)((x) * (f32)0x00010000)</td></tr>
+#define&#160;</td><td class="memItemRight" valign="bottom"><b>FTOFIX32</b>(x)&#160;&#160;&#160;(s32)((x) * (f32)0x00010000)</td></tr>
 <tr class="separator:a695fc005c2ccd9780559daa55901c645"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9da9a415e1f610f081cce566853e5724"><td class="memItemLeft" align="right" valign="top"><a id="a9da9a415e1f610f081cce566853e5724" name="a9da9a415e1f610f081cce566853e5724"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>FTOFRAC8</b>(x)&#160;&#160;&#160;((<a class="el" href="gctypes_8h.html#ae9b1af5c037e57a98884758875d3a7c4">s32</a>) MIN(((x) * (128.0f)), 127.0f) &amp; 0xff)</td></tr>
+#define&#160;</td><td class="memItemRight" valign="bottom"><b>FTOFRAC8</b>(x)&#160;&#160;&#160;((s32) MIN(((x) * (128.0f)), 127.0f) &amp; 0xff)</td></tr>
 <tr class="separator:a9da9a415e1f610f081cce566853e5724"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3a88cd00c79125fed2fb5d3e9a72255e"><td class="memItemLeft" align="right" valign="top"><a id="a3a88cd00c79125fed2fb5d3e9a72255e" name="a3a88cd00c79125fed2fb5d3e9a72255e"></a>
 #define&#160;</td><td class="memItemRight" valign="bottom"><b>guMtx44Concat</b>&#160;&#160;&#160;c_guMtx44Concat</td></tr>
@@ -279,10 +279,10 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>c_guMtxCopy</b> (cons
 void&#160;</td><td class="memItemRight" valign="bottom"><b>c_guMtxIdentity</b> (<a class="el" href="gu_8h.html#aa31105dd23ea6c2515da9f43c1e84c06">Mtx</a> mt)</td></tr>
 <tr class="separator:a0dbff525b38736617087c08a2cb5cdc8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a45b284c452a7468d3b2758081885c343"><td class="memItemLeft" align="right" valign="top"><a id="a45b284c452a7468d3b2758081885c343" name="a45b284c452a7468d3b2758081885c343"></a>
-<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>c_guMtxInverse</b> (const <a class="el" href="gu_8h.html#aa31105dd23ea6c2515da9f43c1e84c06">Mtx</a> src, <a class="el" href="gu_8h.html#aa31105dd23ea6c2515da9f43c1e84c06">Mtx</a> inv)</td></tr>
+u32&#160;</td><td class="memItemRight" valign="bottom"><b>c_guMtxInverse</b> (const <a class="el" href="gu_8h.html#aa31105dd23ea6c2515da9f43c1e84c06">Mtx</a> src, <a class="el" href="gu_8h.html#aa31105dd23ea6c2515da9f43c1e84c06">Mtx</a> inv)</td></tr>
 <tr class="separator:a45b284c452a7468d3b2758081885c343"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abcc2ca4dd4bc9f3c9aeba67f688c085d"><td class="memItemLeft" align="right" valign="top"><a id="abcc2ca4dd4bc9f3c9aeba67f688c085d" name="abcc2ca4dd4bc9f3c9aeba67f688c085d"></a>
-<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>c_guMtxInvXpose</b> (const <a class="el" href="gu_8h.html#aa31105dd23ea6c2515da9f43c1e84c06">Mtx</a> src, <a class="el" href="gu_8h.html#aa31105dd23ea6c2515da9f43c1e84c06">Mtx</a> xPose)</td></tr>
+u32&#160;</td><td class="memItemRight" valign="bottom"><b>c_guMtxInvXpose</b> (const <a class="el" href="gu_8h.html#aa31105dd23ea6c2515da9f43c1e84c06">Mtx</a> src, <a class="el" href="gu_8h.html#aa31105dd23ea6c2515da9f43c1e84c06">Mtx</a> xPose)</td></tr>
 <tr class="separator:abcc2ca4dd4bc9f3c9aeba67f688c085d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a57eacdeb9bbb400e5407d4f81572dfc8"><td class="memItemLeft" align="right" valign="top"><a id="a57eacdeb9bbb400e5407d4f81572dfc8" name="a57eacdeb9bbb400e5407d4f81572dfc8"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>c_guMtxQuat</b> (<a class="el" href="gu_8h.html#aa31105dd23ea6c2515da9f43c1e84c06">Mtx</a> m, const <a class="el" href="structgu_quaternion.html">guQuaternion</a> *a)</td></tr>
@@ -378,7 +378,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>guMtx44Copy</b> (cons
 void&#160;</td><td class="memItemRight" valign="bottom"><b>guMtx44Identity</b> (<a class="el" href="gu_8h.html#a7022058141002c96114fb362e436dc9f">Mtx44</a> mt)</td></tr>
 <tr class="separator:a55336b98c025e9059301198debac3fd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9e65d9a8395cada355f1b1cd27d8ac95"><td class="memItemLeft" align="right" valign="top"><a id="a9e65d9a8395cada355f1b1cd27d8ac95" name="a9e65d9a8395cada355f1b1cd27d8ac95"></a>
-<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>guMtx44Inverse</b> (const <a class="el" href="gu_8h.html#a7022058141002c96114fb362e436dc9f">Mtx44</a> src, <a class="el" href="gu_8h.html#a7022058141002c96114fb362e436dc9f">Mtx44</a> inv)</td></tr>
+u32&#160;</td><td class="memItemRight" valign="bottom"><b>guMtx44Inverse</b> (const <a class="el" href="gu_8h.html#a7022058141002c96114fb362e436dc9f">Mtx44</a> src, <a class="el" href="gu_8h.html#a7022058141002c96114fb362e436dc9f">Mtx44</a> inv)</td></tr>
 <tr class="separator:a9e65d9a8395cada355f1b1cd27d8ac95"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acce7b8b77ff8c321fbc6a797ea307541"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="gu_8h.html#acce7b8b77ff8c321fbc6a797ea307541">guOrtho</a> (<a class="el" href="gu_8h.html#a7022058141002c96114fb362e436dc9f">Mtx44</a> mt, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f)</td></tr>
 <tr class="memdesc:acce7b8b77ff8c321fbc6a797ea307541"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets a 4x4 matrix for orthographic projection.  <a href="gu_8h.html#acce7b8b77ff8c321fbc6a797ea307541">More...</a><br /></td></tr>
@@ -981,7 +981,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>guVecHalfAngle</b> (c
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Sat Jan 17 2026 13:38:36 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.4
+Generated on Sun Jan 25 2026 18:34:43 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.4
 </small></address>
 </body>
 </html>

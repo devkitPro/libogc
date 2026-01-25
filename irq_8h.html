@@ -21,7 +21,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">libogc<span id="projectnumber">&#160;v2.14.1</span>
+   <div id="projectname">libogc<span id="projectnumber">&#160;v3.0.0</span>
    </div>
   </td>
  </tr>
@@ -67,239 +67,38 @@ $(function() {
 </div><!-- top -->
 <div class="header">
   <div class="summary">
-<a href="#define-members">Macros</a> &#124;
 <a href="#typedef-members">Typedefs</a> &#124;
-<a href="#func-members">Functions</a>  </div>
+<a href="#func-members">Functions</a> &#124;
+<a href="#var-members">Variables</a>  </div>
   <div class="headertitle"><div class="title">irq.h File Reference</div></div>
 </div><!--header-->
 <div class="contents">
 
 <p>Interrupt subsystem.  
 <a href="#details">More...</a></p>
-<div class="textblock"><code>#include &lt;<a class="el" href="gctypes_8h.html">gctypes.h</a>&gt;</code><br />
-<code>#include &quot;context.h&quot;</code><br />
+<div class="textblock"><code>#include &quot;<a class="el" href="gctypes_8h.html">../gctypes.h</a>&quot;</code><br />
+<code>#include &quot;../tuxedo/ppc/intrinsics.h&quot;</code><br />
+<code>#include &quot;../tuxedo/interrupt.h&quot;</code><br />
 </div><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
-Macros</h2></td></tr>
-<tr class="memitem:ab7ed087a97d0f7cfb301ede304e9e6a8"><td class="memItemLeft" align="right" valign="top"><a id="ab7ed087a97d0f7cfb301ede304e9e6a8" name="ab7ed087a97d0f7cfb301ede304e9e6a8"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_AI</b>&#160;&#160;&#160;IRQMASK(IRQ_AI)</td></tr>
-<tr class="separator:ab7ed087a97d0f7cfb301ede304e9e6a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a79fb3d4d756865df3e73fe84885c4843"><td class="memItemLeft" align="right" valign="top"><a id="a79fb3d4d756865df3e73fe84885c4843" name="a79fb3d4d756865df3e73fe84885c4843"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_DSP</b>&#160;&#160;&#160;(IM_DSP_AI|IM_DSP_ARAM|IM_DSP_DSP)</td></tr>
-<tr class="separator:a79fb3d4d756865df3e73fe84885c4843"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a663df7a3caa1d5ab3e09ebd86287c412"><td class="memItemLeft" align="right" valign="top"><a id="a663df7a3caa1d5ab3e09ebd86287c412" name="a663df7a3caa1d5ab3e09ebd86287c412"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_DSP_AI</b>&#160;&#160;&#160;IRQMASK(IRQ_DSP_AI)</td></tr>
-<tr class="separator:a663df7a3caa1d5ab3e09ebd86287c412"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a09e2b65d0d5dd983d1464e2ff956f1ff"><td class="memItemLeft" align="right" valign="top"><a id="a09e2b65d0d5dd983d1464e2ff956f1ff" name="a09e2b65d0d5dd983d1464e2ff956f1ff"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_DSP_ARAM</b>&#160;&#160;&#160;IRQMASK(IRQ_DSP_ARAM)</td></tr>
-<tr class="separator:a09e2b65d0d5dd983d1464e2ff956f1ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af62c37010306126b714dd64ca833eeda"><td class="memItemLeft" align="right" valign="top"><a id="af62c37010306126b714dd64ca833eeda" name="af62c37010306126b714dd64ca833eeda"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_DSP_DSP</b>&#160;&#160;&#160;IRQMASK(IRQ_DSP_DSP)</td></tr>
-<tr class="separator:af62c37010306126b714dd64ca833eeda"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac82bda7c640ef54f2131fb3d7bc72246"><td class="memItemLeft" align="right" valign="top"><a id="ac82bda7c640ef54f2131fb3d7bc72246" name="ac82bda7c640ef54f2131fb3d7bc72246"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_EXI</b>&#160;&#160;&#160;(IM_EXI0|IM_EXI1|IM_EXI2)</td></tr>
-<tr class="separator:ac82bda7c640ef54f2131fb3d7bc72246"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa73a115a21e2406d711da01932b1802c"><td class="memItemLeft" align="right" valign="top"><a id="aa73a115a21e2406d711da01932b1802c" name="aa73a115a21e2406d711da01932b1802c"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_EXI0</b>&#160;&#160;&#160;(IM_EXI0_EXI|IM_EXI0_TC|IM_EXI0_EXT)</td></tr>
-<tr class="separator:aa73a115a21e2406d711da01932b1802c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab9fd59f2215e7864735750501e16361c"><td class="memItemLeft" align="right" valign="top"><a id="ab9fd59f2215e7864735750501e16361c" name="ab9fd59f2215e7864735750501e16361c"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_EXI0_EXI</b>&#160;&#160;&#160;IRQMASK(IRQ_EXI0_EXI)</td></tr>
-<tr class="separator:ab9fd59f2215e7864735750501e16361c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a34349f97c629e2f12c2a96a13f71d47a"><td class="memItemLeft" align="right" valign="top"><a id="a34349f97c629e2f12c2a96a13f71d47a" name="a34349f97c629e2f12c2a96a13f71d47a"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_EXI0_EXT</b>&#160;&#160;&#160;IRQMASK(IRQ_EXI0_EXT)</td></tr>
-<tr class="separator:a34349f97c629e2f12c2a96a13f71d47a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0b433ed4d31d7be23ad0ebe37c2c9954"><td class="memItemLeft" align="right" valign="top"><a id="a0b433ed4d31d7be23ad0ebe37c2c9954" name="a0b433ed4d31d7be23ad0ebe37c2c9954"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_EXI0_TC</b>&#160;&#160;&#160;IRQMASK(IRQ_EXI0_TC)</td></tr>
-<tr class="separator:a0b433ed4d31d7be23ad0ebe37c2c9954"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa265f31733cbcda5a4bed14180f609c2"><td class="memItemLeft" align="right" valign="top"><a id="aa265f31733cbcda5a4bed14180f609c2" name="aa265f31733cbcda5a4bed14180f609c2"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_EXI1</b>&#160;&#160;&#160;(IM_EXI1_EXI|IM_EXI1_TC|IM_EXI1_EXT)</td></tr>
-<tr class="separator:aa265f31733cbcda5a4bed14180f609c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0e577065bc267db6b7f34454fd1a2f06"><td class="memItemLeft" align="right" valign="top"><a id="a0e577065bc267db6b7f34454fd1a2f06" name="a0e577065bc267db6b7f34454fd1a2f06"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_EXI1_EXI</b>&#160;&#160;&#160;IRQMASK(IRQ_EXI1_EXI)</td></tr>
-<tr class="separator:a0e577065bc267db6b7f34454fd1a2f06"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a716044510328800e327a552b8c00e019"><td class="memItemLeft" align="right" valign="top"><a id="a716044510328800e327a552b8c00e019" name="a716044510328800e327a552b8c00e019"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_EXI1_EXT</b>&#160;&#160;&#160;IRQMASK(IRQ_EXI1_EXT)</td></tr>
-<tr class="separator:a716044510328800e327a552b8c00e019"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a349d02f16050618c0b97563ab9cbab05"><td class="memItemLeft" align="right" valign="top"><a id="a349d02f16050618c0b97563ab9cbab05" name="a349d02f16050618c0b97563ab9cbab05"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_EXI1_TC</b>&#160;&#160;&#160;IRQMASK(IRQ_EXI1_TC)</td></tr>
-<tr class="separator:a349d02f16050618c0b97563ab9cbab05"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2c352840f608c4016b750eed977080b0"><td class="memItemLeft" align="right" valign="top"><a id="a2c352840f608c4016b750eed977080b0" name="a2c352840f608c4016b750eed977080b0"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_EXI2</b>&#160;&#160;&#160;(IM_EXI2_EXI|IM_EXI2_TC)</td></tr>
-<tr class="separator:a2c352840f608c4016b750eed977080b0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa95b6f1690fae744091011e960b218aa"><td class="memItemLeft" align="right" valign="top"><a id="aa95b6f1690fae744091011e960b218aa" name="aa95b6f1690fae744091011e960b218aa"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_EXI2_EXI</b>&#160;&#160;&#160;IRQMASK(IRQ_EXI2_EXI)</td></tr>
-<tr class="separator:aa95b6f1690fae744091011e960b218aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0d33cc510d684918b7225bb912fed4f1"><td class="memItemLeft" align="right" valign="top"><a id="a0d33cc510d684918b7225bb912fed4f1" name="a0d33cc510d684918b7225bb912fed4f1"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_EXI2_TC</b>&#160;&#160;&#160;IRQMASK(IRQ_EXI2_TC)</td></tr>
-<tr class="separator:a0d33cc510d684918b7225bb912fed4f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aebb579f42d41e74d652f2a5b721dc2c4"><td class="memItemLeft" align="right" valign="top"><a id="aebb579f42d41e74d652f2a5b721dc2c4" name="aebb579f42d41e74d652f2a5b721dc2c4"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_MEM</b>&#160;&#160;&#160;(IM_MEM0|IM_MEM1|IM_MEM2|IM_MEM3|IM_MEMADDRESS)</td></tr>
-<tr class="separator:aebb579f42d41e74d652f2a5b721dc2c4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8f34d82f890a08d1130a093bf275fbc6"><td class="memItemLeft" align="right" valign="top"><a id="a8f34d82f890a08d1130a093bf275fbc6" name="a8f34d82f890a08d1130a093bf275fbc6"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_MEM0</b>&#160;&#160;&#160;IRQMASK(IRQ_MEM0)</td></tr>
-<tr class="separator:a8f34d82f890a08d1130a093bf275fbc6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a10cb1d54041e3cc1ba1b76bf09952dc0"><td class="memItemLeft" align="right" valign="top"><a id="a10cb1d54041e3cc1ba1b76bf09952dc0" name="a10cb1d54041e3cc1ba1b76bf09952dc0"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_MEM1</b>&#160;&#160;&#160;IRQMASK(IRQ_MEM1)</td></tr>
-<tr class="separator:a10cb1d54041e3cc1ba1b76bf09952dc0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4202b12b95e2ff548c020e9f14958c37"><td class="memItemLeft" align="right" valign="top"><a id="a4202b12b95e2ff548c020e9f14958c37" name="a4202b12b95e2ff548c020e9f14958c37"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_MEM2</b>&#160;&#160;&#160;IRQMASK(IRQ_MEM2)</td></tr>
-<tr class="separator:a4202b12b95e2ff548c020e9f14958c37"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a01a4f31c17a9e32cc6b697287c8607f2"><td class="memItemLeft" align="right" valign="top"><a id="a01a4f31c17a9e32cc6b697287c8607f2" name="a01a4f31c17a9e32cc6b697287c8607f2"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_MEM3</b>&#160;&#160;&#160;IRQMASK(IRQ_MEM3)</td></tr>
-<tr class="separator:a01a4f31c17a9e32cc6b697287c8607f2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaffda6174354acd6ec9d0dd45b61e3da"><td class="memItemLeft" align="right" valign="top"><a id="aaffda6174354acd6ec9d0dd45b61e3da" name="aaffda6174354acd6ec9d0dd45b61e3da"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_MEMADDRESS</b>&#160;&#160;&#160;IRQMASK(IRQ_MEMADDRESS)</td></tr>
-<tr class="separator:aaffda6174354acd6ec9d0dd45b61e3da"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae85c91eb0e294c71c6ffdb4b6082255c"><td class="memItemLeft" align="right" valign="top"><a id="ae85c91eb0e294c71c6ffdb4b6082255c" name="ae85c91eb0e294c71c6ffdb4b6082255c"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_NONE</b>&#160;&#160;&#160;(0xffffffff)</td></tr>
-<tr class="separator:ae85c91eb0e294c71c6ffdb4b6082255c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abcf78f5e954b86b8f9bd3ec901ee214a"><td class="memItemLeft" align="right" valign="top"><a id="abcf78f5e954b86b8f9bd3ec901ee214a" name="abcf78f5e954b86b8f9bd3ec901ee214a"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_PI_CP</b>&#160;&#160;&#160;IRQMASK(IRQ_PI_CP)</td></tr>
-<tr class="separator:abcf78f5e954b86b8f9bd3ec901ee214a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aba1fd2cf9df0d15a6e8d7470518cca1a"><td class="memItemLeft" align="right" valign="top"><a id="aba1fd2cf9df0d15a6e8d7470518cca1a" name="aba1fd2cf9df0d15a6e8d7470518cca1a"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_PI_DEBUG</b>&#160;&#160;&#160;IRQMASK(IRQ_PI_DEBUG)</td></tr>
-<tr class="separator:aba1fd2cf9df0d15a6e8d7470518cca1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6371e5d5f22d6e3d61f8f861bdbfcd1e"><td class="memItemLeft" align="right" valign="top"><a id="a6371e5d5f22d6e3d61f8f861bdbfcd1e" name="a6371e5d5f22d6e3d61f8f861bdbfcd1e"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_PI_DI</b>&#160;&#160;&#160;IRQMASK(IRQ_PI_DI)</td></tr>
-<tr class="separator:a6371e5d5f22d6e3d61f8f861bdbfcd1e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a32eda425eae52965f4f907dba629fb1a"><td class="memItemLeft" align="right" valign="top"><a id="a32eda425eae52965f4f907dba629fb1a" name="a32eda425eae52965f4f907dba629fb1a"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_PI_ERROR</b>&#160;&#160;&#160;IRQMASK(IRQ_PI_ERROR)</td></tr>
-<tr class="separator:a32eda425eae52965f4f907dba629fb1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aef3f9c6fa751f7628597111e93e1be63"><td class="memItemLeft" align="right" valign="top"><a id="aef3f9c6fa751f7628597111e93e1be63" name="aef3f9c6fa751f7628597111e93e1be63"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_PI_HSP</b>&#160;&#160;&#160;IRQMASK(IRQ_PI_HSP)</td></tr>
-<tr class="separator:aef3f9c6fa751f7628597111e93e1be63"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6a0a4a16544bb17d162d599d06487937"><td class="memItemLeft" align="right" valign="top"><a id="a6a0a4a16544bb17d162d599d06487937" name="a6a0a4a16544bb17d162d599d06487937"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_PI_PEFINISH</b>&#160;&#160;&#160;IRQMASK(IRQ_PI_PEFINISH)</td></tr>
-<tr class="separator:a6a0a4a16544bb17d162d599d06487937"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a809e522c1f60505e8f10e13ae3c14a06"><td class="memItemLeft" align="right" valign="top"><a id="a809e522c1f60505e8f10e13ae3c14a06" name="a809e522c1f60505e8f10e13ae3c14a06"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_PI_PETOKEN</b>&#160;&#160;&#160;IRQMASK(IRQ_PI_PETOKEN)</td></tr>
-<tr class="separator:a809e522c1f60505e8f10e13ae3c14a06"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a636e4a26220310b654464997b9fb2d5b"><td class="memItemLeft" align="right" valign="top"><a id="a636e4a26220310b654464997b9fb2d5b" name="a636e4a26220310b654464997b9fb2d5b"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_PI_RSW</b>&#160;&#160;&#160;IRQMASK(IRQ_PI_RSW)</td></tr>
-<tr class="separator:a636e4a26220310b654464997b9fb2d5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab9a85b92645715d6d8a300ec8a2cce65"><td class="memItemLeft" align="right" valign="top"><a id="ab9a85b92645715d6d8a300ec8a2cce65" name="ab9a85b92645715d6d8a300ec8a2cce65"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_PI_SI</b>&#160;&#160;&#160;IRQMASK(IRQ_PI_SI)</td></tr>
-<tr class="separator:ab9a85b92645715d6d8a300ec8a2cce65"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a63115d7d7293b697560feda71a864193"><td class="memItemLeft" align="right" valign="top"><a id="a63115d7d7293b697560feda71a864193" name="a63115d7d7293b697560feda71a864193"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IM_PI_VI</b>&#160;&#160;&#160;IRQMASK(IRQ_PI_VI)</td></tr>
-<tr class="separator:a63115d7d7293b697560feda71a864193"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abb8d01d2ef24556a9e525431b2974652"><td class="memItemLeft" align="right" valign="top"><a id="abb8d01d2ef24556a9e525431b2974652" name="abb8d01d2ef24556a9e525431b2974652"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_AI</b>&#160;&#160;&#160;8</td></tr>
-<tr class="separator:abb8d01d2ef24556a9e525431b2974652"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3b2dc230558ddcc1f5c8383e9e1acc92"><td class="memItemLeft" align="right" valign="top"><a id="a3b2dc230558ddcc1f5c8383e9e1acc92" name="a3b2dc230558ddcc1f5c8383e9e1acc92"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_DSP_AI</b>&#160;&#160;&#160;5</td></tr>
-<tr class="separator:a3b2dc230558ddcc1f5c8383e9e1acc92"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aebf44c961498acad190e3b325dff58bf"><td class="memItemLeft" align="right" valign="top"><a id="aebf44c961498acad190e3b325dff58bf" name="aebf44c961498acad190e3b325dff58bf"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_DSP_ARAM</b>&#160;&#160;&#160;6</td></tr>
-<tr class="separator:aebf44c961498acad190e3b325dff58bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aeaf87077750a91e64edddc04ea80e08a"><td class="memItemLeft" align="right" valign="top"><a id="aeaf87077750a91e64edddc04ea80e08a" name="aeaf87077750a91e64edddc04ea80e08a"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_DSP_DSP</b>&#160;&#160;&#160;7</td></tr>
-<tr class="separator:aeaf87077750a91e64edddc04ea80e08a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa70cfcf721f7f3854a70e81268ee08e0"><td class="memItemLeft" align="right" valign="top"><a id="aa70cfcf721f7f3854a70e81268ee08e0" name="aa70cfcf721f7f3854a70e81268ee08e0"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_EXI0_EXI</b>&#160;&#160;&#160;9</td></tr>
-<tr class="separator:aa70cfcf721f7f3854a70e81268ee08e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab38f520c180b0c8d2427943df9d7f39c"><td class="memItemLeft" align="right" valign="top"><a id="ab38f520c180b0c8d2427943df9d7f39c" name="ab38f520c180b0c8d2427943df9d7f39c"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_EXI0_EXT</b>&#160;&#160;&#160;11</td></tr>
-<tr class="separator:ab38f520c180b0c8d2427943df9d7f39c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab30e695f6bc1597fdb2853d686c79cbe"><td class="memItemLeft" align="right" valign="top"><a id="ab30e695f6bc1597fdb2853d686c79cbe" name="ab30e695f6bc1597fdb2853d686c79cbe"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_EXI0_TC</b>&#160;&#160;&#160;10</td></tr>
-<tr class="separator:ab30e695f6bc1597fdb2853d686c79cbe"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0aeacc6f357dbb4c8d2197d275348072"><td class="memItemLeft" align="right" valign="top"><a id="a0aeacc6f357dbb4c8d2197d275348072" name="a0aeacc6f357dbb4c8d2197d275348072"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_EXI1_EXI</b>&#160;&#160;&#160;12</td></tr>
-<tr class="separator:a0aeacc6f357dbb4c8d2197d275348072"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4dee1d94dd04c2b9a53cefdf92457ac9"><td class="memItemLeft" align="right" valign="top"><a id="a4dee1d94dd04c2b9a53cefdf92457ac9" name="a4dee1d94dd04c2b9a53cefdf92457ac9"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_EXI1_EXT</b>&#160;&#160;&#160;14</td></tr>
-<tr class="separator:a4dee1d94dd04c2b9a53cefdf92457ac9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3196298b9eec8301ec5afb3330791e00"><td class="memItemLeft" align="right" valign="top"><a id="a3196298b9eec8301ec5afb3330791e00" name="a3196298b9eec8301ec5afb3330791e00"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_EXI1_TC</b>&#160;&#160;&#160;13</td></tr>
-<tr class="separator:a3196298b9eec8301ec5afb3330791e00"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a76d3779cfeda133de780e273b504297a"><td class="memItemLeft" align="right" valign="top"><a id="a76d3779cfeda133de780e273b504297a" name="a76d3779cfeda133de780e273b504297a"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_EXI2_EXI</b>&#160;&#160;&#160;15</td></tr>
-<tr class="separator:a76d3779cfeda133de780e273b504297a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2491baeaaf1fef55d6e4c174d54099f8"><td class="memItemLeft" align="right" valign="top"><a id="a2491baeaaf1fef55d6e4c174d54099f8" name="a2491baeaaf1fef55d6e4c174d54099f8"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_EXI2_TC</b>&#160;&#160;&#160;16</td></tr>
-<tr class="separator:a2491baeaaf1fef55d6e4c174d54099f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9d4f0063ef1ff40f5ac7a216c44ef77a"><td class="memItemLeft" align="right" valign="top"><a id="a9d4f0063ef1ff40f5ac7a216c44ef77a" name="a9d4f0063ef1ff40f5ac7a216c44ef77a"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_MAX</b>&#160;&#160;&#160;32</td></tr>
-<tr class="separator:a9d4f0063ef1ff40f5ac7a216c44ef77a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a243d983fd91d243ccfba67218958aaf0"><td class="memItemLeft" align="right" valign="top"><a id="a243d983fd91d243ccfba67218958aaf0" name="a243d983fd91d243ccfba67218958aaf0"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_MEM0</b>&#160;&#160;&#160;0</td></tr>
-<tr class="separator:a243d983fd91d243ccfba67218958aaf0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a30188e0ef472253a10a7e617c6c2cabd"><td class="memItemLeft" align="right" valign="top"><a id="a30188e0ef472253a10a7e617c6c2cabd" name="a30188e0ef472253a10a7e617c6c2cabd"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_MEM1</b>&#160;&#160;&#160;1</td></tr>
-<tr class="separator:a30188e0ef472253a10a7e617c6c2cabd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4f3fb8faa53cb3f4e8571d49a9330d45"><td class="memItemLeft" align="right" valign="top"><a id="a4f3fb8faa53cb3f4e8571d49a9330d45" name="a4f3fb8faa53cb3f4e8571d49a9330d45"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_MEM2</b>&#160;&#160;&#160;2</td></tr>
-<tr class="separator:a4f3fb8faa53cb3f4e8571d49a9330d45"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abf2a29379238e5a00e27b9932254e358"><td class="memItemLeft" align="right" valign="top"><a id="abf2a29379238e5a00e27b9932254e358" name="abf2a29379238e5a00e27b9932254e358"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_MEM3</b>&#160;&#160;&#160;3</td></tr>
-<tr class="separator:abf2a29379238e5a00e27b9932254e358"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa1f3cd1b0c4aa4c73ed6dfa33866b683"><td class="memItemLeft" align="right" valign="top"><a id="aa1f3cd1b0c4aa4c73ed6dfa33866b683" name="aa1f3cd1b0c4aa4c73ed6dfa33866b683"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_MEMADDRESS</b>&#160;&#160;&#160;4</td></tr>
-<tr class="separator:aa1f3cd1b0c4aa4c73ed6dfa33866b683"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad9339c712f0d4124ec7436462f0ab2e4"><td class="memItemLeft" align="right" valign="top"><a id="ad9339c712f0d4124ec7436462f0ab2e4" name="ad9339c712f0d4124ec7436462f0ab2e4"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_PI_CP</b>&#160;&#160;&#160;17</td></tr>
-<tr class="separator:ad9339c712f0d4124ec7436462f0ab2e4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a170dcb66df25d166993502e0c5d17fb6"><td class="memItemLeft" align="right" valign="top"><a id="a170dcb66df25d166993502e0c5d17fb6" name="a170dcb66df25d166993502e0c5d17fb6"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_PI_DEBUG</b>&#160;&#160;&#160;25</td></tr>
-<tr class="separator:a170dcb66df25d166993502e0c5d17fb6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae584e38e4fe515b5e83523bced91c9f3"><td class="memItemLeft" align="right" valign="top"><a id="ae584e38e4fe515b5e83523bced91c9f3" name="ae584e38e4fe515b5e83523bced91c9f3"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_PI_DI</b>&#160;&#160;&#160;21</td></tr>
-<tr class="separator:ae584e38e4fe515b5e83523bced91c9f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae4cc067e368277d81b2e67f69e3e34a2"><td class="memItemLeft" align="right" valign="top"><a id="ae4cc067e368277d81b2e67f69e3e34a2" name="ae4cc067e368277d81b2e67f69e3e34a2"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_PI_ERROR</b>&#160;&#160;&#160;23</td></tr>
-<tr class="separator:ae4cc067e368277d81b2e67f69e3e34a2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1e4ae0473607d8abdf01da76c60394d8"><td class="memItemLeft" align="right" valign="top"><a id="a1e4ae0473607d8abdf01da76c60394d8" name="a1e4ae0473607d8abdf01da76c60394d8"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_PI_HSP</b>&#160;&#160;&#160;26</td></tr>
-<tr class="separator:a1e4ae0473607d8abdf01da76c60394d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a18ff60f62d97d1bf127e8d57e0843233"><td class="memItemLeft" align="right" valign="top"><a id="a18ff60f62d97d1bf127e8d57e0843233" name="a18ff60f62d97d1bf127e8d57e0843233"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_PI_PEFINISH</b>&#160;&#160;&#160;19</td></tr>
-<tr class="separator:a18ff60f62d97d1bf127e8d57e0843233"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7e7ae76fe570c3087ba54f1f80d0347b"><td class="memItemLeft" align="right" valign="top"><a id="a7e7ae76fe570c3087ba54f1f80d0347b" name="a7e7ae76fe570c3087ba54f1f80d0347b"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_PI_PETOKEN</b>&#160;&#160;&#160;18</td></tr>
-<tr class="separator:a7e7ae76fe570c3087ba54f1f80d0347b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa6d3226f5d6504d3f083859bcaa474e1"><td class="memItemLeft" align="right" valign="top"><a id="aa6d3226f5d6504d3f083859bcaa474e1" name="aa6d3226f5d6504d3f083859bcaa474e1"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_PI_RSW</b>&#160;&#160;&#160;22</td></tr>
-<tr class="separator:aa6d3226f5d6504d3f083859bcaa474e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1d1359433bb603ce7038abe77da91b49"><td class="memItemLeft" align="right" valign="top"><a id="a1d1359433bb603ce7038abe77da91b49" name="a1d1359433bb603ce7038abe77da91b49"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_PI_SI</b>&#160;&#160;&#160;20</td></tr>
-<tr class="separator:a1d1359433bb603ce7038abe77da91b49"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4874d69a145e80da6057c9e5de441b65"><td class="memItemLeft" align="right" valign="top"><a id="a4874d69a145e80da6057c9e5de441b65" name="a4874d69a145e80da6057c9e5de441b65"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQ_PI_VI</b>&#160;&#160;&#160;24</td></tr>
-<tr class="separator:a4874d69a145e80da6057c9e5de441b65"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0b94f5835825350474be4c2f705f5168"><td class="memItemLeft" align="right" valign="top"><a id="a0b94f5835825350474be4c2f705f5168" name="a0b94f5835825350474be4c2f705f5168"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>IRQMASK</b>(irq)&#160;&#160;&#160;(0x80000000u&gt;&gt;irq)</td></tr>
-<tr class="separator:a0b94f5835825350474be4c2f705f5168"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
 Typedefs</h2></td></tr>
-<tr class="memitem:a5de808f138625d05430e1364cdddfb65"><td class="memItemLeft" align="right" valign="top">typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a>) (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> irq, void *ctx)</td></tr>
+<tr class="memitem:a5de808f138625d05430e1364cdddfb65"><td class="memItemLeft" align="right" valign="top">typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a>) (u32 irq, void *ctx)</td></tr>
 <tr class="memdesc:a5de808f138625d05430e1364cdddfb65"><td class="mdescLeft">&#160;</td><td class="mdescRight">function pointer typedef for the interrupt handler callback  <a href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">More...</a><br /></td></tr>
 <tr class="separator:a5de808f138625d05430e1364cdddfb65"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:ad167b088bbb0908ef3782c2431d82f7c"><td class="memItemLeft" align="right" valign="top"><a id="ad167b088bbb0908ef3782c2431d82f7c" name="ad167b088bbb0908ef3782c2431d82f7c"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>__MaskIrq</b> (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> nMask)</td></tr>
-<tr class="separator:ad167b088bbb0908ef3782c2431d82f7c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a86491c4ee6f41398b7fe4a874a29b620"><td class="memItemLeft" align="right" valign="top"><a id="a86491c4ee6f41398b7fe4a874a29b620" name="a86491c4ee6f41398b7fe4a874a29b620"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>__UnmaskIrq</b> (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> nMask)</td></tr>
-<tr class="separator:a86491c4ee6f41398b7fe4a874a29b620"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a165fa9ad06696e1b5de21d06adb23ce1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="irq_8h.html#a165fa9ad06696e1b5de21d06adb23ce1">IRQ_Disable</a> (void)</td></tr>
-<tr class="memdesc:a165fa9ad06696e1b5de21d06adb23ce1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Disable the complete IRQ subsystem. No interrupts will be served. Multithreading kernel fully disabled.  <a href="irq_8h.html#a165fa9ad06696e1b5de21d06adb23ce1">More...</a><br /></td></tr>
-<tr class="separator:a165fa9ad06696e1b5de21d06adb23ce1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af59cf3a5b118474459d23f2b4d31fc41"><td class="memItemLeft" align="right" valign="top"><a class="el" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="irq_8h.html#af59cf3a5b118474459d23f2b4d31fc41">IRQ_Free</a> (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> nIrq)</td></tr>
-<tr class="memdesc:af59cf3a5b118474459d23f2b4d31fc41"><td class="mdescLeft">&#160;</td><td class="mdescRight">Free an interrupt handler.  <a href="irq_8h.html#af59cf3a5b118474459d23f2b4d31fc41">More...</a><br /></td></tr>
-<tr class="separator:af59cf3a5b118474459d23f2b4d31fc41"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0e6b06c279a2d09680ddc7b41cc4132a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="irq_8h.html#a0e6b06c279a2d09680ddc7b41cc4132a">IRQ_GetHandler</a> (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> nIrq)</td></tr>
-<tr class="memdesc:a0e6b06c279a2d09680ddc7b41cc4132a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the handler from interrupt number.  <a href="irq_8h.html#a0e6b06c279a2d09680ddc7b41cc4132a">More...</a><br /></td></tr>
-<tr class="separator:a0e6b06c279a2d09680ddc7b41cc4132a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a93b4435ebb8f461958e4a3172d89198a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="irq_8h.html#a93b4435ebb8f461958e4a3172d89198a">IRQ_Request</a> (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> nIrq, <a class="el" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a> pHndl, void *pCtx)</td></tr>
-<tr class="memdesc:a93b4435ebb8f461958e4a3172d89198a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Register an interrupt handler.  <a href="irq_8h.html#a93b4435ebb8f461958e4a3172d89198a">More...</a><br /></td></tr>
-<tr class="separator:a93b4435ebb8f461958e4a3172d89198a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1541e12fbf8ecf2e9f69ff777593986d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="irq_8h.html#a1541e12fbf8ecf2e9f69ff777593986d">IRQ_Restore</a> (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> level)</td></tr>
-<tr class="memdesc:a1541e12fbf8ecf2e9f69ff777593986d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Restore the IRQ subsystem with the given level. This is function should be used together with <a class="el" href="irq_8h.html#a165fa9ad06696e1b5de21d06adb23ce1" title="Disable the complete IRQ subsystem. No interrupts will be served. Multithreading kernel fully disable...">IRQ_Disable()</a>  <a href="irq_8h.html#a1541e12fbf8ecf2e9f69ff777593986d">More...</a><br /></td></tr>
-<tr class="separator:a1541e12fbf8ecf2e9f69ff777593986d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af469aa839a27af45c2a26372b1afb0bd"><td class="memItemLeft" align="right" valign="top"><a id="af469aa839a27af45c2a26372b1afb0bd" name="af469aa839a27af45c2a26372b1afb0bd"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>__attribute__</b> ((always_inline)) static inline <a class="el" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a> IRQ_Request(u32 nIrq</td></tr>
+<tr class="separator:af469aa839a27af45c2a26372b1afb0bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
+Variables</h2></td></tr>
+<tr class="memitem:a774525e409a558e972997cd299255739"><td class="memItemLeft" align="right" valign="top"><a class="el" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a> void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="irq_8h.html#a774525e409a558e972997cd299255739">pCtx</a></td></tr>
+<tr class="separator:a774525e409a558e972997cd299255739"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adcc9872243d787b2bc4e4a9c28dfafd0"><td class="memItemLeft" align="right" valign="top"><a id="adcc9872243d787b2bc4e4a9c28dfafd0" name="adcc9872243d787b2bc4e4a9c28dfafd0"></a>
+<a class="el" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a>&#160;</td><td class="memItemRight" valign="bottom"><b>pHndl</b></td></tr>
+<tr class="separator:adcc9872243d787b2bc4e4a9c28dfafd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >Interrupt subsystem. </p>
@@ -311,7 +110,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>__UnmaskIrq</b> (<a c
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void(* raw_irq_handler_t)(<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> irq, void *ctx)</td>
+          <td class="memname">void(* raw_irq_handler_t)(u32 irq, void *ctx)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -327,158 +126,28 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>__UnmaskIrq</b> (<a c
 
 </div>
 </div>
-<h2 class="groupheader">Function Documentation</h2>
-<a id="a165fa9ad06696e1b5de21d06adb23ce1" name="a165fa9ad06696e1b5de21d06adb23ce1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a165fa9ad06696e1b5de21d06adb23ce1">&#9670;&nbsp;</a></span>IRQ_Disable()</h2>
+<h2 class="groupheader">Variable Documentation</h2>
+<a id="a774525e409a558e972997cd299255739" name="a774525e409a558e972997cd299255739"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a774525e409a558e972997cd299255739">&#9670;&nbsp;</a></span>pCtx</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> IRQ_Disable </td>
-          <td>(</td>
-          <td class="paramtype">void&#160;</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
+          <td class="memname"><a class="el" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a> void* pCtx</td>
         </tr>
       </table>
 </div><div class="memdoc">
-
-<p>Disable the complete IRQ subsystem. No interrupts will be served. Multithreading kernel fully disabled. </p>
-<dl class="section return"><dt>Returns</dt><dd>Old state of the IRQ subsystem </dd></dl>
-
-</div>
-</div>
-<a id="af59cf3a5b118474459d23f2b4d31fc41" name="af59cf3a5b118474459d23f2b4d31fc41"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af59cf3a5b118474459d23f2b4d31fc41">&#9670;&nbsp;</a></span>IRQ_Free()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a> IRQ_Free </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td>
-          <td class="paramname"><em>nIrq</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Free an interrupt handler. </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">nIrq</td><td>interrupt number for which to free the handler</td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>Old interrupt handler, else NULL </dd></dl>
-
-</div>
-</div>
-<a id="a0e6b06c279a2d09680ddc7b41cc4132a" name="a0e6b06c279a2d09680ddc7b41cc4132a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0e6b06c279a2d09680ddc7b41cc4132a">&#9670;&nbsp;</a></span>IRQ_GetHandler()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a> IRQ_GetHandler </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td>
-          <td class="paramname"><em>nIrq</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Get the handler from interrupt number. </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">nIrq</td><td>interrupt number for which to retrieve the handler</td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>interrupt handler, else NULL </dd></dl>
-
-</div>
-</div>
-<a id="a93b4435ebb8f461958e4a3172d89198a" name="a93b4435ebb8f461958e4a3172d89198a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a93b4435ebb8f461958e4a3172d89198a">&#9670;&nbsp;</a></span>IRQ_Request()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a> IRQ_Request </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td>
-          <td class="paramname"><em>nIrq</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype"><a class="el" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a>&#160;</td>
-          <td class="paramname"><em>pHndl</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>pCtx</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Register an interrupt handler. </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">nIrq</td><td>interrupt number to which to register the handler </td></tr>
-    <tr><td class="paramdir">[in]</td><td class="paramname">pHndl</td><td>pointer to the handler callback function which to call when interrupt has triggered </td></tr>
-    <tr><td class="paramdir">[in]</td><td class="paramname">pCtx</td><td>pointer to user data to pass with, when handler is called</td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>Old interrupt handler, else NULL </dd></dl>
-
-</div>
-</div>
-<a id="a1541e12fbf8ecf2e9f69ff777593986d" name="a1541e12fbf8ecf2e9f69ff777593986d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a1541e12fbf8ecf2e9f69ff777593986d">&#9670;&nbsp;</a></span>IRQ_Restore()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> IRQ_Restore </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td>
-          <td class="paramname"><em>level</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Restore the IRQ subsystem with the given level. This is function should be used together with <a class="el" href="irq_8h.html#a165fa9ad06696e1b5de21d06adb23ce1" title="Disable the complete IRQ subsystem. No interrupts will be served. Multithreading kernel fully disable...">IRQ_Disable()</a> </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">level</td><td>IRQ level to restore to.</td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>none </dd></dl>
-
+<b>Initial value:</b><div class="fragment"><div class="line">{</div>
+<div class="line">   <span class="keywordflow">return</span> (<a class="code hl_typedef" href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a>)KIrqSet((KIrqId)nIrq, (KIrqHandlerFn)pHndl, pCtx)</div>
+<div class="ttc" id="airq_8h_html_a5de808f138625d05430e1364cdddfb65"><div class="ttname"><a href="irq_8h.html#a5de808f138625d05430e1364cdddfb65">raw_irq_handler_t</a></div><div class="ttdeci">void(* raw_irq_handler_t)(u32 irq, void *ctx)</div><div class="ttdoc">function pointer typedef for the interrupt handler callback</div><div class="ttdef"><b>Definition:</b> irq.h:54</div></div>
+</div><!-- fragment -->
 </div>
 </div>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Sat Jan 17 2026 13:38:36 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.4
+Generated on Sun Jan 25 2026 18:34:43 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.4
 </small></address>
 </body>
 </html>

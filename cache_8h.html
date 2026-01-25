@@ -21,7 +21,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">libogc<span id="projectnumber">&#160;v2.14.1</span>
+   <div id="projectname">libogc<span id="projectnumber">&#160;v3.0.0</span>
    </div>
   </td>
  </tr>
@@ -68,7 +68,8 @@ $(function() {
 <div class="header">
   <div class="summary">
 <a href="#define-members">Macros</a> &#124;
-<a href="#func-members">Functions</a>  </div>
+<a href="#func-members">Functions</a> &#124;
+<a href="#var-members">Variables</a>  </div>
   <div class="headertitle"><div class="title">cache.h File Reference</div></div>
 </div><!--header-->
 <div class="contents">
@@ -77,6 +78,7 @@ $(function() {
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &lt;<a class="el" href="gctypes_8h.html">gctypes.h</a>&gt;</code><br />
 <code>#include &lt;gcbool.h&gt;</code><br />
+<code>#include &quot;../tuxedo/ppc/cache.h&quot;</code><br />
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
 Macros</h2></td></tr>
@@ -92,6 +94,9 @@ Macros</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
+<tr class="memitem:a9860eac0dbf0ba445745f4bd4ea42148"><td class="memItemLeft" align="right" valign="top"><a id="a9860eac0dbf0ba445745f4bd4ea42148" name="a9860eac0dbf0ba445745f4bd4ea42148"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>__attribute__</b> ((always_inline)) static inline void DCFlushRange(void *startaddress</td></tr>
+<tr class="separator:a9860eac0dbf0ba445745f4bd4ea42148"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a157e9185e621c7900132d0f280127e47"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a157e9185e621c7900132d0f280127e47">DCDisable</a> (void)</td></tr>
 <tr class="memdesc:a157e9185e621c7900132d0f280127e47"><td class="mdescLeft">&#160;</td><td class="mdescRight">Disable L1 d-cache.  <a href="cache_8h.html#a157e9185e621c7900132d0f280127e47">More...</a><br /></td></tr>
 <tr class="separator:a157e9185e621c7900132d0f280127e47"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -101,36 +106,27 @@ Functions</h2></td></tr>
 <tr class="memitem:a2c2ba9e4053761c48638b7766e7cf451"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a2c2ba9e4053761c48638b7766e7cf451">DCFlashInvalidate</a> (void)</td></tr>
 <tr class="memdesc:a2c2ba9e4053761c48638b7766e7cf451"><td class="mdescLeft">&#160;</td><td class="mdescRight">Invalidate L1 d-cache.  <a href="cache_8h.html#a2c2ba9e4053761c48638b7766e7cf451">More...</a><br /></td></tr>
 <tr class="separator:a2c2ba9e4053761c48638b7766e7cf451"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abc716be779d6e117a9fe4526e9c38270"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#abc716be779d6e117a9fe4526e9c38270">DCFlushRange</a> (void *startaddress, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> len)</td></tr>
-<tr class="memdesc:abc716be779d6e117a9fe4526e9c38270"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flushes a given range.  <a href="cache_8h.html#abc716be779d6e117a9fe4526e9c38270">More...</a><br /></td></tr>
-<tr class="separator:abc716be779d6e117a9fe4526e9c38270"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9ec64ece0e02008f1b78a54b7b89dac6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a9ec64ece0e02008f1b78a54b7b89dac6">DCFlushRangeNoSync</a> (void *startaddress, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> len)</td></tr>
-<tr class="memdesc:a9ec64ece0e02008f1b78a54b7b89dac6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flushes a given range.  <a href="cache_8h.html#a9ec64ece0e02008f1b78a54b7b89dac6">More...</a><br /></td></tr>
-<tr class="separator:a9ec64ece0e02008f1b78a54b7b89dac6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa9f1a5015be3a8267dc5d2e85103cf91"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#aa9f1a5015be3a8267dc5d2e85103cf91">DCFlushRangeNoSync</a> (void *startaddress, u32 len) __asm__(&quot;PPCDCacheFlushAsync&quot;)</td></tr>
+<tr class="memdesc:aa9f1a5015be3a8267dc5d2e85103cf91"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flushes a given range.  <a href="cache_8h.html#aa9f1a5015be3a8267dc5d2e85103cf91">More...</a><br /></td></tr>
+<tr class="separator:aa9f1a5015be3a8267dc5d2e85103cf91"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a59d22f96b5b2742f80e0acf973602399"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a59d22f96b5b2742f80e0acf973602399">DCFreeze</a> (void)</td></tr>
 <tr class="memdesc:a59d22f96b5b2742f80e0acf973602399"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current contents of the L1 d-cache are locked down and will not be cast out.  <a href="cache_8h.html#a59d22f96b5b2742f80e0acf973602399">More...</a><br /></td></tr>
 <tr class="separator:a59d22f96b5b2742f80e0acf973602399"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5fabc9444d5ec85db2c780fea0288a1c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a5fabc9444d5ec85db2c780fea0288a1c">DCInvalidateRange</a> (void *startaddress, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> len)</td></tr>
-<tr class="memdesc:a5fabc9444d5ec85db2c780fea0288a1c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Invalidates a given range of the d-cache.  <a href="cache_8h.html#a5fabc9444d5ec85db2c780fea0288a1c">More...</a><br /></td></tr>
-<tr class="separator:a5fabc9444d5ec85db2c780fea0288a1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7e5997dc8fcc6e6890126e09f6043b58"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a7e5997dc8fcc6e6890126e09f6043b58">DCStoreRange</a> (void *startaddress, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> len)</td></tr>
-<tr class="memdesc:a7e5997dc8fcc6e6890126e09f6043b58"><td class="mdescLeft">&#160;</td><td class="mdescRight">Ensures a range of memory is updated with any modified data in the cache.  <a href="cache_8h.html#a7e5997dc8fcc6e6890126e09f6043b58">More...</a><br /></td></tr>
-<tr class="separator:a7e5997dc8fcc6e6890126e09f6043b58"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a44470e191ecb9c51d4a0f31c44a7871b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a44470e191ecb9c51d4a0f31c44a7871b">DCStoreRangeNoSync</a> (void *startaddress, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> len)</td></tr>
-<tr class="memdesc:a44470e191ecb9c51d4a0f31c44a7871b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Ensures a range of memory is updated with any modified data in the cache.  <a href="cache_8h.html#a44470e191ecb9c51d4a0f31c44a7871b">More...</a><br /></td></tr>
-<tr class="separator:a44470e191ecb9c51d4a0f31c44a7871b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7fc0409eff5aa756d1cdcefeece16d86"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a7fc0409eff5aa756d1cdcefeece16d86">DCTouchRange</a> (void *startaddress, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> len)</td></tr>
-<tr class="memdesc:a7fc0409eff5aa756d1cdcefeece16d86"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads a range of memory into cache.  <a href="cache_8h.html#a7fc0409eff5aa756d1cdcefeece16d86">More...</a><br /></td></tr>
-<tr class="separator:a7fc0409eff5aa756d1cdcefeece16d86"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab06557072a3c35601519febc5da553ef"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#ab06557072a3c35601519febc5da553ef">DCInvalidateRange</a> (void *startaddress, u32 len) __asm__(&quot;PPCDCacheInvalidate&quot;)</td></tr>
+<tr class="memdesc:ab06557072a3c35601519febc5da553ef"><td class="mdescLeft">&#160;</td><td class="mdescRight">Invalidates a given range of the d-cache.  <a href="cache_8h.html#ab06557072a3c35601519febc5da553ef">More...</a><br /></td></tr>
+<tr class="separator:ab06557072a3c35601519febc5da553ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3f768ebbad2846010f94233db1156b23"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a3f768ebbad2846010f94233db1156b23">DCStoreRangeNoSync</a> (void *startaddress, u32 len) __asm__(&quot;PPCDCacheStoreAsync&quot;)</td></tr>
+<tr class="memdesc:a3f768ebbad2846010f94233db1156b23"><td class="mdescLeft">&#160;</td><td class="mdescRight">Ensures a range of memory is updated with any modified data in the cache.  <a href="cache_8h.html#a3f768ebbad2846010f94233db1156b23">More...</a><br /></td></tr>
+<tr class="separator:a3f768ebbad2846010f94233db1156b23"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae4834449cfa455eac6e392dbe9e962db"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#ae4834449cfa455eac6e392dbe9e962db">DCTouchRange</a> (void *startaddress, u32 len) __asm__(&quot;PPCDCacheTouch&quot;)</td></tr>
+<tr class="memdesc:ae4834449cfa455eac6e392dbe9e962db"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads a range of memory into cache.  <a href="cache_8h.html#ae4834449cfa455eac6e392dbe9e962db">More...</a><br /></td></tr>
+<tr class="separator:ae4834449cfa455eac6e392dbe9e962db"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8eafe04d3af653c62ba6c68bad816cf9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a8eafe04d3af653c62ba6c68bad816cf9">DCUnfreeze</a> (void)</td></tr>
 <tr class="memdesc:a8eafe04d3af653c62ba6c68bad816cf9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Undoes actions of <a class="el" href="cache_8h.html#a59d22f96b5b2742f80e0acf973602399" title="Current contents of the L1 d-cache are locked down and will not be cast out.">DCFreeze()</a>.  <a href="cache_8h.html#a8eafe04d3af653c62ba6c68bad816cf9">More...</a><br /></td></tr>
 <tr class="separator:a8eafe04d3af653c62ba6c68bad816cf9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6f055136f3b52e431efb948bc01454d3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a6f055136f3b52e431efb948bc01454d3">DCZeroRange</a> (void *startaddress, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> len)</td></tr>
-<tr class="memdesc:a6f055136f3b52e431efb948bc01454d3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads a range of memory into cache and zeroes all the cache lines.  <a href="cache_8h.html#a6f055136f3b52e431efb948bc01454d3">More...</a><br /></td></tr>
-<tr class="separator:a6f055136f3b52e431efb948bc01454d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae7f0395b2499f3fdaa3e420b0d825071"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#ae7f0395b2499f3fdaa3e420b0d825071">ICBlockInvalidate</a> (void *startaddress)</td></tr>
-<tr class="memdesc:ae7f0395b2499f3fdaa3e420b0d825071"><td class="mdescLeft">&#160;</td><td class="mdescRight">Invalidates a block in the i-cache.  <a href="cache_8h.html#ae7f0395b2499f3fdaa3e420b0d825071">More...</a><br /></td></tr>
-<tr class="separator:ae7f0395b2499f3fdaa3e420b0d825071"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adbb748a518edc5bf312b64caea96ed0e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#adbb748a518edc5bf312b64caea96ed0e">DCZeroRange</a> (void *startaddress, u32 len) __asm__(&quot;PPCDCacheZero&quot;)</td></tr>
+<tr class="memdesc:adbb748a518edc5bf312b64caea96ed0e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads a range of memory into cache and zeroes all the cache lines.  <a href="cache_8h.html#adbb748a518edc5bf312b64caea96ed0e">More...</a><br /></td></tr>
+<tr class="separator:adbb748a518edc5bf312b64caea96ed0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a76da4d344cd77a7fae391964f7658735"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a76da4d344cd77a7fae391964f7658735">ICDisable</a> (void)</td></tr>
 <tr class="memdesc:a76da4d344cd77a7fae391964f7658735"><td class="mdescLeft">&#160;</td><td class="mdescRight">Disable L1 i-cache.  <a href="cache_8h.html#a76da4d344cd77a7fae391964f7658735">More...</a><br /></td></tr>
 <tr class="separator:a76da4d344cd77a7fae391964f7658735"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -143,26 +139,23 @@ Functions</h2></td></tr>
 <tr class="memitem:a8953bc422a301e2a6f70723957f172e1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a8953bc422a301e2a6f70723957f172e1">ICFreeze</a> (void)</td></tr>
 <tr class="memdesc:a8953bc422a301e2a6f70723957f172e1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current contents of the L1 i-cache are locked down and will not be cast out.  <a href="cache_8h.html#a8953bc422a301e2a6f70723957f172e1">More...</a><br /></td></tr>
 <tr class="separator:a8953bc422a301e2a6f70723957f172e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af3bb8d456777bafa6ecbe15b7cb0ed2a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#af3bb8d456777bafa6ecbe15b7cb0ed2a">ICInvalidateRange</a> (void *startaddress, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a> len)</td></tr>
-<tr class="memdesc:af3bb8d456777bafa6ecbe15b7cb0ed2a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Invalidate a range in the L1 i-cache.  <a href="cache_8h.html#af3bb8d456777bafa6ecbe15b7cb0ed2a">More...</a><br /></td></tr>
-<tr class="separator:af3bb8d456777bafa6ecbe15b7cb0ed2a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a75d6e31dc939812889805bea7692d622"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a75d6e31dc939812889805bea7692d622">ICSync</a> (void)</td></tr>
-<tr class="memdesc:a75d6e31dc939812889805bea7692d622"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs an instruction cache synchronization.  <a href="cache_8h.html#a75d6e31dc939812889805bea7692d622">More...</a><br /></td></tr>
-<tr class="separator:a75d6e31dc939812889805bea7692d622"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6b2367fa649a12d1428490f094879e86"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a6b2367fa649a12d1428490f094879e86">ICInvalidateRange</a> (void *startaddress, u32 len) __asm__(&quot;PPCICacheInvalidate&quot;)</td></tr>
+<tr class="memdesc:a6b2367fa649a12d1428490f094879e86"><td class="mdescLeft">&#160;</td><td class="mdescRight">Invalidate a range in the L1 i-cache.  <a href="cache_8h.html#a6b2367fa649a12d1428490f094879e86">More...</a><br /></td></tr>
+<tr class="separator:a6b2367fa649a12d1428490f094879e86"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a935108bdb96f9dda33345870a91e0943"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a935108bdb96f9dda33345870a91e0943">ICUnfreeze</a> (void)</td></tr>
 <tr class="memdesc:a935108bdb96f9dda33345870a91e0943"><td class="mdescLeft">&#160;</td><td class="mdescRight">Undoes actions of <a class="el" href="cache_8h.html#a8953bc422a301e2a6f70723957f172e1" title="Current contents of the L1 i-cache are locked down and will not be cast out.">ICFreeze()</a>.  <a href="cache_8h.html#a935108bdb96f9dda33345870a91e0943">More...</a><br /></td></tr>
 <tr class="separator:a935108bdb96f9dda33345870a91e0943"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a421706340758ed85209e0c9839c25ffb"><td class="memItemLeft" align="right" valign="top"><a id="a421706340758ed85209e0c9839c25ffb" name="a421706340758ed85209e0c9839c25ffb"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>LCAlloc</b> (void *, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>LCAlloc</b> (void *, u32)</td></tr>
 <tr class="separator:a421706340758ed85209e0c9839c25ffb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aeec10cf1ecc6ebeaf9f37d3b83504e06"><td class="memItemLeft" align="right" valign="top"><a id="aeec10cf1ecc6ebeaf9f37d3b83504e06" name="aeec10cf1ecc6ebeaf9f37d3b83504e06"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>LCAllocNoInvalidate</b> (void *, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>LCAllocNoInvalidate</b> (void *, u32)</td></tr>
 <tr class="separator:aeec10cf1ecc6ebeaf9f37d3b83504e06"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a45ff6d4d274c9b9e951f59f64ca74e95"><td class="memItemLeft" align="right" valign="top"><a id="a45ff6d4d274c9b9e951f59f64ca74e95" name="a45ff6d4d274c9b9e951f59f64ca74e95"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>LCAllocOneTag</b> (BOOL, void *)</td></tr>
 <tr class="separator:a45ff6d4d274c9b9e951f59f64ca74e95"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2b12361afe2c2addb527449c9567b764"><td class="memItemLeft" align="right" valign="top"><a id="a2b12361afe2c2addb527449c9567b764" name="a2b12361afe2c2addb527449c9567b764"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>LCAllocTags</b> (BOOL, void *, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>LCAllocTags</b> (BOOL, void *, u32)</td></tr>
 <tr class="separator:a2b12361afe2c2addb527449c9567b764"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a175d62ba1caad8b54b649b4ff312defe"><td class="memItemLeft" align="right" valign="top"><a id="a175d62ba1caad8b54b649b4ff312defe" name="a175d62ba1caad8b54b649b4ff312defe"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>LCDisable</b> (void)</td></tr>
@@ -174,23 +167,28 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCEnable</b> (void)</
 void&#160;</td><td class="memItemRight" valign="bottom"><b>LCFlushQueue</b> (void)</td></tr>
 <tr class="separator:a04035e82c6a8a692d57e8ecdb8b46020"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab1be0f41f47658e623076539c15cbb88"><td class="memItemLeft" align="right" valign="top"><a id="ab1be0f41f47658e623076539c15cbb88" name="ab1be0f41f47658e623076539c15cbb88"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>LCLoadBlocks</b> (void *, void *, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>LCLoadBlocks</b> (void *, void *, u32)</td></tr>
 <tr class="separator:ab1be0f41f47658e623076539c15cbb88"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2d52fa8a60802a8b3d2443eaf4d9efb6"><td class="memItemLeft" align="right" valign="top"><a id="a2d52fa8a60802a8b3d2443eaf4d9efb6" name="a2d52fa8a60802a8b3d2443eaf4d9efb6"></a>
-<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>LCLoadData</b> (void *, void *, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)</td></tr>
+u32&#160;</td><td class="memItemRight" valign="bottom"><b>LCLoadData</b> (void *, void *, u32)</td></tr>
 <tr class="separator:a2d52fa8a60802a8b3d2443eaf4d9efb6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4200298c2ba56a7b9f61f274414c0ee9"><td class="memItemLeft" align="right" valign="top"><a id="a4200298c2ba56a7b9f61f274414c0ee9" name="a4200298c2ba56a7b9f61f274414c0ee9"></a>
-<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>LCQueueLength</b> (void)</td></tr>
+u32&#160;</td><td class="memItemRight" valign="bottom"><b>LCQueueLength</b> (void)</td></tr>
 <tr class="separator:a4200298c2ba56a7b9f61f274414c0ee9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a57595fb03f08141440d313ad883af141"><td class="memItemLeft" align="right" valign="top"><a id="a57595fb03f08141440d313ad883af141" name="a57595fb03f08141440d313ad883af141"></a>
-<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>LCQueueWait</b> (<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)</td></tr>
+u32&#160;</td><td class="memItemRight" valign="bottom"><b>LCQueueWait</b> (u32)</td></tr>
 <tr class="separator:a57595fb03f08141440d313ad883af141"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad1d5b6719f6043d6d9df1186b97c3b9c"><td class="memItemLeft" align="right" valign="top"><a id="ad1d5b6719f6043d6d9df1186b97c3b9c" name="ad1d5b6719f6043d6d9df1186b97c3b9c"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (void *, void *, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (void *, void *, u32)</td></tr>
 <tr class="separator:ad1d5b6719f6043d6d9df1186b97c3b9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6a41b31555f2f8d0ac80965ba407855f"><td class="memItemLeft" align="right" valign="top"><a id="a6a41b31555f2f8d0ac80965ba407855f" name="a6a41b31555f2f8d0ac80965ba407855f"></a>
-<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreData</b> (void *, void *, <a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)</td></tr>
+u32&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreData</b> (void *, void *, u32)</td></tr>
 <tr class="separator:a6a41b31555f2f8d0ac80965ba407855f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
+Variables</h2></td></tr>
+<tr class="memitem:a4105737bcbe35c1fd69996a085d8231a"><td class="memItemLeft" align="right" valign="top">u32&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="cache_8h.html#a4105737bcbe35c1fd69996a085d8231a">len</a></td></tr>
+<tr class="separator:a4105737bcbe35c1fd69996a085d8231a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >Cache subsystem. </p>
@@ -260,48 +258,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
 
 </div>
 </div>
-<a id="abc716be779d6e117a9fe4526e9c38270" name="abc716be779d6e117a9fe4526e9c38270"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#abc716be779d6e117a9fe4526e9c38270">&#9670;&nbsp;</a></span>DCFlushRange()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">void DCFlushRange </td>
-          <td>(</td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>startaddress</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td>
-          <td class="paramname"><em>len</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Flushes a given range. </p>
-<pre class="fragment">   If any part of the range hits in the d-cache the corresponding block will be flushed to main memory and invalidated.&lt;br&gt;
-   &lt;b&gt;&lt;i&gt;NOTE:&lt;/i&gt;&lt;/b&gt; This function invokes a "sync" after flushing the range. This means the function will stall until the CPU knows that the data has been writen to main memory
-</pre> <dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">startaddress</td><td>pointer to the startaddress of the memory range to flush. <b><em>NOTE:</em></b> Has to be aligned on a 32byte boundery </td></tr>
-    <tr><td class="paramdir">[in]</td><td class="paramname">len</td><td>length of range to be flushed. <b><em>NOTE:</em></b> Should be a multiple of 32</td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>none </dd></dl>
-
-</div>
-</div>
-<a id="a9ec64ece0e02008f1b78a54b7b89dac6" name="a9ec64ece0e02008f1b78a54b7b89dac6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9ec64ece0e02008f1b78a54b7b89dac6">&#9670;&nbsp;</a></span>DCFlushRangeNoSync()</h2>
+<a id="aa9f1a5015be3a8267dc5d2e85103cf91" name="aa9f1a5015be3a8267dc5d2e85103cf91"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa9f1a5015be3a8267dc5d2e85103cf91">&#9670;&nbsp;</a></span>DCFlushRangeNoSync()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -315,7 +273,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td>
+          <td class="paramtype">u32&#160;</td>
           <td class="paramname"><em>len</em>&#160;</td>
         </tr>
         <tr>
@@ -363,8 +321,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
 
 </div>
 </div>
-<a id="a5fabc9444d5ec85db2c780fea0288a1c" name="a5fabc9444d5ec85db2c780fea0288a1c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a5fabc9444d5ec85db2c780fea0288a1c">&#9670;&nbsp;</a></span>DCInvalidateRange()</h2>
+<a id="ab06557072a3c35601519febc5da553ef" name="ab06557072a3c35601519febc5da553ef"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab06557072a3c35601519febc5da553ef">&#9670;&nbsp;</a></span>DCInvalidateRange()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -378,7 +336,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td>
+          <td class="paramtype">u32&#160;</td>
           <td class="paramname"><em>len</em>&#160;</td>
         </tr>
         <tr>
@@ -402,47 +360,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
 
 </div>
 </div>
-<a id="a7e5997dc8fcc6e6890126e09f6043b58" name="a7e5997dc8fcc6e6890126e09f6043b58"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7e5997dc8fcc6e6890126e09f6043b58">&#9670;&nbsp;</a></span>DCStoreRange()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">void DCStoreRange </td>
-          <td>(</td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>startaddress</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td>
-          <td class="paramname"><em>len</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Ensures a range of memory is updated with any modified data in the cache. </p>
-<pre class="fragment">   &lt;b&gt;&lt;i&gt;NOTE:&lt;/i&gt;&lt;/b&gt; This function invokes a "sync" after storing the range. This means the function will stall until the CPU knows that the data has been writen to main memory
-</pre> <dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">startaddress</td><td>pointer to the startaddress of the memory range to store. <b><em>NOTE:</em></b> Has to be aligned on a 32byte boundery </td></tr>
-    <tr><td class="paramdir">[in]</td><td class="paramname">len</td><td>length of the range to store. <b><em>NOTE:</em></b> Should be a multiple of 32</td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>none </dd></dl>
-
-</div>
-</div>
-<a id="a44470e191ecb9c51d4a0f31c44a7871b" name="a44470e191ecb9c51d4a0f31c44a7871b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a44470e191ecb9c51d4a0f31c44a7871b">&#9670;&nbsp;</a></span>DCStoreRangeNoSync()</h2>
+<a id="a3f768ebbad2846010f94233db1156b23" name="a3f768ebbad2846010f94233db1156b23"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3f768ebbad2846010f94233db1156b23">&#9670;&nbsp;</a></span>DCStoreRangeNoSync()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -456,7 +375,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td>
+          <td class="paramtype">u32&#160;</td>
           <td class="paramname"><em>len</em>&#160;</td>
         </tr>
         <tr>
@@ -480,8 +399,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
 
 </div>
 </div>
-<a id="a7fc0409eff5aa756d1cdcefeece16d86" name="a7fc0409eff5aa756d1cdcefeece16d86"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7fc0409eff5aa756d1cdcefeece16d86">&#9670;&nbsp;</a></span>DCTouchRange()</h2>
+<a id="ae4834449cfa455eac6e392dbe9e962db" name="ae4834449cfa455eac6e392dbe9e962db"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae4834449cfa455eac6e392dbe9e962db">&#9670;&nbsp;</a></span>DCTouchRange()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -495,7 +414,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td>
+          <td class="paramtype">u32&#160;</td>
           <td class="paramname"><em>len</em>&#160;</td>
         </tr>
         <tr>
@@ -541,8 +460,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
 
 </div>
 </div>
-<a id="a6f055136f3b52e431efb948bc01454d3" name="a6f055136f3b52e431efb948bc01454d3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6f055136f3b52e431efb948bc01454d3">&#9670;&nbsp;</a></span>DCZeroRange()</h2>
+<a id="adbb748a518edc5bf312b64caea96ed0e" name="adbb748a518edc5bf312b64caea96ed0e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adbb748a518edc5bf312b64caea96ed0e">&#9670;&nbsp;</a></span>DCZeroRange()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -556,7 +475,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td>
+          <td class="paramtype">u32&#160;</td>
           <td class="paramname"><em>len</em>&#160;</td>
         </tr>
         <tr>
@@ -572,34 +491,6 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">startaddress</td><td>pointer to the startaddress of the memory range to load/zero. <b><em>NOTE:</em></b> Has to be aligned on a 32byte boundery </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">len</td><td>length of the range to load/zero. <b><em>NOTE:</em></b> Should be a multiple of 32</td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>none </dd></dl>
-
-</div>
-</div>
-<a id="ae7f0395b2499f3fdaa3e420b0d825071" name="ae7f0395b2499f3fdaa3e420b0d825071"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae7f0395b2499f3fdaa3e420b0d825071">&#9670;&nbsp;</a></span>ICBlockInvalidate()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">void ICBlockInvalidate </td>
-          <td>(</td>
-          <td class="paramtype">void *&#160;</td>
-          <td class="paramname"><em>startaddress</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Invalidates a block in the i-cache. </p>
-<pre class="fragment">   If the block hits in the i-cache, the corresponding block will be invalidated.
-</pre> <dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">startaddress</td><td>pointer to the startaddress of the memory block to invalidate. <b><em>NOTE:</em></b> Has to be aligned on a 32byte boundery</td></tr>
   </table>
   </dd>
 </dl>
@@ -695,8 +586,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
 
 </div>
 </div>
-<a id="af3bb8d456777bafa6ecbe15b7cb0ed2a" name="af3bb8d456777bafa6ecbe15b7cb0ed2a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af3bb8d456777bafa6ecbe15b7cb0ed2a">&#9670;&nbsp;</a></span>ICInvalidateRange()</h2>
+<a id="a6b2367fa649a12d1428490f094879e86" name="a6b2367fa649a12d1428490f094879e86"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6b2367fa649a12d1428490f094879e86">&#9670;&nbsp;</a></span>ICInvalidateRange()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -710,7 +601,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>&#160;</td>
+          <td class="paramtype">u32&#160;</td>
           <td class="paramname"><em>len</em>&#160;</td>
         </tr>
         <tr>
@@ -731,28 +622,6 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>none </dd></dl>
-
-</div>
-</div>
-<a id="a75d6e31dc939812889805bea7692d622" name="a75d6e31dc939812889805bea7692d622"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a75d6e31dc939812889805bea7692d622">&#9670;&nbsp;</a></span>ICSync()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">void ICSync </td>
-          <td>(</td>
-          <td class="paramtype">void&#160;</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Performs an instruction cache synchronization. </p>
-<pre class="fragment">   This ensures that all instructions preceding this instruction have completed before this instruction completes.
-</pre> <dl class="section return"><dt>Returns</dt><dd>none </dd></dl>
 
 </div>
 </div>
@@ -779,10 +648,27 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>LCStoreBlocks</b> (vo
 
 </div>
 </div>
+<h2 class="groupheader">Variable Documentation</h2>
+<a id="a4105737bcbe35c1fd69996a085d8231a" name="a4105737bcbe35c1fd69996a085d8231a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4105737bcbe35c1fd69996a085d8231a">&#9670;&nbsp;</a></span>len</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">u32 len</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<b>Initial value:</b><div class="fragment"><div class="line">{</div>
+<div class="line">   PPCDCacheFlush(startaddress, len)</div>
+</div><!-- fragment -->
+</div>
+</div>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Sat Jan 17 2026 13:38:36 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.4
+Generated on Sun Jan 25 2026 18:34:43 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.4
 </small></address>
 </body>
 </html>

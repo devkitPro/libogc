@@ -21,7 +21,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">libogc<span id="projectnumber">&#160;v2.14.1</span>
+   <div id="projectname">libogc<span id="projectnumber">&#160;v3.0.0</span>
    </div>
   </td>
  </tr>
@@ -70,19 +70,19 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
 Macros</h2></td></tr>
-<tr class="memitem:ga366079df33b105bc969e4ea30ea20c32"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga366079df33b105bc969e4ea30ea20c32">MEM_K0_TO_K1</a>(x)&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) + (SYS_BASE_UNCACHED - SYS_BASE_CACHED))</td></tr>
+<tr class="memitem:ga366079df33b105bc969e4ea30ea20c32"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga366079df33b105bc969e4ea30ea20c32">MEM_K0_TO_K1</a>(x)&#160;&#160;&#160;(void*)((u32)(x) + (SYS_BASE_UNCACHED - SYS_BASE_CACHED))</td></tr>
 <tr class="separator:ga366079df33b105bc969e4ea30ea20c32"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gadd741cccb304c44040969cf44037bf2e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#gadd741cccb304c44040969cf44037bf2e">MEM_K0_TO_PHYSICAL</a>(x)&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) - SYS_BASE_CACHED)</td></tr>
+<tr class="memitem:gadd741cccb304c44040969cf44037bf2e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#gadd741cccb304c44040969cf44037bf2e">MEM_K0_TO_PHYSICAL</a>(x)&#160;&#160;&#160;(void*)((u32)(x) - SYS_BASE_CACHED)</td></tr>
 <tr class="separator:gadd741cccb304c44040969cf44037bf2e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga7fed6b6449d66911536a6da04ea69a2e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga7fed6b6449d66911536a6da04ea69a2e">MEM_K1_TO_K0</a>(x)&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) - (SYS_BASE_UNCACHED - SYS_BASE_CACHED))</td></tr>
+<tr class="memitem:ga7fed6b6449d66911536a6da04ea69a2e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga7fed6b6449d66911536a6da04ea69a2e">MEM_K1_TO_K0</a>(x)&#160;&#160;&#160;(void*)((u32)(x) - (SYS_BASE_UNCACHED - SYS_BASE_CACHED))</td></tr>
 <tr class="separator:ga7fed6b6449d66911536a6da04ea69a2e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga57c3ba40dc583961e2d7c10bd8b8e218"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga57c3ba40dc583961e2d7c10bd8b8e218">MEM_K1_TO_PHYSICAL</a>(x)&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) - SYS_BASE_UNCACHED)</td></tr>
+<tr class="memitem:ga57c3ba40dc583961e2d7c10bd8b8e218"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga57c3ba40dc583961e2d7c10bd8b8e218">MEM_K1_TO_PHYSICAL</a>(x)&#160;&#160;&#160;(void*)((u32)(x) - SYS_BASE_UNCACHED)</td></tr>
 <tr class="separator:ga57c3ba40dc583961e2d7c10bd8b8e218"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaa6a4c77d510b05327490bdbce563fd24"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#gaa6a4c77d510b05327490bdbce563fd24">MEM_PHYSICAL_TO_K0</a>(x)&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) + SYS_BASE_CACHED)</td></tr>
+<tr class="memitem:gaa6a4c77d510b05327490bdbce563fd24"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#gaa6a4c77d510b05327490bdbce563fd24">MEM_PHYSICAL_TO_K0</a>(x)&#160;&#160;&#160;(void*)((u32)(x) + SYS_BASE_CACHED)</td></tr>
 <tr class="separator:gaa6a4c77d510b05327490bdbce563fd24"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga9a8e9cc962ec0830baf00dbcb080949f"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga9a8e9cc962ec0830baf00dbcb080949f">MEM_PHYSICAL_TO_K1</a>(x)&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) + SYS_BASE_UNCACHED)</td></tr>
+<tr class="memitem:ga9a8e9cc962ec0830baf00dbcb080949f"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga9a8e9cc962ec0830baf00dbcb080949f">MEM_PHYSICAL_TO_K1</a>(x)&#160;&#160;&#160;(void*)((u32)(x) + SYS_BASE_UNCACHED)</td></tr>
 <tr class="separator:ga9a8e9cc962ec0830baf00dbcb080949f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga238b75abe08418670597e43cb711455e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga238b75abe08418670597e43cb711455e">MEM_VIRTUAL_TO_PHYSICAL</a>(x)&#160;&#160;&#160;(((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x)) &amp; ~SYS_BASE_UNCACHED)</td></tr>
+<tr class="memitem:ga238b75abe08418670597e43cb711455e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__sys__mcastmacros.html#ga238b75abe08418670597e43cb711455e">MEM_VIRTUAL_TO_PHYSICAL</a>(x)&#160;&#160;&#160;(((u32)(x)) &amp; ~SYS_BASE_UNCACHED)</td></tr>
 <tr class="separator:ga238b75abe08418670597e43cb711455e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
@@ -98,7 +98,7 @@ Macros</h2></td></tr>
           <td>(</td>
           <td class="paramtype">&#160;</td>
           <td class="paramname">x</td><td>)</td>
-          <td>&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) + (SYS_BASE_UNCACHED - SYS_BASE_CACHED))</td>
+          <td>&#160;&#160;&#160;(void*)((u32)(x) + (SYS_BASE_UNCACHED - SYS_BASE_CACHED))</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -117,7 +117,7 @@ Macros</h2></td></tr>
           <td>(</td>
           <td class="paramtype">&#160;</td>
           <td class="paramname">x</td><td>)</td>
-          <td>&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) - SYS_BASE_CACHED)</td>
+          <td>&#160;&#160;&#160;(void*)((u32)(x) - SYS_BASE_CACHED)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -136,7 +136,7 @@ Macros</h2></td></tr>
           <td>(</td>
           <td class="paramtype">&#160;</td>
           <td class="paramname">x</td><td>)</td>
-          <td>&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) - (SYS_BASE_UNCACHED - SYS_BASE_CACHED))</td>
+          <td>&#160;&#160;&#160;(void*)((u32)(x) - (SYS_BASE_UNCACHED - SYS_BASE_CACHED))</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -155,7 +155,7 @@ Macros</h2></td></tr>
           <td>(</td>
           <td class="paramtype">&#160;</td>
           <td class="paramname">x</td><td>)</td>
-          <td>&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) - SYS_BASE_UNCACHED)</td>
+          <td>&#160;&#160;&#160;(void*)((u32)(x) - SYS_BASE_UNCACHED)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -174,7 +174,7 @@ Macros</h2></td></tr>
           <td>(</td>
           <td class="paramtype">&#160;</td>
           <td class="paramname">x</td><td>)</td>
-          <td>&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) + SYS_BASE_CACHED)</td>
+          <td>&#160;&#160;&#160;(void*)((u32)(x) + SYS_BASE_CACHED)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -193,7 +193,7 @@ Macros</h2></td></tr>
           <td>(</td>
           <td class="paramtype">&#160;</td>
           <td class="paramname">x</td><td>)</td>
-          <td>&#160;&#160;&#160;(void*)((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x) + SYS_BASE_UNCACHED)</td>
+          <td>&#160;&#160;&#160;(void*)((u32)(x) + SYS_BASE_UNCACHED)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -212,7 +212,7 @@ Macros</h2></td></tr>
           <td>(</td>
           <td class="paramtype">&#160;</td>
           <td class="paramname">x</td><td>)</td>
-          <td>&#160;&#160;&#160;(((<a class="el" href="gctypes_8h.html#afaa62991928fb9fb18ff0db62a040aba">u32</a>)(x)) &amp; ~SYS_BASE_UNCACHED)</td>
+          <td>&#160;&#160;&#160;(((u32)(x)) &amp; ~SYS_BASE_UNCACHED)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -223,7 +223,7 @@ Macros</h2></td></tr>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Sat Jan 17 2026 13:38:36 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.4
+Generated on Sun Jan 25 2026 18:34:43 for libogc by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.4
 </small></address>
 </body>
 </html>

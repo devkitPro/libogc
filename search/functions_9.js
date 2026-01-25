@@ -4,6 +4,7 @@ var searchData=
   ['sys_5fcancelalarm_1',['SYS_CancelAlarm',['../system_8h.html#ae9df35009def32b0570c87aaba11c5d9',1,'system.h']]],
   ['sys_5fcreatealarm_2',['SYS_CreateAlarm',['../system_8h.html#a183800c28f569b914290185ecca8264e',1,'system.h']]],
   ['sys_5finit_3',['SYS_Init',['../system_8h.html#ae7266b09907efcfb4bc5df00c544715c',1,'system.h']]],
-  ['sys_5fremovealarm_4',['SYS_RemoveAlarm',['../system_8h.html#a16d2e41f1289aa02a5f0f1b4ee2ca036',1,'system.h']]],
-  ['sys_5freport_5',['SYS_Report',['../system_8h.html#a971ebbcbf83c1b196c9d9d6c61572ae1',1,'system.h']]]
+  ['sys_5fmainloop_4',['SYS_MainLoop',['../system_8h.html#a3aa37db2c8a3b67942850149711cfe9b',1,'system.h']]],
+  ['sys_5fremovealarm_5',['SYS_RemoveAlarm',['../system_8h.html#a16d2e41f1289aa02a5f0f1b4ee2ca036',1,'system.h']]],
+  ['sys_5freport_6',['SYS_Report',['../system_8h.html#a971ebbcbf83c1b196c9d9d6c61572ae1',1,'system.h']]]
 ];
