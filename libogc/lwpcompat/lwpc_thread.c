@@ -37,9 +37,10 @@ s32 LWP_CreateThread(lwp_t* thethread, void* (*entry)(void*), void* arg, void* s
 	}
 
 	KThreadPrepare(t, (KThreadFn)entry, arg, (char*)stackbase + stack_size, KTHR_MIN_PRIO - (prio & LWP_PRIO_HIGHEST));
-	KThreadResume(t);
 
 	*thethread = ~(u32)t;
+	KThreadResume(t);
+
 	return 0;
 }
 
