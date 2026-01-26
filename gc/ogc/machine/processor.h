@@ -126,6 +126,11 @@ static inline void write32(u32 addr, u32 x)
 	PPCEieioInner();
 }
 
+static inline void mask32(u32 addr, u32 clear, u32 set)
+{
+	write32(addr, (read32(addr)&(~clear)) | set);
+}
+
 static inline u16 read16(u32 addr)
 {
 	u16 x = *(vu16*)(0xc0000000 | addr);
