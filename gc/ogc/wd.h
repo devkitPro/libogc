@@ -163,17 +163,20 @@ typedef struct IE_hdr
 
 // Security :
 
+#define WPA_ESSENTIALS 4
+#define RSN_ESSENTIALS 0
+
 enum WD_SECURITY
 {
     WD_OPEN     = 0x00,
     WD_WEP      = 0x01,
     WD_WPA_TKIP = 0x02,
-    WD_WPA2_AES = 0x03,
-    WD_WPA_AES = 0x04,
-    WD_WPA2_TKIP = 0x05,
+    WD_WPA2_AES = 0x04,
+    WD_WPA_AES = 0x08,
+    WD_WPA2_TKIP = 0x10,
 };
 
-typedef struct IE_RSN
+typedef struct IE_RSN_WPA
 {
     u16 Version;
 
@@ -186,18 +189,7 @@ typedef struct IE_RSN
     u16 RSN_Capab;
 
     u16 PMKID_Count;
-} IE_RSN;
-
-typedef struct IE_WPA
-{
-    u16 Version;
-
-    u32 GDCS; // Group Data Cipher Suite
-    
-    u16 PCS_Count; // Pairwise Cipher Suite
-    
-    u16 AKMS_Count; // AKM Suite
-} IE_WPA;
+} IE_RSN_WPA;
 
 // General Purpose :
 

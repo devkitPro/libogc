@@ -322,13 +322,13 @@ int WD_GetVendorSpecificIELength(BSSDescriptor* Bss, u32 OUI) {
     return hdr->len;
 }
 
-int WD_GetRSN_PCSList(BSSDescriptor *Bss, u8* destbuff, u16 buffsize) {
+int WD_GetPCSList(BSSDescriptor *Bss, u8* destbuff, u16 buffsize, u8 offset) {
     if(!Bss) return WD_INVALIDBUFF;
     if(!destbuff) return WD_INVALIDBUFF;
 
-    IE_RSN IE;
+    IE_RSN_WPA IE;
 
-    int ret = WD_GetRSNEssentials(Bss, &IE);
+    int ret = WD_GetRSN_WPAEssentials(Bss, &IE, offset);
 
     if(ret < 0) return WD_INVALIDBUFF;
     if(IE.PCS_Count * 4 > buffsize) return WD_BUFFTOOSMALL;
@@ -339,33 +339,12 @@ int WD_GetRSN_PCSList(BSSDescriptor *Bss, u8* destbuff, u16 buffsize) {
     WD_GetIE(Bss, IEID_SECURITY_RSN, buff, IE_len);
 
     memset(destbuff, 0, buffsize);
-    memcpy(destbuff, &buff[8], IE.PCS_Count * 4);
+    memcpy(destbuff, &buff[8 + offset], IE.PCS_Count * 4);
 
     return WD_SUCCESS;
 }
 
-int WD_GetWPA_PCSList(BSSDescriptor *Bss, u8* destbuff, u16 buffsize) {
-    if(!Bss) return WD_INVALIDBUFF;
-    if(!destbuff) return WD_INVALIDBUFF;
-
-    IE_WPA IE;
-
-    int ret = WD_GetWPAIEEssentials(Bss, &IE);
-
-    if(ret < 0) return WD_INVALIDBUFF;
-    if(IE.PCS_Count * 4 > buffsize) return WD_BUFFTOOSMALL;
-
-    u8 IE_len = WD_GetIELength(Bss, IEID_SECURITY_RSN);
-    u8 buff[IE_len];
-    WD_GetIE(Bss, IEID_SECURITY_RSN, buff, IE_len);
-
-    memset(destbuff, 0, buffsize);
-    memcpy(destbuff, &buff[8], IE.PCS_Count * 4);
-
-    return WD_SUCCESS;
-}
-
-int WD_GetRSNEssentials(BSSDescriptor *Bss, IE_RSN *IE) {
+int WD_GetRSN_WPAEssentials(BSSDescriptor *Bss, IE_RSN_WPA *IE, u8 offset) {
     if(!Bss) return WD_INVALIDBUFF;
     if(!IE) return WD_INVALIDBUFF;
 
@@ -376,31 +355,6 @@ int WD_GetRSNEssentials(BSSDescriptor *Bss, IE_RSN *IE) {
     
     WD_GetIE(Bss, IEID_SECURITY_RSN, buff, IE_size);
 
-    u8 offset = 0;
-    IE->Version = buff[0 + offset] | buff[1 + offset] << 8;
-    offset += 2;
-    IE->GDCS = buff[0 + offset] << 24 | buff[1 + offset] << 16 | buff[2 + offset] << 8 | buff[3 + offset];
-    offset += 4;
-    IE->PCS_Count = buff[0 + offset] | buff[1 + offset] << 8;
-    offset += 2 + IE->PCS_Count * 4;
-    IE->AKMS_Count = buff[0 + offset] | buff[1 + offset] << 8;
-    offset += 2 + IE->AKMS_Count * 4;
-
-    return WD_SUCCESS;
-}
-
-int WD_GetWPAIEEssentials(BSSDescriptor *Bss, IE_WPA *IE) {
-    if(!Bss) return WD_INVALIDBUFF;
-    if(!IE) return WD_INVALIDBUFF;
-
-    u8 IE_size = WD_GetVendorSpecificIELength(Bss, OUI_WPA);
-    if(IE_size < 0) return WD_NOTFOUND;
-
-    u8 buff[IE_size];
-    
-    WD_GetVendorSpecificIE(Bss, OUI_WPA, buff, IE_size);
-
-    u8 offset = 4;
     IE->Version = buff[0 + offset] | buff[1 + offset] << 8;
     offset += 2;
     IE->GDCS = buff[0 + offset] << 24 | buff[1 + offset] << 16 | buff[2 + offset] << 8 | buff[3 + offset];
@@ -418,10 +372,11 @@ u8 WD_GetSecurity(BSSDescriptor *Bss) {
     if(!(Bss->Capabilities & CAPAB_SECURED_FLAG)) return WD_OPEN;
 
     int ie_len = WD_GetVendorSpecificIELength(Bss, OUI_WPA);
+    u8 ret = 0;
 
     if (ie_len != WD_NOTFOUND && ie_len > 0) { // WPA
-        IE_WPA IE;
-        WD_GetWPAIEEssentials(Bss, &IE);
+        IE_RSN_WPA IE;
+        WD_GetRSN_WPAEssentials(Bss, &IE, WPA_ESSENTIALS);
 
         u8 buff[IE.PCS_Count * 4];
         WD_GetWPA_PCSList(Bss, buff, IE.PCS_Count * 4);
@@ -429,19 +384,18 @@ u8 WD_GetSecurity(BSSDescriptor *Bss) {
         u8 offset = 0;
 
         for (int i = 0; i < IE.PCS_Count; i++) {
-            if (buff[offset + 3] == 0x02) return WD_WPA_TKIP;
-            else if (buff[offset + 3] == 0x04) return WD_WPA_AES;
+            if (buff[offset + 3] == 0x02) ret |= WD_WPA_TKIP;
+            else if (buff[offset + 3] == 0x04) ret |= WD_WPA_AES;
             offset += 4;
         }
+        return ret;
     }
 
     ie_len = WD_GetIELength(Bss, IEID_SECURITY_RSN);
 
     if(ie_len != WD_NOTFOUND && ie_len > 0) { // WPA2
-        IE_RSN IE;
-        WD_GetRSNEssentials(Bss, &IE);
-
-        u8 ret = 0;
+        IE_RSN_WPA IE;
+        WD_GetRSN_WPAEssentials(Bss, &IE);
 
         u8 buff[IE.PCS_Count * 4];
         WD_GetRSN_PCSList(Bss, buff, IE.PCS_Count * 4);
@@ -449,14 +403,15 @@ u8 WD_GetSecurity(BSSDescriptor *Bss) {
         u8 offset = 0;
         
         for (int i = 0; i < IE.PCS_Count; i++) {
-            if (buff[offset + 3] == 0x02) ret = WD_WPA2_TKIP;
-            if (buff[offset + 3] == 0x04) ret = WD_WPA2_AES;
+            if (buff[offset + 3] == 0x02) ret |= WD_WPA2_TKIP;
+            if (buff[offset + 3] == 0x04) ret |= WD_WPA2_AES;
             offset += 4;
         }
-
-        return ret;
     }
-    return WD_WEP;
+
+    if(!ret) return WD_WEP;
+    
+    return ret;
 }
 
 #endif
