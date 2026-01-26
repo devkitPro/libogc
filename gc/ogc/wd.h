@@ -163,8 +163,8 @@ typedef struct IE_hdr
 
 // Security :
 
-#define WPA_ESSENTIALS 4
-#define RSN_ESSENTIALS 0
+#define WPA_OFFSET 4
+#define RSN_OFFSET 0
 
 enum WD_SECURITY
 {
@@ -217,10 +217,8 @@ int WD_GetVendorSpecificIE(BSSDescriptor* Bss, u32 OUI, u8* buff, u8 buffsize);
 
 // AP Security related :
 
-int WD_GetRSNEssentials(BSSDescriptor *Bss, IE_RSN *IE);
-int WD_GetRSNPCSList(BSSDescriptor *Bss, u8* buff, u8 buffsize);
-int WD_GetWPAIEEssentials(BSSDescriptor *Bss, IE_WPA *IE);
-int WD_GetWPA_PCSList(BSSDescriptor *Bss, u8* destbuff, u16 buffsize);
+int WD_GetPCSList(BSSDescriptor *Bss, u8* buff, u8 buffsize, u8 offset);
+int WD_GetRSN_WPAEssentials(BSSDescriptor *Bss, IE_RSN_WPA *IE, u8 offset);
 u8 WD_GetSecurity(BSSDescriptor *Bss);
 
 #endif
