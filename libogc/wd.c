@@ -333,10 +333,21 @@ int WD_GetPCSList(BSSDescriptor *Bss, u8* destbuff, u8 buffsize, u8 offset) {
     if(ret < 0) return WD_INVALIDBUFF;
     if(IE.PCS_Count * 4 > buffsize) return WD_BUFFTOOSMALL;
 
-    u8 IE_len = WD_GetIELength(Bss, IEID_SECURITY_RSN);
+    u8 IE_len;
+    if(offset == RSN_OFFSET) {
+        IE_len = WD_GetIELength(Bss, IEID_SECURITY_RSN);
+    } else {
+        IE_len = WD_GetVendorSpecificIELength(Bss, OUI_WPA);
+    }
+    
     
     u8 buff[IE_len];
-    WD_GetIE(Bss, IEID_SECURITY_RSN, buff, IE_len);
+    if(offset == RSN_OFFSET) {
+        WD_GetIE(Bss, IEID_SECURITY_RSN, buff, IE_len);
+    } else {
+        WD_GetVendorSpecificIE(Bss, OUI_WPA, buff, IE_len);
+    }
+    
 
     memset(destbuff, 0, buffsize);
     memcpy(destbuff, &buff[8 + offset], IE.PCS_Count * 4);
@@ -348,12 +359,21 @@ int WD_GetRSN_WPAEssentials(BSSDescriptor *Bss, IE_RSN_WPA *IE, u8 offset) {
     if(!Bss) return WD_INVALIDBUFF;
     if(!IE) return WD_INVALIDBUFF;
 
-    u8 IE_size = WD_GetIELength(Bss, IEID_SECURITY_RSN);
-    if(IE_size < 0) return WD_NOTFOUND;
+    u8 IE_len;
+    if(offset == RSN_OFFSET) {
+        IE_len = WD_GetIELength(Bss, IEID_SECURITY_RSN);
+    } else {
+        IE_len = WD_GetVendorSpecificIELength(Bss, OUI_WPA);
+    }
+    if(IE_len < 0) return WD_NOTFOUND;
 
-    u8 buff[IE_size];
-    
-    WD_GetIE(Bss, IEID_SECURITY_RSN, buff, IE_size);
+    u8 buff[IE_len];
+
+    if(offset == RSN_OFFSET) {
+        WD_GetIE(Bss, IEID_SECURITY_RSN, buff, IE_len);
+    } else {
+        WD_GetVendorSpecificIE(Bss, OUI_WPA, buff, IE_len);
+    }
 
     IE->Version = buff[0 + offset] | buff[1 + offset] << 8;
     offset += 2;
@@ -388,7 +408,6 @@ u8 WD_GetSecurity(BSSDescriptor *Bss) {
             else if (buff[offset + 3] == 0x04) ret |= WD_WPA_AES;
             offset += 4;
         }
-        return ret;
     }
 
     ie_len = WD_GetIELength(Bss, IEID_SECURITY_RSN);
@@ -399,7 +418,6 @@ u8 WD_GetSecurity(BSSDescriptor *Bss) {
 
         u8 buff[IE.PCS_Count * 4];
         WD_GetPCSList(Bss, buff, IE.PCS_Count * 4, RSN_OFFSET);
-
         u8 offset = 0;
         
         for (int i = 0; i < IE.PCS_Count; i++) {
