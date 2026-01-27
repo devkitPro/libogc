@@ -252,7 +252,10 @@ s32 USBKeyboard_Open(const eventcallback cb)
 		_kbd = (struct ukbd *) malloc(sizeof(struct ukbd));
 
 		if (!_kbd)
+		{
+			iosFree(hId, buffer);
 			return -1;
+		}
 	}
 
 	memset(_kbd, 0, sizeof(struct ukbd));
