@@ -37,8 +37,6 @@ struct bt_state
 
 	u8_t num_maxdevs;
 
-	u8_t pair_mode;
-	
 	struct bte_inquiry_res inq_res;
 
 	btecallback cb;
@@ -82,7 +80,6 @@ static u8_t bte_patch1[92] = {
 };
 
 err_t acl_wlp_completed(void *arg,struct bd_addr *bdaddr);
-err_t pin_req(void *arg,struct bd_addr *bdaddr);
 err_t l2cap_connected(void *arg,struct l2cap_pcb *l2cappcb,u16_t result,u16_t status);
 err_t l2cap_accepted(void *arg,struct l2cap_pcb *l2cappcb,err_t err);
 err_t acl_conn_complete(void *arg,struct bd_addr *bdaddr);
@@ -383,7 +380,6 @@ void BTE_Init(void)
 	hci_connection_complete(acl_conn_complete);
 	hci_auth_complete(acl_auth_complete);
 	hci_remote_name_req_complete(bte_read_remote_name_complete);
-	hci_pin_req(pin_req);
 	_CPU_ISR_Restore(level);
 
 	tb.tv_sec = 1;
@@ -575,11 +571,6 @@ s32 BTE_LinkKeyRequestNegativeReply(struct bd_addr *bdaddr)
 	return last_err;
 }
 
-u8 BTE_GetPairMode(void)
-{
-	return btstate.pair_mode;
-}
-
 void (*BTE_SetDisconnectCallback(void (*callback)(struct bd_addr *bdaddr,u8 reason)))(struct bd_addr *bdaddr,u8 reason)
 {
 	return l2cap_disconnect_bb(callback);
@@ -675,6 +666,47 @@ s32 BTE_DeleteStoredLinkKey(struct bd_addr *bdaddr)
 	return last_err;
 }
 
+void BTE_SetPinCodeRequestCallback(err_t (*callback)(void *arg,struct bd_addr *bdaddr))
+{
+	u32 level;
+	
+	_CPU_ISR_Disable(level);
+	hci_pin_req(callback);
+	_CPU_ISR_Restore(level);
+}
+
+s32 BTE_GetLocalAddress(struct bd_addr *bdaddr)
+{
+	u32 level;
+	err_t last_err = ERR_OK;
+
+	LOG("BTE_GetLocalAddress\n");
+
+	_CPU_ISR_Disable(level);
+	hci_get_bd_addr(bdaddr);
+	_CPU_ISR_Restore(level);
+
+	return last_err;
+}
+
+s32 BTE_PinCodeRequestReply(struct bd_addr *bdaddr,u8 pinlen,u8 *pincode)
+{
+	u32 level;
+	err_t last_err = ERR_OK;
+
+	LOG("BTE_PinCodeRequestReply\n");
+
+	_CPU_ISR_Disable(level);
+	btstate.cb = NULL;
+	btstate.usrdata = NULL;
+	btstate.hci_cmddone = 0;
+	hci_arg(&btstate);
+	hci_pin_code_request_reply(bdaddr, pinlen, pincode);
+	_CPU_ISR_Restore(level);
+
+	return last_err;
+}
+
 struct bte_pcb* bte_new(void)
 {
 	struct bte_pcb *pcb;
@@ -704,12 +736,26 @@ s32 BTE_Inquiry(u8 max_cnt,u8 flush,btecallback cb)
 	_CPU_ISR_Disable(level);
 	if(btstate.inq_res.count==0 || flush==1) {
 		btstate.inq_complete_cb = cb;
-		btstate.pair_mode = PAIR_MODE_NORMAL;
 		btstate.num_maxdevs = max_cnt;
 		hci_arg(&btstate);
 		// Use Limited Dedicated Inquiry Access Code (LIAC) to query, since third-party Wiimotes
 		// cannot be discovered without it.
 		hci_inquiry(0x009E8B00,0x03,max_cnt,bte_inquiry_complete);
+	}
+	_CPU_ISR_Restore(level);
+	return ERR_OK;
+}
+
+s32 BTE_InquiryEx(u8 max_cnt,u8 flush,btecallback cb,u32 lap)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	if(btstate.inq_res.count==0 || flush==1) {
+		btstate.inq_complete_cb = cb;
+		btstate.num_maxdevs = max_cnt;
+		hci_arg(&btstate);
+		hci_inquiry(lap,0x03,max_cnt,bte_inquiry_complete);
 	}
 	_CPU_ISR_Restore(level);
 	return ERR_OK;
@@ -722,7 +768,6 @@ s32 BTE_PeriodicInquiry(u8 max_cnt,u8 flush,btecallback cb)
 	_CPU_ISR_Disable(level);
 	if(btstate.inq_res.count==0 || flush==1) {
 		btstate.inq_complete_cb = cb;
-		btstate.pair_mode = PAIR_MODE_TEMPORARY;
 		btstate.num_maxdevs = max_cnt;
 		hci_arg(&btstate);
 		// Use Limited Dedicated Inquiry Access Code (LIAC) to query, since third-party Wiimotes
@@ -733,12 +778,26 @@ s32 BTE_PeriodicInquiry(u8 max_cnt,u8 flush,btecallback cb)
 	return ERR_OK;
 }
 
+s32 BTE_PeriodicInquiryEx(u8 max_cnt,u8 flush,btecallback cb, u32 lap)
+{
+	u32 level;
+
+	_CPU_ISR_Disable(level);
+	if(btstate.inq_res.count==0 || flush==1) {
+		btstate.inq_complete_cb = cb;
+		btstate.num_maxdevs = max_cnt;
+		hci_arg(&btstate);
+		hci_periodic_inquiry(lap,0x04,0x05,0x03,max_cnt,bte_inquiry_complete);
+	}
+	_CPU_ISR_Restore(level);
+	return ERR_OK;
+}
+
 s32 BTE_ExitPeriodicInquiry(void)
 {
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	btstate.pair_mode = PAIR_MODE_NORMAL;
 	hci_exit_periodic_inquiry();
 	_CPU_ISR_Restore(level);
 	return ERR_OK;
@@ -1037,25 +1096,6 @@ err_t acl_auth_complete(void *arg,struct bd_addr *bdaddr)
 	return ERR_OK;
 }
 
-err_t pin_req(void *arg,struct bd_addr *bdaddr)
-{
-	struct bd_addr addr;
-	LOG("pin_req\n");
-	
-	if (btstate.pair_mode == PAIR_MODE_NORMAL)
-	{
-		// Pairing from sync button (permanent)
-		hci_get_bd_addr(&addr);
-	}
-	else
-	{
-		// Pairing from 1+2 (guest/temporary)
-		bd_addr_set(&addr, bdaddr);
-	}
-	hci_pin_code_request_reply(bdaddr, sizeof(addr.addr), addr.addr);
-	return ERR_OK;
-}
-
 err_t l2cap_disconnected_ind(void *arg, struct l2cap_pcb *pcb, err_t err)
 {
 	struct bte_pcb *bte = (struct bte_pcb*)arg;
@@ -1211,8 +1251,7 @@ err_t bte_inquiry_complete(void *arg,struct hci_pcb *pcb,struct hci_inq_res *ire
 			state->hci_cmddone = 1;
 			state->inq_complete_cb(ERR_OK,&state->inq_res);
 			_CPU_ISR_Restore(level);
-		} else if (state->pair_mode == PAIR_MODE_NORMAL)
-			hci_inquiry(0x009E8B00,0x03,btstate.num_maxdevs,bte_inquiry_complete);
+		}
 	}
 	return ERR_OK;
 }
