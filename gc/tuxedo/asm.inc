@@ -48,5 +48,5 @@
 .macro REFERENCE symbol
 	.section .rodata.ref.\symbol, "a"
 	.align   2
-	.word    \symbol
+	.long    \symbol
 .endm
