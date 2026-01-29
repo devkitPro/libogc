@@ -19,7 +19,10 @@ int socket(int domain, int type, int protocol)
 	handle->device = dev;
 	handle->fileStruct = ((void *)handle) + sizeof(__handle);
 
-
+#ifdef __wii__
+	// wii network stack only supports IPPROTO_IP
+	protocol = 0;
+#endif
 	ret = net_socket( domain, type, protocol);
 
 	if (ret < 0) {
