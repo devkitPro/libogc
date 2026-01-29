@@ -51,20 +51,6 @@
 
 
 /*
- * Level number for (get/set)sockopt() to apply to socket itself.
- */
-#define  SOL_SOCKET			0xffff    /* options for socket level */
-
-#define AF_UNSPEC			0
-#define AF_INET				2
-#define PF_INET				AF_INET
-#define PF_UNSPEC			AF_UNSPEC
-
-#define IPPROTO_IP			0
-#define IPPROTO_TCP			6
-#define IPPROTO_UDP			17
-
-/*
  * Options for level IPPROTO_IP
  */
 //#define IP_TOS				1
