@@ -696,6 +696,8 @@ struct hostent * net_gethostbyname(const char *addrString)
 	return ipData;
 }
 
+#define FLAG_MASK (SOCK_NONBLOCK | SOCK_CLOEXEC)
+
 s32 net_socket(u32 domain, u32 type, u32 protocol)
 {
 	s32 ret;
@@ -704,12 +706,18 @@ s32 net_socket(u32 domain, u32 type, u32 protocol)
 	if (net_ip_top_fd < 0) return -ENXIO;
 
 	params[0] = domain;
-	params[1] = type;
+	params[1] = type & ~FLAG_MASK;
 	params[2] = protocol;
 
 	ret = _net_convert_error(IOS_Ioctl(net_ip_top_fd, IOCTL_SO_SOCKET, params, 12, NULL, 0));
 	if(ret>=0) // set tcp window size to 32kb
 	{
+		if (type & SOCK_NONBLOCK)
+		{
+			int flags = net_fcntl(ret, F_GETFL, 0);
+			flags |= IOS_O_NONBLOCK;
+			net_fcntl(ret, F_SETFL, flags);
+		}
 		int window_size = 32768;
 		net_setsockopt(ret, SOL_SOCKET, SO_RCVBUF, (char *) &window_size, sizeof(window_size));
 	}
