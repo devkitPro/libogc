@@ -29,6 +29,7 @@ extern PPCExcptHandlerFn __ppc_excpt_table[];
 extern PPCExcptPanicFn PPCExcptCurPanicFn;
 
 void PPCExcptDefaultHandler(void);
+void PPCExcptDefaultScHandler(void);
 
 MK_INLINE void PPCExcptSetHandler(unsigned exid, PPCExcptHandlerFn handler)
 {

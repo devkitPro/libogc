@@ -14,9 +14,14 @@ void PPCExcptInit(void)
 		u32* target = (u32*)(0x80000000 + i*0x100);
 		__builtin_memcpy(target, impl, impl[-1]);
 
+		PPCExcptHandlerFn fn = PPCExcptDefaultHandler;
+		if (i == PPC_EXCPT_SYSCALL) {
+			fn = PPCExcptDefaultScHandler;
+		}
+
 		if (i != PPC_EXCPT_FPU) {
 			target[11] |= i;
-			PPCExcptSetHandler(i, PPCExcptDefaultHandler);
+			PPCExcptSetHandler(i, fn);
 		}
 	}
 

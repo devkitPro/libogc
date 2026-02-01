@@ -164,6 +164,31 @@ FUNC_START PPCExcptFpuHandler, text, local
 
 FUNC_END
 
+FUNC_START PPCExcptDefaultScHandler
+
+	// Restore saved PC/MSR
+	lis     r11, __ppc_excpt_buf@ha
+	lwz     r12, __ppc_excpt_buf@l+PPC_CONTEXT_PC(r11)
+	mtsrr0  r12
+	lwz     r12, __ppc_excpt_buf@l+PPC_CONTEXT_MSR(r11)
+	mtsrr1  r12
+
+	// Perform PPCSync()
+	mfspr   r11, HID0
+	ori     r12, r11, HID0_ABE
+	mtspr   HID0, r12
+	isync
+	sync
+	mtspr   HID0, r11
+	isync
+
+	// Restore saved GPR11/GPR12 and return
+	mfsprg0 r11
+	mfsprg1 r12
+	rfi
+
+FUNC_END
+
 FUNC_START PPCExcptDefaultHandler
 
 	// Set up exception stack if needed
