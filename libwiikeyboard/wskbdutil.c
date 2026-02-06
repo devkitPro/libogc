@@ -183,8 +183,7 @@ keysym_t ksym_upcase(keysym_t);
 void fillmapentry(const keysym_t *, int, struct wscons_keymap *);
 
 inline int
-compose_tab_cmp(i, j)
-	struct compose_tab_s *i, *j;
+compose_tab_cmp(struct compose_tab_s *i, struct compose_tab_s *j)
 {
 	if (i->elem[0] == j->elem[0])
 		return(i->elem[1] - j->elem[1]);
@@ -193,8 +192,7 @@ compose_tab_cmp(i, j)
 }
 
 keysym_t
-wskbd_compose_value(compose_buf)
-	keysym_t *compose_buf;
+wskbd_compose_value(keysym_t *compose_buf)
 {
 	int i, j, r;
 	struct compose_tab_s v;
@@ -264,8 +262,7 @@ static const u_char latin1_to_upper[256] = {
 };
 
 keysym_t
-ksym_upcase(ksym)
-	keysym_t ksym;
+ksym_upcase(keysym_t ksym)
 {
 	if (ksym >= KS_f1 && ksym <= KS_f20)
 		return(KS_F1 - KS_f1 + ksym);
@@ -278,10 +275,8 @@ ksym_upcase(ksym)
 }
 
 void
-fillmapentry(kp, len, mapentry)
-	const keysym_t *kp;
-	int len;
-	struct wscons_keymap *mapentry;
+fillmapentry(const keysym_t *kp, int len,
+	         struct wscons_keymap *mapentry)
 {
 	switch (len) {
 	case 0:
@@ -323,10 +318,9 @@ fillmapentry(kp, len, mapentry)
 }
 
 void
-wskbd_get_mapentry(mapdata, kc, mapentry)
-	const struct wskbd_mapdata *mapdata;
-	int kc;
-	struct wscons_keymap *mapentry;
+wskbd_get_mapentry(
+	const struct wskbd_mapdata *mapdata,
+    int kc, struct wscons_keymap *mapentry)
 {
 	kbd_t cur;
 	const keysym_t *kp;
@@ -383,10 +377,10 @@ wskbd_get_mapentry(mapdata, kc, mapentry)
 }
 
 void
-wskbd_init_keymap(newlen, map, maplen)
-	int newlen;
-	struct wscons_keymap **map;
-	int *maplen;
+wskbd_init_keymap(
+	int newlen,
+	struct wscons_keymap **map,
+	int *maplen)
 {
 	int i;
 
@@ -407,10 +401,10 @@ wskbd_init_keymap(newlen, map, maplen)
 }
 
 int
-wskbd_load_keymap(mapdata, map, maplen)
-	const struct wskbd_mapdata *mapdata;
-	struct wscons_keymap **map;
-	int *maplen;
+wskbd_load_keymap(
+	const struct wskbd_mapdata *mapdata,
+	struct wscons_keymap **map,
+	int *maplen)
 {
 	int i, s, kc, stack_ptr;
 	const keysym_t *kp;
