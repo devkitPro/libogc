@@ -58,6 +58,14 @@ enum WDIOCTLV
     IOCTLV_WD_RECV_NOTIFICATION = 0x8001  // WD_ReceiveNotification
 };
 
+// Error Codes :
+
+#define WD_SUCCESS 0
+#define WD_UINITIALIZED -1
+#define WD_INVALIDBUFF -2
+#define WD_BUFFTOOSMALL -3
+#define WD_NOTFOUND -4
+
 // Capability flags :
 
 #define CAPAB_SECURED_FLAG 0x10
@@ -65,8 +73,13 @@ enum WDIOCTLV
 // Information Elements IDs :
 
 #define IEID_SSID 0x0
+#define IEID_COUNTRY 0x7
+#define IEID_SECURITY_RSN 0x30
 #define IEID_VENDORSPECIFIC 0xDD
-#define IEID_SECURITY 0x30
+
+// OUI (Organization Unified ID) :
+
+#define OUI_WPA 0x0050F201
 
 // Signal Strength :
 
@@ -148,6 +161,36 @@ typedef struct IE_hdr
     u8 len;
 } IE_hdr;
 
+// Security :
+
+#define WPA_OFFSET 4
+#define RSN_OFFSET 0
+
+enum WD_SECURITY
+{
+    WD_OPEN     = 0x00,
+    WD_WEP      = 0x01,
+    WD_WPA_TKIP = 0x02,
+    WD_WPA2_AES = 0x04,
+    WD_WPA_AES = 0x08,
+    WD_WPA2_TKIP = 0x10,
+};
+
+typedef struct IE_RSN_WPA
+{
+    u16 Version;
+
+    u32 GDCS; // Group Data Cipher Suite
+    
+    u16 PCS_Count; // Pairwise Cipher Suite
+    
+    u16 AKMS_Count; // AKM Suite
+
+    u16 RSN_Capab;
+
+    u16 PMKID_Count;
+} IE_RSN_WPA;
+
 // General Purpose :
 
 s32 NCD_LockWirelessDriver();
@@ -161,9 +204,21 @@ int WD_GetInfo(WDInfo* inf);
 u8 WD_GetRadioLevel(BSSDescriptor* Bss);
 int WD_Scan(ScanParameters *settings, u8* buff, u16 buffsize);
 int WD_ScanOnce(ScanParameters *settings, u8* buff, u16 buffsize);
+void WD_SetDefaultScanParameters(ScanParameters* set);
+
+// IE related :
+
 u8 WD_GetNumberOfIEs(BSSDescriptor* Bss);
 int WD_GetIELength(BSSDescriptor* Bss, u8 ID);
 int WD_GetIE(BSSDescriptor* Bss, u8 ID, u8* buff, u8 buffsize);
-void WD_SetDefaultScanParameters(ScanParameters* set);
+int WD_GetIEIDList(BSSDescriptor* Bss, u8* buff, u8 buffsize);
+int WD_GetVendorSpecificIELength(BSSDescriptor* Bss, u32 OUI);
+int WD_GetVendorSpecificIE(BSSDescriptor* Bss, u32 OUI, u8* buff, u8 buffsize);
+
+// AP Security related :
+
+int WD_GetPCSList(BSSDescriptor *Bss, u8* buff, u8 buffsize, u8 offset);
+int WD_GetRSN_WPAEssentials(BSSDescriptor *Bss, IE_RSN_WPA *IE, u8 offset);
+u8 WD_GetSecurity(BSSDescriptor *Bss);
 
 #endif
