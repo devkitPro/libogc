@@ -70,5 +70,5 @@ s32 LWP_SemPost(sem_t sem)
 	}
 
 	PPCIrqUnlockByMsr(st);
-	return -1;
+	return 0;
 }
