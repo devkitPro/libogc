@@ -19,6 +19,11 @@ void __SYSCALL(lock_acquire)(_LOCK_T* lock)
 	KMutexLock((KMutex*)lock);
 }
 
+int __SYSCALL(lock_try_acquire)(_LOCK_T* lock)
+{
+	return KMutexTryLock((KMutex*)lock) ? 0 : 1;
+}
+
 void __SYSCALL(lock_release)(_LOCK_T* lock)
 {
 	KMutexUnlock((KMutex*)lock);
@@ -27,6 +32,11 @@ void __SYSCALL(lock_release)(_LOCK_T* lock)
 void __SYSCALL(lock_acquire_recursive)(_LOCK_RECURSIVE_T* lock)
 {
 	KRMutexLock((KRMutex*)lock);
+}
+
+int __SYSCALL(lock_try_acquire_recursive)(_LOCK_RECURSIVE_T* lock)
+{
+	return KRMutexTryLock((KRMutex*)lock) ? 0 : 1;
 }
 
 void __SYSCALL(lock_release_recursive)(_LOCK_RECURSIVE_T* lock)
