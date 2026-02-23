@@ -61,12 +61,12 @@ MK_INLINE u32 PPCMfmsr(void)
 	return ret;
 }
 
-MK_INLINE void PPCMtspr(unsigned spr, u32 value)
+MK_INLINE void PPCMtspr(const unsigned spr, u32 value)
 {
 	__asm__ __volatile__("mtspr %0, %1" :: "I"(spr), "r"(value) : "memory");
 }
 
-MK_INLINE u32 PPCMfspr(unsigned spr)
+MK_INLINE u32 PPCMfspr(const unsigned spr)
 {
 	u32 ret;
 	__asm__ __volatile__("mfspr %0, %1" : "=r"(ret) : "I"(spr));
