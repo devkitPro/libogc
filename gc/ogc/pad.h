@@ -3,11 +3,11 @@
 
 #include <gctypes.h>
 
-#define PAD_TYPE_NONE				0
-#define PAD_TYPE_STANDARD			1
-#define PAD_TYPE_WAVEBIRD			2
-#define PAD_TYPE_KEYBOARD			3
-#define PAD_TYPE_STEERING			4
+#define PAD_TYPE_NONE				-1
+#define PAD_TYPE_STANDARD			0
+#define PAD_TYPE_WAVEBIRD			1
+#define PAD_TYPE_KEYBOARD			2
+#define PAD_TYPE_STEERING			3
 
 #define PAD_CHAN0					0
 #define PAD_CHAN1					1
@@ -76,7 +76,7 @@ u32 PAD_Recalibrate(u32 mask);
 void PAD_Clamp(PADStatus *status);
 void PAD_ControlMotor(s32 chan,u32 cmd);
 void PAD_SetSpec(u32 spec);
-u32 PAD_GetType(s32 chan);
+s32 PAD_GetType(s32 chan);
 
 u32 PAD_ScanPads(void);
 

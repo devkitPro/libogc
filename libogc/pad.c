@@ -698,17 +698,18 @@ void PAD_ControlMotor(s32 chan,u32 cmd)
 	_CPU_ISR_Restore(level);
 }
 
-u32 PAD_GetType(s32 chan)
+s32 PAD_GetType(s32 chan)
 {
 	u32 level;
 	u32 mask, sitype;
-	u32 type = PAD_TYPE_NONE;
+	s32 type = PAD_TYPE_NONE;
 
 	_CPU_ISR_Disable(level);
 
 	mask = PAD_ENABLEDMASK(chan);
 	if(__pad_enabledbits&mask) {
-		sitype = SI_GetType(chan)&~0xff;
+		sitype = SI_GetType(chan);
+		sitype = SI_DecodeType(sitype);
 		switch (sitype)
 		{
 		case SI_GC_CONTROLLER:
@@ -792,7 +793,8 @@ u32 PAD_ScanPads(void)
 				keys[2] = (u8)(padstatus[i].triggerL);
 
 				// Only update if keys did not roll over
-				if (keys[0] != 2 && keys[1] != 2 && keys[2] != 2) {
+				if (keys[0] != 1 && keys[1] != 1 && keys[2] != 1 &&
+					keys[0] != 2 && keys[1] != 2 && keys[2] != 2) {
 					oldkeys[0] = __pad_keys[i].keyboard_state[0];
 					oldkeys[1] = __pad_keys[i].keyboard_state[1];
 					oldkeys[2] = __pad_keys[i].keyboard_state[2];
@@ -907,6 +909,7 @@ s32 PAD_KeyboardUp(int pad, u8 *keys)
 	s32 i, count = 0;
 	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1 || keys==NULL || PAD_GetType(pad) != PAD_TYPE_KEYBOARD) return 0;
 	for (i = 0; i < 3; i++) {
+		keys[i] = 0;
 		if (__pad_keys[pad].keyboard_up[i]) {
 			keys[i] = __pad_keys[pad].keyboard_up[i];
 			count++;
@@ -922,6 +925,7 @@ s32 PAD_KeyboardDown(int pad, u8 *keys)
 	s32 i, count = 0;
 	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1 || keys==NULL || PAD_GetType(pad) != PAD_TYPE_KEYBOARD) return 0;
 	for (i = 0; i < 3; i++) {
+		keys[i] = 0;
 		if (__pad_keys[pad].keyboard_down[i]) {
 			keys[i] = __pad_keys[pad].keyboard_down[i];
 			count++;
@@ -937,6 +941,7 @@ s32 PAD_KeyboardHeld(int pad, u8 *keys)
 	s32 i, count = 0;
 	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1 || keys==NULL || PAD_GetType(pad) != PAD_TYPE_KEYBOARD) return 0;
 	for (i = 0; i < 3; i++) {
+		keys[i] = 0;
 		if (__pad_keys[pad].keyboard_state[i]) {
 			keys[i] = __pad_keys[pad].keyboard_state[i];
 			count++;
