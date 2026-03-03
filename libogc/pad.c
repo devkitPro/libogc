@@ -438,9 +438,9 @@ static void __pad_enable(u32 chan)
 static void __pad_enablekeyboard(u32 chan)
 {
 	u32 buf[2];
-//#ifdef _PAD_DEBUG
+#ifdef _PAD_DEBUG
 	printf("__pad_enablekeyboard(%d)\n",chan);
-//#endif
+#endif
 	__pad_enabledbits |= PAD_ENABLEDMASK(chan);
 	SI_GetResponse(chan,(void*)buf);
 	SI_SetCommand(chan,__pad_cmdinitkeyboard);
@@ -787,12 +787,10 @@ u32 PAD_ScanPads(void)
 
 		switch(padstatus[i].err) {
 		case PAD_ERR_NONE:
-			printf("PAD_ERR_NONE\n");
 			if (type == PAD_TYPE_KEYBOARD) {
 				keys[0] = (u8)(padstatus[i].substickX - 128);
 				keys[1] = (u8)(padstatus[i].substickY - 128);
 				keys[2] = (u8)(padstatus[i].triggerL);
-				printf("%d %d %d\n", keys[0], keys[1], keys[2]);
 
 				// Only update if keys did not roll over
 				if (keys[0] != 1 && keys[1] != 1 && keys[2] != 1 &&
@@ -846,7 +844,6 @@ u32 PAD_ScanPads(void)
 					__pad_keys[i].keyboard_state[2] = keys[2];
 				}
 			} else {
-				printf("GC pad\n");
 				oldstate				= __pad_keys[i].state;
 				memset(&__pad_keys[i],0,sizeof(keyinput));
 				state					= padstatus[i].button;
@@ -865,14 +862,12 @@ u32 PAD_ScanPads(void)
 			break;
 
 		case PAD_ERR_NO_CONTROLLER:
-			printf("No pad\n");
 			if(__pad_keys[i].chan!=-1) memset(&__pad_keys[i],0,sizeof(keyinput));
 			__pad_keys[i].chan = -1;
 			resetBits |= padBit;
 			break;
 
 		default:
-			printf("Default\n");
 			break;
 		}
 	}
