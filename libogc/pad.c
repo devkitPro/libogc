@@ -438,9 +438,9 @@ static void __pad_enable(u32 chan)
 static void __pad_enablekeyboard(u32 chan)
 {
 	u32 buf[2];
-#ifdef _PAD_DEBUG
+//#ifdef _PAD_DEBUG
 	printf("__pad_enablekeyboard(%d)\n",chan);
-#endif
+//#endif
 	__pad_enabledbits |= PAD_ENABLEDMASK(chan);
 	SI_GetResponse(chan,(void*)buf);
 	SI_SetCommand(chan,__pad_cmdinitkeyboard);
@@ -687,7 +687,7 @@ void PAD_ControlMotor(s32 chan,u32 cmd)
 	mask = PAD_ENABLEDMASK(chan);
 	if(__pad_enabledbits&mask) {
 		type = SI_GetType(chan);
-		if(!(type&SI_GC_NOMOTOR)) {
+		if(!(type&SI_GC_NOMOTOR) && !(type&SI_GC_KEYBOARD)) {
 			if(__pad_spec<2 && cmd==PAD_MOTOR_STOP_HARD) cmd = 0;
 
 			cmd = 0x00400000|__pad_analogmode|(cmd&0x03);
@@ -787,10 +787,12 @@ u32 PAD_ScanPads(void)
 
 		switch(padstatus[i].err) {
 		case PAD_ERR_NONE:
+			printf("PAD_ERR_NONE\n");
 			if (type == PAD_TYPE_KEYBOARD) {
 				keys[0] = (u8)(padstatus[i].substickX - 128);
 				keys[1] = (u8)(padstatus[i].substickY - 128);
 				keys[2] = (u8)(padstatus[i].triggerL);
+				printf("%d %d %d\n", keys[0], keys[1], keys[2]);
 
 				// Only update if keys did not roll over
 				if (keys[0] != 1 && keys[1] != 1 && keys[2] != 1 &&
@@ -798,14 +800,8 @@ u32 PAD_ScanPads(void)
 					oldkeys[0] = __pad_keys[i].keyboard_state[0];
 					oldkeys[1] = __pad_keys[i].keyboard_state[1];
 					oldkeys[2] = __pad_keys[i].keyboard_state[2];
-
-					__pad_keys[i].keyboard_down[0] = 0;
-					__pad_keys[i].keyboard_down[1] = 0;
-					__pad_keys[i].keyboard_down[2] = 0;
-
-					__pad_keys[i].keyboard_up[0] = 0;
-					__pad_keys[i].keyboard_up[1] = 0;
-					__pad_keys[i].keyboard_up[2] = 0;
+					
+					memset(&__pad_keys[i],0,sizeof(keyinput));
 
 					// Check if any keyboard keys are being newly pressed
 					if (keys[0] && ((keys[0] != oldkeys[0]) && (keys[0] != oldkeys[1]) && (keys[0] != oldkeys[2])))
@@ -850,7 +846,9 @@ u32 PAD_ScanPads(void)
 					__pad_keys[i].keyboard_state[2] = keys[2];
 				}
 			} else {
-				oldstate				= __pad_keys[i].state; 
+				printf("GC pad\n");
+				oldstate				= __pad_keys[i].state;
+				memset(&__pad_keys[i],0,sizeof(keyinput));
 				state					= padstatus[i].button;
 				__pad_keys[i].stickX	= padstatus[i].stickX;
 				__pad_keys[i].stickY	= padstatus[i].stickY;
@@ -867,12 +865,14 @@ u32 PAD_ScanPads(void)
 			break;
 
 		case PAD_ERR_NO_CONTROLLER:
+			printf("No pad\n");
 			if(__pad_keys[i].chan!=-1) memset(&__pad_keys[i],0,sizeof(keyinput));
 			__pad_keys[i].chan = -1;
 			resetBits |= padBit;
 			break;
 
 		default:
+			printf("Default\n");
 			break;
 		}
 	}
@@ -907,9 +907,10 @@ u16 PAD_ButtonsHeld(int pad)
 s32 PAD_KeyboardUp(int pad, u8 *keys)
 {
 	s32 i, count = 0;
-	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1 || keys==NULL || PAD_GetType(pad) != PAD_TYPE_KEYBOARD) return 0;
+	if (keys == NULL) return 0;
+	memset(keys, 0, 3);
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1 || PAD_GetType(pad) != PAD_TYPE_KEYBOARD) return 0;
 	for (i = 0; i < 3; i++) {
-		keys[i] = 0;
 		if (__pad_keys[pad].keyboard_up[i]) {
 			keys[i] = __pad_keys[pad].keyboard_up[i];
 			count++;
@@ -923,9 +924,10 @@ s32 PAD_KeyboardUp(int pad, u8 *keys)
 s32 PAD_KeyboardDown(int pad, u8 *keys)
 {
 	s32 i, count = 0;
-	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1 || keys==NULL || PAD_GetType(pad) != PAD_TYPE_KEYBOARD) return 0;
+	if (keys == NULL) return 0;
+	memset(keys, 0, 3);
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1 || PAD_GetType(pad) != PAD_TYPE_KEYBOARD) return 0;
 	for (i = 0; i < 3; i++) {
-		keys[i] = 0;
 		if (__pad_keys[pad].keyboard_down[i]) {
 			keys[i] = __pad_keys[pad].keyboard_down[i];
 			count++;
@@ -939,7 +941,9 @@ s32 PAD_KeyboardDown(int pad, u8 *keys)
 s32 PAD_KeyboardHeld(int pad, u8 *keys)
 {
 	s32 i, count = 0;
-	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1 || keys==NULL || PAD_GetType(pad) != PAD_TYPE_KEYBOARD) return 0;
+	if (keys == NULL) return 0;
+	memset(keys, 0, 3);
+	if(pad<PAD_CHAN0 || pad>PAD_CHAN3 || __pad_keys[pad].chan==-1 || PAD_GetType(pad) != PAD_TYPE_KEYBOARD) return 0;
 	for (i = 0; i < 3; i++) {
 		keys[i] = 0;
 		if (__pad_keys[pad].keyboard_state[i]) {
