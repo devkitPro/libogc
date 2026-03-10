@@ -8,14 +8,14 @@ static void _dietPrintDefaultFunc(const char* buf, size_t size)
 {
 	if(buf)
 	{
-		write(STDOUT_FILENO, buf, size);
+		write(STDERR_FILENO, buf, size);
 	}
 	else
 	{
 		for (size_t  i= 0; i < size; i ++)
 		{
 			char space = ' ';
-			write(STDOUT_FILENO,&space,1);
+			write(STDERR_FILENO,&space,1);
 		}
 	}
 }
