@@ -33,7 +33,7 @@
 #define absf(x)                     ((x >= 0) ? (x) : (x * -1.0f))
 #define diff_f(x, y)                ((x >= y) ? (absf(x - y)) : (absf(y - x)))
 
-//#define WITH_WPAD_DEBUG
+#define WITH_WPAD_DEBUG
 
 #ifdef WITH_WPAD_DEBUG
 	#define WPAD2_DEBUG(fmt, ...)  SYS_Report("[DEBUG] %s:%i: " fmt "\n", __func__, __LINE__, ##__VA_ARGS__)

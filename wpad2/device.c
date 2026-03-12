@@ -680,9 +680,11 @@ void _wpad2_device_timer_event(uint64_t now)
 
 void _wpad2_device_set_rumble(WpadDevice *device, bool enable)
 {
-	WPAD2_DEBUG("enable: %d", enable);
-	device->rumble = enable;
-	_wpad2_device_request_status(device);
+	if (enable != device->rumble) {
+		WPAD2_DEBUG("enable: %d", enable);
+		device->rumble = enable;
+		_wpad2_device_request_status(device);
+	}
 }
 
 void _wpad2_device_set_speaker(WpadDevice *device, bool enable)
