@@ -89,7 +89,7 @@ static vs32 __wpads_bonded = 0;
 static u32 __wpad_idletimeout = 300;
 static vu32 __wpads_active = 0;
 static vu32 __wpads_used = 0;
-static wiimote **__wpads = NULL;
+wiimote **__wpads = NULL;
 static wiimote_listen __wpads_listen[WPAD_MAX_DEVICES] = {0};
 static WPADData wpaddata[WPAD_MAX_DEVICES] = {0};
 static struct _wpad_cb __wpdcb[WPAD_MAX_DEVICES] = {0};
@@ -2045,4 +2045,11 @@ bool WPAD_IsBatteryCritical(int chan)
 {
 	if(chan<0 || chan>=WPAD_MAX_DEVICES) return false;
 	return WIIMOTE_IS_SET(__wpads[chan],WIIMOTE_STATE_BATTERY_CRITICAL);
+}
+
+int WPAD_HasMotionPlus(s32 chan) {
+    if (__wpads && __wpads[chan]) __wpads[chan]->state &= ~0x000020;
+    if (__wpads == NULL) return 0;
+    if (__wpads[chan] == NULL) return 0;
+    return (__wpads[chan]->state & 0x100000) ? 1 : 0;
 }

@@ -228,6 +228,9 @@ void WPAD_Expansion(int chan, struct expansion_t *exp);
 void WPAD_PadStatus(int chan);
 bool WPAD_IsBatteryCritical(int chan);
 
+s32 WPAD_HasMotionPlus(s32 chan);
+#define WPAD_EXP_MOTION_PLUS 5
+
 #ifdef __cplusplus
    }
 #endif /* __cplusplus */
