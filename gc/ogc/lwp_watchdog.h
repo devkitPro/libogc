@@ -15,8 +15,8 @@
 #define ticks_to_microsecs(ticks)	PPCTicksToUs(ticks)
 #define ticks_to_nanosecs(ticks)	PPCTicksToNs(ticks)
 
-#define tick_microsecs(ticks)		(PPCTicksToUs(ticks)%TB_USPERSEC)
-#define tick_nanosecs(ticks)		(PPCTicksToNs(ticks)%TB_NSPERSEC)
+#define tick_microsecs(ticks)		PPCTicksToUs((ticks)%PPC_TIMER_CLOCK)
+#define tick_nanosecs(ticks)		PPCTicksToNs((ticks)%PPC_TIMER_CLOCK)
 
 #define secs_to_ticks(sec)			((u64)(sec)*PPC_TIMER_CLOCK)
 #define millisecs_to_ticks(msec)	PPCMsToTicks(msec)
