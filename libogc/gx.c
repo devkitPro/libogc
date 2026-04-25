@@ -389,7 +389,7 @@ static void __GXOverflowHandler(void)
 		_gxoverflowsuspend = 1;
 		_gxoverflowcount++;
 		__GX_WriteFifoIntEnable(GX_DISABLE,GX_ENABLE);
-		__GX_WriteFifoIntReset(GX_TRUE,GX_FALSE);
+		__GX_WriteFifoIntReset(GX_TRUE,GX_TRUE);
 		LWP_SuspendThread(_gxcurrentlwp);
 	}
 }
