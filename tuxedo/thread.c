@@ -98,17 +98,24 @@ MK_NOINLINE void KThreadSwitchTo(KThread* t, PPCIrqState st)
 
 void KThreadResume(KThread* t)
 {
+	KThread* self = KThreadGetSelf();
 	PPCIrqState st = PPCIrqLockByMsr();
 
-	if (!t->suspend || (--t->suspend)) {
+	if (!t->suspend || (--t->suspend) || t->wait.queue) {
 		PPCIrqUnlockByMsr(st);
 		return;
 	}
 
-	if (!t->wait.queue) {
-		t->state = KTHR_STATE_RUNNING;
+	t->state = KTHR_STATE_RUNNING;
+
+	if (t != self) {
 		KThreadReschedule(t, st);
 	} else {
+		// We are assuming 1) PPCIsInExcpt, 2) KThreadSuspend(self) was called before, and thus 3) __ppc_next_ctx != NULL
+		if (t->prio < __ppc_next_ctx->prio) {
+			__ppc_next_ctx = NULL;
+		}
+
 		PPCIrqUnlockByMsr(st);
 	}
 }
