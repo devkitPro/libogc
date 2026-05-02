@@ -189,7 +189,7 @@ void KThreadYield(void)
 	PPCIrqState st = PPCIrqLockByMsr();
 
 	KThread* t = KThreadFindRunnable(self->next);
-	if (t->prio > self->prio) {
+	if (!t || t->prio > self->prio) {
 		t = KThreadFindRunnable(s_firstThread);
 	}
 
