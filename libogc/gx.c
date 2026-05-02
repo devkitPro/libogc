@@ -389,7 +389,6 @@ static void __GXOverflowHandler(void)
 		_gxoverflowsuspend = 1;
 		_gxoverflowcount++;
 		__GX_WriteFifoIntEnable(GX_DISABLE,GX_ENABLE);
-		__GX_WriteFifoIntReset(GX_TRUE,GX_FALSE);
 		LWP_SuspendThread(_gxcurrentlwp);
 	}
 }
@@ -399,22 +398,26 @@ static void __GXUnderflowHandler(void)
 	if(_gxoverflowsuspend) {
 		_gxoverflowsuspend = 0;
 		LWP_ResumeThread(_gxcurrentlwp);
-		__GX_WriteFifoIntReset(GX_TRUE,GX_TRUE);
 		__GX_WriteFifoIntEnable(GX_ENABLE,GX_DISABLE);
 	}
 }
 
 static void __GXCPInterruptHandler(u32 irq,void *ctx)
 {
+	// Clear spurious pending underflow/overflow IRQs before reading the status register.
+	// Note that legitimate IRQs are sticky & can't be cleared until the CPU produces or
+	// the GPU retires commands, respectively.
+	__GX_WriteFifoIntReset(GX_TRUE, GX_TRUE);
 	__gx->cpSRreg = _cpReg[0];
 
-	if((__gx->cpCRreg&0x08) && (__gx->cpSRreg&0x02))
+	// Check for underflow/overflow (only one can be active at a time)
+	if (__gx->cpSRreg & 0x02)
 		__GXUnderflowHandler();
-
-	if((__gx->cpCRreg&0x04) && (__gx->cpSRreg&0x01))
+	else if (__gx->cpSRreg & 0x01)
 		__GXOverflowHandler();
 
-	if((__gx->cpCRreg&0x20) && (__gx->cpSRreg&0x10)) {
+	// Check for breakpoint
+	if ((__gx->cpSRreg & 0x10) && (__gx->cpCRreg & 0x20)) {
 		__gx->cpCRreg &= ~0x20;
 		_cpReg[1] = __gx->cpCRreg;
 		if(breakPtCB)
