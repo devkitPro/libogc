@@ -133,10 +133,18 @@ void KThreadSuspend(KThread* t)
 	t->state = KTHR_STATE_WAITING;
 	t->wait.queue = NULL;
 
-	if (self == t) {
-		KThread* next = KThreadFindRunnable(s_firstThread);
+	KThread* next = NULL;
+	if (t == self || t == __ppc_next_ctx) {
+		next = KThreadFindRunnable(s_firstThread);
+	}
+
+	if (t == self) {
 		KThreadSwitchTo(next, st);
 	} else {
+		if (t == __ppc_next_ctx) {
+			__ppc_next_ctx = next != self ? next : NULL;
+		}
+
 		PPCIrqUnlockByMsr(st);
 	}
 }
