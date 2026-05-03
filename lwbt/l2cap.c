@@ -293,6 +293,10 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
     
 		switch(sighdr->code) {
 			case L2CAP_CMD_REJ:
+				if(pcb == NULL) {
+					/* A rejection without a matching PCB is silently discarded */
+					break;
+				}
 				/* Remove signal from unresponded list and deallocate it */
 				L2CAP_SIG_RMV(&(pcb->unrsp_sigs), sig);
 				btpbuf_free(sig->p);
@@ -701,7 +705,7 @@ void l2cap_process_sig(struct pbuf *q, struct l2cap_hdr *l2caphdr, struct bd_add
 						/* Give upper layer indication */
 						pcb->state = L2CAP_CLOSED;
 						LOG("l2cap_process_sig: Disconnection request\n");
-						L2CA_ACTION_DISCONN_IND(pcb,ERR_OK,ret);  
+						L2CA_ACTION_DISCONN_IND(pcb,ERR_OK,ret);
 					}	  
 				}
 				break;
