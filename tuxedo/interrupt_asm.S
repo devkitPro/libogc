@@ -60,6 +60,12 @@ FUNC_START PPCExcptIrqHandler
 	// Save GPR14-31
 	stmw    r14, PPC_CONTEXT_GPR+4*14(r12)
 
+	// Save GQRs
+	.rept   8
+	mfspr   r10, GQR0+\+
+	stw     r10, PPC_CONTEXT_GQR+4*\+(r12)
+	.endr
+
 .Lcontext_load:
 	// XX: Consider adding a thread switch callback here
 
@@ -68,6 +74,12 @@ FUNC_START PPCExcptIrqHandler
 	stw     r0, __ppc_next_ctx@sda21(0)
 	mtsprg2 r11
 	mr      r12, r11
+
+	// Restore GQRs
+	.rept   8
+	lwz     r10, PPC_CONTEXT_GQR+4*\+(r12)
+	mtspr   GQR0+\+, r10
+	.endr
 
 	// Restore GPR14-31
 	lmw     r14, PPC_CONTEXT_GPR+4*14(r12)
