@@ -53,10 +53,10 @@ FUNC_START_SIZED PPCExcptEntryFpu
 	mfcr    r11
 	stw     r11, __ppc_excpt_buf@l+PPC_CONTEXT_CR(0)
 
-	// Backup saved MSR, enabling FPU in it
+	// Enable FPU in the saved MSR
 	mfsrr1  r12
 	ori     r12, r12, MSR_FP
-	stw     r12, __ppc_excpt_buf@l+PPC_CONTEXT_MSR(0)
+	mtsrr1  r12
 
 	// Skip fast path if this is a nested exception
 	andi.   r11, r12, MSR_RI
@@ -68,10 +68,6 @@ FUNC_START_SIZED PPCExcptEntryFpu
 	cmplw   cr2, r11, r12
 	bne     cr2, .Lfpu_slow_path
 
-	// Restore saved MSR
-	lwz     r12, __ppc_excpt_buf@l+PPC_CONTEXT_MSR(0)
-	mtsrr1  r12
-
 	// Restore CR/GPR11/GPR12 and return
 	lwz     r11, __ppc_excpt_buf@l+PPC_CONTEXT_CR(0)
 	mtcr    r11
@@ -80,28 +76,28 @@ FUNC_START_SIZED PPCExcptEntryFpu
 	rfi
 
 .Lfpu_slow_path:
-	// Backup and clear GQR0
-	mfspr   r11, GQR0
-	stw     r11, __ppc_excpt_buf@l+PPC_CONTEXT_LR(0)
-	li      r11, 0
-	mtspr   GQR0, r11
-
-	// Backup saved PC
+	// Backup saved PC/MSR
 	mfsrr0  r11
-	stw     r11, __ppc_excpt_buf@l+PPC_CONTEXT_PC(0)
+	mfsrr1  r12
+	stw     r12, __ppc_excpt_buf@l+PPC_CONTEXT_MSR(0)
+
+	// Backup and clear GQR0
+	mfspr   r12, GQR0
+	stw     r12, __ppc_excpt_buf@l+PPC_CONTEXT_LR(0)
+	li      r12, 0
+	mtspr   GQR0, r12
 
 	// Set address of FPU handler
-	lis     r11, PPCExcptFpuHandler@h
-	ori     r11, r11, PPCExcptFpuHandler@l
-	mtsrr0  r11
+	lis     r12, PPCExcptFpuHandler@h
+	ori     r12, r12, PPCExcptFpuHandler@l
+	mtsrr0  r12
 
 	// Reenable address translation and FPU later
 	mfmsr   r12
 	ori     r12, r12, MSR_FP|MSR_IR|MSR_DR
 	mtsrr1  r12
 
-	// Load saved PC/MSR and jump to handler
-	lwz     r11, __ppc_excpt_buf@l+PPC_CONTEXT_PC(0)
+	// Reload saved MSR backup and jump to handler
 	lwz     r12, __ppc_excpt_buf@l+PPC_CONTEXT_MSR(0)
 	rfi
 
