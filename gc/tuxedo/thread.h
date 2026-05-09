@@ -30,11 +30,13 @@ typedef enum KThrState {
 } KThrState;
 
 typedef sptr (*KThreadFn)(void* arg);
+typedef KThread* (*KThreadSwitchCb)(KThread* next);
 
 struct KThread {
 	PPCContext ctx;
 
 	KThread* next;
+	void* user;
 
 	u16 state;
 	u16 suspend;
@@ -60,6 +62,8 @@ struct KThread {
 	struct _reent r;
 };
 
+extern KThreadSwitchCb __ppc_thread_switch_cb;
+
 void KThreadPrepare(KThread* t, KThreadFn entrypoint, void* arg, void* stack_top, u16 prio);
 void KThreadResume(KThread* t);
 void KThreadSuspend(KThread* t);
@@ -83,6 +87,11 @@ MK_INLINE void KThreadSleepUs(u64 us)
 MK_INLINE void KThreadSleepMs(u64 ms)
 {
 	KThreadSleepTicks(PPCMsToTicks(ms));
+}
+
+MK_INLINE void KThreadSetSwitchCallback(KThreadSwitchCb cb)
+{
+	__ppc_thread_switch_cb = cb;
 }
 
 uptr KThrQueueBlock(KThrQueue* q, uptr token);

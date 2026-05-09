@@ -67,8 +67,18 @@ FUNC_START PPCExcptIrqHandler
 	.endr
 
 .Lcontext_load:
-	// XX: Consider adding a thread switch callback here
+	// Check if a thread switch callback is installed
+	lwz     r10, __ppc_thread_switch_cb@sda21(0)
+	cmpwi   r10, 0
+	beq+    .Lno_switch_cb
 
+	// Call thread switch callback
+	mtctr   r10
+	mr      r3, r11
+	bctrl
+	mr      r11, r3
+
+.Lno_switch_cb:
 	// Update current context
 	li      r0, 0
 	stw     r0, __ppc_next_ctx@sda21(0)

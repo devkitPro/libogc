@@ -5,6 +5,7 @@
 
 KThread* s_firstThread;
 KThread* __ppc_next_ctx;
+KThreadSwitchCb __ppc_thread_switch_cb;
 
 static KThread s_mainThread, s_idleThread;
 static KThrQueue s_joinQueue, s_sleepQueue;
