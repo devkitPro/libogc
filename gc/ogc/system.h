@@ -291,6 +291,21 @@ bool SYS_MainLoop(void);
 
 
 /*!
+ * \fn void SYS_SetTimeslice(u32 ticks)
+ * \brief Configures the timeslice duration used to schedule same-priority threads.
+ * \param[in] ticks Timeslice duration in ticks. Pass 0 to disable timeslicing, 1 to let the system decide.
+ *
+ * \remark Timeslicing is disabled by default in order to conserve system resources, as it is generally not
+ * needed by normal applications. For compatibility reasons, creating threads using \ref LWP_CreateThread
+ * automatically enables timeslicing. If timeslicing is desired when using other threading APIs, you need
+ * to explicitly call this function.
+ *
+ * \return none
+ */
+void SYS_SetTimeslice(u32 ticks);
+
+
+/*!
  * \fn void* SYS_AllocateFramebuffer(GXRModeObj *rmode)
  * \brief Allocate cacheline aligned memory for the external framebuffer based on the rendermode object.
  * \param[in] rmode pointer to the video/render mode configuration

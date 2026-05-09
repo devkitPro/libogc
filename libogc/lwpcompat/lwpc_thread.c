@@ -1,5 +1,6 @@
 #include "lwpc_common.h"
 #include <ogc/lwp.h>
+#include <ogc/system.h>
 #include <stdlib.h>
 
 MK_INLINE KThread* lwpc_get_thread(lwp_t thethread)
@@ -34,6 +35,11 @@ s32 LWP_CreateThread(lwp_t* thethread, void* (*entry)(void*), void* arg, void* s
 
 	if (!stackbase) {
 		stackbase = t+1;
+	}
+
+	// Enable timeslicing if necessary
+	if (!(prio & 0x80)) {
+		SYS_SetTimeslice(1);
 	}
 
 	KThreadPrepare(t, (KThreadFn)entry, arg, (char*)stackbase + stack_size, KTHR_MIN_PRIO - (prio & LWP_PRIO_HIGHEST));

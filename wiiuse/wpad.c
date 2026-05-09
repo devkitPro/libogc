@@ -1323,7 +1323,7 @@ s32 WPAD_Init(void)
 			return WPAD_ERR_UNKNOWN;
 		}
 		
-		if(LWP_CreateThread(&__wpad_confsave_thread,__wpad_confsave_thread_func,NULL,NULL,0,80)<0) {
+		if(LWP_CreateThread(&__wpad_confsave_thread,__wpad_confsave_thread_func,NULL,NULL,0,80|0x80)<0) {
 			WPAD_Shutdown();
 			_CPU_ISR_Restore(level);
 			return WPAD_ERR_UNKNOWN;

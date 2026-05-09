@@ -248,6 +248,64 @@ bool SYS_MainLoop(void)
 	return true;
 }
 
+static KTickTask s_timesliceTask;
+static u32 s_timesliceTicks;
+static bool s_timesliceExpired;
+
+static void __timeslice_task(KTickTask* t)
+{
+	s_timesliceExpired = true;
+	KThreadYield();
+}
+
+static inline void __timeslice_start(void)
+{
+	if (s_timesliceExpired) {
+		s_timesliceExpired = false;
+		return;
+	}
+
+	KTickTaskStart(&s_timesliceTask, __timeslice_task, s_timesliceTicks, s_timesliceTicks);
+}
+
+static inline void __timeslice_stop(void)
+{
+	KTickTaskStop(&s_timesliceTask);
+}
+
+static KThread* __timeslice_cb(KThread* next)
+{
+	if (next->prio <= KTHR_MIN_PRIO) {
+		__timeslice_start();
+	} else {
+		__timeslice_stop();
+	}
+
+	return next;
+}
+
+MK_WEAK void SYS_SetTimeslice(u32 ticks)
+{
+	PPCIrqState st = PPCIrqLockByMsr();
+
+	if (ticks == 1) {
+		ticks = s_timesliceTicks ? s_timesliceTicks : (u32)PPCMsToTicks(10);
+	}
+
+	if (s_timesliceTicks != ticks) {
+		s_timesliceTicks = ticks;
+		if (ticks) {
+			KThreadSetSwitchCallback(__timeslice_cb);
+			__timeslice_start();
+		} else {
+			__timeslice_stop();
+			KThreadSetSwitchCallback(NULL);
+		}
+	}
+
+	PPCIrqUnlockByMsr(st);
+}
+
 void __syscall_exit(int status)
 {
 	if (!__sys_ismainloopdone && __stub_found()) {
