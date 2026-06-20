@@ -29,6 +29,7 @@ distribution.
 -------------------------------------------------------------*/
 
 #include <gctypes.h>
+#include <tuxedo/env.h>
 #include <tuxedo/thread.h>
 #include <tuxedo/ppc/exception.h>
 #include <ogc/system.h>
@@ -127,7 +128,9 @@ static void waitForReload(void)
 
 		if (buttonsDown & PAD_BUTTON_A) {
 			kprintf("\x1b[2K\rReset\n");
-			*(vu32*)0x80001804 = 0; // Destroy bootstub signature
+			// Destroy bootstub signature
+			g_envBootstub->magic[0] = 0;
+			g_envBootstub->magic[1] = 0;
 			__reload();
 		}
 

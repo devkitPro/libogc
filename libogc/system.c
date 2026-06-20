@@ -42,6 +42,7 @@ distribution.
 #include <tuxedo/thread.h>
 #include <tuxedo/sync.h>
 #include <tuxedo/tick.h>
+#include <tuxedo/env.h>
 
 #include "asm.h"
 #include "irq.h"
@@ -151,9 +152,12 @@ static s32 __sram_sync(void);
 static s32 __sram_writecallback(s32 chn,s32 dev);
 static s32 __mem_onreset(s32 final);
 
+extern void PPCExcptInit(void);
+extern void KThreadInit(void);
+extern void KIrqInit(void);
+
 extern void __exi_init(void);
 extern void __si_init(void);
-extern void __irq_init(void);
 
 extern u32 __IPC_ClntInit(void);
 extern u32 __PADDisableRecalibration(s32 disable);
@@ -169,9 +173,7 @@ extern u8 __Arena2Lo[], __Arena2Hi[];
 extern u8 __ipcbufferLo[], __ipcbufferHi[];
 #endif
 
-u8 *__argvArena1Lo = (u8*)0xdeadbeef;
-
-static u32 __sys_inIPL = (u32)__isIPL;
+MK_WEAK u32 __sys_inIPL = (u32)__isIPL;
 
 static const u32 _dsp_initcode[] =
 {
@@ -201,14 +203,15 @@ MK_INLINE void __irq_shutdown(void)
 	PPCMtmsr(msr | MSR_FP | MSR_RI);
 }
 
-static void (*reload)(void) = (void(*)(void))0x80001800;
+static void (* const reload)(void) = (void(*)(void))MM_ENV_HB_BOOTSTUB;
 
 static bool __stub_found(void)
 {
-	u64 sig = ((u64)(*(u32*)0x80001804) << 32) + *(u32*)0x80001808;
-	if (sig == 0x5354554248415858ULL) // 'STUBHAXX'
-		return true;
-	return false;
+#define MAGIC g_envBootstub->magic
+	return
+		(MAGIC[0] == ENV_HB_BOOTSTUB_MAGIC1 && MAGIC[1] == ENV_HB_BOOTSTUB_MAGIC2) ||
+		(MAGIC[1] == ENV_HB_BOOTSTUB_MAGIC1 && MAGIC[2] == ENV_HB_BOOTSTUB_MAGIC2);
+#undef MAGIC
 }
 
 #if defined(HW_DOL)
@@ -439,61 +442,101 @@ static void __STMEventHandler(u32 event)
 }
 #endif
 
-void * __attribute__ ((weak)) __myArena1Lo = 0;
-void * __attribute__ ((weak)) __myArena1Hi = 0;
+MK_WEAK void* __myArena1Lo = __Arena1Lo;
+MK_WEAK void* __myArena1Hi = NULL;
+
+MK_INLINE void* __SYS_GetDefaultArena1Lo(void)
+{
+	// XX: We are ignoring the arena_lo set in lowmem because it may be stale
+	// from the previous application.
+	return __myArena1Lo;
+}
+
+MK_INLINE void* __SYS_GetDefaultArena1Hi(void)
+{
+	if (__myArena1Hi) {
+		return __myArena1Hi;
+	}
+
+#if defined(HW_DOL)
+	void* ptr = g_envLowMem->boot_info.arena_hi;
+#elif defined(HW_RVL)
+	void* ptr = g_envRvlLowMem->mem1.arena_hi;
+#endif
+	return ptr ? ptr : __Arena1Hi;
+}
+
+#if defined(HW_RVL)
+
+MK_WEAK void* __myArena2Lo = NULL;
+MK_WEAK void* __myArena2Hi = NULL;
+
+MK_INLINE void* __SYS_GetDefaultArena2Lo(void)
+{
+	if (__myArena2Lo) {
+		return __myArena2Lo;
+	}
+
+	void* ptr = g_envRvlLowMem->mem2.arena_lo;
+	return ptr ? ptr : __Arena2Lo;
+}
+
+MK_INLINE void* __SYS_GetDefaultArena2Hi(void)
+{
+	if (__myArena2Hi) {
+		return __myArena2Hi;
+	}
+
+	void* ptr = g_envRvlLowMem->mem2.arena_hi;
+	return ptr ? ptr : __Arena2Hi;
+}
+
+MK_INLINE void* __SYS_GetDefaultIpcBufferLo(void)
+{
+	void* ptr = g_envRvlLowMem->ios_ipc_lo;
+	return ptr ? ptr : __ipcbufferLo;
+}
+
+MK_INLINE void* __SYS_GetDefaultIpcBufferHi(void)
+{
+	void* ptr = g_envRvlLowMem->ios_ipc_hi;
+	return ptr ? ptr : __ipcbufferHi;
+}
+
+#endif
 
 static void __lowmem_init(void)
 {
-#if defined(HW_DOL)
-	void *ram_start = (void*)0x80000000;
-	void *ram_end = (void*)(0x80000000|SYSMEM1_SIZE);
-	void *arena_start = (void*)0x80003000;
-#endif
+	if (__sys_inIPL) {
+		// Clear and initialize low mem
+		memset(g_envLowMem,  0, 0x100);
+		memset(g_envLowMem2, 0, 0x100);
 
-	if ( __argvArena1Lo == (u8*)0xdeadbeef ) __argvArena1Lo = __Arena1Lo;
-	if (__myArena1Lo == 0) __myArena1Lo = __argvArena1Lo;
-	if (__myArena1Hi == 0) __myArena1Hi = __Arena1Hi;
+		g_envLowMem->boot_info.phys_mem_size = MM_MEM1_SZ;
+		g_envLowMem->boot_info.console_type = 1 + (_piReg[11]>>28);
+		g_envLowMem->sim_mem_size = g_envLowMem->boot_info.phys_mem_size;
 
-#if defined(HW_DOL)
-	memset(ram_start,0,0x100);
-	//memset(arena_start,0,0x100);
-	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"
-	*((u32*)(ram_start+0x24))	= 1;            // version
-	*((u32*)(ram_start+0x28))	= SYSMEM1_SIZE;	// physical memory size
-	*((u32*)(ram_start+0x2C))	= 1 + ((*(u32*)0xCC00302c)>>28);
+		g_envLowMem->bus_clock = PPC_BUS_CLOCK;
+		g_envLowMem->core_clock = PPC_CORE_CLOCK;
 
-	*((u32*)(ram_start+0x30))	= (u32)__myArena1Lo;
-	*((u32*)(ram_start+0x34))	= (u32)__myArena1Hi;
+		//*((u16*)(0x80003000+0xE0))	= 6; // production pads
+		//*((u32*)(0x80003000+0xE4))	= 0xC0008000;
 
-	*((u32*)(ram_start+0xEC))	= (u32)ram_end;	// ram_end (??)
-	*((u32*)(ram_start+0xF0))	= SYSMEM1_SIZE;	// simulated memory size
-	*((u32*)(ram_start+0xF8))	= TB_BUS_CLOCK;	// bus speed: 162 MHz
-	*((u32*)(ram_start+0xFC))	= TB_CORE_CLOCK;	// cpu speed: 486 Mhz
+		PPCDCacheFlushAsync(g_envLowMem,  0x100);
+		PPCDCacheFlushAsync(g_envLowMem2, 0x100);
+		PPCSync();
+	}
 
-	*((u16*)(arena_start+0xE0))	= 6; // production pads
-	*((u32*)(arena_start+0xE4))	= 0xC0008000;
-
-	DCFlushRangeNoSync(ram_start, 0x100);
-	DCFlushRangeNoSync(arena_start, 0x100);
-#endif
-
-	_sync();
-
-	SYS_SetArenaLo((void*)__myArena1Lo);
-	SYS_SetArenaHi((void*)__myArena1Hi);
-#if defined(HW_RVL)
-	SYS_SetArena2Lo((void*)__Arena2Lo);
-	SYS_SetArena2Hi((void*)__Arena2Hi);
-#endif
-}
+	SYS_SetArena1Lo(__SYS_GetDefaultArena1Lo());
+	SYS_SetArena1Hi(__SYS_GetDefaultArena1Hi());
 
 #if defined(HW_RVL)
-static void __ipcbuffer_init(void)
-{
-	__ipcbufferlo = (void*)__ipcbufferLo;
-	__ipcbufferhi = (void*)__ipcbufferHi;
-}
+	SYS_SetArena2Lo(__SYS_GetDefaultArena2Lo());
+	SYS_SetArena2Hi(__SYS_GetDefaultArena2Hi());
+	__ipcbufferlo = __SYS_GetDefaultIpcBufferLo();
+	__ipcbufferhi = __SYS_GetDefaultIpcBufferHi();
 #endif
+}
 
 static void __memprotect_init(void)
 {
@@ -1024,16 +1067,20 @@ void __attribute__((weak)) __SYS_InstallPanicHandler(void)
 
 void SYS_Init(void)
 {
-	__SYS_PreInit();
-	__SYS_InstallPanicHandler();
-
 	if(system_initialized) return;
 	system_initialized = 1;
 
+	__SYS_PreInit();
+	__SYS_InstallPanicHandler();
+
+	// Initialize low memory area (must be done before PPCExcptInit)
 	__lowmem_init();
-#if defined(HW_RVL)
-	__ipcbuffer_init();
-#endif
+
+	// Initialize tuxedo
+	PPCExcptInit();
+	KThreadInit();
+	KIrqInit();
+
 	__lwp_wkspace_init(KERNEL_HEAP);
 	__lwp_queue_init_empty(&sys_reset_func_queue);
 	__exi_init();
@@ -1051,15 +1098,9 @@ void SYS_Init(void)
 	IRQ_Request(IRQ_PI_RSW,__RSWHandler,NULL);
 	__MaskIrq(IRQMASK(IRQ_PI_RSW));
 #endif
-}
 
-// This function gets called inside the main thread, prior to the application's main() function
-void SYS_PreMain(void)
-{
 #if defined(HW_RVL)
-	u32 i;
-
-	for (i = 0; i < 32; ++i)
+	for (int i = 0; i < 32; ++i)
 		IOS_Close(i);
 
 	__IOS_LoadStartupIOS();
@@ -1070,6 +1111,11 @@ void SYS_PreMain(void)
 #endif
 
 	__SYS_SetBootTime();
+}
+
+// This function gets called inside the main thread, prior to the application's main() function
+MK_WEAK void SYS_PreMain(void)
+{
 }
 
 u32 SYS_ResetButtonDown(void)
@@ -1101,6 +1147,11 @@ void SYS_ResetSystem(s32 reset,u32 reset_code,s32 force_menu)
 	syssram *sram;
 
 	__dsp_shutdown();
+
+	if(reset==SYS_RETURNTOMENU) {
+		reset = SYS_HOTRESET;
+		force_menu = 1;
+	}
 
 	if(reset==SYS_SHUTDOWN) {
 		ret = __PADDisableRecalibration(TRUE);

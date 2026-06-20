@@ -56,11 +56,6 @@ FUNC_START __app_start, crt0
 	lwz  sp, __ppc_main_sp@sda21(0)
 	stwu r14, -8(sp)
 
-	// Initialize tuxedo
-	bl   PPCExcptInit
-	bl   KThreadInit
-	bl   KIrqInit
-
 	// Initialize libogc
 	bl   SYS_Init
 	bl   SYS_PreMain

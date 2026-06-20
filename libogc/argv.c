@@ -28,7 +28,7 @@ distribution.
 #include <string.h>
 
 extern u8 __Arena1Lo[];
-extern char *__argvArena1Lo;
+extern void* __myArena1Lo;
 void build_argv (struct __argv* argstruct );
 
 void __CheckARGV() {
@@ -39,12 +39,12 @@ void __CheckARGV() {
 		return;
 	}
 
-	u8 *dest = (u8 *)( ((int)__Arena1Lo + 3) & ~3);
-	
+	u8 *dest = (u8 *)( ((u32)__myArena1Lo + 3) & ~3);
+
 	memmove(dest, __system_argv->commandLine, __system_argv->length);
 	__system_argv->commandLine = (char *)dest;
 	build_argv(__system_argv);
-	
-	__argvArena1Lo = (char *)__system_argv->endARGV;	
+
+	__myArena1Lo = (char *)__system_argv->endARGV;
 
 }
