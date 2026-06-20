@@ -16,9 +16,12 @@
 #define MM_P_IO_AI  (MM_P_IO_PPC|0x6c00)
 #define MM_P_WGPIPE 0x0c008000
 
+#define MM_MEM1_SZ  0x01800000
+
 #ifdef __wii__
 #define MM_P_IO_PPC 0x0d000000
 #define MM_P_MEM2   0x10000000
+#define MM_MEM2_SZ  0x04000000
 #else
 #define MM_P_IO_PPC 0x0c000000
 #endif
