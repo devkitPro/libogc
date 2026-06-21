@@ -35,6 +35,11 @@ MK_INLINE void PPCEieioInner(void)
 	__asm__ __volatile__("eieio" ::: "memory");
 }
 
+MK_INLINE void PPCSc(void)
+{
+	__asm__ __volatile__("sc" ::: "memory");
+}
+
 MK_INLINE u32 PPCMftb(void)
 {
 	u32 ret;
