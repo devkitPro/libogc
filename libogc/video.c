@@ -42,6 +42,7 @@ video.c -- VIDEO subsystem
 #include "gx.h"
 #include "si.h"
 #include "lwp.h"
+#include "lwp_watchdog.h"
 #include "system.h"
 #include "video.h"
 #include "video_types.h"
@@ -1627,8 +1628,6 @@ static vu16* const _viReg = (u16*)0xCC002000;
 
 extern syssram* __SYS_LockSram(void);
 extern u32 __SYS_UnlockSram(u32 write);
-
-extern void udelay(int us);
 
 #ifdef _VIDEO_DEBUG
 static u32 messages$128 = 0;

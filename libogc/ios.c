@@ -40,6 +40,7 @@ distribution.
 #include "es.h"
 #include "ios.h"
 #include "irq.h"
+#include "lwp_watchdog.h"
 
 #define IOS_HEAP_SIZE	0x1000
 #define MAX_IPC_RETRIES	400
@@ -50,7 +51,6 @@ distribution.
 #define IOS_MIN_VERSION	28
 
 static s32 __ios_hid = -1;
-extern void udelay(int us);
 
 s32 __IOS_InitHeap(void)
 {

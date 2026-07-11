@@ -131,3 +131,14 @@ void KTickTaskStop(KTickTask* t)
 	t->fn = NULL;
 	PPCIrqUnlockByMsr(st);
 }
+
+void PPCBusyWaitTicks(u64 ticks)
+{
+	u64 ref = PPCGetTickCount();
+	for (;;) {
+		s64 diff = PPCGetTickCount() - ref;
+		if (diff >= ticks) {
+			break;
+		}
+	}
+}

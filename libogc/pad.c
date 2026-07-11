@@ -7,6 +7,7 @@
 #include <system.h>
 #include "asm.h"
 #include "processor.h"
+#include "lwp_watchdog.h"
 #include "si.h"
 #include "pad.h"
 
@@ -72,8 +73,6 @@ static sys_resetinfo pad_resetinfo = {
 	__pad_onreset,
 	127
 };
-
-extern void udelay(int);
 
 static s32 __pad_onreset(s32 final)
 {

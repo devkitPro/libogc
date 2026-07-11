@@ -228,8 +228,6 @@ static void bba_outs(u32 reg,void *val,u32 len);
 
 static void bba_devpoll(u16 *pstatus);
 
-extern void udelay(int us);
-
 static __inline__ void bba_cmd_insnosel(u32 reg,void *val,u32 len)
 {
 	u16 req;

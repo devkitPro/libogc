@@ -38,6 +38,7 @@ distribution.
 #include <ogc/gx.h>
 #include <ogc/console.h>
 #include <ogc/color.h>
+#include <ogc/lwp_watchdog.h>
 #include <ogc/machine/processor.h>
 #include "console_internal.h"
 
@@ -51,7 +52,6 @@ typedef struct PPCStackFrame {
 static void *exception_xfb = (void*)0xC1700000;			//we use a static address above ArenaHi.
 static int reload_timer = -1;
 
-extern void udelay(int us);
 extern void VIDEO_SetFramebuffer(void *);
 extern void __VIClearFramebuffer(void*, u32, u32);
 extern void __reload(void);

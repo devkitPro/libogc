@@ -73,6 +73,11 @@ MK_INLINE u32 diff_nsec(u64 start,u64 end)
 	return PPCTicksToNs(diff);
 }
 
+MK_INLINE void udelay(unsigned us)
+{
+	PPCBusyWaitUs(us);
+}
+
 #ifdef __cplusplus
 	}
 #endif

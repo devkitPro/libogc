@@ -202,8 +202,6 @@ static struct netif *gc_netif = NULL;
 static err_t __bba_link_tx(struct netif *dev,struct pbuf *p);
 static u32 __bba_rx_err(u8 status,struct bba_priv *priv);
 
-extern void udelay(int us);
-
 /* new functions */
 #define bba_select()		EXI_Select(EXI_CHANNEL_0,EXI_DEVICE_2,EXI_SPEED32MHZ)
 #define bba_deselect()		EXI_Deselect(EXI_CHANNEL_0)

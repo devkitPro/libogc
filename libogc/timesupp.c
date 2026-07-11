@@ -63,19 +63,6 @@ void timespec_subtract(const struct timespec *tp_start,const struct timespec *tp
 	result->tv_nsec = (tp_end->tv_nsec - start->tv_nsec);
 }
 
-// this function spins till timeout is reached
-void udelay(unsigned us)
-{
-	unsigned long long start, end;
-	start = gettime();
-	while (1)
-	{
-		end = gettime();
-		if (diff_usec(start,end) >= us)
-			break;
-	}
-}
-
 int __libogc_nanosleep(const struct timespec *tb, struct timespec *rem)
 {
 	KThreadSleepTicks(timespec_to_ticks(tb));

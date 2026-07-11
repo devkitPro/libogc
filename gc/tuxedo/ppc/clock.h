@@ -107,6 +107,18 @@ MK_CONSTEXPR u64 PPCTicksToMs(u64 ticks)
 	return __PPCMulDiv(ticks, 1000, PPC_TIMER_CLOCK);
 }
 
+void PPCBusyWaitTicks(u64 ticks);
+
+MK_INLINE void PPCBusyWaitMs(u64 ms)
+{
+	PPCBusyWaitTicks(PPCMsToTicks(ms));
+}
+
+MK_INLINE void PPCBusyWaitUs(u64 us)
+{
+	PPCBusyWaitTicks(PPCUsToTicks(us));
+}
+
 MK_EXTERN_C_END
 
 #endif

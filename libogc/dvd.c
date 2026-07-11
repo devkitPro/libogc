@@ -393,7 +393,6 @@ static s32 DVD_LowFuncCall(u32 address,dvdcallbacklow cb);
 static s32 DVD_LowSetGCMOffset(s64 offset,dvdcallbacklow cb);
 static s32 DVD_LowSetOffset(s64 offset,dvdcallbacklow cb);
 
-extern void udelay(int us);
 extern syssramex* __SYS_LockSramEx(void);
 extern u32 __SYS_UnlockSramEx(u32 write);
 
