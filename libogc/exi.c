@@ -38,6 +38,8 @@ distribution.
 #include "exi.h"
 #include "gcutil.h"
 
+#include <tuxedo/thread.h>
+
 #include "lwp_watchdog.h"
 #include "lwp_queue.h"
 #include "lwp_queue.inl"
@@ -84,6 +86,8 @@ static lwp_queue _lckdev_queue;
 static struct _lck_dev lckdevs[EXI_LOCK_DEVS];
 static exibus_priv eximap[EXI_MAX_CHANNELS];
 static u64 last_exi_idtime[EXI_MAX_CHANNELS];
+
+static KThrQueue exi_sync_queue;
 
 static u32 exi_id_serport1 = 0;
 
@@ -279,6 +283,32 @@ s32 EXI_Lock(s32 nChn,s32 nDev,EXICallback unlockCB)
 	__exi_setinterrupts(nChn,exi);
 
 	_CPU_ISR_Restore(level);
+	return 1;
+}
+
+static s32 __exi_locksync_cb(s32 nChn, s32 nDev)
+{
+	KThrQueueUnblockOneByValue(&exi_sync_queue, nChn | (nDev<<2));
+	return 0;
+}
+
+s32 EXI_LockSync(s32 nChn, s32 nDev)
+{
+	if (EXI_Lock(nChn, nDev, NULL)) {
+		return 1;
+	}
+
+	if (PPCIsInExcpt()) {
+		return 0;
+	}
+
+	PPCIrqState st = PPCIrqLockByMsr();
+
+	while (!EXI_Lock(nChn, nDev, __exi_locksync_cb)) {
+		KThrQueueBlock(&exi_sync_queue, nChn | (nDev<<2));
+	}
+
+	PPCIrqUnlockByMsr(st);
 	return 1;
 }
 

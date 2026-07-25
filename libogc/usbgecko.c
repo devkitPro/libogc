@@ -9,35 +9,9 @@
 
 #include "usbgecko.h"
 
-static u32 usbgecko_inited = 0;
-static lwpq_t wait_exi_queue[3];
-
-static s32 __usbgecko_exi_unlock(s32 chan,s32 dev)
-{
-	LWP_ThreadBroadcast(wait_exi_queue[chan]);
-	return 1;
-}
-
-static void __usbgecko_init(void)
-{
-	u32 i;
-
-	for(i=0;i<EXI_CHANNEL_MAX;i++) {
-		LWP_InitQueue(&wait_exi_queue[i]);
-	}
-	usbgecko_inited = 1;
-}
-
 static __inline__ void __usbgecko_exi_wait(s32 chn)
 {
-	u32 level;
-
-	_CPU_ISR_Disable(level);
-	if(!usbgecko_inited) __usbgecko_init();
-	while(EXI_Lock(chn,EXI_DEVICE_0,__usbgecko_exi_unlock)==0) {
-		LWP_ThreadSleep(wait_exi_queue[chn]);
-	}
-	_CPU_ISR_Restore(level);
+	EXI_LockSync(chn, EXI_DEVICE_0);
 }
 
 static __inline__ int __send_command(s32 chn,u16 *cmd)

@@ -69,8 +69,6 @@ static u32 _ioCardFreq[MAX_DRIVE];
 static u32 _ioRetryCnt;
 static cardiocallback _ioRetryCB = NULL;
 
-static lwpq_t _ioEXILock[MAX_DRIVE];
-
 static u32 _ioPageSize[MAX_DRIVE];
 static u32 _ioFlag[MAX_DRIVE];
 static u32 _ioError[MAX_DRIVE];
@@ -256,20 +254,9 @@ static u32 __card_checktimeout(s32 drv_no,u32 startT,u32 timeout)
 	return 1;
 }
 
-static s32 __exi_unlock(s32 chn,s32 dev)
-{
-	LWP_ThreadBroadcast(_ioEXILock[chn]);
-	return 1;
-}
-
 static void __exi_wait(s32 drv_no)
 {
-	u32 ret;
-
-	do {
-		if((ret=EXI_Lock(drv_no,EXI_DEVICE_0,__exi_unlock))==1) break;
-		LWP_ThreadSleep(_ioEXILock[drv_no]);
-	} while(ret==0);
+	EXI_LockSync(drv_no,EXI_DEVICE_0);
 }
 
 static s32 __card_exthandler(s32 chn,s32 dev)
@@ -1200,7 +1187,6 @@ void sdgecko_initIODefault(void)
 		_ioAddressingType[i] = CARD_IO_BYTE_ADDRESSING;
 		_initType[i] = TYPE_SD;
 		_ioCardFreq[i] = EXI_SPEED16MHZ;
-		LWP_InitQueue(&_ioEXILock[i]);
 	}
 }
 

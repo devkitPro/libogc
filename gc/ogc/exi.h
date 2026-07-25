@@ -175,6 +175,18 @@ s32 EXI_Probe(s32 nChn);
 s32 EXI_Lock(s32 nChn,s32 nDev,EXICallback unlockCB);
 
 
+/*! \fn s32 EXI_LockSync(s32 nChn, s32 nDev)
+\brief Try to lock the desired EXI channel on the given device.
+\param[in] nChn EXI channel to lock
+\param[in] nDev EXI device to lock
+
+\remark This function blocks until the EXI channel is locked, except within ISR context.
+
+\return 1 on success, <=0 on error
+*/
+s32 EXI_LockSync(s32 nChn, s32 nDev);
+
+
 /*! \fn s32 EXI_Unlock(s32 nChn)
 \brief Unlock the desired EXI channel.
 \param[in] nChn EXI channel to unlock
