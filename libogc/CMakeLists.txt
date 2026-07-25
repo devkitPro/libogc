@@ -7,24 +7,6 @@ add_library(ogc STATIC
 	lwpcompat/lwpc_sem.c
 	lwpcompat/lwpc_mq.c
 
-	ogc_sockets/soc_init.c
-	ogc_sockets/soc_util.c
-	ogc_sockets/soc_common.c
-	ogc_sockets/soc_socket.c
-	ogc_sockets/soc_bind.c
-	ogc_sockets/soc_listen.c
-	ogc_sockets/soc_send.c
-	ogc_sockets/soc_recv.c
-	ogc_sockets/soc_connect.c
-	ogc_sockets/soc_shutdown.c
-	ogc_sockets/soc_accept.c
-	ogc_sockets/soc_poll.c
-	ogc_sockets/soc_getsockname.c
-	ogc_sockets/soc_fcntl.c
-	ogc_sockets/soc_getsockopt.c
-	ogc_sockets/soc_setsockopt.c
-	ogc_sockets/soc_gethostbyname.c
-
 	console.c
 	lwp_queue.c
 	lwp_wkspace.c
@@ -50,36 +32,49 @@ add_library(ogc STATIC
 	dsp.c
 	si.c
 	tpl.c
-	ipc.c
 	console_font_8x16.c
 	timesupp.c
 	usbgecko.c
-	usbmouse.c
 	sbrk.c
 	kprintf.c
-	stm.c
-	aes.c
-	sha.c
-	ios.c
-	es.c
-	isfs.c
-	usb.c
 	network_common.c
 	sdgecko_io.c
 	sdgecko_buf.c
 	gcsd.c
 	argv.c
-	network_wii.c
-	wiisd.c
-	conf.c
-	usbstorage.c
 	texconv.c
-	wiilaunch.c
-	wd.c
 	sys_report.c
 	default_panic.c
 )
 
+if(NINTENDO_GAMECUBE)
+
+	# ...
+
+elseif(NINTENDO_WII)
+
+	target_sources(ogc PRIVATE
+		ipc.c
+		usbmouse.c
+		stm.c
+		aes.c
+		sha.c
+		ios.c
+		es.c
+		isfs.c
+		usb.c
+		network_wii.c
+		wiisd.c
+		conf.c
+		usbstorage.c
+		wiilaunch.c
+		wd.c
+	)
+
+endif()
+
 target_link_libraries(ogc PRIVATE libogc_inc tuxedo)
+
+add_subdirectory(ogc_sockets)
 
 libogc_install_lib(ogc)

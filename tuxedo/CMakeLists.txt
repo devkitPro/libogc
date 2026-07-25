@@ -17,6 +17,10 @@ add_library(tuxedo OBJECT
 
 target_include_directories(tuxedo PRIVATE ../gc)
 
+target_compile_options(tuxedo PRIVATE
+	-msdata=eabi -Wall -Wno-array-bounds
+)
+
 if(WANT_STANDALONE_TUXEDO)
 	add_library(tuxedo_standalone STATIC)
 	set_target_properties(tuxedo_standalone PROPERTIES OUTPUT_NAME tuxedo)

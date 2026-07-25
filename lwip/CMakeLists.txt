@@ -24,6 +24,6 @@ add_library(bba STATIC
 	netif/loopif.c
 )
 
-target_link_libraries(bba PRIVATE libogc_inc)
+target_link_libraries(bba PRIVATE libogc_inc ogc_sockets)
 
 libogc_install_lib(bba)
