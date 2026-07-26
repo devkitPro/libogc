@@ -49,7 +49,9 @@ add_library(ogc STATIC
 
 if(NINTENDO_GAMECUBE)
 
-	# ...
+	target_sources(ogc PRIVATE
+		bba.c
+	)
 
 elseif(NINTENDO_WII)
 
