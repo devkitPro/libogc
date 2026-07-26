@@ -592,8 +592,6 @@ void _break(void)
 
 void DEBUG_Init(s32 device_type,s32 channel_port)
 {
-	struct uip_ip_addr localip,netmask,gateway;
-
 	UIP_LOG("DEBUG_Init()\n");
 
 	bp_init();
@@ -601,11 +599,17 @@ void DEBUG_Init(s32 device_type,s32 channel_port)
 	if(device_type==GDBSTUB_DEVICE_USB) {
 		current_device = usb_init(channel_port);
 	} else {
+#ifdef __gamecube__
+		struct uip_ip_addr localip,netmask,gateway;
+
 		localip.addr = uip_ipaddr((const u8_t*)tcp_localip);
 		netmask.addr = uip_ipaddr((const u8_t*)tcp_netmask);
 		gateway.addr = uip_ipaddr((const u8_t*)tcp_gateway);
 
 		current_device = tcpip_init(&localip,&netmask,&gateway,(u16)channel_port);
+#else
+		current_device = NULL;
+#endif
 	}
 
 	if(current_device!=NULL) {
