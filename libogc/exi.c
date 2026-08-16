@@ -599,6 +599,66 @@ s32 EXI_Dma(s32 nChn,void *pData,u32 nLen,u32 nMode,EXICallback tc_cb)
 	return 1;
 }
 
+static s32 __exi_xfer_cb(s32 nChn, s32 nDev)
+{
+	KThrQueueUnblockOneByValue(&exi_sync_queue, nChn | 0x100);
+	return 1;
+}
+
+s32 EXI_Transfer(s32 nChn,void *pData,u32 nLen,u32 nMode)
+{
+	if (nMode == EXI_READWRITE) {
+		return 0;
+	}
+
+	unsigned misalign = (u32)pData & 0x1f;
+	if (nLen < (misalign ? 0x40 : 0x20)) {
+		return EXI_ImmEx(nChn, pData, nLen, nMode);
+	}
+
+	if (misalign) {
+		unsigned head = 0x20 - misalign;
+		if (!EXI_ImmEx(nChn, pData, head, nMode)) {
+			return 0;
+		}
+
+		pData = (u8*)pData + head;
+		nLen -= head;
+	}
+
+	unsigned tail = nLen & 0x1f;
+	nLen &= ~0x1f;
+
+	if (nMode == EXI_READ) {
+		PPCDCacheInvalidate(pData, nLen);
+	} else /* if (nMode == EXI_WRITE) */ {
+		PPCDCacheStore(pData, nLen);
+	}
+
+	PPCIrqState st = PPCIrqLockByMsr();
+	s32 ret;
+
+	if (PPCIsInExcpt()) {
+		ret = EXI_Dma(nChn, pData, nLen, nMode, NULL);
+		if (ret) {
+			EXI_Sync(nChn);
+		}
+	} else {
+		ret = EXI_Dma(nChn, pData, nLen, nMode, __exi_xfer_cb);
+		if (ret) {
+			KThrQueueBlock(&exi_sync_queue, nChn | 0x100);
+		}
+	}
+
+	PPCIrqUnlockByMsr(st);
+
+	if (ret && tail) {
+		ret = EXI_ImmEx(nChn, (u8*)pData + nLen, tail, nMode);
+	}
+
+	return ret;
+}
+
 s32 EXI_GetState(s32 nChn)
 {
 	exibus_priv *exi = &eximap[nChn];
