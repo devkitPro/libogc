@@ -39,7 +39,6 @@ add_library(ogc STATIC
 	kprintf.c
 	network_common.c
 	sdgecko_io.c
-	sdgecko_buf.c
 	gcsd.c
 	argv.c
 	texconv.c

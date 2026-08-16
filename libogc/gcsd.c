@@ -34,7 +34,6 @@
 #include <sdcard/gcsd.h>
 #include <sdcard/card_cmn.h>
 #include <sdcard/card_io.h>
-#include <sdcard/card_buf.h>
 
 static int __gcsd_init = 0;
 
@@ -54,7 +53,6 @@ static bool __gcsd_startup(int n)
 	s32 ret;
 
 	if(!__gcsd_init) {
-		sdgecko_initBufferPool();
 		sdgecko_initIODefault();
 		__gcsd_init = 1;
 	}
