@@ -20,19 +20,16 @@
 
 /* Addressing Types */
 typedef enum {
-    CARD_IO_SECTOR_ADDRESSING = 0,
-    CARD_IO_BYTE_ADDRESSING = 1,
+	CARD_IO_SECTOR_ADDRESSING = 0,
+	CARD_IO_BYTE_ADDRESSING = 1,
 } card_addressing_type_t;
 
 #ifdef __cplusplus
-   extern "C" {
+	extern "C" {
 #endif /* __cplusplus */
 
 extern u8 g_CSD[MAX_DRIVE][16];
 extern u8 g_CID[MAX_DRIVE][16];
-extern u8 g_mCode[MAX_MI_NUM];
-extern u16 g_dCode[MAX_MI_NUM][MAX_DI_NUM];
-
 
 void sdgecko_initIODefault(void);
 s32 sdgecko_initIO(s32 drv_no);
@@ -41,25 +38,17 @@ s32 sdgecko_readCID(s32 drv_no);
 s32 sdgecko_readCSD(s32 drv_no);
 s32 sdgecko_readStatus(s32 drv_no);
 s32 sdgecko_readSectors(s32 drv_no,u32 sector_no,u32 num_sectors,void *buf);
-s32 sdgecko_writeSector(s32 drv_no,u32 sector_no,const void *buf,u32 len);
 s32 sdgecko_writeSectors(s32 drv_no,u32 sector_no,u32 num_sectors,const void *buf);
 
 s32 sdgecko_doUnmount(s32 drv_no);
 
-void sdgecko_insertedCB(s32 drv_no);
-void sdgecko_ejectedCB(s32 drv_no);
-
 u32 sdgecko_getSpeed(s32 drv_no);
 void sdgecko_setSpeed(s32 drv_no, u32 freq);
 
-u32 sdgecko_getPageSize(s32 drv_no);
-s32 sdgecko_setPageSize(s32 drv_no, u32 size);
-
 card_addressing_type_t sdgecko_getAddressingType(s32 drv_no);
 
-
 #ifdef __cplusplus
-   }
+	}
 #endif /* __cplusplus */
 
 #endif
