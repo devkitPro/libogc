@@ -183,7 +183,7 @@ static inline void *__console_get_buffer_start_ptr()
 	// writing characters/pixels to the console buffer via stdio/etc does not involve those values otherwise
 	// only console dimensions (con_xres/con_yres/con_stride) and cursor/window values (cursorX/cursorY/con_cols/con_rows/...)
 
-	return _console_buffer != NULL 
+	return _console_buffer != NULL
 		? _console_buffer // same as currentConsole->destbuffer, don't need to load from a struct access
 		: __console_offset_by_pixels(currentConsole->destbuffer, currentConsole->target_y, currentConsole->tgt_stride, currentConsole->target_x);
 }
@@ -495,6 +495,8 @@ void __console_init(void *destbuffer,int xstart,int ystart,int xres,int yres,int
 	unsigned int level;
 
 	_CPU_ISR_Disable(level);
+
+	_console_buffer = NULL; // exception handler workaround
 
 	__set_default_console(destbuffer, xstart, ystart, stride, xres, yres, stride);
 
