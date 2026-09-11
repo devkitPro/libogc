@@ -34,8 +34,8 @@ distribution.
 #include "ipc.h"
 #include "system.h"
 #include "asm.h"
-#include "processor.h"
-#include "cache.h"
+#include "tuxedo/ppc/intrinsics.h"
+#include "tuxedo/ppc/cache.h"
 #include "stm.h"
 
 //#define DEBUG_STM
@@ -132,17 +132,17 @@ s32 __STM_SendCommand(s32 ioctl, const void *inbuf, u32 inlen, void *outbuf, u32
 s32 __STM_SetEventHook(void)
 {
 	s32 ret;
-	u32 level;
+	PPCIrqState irq;
 
 	if(__stm_initialized==0) return STM_ENOTINIT;
 	
 	__stm_ehclear = 0;
 	
-	_CPU_ISR_Disable(level);
+	irq = PPCIrqLockByMsr();
 	ret = IOS_IoctlAsync(__stm_eh_fd,IOCTL_STM_EVENTHOOK,__stm_ehbufin,0x20,__stm_ehbufout,0x20,__STMEventHandler,NULL);
 	if(ret<0) __stm_ehregistered = 0;
 	else __stm_ehregistered = 1;
-	_CPU_ISR_Restore(level);
+	PPCIrqUnlockByMsr(irq);
 
 	return ret;
 }
@@ -195,10 +195,9 @@ stmcallback STM_RegisterEventHandler(stmcallback newhandler)
 
 __attribute__((noreturn))
 static void WaitForImpendingDoom(void) {
-	u32 level;
-	_CPU_ISR_Disable(level);
-	ICFlashInvalidate();
-	ppchalt();
+	// PPCIrqState irq = PPCIrqLockByMsr();
+	// PPCICacheInvalidate();
+	for (;;);
 }
 
 s32 STM_ShutdownToStandby(void)
@@ -296,7 +295,6 @@ struct STM_LedFlashConfig
 	u16 patterns[STM_MAX_LED_PATTERNS];
 };
 
-// capitalization of LED is debatable. libogc currently has STM_SetLedMode, meanwhile this function is internally called ISTM_StartLEDFlashLoop
 s32 STM_StartLedFlashLoop(u8 pattern_id, u8 priority, u8 flags, const u16* patterns, u32 num_patterns)
 {
 	s32 ret;
@@ -323,9 +321,6 @@ s32 STM_StartLedFlashLoop(u8 pattern_id, u8 priority, u8 flags, const u16* patte
 	return ret;
 }
 
-// This is where __stm_vdinuse would come into play
-// https://github.com/koopthekoopa/wii-ipl/blob/main/libs/RVL_SDK/src/os/OSStateTM.c#L176
-// I guess it's to prevent the function from being called 0ms after it was called the first time. Not sure why.
 s32 STM_VIDimming(bool enable, u32 luma, u32 chroma)
 {
 	s32 ret;
