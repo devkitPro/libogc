@@ -1581,8 +1581,7 @@ u16_t lp_pdu_maxsize(void)
 /*-----------------------------------------------------------------------------------*/
 /* hci_get_bd_addr():
  *
- * Called by L2CAP to check the maxsize of the PDU. In this case it is the largest
- * ACL packet that the Host Controller can buffer.
+ * Called by the host to get its own local Bluetooth address.
  */
 /*-----------------------------------------------------------------------------------*/
 void hci_get_bd_addr(struct bd_addr *bdaddr)
