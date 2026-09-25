@@ -275,7 +275,7 @@ static void __si_gettypecallback(s32 chan,u32 type)
 	__PADFixBits &= ~SI_CHAN_BIT(chan);
 
 	if(type&0x0f || ((si_type[chan]&SI_TYPE_MASK)-SI_TYPE_GC)
-		|| !(si_type[chan]&SI_GC_WIRELESS) || si_type[chan]&SI_WIRELESS_IR) {
+		|| !(si_type[chan]&SI_GC_FEATURE_WIRELESS) || si_type[chan]&SI_WIRELESS_IR) {
 		SYS_SetWirelessID(chan,0);
 		__si_calltypandstatuscallback(chan,si_type[chan]);
 		return;
@@ -675,7 +675,7 @@ u32 SI_DecodeType(u32 type)
 		case SI_TYPE_GC:
 			if(type==SI_GC_STEERING) return SI_GC_STEERING;
 			if(type==SI_GC_KEYBOARD) return SI_GC_KEYBOARD;
-			if((type&SI_GC_WIRELESS) && !(type&SI_WIRELESS_IR)) {
+			if((type&SI_GC_FEATURE_WIRELESS) && !(type&SI_WIRELESS_IR)) {
 				if((type&SI_GC_WAVEBIRD)==SI_GC_WAVEBIRD) return SI_GC_WAVEBIRD;
 				else if(!(type&SI_WIRELESS_STATE)) return SI_GC_RECEIVER;
 			}

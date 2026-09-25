@@ -3,6 +3,12 @@
 
 #include <gctypes.h>
 
+#define PAD_TYPE_NONE				-1
+#define PAD_TYPE_STANDARD			0
+#define PAD_TYPE_WAVEBIRD			1
+#define PAD_TYPE_KEYBOARD			2
+#define PAD_TYPE_STEERING			3
+
 #define PAD_CHAN0					0
 #define PAD_CHAN1					1
 #define PAD_CHAN2					2
@@ -53,6 +59,7 @@ typedef struct _padstatus {
 	u8 triggerR;
 	u8 analogA;
 	u8 analogB;
+	u8 keyboard[3];
 	s8 err;
 } PADStatus;
 
@@ -69,12 +76,17 @@ u32 PAD_Recalibrate(u32 mask);
 void PAD_Clamp(PADStatus *status);
 void PAD_ControlMotor(s32 chan,u32 cmd);
 void PAD_SetSpec(u32 spec);
+s32 PAD_GetType(s32 chan);
 
 u32 PAD_ScanPads(void);
 
 u16 PAD_ButtonsUp(int pad);
 u16 PAD_ButtonsDown(int pad);
 u16 PAD_ButtonsHeld(int pad);
+
+s32 PAD_KeyboardUp(int pad, u8 *keys);
+s32 PAD_KeyboardDown(int pad, u8 *keys);
+s32 PAD_KeyboardHeld(int pad, u8 *keys);
 
 s8 PAD_SubStickX(int pad);
 s8 PAD_SubStickY(int pad);
