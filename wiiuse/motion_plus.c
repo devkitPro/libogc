@@ -30,7 +30,7 @@ static void wiiuse_probe_motion_plus_check2(struct wiimote_t *wm, ubyte *data, u
 
 static void wiiuse_probe_motion_plus_check1(struct wiimote_t *wm, ubyte *data, uword len)
 {
-	if (data[1] != 0x05)
+	if (data[5] != 0x05)
 	{
 		WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_MPLUS_PRESENT);
 		WIIMOTE_DISABLE_STATE(wm, WIIMOTE_STATE_EXP_HANDSHAKE);
@@ -45,7 +45,7 @@ static void wiiuse_probe_motion_plus_check1(struct wiimote_t *wm, ubyte *data, u
 void wiiuse_probe_motion_plus(struct wiimote_t *wm)
 {
 	ubyte *buf = __lwp_wkspace_allocate(MAX_PAYLOAD);
-	wiiuse_read_data(wm, buf, WM_EXP_MOTION_PLUS_MODE, 2, wiiuse_probe_motion_plus_check1);
+	wiiuse_read_data(wm, buf, WM_EXP_ID, 6, wiiuse_probe_motion_plus_check1);
 }
 
 void wiiuse_motion_plus_check(struct wiimote_t *wm,ubyte *data,uword len)
