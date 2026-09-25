@@ -515,25 +515,39 @@ typedef struct guitar_hero_3_t {
 	struct joystick_t js;			/**< joystick calibration					*/
 } guitar_hero_3_t;
 
+enum wii_board_sensor_id_t {
+	WII_BOARD_SENSOR_ID_TOP_RIGHT,
+	WII_BOARD_SENSOR_ID_BOT_RIGHT,
+	WII_BOARD_SENSOR_ID_TOP_LEFT,
+	WII_BOARD_SENSOR_ID_BOT_LEFT,
+	WII_BOARD_NUM_SENSORS
+};
+
+typedef struct wii_board_sensor_cal_t {
+	short ref_0;
+	short ref_17;
+	short ref_34;
+} wii_board_sensor_cal_t;
+
 /**
   * @struct wii_board_t
   * @brief Wii Balance Board expansion device.
   */
 typedef struct wii_board_t {
-	float tl;  /* Interpolated */
-	float tr;
-	float bl;
-	float br;  /* End interp */
-	short rtl; /* RAW */
-	short rtr;
-	short rbl;
-	short rbr; /* /RAW */
-	short ctl[3]; /* Calibration */
-	short ctr[3];
-	short cbl[3];
-	short cbr[3]; /* /Calibration */
-	float x;
-	float y;
+	/* RAW */
+	short raw_sensor[WII_BOARD_NUM_SENSORS];
+	ubyte raw_temp;
+	ubyte raw_bat;
+	/* Calibration */
+	wii_board_sensor_cal_t cal_sensor[WII_BOARD_NUM_SENSORS];
+	ubyte cal_temp;
+	ubyte cal_bat;	/**< always 0x69 */
+	/* Calculated */
+	float weight[WII_BOARD_NUM_SENSORS];
+	float total_weight;
+	float x;	/**< normalized to [-1, +1], positive is right */
+	float y;	/**< normalized [-1, +1], positive is up */
+	ubyte battery;	/**< number of battery bars, from 0 to 4 */
 } wii_board_t;
 
 typedef struct motion_plus_t
