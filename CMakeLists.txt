@@ -64,6 +64,18 @@ add_subdirectory(libiso9660)
 if(NINTENDO_GAMECUBE)
 	add_subdirectory(lwip)
 elseif(NINTENDO_WII)
+	set(WITH_OPENOBEX OFF CACHE BOOL "Build with OpenOBEX" FORCE)
+	include_directories(gc)
+	if (NOT EXISTS "${CMAKE_SOURCE_DIR}/bt-embedded/CMakeLists.txt")
+		include(FetchContent)
+		FetchContent_Populate(BtEmbedded
+			GIT_REPOSITORY https://github.com/embedded-game-controller/bt-embedded.git
+			GIT_TAG        fa0a213eab010b323958822b1f87e89823328b8e
+			SOURCE_DIR     ${CMAKE_SOURCE_DIR}/bt-embedded
+		)
+	endif()
+	add_subdirectory(bt-embedded)
+	add_subdirectory(wpad2)
 	add_subdirectory(lwbt)
 	add_subdirectory(wiiuse)
 	add_subdirectory(libdi)
