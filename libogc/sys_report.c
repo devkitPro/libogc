@@ -53,13 +53,23 @@ static ssize_t __uart_write(const char *buffer,size_t len)
 	if(EXI_Deselect(EXI_CHANNEL_0)==0) ret |= 0x08;
 	if(EXI_Unlock(EXI_CHANNEL_0)==0) ret |= 0x10;
 
-	return len;
+	return ret;
 }
 
 #define __outsz 256
 
 static ssize_t __uart_stdio_write(struct _reent *r, void *fd, const char *ptr, size_t len)
 {
+	// on retail consoles, there is no UART and the address shared with rtc so... no.
+	// Dolphin reports as devkit, so it keeps working there
+#ifdef __gamecube__
+	if (((*(vu32 *)0xCC006024) & 0xFF) == 0xFF)
+		return len;
+#elif defined(__wii__)
+	if (((*(vu32 *)0xCD006024) & 0xFF) != 0x01)
+		return len;
+#endif
+
 	// translate \n and \r\n to \r for Dolphin handling
 	char *p = (char*)ptr;
 	char *buf = (char*)ptr;
