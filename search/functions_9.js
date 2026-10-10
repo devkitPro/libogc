@@ -6,5 +6,6 @@ var searchData=
   ['sys_5finit_3',['SYS_Init',['../system_8h.html#ae7266b09907efcfb4bc5df00c544715c',1,'system.h']]],
   ['sys_5fmainloop_4',['SYS_MainLoop',['../system_8h.html#a3aa37db2c8a3b67942850149711cfe9b',1,'system.h']]],
   ['sys_5fremovealarm_5',['SYS_RemoveAlarm',['../system_8h.html#a16d2e41f1289aa02a5f0f1b4ee2ca036',1,'system.h']]],
-  ['sys_5freport_6',['SYS_Report',['../system_8h.html#a971ebbcbf83c1b196c9d9d6c61572ae1',1,'system.h']]]
+  ['sys_5freport_6',['SYS_Report',['../system_8h.html#a971ebbcbf83c1b196c9d9d6c61572ae1',1,'system.h']]],
+  ['sys_5fsettimeslice_7',['SYS_SetTimeslice',['../system_8h.html#a986df04c598ba9433c5165d1565fc085',1,'system.h']]]
 ];

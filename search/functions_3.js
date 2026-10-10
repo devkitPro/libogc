@@ -9,12 +9,14 @@ var searchData=
   ['exi_5fimm_6',['EXI_Imm',['../exi_8h.html#af8e537039da1860d15ffa80f584bcc47',1,'exi.h']]],
   ['exi_5fimmex_7',['EXI_ImmEx',['../exi_8h.html#a0f3652fee08d05971a0684edbab4c708',1,'exi.h']]],
   ['exi_5flock_8',['EXI_Lock',['../exi_8h.html#a555aa034ef6ceb5103d133762f1ffbf5',1,'exi.h']]],
-  ['exi_5fprobe_9',['EXI_Probe',['../exi_8h.html#a7d36ded403c4b8edd245272c86b1f1ea',1,'exi.h']]],
-  ['exi_5fprobeex_10',['EXI_ProbeEx',['../exi_8h.html#a631a998dbe1abb40d769fd5376ca9b2e',1,'exi.h']]],
-  ['exi_5fprobereset_11',['EXI_ProbeReset',['../exi_8h.html#a48e3e00ed6b3b7568783d4d61f914d87',1,'exi.h']]],
-  ['exi_5fregisterexicallback_12',['EXI_RegisterEXICallback',['../exi_8h.html#a48c47c3d40f3d761d3a5936296de3c1a',1,'exi.h']]],
-  ['exi_5fselect_13',['EXI_Select',['../exi_8h.html#a11b857b162ea6e0828a17a5777e32690',1,'exi.h']]],
-  ['exi_5fselectsd_14',['EXI_SelectSD',['../exi_8h.html#afd7131281a2cded4c638a0f6fc7c0d60',1,'exi.h']]],
-  ['exi_5fsync_15',['EXI_Sync',['../exi_8h.html#a1264f0948b6f11f6212fa37b15a4eac8',1,'exi.h']]],
-  ['exi_5funlock_16',['EXI_Unlock',['../exi_8h.html#a4b51bc553ba68ce96a564e20d8b49441',1,'exi.h']]]
+  ['exi_5flocksync_9',['EXI_LockSync',['../exi_8h.html#a712e4f8869bcf034aec91c35d0002232',1,'exi.h']]],
+  ['exi_5fprobe_10',['EXI_Probe',['../exi_8h.html#a7d36ded403c4b8edd245272c86b1f1ea',1,'exi.h']]],
+  ['exi_5fprobeex_11',['EXI_ProbeEx',['../exi_8h.html#a631a998dbe1abb40d769fd5376ca9b2e',1,'exi.h']]],
+  ['exi_5fprobereset_12',['EXI_ProbeReset',['../exi_8h.html#a48e3e00ed6b3b7568783d4d61f914d87',1,'exi.h']]],
+  ['exi_5fregisterexicallback_13',['EXI_RegisterEXICallback',['../exi_8h.html#a48c47c3d40f3d761d3a5936296de3c1a',1,'exi.h']]],
+  ['exi_5fselect_14',['EXI_Select',['../exi_8h.html#a11b857b162ea6e0828a17a5777e32690',1,'exi.h']]],
+  ['exi_5fselectsd_15',['EXI_SelectSD',['../exi_8h.html#afd7131281a2cded4c638a0f6fc7c0d60',1,'exi.h']]],
+  ['exi_5fsync_16',['EXI_Sync',['../exi_8h.html#a1264f0948b6f11f6212fa37b15a4eac8',1,'exi.h']]],
+  ['exi_5ftransfer_17',['EXI_Transfer',['../exi_8h.html#ad7c14b898f289d69736e1934a67402ec',1,'exi.h']]],
+  ['exi_5funlock_18',['EXI_Unlock',['../exi_8h.html#a4b51bc553ba68ce96a564e20d8b49441',1,'exi.h']]]
 ];
