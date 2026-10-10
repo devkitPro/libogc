@@ -1763,9 +1763,12 @@ s32 WPAD_Shutdown(void)
 
 	__wpads_inited = WPAD_STATE_DISABLED;
 	SYS_RemoveAlarm(__wpad_timer);
+	__wpad_timer = 0;
+
 	for(i=0;i<WPAD_MAX_DEVICES;i++) {
 		wpdcb = &__wpdcb[i];
 		SYS_RemoveAlarm(wpdcb->sound_alarm);
+		wpdcb->sound_alarm = 0;
 		bte_free(__wpads_listen[i].sock);
 		__wpads_listen[i].sock = NULL;
 	}
@@ -1774,7 +1777,10 @@ s32 WPAD_Shutdown(void)
 	__wpads_used = 0;
 
 	__wiiuse_sensorbar_enable(0);
-	wiiuse_cleanup(__wpads, WPAD_MAX_DEVICES);
+	if (__wpads) {
+		wiiuse_cleanup(__wpads, WPAD_MAX_DEVICES);
+		__wpads = NULL;
+	}
 	_CPU_ISR_Restore(level);
 
 	BTE_Shutdown();
