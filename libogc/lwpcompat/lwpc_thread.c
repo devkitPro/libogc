@@ -85,7 +85,7 @@ lwp_t LWP_GetSelf(void)
 
 void LWP_SetThreadPriority(lwp_t thethread, u32 prio)
 {
-	KThread* t = lwpc_get_thread(thethread);
+	KThread* t = thethread != LWP_THREAD_NULL ? lwpc_get_thread(thethread) : KThreadGetSelf();
 	if (t) {
 		KThreadSetPrio(t, KTHR_MIN_PRIO - (prio & LWP_PRIO_HIGHEST));
 	}
