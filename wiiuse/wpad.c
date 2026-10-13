@@ -97,6 +97,7 @@ static conf_pads __wpad_devs = {0};
 static conf_pad_guests __wpad_guests = {0};
 static struct linkkey_info __wpad_keys[CONF_PAD_MAX_REGISTERED] = {0};
 static struct linkkey_info __wpad_guest_keys[CONF_PAD_ACTIVE_AND_OTHER] = {0};
+static bool __wpad_pair_guest_mode = FALSE;
 
 static sem_t __wpad_confsave_sem;
 static bool __wpad_confsave_thread_running = false;
@@ -321,10 +322,8 @@ wiimote *__wpad_register_new(wiimote_listen *wml, u8 err)
 	wm = __wpad_assign_slot(wml, err);
 	if (wm)
 	{
-		guestEntry = GetGuestSlot(&wml->bdaddr);
 		registeredEntry = GetRegisteredSlot(&wml->bdaddr);
-
-		if(BTE_GetPairMode() == PAIR_MODE_NORMAL) {
+		if(!__wpad_pair_guest_mode) {
 			// Permanent pair, need to save bdaddr as known controller
 			if(registeredEntry >= __wpad_devs.num_registered) {
 				// If currently guest, we want to allow for upgrade to permanent pair
@@ -336,18 +335,21 @@ wiimote *__wpad_register_new(wiimote_listen *wml, u8 err)
 					memset(&__wpad_guests.guests[--__wpad_guests.num_guests], 0, sizeof(conf_pad_guest_device));
 				}
 		
-				WIIUSE_DEBUG("Registering Wiimote '%s' with system...", wml->name);
+				WIIUSE_INFO("Registering Wiimote '%s' with system...", wml->name);
 				memmove(&__wpad_devs.registered[1], &__wpad_devs.registered[0], sizeof(conf_pad_device)*(CONF_PAD_MAX_REGISTERED-1));
 				BYTES_FROM_BD_ADDR(__wpad_devs.registered[0].bdaddr, &wml->bdaddr);
 				memcpy(__wpad_devs.registered[0].name, wml->name, sizeof(__wpad_devs.registered[0].name));
 				if (__wpad_devs.num_registered < CONF_PAD_MAX_REGISTERED)
 					__wpad_devs.num_registered++;
 				LWP_SemPost(__wpad_confsave_sem);
+			} else {
+				WIIUSE_INFO("Registered pad '%s' found in slot %d", wml->name, registeredEntry);
 			}
 		} else if(registeredEntry >= CONF_PAD_MAX_REGISTERED) {
 			// Not permanent pair, need to save bdaddr and link key as guest controller
+			guestEntry = GetGuestSlot(&wml->bdaddr);
 			if(guestEntry >= CONF_PAD_MAX_ACTIVE) {
-				WIIUSE_DEBUG("Saving Wiimote '%s' as guest...", wml->name);
+				WIIUSE_INFO("Saving Wiimote '%s' as guest...", wml->name);
 				memmove(&__wpad_guests.guests[1], &__wpad_guests.guests[0], sizeof(conf_pad_guest_device)*(CONF_PAD_MAX_ACTIVE-1));
 				BYTES_FROM_BD_ADDR(__wpad_guests.guests[0].bdaddr, &wml->bdaddr);
 				memcpy(__wpad_guests.guests[0].name, wml->name, sizeof(__wpad_guests.guests[0].name));
@@ -881,13 +883,13 @@ s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
 			if (!strncmp("Nintendo RVL-CNT-", (char *)info->name, 17)) {
 				slot = GetActiveSlot(&info->bdaddr);
 				if (slot < CONF_PAD_MAX_ACTIVE) {
-					WIIUSE_DEBUG("Wiimote already active in slot %d", slot);
+					WIIUSE_INFO("Wiimote already active in slot %d", slot);
 				} else {
 					// Not active, try to make active
 					slot = WPAD_MAX_DEVICES;
 					for(i=0; i<CONF_PAD_MAX_ACTIVE; i++) {
 						if(!(__wpads_used & (1<<i))) {
-							WIIUSE_DEBUG("Attempting to connect to Wiimote using slot %d", i);
+							WIIUSE_INFO("Attempting to connect to Wiimote using slot %d", i);
 							slot = i;
 							break;
 						}
@@ -897,14 +899,14 @@ s32 __wpad_read_remote_name_finished(s32 result,void *userdata)
 				// Check for balance board
 				BD_ADDR_FROM_BYTES(&(bdaddr),__wpad_devs.balance_board.bdaddr);
 				if (bd_addr_cmp(&info->bdaddr,&bdaddr)) {
-					WIIUSE_DEBUG("Balance Board already registered");
+					WIIUSE_INFO("Balance Board already registered");
 					slot = WPAD_BALANCE_BOARD;
 				}
 				
 				// Not active, try to make active
 				if(slot != WPAD_BALANCE_BOARD) {
 					if(!(__wpads_used & (1<<WPAD_BALANCE_BOARD))) {
-						WIIUSE_DEBUG("Attempting to connect to Balance Board");
+						WIIUSE_INFO("Attempting to connect to Balance Board");
 						slot = WPAD_BALANCE_BOARD;
 					}
 				}
@@ -971,21 +973,21 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 	struct bd_addr bdaddr;
 	const u8 *name = NULL;
 
-	WIIUSE_DEBUG("__wpad_connreqCB");
+	WIIUSE_INFO("__wpad_connreqCB");
 	_CPU_ISR_Disable(level);
 
 	// Only accept connection requests (i.e. "press any button") if not doing guest pairing
-	if(BTE_GetPairMode() == PAIR_MODE_NORMAL) {
+	if(!__wpad_pair_guest_mode) {
 		if(!bd_addr_cmp(pad_addr,BD_ADDR_ANY)) {
 			confslot = GetActiveSlot(pad_addr);
 			if (confslot < CONF_PAD_MAX_ACTIVE) {
 				BD_ADDR_FROM_BYTES(&bdaddr,__wpad_devs.active[confslot].bdaddr);
 				name = (const u8 *)__wpad_devs.active[confslot].name;
-				WIIUSE_DEBUG("Active pad '%s' found in slot %d", name, confslot);
+				WIIUSE_INFO("Active pad '%s' found in slot %d", name, confslot);
 				if (!(__wpads_used & (1<<confslot)) || bd_addr_cmp(pad_addr,&bdaddr))
 					slot = confslot;
 				else
-					WIIUSE_DEBUG("Slot %d taken! Finding new slot", confslot);
+					WIIUSE_INFO("Slot %d taken! Finding new slot", confslot);
 			}
 	
 			if(slot >= WPAD_MAX_DEVICES) {
@@ -993,13 +995,13 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 					BD_ADDR_FROM_BYTES(&bdaddr,__wpad_devs.registered[i].bdaddr);
 					if(bd_addr_cmp(pad_addr,&bdaddr)) {
 						name = (const u8 *)__wpad_devs.registered[i].name;
-						WIIUSE_DEBUG("Registered pad '%s' found in slot %d", name, i);
+						WIIUSE_INFO("Registered pad '%s' found in slot %d", name, i);
 		
 						// Not active, try to make active
 						if(!strncmp("Nintendo RVL-CNT-", __wpad_devs.registered[i].name, 17)) {
 							for(j=0; j<WPAD_BALANCE_BOARD; j++) {
 								if(!(__wpads_used & (1<<j))) {
-									WIIUSE_DEBUG("Attempting to accept connection from pad using slot %d", j);
+									WIIUSE_INFO("Attempting to accept connection from pad using slot %d", j);
 									slot = j;
 									break;
 								}
@@ -1010,7 +1012,7 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 							}
 						} else {
 							if(!(__wpads_used & (1<<WPAD_BALANCE_BOARD))) {
-								WIIUSE_DEBUG("Attempting to accept connection from Balance Board");
+								WIIUSE_INFO("Attempting to accept connection from Balance Board");
 								slot = WPAD_BALANCE_BOARD;
 								break;
 							}
@@ -1022,7 +1024,7 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 
 			if(slot < WPAD_MAX_DEVICES) {
 				__wpads_used |= (0x01<<slot);
-				WIIUSE_DEBUG("Assigning slot %d",slot);
+				WIIUSE_INFO("Assigning slot %d",slot);
 
 				wiiuse_accept(&__wpads_listen[slot],pad_addr,name,__wpad_assign_slot);
 				_CPU_ISR_Restore(level);
@@ -1035,6 +1037,30 @@ static s8 __wpad_connreqCB(void *arg,struct bd_addr *pad_addr,u8 *cod,u8 link_ty
 	}
 	_CPU_ISR_Restore(level);
 	return ERR_CONN;
+}
+
+static s8 __wpad_pinreqCB(void *arg,struct bd_addr *pad_addr)
+{
+	int level;
+	struct bd_addr addr;
+
+	WIIUSE_DEBUG("__wpad_pinreqCB");
+	_CPU_ISR_Disable(level);
+	
+	if (!__wpad_pair_guest_mode)
+	{
+		// Pairing from sync button (permanent)
+		BTE_GetLocalAddress(&addr);
+	}
+	else
+	{
+		// Pairing from 1+2 (guest/temporary)
+		bd_addr_set(&addr, pad_addr);
+	}
+
+	BTE_PinCodeRequestReply(pad_addr, sizeof(addr.addr), addr.addr);
+	_CPU_ISR_Restore(level);
+	return ERR_OK;
 }
 
 static s8 __wpad_linkkeyreqCB(void *arg,struct bd_addr *pad_addr)
@@ -1074,7 +1100,7 @@ static s8 __wpad_linkkeynotCB(void *arg,struct bd_addr *pad_addr,u8 *key)
 
 	WIIUSE_DEBUG("__wpad_linkkeynotCB");
 		
-	if(BTE_GetPairMode() == PAIR_MODE_NORMAL) {
+	if(!__wpad_pair_guest_mode) {
 		// Only write link key to controller if not doing guest pairing
 		BTE_WriteStoredLinkKey(pad_addr,key);
 
@@ -1145,6 +1171,7 @@ s32 WPAD_StartPairing(void)
 	
 	_CPU_ISR_Disable(level);
 	WIIUSE_INFO("WPAD Begin Pairing");
+	__wpad_pair_guest_mode = FALSE;
 	BTE_Inquiry(BD_MAX_INQUIRY_DEVS, TRUE, __wpad_inquiry_finished);
 	_CPU_ISR_Restore(level);
 
@@ -1157,7 +1184,7 @@ s32 WPAD_WipeSavedControllers(void)
 	int i;
 
 	_CPU_ISR_Disable(level);
-	WIIUSE_DEBUG("WPAD Wipe Registered Pads");
+	WIIUSE_INFO("WPAD Wipe Registered Pads");
 
 	for(i=0;i<WPAD_MAX_DEVICES;i++) {
 		__wpad_disconnect(&__wpdcb[i]);
@@ -1202,7 +1229,8 @@ s32 WPAD_Search(void)
 	memset(__wpad_devs.active,0,sizeof(__wpad_devs.active));
 	memset(&__wpad_guests,0,sizeof(__wpad_guests));
 	memset(__wpad_guest_keys,0,sizeof(__wpad_guest_keys));
-
+	__wpad_pair_guest_mode = TRUE;
+	
 	BTE_PeriodicInquiry(BD_MAX_INQUIRY_DEVS, TRUE, __wpad_inquiry_finished);
 	_CPU_ISR_Restore(level);
 
@@ -1214,8 +1242,9 @@ s32 WPAD_StopSearch(void)
 	u32 level;
 
 	_CPU_ISR_Disable(level);
-	WIIUSE_DEBUG("WPAD Stopping Guest Device Search");
+	WIIUSE_INFO("WPAD Stopping Guest Device Search");
 	BTE_ExitPeriodicInquiry();
+	__wpad_pair_guest_mode = FALSE;
 	_CPU_ISR_Restore(level);
 	return ERR_OK;
 }
@@ -1302,6 +1331,7 @@ s32 WPAD_Init(void)
 		BTE_SetConnectionRequestCallback(__wpad_connreqCB);
 		BTE_SetLinkKeyRequestCallback(__wpad_linkkeyreqCB);
 		BTE_SetLinkKeyNotificationCallback(__wpad_linkkeynotCB);
+		BTE_SetPinCodeRequestCallback(__wpad_pinreqCB);
 		BTE_InitCore(__initcore_finished);
 
 		if (SYS_CreateAlarm(&__wpad_timer) < 0)
