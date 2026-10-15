@@ -147,11 +147,10 @@ static u16 __sd0_rca = 0;
 static s32 __sd0_sdhc = 0;
 static u8 __sd0_csd[16];
 static u8 __sd0_cid[16];
-static u8 __sd0_functions[64] ATTRIBUTE_ALIGN(32);
 static bool __sdio_initialized = false;
 static char _sd0_fs[] ATTRIBUTE_ALIGN(32) = "/dev/sdio/slot0";
 
-static s32 __sdio_sendcommand(u32 cmd,u32 cmd_type,u32 rsp_type,u32 arg,u32 blk_cnt,u32 blk_size,void *buffer,void *reply,u32 rlen)
+static s32 __sdio_sendcommandimpl(u32 cmd,u32 cmd_type,u32 rsp_type,u32 arg,u32 blk_cnt,u32 blk_size,void *buffer,void *reply,u32 rlen)
 {
 	s32 ret;
 	STACK_ALIGN(ioctlv,iovec,3,32);
@@ -185,7 +184,15 @@ static s32 __sdio_sendcommand(u32 cmd,u32 cmd_type,u32 rsp_type,u32 arg,u32 blk_
 
 	return ret;
 }
- 
+//There is an IOS bug where it doesn't enable the DMA interrupt on cmd_type SDIOCMD_TYPE_BC
+//this makes it so if a buffer crosses a 4k boundary it will hang
+#define __sdio_sendcommand(cmd, cmd_type, rsp_type,arg, blk_cnt, blk_size, buffer, reply, rlen) \
+	({ \
+		_Static_assert((cmd_type) != SDIOCMD_TYPE_BC || ((blk_cnt)*(blk_size) <= 0x1000 && (blk_cnt)*(blk_size) <= __alignof__(buffer)), \
+			"SDIOCMD_TYPE_BC transfer may cross a 4K boundary: align the buffer"); \
+		__sdio_sendcommandimpl(cmd, cmd_type, rsp_type,arg, blk_cnt, blk_size, buffer, reply, rlen); \
+	})
+
 static s32 __sdio_setclock(u32 set)
 {
 	s32 ret;
@@ -387,6 +394,7 @@ static	bool __sd0_initio(void)
 	u32 status;
 	u32 clock = 1;
 	struct _sdioresponse resp;
+	u8 sd0_functions[64] ATTRIBUTE_ALIGN(64);
 
 	__sdio_resetcard();
 	status = __sdio_getstatus();
@@ -486,20 +494,20 @@ static	bool __sd0_initio(void)
 	}
 
 	if(CCC & (1 << 10)) {
-		ret = __sdio_sendcommand(SDIO_CMD_SWITCHFUNC, 1, SDIO_RESPONSE_R1, 0x00fffff0, 1, sizeof(__sd0_functions), __sd0_functions, NULL, 0);
+		ret = __sdio_sendcommand(SDIO_CMD_SWITCHFUNC, SDIOCMD_TYPE_BC, SDIO_RESPONSE_R1, 0x00fffff0, 1, sizeof(sd0_functions), sd0_functions, NULL, 0);
 		if(ret<0) {
 			__sd0_deselect();
 			return false;
 		}
 
-		if(((u16*)__sd0_functions)[6] & (1 << 1)) {
-			ret = __sdio_sendcommand(SDIO_CMD_SWITCHFUNC, 1, SDIO_RESPONSE_R1, 0x80fffff1, 1, sizeof(__sd0_functions), __sd0_functions, NULL, 0);
+		if(((u16*)sd0_functions)[6] & (1 << 1)) {
+			ret = __sdio_sendcommand(SDIO_CMD_SWITCHFUNC, SDIOCMD_TYPE_BC, SDIO_RESPONSE_R1, 0x80fffff1, 1, sizeof(sd0_functions), sd0_functions, NULL, 0);
 			if(ret<0) {
 				__sd0_deselect();
 				return false;
 			}
 
-			if((__sd0_functions[16] & 0xf) == 1) {
+			if((sd0_functions[16] & 0xf) == 1) {
 				ret = __sdio_setbuswidth(true, SDIOHCR_HOSTCONTROL_HS);
 				if(ret<0) {
 					__sd0_deselect();
