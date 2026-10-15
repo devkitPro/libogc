@@ -76,11 +76,11 @@
 #define IOCTL_SDIO_GETOCR			0x0C
 #define IOCTL_SDIO_READDATA			0x0D
 #define IOCTL_SDIO_WRITEDATA		0x0E
- 
-#define SDIOCMD_TYPE_BC				1
-#define SDIOCMD_TYPE_BCR			2
-#define SDIOCMD_TYPE_AC				3
-#define SDIOCMD_TYPE_ADTC			4
+
+#define SDIOCMD_TYPE_NODATA			0
+#define SDIOCMD_TYPE_READ			1
+#define SDIOCMD_TYPE_WRITE			2
+#define SDIOCMD_TYPE_TRANSFER		3
  
 #define SDIO_RESPONSE_NONE			0
 #define SDIO_RESPONSE_R1			1
@@ -184,12 +184,12 @@ static s32 __sdio_sendcommandimpl(u32 cmd,u32 cmd_type,u32 rsp_type,u32 arg,u32 
 
 	return ret;
 }
-//There is an IOS bug where it doesn't enable the DMA interrupt on cmd_type SDIOCMD_TYPE_BC
+//There is an IOS bug where it doesn't enable the DMA interrupt on cmd_type SDIOCMD_TYPE_READ
 //this makes it so if a buffer crosses a 4k boundary it will hang
 #define __sdio_sendcommand(cmd, cmd_type, rsp_type,arg, blk_cnt, blk_size, buffer, reply, rlen) \
 	({ \
-		_Static_assert((cmd_type) != SDIOCMD_TYPE_BC || ((blk_cnt)*(blk_size) <= 0x1000 && (blk_cnt)*(blk_size) <= __alignof__(buffer)), \
-			"SDIOCMD_TYPE_BC transfer may cross a 4K boundary: align the buffer"); \
+		_Static_assert((cmd_type) != SDIOCMD_TYPE_READ || ((blk_cnt)*(blk_size) <= 0x1000 && (blk_cnt)*(blk_size) <= __alignof__(buffer)), \
+			"SDIOCMD_TYPE_READ transfer may cross a 4K boundary: align the buffer"); \
 		__sdio_sendcommandimpl(cmd, cmd_type, rsp_type,arg, blk_cnt, blk_size, buffer, reply, rlen); \
 	})
 
@@ -305,7 +305,7 @@ static s32 __sd0_getstatus(void)
 	s32 ret;
 	u32 status = 0;
  
-	ret = __sdio_sendcommand(SDIO_CMD_SENDSTATUS,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,(__sd0_rca<<16),0,0,NULL,&status,sizeof(u32));
+	ret = __sdio_sendcommand(SDIO_CMD_SENDSTATUS,SDIOCMD_TYPE_TRANSFER,SDIO_RESPONSE_R1,(__sd0_rca<<16),0,0,NULL,&status,sizeof(u32));
 	if(ret<0) return ret;
  
 	return status;
@@ -317,7 +317,7 @@ static s32 __sd0_getrca(void)
 	s32 ret;
 	u32 rca;
  
-	ret = __sdio_sendcommand(SDIO_CMD_SENDRCA,0,SDIO_RESPONSE_R5,0,0,0,NULL,&rca,sizeof(rca));	
+	ret = __sdio_sendcommand(SDIO_CMD_SENDRCA,SDIOCMD_TYPE_NODATA,SDIO_RESPONSE_R5,0,0,0,NULL,&rca,sizeof(rca));	
 	if(ret<0) return ret;
 
 	__sd0_rca = (u16)(rca>>16);
@@ -328,7 +328,7 @@ static s32 __sd0_select(void)
 {
 	s32 ret;
  
-	ret = __sdio_sendcommand(SDIO_CMD_SELECT,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1B,(__sd0_rca<<16),0,0,NULL,NULL,0);
+	ret = __sdio_sendcommand(SDIO_CMD_SELECT,SDIOCMD_TYPE_TRANSFER,SDIO_RESPONSE_R1B,(__sd0_rca<<16),0,0,NULL,NULL,0);
  
 	return ret;
 }
@@ -337,7 +337,7 @@ static s32 __sd0_deselect(void)
 {
 	s32 ret;
  
-	ret = __sdio_sendcommand(SDIO_CMD_DESELECT,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1B,0,0,0,NULL,NULL,0);
+	ret = __sdio_sendcommand(SDIO_CMD_DESELECT,SDIOCMD_TYPE_TRANSFER,SDIO_RESPONSE_R1B,0,0,0,NULL,NULL,0);
  
 	return ret;
 }
@@ -346,7 +346,7 @@ static s32 __sd0_setblocklength(u32 blk_len)
 {
 	s32 ret;
  
-	ret = __sdio_sendcommand(SDIO_CMD_SETBLOCKLEN,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,blk_len,0,0,NULL,NULL,0);
+	ret = __sdio_sendcommand(SDIO_CMD_SETBLOCKLEN,SDIOCMD_TYPE_TRANSFER,SDIO_RESPONSE_R1,blk_len,0,0,NULL,NULL,0);
  
 	return ret;
 }
@@ -359,10 +359,10 @@ static s32 __sd0_setbuswidth(u32 bus_width)
 	val = 0x0000;
 	if(bus_width==4) val = 0x0002;
  
-	ret = __sdio_sendcommand(SDIO_CMD_APPCMD,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,(__sd0_rca<<16),0,0,NULL,NULL,0);
+	ret = __sdio_sendcommand(SDIO_CMD_APPCMD,SDIOCMD_TYPE_TRANSFER,SDIO_RESPONSE_R1,(__sd0_rca<<16),0,0,NULL,NULL,0);
 	if(ret<0) return ret;
  
-	ret = __sdio_sendcommand(SDIO_ACMD_SETBUSWIDTH,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,val,0,0,NULL,NULL,0);
+	ret = __sdio_sendcommand(SDIO_ACMD_SETBUSWIDTH,SDIOCMD_TYPE_TRANSFER,SDIO_RESPONSE_R1,val,0,0,NULL,NULL,0);
 	if(ret<0) return ret;
 
 	return __sdio_setbuswidth(bus_width==4, SDIOHCR_HOSTCONTROL_4BIT);
@@ -372,7 +372,7 @@ static s32 __sd0_getcsd(void)
 {
 	s32 ret;
  
-	ret = __sdio_sendcommand(SDIO_CMD_SENDCSD,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R2,(__sd0_rca<<16),0,0,NULL,__sd0_csd,sizeof(__sd0_csd));
+	ret = __sdio_sendcommand(SDIO_CMD_SENDCSD,SDIOCMD_TYPE_TRANSFER,SDIO_RESPONSE_R2,(__sd0_rca<<16),0,0,NULL,__sd0_csd,sizeof(__sd0_csd));
  
 	return ret;
 }
@@ -381,7 +381,7 @@ static s32 __sd0_getcid(void)
 {
 	s32 ret;
  
-	ret = __sdio_sendcommand(SDIO_CMD_ALL_SENDCID,0,SDIO_RESPONSE_R2,(__sd0_rca<<16),0,0,NULL,__sd0_cid,sizeof(__sd0_cid));
+	ret = __sdio_sendcommand(SDIO_CMD_ALL_SENDCID,SDIOCMD_TYPE_NODATA,SDIO_RESPONSE_R2,(__sd0_rca<<16),0,0,NULL,__sd0_cid,sizeof(__sd0_cid));
  
 	return ret;
 }
@@ -440,18 +440,18 @@ static	bool __sd0_initio(void)
 		if(ret < 0) goto fail;
 
 		// standard SDHC initialization process
-		ret = __sdio_sendcommand(SDIO_CMD_GOIDLE, 0, 0, 0, 0, 0, NULL, NULL, 0);
+		ret = __sdio_sendcommand(SDIO_CMD_GOIDLE, SDIOCMD_TYPE_NODATA, 0, 0, 0, 0, NULL, NULL, 0);
 		if(ret < 0) goto fail;
-		ret = __sdio_sendcommand(SDIO_CMD_SENDIFCOND, 0, SDIO_RESPONSE_R6, 0x1aa, 0, 0, NULL, &resp, sizeof(resp));
+		ret = __sdio_sendcommand(SDIO_CMD_SENDIFCOND, SDIOCMD_TYPE_NODATA, SDIO_RESPONSE_R6, 0x1aa, 0, 0, NULL, &resp, sizeof(resp));
 		if(ret < 0) goto fail;
 		if((resp.rsp_fields[0] & 0xff) != 0xaa) goto fail;
 
 		tries = 10;
 		while(tries-- > 0)
 		{
-			ret = __sdio_sendcommand(SDIO_CMD_APPCMD, SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,0,0,0,NULL,NULL,0);
+			ret = __sdio_sendcommand(SDIO_CMD_APPCMD, SDIOCMD_TYPE_TRANSFER,SDIO_RESPONSE_R1,0,0,0,NULL,NULL,0);
 			if(ret < 0) goto fail;
-			ret = __sdio_sendcommand(SDIO_ACMD_SENDOPCOND, 0, SDIO_RESPONSE_R3, 0x40300000, 0, 0, NULL, &resp, sizeof(resp));
+			ret = __sdio_sendcommand(SDIO_ACMD_SENDOPCOND, SDIOCMD_TYPE_NODATA, SDIO_RESPONSE_R3, 0x40300000, 0, 0, NULL, &resp, sizeof(resp));
 			if(ret < 0) goto fail;
 			if(resp.rsp_fields[0] & (1 << 31)) break;
 
@@ -494,14 +494,14 @@ static	bool __sd0_initio(void)
 	}
 
 	if(CCC & (1 << 10)) {
-		ret = __sdio_sendcommand(SDIO_CMD_SWITCHFUNC, SDIOCMD_TYPE_BC, SDIO_RESPONSE_R1, 0x00fffff0, 1, sizeof(sd0_functions), sd0_functions, NULL, 0);
+		ret = __sdio_sendcommand(SDIO_CMD_SWITCHFUNC, SDIOCMD_TYPE_READ, SDIO_RESPONSE_R1, 0x00fffff0, 1, sizeof(sd0_functions), sd0_functions, NULL, 0);
 		if(ret<0) {
 			__sd0_deselect();
 			return false;
 		}
 
 		if(((u16*)sd0_functions)[6] & (1 << 1)) {
-			ret = __sdio_sendcommand(SDIO_CMD_SWITCHFUNC, SDIOCMD_TYPE_BC, SDIO_RESPONSE_R1, 0x80fffff1, 1, sizeof(sd0_functions), sd0_functions, NULL, 0);
+			ret = __sdio_sendcommand(SDIO_CMD_SWITCHFUNC, SDIOCMD_TYPE_READ, SDIO_RESPONSE_R1, 0x80fffff1, 1, sizeof(sd0_functions), sd0_functions, NULL, 0);
 			if(ret<0) {
 				__sd0_deselect();
 				return false;
@@ -600,7 +600,7 @@ static bool sdio_ReadSectors(sec_t sector, sec_t numSectors,void* buffer)
 			else blk_off = sector;
 			if(numSectors > 8)secs_to_read = 8;
 			else secs_to_read = numSectors;
-			ret = __sdio_sendcommand(SDIO_CMD_READMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,blk_off,secs_to_read,PAGE_SIZE512,rw_buffer,NULL,0);
+			ret = __sdio_sendcommand(SDIO_CMD_READMULTIBLOCK,SDIOCMD_TYPE_TRANSFER,SDIO_RESPONSE_R1,blk_off,secs_to_read,PAGE_SIZE512,rw_buffer,NULL,0);
 			if(ret>=0) {
 				memcpy(ptr,rw_buffer,PAGE_SIZE512*secs_to_read);
 				ptr += PAGE_SIZE512*secs_to_read;
@@ -611,7 +611,7 @@ static bool sdio_ReadSectors(sec_t sector, sec_t numSectors,void* buffer)
 		}
 	} else {
 		if(__sd0_sdhc == 0) sector *= PAGE_SIZE512;
-		ret = __sdio_sendcommand(SDIO_CMD_READMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,sector,numSectors,PAGE_SIZE512,buffer,NULL,0);
+		ret = __sdio_sendcommand(SDIO_CMD_READMULTIBLOCK,SDIOCMD_TYPE_TRANSFER,SDIO_RESPONSE_R1,sector,numSectors,PAGE_SIZE512,buffer,NULL,0);
 	}
 
 	__sd0_deselect();
@@ -640,7 +640,7 @@ static bool sdio_WriteSectors(sec_t sector, sec_t numSectors,const void* buffer)
 			if(numSectors > 8)secs_to_write = 8;
 			else secs_to_write = numSectors;
 			memcpy(rw_buffer,ptr,PAGE_SIZE512*secs_to_write);
-			ret = __sdio_sendcommand(SDIO_CMD_WRITEMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,blk_off,secs_to_write,PAGE_SIZE512,rw_buffer,NULL,0);
+			ret = __sdio_sendcommand(SDIO_CMD_WRITEMULTIBLOCK,SDIOCMD_TYPE_TRANSFER,SDIO_RESPONSE_R1,blk_off,secs_to_write,PAGE_SIZE512,rw_buffer,NULL,0);
 			if(ret>=0) {
 				ptr += PAGE_SIZE512*secs_to_write;
 				sector+=secs_to_write;
@@ -650,7 +650,7 @@ static bool sdio_WriteSectors(sec_t sector, sec_t numSectors,const void* buffer)
 		}
 	} else {
 		if(__sd0_sdhc == 0) sector *= PAGE_SIZE512;
-		ret = __sdio_sendcommand(SDIO_CMD_WRITEMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,sector,numSectors,PAGE_SIZE512,(char *)buffer,NULL,0);
+		ret = __sdio_sendcommand(SDIO_CMD_WRITEMULTIBLOCK,SDIOCMD_TYPE_TRANSFER,SDIO_RESPONSE_R1,sector,numSectors,PAGE_SIZE512,(char *)buffer,NULL,0);
 	}
 
 	__sd0_deselect();
