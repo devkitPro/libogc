@@ -220,6 +220,11 @@ static void __dsp_requestcallback(dsptask_t *task)
 		return;
 	}
 
+	// the DSP takes the new song now: clear the flag here, not only in the look-ahead below (a voice set after the
+	// look-ahead passed it would otherwise be restarted when it comes back, playing its first block twice)
+	if(sound_data[snd_chan].flags & VOICE_UPDATE)
+		sound_data[snd_chan].flags &=~(VOICE_UPDATE | VOICE_VOLUPDATE | VOICE_PAUSE | VOICE_UPDATEADD);
+
 	sound_data_dma=sound_data[snd_chan];
 
 	DCFlushRange(&sound_data_dma, sizeof(t_sound_data));
