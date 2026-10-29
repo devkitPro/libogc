@@ -64,6 +64,8 @@ static s32 __wiiuse_disconnected(void *arg,struct bte_pcb *pcb,u8 err)
 
 	bte_free(wml->sock);
 	wml->sock = NULL;
+	if(wm->sock==wml->sock)
+		wm->sock = NULL;	
 	return ERR_OK;
 }
 

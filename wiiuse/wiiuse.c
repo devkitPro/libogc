@@ -68,6 +68,8 @@ void wiiuse_cleanup(struct wiimote_t **wm, int wiimotes)
 				wm[i]->queue_buffer = NULL;
 			}
 
+			//should normally have been free'd by other code, but just in case it isnt
+			//to remove?
 			if (wm[i]->sock) {
 				bte_free(wm[i]->sock);
 				wm[i]->sock = NULL;
@@ -77,6 +79,9 @@ void wiiuse_cleanup(struct wiimote_t **wm, int wiimotes)
 		}
 	}
 
+	//clear internal pointer too
+	if (wm == __wm)
+		__wm = NULL;
 	free(wm);
 }
 
@@ -98,8 +103,10 @@ struct wiimote_t** wiiuse_init(int wiimotes, wii_event_cb event_cb) {
 	}
 
 	for (i = 0; i < wiimotes; ++i) {
-		if(!__wm[i])
+		if (!__wm[i]) {
 			__wm[i] = malloc(sizeof(struct wiimote_t));
+			if (!__wm[i]) return NULL; // Lets try to avoid crashing if OOM
+		}
 
 		memset(__wm[i], 0, sizeof(struct wiimote_t));
 		__wm[i]->unid = i;
