@@ -222,6 +222,12 @@ void KThreadExit(sptr rc)
 	u32 msr = PPCMfmsr();
 	PPCMtmsr(msr &~ (MSR_EE|MSR_FP|MSR_RI));
 
+	// Throw away FPU context if the exiting thread owned the FPU
+	KThread* fpu_owner = (KThread*)PPCMfspr(SPRG3);
+	if (fpu_owner == self) {
+		PPCMtspr(SPRG3, 0);
+	}
+
 	KThreadDequeue(self);
 
 	self->state = KTHR_STATE_FINISHED;
