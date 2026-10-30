@@ -73,7 +73,7 @@ static const u32 single_RGB8_to_YCbCr(const u8 r, const u8 g, const u8 b)
 }
 
 //set up the palette for color printing
-static const u32 colorTable[] = {
+static u32 colorTable[] = {
 	0x10801080, // black
 	0x317031b1, // red
 	0x51605157, // green
@@ -128,6 +128,7 @@ PrintConsole defaultConsole =
 		0, //first ascii character in the set
 		256 //number of characters in the font set
 	},
+	colorTable,
 	(u16*)NULL,
 	0,0,	//con_xres con_yres
 	0,		//con_stride
@@ -271,12 +272,12 @@ static void __console_drawc(int c)
 		} else if (currentConsole->flags & CONSOLE_COLOR_FAINT) {
 			fgcolor += 16;
 		}
-		fgcolor = colorTable[fgcolor];
+		fgcolor = currentConsole->colorPalette[fgcolor];
 	}
 
 	if (!(currentConsole->flags & CONSOLE_BG_CUSTOM)) {
 		if (currentConsole->flags & CONSOLE_COLOR_BG_BRIGHT) bgcolor +=8;
-		bgcolor = colorTable[bgcolor];
+		bgcolor = currentConsole->colorPalette[bgcolor];
 	}
 
 	if (currentConsole->flags & CONSOLE_COLOR_REVERSE) {
@@ -368,7 +369,7 @@ static void __console_clear_line(int line, int from, int to)
 	unsigned int bgcolor = con->bg;
 
 	if (!(currentConsole->flags & CONSOLE_BG_CUSTOM)) {
-		bgcolor = colorTable[bgcolor];
+		bgcolor = currentConsole->colorPalette[bgcolor];
 	}
 
 	p = __console_get_window_start_ptr();
@@ -399,7 +400,7 @@ static void __console_clear(void)
 
 	unsigned int bgcolor = con->bg;
 	if (!(currentConsole->flags & CONSOLE_BG_CUSTOM)) {
-		bgcolor = colorTable[bgcolor];
+		bgcolor = currentConsole->colorPalette[bgcolor];
 	}
 
 	//get console pointer
@@ -1074,15 +1075,6 @@ ssize_t __console_write(struct _reent *r,void *fd,const char *ptr, size_t len)
 
 void CON_Init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stride)
 {
-
-	// clear given framebuffer to black
-	u32 *ptr = (u32*)framebuffer;
-
-	for(int i=0; i<yres*stride/4; i++) {
-		ptr[i] = colorTable[0];
-	}
-	DCStoreRange(framebuffer, yres * stride);
-
 	// xstart and ystart are offsets within the provided framebuffer
 	// reduce xres and yres accordingly to prevent OOB writes
 	xres = xres - xstart;
@@ -1093,7 +1085,13 @@ void CON_Init(void *framebuffer,int xstart,int ystart,int xres,int yres,int stri
 	yres = (yres / FONT_YSIZE) * FONT_YSIZE;
 	__console_init(framebuffer,xstart,ystart,xres,yres,stride);
 
+	// clear given framebuffer to black
+	u32 *ptr = (u32*)framebuffer;
 
+	for(int i=0; i<yres*stride/4; i++) {
+		ptr[i] = currentConsole->colorPalette[0];
+	}
+	DCStoreRange(framebuffer, yres * stride);
 }
 
 s32 CON_InitEx(GXRModeObj *rmode, s32 conXOrigin,s32 conYOrigin,s32 conWidth,s32 conHeight)
@@ -1219,6 +1217,13 @@ void consoleSetFont(PrintConsole* console, ConsoleFont* font)
 	if(!console) console = currentConsole;
 
 	console->font = *font;
+}
+
+void consoleSetPalette(PrintConsole* console, u32 *palette)
+{
+	if(!console) console = currentConsole;
+
+	console->colorPalette = palette;
 }
 
 void consoleSetWindow(PrintConsole* console, unsigned int x, unsigned int y, unsigned int width, unsigned int height)
