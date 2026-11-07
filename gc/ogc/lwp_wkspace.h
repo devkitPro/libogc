@@ -2,7 +2,7 @@
 #define __LWP_WKSPACE_H__
 
 #include <gctypes.h>
-#include <lwp_heap.h>
+#include <ogc/lwp_heap.h>
 
 #ifdef __cplusplus
 extern "C" {
