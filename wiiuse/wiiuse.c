@@ -14,8 +14,6 @@
 #include "wiiuse_internal.h"
 #include "io.h"
 
-static struct wiimote_t** __wm = NULL;
-
 void wiiuse_send_next_command(struct wiimote_t *wm)
 {
 	struct cmd_blk_t *cmd;
@@ -91,53 +89,53 @@ struct wiimote_t** wiiuse_init(int wiimotes, wii_event_cb event_cb) {
 	if (!wiimotes)
 		return NULL;
 
-	if (!__wm) {
-		__wm = malloc(sizeof(struct wiimote_t*) * wiimotes);
-		if(!__wm) return NULL;
-		memset(__wm, 0, sizeof(struct wiimote_t*) * wiimotes);
-	}
+	struct wiimote_t **wm = malloc(sizeof(struct wiimote_t*) * wiimotes);
+	if(!wm) return NULL;
 
+	memset(wm, 0, sizeof(struct wiimote_t*) * wiimotes);
 	for (i = 0; i < wiimotes; ++i) {
-		if(!__wm[i])
-			__wm[i] = malloc(sizeof(struct wiimote_t));
+		if (!wm[i]) {
+			wm[i] = malloc(sizeof(struct wiimote_t));
+			if (!wm[i]) return NULL; // Lets try to avoid crashing if OOM
+		}
 
-		memset(__wm[i], 0, sizeof(struct wiimote_t));
-		__wm[i]->unid = i;
+		memset(wm[i], 0, sizeof(struct wiimote_t));
+		wm[i]->unid = i;
 
 		#if defined(WIN32)
-			__wm[i]->dev_handle = 0;
-			__wm[i]->stack = WIIUSE_STACK_UNKNOWN;
-			__wm[i]->normal_timeout = WIIMOTE_DEFAULT_TIMEOUT;
-			__wm[i]->exp_timeout = WIIMOTE_EXP_TIMEOUT;
-			__wm[i]->timeout = __wm[i]->normal_timeout;
+			wm[i]->dev_handle = 0;
+			wm[i]->stack = WIIUSE_STACK_UNKNOWN;
+			wm[i]->normal_timeout = WIIMOTE_DEFAULT_TIMEOUT;
+			wm[i]->exp_timeout = WIIMOTE_EXP_TIMEOUT;
+			wm[i]->timeout = wm[i]->normal_timeout;
 		#elif defined(GEKKO)
-			__wm[i]->sock = NULL;
-			__wm[i]->bdaddr = *BD_ADDR_ANY;
-			__wm[i]->event_cb = event_cb;
-			if (wiiuse_init_cmd_queue(__wm[i])) {
+			wm[i]->sock = NULL;
+			wm[i]->bdaddr = *BD_ADDR_ANY;
+			wm[i]->event_cb = event_cb;
+			if (wiiuse_init_cmd_queue(wm[i])) {
 				WIIUSE_ERROR("Could not allocate command queue");
 				return NULL;
 			}
 		#elif defined(unix)
-			__wm[i]->bdaddr = *BDADDR_ANY;
-			__wm[i]->out_sock = -1;
-			__wm[i]->in_sock = -1;
+			wm[i]->bdaddr = *BDADDR_ANY;
+			wm[i]->out_sock = -1;
+			wm[i]->in_sock = -1;
 		#endif
 
-		__wm[i]->state = WIIMOTE_INIT_STATES;
-		__wm[i]->flags = WIIUSE_INIT_FLAGS;
+		wm[i]->state = WIIMOTE_INIT_STATES;
+		wm[i]->flags = WIIUSE_INIT_FLAGS;
 
-		__wm[i]->event = WIIUSE_NONE;
+		wm[i]->event = WIIUSE_NONE;
 
-		__wm[i]->exp.type = EXP_NONE;
+		wm[i]->exp.type = EXP_NONE;
 
-		wiiuse_set_aspect_ratio(__wm[i], WIIUSE_ASPECT_4_3);
-		wiiuse_set_ir_position(__wm[i], WIIUSE_IR_ABOVE);
+		wiiuse_set_aspect_ratio(wm[i], WIIUSE_ASPECT_4_3);
+		wiiuse_set_ir_position(wm[i], WIIUSE_IR_ABOVE);
 
-		__wm[i]->accel_calib.st_alpha = WIIUSE_DEFAULT_SMOOTH_ALPHA;
+		wm[i]->accel_calib.st_alpha = WIIUSE_DEFAULT_SMOOTH_ALPHA;
 	}
 
-	return __wm;
+	return wm;
 }
 
 /**
