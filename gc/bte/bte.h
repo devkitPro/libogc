@@ -70,11 +70,6 @@
 #define BD_NAME_LEN					248
 #define BD_MAX_INQUIRY_DEVS			255
 
-enum pair_mode {
-	PAIR_MODE_NORMAL,
-	PAIR_MODE_TEMPORARY
-};
-
 #ifdef __cplusplus
 	extern "C" {
 #endif /* __cplusplus */
@@ -155,12 +150,14 @@ s32 BTE_PeriodicInquiry(u8 max_cnt,u8 flush,btecallback cb);
 s32 BTE_ExitPeriodicInquiry(void);
 s32 BTE_LinkKeyRequestReply(struct bd_addr *bdaddr,u8 *key);
 s32 BTE_LinkKeyRequestNegativeReply(struct bd_addr *bdaddr);
+s32 BTE_PinCodeRequestReply(struct bd_addr *bdaddr,u8 pinlen,u8 *pincode);
 void (*BTE_SetDisconnectCallback(void (*callback)(struct bd_addr *bdaddr,u8 reason)))(struct bd_addr *bdaddr,u8 reason);
 void BTE_SetHostSyncButtonCallback(void (*callback)(u32 held));
 void BTE_SetConnectionRequestCallback(s8 (*callback)(void *arg,struct bd_addr *bdaddr,u8 *cod,u8 link_type));
 void BTE_SetLinkKeyRequestCallback(s8 (*callback)(void *arg,struct bd_addr *bdaddr));
 void BTE_SetLinkKeyNotificationCallback(s8 (*callback)(void *arg,struct bd_addr *bdaddr,u8 *key));
-u8 BTE_GetPairMode(void);
+void BTE_SetPinCodeRequestCallback(s8 (*callback)(void *arg,struct bd_addr *bdaddr));
+s32 BTE_GetLocalAddress(struct bd_addr *bdaddr);
 s32 BTE_WriteStoredLinkKey(struct bd_addr *bdaddr,u8 *key);
 s32 BTE_ClearStoredLinkKeys(void);
 s32 BTE_DeleteStoredLinkKey(struct bd_addr *bdaddr);
