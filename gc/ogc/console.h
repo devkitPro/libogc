@@ -125,31 +125,41 @@ typedef struct ConsoleFont
  * @code
  * PrintConsole defaultConsole =
  * {
- * 	//Font:
- * 	{
- * 		(u8*)default_font_bin, //font gfx
- * 		0, //first ascii character in the set
- * 		128, //number of characters in the font set
+ *	//Font:
+ *	{
+ *		(u8*)console_font_8x16, //font gfx
+ *		0, //first ascii character in the set
+ *		256 //number of characters in the font set
  *	},
- *	0,0, //cursorX cursorY
- *	0,0, //prevcursorX prevcursorY
- *	40, //console width
- *	30, //console height
- *	0,  //window x
- *	0,  //window y
- *	32, //window width
- *	24, //window height
- *	3, //tab size
- *	0, //font character offset
- *	0,  //print callback
- *	false //console initialized
- * };
+ *	colorTable,
+ *	(u16*)NULL,
+ *	0,0,	//con_xres con_yres
+ *	0,		//con_stride
+ *	0,0,	//target_x target_y
+ *	0,		//tgt_stride
+ *	0,0,	//cursorX cursorY
+ *	0,0,	//prevcursorX prevcursorY
+ *	80,		//console width
+ *	30,		//console height
+ *	0,		//window x
+ *	0,		//window y
+ *	80,		//window width
+ *	30,		//window height
+ *	3,		//tab size
+ *	7,		//foreground color
+ *	0,		//background color
+ *	0,		//flags
+ *	0,		//print callback
+ *	false	//console initialized
+ *	}
  * @endcode
  */
 
 typedef struct PrintConsole
 {
 	ConsoleFont font;        ///< Font of the console
+
+	u32 *colorPalette;       ///< Color palette of the console
 
 	void *destbuffer;        ///< Framebuffer address
 	int con_xres, con_yres;  ///< Console buffer width/height in pixels
@@ -194,6 +204,13 @@ typedef enum {
  * @param font The font to load.
  */
 void consoleSetFont(PrintConsole* console, ConsoleFont* font);
+
+/**
+ * @brief Loads the color palette into the console.
+ * @param console Pointer to the console to update, if NULL it will update the current console.
+ * @param font The color palette to load.
+ */
+void consoleSetPalette(PrintConsole* console, u32 *palette);
 
 /**
  * @brief Sets the print window.
