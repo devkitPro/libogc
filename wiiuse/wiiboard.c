@@ -47,6 +47,11 @@
 #include "wiiboard.h"
 #include "io.h"
 
+static u16 load_be_u16(u8* data)
+{
+	return ((u16)(data[0] << 8)) | ((u16)data[1]);
+}
+
 /**
  *	@brief Handle the handshake data from the wiiboard.
  *
@@ -58,35 +63,39 @@
  */
 int wii_board_handshake(struct wiimote_t* wm, struct wii_board_t* wb, ubyte* data, uword len) 
 {
-	int offset = 0;
+	unsigned offset = 0;
 
-	if (data[offset]==0xff) {
-		if (data[offset+16]==0xff) {
+	if (data[offset] == 0xff) {
+		if (data[offset + 0x10] == 0xff) {
 			WIIUSE_DEBUG("Wii Balance Board handshake appears invalid, trying again.");
 			wiiuse_read_data(wm, data, WM_EXP_MEM_CALIBR, EXP_HANDSHAKE_LEN, wiiuse_handshake_expansion);
 			return 0;
 		}
-		offset += 16;
+		offset += 0x10;
 	}
 
-	wb->ctr[0] = (data[offset+4]<<8)|data[offset+5];
-	wb->cbr[0] = (data[offset+6]<<8)|data[offset+7];
-	wb->ctl[0] = (data[offset+8]<<8)|data[offset+9];
-	wb->cbl[0] = (data[offset+10]<<8)|data[offset+11];
+	
+	for (unsigned i = 0; i < WII_BOARD_NUM_SENSORS; ++i) {
+		/* The reference values for 0 Kg */
+		wb->cal_sensor[i].ref_0  = load_be_u16(data + offset + 0x04 + 2*i);
+		/* The reference values for 17 Kg */
+		wb->cal_sensor[i].ref_17 = load_be_u16(data + offset + 0x0c + 2*i);
+		/* The reference values for 34 Kg */
+		wb->cal_sensor[i].ref_34 = load_be_u16(data + offset + 0x14 + 2*i);
+	}
 
-	wb->ctr[1] = (data[offset+12]<<8)|data[offset+13];
-	wb->cbr[1] = (data[offset+14]<<8)|data[offset+15];
-	wb->ctl[1] = (data[offset+16]<<8)|data[offset+17];
-	wb->cbl[1] = (data[offset+18]<<8)|data[offset+19];
+	/* The critical battery value (always 0x69). */
+	wb->cal_bat = data[offset + 0x01];
 
-	wb->ctr[2] = (data[offset+20]<<8)|data[offset+21];
-	wb->cbr[2] = (data[offset+22]<<8)|data[offset+23];
-	wb->ctl[2] = (data[offset+24]<<8)|data[offset+25];
-	wb->cbl[2] = (data[offset+26]<<8)|data[offset+27];
+	/* The reference temperature. */
+        wb->cal_temp = data[offset + 0x40];
 
 	/* handshake done */
 	wm->event = WIIUSE_WII_BOARD_INSERTED;
 	wm->exp.type = EXP_WII_BOARD;
+
+	/* Balance Board only has the first LED, so make sure it's on. */
+	wiiuse_set_leds(wm, WIIMOTE_LED_1, NULL);
 
 	return 1; 
 }
@@ -110,9 +119,9 @@ void wii_board_disconnected(struct wii_board_t* wb)
  *	@param msg		The message specified in the event packet.
  */
 void wii_board_event(struct wii_board_t* wb, ubyte* msg)
-{ 
-	wb->rtr = (msg[0]<<8)|msg[1];
-	wb->rbr = (msg[2]<<8)|msg[3];
-	wb->rtl = (msg[4]<<8)|msg[5];
-	wb->rbl = (msg[6]<<8)|msg[7];	
+{
+	for (unsigned i = 0; i < WII_BOARD_NUM_SENSORS; ++i)
+		wb->raw_sensor[i] = load_be_u16(msg + 2*i);
+	wb->raw_temp = msg[0x8];
+	wb->raw_bat = msg[0xa];
 }
