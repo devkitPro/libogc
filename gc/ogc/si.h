@@ -33,9 +33,10 @@
 #define SI_TYPE_GC              SI_TYPE_DOLPHIN
 
 // GameCube specific
-#define SI_GC_WIRELESS          0x80000000u
-#define SI_GC_NOMOTOR           0x20000000u // no rumble motor
-#define SI_GC_STANDARD          0x01000000u // dolphin standard controller
+#define SI_GC_FEATURE_WIRELESS  0x80000000u
+#define SI_GC_FEATURE_NOMOTOR   0x20000000u // no rumble motor
+#define SI_GC_FEATURE_STANDARD  0x01000000u // dolphin standard controller
+#define SI_GC_FEATURE_KEYBOARD  0x00200000u // ASCII keyboard controller
 
 // WaveBird specific
 #define SI_WIRELESS_RECEIVED    0x40000000u // 0: no wireless unit
@@ -56,10 +57,10 @@
 #define SI_N64_KEYBOARD         (SI_TYPE_N64 | 0x00020000)
 #define SI_N64_MOUSE            (SI_TYPE_N64 | 0x02000000)
 #define SI_GBA                  (SI_TYPE_N64 | 0x00040000)
-#define SI_GC_CONTROLLER        (SI_TYPE_GC | SI_GC_STANDARD)
-#define SI_GC_RECEIVER          (SI_TYPE_GC | SI_GC_WIRELESS)
-#define SI_GC_WAVEBIRD          (SI_TYPE_GC | SI_GC_WIRELESS | SI_GC_STANDARD | SI_WIRELESS_STATE | SI_WIRELESS_FIX_ID)
-#define SI_GC_KEYBOARD          (SI_TYPE_GC | 0x00200000)
+#define SI_GC_CONTROLLER        (SI_TYPE_GC | SI_GC_FEATURE_STANDARD)
+#define SI_GC_RECEIVER          (SI_TYPE_GC | SI_GC_FEATURE_WIRELESS)
+#define SI_GC_WAVEBIRD          (SI_TYPE_GC | SI_GC_FEATURE_WIRELESS | SI_GC_FEATURE_STANDARD | SI_WIRELESS_STATE | SI_WIRELESS_FIX_ID)
+#define SI_GC_KEYBOARD          (SI_TYPE_GC | SI_GC_FEATURE_KEYBOARD)
 #define SI_GC_STEERING          (SI_TYPE_GC | 0x00000000)
 
 #ifdef __cplusplus
